@@ -19,13 +19,12 @@ matrices.
 - Fixture manifest schema version 1, hashing, canonical JSON normalization, manifest
   inspection, and semantic comparison are implemented and tested.
 - A redistributable `tool-self-test` fixture exercises the .NET fixture pipeline.
+- The `core-position` fixture is captured by compiling a synthetic probe against the
+  pinned C++ `src/Battlescape/Position.h` and comparing normalized output with .NET.
 
 ## Remaining before the Phase 0 exit gate
 
 - Run the hosted CI matrix after a repository remote is intentionally configured.
-- Add a narrow capture hook or probe to a pinned C++ reference build and commit the
-  first `cpp-reference` fixture. The harness self-test deliberately does not claim to
-  be a C++ oracle.
 - Expand broad source inventory candidates into individual rule keys, script APIs,
   save nodes, formats, options, and gameplay scenarios as exact loaders are inspected.
 - Establish meaningful performance baselines when mod loading, tactical pathfinding,
@@ -34,6 +33,6 @@ matrices.
 
 ## Current exit-gate assessment
 
-The local build/test/tooling portion is operational. Phase 0 is **partial**, because CI
-has not run on hosted operating systems and no executable C++ oracle fixture has yet
-flowed through the comparison pipeline.
+The local build, test, fixture tooling, and executable C++ oracle path are operational.
+Phase 0 is **partial** because CI has not run on hosted operating systems and the broad
+inventories and performance baselines must grow with their owning implementations.
