@@ -1,0 +1,40 @@
+# OXCE .NET
+
+This repository is the compatibility-focused .NET 10 port of OpenXcom Extended (OXCE).
+The C++ reference engine is maintained as a separate checkout. A sibling directory
+named `oxce-bai` (`../oxce-bai`) is the conventional local layout, but tools and tests
+must not require a machine-specific absolute path.
+
+The goal is to run existing OXCE mods and scripts, read and write compatible save
+files, consume the same original X-COM assets, and reproduce the same game rules.
+It is not a goal to reproduce the C++ engine's random sequence, pixel output, or UI
+layout exactly.
+
+The repository is intentionally a skeleton. Read these documents before adding a
+subsystem:
+
+- [Agent onboarding](AGENTS.md)
+- [Compatibility contract](docs/compatibility-contract.md)
+- [Architecture](docs/architecture.md)
+- [Implementation plan](docs/implementation-plan.md)
+- [Testing strategy](docs/testing-strategy.md)
+
+## Initial commands
+
+Install a .NET 10 SDK, then run:
+
+```bash
+dotnet build Oxce.slnx
+dotnet run --project tests/Oxce.UnitTests
+dotnet run --project tests/Oxce.CompatibilityTests
+```
+
+The two test projects are dependency-free smoke/fixture runners for the bootstrap
+stage. Phase 0 will select and introduce a conventional unit-test framework.
+
+## Licensing
+
+This project is free software licensed under the
+[GNU General Public License, version 3 or later](LICENSE.txt). It is an independent
+.NET port derived from the behavior and design of OpenXcom Extended and OpenXcom.
+See [NOTICE.md](NOTICE.md) for attribution. Original X-COM game data is not included.

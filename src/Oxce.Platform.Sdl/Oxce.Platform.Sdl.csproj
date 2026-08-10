@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Oxce.Core/Oxce.Core.csproj" />
+    <ProjectReference Include="../Oxce.Engine/Oxce.Engine.csproj" />
+    <ProjectReference Include="../Oxce.Rendering/Oxce.Rendering.csproj" />
+  </ItemGroup>
+</Project>

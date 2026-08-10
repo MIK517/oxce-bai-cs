@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Oxce.Core/Oxce.Core.csproj" />
+    <ProjectReference Include="../Oxce.Formats/Oxce.Formats.csproj" />
+    <ProjectReference Include="../Oxce.Scripting/Oxce.Scripting.csproj" />
+  </ItemGroup>
+</Project>
