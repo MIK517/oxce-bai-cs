@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:oxce:fixture-manifest:v1",
+  "title": "OXCE compatibility fixture manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "description",
+    "reference",
+    "inputs",
+    "normalization",
+    "expected"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+    "description": { "type": "string", "minLength": 1 },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "repository", "commit", "buildOptions"],
+      "properties": {
+        "kind": { "enum": ["cpp-reference", "tool-self-test"] },
+        "repository": { "type": "string" },
+        "commit": { "type": "string" },
+        "buildOptions": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "size", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "size": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "normalization": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "expected": { "type": "string", "minLength": 1 }
+  }
+}

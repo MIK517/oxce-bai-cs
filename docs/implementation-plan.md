@@ -1,5 +1,8 @@
 # General implementation plan
 
+Current bootstrap evidence and remaining gates are tracked in
+[`phase-0-status.md`](phase-0-status.md).
+
 ## Objective and delivery strategy
 
 Deliver a compatibility-complete .NET 10 engine in executable vertical slices. The C++
@@ -213,13 +216,12 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
 
 ## Immediate next tasks
 
-1. Install the .NET 10 SDK and build this skeleton.
-2. Add CI and a conventional test framework.
-3. Create compatibility matrix templates and populate them from `src/CMakeLists.txt`,
-   `src/Mod`, `src/Engine/Script.*`, `src/Savegame`, and resource loaders.
-4. Design the normalized fixture manifest/output schema.
-5. Implement the YAML compatibility spike against a ruleset, a two-document save, and
+1. Run the defined CI matrix after repository hosting is configured.
+2. Add a narrow reference capture hook and commit the first executable C++ oracle
+   fixture with its exact commit and build options.
+3. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
+   formats, options, and gameplay scenarios as their loaders are inspected.
+4. Implement the YAML compatibility spike against a ruleset, a two-document save, and
    an error/location fixture.
-6. Implement one indexed asset decoder and display it in an SDL3 window as the platform
+5. Implement one indexed asset decoder and display it in an SDL3 window as the platform
    feasibility spike.
-

@@ -17,6 +17,7 @@ subsystem:
 - [Compatibility contract](docs/compatibility-contract.md)
 - [Architecture](docs/architecture.md)
 - [Implementation plan](docs/implementation-plan.md)
+- [Phase 0 status](docs/phase-0-status.md)
 - [Testing strategy](docs/testing-strategy.md)
 
 ## Initial commands
@@ -25,12 +26,11 @@ Install a .NET 10 SDK, then run:
 
 ```bash
 dotnet build Oxce.slnx
-dotnet run --project tests/Oxce.UnitTests
-dotnet run --project tests/Oxce.CompatibilityTests
+dotnet test Oxce.slnx
 ```
 
-The two test projects are dependency-free smoke/fixture runners for the bootstrap
-stage. Phase 0 will select and introduce a conventional unit-test framework.
+Tests use xUnit v3 on Microsoft Testing Platform. Compatibility artifacts are managed
+with `tools/Oxce.FixtureTool`; see [the fixture guide](fixtures/README.md).
 
 ## Licensing
 
