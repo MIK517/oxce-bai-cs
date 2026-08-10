@@ -217,8 +217,8 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
 ## Immediate next tasks
 
 1. Run the defined CI matrix after repository hosting is configured.
-2. Add a narrow reference capture hook and commit the first executable C++ oracle
-   fixture with its exact commit and build options.
+2. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
+   investigated.
 3. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
    formats, options, and gameplay scenarios as their loaders are inspected.
 4. Implement the YAML compatibility spike against a ruleset, a two-document save, and

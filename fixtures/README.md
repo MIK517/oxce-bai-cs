@@ -19,3 +19,12 @@ dotnet run --project tools/Oxce.FixtureTool -- inspect fixtures/manifests/bootst
 dotnet run --project tools/Oxce.FixtureTool -- normalize fixtures/public/bootstrap/canonical-json.input.json
 dotnet run --project tools/Oxce.FixtureTool -- compare fixtures/expected/bootstrap/canonical-json.expected.json <actual.json>
 ```
+
+The first executable C++ oracle probe covers battlescape coordinates. On Windows with
+Visual Studio C++ tools installed, capture it with:
+
+```powershell
+.\tools\capture-position-reference.ps1
+```
+
+Pass `-ReferenceRoot` when the C++ checkout is not the conventional sibling directory.

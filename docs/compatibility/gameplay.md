@@ -2,6 +2,7 @@
 
 | Subsystem or scenario | Status | Reference source | Fixture | Notes |
 |---|---|---|---|---|
+| Battlescape coordinate storage and basic conversions | partial | `src/Battlescape/Position.h` | `core-position` | Signed 16-bit storage, tile/voxel conversion, remainder, and distance rounding are covered. |
 | New campaign and starting base | not started | `src/Savegame/SavedGame.cpp`, `src/Mod/Mod.cpp` |  | First strategic vertical slice. |
 | Time progression and calendar | not started | `src/Geoscape/GeoscapeState.cpp`, `src/Savegame/GameTime.cpp` |  | Fixed-step headless clock. |
 | Globe, countries, and regions | not started | `src/Geoscape/`, `src/Savegame/Country.cpp`, `Region.cpp` |  | Separate simulation from presentation. |

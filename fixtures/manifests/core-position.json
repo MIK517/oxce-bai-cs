@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "core-position",
+  "description": "Compares signed 16-bit battlescape coordinate storage, tile/voxel conversion, remainder, and distance rounding.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "position-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/position/position_probe.cpp",
+      "size": 975,
+      "sha256": "cafcdd0509e1472724857be935484bed3fd526dcbcc8118d157fede81b199aff"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/core/position.expected.json"
+}
