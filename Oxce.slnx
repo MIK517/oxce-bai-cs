@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Oxce.App/Oxce.App.csproj" />
+    <Project Path="src/Oxce.Core/Oxce.Core.csproj" />
+    <Project Path="src/Oxce.Engine/Oxce.Engine.csproj" />
+    <Project Path="src/Oxce.Formats/Oxce.Formats.csproj" />
+    <Project Path="src/Oxce.Gameplay/Oxce.Gameplay.csproj" />
+    <Project Path="src/Oxce.Mods/Oxce.Mods.csproj" />
+    <Project Path="src/Oxce.Platform.Sdl/Oxce.Platform.Sdl.csproj" />
+    <Project Path="src/Oxce.Rendering/Oxce.Rendering.csproj" />
+    <Project Path="src/Oxce.Savegames/Oxce.Savegames.csproj" />
+    <Project Path="src/Oxce.Scripting/Oxce.Scripting.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Oxce.CompatibilityTests/Oxce.CompatibilityTests.csproj" />
+    <Project Path="tests/Oxce.UnitTests/Oxce.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Oxce.FixtureTool/Oxce.FixtureTool.csproj" />
+  </Folder>
+</Solution>
+

@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/TestResults/
+artifacts/
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.nupkg
+*.snupkg
+
+# Local copies of copyrighted original X-COM data and large compatibility fixtures.
+data/
+fixtures/private/
+

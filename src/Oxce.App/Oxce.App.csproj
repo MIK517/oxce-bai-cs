@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Oxce.Engine/Oxce.Engine.csproj" />
+    <ProjectReference Include="../Oxce.Formats/Oxce.Formats.csproj" />
+    <ProjectReference Include="../Oxce.Mods/Oxce.Mods.csproj" />
+    <ProjectReference Include="../Oxce.Platform.Sdl/Oxce.Platform.Sdl.csproj" />
+    <ProjectReference Include="../Oxce.Savegames/Oxce.Savegames.csproj" />
+  </ItemGroup>
+</Project>
