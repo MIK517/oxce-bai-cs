@@ -85,10 +85,9 @@ Each expected fixture records:
 Do not commit original X-COM data. Prefer tiny synthetic files that isolate a format
 feature; use manifests and local hashes for end-to-end tests requiring owned assets.
 
-## Bootstrap runner
+## Test and fixture runners
 
-The initial test projects are console runners so the empty skeleton has no unresolved
-package choice. In Phase 0, select a maintained .NET 10 test framework, pin versions
-centrally, enable coverage, and keep the compatibility fixture runner callable both
-from the test framework and from the command line.
-
+Unit and compatibility tests use centrally pinned xUnit v3 packages on Microsoft
+Testing Platform v2. Coverlet provides cross-platform coverage. The separate
+`Oxce.FixtureTool` command-line application validates manifests and supports hashing,
+canonical JSON normalization, and semantic comparison outside the test runner.

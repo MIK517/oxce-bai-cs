@@ -1,8 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="coverlet.MTP" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../tools/Oxce.FixtureSupport/Oxce.FixtureSupport.csproj" />
     <ProjectReference Include="../../src/Oxce.Formats/Oxce.Formats.csproj" />
     <ProjectReference Include="../../src/Oxce.Gameplay/Oxce.Gameplay.csproj" />
     <ProjectReference Include="../../src/Oxce.Mods/Oxce.Mods.csproj" />

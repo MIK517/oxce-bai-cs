@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "bootstrap-json",
+  "description": "Exercises the fixture harness canonical JSON normalization and comparison pipeline.",
+  "reference": {
+    "kind": "tool-self-test",
+    "repository": "oxce-bai-cs",
+    "commit": "",
+    "buildOptions": {}
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/bootstrap/canonical-json.input.json",
+      "size": 77,
+      "sha256": "e6d718c2434a59799e0b02f1c5a103301154a77871dca83760f6272dce9d2e5e"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/bootstrap/canonical-json.expected.json"
+}
