@@ -55,11 +55,97 @@ public static class YamlValueReader
     public static bool ReadBoolean(YamlNode node) =>
         TryReadBoolean(node, out var value) ? value : throw TypeError(node, "Boolean");
 
+    public static TEnum ReadEnum<TEnum>(YamlNode node)
+        where TEnum : struct, Enum =>
+        TryReadEnum(node, out TEnum value) ? value : throw TypeError(node, typeof(TEnum).Name);
+
     public static int ReadInt32(YamlMappingNode mapping, string key, int defaultValue) =>
         mapping.TryGet(key, out var node) ? ReadInt32(node!) : defaultValue;
 
     public static bool ReadBoolean(YamlMappingNode mapping, string key, bool defaultValue) =>
         mapping.TryGet(key, out var node) ? ReadBoolean(node!) : defaultValue;
+
+    public static TEnum ReadEnum<TEnum>(YamlMappingNode mapping, string key, TEnum defaultValue)
+        where TEnum : struct, Enum =>
+        mapping.TryGet(key, out var node) ? ReadEnum<TEnum>(node!) : defaultValue;
+
+    public static T[] ReadSequence<T>(YamlNode node, Func<YamlNode, T> readItem)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(readItem);
+
+        return node switch
+        {
+            YamlSequenceNode sequence => sequence.Items.Select(readItem).ToArray(),
+            YamlMappingNode mapping => mapping.Entries.Select(entry => readItem(entry.Value)).ToArray(),
+            _ => [],
+        };
+    }
+
+    public static SortedDictionary<TKey, TValue> ReadMap<TKey, TValue>(
+        YamlNode node,
+        Func<YamlNode, TKey> readKey,
+        Func<YamlNode, TValue> readValue,
+        IComparer<TKey>? comparer = null)
+        where TKey : notnull
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(readKey);
+        ArgumentNullException.ThrowIfNull(readValue);
+
+        var result = new SortedDictionary<TKey, TValue>(comparer);
+        switch (node)
+        {
+            case YamlMappingNode mapping:
+                foreach (var entry in mapping.Entries)
+                {
+                    result.TryAdd(readKey(entry.Key), readValue(entry.Value));
+                }
+
+                break;
+            case YamlScalarNode or YamlNullNode:
+                break;
+            default:
+                throw TypeError(node, "mapping");
+        }
+
+        return result;
+    }
+
+    public static (TFirst First, TSecond Second) ReadPair<TFirst, TSecond>(
+        YamlNode node,
+        Func<YamlNode, TFirst> readFirst,
+        Func<YamlNode, TSecond> readSecond)
+    {
+        ArgumentNullException.ThrowIfNull(readFirst);
+        ArgumentNullException.ThrowIfNull(readSecond);
+        var items = RequireSequenceLength(node, 2, "pair");
+        return (readFirst(items[0]), readSecond(items[1]));
+    }
+
+    public static (TFirst First, TSecond Second, TThird Third) ReadTuple<TFirst, TSecond, TThird>(
+        YamlNode node,
+        Func<YamlNode, TFirst> readFirst,
+        Func<YamlNode, TSecond> readSecond,
+        Func<YamlNode, TThird> readThird)
+    {
+        ArgumentNullException.ThrowIfNull(readFirst);
+        ArgumentNullException.ThrowIfNull(readSecond);
+        ArgumentNullException.ThrowIfNull(readThird);
+        var items = RequireSequenceLength(node, 3, "tuple");
+        return (readFirst(items[0]), readSecond(items[1]), readThird(items[2]));
+    }
+
+    public static T[] ReadFixedArray<T>(
+        YamlNode node,
+        int length,
+        Func<YamlNode, T> readItem)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        ArgumentNullException.ThrowIfNull(readItem);
+        var items = RequireSequenceLength(node, length, "fixed-length array");
+        return items.Select(readItem).ToArray();
+    }
 
     public static bool TryReadInt8(YamlNode node, out sbyte value)
     {
@@ -133,6 +219,19 @@ public static class YamlValueReader
         }
 
         value = false;
+        return false;
+    }
+
+    public static bool TryReadEnum<TEnum>(YamlNode node, out TEnum value)
+        where TEnum : struct, Enum
+    {
+        if (TryReadInt32(node, out var parsed))
+        {
+            value = (TEnum)Enum.ToObject(typeof(TEnum), parsed);
+            return true;
+        }
+
+        value = default;
         return false;
     }
 
@@ -338,6 +437,20 @@ public static class YamlValueReader
             YamlNullNode nullNode => nullNode.Spelling,
             _ => null,
         };
+    }
+
+    private static IReadOnlyList<YamlNode> RequireSequenceLength(
+        YamlNode node,
+        int length,
+        string targetType)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        if (node is not YamlSequenceNode sequence || sequence.Items.Count != length)
+        {
+            throw TypeError(node, targetType);
+        }
+
+        return sequence.Items;
     }
 
     private static YamlFormatException TypeError(YamlNode node, string targetType) =>

@@ -1,0 +1,97 @@
+{
+  "array": [
+    "1",
+    "2",
+    "3"
+  ],
+  "enumColumns": [
+    "name",
+    "success",
+    "value"
+  ],
+  "enums": [
+    [
+      "zero",
+      true,
+      "0"
+    ],
+    [
+      "negative",
+      true,
+      "-1"
+    ],
+    [
+      "wrapped",
+      true,
+      "-1"
+    ],
+    [
+      "hexadecimal",
+      true,
+      "16"
+    ],
+    [
+      "invalid",
+      false,
+      null
+    ]
+  ],
+  "maps": {
+    "duplicate": [
+      [
+        "same",
+        "3"
+      ]
+    ],
+    "integerString": [
+      [
+        "-1",
+        "negative"
+      ],
+      [
+        "1",
+        "one"
+      ],
+      [
+        "2",
+        "two"
+      ]
+    ],
+    "stringInteger": [
+      [
+        "alpha",
+        "2"
+      ],
+      [
+        "zeta",
+        "1"
+      ]
+    ]
+  },
+  "pair": [
+    "7",
+    "-1"
+  ],
+  "sequences": {
+    "booleans": [
+      true,
+      false,
+      true
+    ],
+    "integers": [
+      "1",
+      "-1",
+      "16"
+    ],
+    "mappingValues": [
+      "2",
+      "1"
+    ],
+    "scalar": []
+  },
+  "tuple": [
+    "-1",
+    true,
+    "alpha"
+  ]
+}

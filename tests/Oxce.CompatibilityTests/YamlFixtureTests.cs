@@ -10,6 +10,7 @@ public sealed class YamlFixtureTests
 {
     private static readonly string[] BooleanColumns = ["name", "value"];
     private static readonly string[] FloatingColumns = ["name", "float", "double"];
+    private static readonly string[] EnumColumns = ["name", "success", "value"];
     private static readonly string[] IntegerColumns =
         ["name", "int8", "uint8", "int32", "uint32", "int64", "uint64"];
 
@@ -104,6 +105,95 @@ public sealed class YamlFixtureTests
         Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
     }
 
+    [Fact]
+    public void ContainerConversionsMatchCapturedCppReference()
+    {
+        var root = FindRepositoryRoot();
+        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-container-conversions.json");
+        var manifest = FixtureManifestLoader.Load(manifestPath);
+        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
+        var document = Assert.IsType<YamlMappingNode>(
+            YamlCompatibilityReader.ParseFile(fixturePath).Documents[0].Root);
+        var sequences = Assert.IsType<YamlMappingNode>(Required(document, "sequences"));
+        var maps = Assert.IsType<YamlMappingNode>(Required(document, "maps"));
+
+        var pair = YamlValueReader.ReadPair(
+            Required(document, "pair"),
+            YamlValueReader.ReadInt32,
+            YamlValueReader.ReadInt32);
+        var tuple = YamlValueReader.ReadTuple(
+            Required(document, "tuple"),
+            YamlValueReader.ReadInt32,
+            YamlValueReader.ReadBoolean,
+            YamlValueReader.ReadString);
+        var actual = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            array = YamlValueReader.ReadFixedArray(
+                Required(document, "array"), 3, YamlValueReader.ReadInt32).Select(IntegerText).ToArray(),
+            enumColumns = EnumColumns,
+            enums = Cases(document, "enums").Select(ProjectEnum).ToArray(),
+            maps = new
+            {
+                duplicate = ProjectMap(YamlValueReader.ReadMap(
+                    Required(maps, "duplicate"),
+                    YamlValueReader.ReadString,
+                    YamlValueReader.ReadInt32,
+                    StringComparer.Ordinal)),
+                integerString = ProjectMap(YamlValueReader.ReadMap(
+                    Required(maps, "integerString"),
+                    YamlValueReader.ReadInt32,
+                    YamlValueReader.ReadString)),
+                stringInteger = ProjectMap(YamlValueReader.ReadMap(
+                    Required(maps, "stringInteger"),
+                    YamlValueReader.ReadString,
+                    YamlValueReader.ReadInt32,
+                    StringComparer.Ordinal)),
+            },
+            pair = new[] { IntegerText(pair.First), IntegerText(pair.Second) },
+            sequences = new
+            {
+                booleans = YamlValueReader.ReadSequence(
+                    Required(sequences, "booleans"), YamlValueReader.ReadBoolean),
+                integers = YamlValueReader.ReadSequence(
+                    Required(sequences, "integers"), YamlValueReader.ReadInt32).Select(IntegerText).ToArray(),
+                mappingValues = YamlValueReader.ReadSequence(
+                    Required(sequences, "mappingValues"), YamlValueReader.ReadInt32).Select(IntegerText).ToArray(),
+                scalar = YamlValueReader.ReadSequence(
+                    Required(sequences, "scalar"), YamlValueReader.ReadInt32).Select(IntegerText).ToArray(),
+            },
+            tuple = new object[] { IntegerText(tuple.First), tuple.Second, tuple.Third },
+        });
+        var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
+
+        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+    }
+
+    private static object?[] ProjectEnum(YamlMappingNode testCase)
+    {
+        var success = YamlValueReader.TryReadEnum(Required(testCase, "value"), out ProbeEnum value);
+        return
+        [
+            YamlValueReader.ReadString(Required(testCase, "name")),
+            success,
+            success ? IntegerText((int)value) : null,
+        ];
+    }
+
+    private static string[][] ProjectMap<TKey, TValue>(IEnumerable<KeyValuePair<TKey, TValue>> values)
+        where TKey : IFormattable
+        where TValue : IFormattable => values
+            .Select(pair => new[] { IntegerText(pair.Key), IntegerText(pair.Value) })
+            .ToArray();
+
+    private static string[][] ProjectMap(IEnumerable<KeyValuePair<string, int>> values) => values
+        .Select(pair => new[] { pair.Key, IntegerText(pair.Value) })
+        .ToArray();
+
+    private static string[][] ProjectMap(IEnumerable<KeyValuePair<int, string>> values) => values
+        .Select(pair => new[] { IntegerText(pair.Key), pair.Value })
+        .ToArray();
+
     private static object?[] ProjectIntegers(YamlMappingNode testCase)
     {
         var node = Required(testCase, "value");
@@ -157,5 +247,10 @@ public sealed class YamlFixtureTests
         }
 
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
+    }
+
+    private enum ProbeEnum
+    {
+        Zero = 0,
     }
 }

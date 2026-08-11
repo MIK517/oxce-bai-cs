@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "yaml-container-conversions",
+  "description": "Compares generic numeric enum, sequence, map, pair, tuple, and fixed-array conversion semantics.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "yaml-containers-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/yaml/container-conversions.yml",
+      "size": 512,
+      "sha256": "b4122230bd5766528db12532813efcebfcd8a4dd4f21fa2a4ee0854089ba6ca2"
+    },
+    {
+      "path": "fixtures/reference-probes/yaml/yaml_container_probe.cpp",
+      "size": 8451,
+      "sha256": "c8c3876819cbdf982e18de10a64bf473a942bbf6c37e3dd13bb7e3549ad545ff"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/yaml/container-conversions.expected.json"
+}
