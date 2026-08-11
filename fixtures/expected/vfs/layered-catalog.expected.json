@@ -1,0 +1,21 @@
+{
+  "language": [
+    "en-us.yml",
+    "fr-fr.yml"
+  ],
+  "rulesets": [
+    "common-rule",
+    "middle-rule",
+    "mod-rule"
+  ],
+  "slice": [
+    "common-world",
+    null,
+    "mod-world-override"
+  ],
+  "winner": {
+    "layer": "mod",
+    "mod": "final-mod",
+    "source": "mod-world-override"
+  }
+}

@@ -1,0 +1,9 @@
+common		GEOGRAPH/WORLD.DAT	common-world
+common		Language/en-US.yml	common-en
+common		Rules/10-base.rul	common-rule
+middle	middle-mod	Language/fr-FR.yml	middle-fr
+middle	middle-mod	Rules/20-middle.RUL	middle-rule
+mod	final-mod	geograph/world.dat	mod-world
+mod	final-mod	GEOGRAPH/WORLD.dat	mod-world-override
+mod	final-mod	LANGUAGE/EN-us.yml	mod-en
+mod	final-mod	rules/30-mod.rul	mod-rule
