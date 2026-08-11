@@ -1,0 +1,11 @@
+{
+  "byte": "1",
+  "signedByte": "-1",
+  "singleBig": "1",
+  "singleLittle": "1",
+  "uint16Big": "4660",
+  "uint16Little": "4660",
+  "uint32Big": "305419896",
+  "uint32Little": "305419896",
+  "uint64Little": "72623859790382856"
+}
