@@ -21,8 +21,8 @@
     },
     {
       "path": "fixtures/reference-probes/binary/binary_primitive_probe.cpp",
-      "size": 3482,
-      "sha256": "70690d6c28288cb178cc185a650fed5d3a07282b7d10b8b9c141c6b20b4d8a78"
+      "size": 3573,
+      "sha256": "1102456c41f2877231b053250716ebde57057bd31aa6705e53ef881b77559784"
     }
   ],
   "normalization": ["canonical-json-v1", "numeric-values-as-decimal-strings"],

@@ -222,7 +222,7 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    formats, options, and gameplay scenarios as their loaders are inspected.
 3. Expand representative YAML coverage alongside each rule and save loader; the generic
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
-4. Implement bounded binary readers/writers and the virtual file catalog before asset
-   and mod-loading slices depend on them.
+4. Use the bounded binary readers and virtual file catalog in the first indexed asset
+   decoder, then add ZIP-backed catalog layers before mod discovery depends on them.
 5. Implement one indexed asset decoder and display it in an SDL3 window as the platform
    feasibility spike.
