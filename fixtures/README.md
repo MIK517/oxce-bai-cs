@@ -17,6 +17,7 @@ From the repository root:
 ```text
 dotnet run --project tools/Oxce.FixtureTool -- inspect fixtures/manifests/bootstrap-json.json
 dotnet run --project tools/Oxce.FixtureTool -- normalize fixtures/public/bootstrap/canonical-json.input.json
+dotnet run --project tools/Oxce.FixtureTool -- normalize-yaml fixtures/public/yaml/representative-structures.yml
 dotnet run --project tools/Oxce.FixtureTool -- compare fixtures/expected/bootstrap/canonical-json.expected.json <actual.json>
 ```
 
@@ -34,6 +35,8 @@ aliases, and merge keys:
 .\tools\capture-yaml-reference.ps1
 .\tools\capture-yaml-scalars-reference.ps1
 .\tools\capture-yaml-containers-reference.ps1
+.\tools\capture-yaml-normalization-reference.ps1
+.\tools\capture-yaml-special-scalars-reference.ps1
 ```
 
 The scripts discover the conventional sibling checkout and the categorized

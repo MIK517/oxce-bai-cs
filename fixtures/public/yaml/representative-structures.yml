@@ -1,0 +1,31 @@
+# Synthetic ruleset-shaped document.
+# SPDX-License-Identifier: GPL-3.0-or-later
+itemDefaults: &itemDefaults
+  costBuy: 400
+  recover: true
+items:
+  - <<: *itemDefaults
+    type: STR_SYNTHETIC_RIFLE
+    compatibleAmmo: [STR_SYNTHETIC_CLIP]
+    accuracyAimed: 70
+    tags: {role: rifle, optional: null}
+  - type: STR_SYNTHETIC_CLIP
+    clipSize: 6
+    damageType: 3
+metadata: !oxce synthetic
+---
+# Synthetic save-shaped document.
+name: Test Commander
+difficulty: 2
+ironman: false
+funds: [6000000, 5950000]
+bases:
+  - name: Alpha
+    longitude: 0.123
+    latitude: -0.456
+    facilities:
+      - {type: STR_ACCESS_LIFT, x: 2, y: 2, buildTime: 0}
+    items:
+      STR_SYNTHETIC_RIFLE: 4
+      STR_SYNTHETIC_CLIP: 12
+battleGame: null
