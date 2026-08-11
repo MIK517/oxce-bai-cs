@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "binary-endian-primitives",
+  "description": "Compares explicit little- and big-endian primitive decoding used by bounded format readers.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "binary-primitives-v1",
+      "referenceFiles": "src/Engine/CatFile.cpp;src/Savegame/SaveConverter.cpp"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/binary/endian-primitives.hex",
+      "size": 90,
+      "sha256": "f449a8733684e9627c223a5a7e1f05e7c56ad50d1f154a407dd7f19f7ba26192"
+    },
+    {
+      "path": "fixtures/reference-probes/binary/binary_primitive_probe.cpp",
+      "size": 3482,
+      "sha256": "70690d6c28288cb178cc185a650fed5d3a07282b7d10b8b9c141c6b20b4d8a78"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "numeric-values-as-decimal-strings"],
+  "expected": "fixtures/expected/binary/endian-primitives.expected.json"
+}

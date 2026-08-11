@@ -37,6 +37,7 @@ aliases, and merge keys:
 .\tools\capture-yaml-containers-reference.ps1
 .\tools\capture-yaml-normalization-reference.ps1
 .\tools\capture-yaml-special-scalars-reference.ps1
+.\tools\capture-binary-primitives-reference.ps1
 ```
 
 The scripts discover the conventional sibling checkout and the categorized
