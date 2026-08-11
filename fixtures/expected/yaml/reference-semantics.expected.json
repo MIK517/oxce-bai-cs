@@ -1,0 +1,23 @@
+{
+  "documentCount": 2,
+  "duplicateLookup": "first",
+  "duplicateValues": [
+    "first",
+    "second"
+  ],
+  "item": {
+    "count": "7",
+    "enabled": "true",
+    "optionalIsNull": true,
+    "quotedNullIsNull": false
+  },
+  "secondDocument": {
+    "ironman": "false",
+    "name": "Commander"
+  },
+  "sequenceNulls": [
+    false,
+    true,
+    false
+  ]
+}

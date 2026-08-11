@@ -1,13 +1,13 @@
 [CmdletBinding()]
 param(
     [string] $ReferenceRoot,
-    [string] $OutputPath = (Join-Path $PSScriptRoot "..\artifacts\reference-position\position.actual.json"),
+    [string] $OutputPath = (Join-Path $PSScriptRoot "..\artifacts\reference-yaml\yaml.actual.json"),
     [string] $ExpectedCommit = "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15"
 )
 
 $ErrorActionPreference = "Stop"
 if (-not $IsWindows -and $PSVersionTable.PSEdition -eq "Core") {
-    throw "The bootstrap position capture currently requires Windows and Visual Studio C++ tools."
+    throw "The YAML reference capture currently requires Windows and Visual Studio C++ tools."
 }
 
 $referenceCandidates = @(
@@ -22,7 +22,8 @@ if (-not $referencePath) {
 }
 $reference = (Resolve-Path -LiteralPath $referencePath).Path
 $repository = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$probe = Join-Path $repository "fixtures\reference-probes\position\position_probe.cpp"
+$probe = Join-Path $repository "fixtures\reference-probes\yaml\yaml_probe.cpp"
+$fixture = Join-Path $repository "fixtures\public\yaml\reference-semantics.yml"
 $referenceCommit = (& git -c "safe.directory=$reference" -C $reference rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $referenceCommit -ne $ExpectedCommit) {
     throw "Reference checkout must be at pinned commit $ExpectedCommit; found '$referenceCommit'."
@@ -40,38 +41,38 @@ if (-not $devCommand) {
     throw "A Visual Studio C++ x64 toolchain was not found."
 }
 
-$work = Join-Path $repository "artifacts\reference-position"
+$work = Join-Path $repository "artifacts\reference-yaml"
 [IO.Directory]::CreateDirectory($work) | Out-Null
-$executable = Join-Path $work "position_probe.exe"
-$object = Join-Path $work "position_probe.obj"
-$includeSource = Join-Path $reference "src"
-$includeSdl = Join-Path $reference "deps\include\SDL"
-$includeYaml = Join-Path $reference "libs\rapidyaml"
+$executable = Join-Path $work "yaml_probe.exe"
+$includeRoot = Join-Path $reference "libs\rapidyaml"
+$sources = Get-ChildItem (Join-Path $reference "libs\rapidyaml\c4") -Recurse -Filter *.cpp |
+    Sort-Object FullName |
+    ForEach-Object { '"' + $_.FullName + '"' }
 
-foreach ($value in @($devCommand, $probe, $executable, $object, $includeSource, $includeSdl, $includeYaml)) {
+foreach ($value in @($devCommand, $probe, $fixture, $executable, $includeRoot, $work)) {
     if ($value -match '["&|<>^]') {
         throw "Reference capture paths contain a character that is unsafe for cmd.exe."
     }
 }
 
-$compile = 'call "{0}" -no_logo -arch=x64 -host_arch=x64 && cl.exe /nologo /std:c++20 /EHsc /I"{1}" /I"{2}" /I"{3}" "{4}" /Fe:"{5}" /Fo:"{6}"' -f `
-    $devCommand, $includeSource, $includeSdl, $includeYaml, $probe, $executable, $object
+$compile = 'call "{0}" -no_logo -arch=x64 -host_arch=x64 && cd /d "{5}" && cl.exe /nologo /std:c++20 /EHsc /D_CRT_SECURE_NO_WARNINGS /I"{1}" "{2}" {3} /Fe:"{4}"' -f `
+    $devCommand, $includeRoot, $probe, ($sources -join ' '), $executable, $work
 & $env:ComSpec /d /c $compile
 if ($LASTEXITCODE -ne 0) {
-    throw "The C++ position reference probe failed to compile."
+    throw "The C++ YAML reference probe failed to compile."
 }
 
-$raw = & $executable
+$raw = & $executable $fixture
 if ($LASTEXITCODE -ne 0) {
-    throw "The C++ position reference probe failed."
+    throw "The C++ YAML reference probe failed."
 }
 
-$rawPath = Join-Path $work "position.raw.json"
+$rawPath = Join-Path $work "yaml.raw.json"
 [IO.File]::WriteAllText($rawPath, ($raw -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
 $destination = [IO.Path]::GetFullPath($OutputPath)
 & dotnet run --project (Join-Path $repository "tools\Oxce.FixtureTool") --configuration Release --no-restore -- normalize $rawPath $destination
 if ($LASTEXITCODE -ne 0) {
-    throw "The C++ position output could not be normalized."
+    throw "The C++ YAML output could not be normalized."
 }
 
 Write-Output $destination

@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../Oxce.Core/Oxce.Core.csproj" />
   </ItemGroup>
 </Project>
-

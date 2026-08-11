@@ -2,14 +2,14 @@
 
 | Area | Status | Reference source | Fixture | Notes |
 |---|---|---|---|---|
-| Node kinds: map, sequence, scalar, null | not started | `src/Engine/Yaml.h`, `src/Engine/Yaml.cpp` |  | Preserve missing versus explicit null. |
-| Multiple YAML documents | not started | `src/Engine/Yaml.cpp`, `src/Savegame/SavedGame.cpp` |  | Rules and saves exercise different document layouts. |
-| Anchors, aliases, and merge keys | not started | `src/Engine/Yaml.cpp`, rapidyaml integration |  | Inventory exact accepted syntax before choosing parser settings. |
-| Scalar conversion and defaults | not started | `src/Engine/Yaml.h`, `src/Mod/LoadYaml.h` |  | Includes booleans, signed/unsigned integers, floats, and strings. |
+| Node kinds: map, sequence, scalar, null | partial | `src/Engine/Yaml.h`, `src/Engine/Yaml.cpp` | `yaml-reference-semantics` | Immutable DOM preserves order, duplicate entries, and missing versus the four reference null spellings. Complex keys and tags need broader fixtures. |
+| Multiple YAML documents | partial | `src/Engine/Yaml.cpp`, `src/Savegame/SavedGame.cpp` | `yaml-reference-semantics` | Two-document parsing is compatible; representative full save normalization remains. |
+| Anchors, aliases, and merge keys | partial | `src/Engine/Yaml.cpp`, rapidyaml integration | `yaml-reference-semantics` | Backward aliases and mapping/sequence merges are bounded and resolved. Cycles, merge ordering variants, and tag interactions remain. |
+| Scalar conversion and defaults | partial | `src/Engine/Yaml.h`, `src/Mod/LoadYaml.h` | `yaml-reference-semantics`, unit tests | String, decimal `int`, lowercase boolean, missing defaults, and explicit null are implemented. Remaining widths, floats, and exact accepted spellings need probes. |
 | Enum conversion | not started | `src/Mod/LoadYaml.h`, individual `Rule*.cpp` loaders |  | Unknown-value diagnostics are compatibility behavior. |
-| Source locations and diagnostics | not started | `src/Engine/Yaml.cpp` |  | Include file, document, line, and column where available. |
-| Duplicate mapping keys | not started | `src/Engine/Yaml.cpp` |  | Determine accept/reject and winning-value behavior. |
-| Resource and recursion limits | not started | rapidyaml integration |  | Port must impose explicit safe limits even if reference is permissive. |
+| Source locations and diagnostics | partial | `src/Engine/Yaml.cpp` | `malformed-location.yml`, unit tests | Parser and conversion failures carry source name and one-based line/column spans. Message parity remains. |
+| Duplicate mapping keys | compatible | `src/Engine/Yaml.cpp` | `yaml-reference-semantics` | Entries are preserved in source order and ordinary lookup returns the first value. |
+| Resource and recursion limits | partial | rapidyaml integration | unit tests | File bytes, nesting, nodes, documents, and aliases have explicit configurable limits. Broader adversarial tests remain. |
 | Mod discovery and metadata | not started | `src/Engine/FileMap.cpp`, `src/Mod/Mod.cpp` |  | Includes masters, dependencies, conflicts, and activation. |
 | File lookup precedence and case behavior | not started | `src/Engine/FileMap.h`, `src/Engine/FileMap.cpp` |  | Must be tested per supported platform. |
 | Ruleset file load order | not started | `src/Mod/Mod.cpp` |  | Ordering must not depend on dictionary enumeration. |

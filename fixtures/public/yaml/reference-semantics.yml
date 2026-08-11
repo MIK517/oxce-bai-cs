@@ -1,0 +1,16 @@
+# Synthetic OXCE YAML compatibility fixture.
+# SPDX-License-Identifier: GPL-3.0-or-later
+defaults: &defaults
+  enabled: true
+  count: 16
+  optional: null
+  quotedNull: "null"
+item:
+  <<: *defaults
+  count: 7
+duplicate: first
+duplicate: second
+sequence: [alpha, ~, 3]
+---
+name: Commander
+ironman: false

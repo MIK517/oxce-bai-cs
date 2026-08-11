@@ -1,0 +1,5 @@
+# Synthetic malformed YAML compatibility fixture.
+# SPDX-License-Identifier: GPL-3.0-or-later
+items:
+  - type: STR_RIFLE
+    cost: [100, 200
