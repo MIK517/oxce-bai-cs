@@ -1,0 +1,31 @@
+# Synthetic OXCE YAML scalar conversion fixture.
+# SPDX-License-Identifier: GPL-3.0-or-later
+integers:
+  - {name: zero, value: 0}
+  - {name: plus, value: +7}
+  - {name: negative, value: -1}
+  - {name: leading-zeroes, value: 001}
+  - {name: binary, value: 0b101}
+  - {name: octal, value: 0o17}
+  - {name: hexadecimal, value: 0x10}
+  - {name: byte-boundary, value: 256}
+  - {name: int-boundary, value: 2147483648}
+  - {name: uint-boundary, value: 4294967296}
+  - {name: ulong-wrap, value: 18446744073709551616}
+  - {name: invalid, value: 12x}
+booleans:
+  - {name: lower-true, value: true}
+  - {name: title-true, value: True}
+  - {name: upper-false, value: FALSE}
+  - {name: numeric-zero, value: 0}
+  - {name: numeric-two, value: 2}
+  - {name: invalid, value: yes}
+floating:
+  - {name: decimal, value: 1.25}
+  - {name: leading-dot, value: .5}
+  - {name: exponent, value: 1e3}
+  - {name: nan, value: .NaN}
+  - {name: positive-infinity, value: .Inf}
+  - {name: negative-infinity, value: -.INF}
+  - {name: numeric-prefix, value: 34junk}
+  - {name: empty, value: ""}

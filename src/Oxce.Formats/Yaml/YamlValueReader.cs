@@ -4,54 +4,340 @@ namespace Oxce.Formats.Yaml;
 
 public static class YamlValueReader
 {
+    private const NumberStyles FloatingStyles = NumberStyles.AllowLeadingSign |
+        NumberStyles.AllowDecimalPoint |
+        NumberStyles.AllowExponent;
+
     public static string ReadString(YamlNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
-        return node is YamlScalarNode scalar
-            ? scalar.Value
-            : throw TypeError(node, "string");
+        return node switch
+        {
+            YamlScalarNode scalar => scalar.Value,
+            YamlNullNode nullNode => nullNode.Spelling,
+            _ => throw TypeError(node, "string"),
+        };
     }
 
     public static string ReadString(YamlMappingNode mapping, string key, string defaultValue) =>
         mapping.TryGet(key, out var node) ? ReadString(node!) : defaultValue;
 
-    public static int ReadInt32(YamlNode node)
-    {
-        var value = ReadString(node);
-        if (int.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var result))
-        {
-            return result;
-        }
+    public static sbyte ReadInt8(YamlNode node) =>
+        TryReadInt8(node, out var value) ? value : throw TypeError(node, "Int8");
 
-        throw TypeError(node, "Int32");
-    }
+    public static byte ReadUInt8(YamlNode node) =>
+        TryReadUInt8(node, out var value) ? value : throw TypeError(node, "UInt8");
+
+    public static short ReadInt16(YamlNode node) =>
+        TryReadInt16(node, out var value) ? value : throw TypeError(node, "Int16");
+
+    public static ushort ReadUInt16(YamlNode node) =>
+        TryReadUInt16(node, out var value) ? value : throw TypeError(node, "UInt16");
+
+    public static int ReadInt32(YamlNode node) =>
+        TryReadInt32(node, out var value) ? value : throw TypeError(node, "Int32");
+
+    public static uint ReadUInt32(YamlNode node) =>
+        TryReadUInt32(node, out var value) ? value : throw TypeError(node, "UInt32");
+
+    public static long ReadInt64(YamlNode node) =>
+        TryReadInt64(node, out var value) ? value : throw TypeError(node, "Int64");
+
+    public static ulong ReadUInt64(YamlNode node) =>
+        TryReadUInt64(node, out var value) ? value : throw TypeError(node, "UInt64");
+
+    public static float ReadSingle(YamlNode node) =>
+        TryReadSingle(node, out var value) ? value : throw TypeError(node, "Single");
+
+    public static double ReadDouble(YamlNode node) =>
+        TryReadDouble(node, out var value) ? value : throw TypeError(node, "Double");
+
+    public static bool ReadBoolean(YamlNode node) =>
+        TryReadBoolean(node, out var value) ? value : throw TypeError(node, "Boolean");
 
     public static int ReadInt32(YamlMappingNode mapping, string key, int defaultValue) =>
         mapping.TryGet(key, out var node) ? ReadInt32(node!) : defaultValue;
 
-    public static bool ReadBoolean(YamlNode node)
+    public static bool ReadBoolean(YamlMappingNode mapping, string key, bool defaultValue) =>
+        mapping.TryGet(key, out var node) ? ReadBoolean(node!) : defaultValue;
+
+    public static bool TryReadInt8(YamlNode node, out sbyte value)
     {
-        var value = ReadString(node);
-        if (string.Equals(value, "true", StringComparison.Ordinal))
+        var success = TryReadSigned(node, 8, out var parsed);
+        value = unchecked((sbyte)parsed);
+        return success;
+    }
+
+    public static bool TryReadUInt8(YamlNode node, out byte value)
+    {
+        var success = TryReadUnsigned(node, 8, out var parsed);
+        value = unchecked((byte)parsed);
+        return success;
+    }
+
+    public static bool TryReadInt16(YamlNode node, out short value)
+    {
+        var success = TryReadSigned(node, 16, out var parsed);
+        value = unchecked((short)parsed);
+        return success;
+    }
+
+    public static bool TryReadUInt16(YamlNode node, out ushort value)
+    {
+        var success = TryReadUnsigned(node, 16, out var parsed);
+        value = unchecked((ushort)parsed);
+        return success;
+    }
+
+    public static bool TryReadInt32(YamlNode node, out int value)
+    {
+        var success = TryReadSigned(node, 32, out var parsed);
+        value = unchecked((int)parsed);
+        return success;
+    }
+
+    public static bool TryReadUInt32(YamlNode node, out uint value)
+    {
+        var success = TryReadUnsigned(node, 32, out var parsed);
+        value = unchecked((uint)parsed);
+        return success;
+    }
+
+    public static bool TryReadInt64(YamlNode node, out long value) =>
+        TryReadSigned(node, 64, out value);
+
+    public static bool TryReadUInt64(YamlNode node, out ulong value) =>
+        TryReadUnsigned(node, 64, out value);
+
+    public static bool TryReadBoolean(YamlNode node, out bool value)
+    {
+        var text = ScalarText(node);
+        switch (text)
+        {
+            case "true":
+            case "True":
+            case "TRUE":
+                value = true;
+                return true;
+            case "false":
+            case "False":
+            case "FALSE":
+                value = false;
+                return true;
+        }
+
+        if (TryParseInteger(text, signed: true, bitWidth: 32, out var raw))
+        {
+            value = unchecked((int)raw) != 0;
+            return true;
+        }
+
+        value = false;
+        return false;
+    }
+
+    public static bool TryReadSingle(YamlNode node, out float value)
+    {
+        var text = ScalarText(node);
+        if (TryReadSpecialFloating(text, out value))
         {
             return true;
         }
 
-        if (string.Equals(value, "false", StringComparison.Ordinal))
+        if (string.IsNullOrEmpty(text))
         {
+            value = default;
             return false;
         }
 
-        throw TypeError(node, "Boolean");
+        for (var length = text.Length; length > 0; length--)
+        {
+            if (float.TryParse(text.AsSpan(0, length), FloatingStyles, CultureInfo.InvariantCulture, out value))
+            {
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
     }
 
-    public static bool ReadBoolean(YamlMappingNode mapping, string key, bool defaultValue) =>
-        mapping.TryGet(key, out var node) ? ReadBoolean(node!) : defaultValue;
+    public static bool TryReadDouble(YamlNode node, out double value)
+    {
+        var text = ScalarText(node);
+        if (TryReadSpecialFloating(text, out value))
+        {
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(text))
+        {
+            value = default;
+            return false;
+        }
+
+        for (var length = text.Length; length > 0; length--)
+        {
+            if (double.TryParse(text.AsSpan(0, length), FloatingStyles, CultureInfo.InvariantCulture, out value))
+            {
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
 
     public static bool IsExplicitNull(YamlNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
         return node is YamlNullNode;
+    }
+
+    private static bool TryReadSigned(YamlNode node, int bitWidth, out long value)
+    {
+        var success = TryParseInteger(ScalarText(node), signed: true, bitWidth, out var raw);
+        value = SignExtend(raw, bitWidth);
+        return success;
+    }
+
+    private static bool TryReadUnsigned(YamlNode node, int bitWidth, out ulong value) =>
+        TryParseInteger(ScalarText(node), signed: false, bitWidth, out value);
+
+    private static bool TryParseInteger(
+        string? text,
+        bool signed,
+        int bitWidth,
+        out ulong value)
+    {
+        value = 0;
+        if (string.IsNullOrEmpty(text))
+        {
+            return false;
+        }
+
+        var position = 0;
+        if (text[0] == '+')
+        {
+            position++;
+        }
+
+        var negative = false;
+        if (position < text.Length && text[position] == '-')
+        {
+            if (!signed)
+            {
+                return false;
+            }
+
+            negative = true;
+            position++;
+        }
+
+        if (position == text.Length)
+        {
+            return false;
+        }
+
+        var numberBase = 10;
+        if (position + 1 < text.Length && text[position] == '0')
+        {
+            numberBase = text[position + 1] switch
+            {
+                'b' or 'B' => 2,
+                'o' or 'O' => 8,
+                'x' or 'X' => 16,
+                _ => 10,
+            };
+            if (numberBase != 10)
+            {
+                position += 2;
+            }
+        }
+
+        if (position == text.Length)
+        {
+            return false;
+        }
+
+        var mask = bitWidth == 64 ? ulong.MaxValue : (1UL << bitWidth) - 1;
+        for (; position < text.Length; position++)
+        {
+            var digit = DigitValue(text[position]);
+            if (digit < 0 || digit >= numberBase)
+            {
+                value = 0;
+                return false;
+            }
+
+            value = unchecked((value * (uint)numberBase) + (uint)digit) & mask;
+        }
+
+        if (negative)
+        {
+            value = unchecked(0UL - value) & mask;
+        }
+
+        return true;
+    }
+
+    private static int DigitValue(char value) => value switch
+    {
+        >= '0' and <= '9' => value - '0',
+        >= 'a' and <= 'f' => value - 'a' + 10,
+        >= 'A' and <= 'F' => value - 'A' + 10,
+        _ => -1,
+    };
+
+    private static long SignExtend(ulong value, int bitWidth)
+    {
+        if (bitWidth == 64)
+        {
+            return unchecked((long)value);
+        }
+
+        var signBit = 1UL << (bitWidth - 1);
+        var mask = (1UL << bitWidth) - 1;
+        return unchecked((long)((value & signBit) == 0 ? value : value | ~mask));
+    }
+
+    private static bool TryReadSpecialFloating(string? text, out float value)
+    {
+        value = text switch
+        {
+            ".nan" or ".NaN" or ".NAN" => float.NaN,
+            ".inf" or ".Inf" or ".INF" => float.PositiveInfinity,
+            "-.inf" or "-.Inf" or "-.INF" => float.NegativeInfinity,
+            _ => default,
+        };
+        return text is ".nan" or ".NaN" or ".NAN" or
+            ".inf" or ".Inf" or ".INF" or
+            "-.inf" or "-.Inf" or "-.INF";
+    }
+
+    private static bool TryReadSpecialFloating(string? text, out double value)
+    {
+        value = text switch
+        {
+            ".nan" or ".NaN" or ".NAN" => double.NaN,
+            ".inf" or ".Inf" or ".INF" => double.PositiveInfinity,
+            "-.inf" or "-.Inf" or "-.INF" => double.NegativeInfinity,
+            _ => default,
+        };
+        return text is ".nan" or ".NaN" or ".NAN" or
+            ".inf" or ".Inf" or ".INF" or
+            "-.inf" or "-.Inf" or "-.INF";
+    }
+
+    private static string? ScalarText(YamlNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node switch
+        {
+            YamlScalarNode scalar => scalar.Value,
+            YamlNullNode nullNode => nullNode.Spelling,
+            _ => null,
+        };
     }
 
     private static YamlFormatException TypeError(YamlNode node, string targetType) =>

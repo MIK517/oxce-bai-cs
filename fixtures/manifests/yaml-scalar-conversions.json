@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "yaml-scalar-conversions",
+  "description": "Compares integer width and overflow, boolean spellings, and floating-point conversion semantics.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "yaml-scalars-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/yaml/scalar-conversions.yml",
+      "size": 1060,
+      "sha256": "bf8f7326b7100ae5f7f41731ffda7cd8e8433f7f85ef83e4d66a31ec25a56a63"
+    },
+    {
+      "path": "fixtures/reference-probes/yaml/yaml_scalar_probe.cpp",
+      "size": 4803,
+      "sha256": "5a044d821fc4e8ab8d67a48ca6cc52098ce16774cb35baa4d9f0116abe16c69f"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/yaml/scalar-conversions.expected.json"
+}

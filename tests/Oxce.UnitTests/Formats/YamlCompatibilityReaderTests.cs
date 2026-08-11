@@ -108,6 +108,68 @@ public sealed class YamlCompatibilityReaderTests
         Assert.Throws<YamlFormatException>(() => YamlValueReader.ReadInt32(Required(mapping, "optional")));
     }
 
+    [Theory]
+    [InlineData("256", 0)]
+    [InlineData("2147483648", 0)]
+    [InlineData("0b101", 5)]
+    [InlineData("0o17", 15)]
+    [InlineData("0x10", 16)]
+    [InlineData("+7", 7)]
+    public void IntegerConversionsMatchReferenceWrapping(string text, sbyte expected)
+    {
+        var node = Scalar(text);
+
+        Assert.Equal(expected, YamlValueReader.ReadInt8(node));
+    }
+
+    [Fact]
+    public void IntegerConversionsWrapAtEveryDestinationWidth()
+    {
+        var intBoundary = Scalar("2147483648");
+        var ulongBoundary = Scalar("18446744073709551616");
+
+        Assert.Equal(int.MinValue, YamlValueReader.ReadInt32(intBoundary));
+        Assert.Equal(2147483648U, YamlValueReader.ReadUInt32(intBoundary));
+        Assert.Equal(0UL, YamlValueReader.ReadUInt64(ulongBoundary));
+        Assert.False(YamlValueReader.TryReadUInt32(Scalar("-1"), out _));
+    }
+
+    [Theory]
+    [InlineData("TRUE", true)]
+    [InlineData("False", false)]
+    [InlineData("0", false)]
+    [InlineData("2", true)]
+    [InlineData("4294967296", false)]
+    public void BooleanConversionsMatchReferenceSpellingsAndNumericFallback(string text, bool expected)
+    {
+        Assert.Equal(expected, YamlValueReader.ReadBoolean(Scalar(text)));
+    }
+
+    [Fact]
+    public void FloatingConversionsSupportSpecialValuesAndNumericPrefixes()
+    {
+        Assert.True(float.IsNaN(YamlValueReader.ReadSingle(Scalar(".NaN"))));
+        Assert.Equal(float.PositiveInfinity, YamlValueReader.ReadSingle(Scalar(".Inf")));
+        Assert.Equal(double.NegativeInfinity, YamlValueReader.ReadDouble(Scalar("-.INF")));
+        Assert.Equal(34D, YamlValueReader.ReadDouble(Scalar("34junk")));
+    }
+
+    [Fact]
+    public void StringConversionReturnsExplicitNullSpellingLikeReferenceReader()
+    {
+        var documents = YamlCompatibilityReader.Parse("value: null\n", "null-string.yml");
+        var mapping = Assert.IsType<YamlMappingNode>(documents.Documents[0].Root);
+
+        Assert.Equal("null", YamlValueReader.ReadString(Required(mapping, "value")));
+    }
+
+    private static YamlNode Scalar(string value)
+    {
+        var documents = YamlCompatibilityReader.Parse($"value: '{value}'\n", "scalar.yml");
+        var mapping = Assert.IsType<YamlMappingNode>(documents.Documents[0].Root);
+        return Required(mapping, "value");
+    }
+
     private static YamlNode Required(YamlMappingNode mapping, string key)
     {
         Assert.True(mapping.TryGet(key, out var value));
