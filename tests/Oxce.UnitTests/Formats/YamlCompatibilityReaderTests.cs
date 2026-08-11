@@ -163,6 +163,84 @@ public sealed class YamlCompatibilityReaderTests
         Assert.Equal("null", YamlValueReader.ReadString(Required(mapping, "value")));
     }
 
+    [Fact]
+    public void EnumConversionUsesWrappedInt32WithoutRejectingUnknownValues()
+    {
+        Assert.Equal(ProbeEnum.Known, YamlValueReader.ReadEnum<ProbeEnum>(Scalar("1")));
+        Assert.Equal((ProbeEnum)(-1), YamlValueReader.ReadEnum<ProbeEnum>(Scalar("4294967295")));
+        Assert.False(YamlValueReader.TryReadEnum(Scalar("named"), out ProbeEnum _));
+    }
+
+    [Fact]
+    public void SequenceConversionMatchesReferenceChildIteration()
+    {
+        var document = ParseMapping("""
+            sequence: [1, 2]
+            mapping: {first: 3, second: 4}
+            scalar: ignored
+            """);
+
+        Assert.Equal(
+            [1, 2],
+            YamlValueReader.ReadSequence(Required(document, "sequence"), YamlValueReader.ReadInt32));
+        Assert.Equal(
+            [3, 4],
+            YamlValueReader.ReadSequence(Required(document, "mapping"), YamlValueReader.ReadInt32));
+        Assert.Empty(YamlValueReader.ReadSequence(Required(document, "scalar"), YamlValueReader.ReadInt32));
+    }
+
+    [Fact]
+    public void MapConversionSortsKeysAndKeepsFirstDuplicate()
+    {
+        var document = ParseMapping("""
+            values:
+              zeta: 1
+              alpha: 2
+              alpha: 3
+            """);
+
+        var values = YamlValueReader.ReadMap(
+            Required(document, "values"),
+            YamlValueReader.ReadString,
+            YamlValueReader.ReadInt32,
+            StringComparer.Ordinal);
+
+        Assert.Equal(["alpha", "zeta"], values.Keys);
+        Assert.Equal(2, values["alpha"]);
+        Assert.Equal(1, values["zeta"]);
+    }
+
+    [Fact]
+    public void FixedArityContainersRequireSequencesOfExactLength()
+    {
+        var pair = Assert.IsType<YamlSequenceNode>(YamlCompatibilityReader.Parse("[1, true]\n", "pair.yml")
+            .Documents[0].Root);
+        var triple = Assert.IsType<YamlSequenceNode>(YamlCompatibilityReader.Parse("[1, true, text]\n", "tuple.yml")
+            .Documents[0].Root);
+
+        Assert.Equal((1, true), YamlValueReader.ReadPair(
+            pair,
+            YamlValueReader.ReadInt32,
+            YamlValueReader.ReadBoolean));
+        Assert.Equal((1, true, "text"), YamlValueReader.ReadTuple(
+            triple,
+            YamlValueReader.ReadInt32,
+            YamlValueReader.ReadBoolean,
+            YamlValueReader.ReadString));
+        Assert.Equal(
+            [1, 1, 0],
+            YamlValueReader.ReadFixedArray(triple, 3, node =>
+                YamlValueReader.TryReadBoolean(node, out var value) && value ? 1 : 0));
+        Assert.Throws<YamlFormatException>(() => YamlValueReader.ReadPair(
+            triple,
+            YamlValueReader.ReadInt32,
+            YamlValueReader.ReadInt32));
+        Assert.Throws<YamlFormatException>(() => YamlValueReader.ReadFixedArray(
+            pair,
+            3,
+            YamlValueReader.ReadString));
+    }
+
     private static YamlNode Scalar(string value)
     {
         var documents = YamlCompatibilityReader.Parse($"value: '{value}'\n", "scalar.yml");
@@ -170,9 +248,17 @@ public sealed class YamlCompatibilityReaderTests
         return Required(mapping, "value");
     }
 
+    private static YamlMappingNode ParseMapping(string yaml) =>
+        Assert.IsType<YamlMappingNode>(YamlCompatibilityReader.Parse(yaml, "mapping.yml").Documents[0].Root);
+
     private static YamlNode Required(YamlMappingNode mapping, string key)
     {
         Assert.True(mapping.TryGet(key, out var value));
         return Assert.IsAssignableFrom<YamlNode>(value);
+    }
+
+    private enum ProbeEnum
+    {
+        Known = 1,
     }
 }

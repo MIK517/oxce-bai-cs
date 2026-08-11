@@ -1,0 +1,27 @@
+enums:
+  - {name: zero, value: 0}
+  - {name: negative, value: -1}
+  - {name: wrapped, value: 4294967295}
+  - {name: hexadecimal, value: 0x10}
+  - {name: invalid, value: alpha}
+sequences:
+  integers: [1, 4294967295, 0x10]
+  booleans: [true, 0, -1]
+  mappingValues:
+    zeta: 2
+    alpha: 1
+  scalar: ignored
+pair: [7, 4294967295]
+tuple: [-1, true, alpha]
+array: [1, 2, 3]
+maps:
+  stringInteger:
+    zeta: 1
+    alpha: 2
+  duplicate:
+    same: 3
+    same: 4
+  integerString:
+    2: two
+    -1: negative
+    1: one
