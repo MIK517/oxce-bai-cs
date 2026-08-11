@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "yaml-representative-normalization",
+  "description": "Compares reusable semantic normalization of synthetic ruleset- and save-shaped YAML documents.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "yaml-semantic-normalization-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/yaml/representative-structures.yml",
+      "size": 730,
+      "sha256": "b19d318561c1319dca7b80b9af53c71e04b77acf25c88cfecef4ed2fcfbb9a7f"
+    },
+    {
+      "path": "fixtures/reference-probes/yaml/yaml_normalization_probe.cpp",
+      "size": 3953,
+      "sha256": "cd55cf98dc1c429fc80b6d73f36a154bbeeca5eb3fc12a49b5b753553995bbfe"
+    }
+  ],
+  "normalization": ["yaml-semantic-tree-v1", "canonical-json-v1"],
+  "expected": "fixtures/expected/yaml/representative-normalization.expected.json"
+}

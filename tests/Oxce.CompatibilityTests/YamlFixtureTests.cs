@@ -11,6 +11,8 @@ public sealed class YamlFixtureTests
     private static readonly string[] BooleanColumns = ["name", "value"];
     private static readonly string[] FloatingColumns = ["name", "float", "double"];
     private static readonly string[] EnumColumns = ["name", "success", "value"];
+    private static readonly string[] Base64Columns = ["name", "valid", "hex"];
+    private static readonly string[] HexFloatingColumns = ["name", "float", "double"];
     private static readonly string[] IntegerColumns =
         ["name", "int8", "uint8", "int32", "uint32", "int64", "uint64"];
 
@@ -167,6 +169,77 @@ public sealed class YamlFixtureTests
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
         Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+    }
+
+    [Fact]
+    public void RepresentativeStructuresNormalizeLikeCapturedCppReference()
+    {
+        var root = FindRepositoryRoot();
+        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-representative-normalization.json");
+        var manifest = FixtureManifestLoader.Load(manifestPath);
+        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
+        var documents = YamlCompatibilityReader.ParseFile(fixturePath);
+
+        var actual = YamlSemanticNormalizer.NormalizeToUtf8Json(documents);
+        var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
+
+        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+    }
+
+    [Fact]
+    public void SpecialScalarConversionsMatchCapturedCppReference()
+    {
+        var root = FindRepositoryRoot();
+        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-special-scalar-conversions.json");
+        var manifest = FixtureManifestLoader.Load(manifestPath);
+        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
+        var document = Assert.IsType<YamlMappingNode>(
+            YamlCompatibilityReader.ParseFile(fixturePath).Documents[0].Root);
+        var actual = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            base64 = Cases(document, "base64").Select(ProjectBase64).ToArray(),
+            base64Columns = Base64Columns,
+            hexFloating = Cases(document, "hexFloating").Select(testCase =>
+            {
+                var value = Required(testCase, "value");
+                return new object?[]
+                {
+                    YamlValueReader.ReadString(Required(testCase, "name")),
+                    YamlValueReader.TryReadSingle(value, out var single) ? FloatingText(single) : null,
+                    YamlValueReader.TryReadDouble(value, out var doubleValue) ? FloatingText(doubleValue) : null,
+                };
+            }).ToArray(),
+            hexFloatingColumns = HexFloatingColumns,
+        });
+        var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
+
+        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+    }
+
+    private static object?[] ProjectBase64(YamlMappingNode testCase)
+    {
+        var node = Required(testCase, "value");
+        try
+        {
+            var bytes = YamlValueReader.ReadBase64(node);
+            return
+            [
+                YamlValueReader.ReadString(Required(testCase, "name")),
+                true,
+                Convert.ToHexStringLower(bytes),
+            ];
+        }
+        catch (YamlFormatException)
+        {
+            return
+            [
+                YamlValueReader.ReadString(Required(testCase, "name")),
+                false,
+                null,
+            ];
+        }
     }
 
     private static object?[] ProjectEnum(YamlMappingNode testCase)

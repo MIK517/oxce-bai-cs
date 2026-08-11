@@ -1,0 +1,17 @@
+hexFloating:
+  - {name: one, value: 0x1p0}
+  - {name: fraction, value: 0x1.8p0}
+  - {name: positive-exponent, value: 0x1p2}
+  - {name: negative-exponent, value: 0x1p-2}
+  - {name: negative, value: -0x1.8p1}
+  - {name: letter-digits, value: 0xA.Bp0}
+  - {name: no-exponent, value: 0x10}
+  - {name: invalid, value: 0x1g}
+base64:
+  - {name: empty, value: ""}
+  - {name: hello, value: SGVsbG8=}
+  - {name: binary, value: AAEC/w==}
+  - {name: one-byte, value: /w==}
+  - {name: two-bytes, value: AQI=}
+  - {name: invalid-length, value: abc}
+  - {name: invalid-character, value: "@@@="}

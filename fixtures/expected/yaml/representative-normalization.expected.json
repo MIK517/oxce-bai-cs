@@ -1,0 +1,385 @@
+{
+  "documents": [
+    {
+      "entries": [
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "itemDefaults"
+          },
+          "value": {
+            "entries": [
+              {
+                "key": {
+                  "kind": "scalar",
+                  "value": "costBuy"
+                },
+                "value": {
+                  "kind": "scalar",
+                  "value": "400"
+                }
+              },
+              {
+                "key": {
+                  "kind": "scalar",
+                  "value": "recover"
+                },
+                "value": {
+                  "kind": "scalar",
+                  "value": "true"
+                }
+              }
+            ],
+            "kind": "mapping"
+          }
+        },
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "items"
+          },
+          "value": {
+            "items": [
+              {
+                "entries": [
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "costBuy"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "400"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "recover"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "true"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "type"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "STR_SYNTHETIC_RIFLE"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "compatibleAmmo"
+                    },
+                    "value": {
+                      "items": [
+                        {
+                          "kind": "scalar",
+                          "value": "STR_SYNTHETIC_CLIP"
+                        }
+                      ],
+                      "kind": "sequence"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "accuracyAimed"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "70"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "tags"
+                    },
+                    "value": {
+                      "entries": [
+                        {
+                          "key": {
+                            "kind": "scalar",
+                            "value": "role"
+                          },
+                          "value": {
+                            "kind": "scalar",
+                            "value": "rifle"
+                          }
+                        },
+                        {
+                          "key": {
+                            "kind": "scalar",
+                            "value": "optional"
+                          },
+                          "value": {
+                            "kind": "null",
+                            "value": "null"
+                          }
+                        }
+                      ],
+                      "kind": "mapping"
+                    }
+                  }
+                ],
+                "kind": "mapping"
+              },
+              {
+                "entries": [
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "type"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "STR_SYNTHETIC_CLIP"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "clipSize"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "6"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "damageType"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "3"
+                    }
+                  }
+                ],
+                "kind": "mapping"
+              }
+            ],
+            "kind": "sequence"
+          }
+        },
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "metadata"
+          },
+          "value": {
+            "kind": "scalar",
+            "tag": "!oxce",
+            "value": "synthetic"
+          }
+        }
+      ],
+      "kind": "mapping"
+    },
+    {
+      "entries": [
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "name"
+          },
+          "value": {
+            "kind": "scalar",
+            "value": "Test Commander"
+          }
+        },
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "difficulty"
+          },
+          "value": {
+            "kind": "scalar",
+            "value": "2"
+          }
+        },
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "ironman"
+          },
+          "value": {
+            "kind": "scalar",
+            "value": "false"
+          }
+        },
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "funds"
+          },
+          "value": {
+            "items": [
+              {
+                "kind": "scalar",
+                "value": "6000000"
+              },
+              {
+                "kind": "scalar",
+                "value": "5950000"
+              }
+            ],
+            "kind": "sequence"
+          }
+        },
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "bases"
+          },
+          "value": {
+            "items": [
+              {
+                "entries": [
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "name"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "Alpha"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "longitude"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "0.123"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "latitude"
+                    },
+                    "value": {
+                      "kind": "scalar",
+                      "value": "-0.456"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "facilities"
+                    },
+                    "value": {
+                      "items": [
+                        {
+                          "entries": [
+                            {
+                              "key": {
+                                "kind": "scalar",
+                                "value": "type"
+                              },
+                              "value": {
+                                "kind": "scalar",
+                                "value": "STR_ACCESS_LIFT"
+                              }
+                            },
+                            {
+                              "key": {
+                                "kind": "scalar",
+                                "value": "x"
+                              },
+                              "value": {
+                                "kind": "scalar",
+                                "value": "2"
+                              }
+                            },
+                            {
+                              "key": {
+                                "kind": "scalar",
+                                "value": "y"
+                              },
+                              "value": {
+                                "kind": "scalar",
+                                "value": "2"
+                              }
+                            },
+                            {
+                              "key": {
+                                "kind": "scalar",
+                                "value": "buildTime"
+                              },
+                              "value": {
+                                "kind": "scalar",
+                                "value": "0"
+                              }
+                            }
+                          ],
+                          "kind": "mapping"
+                        }
+                      ],
+                      "kind": "sequence"
+                    }
+                  },
+                  {
+                    "key": {
+                      "kind": "scalar",
+                      "value": "items"
+                    },
+                    "value": {
+                      "entries": [
+                        {
+                          "key": {
+                            "kind": "scalar",
+                            "value": "STR_SYNTHETIC_RIFLE"
+                          },
+                          "value": {
+                            "kind": "scalar",
+                            "value": "4"
+                          }
+                        },
+                        {
+                          "key": {
+                            "kind": "scalar",
+                            "value": "STR_SYNTHETIC_CLIP"
+                          },
+                          "value": {
+                            "kind": "scalar",
+                            "value": "12"
+                          }
+                        }
+                      ],
+                      "kind": "mapping"
+                    }
+                  }
+                ],
+                "kind": "mapping"
+              }
+            ],
+            "kind": "sequence"
+          }
+        },
+        {
+          "key": {
+            "kind": "scalar",
+            "value": "battleGame"
+          },
+          "value": {
+            "kind": "null",
+            "value": "null"
+          }
+        }
+      ],
+      "kind": "mapping"
+    }
+  ]
+}

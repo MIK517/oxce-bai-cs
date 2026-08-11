@@ -90,4 +90,5 @@ feature; use manifests and local hashes for end-to-end tests requiring owned ass
 Unit and compatibility tests use centrally pinned xUnit v3 packages on Microsoft
 Testing Platform v2. Coverlet provides cross-platform coverage. The separate
 `Oxce.FixtureTool` command-line application validates manifests and supports hashing,
-canonical JSON normalization, and semantic comparison outside the test runner.
+canonical JSON normalization, YAML semantic-tree normalization, and semantic comparison
+outside the test runner.
