@@ -1,3 +1,7 @@
+/*
+ * Synthetic OXCE compatibility probe.
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 #include <bit>
 #include <cctype>
 #include <cstdint>

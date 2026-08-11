@@ -12,9 +12,9 @@ location. Broad entries are split into individual keys, operations, or scenarios
 their owning vertical slice is investigated. Empty fixture cells therefore represent
 work still to be specified, not implicit support.
 
-The current reference baseline is upstream commit
-`67d1a6b69a7f6d8fdc377b4c3ed1d4be38514530`. Local build-only changes are isolated on
-the C++ checkout's `local-windows-x64-docker-build` branch.
+The current reference baseline is commit
+`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Capture scripts refuse to regenerate
+expected output from any other C++ revision.
 
 `reference-inventory.json` is a deterministic source inventory from the local reference
 checkout. Refresh it from a conventional sibling checkout with:
@@ -28,6 +28,7 @@ source scan and must be confirmed against exact loader functions before being pr
 to compatibility entries.
 
 - [YAML and rulesets](yaml-rulesets.md)
+- [Files and resource catalog](files.md)
 - [Scripting](scripting.md)
 - [Saves](saves.md)
 - [Original assets](assets.md)
