@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
 using Xunit;
@@ -7,6 +8,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class YamlFixtureTests
 {
+    private static readonly string[] BooleanColumns = ["name", "value"];
+    private static readonly string[] FloatingColumns = ["name", "float", "double"];
+    private static readonly string[] IntegerColumns =
+        ["name", "int8", "uint8", "int32", "uint32", "int64", "uint64"];
+
     [Fact]
     public void YamlSemanticsMatchCapturedCppReference()
     {
@@ -56,6 +62,85 @@ public sealed class YamlFixtureTests
         Assert.Equal(Path.GetFullPath(path), exception.Span.SourceName);
         Assert.True(exception.Span.Start.Line >= 5);
     }
+
+    [Fact]
+    public void ScalarConversionsMatchCapturedCppReference()
+    {
+        var root = FindRepositoryRoot();
+        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-scalar-conversions.json");
+        var manifest = FixtureManifestLoader.Load(manifestPath);
+        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
+        var documents = YamlCompatibilityReader.ParseFile(fixturePath);
+        var document = Assert.IsType<YamlMappingNode>(documents.Documents[0].Root);
+        var actual = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            booleanColumns = BooleanColumns,
+            booleans = Cases(document, "booleans")
+                .Select(testCase => new object?[]
+                {
+                    YamlValueReader.ReadString(Required(testCase, "name")),
+                    YamlValueReader.TryReadBoolean(Required(testCase, "value"), out var value) ? value : null,
+                })
+                .ToArray(),
+            floating = Cases(document, "floating")
+                .Select(testCase => new object?[]
+                {
+                    YamlValueReader.ReadString(Required(testCase, "name")),
+                    YamlValueReader.TryReadSingle(Required(testCase, "value"), out var single)
+                        ? FloatingText(single)
+                        : null,
+                    YamlValueReader.TryReadDouble(Required(testCase, "value"), out var doubleValue)
+                        ? FloatingText(doubleValue)
+                        : null,
+                })
+                .ToArray(),
+            floatingColumns = FloatingColumns,
+            integerColumns = IntegerColumns,
+            integers = Cases(document, "integers").Select(ProjectIntegers).ToArray(),
+        });
+        var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
+
+        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+    }
+
+    private static object?[] ProjectIntegers(YamlMappingNode testCase)
+    {
+        var node = Required(testCase, "value");
+        return
+        [
+            YamlValueReader.ReadString(Required(testCase, "name")),
+            YamlValueReader.TryReadInt8(node, out var int8) ? IntegerText(int8) : null,
+            YamlValueReader.TryReadUInt8(node, out var uint8) ? IntegerText(uint8) : null,
+            YamlValueReader.TryReadInt32(node, out var int32) ? IntegerText(int32) : null,
+            YamlValueReader.TryReadUInt32(node, out var uint32) ? IntegerText(uint32) : null,
+            YamlValueReader.TryReadInt64(node, out var int64) ? IntegerText(int64) : null,
+            YamlValueReader.TryReadUInt64(node, out var uint64) ? IntegerText(uint64) : null,
+        ];
+    }
+
+    private static IEnumerable<YamlMappingNode> Cases(YamlMappingNode document, string key) =>
+        Assert.IsType<YamlSequenceNode>(Required(document, key)).Items
+            .Select(Assert.IsType<YamlMappingNode>);
+
+    private static string IntegerText<T>(T value)
+        where T : IFormattable => value.ToString(null, CultureInfo.InvariantCulture);
+
+    private static string FloatingText(float value) => value switch
+    {
+        _ when float.IsNaN(value) => ".nan",
+        float.PositiveInfinity => ".inf",
+        float.NegativeInfinity => "-.inf",
+        _ => value.ToString("G9", CultureInfo.InvariantCulture),
+    };
+
+    private static string FloatingText(double value) => value switch
+    {
+        _ when double.IsNaN(value) => ".nan",
+        double.PositiveInfinity => ".inf",
+        double.NegativeInfinity => "-.inf",
+        _ => value.ToString("G17", CultureInfo.InvariantCulture),
+    };
 
     private static YamlNode Required(YamlMappingNode mapping, string key)
     {
