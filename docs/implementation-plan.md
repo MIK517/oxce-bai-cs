@@ -216,12 +216,11 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
 
 ## Immediate next tasks
 
-1. Run the defined CI matrix after repository hosting is configured.
-2. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
+1. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
    investigated.
-3. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
+2. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
    formats, options, and gameplay scenarios as their loaders are inspected.
-4. Implement the YAML compatibility spike against a ruleset, a two-document save, and
+3. Implement the YAML compatibility spike against a ruleset, a two-document save, and
    an error/location fixture.
-5. Implement one indexed asset decoder and display it in an SDL3 window as the platform
+4. Implement one indexed asset decoder and display it in an SDL3 window as the platform
    feasibility spike.

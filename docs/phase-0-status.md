@@ -4,7 +4,7 @@ This document records evidence against the bootstrap and specification-harness
 deliverables in `implementation-plan.md`. It is not a substitute for the compatibility
 matrices.
 
-## Completed locally
+## Completed
 
 - .NET 10 SDK requirements are pinned in `global.json`.
 - Nullable analysis, warnings-as-errors, deterministic builds, and recommended SDK
@@ -21,10 +21,11 @@ matrices.
 - A redistributable `tool-self-test` fixture exercises the .NET fixture pipeline.
 - The `core-position` fixture is captured by compiling a synthetic probe against the
   pinned C++ `src/Battlescape/Position.h` and comparing normalized output with .NET.
+- GitHub Actions builds, formats, and tests the repository on hosted Windows, Linux,
+  and macOS runners. The first complete matrix passed on 2026-08-11.
 
-## Remaining before the Phase 0 exit gate
+## Continuing inventories and deferred baselines
 
-- Run the hosted CI matrix after a repository remote is intentionally configured.
 - Expand broad source inventory candidates into individual rule keys, script APIs,
   save nodes, formats, options, and gameplay scenarios as exact loaders are inspected.
 - Establish meaningful performance baselines when mod loading, tactical pathfinding,
@@ -33,6 +34,6 @@ matrices.
 
 ## Current exit-gate assessment
 
-The local build, test, fixture tooling, and executable C++ oracle path are operational.
-Phase 0 is **partial** because CI has not run on hosted operating systems and the broad
-inventories and performance baselines must grow with their owning implementations.
+The build, hosted CI matrix, fixture tooling, and executable C++ oracle path are
+operational. The Phase 0 exit gate is **complete**. Detailed inventories and meaningful
+performance baselines continue with the phases that implement the measured behavior.

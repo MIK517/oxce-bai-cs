@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $ReferenceRoot = (Join-Path $PSScriptRoot "..\..\oxce-bai"),
+    [string] $ReferenceRoot,
     [string] $OutputPath = (Join-Path $PSScriptRoot "..\artifacts\reference-position\position.actual.json"),
     [string] $ExpectedCommit = "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15"
 )
@@ -10,7 +10,17 @@ if (-not $IsWindows -and $PSVersionTable.PSEdition -eq "Core") {
     throw "The bootstrap position capture currently requires Windows and Visual Studio C++ tools."
 }
 
-$reference = (Resolve-Path -LiteralPath $ReferenceRoot).Path
+$referenceCandidates = @(
+    $ReferenceRoot,
+    $env:OXCE_REFERENCE_ROOT,
+    (Join-Path $PSScriptRoot "..\..\oxce-bai"),
+    (Join-Path $PSScriptRoot "..\..\..\CPP\oxce-bai")
+) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+$referencePath = $referenceCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (-not $referencePath) {
+    throw "Could not find the C++ reference checkout. Pass -ReferenceRoot or set OXCE_REFERENCE_ROOT."
+}
+$reference = (Resolve-Path -LiteralPath $referencePath).Path
 $repository = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $probe = Join-Path $repository "fixtures\reference-probes\position\position_probe.cpp"
 $referenceCommit = (& git -c "safe.directory=$reference" -C $reference rev-parse HEAD).Trim()

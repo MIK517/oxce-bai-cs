@@ -27,4 +27,13 @@ Visual Studio C++ tools installed, capture it with:
 .\tools\capture-position-reference.ps1
 ```
 
-Pass `-ReferenceRoot` when the C++ checkout is not the conventional sibling directory.
+The Phase 1 YAML oracle covers multiple documents, nulls, duplicate mappings, anchors,
+aliases, and merge keys:
+
+```powershell
+.\tools\capture-yaml-reference.ps1
+```
+
+Both scripts discover the conventional sibling checkout and the categorized
+`C#/...` plus `CPP/...` layout. Otherwise pass `-ReferenceRoot` or set the portable
+`OXCE_REFERENCE_ROOT` environment variable.
