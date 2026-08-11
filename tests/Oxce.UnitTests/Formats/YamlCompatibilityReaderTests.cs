@@ -155,6 +155,27 @@ public sealed class YamlCompatibilityReaderTests
     }
 
     [Fact]
+    public void HexadecimalFloatingConversionsPreserveReferenceQuirks()
+    {
+        Assert.Equal(1.5F, YamlValueReader.ReadSingle(Scalar("0x1.8p0")));
+        Assert.Equal(256D, YamlValueReader.ReadDouble(Scalar("0x1p2")));
+        Assert.Equal(0.00390625D, YamlValueReader.ReadDouble(Scalar("0x1p-2")));
+        Assert.Equal(0.0625D, YamlValueReader.ReadDouble(Scalar("0xA.Bp0")));
+        Assert.False(YamlValueReader.TryReadDouble(Scalar("0x1g"), out _));
+        Assert.False(YamlValueReader.TryReadDouble(Scalar("0x1p"), out _));
+    }
+
+    [Fact]
+    public void Base64ConversionIsStrictAndBounded()
+    {
+        Assert.Equal([0, 1, 2, 255], YamlValueReader.ReadBase64(Scalar("AAEC/w==")));
+        Assert.Empty(YamlValueReader.ReadBase64(Scalar(string.Empty)));
+        Assert.Throws<YamlFormatException>(() => YamlValueReader.ReadBase64(Scalar("abc")));
+        Assert.Throws<YamlFormatException>(() => YamlValueReader.ReadBase64(Scalar("@@@=")));
+        Assert.Throws<YamlFormatException>(() => YamlValueReader.ReadBase64(Scalar("AAEC/w=="), 3));
+    }
+
+    [Fact]
     public void StringConversionReturnsExplicitNullSpellingLikeReferenceReader()
     {
         var documents = YamlCompatibilityReader.Parse("value: null\n", "null-string.yml");
@@ -241,6 +262,33 @@ public sealed class YamlCompatibilityReaderTests
             YamlValueReader.ReadString));
     }
 
+    [Fact]
+    public void SemanticNormalizationPreservesDuplicatesNullsTagsAndDocuments()
+    {
+        const string yaml = "value: null\nvalue: !oxce tagged\n---\n- item\n";
+        var documents = YamlCompatibilityReader.Parse(yaml, "normalize.yml");
+
+        var normalized = YamlSemanticNormalizer.NormalizeToJson(documents);
+
+        Assert.Contains("\"documents\"", normalized, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(normalized, "\"value\": \"value\""));
+        Assert.Contains("\"kind\": \"null\"", normalized, StringComparison.Ordinal);
+        Assert.Contains("\"tag\": \"!oxce\"", normalized, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SemanticNormalizationEnforcesDepthAndOutputLimits()
+    {
+        var documents = YamlCompatibilityReader.Parse("outer: { inner: value }\n", "limits.yml");
+
+        Assert.Throws<YamlFormatException>(() => YamlSemanticNormalizer.NormalizeToUtf8Json(
+            documents,
+            new YamlNormalizationOptions { MaxDepth = 1 }));
+        Assert.Throws<YamlFormatException>(() => YamlSemanticNormalizer.NormalizeToUtf8Json(
+            documents,
+            new YamlNormalizationOptions { MaxOutputBytes = 16 }));
+    }
+
     private static YamlNode Scalar(string value)
     {
         var documents = YamlCompatibilityReader.Parse($"value: '{value}'\n", "scalar.yml");
@@ -250,6 +298,19 @@ public sealed class YamlCompatibilityReaderTests
 
     private static YamlMappingNode ParseMapping(string yaml) =>
         Assert.IsType<YamlMappingNode>(YamlCompatibilityReader.Parse(yaml, "mapping.yml").Documents[0].Root);
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        var offset = 0;
+        while ((offset = text.IndexOf(value, offset, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += value.Length;
+        }
+
+        return count;
+    }
 
     private static YamlNode Required(YamlMappingNode mapping, string key)
     {

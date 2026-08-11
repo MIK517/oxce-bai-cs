@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "yaml-special-scalar-conversions",
+  "description": "Compares hexadecimal floating-point quirks and bounded Base64 conversion semantics.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "yaml-special-scalars-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/yaml/special-scalar-conversions.yml",
+      "size": 580,
+      "sha256": "5423170e45c4068a356173fd9cd42c33be37fcb2a098b94dcc90ad91c273ff7d"
+    },
+    {
+      "path": "fixtures/reference-probes/yaml/yaml_special_scalar_probe.cpp",
+      "size": 3955,
+      "sha256": "dcfe0575cf2a3515bee6a22f938ed57890188827b9d1c39e053980fdf69736de"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/yaml/special-scalar-conversions.expected.json"
+}

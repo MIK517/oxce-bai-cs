@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Oxce.FixtureSupport;
+using Oxce.Formats.Yaml;
 
 return FixtureTool.Run(args, Console.Out, Console.Error);
 
@@ -16,11 +17,13 @@ internal static class FixtureTool
                 ["inspect", var path] => Inspect(path, output),
                 ["normalize", var input] => Normalize(input, null, output),
                 ["normalize", var input, var destination] => Normalize(input, destination, output),
+                ["normalize-yaml", var input] => NormalizeYaml(input, null, output),
+                ["normalize-yaml", var input, var destination] => NormalizeYaml(input, destination, output),
                 ["compare", var expected, var actual] => Compare(expected, actual, output),
                 _ => Usage(error),
             };
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or ArgumentException or FormatException)
         {
             error.WriteLine(exception.Message);
             return 2;
@@ -72,12 +75,31 @@ internal static class FixtureTool
         return 1;
     }
 
+    private static int NormalizeYaml(string input, string? destination, TextWriter output)
+    {
+        var normalized = YamlSemanticNormalizer.NormalizeToUtf8Json(YamlCompatibilityReader.ParseFile(input));
+        if (destination is null)
+        {
+            output.Write(Encoding.UTF8.GetString(normalized));
+        }
+        else
+        {
+            var directory = Path.GetDirectoryName(Path.GetFullPath(destination));
+            Directory.CreateDirectory(directory!);
+            File.WriteAllBytes(destination, normalized);
+            output.WriteLine(destination);
+        }
+
+        return 0;
+    }
+
     private static int Usage(TextWriter error)
     {
         error.WriteLine("Usage:");
         error.WriteLine("  fixture hash <file>");
         error.WriteLine("  fixture inspect <manifest.json>");
         error.WriteLine("  fixture normalize <input.json> [output.json]");
+        error.WriteLine("  fixture normalize-yaml <input.yml> [output.json]");
         error.WriteLine("  fixture compare <expected.json> <actual.json>");
         return 2;
     }

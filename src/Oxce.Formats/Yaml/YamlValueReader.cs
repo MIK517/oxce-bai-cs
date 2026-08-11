@@ -55,6 +55,31 @@ public static class YamlValueReader
     public static bool ReadBoolean(YamlNode node) =>
         TryReadBoolean(node, out var value) ? value : throw TypeError(node, "Boolean");
 
+    public static byte[] ReadBase64(YamlNode node, int maxDecodedBytes = 64 * 1024 * 1024)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(maxDecodedBytes);
+        var text = ScalarText(node);
+        if (text is null || !TryGetBase64Length(text, out var decodedLength))
+        {
+            throw TypeError(node, "Base64");
+        }
+
+        if (decodedLength > maxDecodedBytes)
+        {
+            throw new YamlFormatException(
+                $"Decoded YAML Base64 value exceeds the {maxDecodedBytes}-byte limit.",
+                node.Span);
+        }
+
+        var result = new byte[decodedLength];
+        if (!Convert.TryFromBase64String(text, result, out var bytesWritten) || bytesWritten != decodedLength)
+        {
+            throw TypeError(node, "Base64");
+        }
+
+        return result;
+    }
+
     public static TEnum ReadEnum<TEnum>(YamlNode node)
         where TEnum : struct, Enum =>
         TryReadEnum(node, out TEnum value) ? value : throw TypeError(node, typeof(TEnum).Name);
@@ -243,6 +268,11 @@ public static class YamlValueReader
             return true;
         }
 
+        if (IsHexadecimalFloating(text))
+        {
+            return TryReadHexadecimalSingle(text!, out value);
+        }
+
         if (string.IsNullOrEmpty(text))
         {
             value = default;
@@ -267,6 +297,11 @@ public static class YamlValueReader
         if (TryReadSpecialFloating(text, out value))
         {
             return true;
+        }
+
+        if (IsHexadecimalFloating(text))
+        {
+            return TryReadHexadecimalDouble(text!, out value);
         }
 
         if (string.IsNullOrEmpty(text))
@@ -426,6 +461,292 @@ public static class YamlValueReader
         return text is ".nan" or ".NaN" or ".NAN" or
             ".inf" or ".Inf" or ".INF" or
             "-.inf" or "-.Inf" or "-.INF";
+    }
+
+    private static bool IsHexadecimalFloating(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return false;
+        }
+
+        var offset = text[0] is '+' or '-' ? 1 : 0;
+        return text.Length >= offset + 2 &&
+            text[offset] == '0' &&
+            text[offset + 1] is 'x' or 'X';
+    }
+
+    private static bool TryReadHexadecimalSingle(string text, out float value)
+    {
+        var negative = text[0] == '-';
+        var position = text[0] is '+' or '-' ? 3 : 2;
+        value = 0;
+        if (!TryReadHexadecimalSignificand(text, ref position, ref value, out var hasExponent))
+        {
+            return false;
+        }
+
+        if (!TryReadHexadecimalExponent(text, position, hasExponent, out var exponent))
+        {
+            value = default;
+            return false;
+        }
+
+        value *= IntegerPower(16F, exponent);
+        if (negative)
+        {
+            value = -value;
+        }
+
+        return true;
+    }
+
+    private static bool TryReadHexadecimalDouble(string text, out double value)
+    {
+        var negative = text[0] == '-';
+        var position = text[0] is '+' or '-' ? 3 : 2;
+        value = 0;
+        if (!TryReadHexadecimalSignificand(text, ref position, ref value, out var hasExponent))
+        {
+            return false;
+        }
+
+        if (!TryReadHexadecimalExponent(text, position, hasExponent, out var exponent))
+        {
+            value = default;
+            return false;
+        }
+
+        value *= IntegerPower(16D, exponent);
+        if (negative)
+        {
+            value = -value;
+        }
+
+        return true;
+    }
+
+    private static bool TryReadHexadecimalSignificand(
+        string text,
+        ref int position,
+        ref float value,
+        out bool hasExponent)
+    {
+        hasExponent = false;
+        while (position < text.Length)
+        {
+            var character = text[position++];
+            if (TryHexadecimalFloatingDigit(character, out var digit))
+            {
+                value = (value * 16F) + digit;
+            }
+            else if (character == '.')
+            {
+                var place = 0.0625F;
+                while (position < text.Length && text[position] is not ('p' or 'P'))
+                {
+                    if (!TryHexadecimalFloatingDigit(text[position++], out digit))
+                    {
+                        return false;
+                    }
+
+                    value += place * digit;
+                    place /= 16F;
+                }
+
+                if (position < text.Length)
+                {
+                    position++;
+                    hasExponent = true;
+                }
+
+                break;
+            }
+            else if (character is 'p' or 'P')
+            {
+                hasExponent = true;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TryReadHexadecimalSignificand(
+        string text,
+        ref int position,
+        ref double value,
+        out bool hasExponent)
+    {
+        hasExponent = false;
+        while (position < text.Length)
+        {
+            var character = text[position++];
+            if (TryHexadecimalFloatingDigit(character, out var digit))
+            {
+                value = (value * 16D) + digit;
+            }
+            else if (character == '.')
+            {
+                var place = 0.0625D;
+                while (position < text.Length && text[position] is not ('p' or 'P'))
+                {
+                    if (!TryHexadecimalFloatingDigit(text[position++], out digit))
+                    {
+                        return false;
+                    }
+
+                    value += place * digit;
+                    place /= 16D;
+                }
+
+                if (position < text.Length)
+                {
+                    position++;
+                    hasExponent = true;
+                }
+
+                break;
+            }
+            else if (character is 'p' or 'P')
+            {
+                hasExponent = true;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TryReadHexadecimalExponent(
+        string text,
+        int position,
+        bool hasExponent,
+        out short exponent)
+    {
+        if (!hasExponent)
+        {
+            exponent = 0;
+            return position == text.Length;
+        }
+
+        if (position < text.Length && text[position] == '+')
+        {
+            position++;
+        }
+
+        if (position >= text.Length ||
+            !TryParseInteger(text[position..], signed: true, bitWidth: 16, out var parsed))
+        {
+            exponent = default;
+            return false;
+        }
+
+        exponent = unchecked((short)parsed);
+        return true;
+    }
+
+    private static bool TryHexadecimalFloatingDigit(char character, out int digit)
+    {
+        digit = character switch
+        {
+            >= '0' and <= '9' => character - '0',
+            >= 'a' and <= 'f' => character - 'a',
+            >= 'A' and <= 'F' => character - 'A',
+            _ => -1,
+        };
+        return digit >= 0;
+    }
+
+    private static float IntegerPower(float value, short exponent)
+    {
+        var result = 1F;
+        if (exponent >= 0)
+        {
+            for (var index = 0; index < exponent; index++)
+            {
+                result *= value;
+            }
+        }
+        else
+        {
+            var count = unchecked((short)-exponent);
+            for (var index = 0; index < count; index++)
+            {
+                result /= value;
+            }
+        }
+
+        return result;
+    }
+
+    private static double IntegerPower(double value, short exponent)
+    {
+        var result = 1D;
+        if (exponent >= 0)
+        {
+            for (var index = 0; index < exponent; index++)
+            {
+                result *= value;
+            }
+        }
+        else
+        {
+            var count = unchecked((short)-exponent);
+            for (var index = 0; index < count; index++)
+            {
+                result /= value;
+            }
+        }
+
+        return result;
+    }
+
+    private static bool TryGetBase64Length(string text, out int decodedLength)
+    {
+        decodedLength = 0;
+        if ((text.Length & 3) != 0)
+        {
+            return false;
+        }
+
+        var padding = 0;
+        if (text.Length > 0 && text[^1] == '=')
+        {
+            padding++;
+        }
+        if (text.Length > 1 && text[^2] == '=')
+        {
+            padding++;
+        }
+
+        var contentLength = text.Length - padding;
+        for (var index = 0; index < text.Length; index++)
+        {
+            var character = text[index];
+            if (index >= contentLength)
+            {
+                if (character != '=')
+                {
+                    return false;
+                }
+            }
+            else if (!(character is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '+' or '/'))
+            {
+                return false;
+            }
+        }
+
+        decodedLength = checked((text.Length / 4 * 3) - padding);
+        return true;
     }
 
     private static string? ScalarText(YamlNode node)
