@@ -32,6 +32,7 @@ aliases, and merge keys:
 
 ```powershell
 .\tools\capture-yaml-reference.ps1
+.\tools\capture-yaml-scalars-reference.ps1
 ```
 
 Both scripts discover the conventional sibling checkout and the categorized

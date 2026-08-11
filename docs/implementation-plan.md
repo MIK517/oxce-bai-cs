@@ -220,7 +220,9 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    investigated.
 2. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
    formats, options, and gameplay scenarios as their loaders are inspected.
-3. Implement the YAML compatibility spike against a ruleset, a two-document save, and
-   an error/location fixture.
-4. Implement one indexed asset decoder and display it in an SDL3 window as the platform
+3. Extend the YAML compatibility foundation through enum/container conversions and
+   representative ruleset and save normalization.
+4. Implement bounded binary readers/writers and the virtual file catalog before asset
+   and mod-loading slices depend on them.
+5. Implement one indexed asset decoder and display it in an SDL3 window as the platform
    feasibility spike.
