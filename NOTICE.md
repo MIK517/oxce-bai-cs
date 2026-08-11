@@ -14,3 +14,7 @@ or other copyrightable material is ported or adapted from those projects.
 OpenXcom and OpenXcom Extended are separate community projects. This port does not
 include or grant rights to UFO: Enemy Unknown, X-COM: Terror from the Deep, or any
 other copyrighted game assets. Users must supply legally obtained game data.
+
+The managed YAML parsing layer uses YamlDotNet, copyright Antoine Aubry and
+contributors, under the MIT License. YamlDotNet is used through its low-level event API;
+OXCE-compatible data semantics are implemented by this project.
