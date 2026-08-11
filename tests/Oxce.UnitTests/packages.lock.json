@@ -221,7 +221,21 @@
           "YamlDotNet": "[18.1.0, )"
         }
       },
+      "oxce.mods": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Formats": "[1.0.0, )",
+          "Oxce.Scripting": "[1.0.0, )"
+        }
+      },
       "oxce.rendering": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )"
+        }
+      },
+      "oxce.scripting": {
         "type": "Project",
         "dependencies": {
           "Oxce.Core": "[1.0.0, )"
