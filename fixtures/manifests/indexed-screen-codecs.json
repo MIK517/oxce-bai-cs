@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "indexed-screen-codecs",
+  "description": "Compares raw SCR/DAT copying plus SPK and BDY indexed-image decompression and row clipping.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "indexed-screen-codecs-v1",
+      "referenceFiles": "src/Engine/Surface.cpp;src/Engine/Surface.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/images/indexed-screen-codecs.hex",
+      "size": 148,
+      "sha256": "821b0517b3db6c81d4ae4b100f0857ad85fcd430ba8fe3a82eaddbfa7690d87d"
+    },
+    {
+      "path": "fixtures/reference-probes/images/indexed_screen_probe.cpp",
+      "size": 5838,
+      "sha256": "f20425f8fe2c6310ad7604b349e27ba09359fe9061a2ffb466d02cf04699c528"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "pixels-as-palette-indices"],
+  "expected": "fixtures/expected/images/indexed-screen-codecs.expected.json"
+}

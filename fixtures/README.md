@@ -39,6 +39,7 @@ aliases, and merge keys:
 .\tools\capture-yaml-special-scalars-reference.ps1
 .\tools\capture-binary-primitives-reference.ps1
 .\tools\capture-vfs-layer-reference.ps1
+.\tools\capture-indexed-screen-reference.ps1
 ```
 
 The scripts discover the conventional sibling checkout and the categorized

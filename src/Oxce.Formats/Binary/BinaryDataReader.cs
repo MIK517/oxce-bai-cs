@@ -46,14 +46,45 @@ public sealed class BinaryDataReader
             throw new InvalidDataException($"Binary input '{fullPath}' exceeds the {maxBytes}-byte limit.");
         }
 
-        using var output = new MemoryStream(capacity: checked((int)input.Length));
+        return FromStream(input, maxBytes, checked((int)input.Length));
+    }
+
+    public static BinaryDataReader FromStream(
+        Stream input,
+        int maxBytes = DefaultMaximumBytes)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxBytes);
+        if (!input.CanRead)
+        {
+            throw new ArgumentException("The binary input stream must be readable.", nameof(input));
+        }
+
+        var initialCapacity = 0;
+        if (input.CanSeek)
+        {
+            var remaining = input.Length - input.Position;
+            if (remaining < 0 || remaining > maxBytes)
+            {
+                throw new InvalidDataException($"Binary input exceeds the {maxBytes}-byte limit.");
+            }
+
+            initialCapacity = checked((int)remaining);
+        }
+
+        return FromStream(input, maxBytes, initialCapacity);
+    }
+
+    private static BinaryDataReader FromStream(Stream input, int maxBytes, int initialCapacity)
+    {
+        using var output = new MemoryStream(capacity: initialCapacity);
         var buffer = new byte[81920];
         int count;
         while ((count = input.Read(buffer, 0, buffer.Length)) != 0)
         {
             if (output.Length + count > maxBytes)
             {
-                throw new InvalidDataException($"Binary input '{fullPath}' exceeds the {maxBytes}-byte limit.");
+                throw new InvalidDataException($"Binary input exceeds the {maxBytes}-byte limit.");
             }
 
             output.Write(buffer, 0, count);

@@ -13,6 +13,7 @@ public sealed class IndexedSurfaceTests
         Assert.Equal(3, surface.Width);
         Assert.Equal(2, surface.Height);
         Assert.Equal(6, surface.Pixels.Length);
+        Assert.Equal(new byte[6], surface.Pixels.ToArray());
     }
 
     [Fact]
