@@ -2,11 +2,11 @@
 
 | Format or area | Status | Reference source | Fixture | Notes |
 |---|---|---|---|---|
-| 8-bit indexed surface model | partial | `src/Engine/Surface.h`, `src/Engine/Surface.cpp` | unit tests | Dimensions and row addressing only. |
-| Palettes and palette blocks | not started | `src/Engine/Palette.h`, `src/Engine/Palette.cpp` |  | Preserve index meaning and shade blocks. |
-| SCR/DAT raw indexed images | not started | surface/resource loading call sites |  | Determine dimension sources and short-file behavior. |
-| SPK images | not started | `src/Engine/Surface.cpp` |  | RLE errors and bounds require fixtures. |
-| BDY images | not started | `src/Engine/Surface.cpp` |  | Record exact decode semantics. |
+| 8-bit indexed surface model | partial | `src/Engine/Surface.h`, `src/Engine/Surface.cpp` | unit tests | Zero-initialized storage, dimensions, row addressing, 256-color palettes, and RGBA presentation conversion are implemented. Drawing operations remain. |
+| Palettes and palette blocks | partial | `src/Engine/Palette.h`, `src/Engine/Palette.cpp` | unit tests | The 256-entry RGBA model exists; original palette-file decoding and shade blocks remain. |
+| SCR/DAT raw indexed images | compatible | `src/Engine/Surface.cpp` (`rawCopy`, `loadRaw`, `loadScr`) | `indexed-screen-codecs` | Copies visible bytes, leaves short-image tail pixels unchanged, and ignores overscan bytes. Dimensions remain caller-owned as in the reference surface. |
+| SPK images | compatible | `src/Engine/Surface.cpp` (`Surface::loadSpk`) | `indexed-screen-codecs` | Transparent/literal word runs and unknown command words match. Truncated commands fail intentionally instead of synthesizing zero bytes. |
+| BDY images | compatible | `src/Engine/Surface.cpp` (`Surface::loadBdy`) | `indexed-screen-codecs` | Literal and repeated runs preserve reference row clipping. Truncated runs fail intentionally. |
 | PCK/TAB sprite sets | not started | `src/Engine/SurfaceSet.cpp` |  | Includes TAB width variants and offsets. |
 | General image formats | not started | `src/Engine/Surface.cpp`, image-library call sites |  | PNG and other mod-provided formats. |
 | CAT containers | not started | `src/Engine/CatFile.h`, `src/Engine/CatFile.cpp` |  | Validate offsets and entry sizes. |
