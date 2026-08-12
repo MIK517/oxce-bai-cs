@@ -14,7 +14,7 @@ public sealed class IndexedSurface
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
         Width = width;
         Height = height;
-        _pixels = GC.AllocateUninitializedArray<byte>(checked(width * height));
+        _pixels = new byte[checked(width * height)];
     }
 
     public int Width { get; }

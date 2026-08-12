@@ -74,4 +74,18 @@ public sealed class BinaryDataTests
         Assert.Throws<InvalidDataException>(() => new BinaryDataReader(new byte[5], maxBytes: 4));
         Assert.Throws<ArgumentOutOfRangeException>(() => new BinaryDataWriter(maxBytes: 4, initialCapacity: 5));
     }
+
+    [Fact]
+    public void StreamReaderStartsAtCurrentPositionLeavesStreamOpenAndEnforcesLimit()
+    {
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+        stream.Position = 1;
+
+        var reader = BinaryDataReader.FromStream(stream, maxBytes: 3);
+
+        Assert.Equal(new byte[] { 2, 3, 4 }, reader.ReadMemory(3).ToArray());
+        Assert.True(stream.CanRead);
+        stream.Position = 0;
+        Assert.Throws<InvalidDataException>(() => BinaryDataReader.FromStream(stream, maxBytes: 3));
+    }
 }
