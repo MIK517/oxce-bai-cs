@@ -18,3 +18,7 @@ other copyrighted game assets. Users must supply legally obtained game data.
 The managed YAML parsing layer uses YamlDotNet, copyright Antoine Aubry and
 contributors, under the MIT License. YamlDotNet is used through its low-level event API;
 OXCE-compatible data semantics are implemented by this project.
+
+The optional desktop platform backend uses Simple DirectMedia Layer 3 (SDL3), copyright
+Sam Lantinga and contributors, under the zlib License. SDL3 native binaries are not
+stored in this repository.

@@ -222,7 +222,7 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    formats, options, and gameplay scenarios as their loaders are inspected.
 3. Expand representative YAML coverage alongside each rule and save loader; the generic
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
-4. Use the bounded binary readers and virtual file catalog in the first indexed asset
-   decoder, then add ZIP-backed catalog layers before mod discovery depends on them.
-5. Implement one indexed asset decoder and display it in an SDL3 window as the platform
-   feasibility spike.
+4. Add original palette decoding and the next indexed sprite/container vertical slice
+   on top of the compatible SCR/DAT, SPK, and BDY screen codecs.
+5. Extend the validated Windows SDL3 presentation spike with an event loop, then run
+   equivalent native-loading smoke tests on Linux and macOS before packaging work.

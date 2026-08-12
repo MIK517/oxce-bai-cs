@@ -10,8 +10,8 @@ files, consume the same original X-COM assets, and reproduce the same game rules
 It is not a goal to reproduce the C++ engine's random sequence, pixel output, or UI
 layout exactly.
 
-The repository is intentionally a skeleton. Read these documents before adding a
-subsystem:
+The repository is an early compatibility implementation. Read these documents before
+adding a subsystem:
 
 - [Agent onboarding](AGENTS.md)
 - [Compatibility contract](docs/compatibility-contract.md)
@@ -31,6 +31,14 @@ dotnet test Oxce.slnx
 
 Tests use xUnit v3 on Microsoft Testing Platform. Compatibility artifacts are managed
 with `tools/Oxce.FixtureTool`; see [the fixture guide](fixtures/README.md).
+
+The optional SDL3 indexed-frame smoke test requires an
+[SDL 3.4.10](https://github.com/libsdl-org/SDL/releases/tag/release-3.4.10) native runtime
+on the library search path. On Windows, download the official VC archive and run:
+
+```powershell
+.\tools\run-sdl-smoke.ps1 -SdlDirectory <path-to-SDL3-x64-directory>
+```
 
 ## Licensing
 
