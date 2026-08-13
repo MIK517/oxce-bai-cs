@@ -7,7 +7,7 @@
 | SCR/DAT raw indexed images | compatible | `src/Engine/Surface.cpp` (`rawCopy`, `loadRaw`, `loadScr`) | `indexed-screen-codecs` | Copies visible bytes, leaves short-image tail pixels unchanged, and ignores overscan bytes. Dimensions remain caller-owned as in the reference surface. |
 | SPK images | compatible | `src/Engine/Surface.cpp` (`Surface::loadSpk`) | `indexed-screen-codecs` | Transparent/literal word runs and unknown command words match. Truncated commands fail intentionally instead of synthesizing zero bytes. |
 | BDY images | compatible | `src/Engine/Surface.cpp` (`Surface::loadBdy`) | `indexed-screen-codecs` | Literal and repeated runs preserve reference row clipping. Truncated runs fail intentionally. |
-| PCK/TAB sprite sets | not started | `src/Engine/SurfaceSet.cpp` |  | Includes TAB width variants and offsets. |
+| PCK/TAB sprite sets | compatible | `src/Engine/SurfaceSet.cpp`, `src/Engine/SurfaceSet.h`, `src/Engine/Surface.cpp` | `pck-tab-sprites`; private UFO/TFTD/40k/Rosigma corpus | Sequential frame decoding, leading transparent rows, transparent runs, overscan clipping, no-TAB single frames, and 16/32-bit TAB frame counts match. Malformed streams fail intentionally; decoded output is bounded. Two-byte one-frame TAB files used by 40k/Rosigma are handled deterministically instead of relying on the reference loader's incomplete four-byte probe. |
 | General image formats | not started | `src/Engine/Surface.cpp`, image-library call sites |  | PNG and other mod-provided formats. |
 | CAT containers | not started | `src/Engine/CatFile.h`, `src/Engine/CatFile.cpp` |  | Validate offsets and entry sizes. |
 | GM CAT music | not started | `src/Engine/GMCat.h`, `src/Engine/GMCat.cpp` |  | Catalog extraction and playback-visible content. |
