@@ -1,3 +1,4 @@
+using Oxce.Core.Graphics;
 using Oxce.Rendering;
 using Xunit;
 
@@ -29,5 +30,19 @@ public sealed class IndexedFrameConverterTests
         var surface = new IndexedSurface(1, 1);
         var palette = IndexedPalette.CreateGrayscale();
         Assert.Throws<ArgumentException>(() => IndexedFrameConverter.ConvertToRgba32(surface, palette, new byte[3]));
+    }
+
+    [Fact]
+    public void PaletteColorBlockReplacementIsBoundedAndDoesNotMutateSource()
+    {
+        var palette = IndexedPalette.CreateGrayscale();
+        Rgba32[] replacement = [new(1, 2, 3), new(4, 5, 6)];
+
+        var updated = palette.WithColors(224, replacement);
+
+        Assert.Equal(new Rgba32(224, 224, 224), palette[224]);
+        Assert.Equal(replacement[0], updated[224]);
+        Assert.Equal(replacement[1], updated[225]);
+        Assert.Throws<ArgumentException>(() => palette.WithColors(255, replacement));
     }
 }
