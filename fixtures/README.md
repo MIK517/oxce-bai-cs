@@ -42,6 +42,7 @@ aliases, and merge keys:
 .\tools\capture-indexed-screen-reference.ps1
 .\tools\capture-pck-tab-reference.ps1
 .\tools\capture-xcom-palette-reference.ps1
+.\tools\capture-cat-reference.ps1
 ```
 
 The scripts discover the conventional sibling checkout and the categorized

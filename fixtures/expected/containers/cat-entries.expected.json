@@ -1,0 +1,19 @@
+{
+  "entries": [
+    {
+      "data": "03414243",
+      "length": 4,
+      "offset": 24
+    },
+    {
+      "data": "020058595A00",
+      "length": 6,
+      "offset": 28
+    },
+    {
+      "data": "010203",
+      "length": 3,
+      "offset": 34
+    }
+  ]
+}
