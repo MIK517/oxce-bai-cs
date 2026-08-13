@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "sprite-font",
+  "description": "Compares variable-width glyph bounds, fallback glyphs, spacing, and whitespace metrics.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "sprite-font-v1",
+      "referenceFiles": "src/Engine/Font.cpp;src/Engine/Font.h;src/Engine/Unicode.cpp;src/Engine/Unicode.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/rendering/sprite-font.hex",
+      "size": 65,
+      "sha256": "d00e24e28a7fb9d7bb672004493f63b1d41c464d6f7e8c73c12ade3f6751b4a9"
+    },
+    {
+      "path": "fixtures/reference-probes/rendering/sprite_font_probe.cpp",
+      "size": 1866,
+      "sha256": "9f52864cc53a16c06c60e6b1f5c2ff47d4ad48d65bd1369b4e3518af24bd0dc2"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/rendering/sprite-font.expected.json"
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "indexed-bmp",
+  "description": "Compares uncompressed 8-bit BMP row order, palette colors, pixel indexes, and index-zero transparency.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "indexed-bmp-v1",
+      "referenceFiles": "src/Engine/Surface.cpp;src/Engine/Surface.h;deps/include/SDL/SDL_image.h;deps/lib/x64/SDL_image.lib"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/images/indexed-bmp.hex",
+      "size": 141,
+      "sha256": "d65315c8272db53d1c07e372d2a97fa1b17fb01a9f88f74f18dcefbfdd73d7cd"
+    },
+    {
+      "path": "fixtures/reference-probes/images/indexed_gif_probe.cpp",
+      "size": 3008,
+      "sha256": "bc8cacf067ba65f2b5c6fefdd5d85e1633f23df1dc52abfc5c4599c7f6fa1720"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "palette-and-indexed-data-as-uppercase-hex"],
+  "expected": "fixtures/expected/images/indexed-bmp.expected.json"
+}
