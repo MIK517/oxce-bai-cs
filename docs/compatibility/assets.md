@@ -3,7 +3,7 @@
 | Format or area | Status | Reference source | Fixture | Notes |
 |---|---|---|---|---|
 | 8-bit indexed surface model | partial | `src/Engine/Surface.h`, `src/Engine/Surface.cpp` | unit tests | Zero-initialized storage, dimensions, row addressing, 256-color palettes, and RGBA presentation conversion are implemented. Drawing operations remain. |
-| Palettes and palette blocks | partial | `src/Engine/Palette.h`, `src/Engine/Palette.cpp` | unit tests | The 256-entry RGBA model exists; original palette-file decoding and shade blocks remain. |
+| Palettes and palette blocks | compatible | `src/Engine/Palette.h`, `src/Engine/Palette.cpp`, `src/Engine/State.cpp`, `src/Mod/Mod.cpp` | `xcom-palettes`; private UFO/TFTD corpus | RGB6-to-RGBA scaling, index-zero transparency, 768-byte blocks with six-byte separators, short-file zero initialization, 16-color block offsets, and bounded palette replacement match. The indexed model does not need the reference SDL duplicate-black workaround because palette indices are never remapped by RGB equality. |
 | SCR/DAT raw indexed images | compatible | `src/Engine/Surface.cpp` (`rawCopy`, `loadRaw`, `loadScr`) | `indexed-screen-codecs` | Copies visible bytes, leaves short-image tail pixels unchanged, and ignores overscan bytes. Dimensions remain caller-owned as in the reference surface. |
 | SPK images | compatible | `src/Engine/Surface.cpp` (`Surface::loadSpk`) | `indexed-screen-codecs` | Transparent/literal word runs and unknown command words match. Truncated commands fail intentionally instead of synthesizing zero bytes. |
 | BDY images | compatible | `src/Engine/Surface.cpp` (`Surface::loadBdy`) | `indexed-screen-codecs` | Literal and repeated runs preserve reference row clipping. Truncated runs fail intentionally. |
