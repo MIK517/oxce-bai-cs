@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "cat-entries",
+  "description": "Compares CAT entry boundaries derived from offsets while stored sizes and embedded name chunks remain untouched.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "cat-entries-v1",
+      "referenceFiles": "src/Engine/CatFile.cpp;src/Engine/CatFile.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/containers/cat-entries.hex",
+      "size": 75,
+      "sha256": "517a9210cab9a610bb1d58033eeaa9618c8c856bcfbccce74cadb75f61e5f816"
+    },
+    {
+      "path": "fixtures/reference-probes/containers/cat_entries_probe.cpp",
+      "size": 2611,
+      "sha256": "2886a8ee1877f7876898967d274eaef408bd04e0a8bd26ea430e53a5bfbb6d72"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "entry-data-as-uppercase-hex"],
+  "expected": "fixtures/expected/containers/cat-entries.expected.json"
+}
