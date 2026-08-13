@@ -211,6 +211,14 @@
       "oxce.core": {
         "type": "Project"
       },
+      "oxce.engine": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Gameplay": "[1.0.0, )",
+          "Oxce.Rendering": "[1.0.0, )"
+        }
+      },
       "oxce.fixturesupport": {
         "type": "Project"
       },
@@ -238,10 +246,27 @@
           "Oxce.Scripting": "[1.0.0, )"
         }
       },
+      "oxce.platform.sdl": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Engine": "[1.0.0, )",
+          "Oxce.Rendering": "[1.0.0, )"
+        }
+      },
       "oxce.rendering": {
         "type": "Project",
         "dependencies": {
           "Oxce.Core": "[1.0.0, )"
+        }
+      },
+      "oxce.resourcebrowser": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Formats": "[1.0.0, )",
+          "Oxce.Mods": "[1.0.0, )",
+          "Oxce.Platform.Sdl": "[1.0.0, )",
+          "Oxce.Rendering": "[1.0.0, )"
         }
       },
       "oxce.savegames": {
