@@ -11,8 +11,8 @@
 | General image formats | not started | `src/Engine/Surface.cpp`, image-library call sites |  | PNG and other mod-provided formats. |
 | CAT containers | compatible | `src/Engine/CatFile.h`, `src/Engine/CatFile.cpp` | `cat-entries`; private UFO/TFTD/mod corpus | Stored sizes are ignored and entry bounds come from adjacent valid offsets; embedded name chunks remain part of entry data. Malformed tables, descending offsets, and out-of-range entries fail intentionally instead of being skipped or producing unsigned sizes. Entry count and total input size are bounded. |
 | GM CAT music | not started | `src/Engine/GMCat.h`, `src/Engine/GMCat.cpp` |  | Catalog extraction and playback-visible content. |
-| MAP terrain maps | not started | `src/Battlescape/Map.cpp`, map loading call sites |  | Dimensions and tile topology. |
-| RMP routes/nodes | not started | map generation and route loading call sites |  | Node links and reserved fields. |
+| MAP terrain maps | compatible | `src/Battlescape/BattlescapeGenerator.cpp` (`loadMAP`) | `terrain-map-route`; private UFO/TFTD/40k/Rosigma corpus | Y/X/Z dimensions, X-fastest tile records, top-down level order, and incomplete trailing records match. Declared tiles and total input are bounded; zero dimensions, truncation, and complete records beyond declared dimensions fail intentionally. |
+| RMP routes/nodes | compatible | `src/Battlescape/BattlescapeGenerator.cpp` (`loadRMP`), `src/Savegame/Node.h`, `src/Savegame/Node.cpp` | `terrain-map-route`; private UFO/TFTD/40k/Rosigma corpus | Swapped X/Y storage, inverted Z, offsets, five links, reserved metadata, negative directional links, dummy retention, and links to culled nodes match. Incomplete trailing records are preserved and ignored as in the reference; node count and total input are bounded. |
 | MCD terrain records | not started | `src/Mod/MapDataSet.cpp` |  | Signedness and record-size validation. |
 | LOFTEMPS voxel data | not started | `src/Mod/MapDataSet.cpp` |  | Validate record count and references. |
 | Fonts | not started | `src/Engine/Font.cpp`, `src/Engine/DosFont.h` |  | Bitmap metrics and localization behavior. |

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "terrain-map-route",
+  "description": "Compares MAP dimensions, top-down tile order, RMP coordinate transforms, special links, invalid-node retention, and incomplete trailing records.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "terrain-map-route-v1",
+      "referenceFiles": "src/Battlescape/BattlescapeGenerator.cpp;src/Savegame/Node.cpp;src/Savegame/Node.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/terrain/map-layout.hex",
+      "size": 73,
+      "sha256": "362eeb5be5ef63ffc99f71bc9f5364fc97e95709bc2a6fa8e4bca7b1e71e7768"
+    },
+    {
+      "path": "fixtures/public/terrain/route-nodes.hex",
+      "size": 101,
+      "sha256": "d823c346982c7f90416c5478b118f2d691a7ab441731a60082cbc15f0e9e1dff"
+    },
+    {
+      "path": "fixtures/reference-probes/terrain/map_route_probe.cpp",
+      "size": 5497,
+      "sha256": "7dd437f60e47b698827f84f4bf468a9c88c73fb1163ff419bc4281805c7339e9"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "trailing-data-as-uppercase-hex"],
+  "expected": "fixtures/expected/terrain/map-route.expected.json"
+}
