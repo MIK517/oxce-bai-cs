@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "indexed-png",
+  "description": "Compares indexed PNG dimensions, original palette, pixel indexes, and reference transparent-index normalization.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "indexed-png-v1",
+      "referenceFiles": "src/Engine/Surface.cpp;src/Engine/Surface.h;src/lodepng.cpp;src/lodepng.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/images/indexed-png.hex",
+      "size": 233,
+      "sha256": "0f6cf48d91dc2817202304f66ae79b37aeffd0ce983cc72922975cb28860f484"
+    },
+    {
+      "path": "fixtures/reference-probes/images/indexed_png_probe.cpp",
+      "size": 2553,
+      "sha256": "80dd7d846013bd61766fb5ce66d1e4632a6e84ec2847d0aec3d5b3b5a00529c3"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "palette-and-indexed-data-as-uppercase-hex"],
+  "expected": "fixtures/expected/images/indexed-png.expected.json"
+}

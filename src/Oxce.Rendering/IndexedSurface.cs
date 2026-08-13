@@ -200,15 +200,50 @@ public sealed class IndexedSurface
         int replacementColorGroup = -1)
     {
         ArgumentNullException.ThrowIfNull(source);
+        BlitShaded(
+            source,
+            0,
+            0,
+            source.Width,
+            source.Height,
+            destinationX,
+            destinationY,
+            shade,
+            rightHalfOnly,
+            replacementColorGroup);
+    }
+
+    public void BlitShaded(
+        IndexedSurface source,
+        int sourceX,
+        int sourceY,
+        int sourceWidth,
+        int sourceHeight,
+        int destinationX,
+        int destinationY,
+        int shade,
+        bool rightHalfOnly = false,
+        int replacementColorGroup = -1)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentOutOfRangeException.ThrowIfNegative(sourceX);
+        ArgumentOutOfRangeException.ThrowIfNegative(sourceY);
+        ArgumentOutOfRangeException.ThrowIfNegative(sourceWidth);
+        ArgumentOutOfRangeException.ThrowIfNegative(sourceHeight);
+        if (sourceX > source.Width - sourceWidth || sourceY > source.Height - sourceHeight)
+        {
+            throw new ArgumentException("Source rectangle extends beyond the source surface.", nameof(sourceWidth));
+        }
+
         if (replacementColorGroup is < -1 or > 15)
         {
             throw new ArgumentOutOfRangeException(nameof(replacementColorGroup));
         }
 
-        var firstSourceX = rightHalfOnly ? source.Width / 2 : 0;
-        for (var y = 0; y < source.Height; y++)
+        var firstSourceX = rightHalfOnly ? sourceX + (sourceWidth / 2) : sourceX;
+        for (var y = sourceY; y < sourceY + sourceHeight; y++)
         {
-            var targetY = destinationY + y;
+            var targetY = destinationY + y - sourceY;
             if ((uint)targetY >= (uint)Height)
             {
                 continue;
@@ -216,9 +251,9 @@ public sealed class IndexedSurface
 
             var sourceRow = source.GetRow(y);
             var targetRow = GetRow(targetY);
-            for (var x = firstSourceX; x < source.Width; x++)
+            for (var x = firstSourceX; x < sourceX + sourceWidth; x++)
             {
-                var targetX = destinationX + x;
+                var targetX = destinationX + x - sourceX;
                 var sourcePixel = sourceRow[x];
                 if ((uint)targetX >= (uint)Width || sourcePixel == 0)
                 {
