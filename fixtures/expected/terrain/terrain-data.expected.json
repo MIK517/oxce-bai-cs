@@ -1,0 +1,50 @@
+{
+  "loftemps": {
+    "trailing": "EF",
+    "values": [
+      4660,
+      43981
+    ]
+  },
+  "mcd": {
+    "records": [
+      {
+        "alternateMcd": 46,
+        "armor": 42,
+        "bigWall": 33,
+        "blocksFire": true,
+        "blocksSmoke": true,
+        "dieMcd": 44,
+        "flammable": 45,
+        "footstepSound": 52,
+        "frames": "0001020304050607",
+        "fuel": 57,
+        "hasNoFloor": true,
+        "highExplosiveBlock": 43,
+        "highExplosiveStrength": 55,
+        "highExplosiveType": 54,
+        "isDoor": true,
+        "isGravLift": true,
+        "isUfoDoor": true,
+        "isXcomBase": true,
+        "lightBlock": 51,
+        "lightSource": 58,
+        "loftIds": "08090A0B0C0D0E0F10111213",
+        "miniMapIndex": 5396,
+        "positionLevel": 49,
+        "raw": "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2FFE3132333435363738393A3B3C3D",
+        "smokeBlockage": 56,
+        "stopsLineOfSight": true,
+        "targetType": 59,
+        "terrainLevel": -2,
+        "tileType": 53,
+        "timeUnits": [
+          39,
+          41,
+          40
+        ]
+      }
+    ],
+    "trailing": "AA"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "terrain-data",
+  "description": "Compares packed MCD field offsets, signed terrain levels, little-endian words, and incomplete MCD/LOFTEMPS tails.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "terrain-data-v1",
+      "referenceFiles": "src/Mod/MapDataSet.cpp;src/Mod/MapDataSet.h;src/Mod/MapData.cpp;src/Mod/MapData.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/terrain/mcd-record.hex",
+      "size": 127,
+      "sha256": "f49c7c3765b651201384170c46ff4f694413f376486215e6793984e2b61a1175"
+    },
+    {
+      "path": "fixtures/public/terrain/loftemps-values.hex",
+      "size": 11,
+      "sha256": "4729fb4f7d4a80bff8ab057a4967f4ea1f9247a0b42b9c466a406c70240f1bfa"
+    },
+    {
+      "path": "fixtures/reference-probes/terrain/mcd_loftemps_probe.cpp",
+      "size": 6273,
+      "sha256": "52b7a4c0615c40a728f85ae979124a70965af4c8be25a6cf22159698fd827dab"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "binary-data-as-uppercase-hex"],
+  "expected": "fixtures/expected/terrain/terrain-data.expected.json"
+}
