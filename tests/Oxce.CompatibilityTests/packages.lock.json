@@ -238,6 +238,12 @@
           "Oxce.Scripting": "[1.0.0, )"
         }
       },
+      "oxce.rendering": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )"
+        }
+      },
       "oxce.savegames": {
         "type": "Project",
         "dependencies": {

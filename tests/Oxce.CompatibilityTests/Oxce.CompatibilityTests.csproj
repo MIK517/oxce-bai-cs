@@ -16,6 +16,7 @@
     <ProjectReference Include="../../src/Oxce.Formats/Oxce.Formats.csproj" />
     <ProjectReference Include="../../src/Oxce.Gameplay/Oxce.Gameplay.csproj" />
     <ProjectReference Include="../../src/Oxce.Mods/Oxce.Mods.csproj" />
+    <ProjectReference Include="../../src/Oxce.Rendering/Oxce.Rendering.csproj" />
     <ProjectReference Include="../../src/Oxce.Savegames/Oxce.Savegames.csproj" />
     <ProjectReference Include="../../src/Oxce.Scripting/Oxce.Scripting.csproj" />
   </ItemGroup>
