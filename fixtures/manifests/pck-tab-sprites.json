@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "pck-tab-sprites",
+  "description": "Compares PCK sprite decompression with no TAB plus 16-bit and 32-bit TAB frame counts.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "pck-tab-sprites-v1",
+      "referenceFiles": "src/Engine/SurfaceSet.cpp;src/Engine/SurfaceSet.h;src/Engine/Surface.cpp"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/images/pck-tab-sprites.hex",
+      "size": 124,
+      "sha256": "0907da7cb29e16e6f2f1e44ebeb74f9569c7671885a729a6e5f18cd8b0ab7a16"
+    },
+    {
+      "path": "fixtures/reference-probes/images/pck_tab_probe.cpp",
+      "size": 4109,
+      "sha256": "58bedd0917e210be5cfd1b9539be1c1308e9816453ce595d3b8c63a52b27a4b0"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "pixels-as-palette-indices"],
+  "expected": "fixtures/expected/images/pck-tab-sprites.expected.json"
+}
