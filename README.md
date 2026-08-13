@@ -40,6 +40,22 @@ on the library search path. On Windows, download the official VC archive and run
 .\tools\run-sdl-smoke.ps1 -SdlDirectory <path-to-SDL3-x64-directory>
 ```
 
+## Resource browser
+
+The Phase 2 resource browser layers game data and optional overlays through the same
+virtual-file catalog used by the content pipeline. It composes representative geoscape
+and battlescape resources without requiring SDL:
+
+```bash
+dotnet run --project tools/Oxce.ResourceBrowser -- --root data/UFO --output artifacts/ufo-preview.ppm
+dotnet run --project tools/Oxce.ResourceBrowser -- --root data/TFTD --output artifacts/tftd-preview.ppm
+```
+
+Pass additional `--root` arguments in ascending priority order to inspect overrides.
+Add `--show` to present the preview through SDL3; `--scale` and `--duration` control the
+temporary preview window. Original assets and private mods remain ignored and must not
+be committed.
+
 ## Licensing
 
 This project is free software licensed under the

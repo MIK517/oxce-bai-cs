@@ -222,7 +222,7 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    formats, options, and gameplay scenarios as their loaders are inspected.
 3. Expand representative YAML coverage alongside each rule and save loader; the generic
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
-4. Add the next indexed container or terrain-data vertical slice on top of compatible
-   original palettes plus SCR/DAT, SPK, BDY, and PCK/TAB codecs.
+4. Extend the resource browser beyond its compatible geoscape screen, battlescape
+   terrain, and cursor preview as later vertical slices need additional asset families.
 5. Extend the validated Windows SDL3 presentation spike with an event loop, then run
    equivalent native-loading smoke tests on Linux and macOS before packaging work.

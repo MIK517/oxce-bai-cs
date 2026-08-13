@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Oxce.Formats/Oxce.Formats.csproj" />
+    <ProjectReference Include="../../src/Oxce.Mods/Oxce.Mods.csproj" />
+    <ProjectReference Include="../../src/Oxce.Platform.Sdl/Oxce.Platform.Sdl.csproj" />
+    <ProjectReference Include="../../src/Oxce.Rendering/Oxce.Rendering.csproj" />
+  </ItemGroup>
+</Project>
