@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "indexed-lbm",
+  "description": "Compares SDL_image-compatible PBM/ILBM stored dimensions, ByteRun1 pixels, palettes, stencil planes, and transparency normalization.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "indexed-lbm-v1",
+      "referenceFiles": "src/Engine/Surface.cpp;src/Engine/Surface.h;deps/include/SDL/SDL_image.h;deps/lib/x64/SDL_image.lib;SDL_image 1.2 IMG_lbm.c"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/images/indexed-pbm.hex",
+      "size": 177,
+      "sha256": "0d0f3e243c6836374313e7ca63c35dcb3b1c819b2b3723ceba43ae2e416760b0"
+    },
+    {
+      "path": "fixtures/public/images/indexed-ilbm.hex",
+      "size": 173,
+      "sha256": "081839fb60b714f99f2dcd87be6012a60c8489b2833dd3c9d3e6e4dec070bd1d"
+    },
+    {
+      "path": "fixtures/reference-probes/images/indexed_lbm_probe.cpp",
+      "size": 3107,
+      "sha256": "9853fed50dc4281b82d0e1b67a35924c2c5b130f789b9d94dc8f0270a98fca85"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "palette-and-indexed-data-as-uppercase-hex"],
+  "expected": "fixtures/expected/images/indexed-lbm.expected.json"
+}

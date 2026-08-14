@@ -29,6 +29,14 @@ public static class IndexedImageCodec
             return IndexedBmpCodec.Decode(nested, maxPixels);
         }
 
-        throw new InvalidDataException("Input is not a supported indexed PNG, GIF, or BMP image.");
+        if (signature.Length >= 12
+            && signature.StartsWith("FORM"u8)
+            && (signature.Slice(8, 4).SequenceEqual("PBM "u8)
+                || signature.Slice(8, 4).SequenceEqual("ILBM"u8)))
+        {
+            return IndexedLbmCodec.Decode(nested, maxPixels);
+        }
+
+        throw new InvalidDataException("Input is not a supported indexed PNG, GIF, BMP, PBM, or ILBM image.");
     }
 }
