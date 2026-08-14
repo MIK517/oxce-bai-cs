@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "wave-ima-adpcm",
+  "description": "Compares RIFF/WAVE IMA ADPCM metadata and SDL-normalized signed 16-bit sample data.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "wave-ima-adpcm-v1",
+      "referenceFiles": "src/Engine/Sound.cpp;deps/include/SDL/SDL_audio.h;deps/lib/x64/SDL.lib"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/audio/wave-ima-adpcm-mono.hex",
+      "size": 129,
+      "sha256": "a9a01713f4a09877965aca07a30db1afdfc737a2a342b2e049fff94da7159cbd"
+    },
+    {
+      "path": "fixtures/public/audio/wave-ima-adpcm-stereo.hex",
+      "size": 129,
+      "sha256": "70d2e7c1d565de9147b56b1c71d7fab103e5f2c9b0063d0e4d44c13d5939a86c"
+    },
+    {
+      "path": "fixtures/reference-probes/audio/wave_ima_adpcm_probe.cpp",
+      "size": 3060,
+      "sha256": "07fb2946a2a3405c67a12ad2fb79146e20de0eadc41a8193806099483101310a"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "signed-16-bit-interleaved-pcm"],
+  "expected": "fixtures/expected/audio/wave-ima-adpcm.expected.json"
+}
