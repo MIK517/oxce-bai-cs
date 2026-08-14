@@ -31,9 +31,9 @@ public sealed class SdlIndexedWindowHost : IGameHost
         ArgumentNullException.ThrowIfNull(initialFrame);
         ArgumentNullException.ThrowIfNull(_client.Palette);
         var rgba = new byte[checked(initialFrame.Pixels.Length * IndexedFrameConverter.RgbaBytesPerPixel)];
-        if (!SdlNative.SDL_Init(SdlNative.InitVideo))
+        if (!SdlNative.SDL_InitSubSystem(SdlNative.InitVideo))
         {
-            throw Error("SDL_Init");
+            throw Error("SDL_InitSubSystem(SDL_INIT_VIDEO)");
         }
 
         try
@@ -74,7 +74,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
         }
         finally
         {
-            SdlNative.SDL_Quit();
+            SdlNative.SDL_QuitSubSystem(SdlNative.InitVideo);
         }
     }
 

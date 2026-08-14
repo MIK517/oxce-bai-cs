@@ -44,6 +44,15 @@ The smoke window presents through the real frame loop and may be closed early wi
 Escape, the window close control, or the platform quit shortcut. SDL remains isolated
 behind `Oxce.Platform.Sdl`; headless tests and content tooling do not require it.
 
+The same helper can validate managed-mixer playback through an SDL3 audio stream. It
+plays a short, quiet 440 Hz tone by default; use `-DummyAudio` for a silent device and
+callback lifecycle check:
+
+```powershell
+.\tools\run-sdl-smoke.ps1 -Audio -DummyAudio `
+    -SdlDirectory <path-to-SDL3-x64-directory>
+```
+
 ## Resource browser
 
 The Phase 2 resource browser layers game data and optional overlays through the same

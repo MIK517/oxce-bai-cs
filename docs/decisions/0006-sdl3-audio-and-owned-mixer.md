@@ -39,7 +39,8 @@ to gameplay code. It also keeps a future Android host on the same backend bounda
 
 - The engine now owns stable audio buses, PCM clips, playback options, the reference
   volume curve, and a no-device implementation.
-- SDL audio device/stream interop and the managed voice mixer are subsequent vertical
-  slices; this decision does not mark sounds or music compatible.
+- The managed voice mixer and SDL3 default-playback stream are implemented as separate,
+  composable layers. Device failure can fall back without exposing native handles to
+  the engine; this decision does not by itself mark every sound or music format compatible.
 - Adding a decoder package still requires license, maintenance, Native AOT, and corpus
   review under the repository engineering rules.
