@@ -7,11 +7,25 @@ public static class WavePcmCodec
 {
     private const ushort PcmEncoding = 1;
     private const ushort MicrosoftAdpcmEncoding = 2;
+    private const ushort ImaAdpcmEncoding = 17;
 
-    private static readonly int[] AdpcmAdaptationTable =
+    private static readonly int[] MicrosoftAdpcmAdaptationTable =
     [
         230, 230, 230, 230, 307, 409, 512, 614,
         768, 614, 512, 409, 307, 230, 230, 230,
+    ];
+
+    private static readonly int[] ImaAdpcmIndexTable = [-1, -1, -1, -1, 2, 4, 6, 8];
+
+    private static readonly int[] ImaAdpcmStepTable =
+    [
+        7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31,
+        34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143,
+        157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544,
+        598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878,
+        2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894,
+        6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818,
+        18500, 20350, 22385, 24623, 27086, 29794, 32767,
     ];
 
     public const int DefaultMaximumSampleFrames = 16 * 1024 * 1024;
@@ -96,6 +110,7 @@ public static class WavePcmCodec
         {
             PcmEncoding => DecodePcm(format, sampleBytes, maxSampleFrames),
             MicrosoftAdpcmEncoding => DecodeMicrosoftAdpcm(format, sampleBytes, maxSampleFrames),
+            ImaAdpcmEncoding => DecodeImaAdpcm(format, sampleBytes, maxSampleFrames),
             _ => throw new InvalidDataException($"RIFF/WAVE encoding {format.Encoding} is unsupported."),
         };
     }
@@ -121,6 +136,12 @@ public static class WavePcmCodec
         {
             PcmEncoding => ReadPcmFormat(channels, sampleRateValue, blockAlignment, bitsPerSample),
             MicrosoftAdpcmEncoding => ReadMicrosoftAdpcmFormat(
+                data,
+                channels,
+                sampleRateValue,
+                blockAlignment,
+                bitsPerSample),
+            ImaAdpcmEncoding => ReadImaAdpcmFormat(
                 data,
                 channels,
                 sampleRateValue,
@@ -216,6 +237,53 @@ public static class WavePcmCodec
             coefficients);
     }
 
+    private static WaveFormat ReadImaAdpcmFormat(
+        ReadOnlySpan<byte> data,
+        ushort channels,
+        uint sampleRateValue,
+        ushort blockAlignment,
+        ushort bitsPerSample)
+    {
+        if (channels is not 1 and not 2 || bitsPerSample != 4)
+        {
+            throw new InvalidDataException("IMA ADPCM WAV data requires one or two channels and 4-bit samples.");
+        }
+
+        if (data.Length < 20)
+        {
+            throw new InvalidDataException("IMA ADPCM WAV format extension is truncated.");
+        }
+
+        var extraSize = BinaryPrimitives.ReadUInt16LittleEndian(data[16..]);
+        var samplesPerBlock = BinaryPrimitives.ReadUInt16LittleEndian(data[18..]);
+        if (extraSize < 2 || data.Length < 18 + extraSize)
+        {
+            throw new InvalidDataException("IMA ADPCM WAV format extension is malformed or truncated.");
+        }
+
+        var headerSize = checked(4 * channels);
+        var groupSize = checked(4 * channels);
+        if (blockAlignment < headerSize || (blockAlignment - headerSize) % groupSize != 0)
+        {
+            throw new InvalidDataException("IMA ADPCM WAV block alignment does not contain whole channel groups.");
+        }
+
+        var calculatedSamplesPerBlock = checked(1 + ((blockAlignment - headerSize) * 2 / channels));
+        if (samplesPerBlock != calculatedSamplesPerBlock)
+        {
+            throw new InvalidDataException("IMA ADPCM WAV samples-per-block does not match its block alignment.");
+        }
+
+        return new WaveFormat(
+            ImaAdpcmEncoding,
+            channels,
+            checked((int)sampleRateValue),
+            bitsPerSample,
+            blockAlignment,
+            samplesPerBlock,
+            []);
+    }
+
     private static PcmAudioData DecodePcm(
         WaveFormat format,
         ReadOnlySpan<byte> data,
@@ -287,7 +355,7 @@ public static class WavePcmCodec
         ReadOnlySpan<byte> block,
         Span<short> output)
     {
-        Span<AdpcmState> states = stackalloc AdpcmState[format.Channels];
+        Span<MicrosoftAdpcmState> states = stackalloc MicrosoftAdpcmState[format.Channels];
         var position = 0;
         for (var channel = 0; channel < states.Length; channel++)
         {
@@ -337,11 +405,11 @@ public static class WavePcmCodec
             while (framesRemaining > 0)
             {
                 var encoded = block[position++];
-                output[outputPosition++] = DecodeNibble(ref states[0], encoded >> 4);
+                output[outputPosition++] = DecodeMicrosoftAdpcmNibble(ref states[0], encoded >> 4);
                 framesRemaining--;
                 if (framesRemaining > 0)
                 {
-                    output[outputPosition++] = DecodeNibble(ref states[0], encoded & 0x0F);
+                    output[outputPosition++] = DecodeMicrosoftAdpcmNibble(ref states[0], encoded & 0x0F);
                     framesRemaining--;
                 }
             }
@@ -351,15 +419,15 @@ public static class WavePcmCodec
             for (var frame = 2; frame < format.SamplesPerBlock; frame++)
             {
                 var encoded = block[position++];
-                output[outputPosition++] = DecodeNibble(ref states[0], encoded >> 4);
-                output[outputPosition++] = DecodeNibble(ref states[1], encoded & 0x0F);
+                output[outputPosition++] = DecodeMicrosoftAdpcmNibble(ref states[0], encoded >> 4);
+                output[outputPosition++] = DecodeMicrosoftAdpcmNibble(ref states[1], encoded & 0x0F);
             }
         }
 
         return outputPosition;
     }
 
-    private static short DecodeNibble(ref AdpcmState state, int nibble)
+    private static short DecodeMicrosoftAdpcmNibble(ref MicrosoftAdpcmState state, int nibble)
     {
         var signedNibble = nibble < 8 ? nibble : nibble - 16;
         var prediction = ((long)state.Sample1 * state.Coefficient.First
@@ -367,8 +435,117 @@ public static class WavePcmCodec
         var decoded = (int)Math.Clamp(prediction + (long)signedNibble * state.Delta, short.MinValue, short.MaxValue);
         state.Sample2 = state.Sample1;
         state.Sample1 = (short)decoded;
-        state.Delta = Math.Max(16, AdpcmAdaptationTable[nibble] * state.Delta / 256);
+        state.Delta = Math.Max(16, MicrosoftAdpcmAdaptationTable[nibble] * state.Delta / 256);
         return (short)decoded;
+    }
+
+    private static PcmAudioData DecodeImaAdpcm(
+        WaveFormat format,
+        ReadOnlySpan<byte> data,
+        int maxSampleFrames)
+    {
+        if (data.Length % format.BlockAlignment != 0)
+        {
+            throw new InvalidDataException("IMA ADPCM WAV data ends with a partial block.");
+        }
+
+        var blockCount = data.Length / format.BlockAlignment;
+        var frameCount = checked(blockCount * format.SamplesPerBlock);
+        if (frameCount > maxSampleFrames)
+        {
+            throw new InvalidDataException(
+                $"RIFF/WAVE data contains {frameCount} sample frames, exceeding the {maxSampleFrames}-frame limit.");
+        }
+
+        var samples = new short[checked(frameCount * format.Channels)];
+        var outputOffset = 0;
+        for (var blockIndex = 0; blockIndex < blockCount; blockIndex++)
+        {
+            var block = data.Slice(blockIndex * format.BlockAlignment, format.BlockAlignment);
+            DecodeImaAdpcmBlock(format, block, samples.AsSpan(outputOffset));
+            outputOffset += checked(format.SamplesPerBlock * format.Channels);
+        }
+
+        return new PcmAudioData(samples, format.SampleRate, format.Channels);
+    }
+
+    private static void DecodeImaAdpcmBlock(
+        WaveFormat format,
+        ReadOnlySpan<byte> block,
+        Span<short> output)
+    {
+        Span<ImaAdpcmState> states = stackalloc ImaAdpcmState[format.Channels];
+        var position = 0;
+        for (var channel = 0; channel < states.Length; channel++)
+        {
+            states[channel].Sample = BinaryPrimitives.ReadInt16LittleEndian(block[position..]);
+            states[channel].StepIndex = block[position + 2];
+            if (states[channel].StepIndex >= ImaAdpcmStepTable.Length)
+            {
+                throw new InvalidDataException("IMA ADPCM WAV block uses an invalid step index.");
+            }
+
+            output[channel] = states[channel].Sample;
+            position += 4;
+        }
+
+        var firstFrame = 1;
+        while (firstFrame < format.SamplesPerBlock)
+        {
+            var framesInGroup = Math.Min(8, format.SamplesPerBlock - firstFrame);
+            for (var channel = 0; channel < states.Length; channel++)
+            {
+                for (var byteIndex = 0; byteIndex < 4; byteIndex++)
+                {
+                    var encoded = block[position++];
+                    var frame = firstFrame + byteIndex * 2;
+                    if (frame < firstFrame + framesInGroup)
+                    {
+                        output[frame * format.Channels + channel] =
+                            DecodeImaAdpcmNibble(ref states[channel], encoded & 0x0F);
+                    }
+
+                    frame++;
+                    if (frame < firstFrame + framesInGroup)
+                    {
+                        output[frame * format.Channels + channel] =
+                            DecodeImaAdpcmNibble(ref states[channel], encoded >> 4);
+                    }
+                }
+            }
+
+            firstFrame += framesInGroup;
+        }
+    }
+
+    private static short DecodeImaAdpcmNibble(ref ImaAdpcmState state, int nibble)
+    {
+        var step = ImaAdpcmStepTable[state.StepIndex];
+        var difference = step >> 3;
+        if ((nibble & 1) != 0)
+        {
+            difference += step >> 2;
+        }
+
+        if ((nibble & 2) != 0)
+        {
+            difference += step >> 1;
+        }
+
+        if ((nibble & 4) != 0)
+        {
+            difference += step;
+        }
+
+        var decoded = (nibble & 8) == 0
+            ? state.Sample + difference
+            : state.Sample - difference;
+        state.Sample = (short)Math.Clamp(decoded, short.MinValue, short.MaxValue);
+        state.StepIndex = Math.Clamp(
+            state.StepIndex + ImaAdpcmIndexTable[nibble & 7],
+            0,
+            ImaAdpcmStepTable.Length - 1);
+        return state.Sample;
     }
 
     private sealed record WaveFormat(
@@ -382,11 +559,17 @@ public static class WavePcmCodec
 
     private readonly record struct AdpcmCoefficient(short First, short Second);
 
-    private struct AdpcmState
+    private struct MicrosoftAdpcmState
     {
         internal AdpcmCoefficient Coefficient;
         internal int Delta;
         internal short Sample1;
         internal short Sample2;
+    }
+
+    private struct ImaAdpcmState
+    {
+        internal short Sample;
+        internal int StepIndex;
     }
 }

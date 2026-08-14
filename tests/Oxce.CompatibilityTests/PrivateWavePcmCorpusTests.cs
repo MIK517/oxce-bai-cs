@@ -65,6 +65,35 @@ public sealed class PrivateWavePcmCorpusTests
             $"Expected the supplied Microsoft ADPCM WAV corpus; decoded {decodedCount} files.");
     }
 
+    [Fact]
+    public void SuppliedModImaAdpcmWaveFilesDecodeWithinBounds()
+    {
+        var root = FindRepositoryRoot();
+        var privateMods = Path.Combine(root, "fixtures", "private", "mods");
+        Assert.SkipUnless(
+            Directory.Exists(privateMods),
+            "Private mod assets are not available in this checkout.");
+
+        var decodedCount = 0;
+        foreach (var path in Directory.EnumerateFiles(privateMods, "*.wav", SearchOption.AllDirectories))
+        {
+            var input = BinaryDataReader.FromFile(path);
+            if (ReadEncoding(input) != 17)
+            {
+                continue;
+            }
+
+            input.Seek(0);
+            var audio = WavePcmCodec.Decode(input);
+            Assert.Equal(checked(audio.FrameCount * audio.Channels), audio.Samples.Length);
+            decodedCount++;
+        }
+
+        Assert.True(
+            decodedCount >= 3,
+            $"Expected the supplied IMA ADPCM WAV corpus; decoded {decodedCount} files.");
+    }
+
     private static ushort ReadEncoding(BinaryDataReader input)
     {
         var data = input.ReadMemory(input.Remaining).Span;
