@@ -226,6 +226,5 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    terrain, and cursor preview as later vertical slices need additional asset families.
 5. Run the indexed-window SDL3 event-loop smoke on Linux and macOS; Windows x64 event
    translation, resize/letterboxing, presentation, and early quit are validated.
-6. Complete the ADR 0006 SDL3 device/stream output slice, then proceed with
-   corpus-driven music and AdLib support; CAT/WAV decoding and the owned mixer/buses
-   are implemented.
+6. Proceed with corpus-driven music and AdLib support; CAT/WAV decoding, the owned
+   mixer/buses, and SDL3 default-device stream output are implemented.
