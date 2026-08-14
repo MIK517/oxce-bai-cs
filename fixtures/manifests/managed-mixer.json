@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "managed-mixer",
+  "description": "Compares finite loops, channel volume, stereo panning, and playback completion against SDL_mixer.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "managed-mixer-v1",
+      "referenceFiles": "src/Engine/Game.cpp;src/Engine/Sound.cpp;deps/include/SDL/SDL_mixer.h;deps/lib/x64/SDL_mixer.lib"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/audio/managed-mixer-stereo.hex",
+      "size": 33,
+      "sha256": "285b2cf9cfdefad16f166ecb4e0dd635d8d31a0981e5c507ffb2c77a70a74974"
+    },
+    {
+      "path": "fixtures/reference-probes/audio/managed_mixer_probe.cpp",
+      "size": 3783,
+      "sha256": "65a848a5c2088f50a53534bc60ede1864254580dd60384582b9fcfb16aa3e813"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "signed-16-bit-interleaved-pcm"],
+  "expected": "fixtures/expected/audio/managed-mixer.expected.json"
+}

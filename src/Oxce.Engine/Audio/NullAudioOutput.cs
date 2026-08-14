@@ -12,10 +12,22 @@ public sealed class NullAudioOutput : IAudioOutput
 
     public void SetBusGain(AudioBus bus, double gain)
     {
+        ValidateBus(bus);
         if (!double.IsFinite(gain) || gain is < 0 or > 1)
         {
             throw new ArgumentOutOfRangeException(nameof(gain));
         }
+    }
+
+    public bool IsBusPlaying(AudioBus bus)
+    {
+        ValidateBus(bus);
+        return false;
+    }
+
+    public void StopBus(AudioBus bus)
+    {
+        ValidateBus(bus);
     }
 
     public IAudioPlayback Play(
@@ -41,6 +53,14 @@ public sealed class NullAudioOutput : IAudioOutput
 
     public void Dispose()
     {
+    }
+
+    private static void ValidateBus(AudioBus bus)
+    {
+        if (!Enum.IsDefined(bus))
+        {
+            throw new ArgumentOutOfRangeException(nameof(bus));
+        }
     }
 
     private sealed class NullAudioPlayback : IAudioPlayback
