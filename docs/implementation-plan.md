@@ -224,5 +224,7 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
 4. Extend the resource browser beyond its compatible geoscape screen, battlescape
    terrain, and cursor preview as later vertical slices need additional asset families.
-5. Extend the validated Windows SDL3 presentation spike with an event loop, then run
-   equivalent native-loading smoke tests on Linux and macOS before packaging work.
+5. Run the indexed-window SDL3 event-loop smoke on Linux and macOS; Windows x64 event
+   translation, resize/letterboxing, presentation, and early quit are validated.
+6. Implement the ADR 0006 audio vertical slices: CAT/WAV PCM decoding, SDL3 device
+   output, the owned mixer/buses, then corpus-driven music and AdLib support.
