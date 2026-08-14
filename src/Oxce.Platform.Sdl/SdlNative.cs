@@ -4,6 +4,7 @@ namespace Oxce.Platform.Sdl;
 
 internal static partial class SdlNative
 {
+    internal const uint InitAudio = 0x00000010;
     internal const uint InitVideo = 0x00000020;
     internal const int TextureAccessStreaming = 1;
     internal const int ScaleModeNearest = 0;
@@ -31,7 +32,28 @@ internal static partial class SdlNative
 
     [LibraryImport(LibraryName)]
     [return: MarshalAs(UnmanagedType.I1)]
-    internal static partial bool SDL_Init(uint initFlags);
+    internal static partial bool SDL_InitSubSystem(uint initFlags);
+
+    [LibraryImport(LibraryName)]
+    internal static partial void SDL_QuitSubSystem(uint initFlags);
+
+    [LibraryImport(LibraryName)]
+    internal static unsafe partial IntPtr SDL_OpenAudioDeviceStream(
+        uint deviceId,
+        SdlAudioSpec* specification,
+        IntPtr callback,
+        IntPtr userData);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_PutAudioStreamData(IntPtr stream, IntPtr buffer, int length);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_ResumeAudioStreamDevice(IntPtr stream);
+
+    [LibraryImport(LibraryName)]
+    internal static partial void SDL_DestroyAudioStream(IntPtr stream);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial IntPtr SDL_CreateWindow(string title, int width, int height, ulong flags);
@@ -109,9 +131,6 @@ internal static partial class SdlNative
 
     [LibraryImport(LibraryName)]
     internal static partial IntPtr SDL_GetError();
-
-    [LibraryImport(LibraryName)]
-    internal static partial void SDL_Quit();
 
     internal static string GetError() =>
         Marshal.PtrToStringUTF8(SDL_GetError()) ?? "SDL did not provide an error message";
