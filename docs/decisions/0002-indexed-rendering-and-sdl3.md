@@ -25,8 +25,9 @@ to an RGBA sprite engine, while final presentation can still use modern textures
   first validated runtime. The official Windows VC archive has SHA-256
   `e2b336b10b037934af98308027410732ef7b22f2c6697d58092aa1c209fae7d7`.
 - SDL's zlib license is compatible with this project's GPL-3.0-or-later distribution.
-- Windows x64 window creation and indexed-frame presentation have been exercised. Linux,
-  macOS, input/event processing, audio, and packaged native deployment remain separate
-  validation work.
+- Windows x64 window creation, indexed-frame presentation, resize/letterboxing, and the
+  event loop have been exercised. SDL3 events are translated into engine-owned input
+  values before crossing the platform boundary. Linux, macOS, audio output, and packaged
+  native deployment remain separate validation work.
 - A future Android host may reuse the platform boundary, but desktop data compatibility
   and feature completion take priority and mobile UI may differ substantially.

@@ -32,13 +32,17 @@ dotnet test Oxce.slnx
 Tests use xUnit v3 on Microsoft Testing Platform. Compatibility artifacts are managed
 with `tools/Oxce.FixtureTool`; see [the fixture guide](fixtures/README.md).
 
-The optional SDL3 indexed-frame smoke test requires an
+The optional SDL3 indexed-window and input-loop smoke test requires an
 [SDL 3.4.10](https://github.com/libsdl-org/SDL/releases/tag/release-3.4.10) native runtime
 on the library search path. On Windows, download the official VC archive and run:
 
 ```powershell
 .\tools\run-sdl-smoke.ps1 -SdlDirectory <path-to-SDL3-x64-directory>
 ```
+
+The smoke window presents through the real frame loop and may be closed early with
+Escape, the window close control, or the platform quit shortcut. SDL remains isolated
+behind `Oxce.Platform.Sdl`; headless tests and content tooling do not require it.
 
 ## Resource browser
 
