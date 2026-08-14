@@ -211,6 +211,14 @@
       "oxce.core": {
         "type": "Project"
       },
+      "oxce.engine": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Gameplay": "[1.0.0, )",
+          "Oxce.Rendering": "[1.0.0, )"
+        }
+      },
       "oxce.fixturesupport": {
         "type": "Project"
       },
@@ -221,6 +229,15 @@
           "YamlDotNet": "[18.1.0, )"
         }
       },
+      "oxce.gameplay": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Mods": "[1.0.0, )",
+          "Oxce.Savegames": "[1.0.0, )",
+          "Oxce.Scripting": "[1.0.0, )"
+        }
+      },
       "oxce.mods": {
         "type": "Project",
         "dependencies": {
@@ -229,10 +246,26 @@
           "Oxce.Scripting": "[1.0.0, )"
         }
       },
+      "oxce.platform.sdl": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Engine": "[1.0.0, )",
+          "Oxce.Rendering": "[1.0.0, )"
+        }
+      },
       "oxce.rendering": {
         "type": "Project",
         "dependencies": {
           "Oxce.Core": "[1.0.0, )"
+        }
+      },
+      "oxce.savegames": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Formats": "[1.0.0, )",
+          "Oxce.Mods": "[1.0.0, )"
         }
       },
       "oxce.scripting": {

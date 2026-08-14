@@ -6,8 +6,26 @@ internal static partial class SdlNative
 {
     internal const uint InitVideo = 0x00000020;
     internal const int TextureAccessStreaming = 1;
+    internal const int ScaleModeNearest = 0;
+    internal const int LogicalPresentationLetterbox = 2;
+    internal const ulong WindowResizable = 0x0000000000000020;
     internal const uint PixelFormatRgba32LittleEndian = 0x16762004;
     internal const uint PixelFormatRgba32BigEndian = 0x16462004;
+    internal const uint EventQuit = 0x100;
+    internal const uint EventWindowResized = 0x206;
+    internal const uint EventWindowMinimized = 0x209;
+    internal const uint EventWindowRestored = 0x20b;
+    internal const uint EventWindowFocusGained = 0x20e;
+    internal const uint EventWindowFocusLost = 0x20f;
+    internal const uint EventWindowCloseRequested = 0x210;
+    internal const uint EventKeyDown = 0x300;
+    internal const uint EventKeyUp = 0x301;
+    internal const uint EventTextInput = 0x303;
+    internal const uint EventMouseMotion = 0x400;
+    internal const uint EventMouseButtonDown = 0x401;
+    internal const uint EventMouseButtonUp = 0x402;
+    internal const uint EventMouseWheel = 0x403;
+    internal const uint MouseWheelFlipped = 1;
 
     private const string LibraryName = "SDL3";
 
@@ -22,12 +40,40 @@ internal static partial class SdlNative
     internal static partial IntPtr SDL_CreateRenderer(IntPtr window, IntPtr name);
 
     [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_StartTextInput(IntPtr window);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_StopTextInput(IntPtr window);
+
+    [LibraryImport(LibraryName)]
     internal static partial IntPtr SDL_CreateTexture(
         IntPtr renderer,
         uint format,
         int access,
         int width,
         int height);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_SetTextureScaleMode(IntPtr texture, int scaleMode);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_SetRenderLogicalPresentation(
+        IntPtr renderer,
+        int width,
+        int height,
+        int mode);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_PollEvent(ref SdlEvent sdlEvent);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_ConvertEventToRenderCoordinates(IntPtr renderer, ref SdlEvent sdlEvent);
 
     [LibraryImport(LibraryName)]
     [return: MarshalAs(UnmanagedType.I1)]
@@ -40,6 +86,10 @@ internal static partial class SdlNative
         IntPtr texture,
         IntPtr sourceRectangle,
         IntPtr destinationRectangle);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool SDL_RenderClear(IntPtr renderer);
 
     [LibraryImport(LibraryName)]
     [return: MarshalAs(UnmanagedType.I1)]

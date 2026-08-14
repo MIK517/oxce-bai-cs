@@ -18,12 +18,12 @@ if (args.Length == 1 && string.Equals(args[0], "--sdl-smoke", StringComparison.O
     SdlIndexedFramePresenter.ShowFrame(
         surface,
         IndexedPalette.CreateGrayscale(),
-        "OXCE .NET SDL3 presentation spike",
+        "OXCE .NET SDL3 event-loop smoke",
         scale: 4,
         duration: TimeSpan.FromSeconds(2));
-    Console.WriteLine("SDL3 indexed-frame presentation completed.");
+    Console.WriteLine("SDL3 indexed-window event loop completed.");
     return;
 }
 
 Console.WriteLine("OXCE .NET compatibility port");
-Console.WriteLine("Use --sdl-smoke to display the indexed-frame SDL3 presentation spike.");
+Console.WriteLine("Use --sdl-smoke to run the indexed-window SDL3 event-loop smoke test.");

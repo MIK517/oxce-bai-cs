@@ -1,0 +1,54 @@
+{
+  "pointers": [
+    {
+      "logicalX": 50,
+      "logicalY": 30,
+      "surfaceX": 90,
+      "surfaceY": 46,
+      "windowX": 100,
+      "windowY": 60
+    },
+    {
+      "logicalX": 3,
+      "logicalY": -16,
+      "surfaceX": 20,
+      "surfaceY": -10,
+      "windowX": 12,
+      "windowY": -8
+    }
+  ],
+  "volumes": [
+    {
+      "mixerVolume": 0,
+      "setting": 0
+    },
+    {
+      "mixerVolume": 0,
+      "setting": 1
+    },
+    {
+      "mixerVolume": 4,
+      "setting": 16
+    },
+    {
+      "mixerVolume": 10,
+      "setting": 32
+    },
+    {
+      "mixerVolume": 29,
+      "setting": 64
+    },
+    {
+      "mixerVolume": 64,
+      "setting": 96
+    },
+    {
+      "mixerVolume": 125,
+      "setting": 127
+    },
+    {
+      "mixerVolume": 128,
+      "setting": 128
+    }
+  ]
+}
