@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "wave-pcm",
+  "description": "Compares RIFF/WAVE PCM metadata and SDL-normalized signed 16-bit sample data.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "wave-pcm-v1",
+      "referenceFiles": "src/Engine/Sound.cpp;src/Engine/SoundSet.cpp;deps/include/SDL/SDL_audio.h;deps/lib/x64/SDL.lib"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/audio/wave-pcm-u8.hex",
+      "size": 125,
+      "sha256": "849335fa3dc8201598c8ef3e30af57ef896e30cd874eaa853f82b85f0dadbf86"
+    },
+    {
+      "path": "fixtures/public/audio/wave-pcm-s16.hex",
+      "size": 117,
+      "sha256": "3237ac00e5a114c6ad4ef86b60cd54ebc52f7396572b5bfec6031eeef485411c"
+    },
+    {
+      "path": "fixtures/reference-probes/audio/wave_pcm_probe.cpp",
+      "size": 3044,
+      "sha256": "86fba353efb9f52bedec82c43afae693fbee23bb00f2df1d07bf9df2ea4976f9"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "signed-16-bit-interleaved-pcm"],
+  "expected": "fixtures/expected/audio/wave-pcm.expected.json"
+}
