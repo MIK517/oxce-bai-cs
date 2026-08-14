@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "input-audio-semantics",
+  "description": "Compares pointer coordinate transforms and the legacy nonlinear audio volume curve.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "input-audio-semantics-v1",
+      "referenceFiles": "src/Engine/Action.cpp;src/Engine/Action.h;src/Engine/Game.cpp;src/Engine/Game.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/platform/input-audio-semantics.tsv",
+      "size": 138,
+      "sha256": "3779851c1f7ea3125a294eaa34138410ee237693f79e443223efba609779fe0f"
+    },
+    {
+      "path": "fixtures/reference-probes/platform/input_audio_probe.cpp",
+      "size": 3290,
+      "sha256": "c9add7d36cc8890843de606e94cf90138c0a11376ca9a45da920762162982c8d"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/platform/input-audio.expected.json"
+}
