@@ -17,6 +17,11 @@ public readonly record struct AudioPlaybackOptions(
 {
     public void Validate()
     {
+        if (!Enum.IsDefined(Bus))
+        {
+            throw new ArgumentOutOfRangeException(nameof(Bus));
+        }
+
         if (LoopCount < -1)
         {
             throw new ArgumentOutOfRangeException(nameof(LoopCount));
@@ -87,6 +92,10 @@ public interface IAudioOutput : IDisposable
 
     void SetBusGain(AudioBus bus, double gain);
 
+    bool IsBusPlaying(AudioBus bus);
+
+    void StopBus(AudioBus bus);
+
     IAudioPlayback Play(PcmAudioClip clip, AudioPlaybackOptions options);
 
     void PauseAll();
@@ -94,4 +103,13 @@ public interface IAudioOutput : IDisposable
     void ResumeAll();
 
     void StopAll();
+}
+
+public interface IAudioSampleSource
+{
+    int SampleRate { get; }
+
+    int Channels { get; }
+
+    void Mix(Span<short> destination);
 }
