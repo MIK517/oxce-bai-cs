@@ -1,0 +1,115 @@
+name: SDL validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/sdl-validation.yml"
+      - "Directory.Build.props"
+      - "Directory.Packages.props"
+      - "global.json"
+      - "src/Oxce.App/**"
+      - "src/Oxce.Engine/**"
+      - "src/Oxce.Platform.Sdl/**"
+      - "src/Oxce.Rendering/**"
+      - "tools/build-sdl3-unix.sh"
+      - "tools/run-sdl3-unix-smoke.sh"
+      - "tools/stage-sdl3-unix.sh"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
+
+jobs:
+  native-smoke:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux X11
+            os: ubuntu-latest
+            platform: linux
+          - name: macOS Cocoa
+            os: macos-latest
+            platform: macos
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Install Linux SDL build and display dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            libx11-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev \
+            libxcursor-dev libxss-dev xauth xvfb
+
+      - name: Build pinned SDL runtime
+        shell: bash
+        run: bash ./tools/build-sdl3-unix.sh "$RUNNER_TEMP/oxce-sdl3"
+
+      - name: Restore and publish application
+        shell: bash
+        run: |
+          dotnet restore Oxce.slnx --locked-mode
+          dotnet publish src/Oxce.App/Oxce.App.csproj \
+            --configuration Release --no-restore \
+            --output "$RUNNER_TEMP/oxce-publish"
+          bash ./tools/stage-sdl3-unix.sh \
+            "$RUNNER_TEMP/oxce-sdl3/install" \
+            "$RUNNER_TEMP/oxce-publish"
+
+      - name: Run Linux X11 indexed-window smoke
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x720x24" \
+            env SDL_VIDEO_DRIVER=x11 SDL_RENDER_DRIVER=software \
+            bash ./tools/run-sdl3-unix-smoke.sh \
+            "$RUNNER_TEMP/oxce-publish" video x11
+
+      - name: Run macOS Cocoa indexed-window smoke
+        id: cocoa-smoke
+        if: matrix.platform == 'macos'
+        continue-on-error: true
+        shell: bash
+        run: |
+          env SDL_VIDEO_DRIVER=cocoa SDL_RENDER_DRIVER=software \
+            bash ./tools/run-sdl3-unix-smoke.sh \
+            "$RUNNER_TEMP/oxce-publish" video cocoa
+
+      - name: Collect macOS offscreen fallback diagnostics
+        if: matrix.platform == 'macos' && steps.cocoa-smoke.outcome == 'failure'
+        shell: bash
+        run: |
+          env SDL_VIDEO_DRIVER=dummy SDL_RENDER_DRIVER=software \
+            bash ./tools/run-sdl3-unix-smoke.sh \
+            "$RUNNER_TEMP/oxce-publish" video dummy
+
+      - name: Run dummy-audio stream smoke
+        shell: bash
+        run: |
+          env SDL_AUDIO_DRIVER=dummy \
+            bash ./tools/run-sdl3-unix-smoke.sh \
+            "$RUNNER_TEMP/oxce-publish" audio dummy
+
+      - name: Require macOS Cocoa validation
+        if: matrix.platform == 'macos' && steps.cocoa-smoke.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "The offscreen fallback passed, but the Cocoa window backend did not." >&2
+          exit 1

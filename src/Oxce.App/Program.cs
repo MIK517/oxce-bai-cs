@@ -27,6 +27,9 @@ if (args.Length == 1 && string.Equals(args[0], "--sdl-audio-smoke", StringCompar
 
     using (audioDevice)
     {
+        Console.WriteLine($"Platform: {Environment.OSVersion.Platform} {System.Runtime.InteropServices.RuntimeInformation.OSArchitecture}");
+        Console.WriteLine($"SDL version: {SdlRuntimeInfo.Version}");
+        Console.WriteLine($"SDL audio driver: {SdlRuntimeInfo.CurrentAudioDriver ?? "unknown"}");
         Thread.Sleep(TimeSpan.FromMilliseconds(500));
         if (audioDevice.HasCallbackFailure)
         {
@@ -54,12 +57,18 @@ if (args.Length == 1 && string.Equals(args[0], "--sdl-smoke", StringComparison.O
         }
     }
 
-    SdlIndexedFramePresenter.ShowFrame(
+    var diagnostics = SdlIndexedFramePresenter.ShowFrame(
         surface,
         IndexedPalette.CreateGrayscale(),
         "OXCE .NET SDL3 event-loop smoke",
         scale: 4,
         duration: TimeSpan.FromSeconds(2));
+    Console.WriteLine($"Platform: {Environment.OSVersion.Platform} {System.Runtime.InteropServices.RuntimeInformation.OSArchitecture}");
+    Console.WriteLine($"SDL version: {diagnostics.SdlVersion}");
+    Console.WriteLine($"SDL video driver: {diagnostics.VideoDriver}");
+    Console.WriteLine($"SDL renderer: {diagnostics.Renderer}");
+    Console.WriteLine($"SDL ticks: {diagnostics.TickCount}");
+    Console.WriteLine($"SDL presented frames: {diagnostics.PresentedFrameCount}");
     Console.WriteLine("SDL3 indexed-window event loop completed.");
     return;
 }

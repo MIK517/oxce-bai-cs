@@ -20,23 +20,30 @@ if ($DummyAudio -and -not $Audio) {
     throw "-DummyAudio is only valid together with -Audio."
 }
 
-$previousPath = $env:PATH
-$previousAudioDriver = $env:SDL_AUDIODRIVER
+$previousAudioDriver = $env:SDL_AUDIO_DRIVER
+$work = Join-Path ([IO.Path]::GetTempPath()) ("oxce-sdl-smoke-" + [Guid]::NewGuid().ToString("N"))
 try {
-    $env:PATH = $nativeDirectory + [IO.Path]::PathSeparator + $previousPath
+    [IO.Directory]::CreateDirectory($work) | Out-Null
+    & dotnet publish (Join-Path $repository "src\Oxce.App\Oxce.App.csproj") `
+        --configuration Release --no-restore --output $work
+    if ($LASTEXITCODE -ne 0) {
+        throw "The SDL3 smoke application could not be published."
+    }
+    Copy-Item -LiteralPath $library -Destination (Join-Path $work "SDL3.dll")
     if ($DummyAudio) {
-        $env:SDL_AUDIODRIVER = "dummy"
+        $env:SDL_AUDIO_DRIVER = "dummy"
     }
 
     $smokeArgument = if ($Audio) { "--sdl-audio-smoke" } else { "--sdl-smoke" }
-    & dotnet run --project (Join-Path $repository "src\Oxce.App\Oxce.App.csproj") `
-        --configuration Release --no-restore -- $smokeArgument
+    & dotnet (Join-Path $work "Oxce.App.dll") $smokeArgument
     if ($LASTEXITCODE -ne 0) {
         $smokeName = if ($Audio) { "audio-stream" } else { "indexed-frame" }
         throw "The SDL3 $smokeName smoke test failed."
     }
 }
 finally {
-    $env:PATH = $previousPath
-    $env:SDL_AUDIODRIVER = $previousAudioDriver
+    $env:SDL_AUDIO_DRIVER = $previousAudioDriver
+    if (Test-Path -LiteralPath $work) {
+        Remove-Item -LiteralPath $work -Recurse -Force
+    }
 }

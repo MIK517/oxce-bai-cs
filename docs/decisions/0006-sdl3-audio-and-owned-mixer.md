@@ -32,8 +32,8 @@ to gameplay code. It also keeps a future Android host on the same backend bounda
 - Port the existing AdLib synthesis behavior to PCM rather than depending on SDL_mixer.
 - Decide MIDI synthesis and sound-font packaging from the actual corpus before adding a
   dependency. Unsupported formats must remain explicit in the asset matrix.
-- FLC audio remains part of the future bounded FLC decoder rather than a special native
-  mixer callback.
+- FLC audio is exposed by the bounded FLI/FLC decoder as unsigned mono PCM records rather
+  than through a special native mixer callback; playback scheduling remains later work.
 
 ## Consequences
 
@@ -42,5 +42,7 @@ to gameplay code. It also keeps a future Android host on the same backend bounda
 - The managed voice mixer and SDL3 default-playback stream are implemented as separate,
   composable layers. Device failure can fall back without exposing native handles to
   the engine; this decision does not by itself mark every sound or music format compatible.
+- Dummy-device callback streaming is exercised with the published application on Windows,
+  Linux, and macOS; physical-device validation remains a release and packaging concern.
 - Adding a decoder package still requires license, maintenance, Native AOT, and corpus
   review under the repository engineering rules.

@@ -130,6 +130,18 @@ internal static partial class SdlNative
     internal static partial void SDL_Delay(uint milliseconds);
 
     [LibraryImport(LibraryName)]
+    internal static partial int SDL_GetVersion();
+
+    [LibraryImport(LibraryName)]
+    internal static partial IntPtr SDL_GetCurrentVideoDriver();
+
+    [LibraryImport(LibraryName)]
+    internal static partial IntPtr SDL_GetCurrentAudioDriver();
+
+    [LibraryImport(LibraryName)]
+    internal static partial IntPtr SDL_GetRendererName(IntPtr renderer);
+
+    [LibraryImport(LibraryName)]
     internal static partial IntPtr SDL_GetError();
 
     internal static string GetError() =>

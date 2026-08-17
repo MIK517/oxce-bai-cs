@@ -8,6 +8,12 @@ namespace Oxce.UnitTests.Platform;
 public sealed class SdlEventTranslatorTests
 {
     [Fact]
+    public void RuntimeVersionFormattingUsesSdl3VersionNumberLayout()
+    {
+        Assert.Equal("3.4.10", SdlRuntimeInfo.FormatVersion(3_004_010));
+    }
+
+    [Fact]
     public void NativeEventUnionHasPinnedSdl3Size()
     {
         Assert.Equal(128, Marshal.SizeOf<SdlEvent>());

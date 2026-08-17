@@ -6,7 +6,7 @@ namespace Oxce.Platform.Sdl;
 
 public static class SdlIndexedFramePresenter
 {
-    public static void ShowFrame(
+    public static SdlRunDiagnostics ShowFrame(
         IndexedSurface surface,
         IndexedPalette palette,
         string title,
@@ -28,6 +28,8 @@ public static class SdlIndexedFramePresenter
                 MaximumRunTime = duration,
             });
         host.Run();
+        return host.LastRunDiagnostics ??
+            throw new InvalidOperationException("The SDL indexed-frame run did not produce diagnostics.");
     }
 
     private sealed class StaticFrameClient : IIndexedLoopClient
