@@ -3,6 +3,9 @@
 Current bootstrap evidence and remaining gates are tracked in
 [`phase-0-status.md`](phase-0-status.md).
 
+Phase 2 evidence and explicit playback deferrals are tracked in
+[`phase-2-status.md`](phase-2-status.md).
+
 ## Objective and delivery strategy
 
 Deliver a compatibility-complete .NET 10 engine in executable vertical slices. The C++
@@ -57,6 +60,8 @@ Exit gate:
 - Representative ruleset and save YAML can be parsed and semantically normalized.
 
 ## Phase 2 — Original asset formats and indexed rendering foundation
+
+Status: **Done**. See the [Phase 2 closure audit](phase-2-status.md).
 
 Deliverables:
 
@@ -227,5 +232,5 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
 5. Begin Phase 3 with mod metadata discovery, activation ordering, dependency/conflict
    diagnostics, and resource overlays built on the compatible virtual file catalog.
 6. Expand typed rule and script inventories alongside those vertical slices. Bounded
-   FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback,
-   MIDI/AdLib synthesis, and general mod-music playback remain later-phase work.
+   FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
+   and the ADR 0007 music decoding/synthesis work remain later-phase work.
