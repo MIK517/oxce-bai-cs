@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "gm-cat",
+  "description": "Compares conversion of an OXCE GM.CAT entry with subsequences, running status, tempo, controller, instrument, velocity, percussion, pitch, and delta transformations to standard MIDI.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "gm-cat-v1",
+      "referenceFiles": "src/Engine/GMCat.cpp;src/Engine/GMCat.h;src/Engine/CatFile.cpp;src/Engine/CatFile.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/audio/gm-cat-entry.hex",
+      "size": 143,
+      "sha256": "287f75a2b8af39711ecb356fd560fa0a744375330a32f83969c65c8f62140c35"
+    },
+    {
+      "path": "fixtures/reference-probes/audio/gm_cat_probe.cpp",
+      "size": 11577,
+      "sha256": "247f2bee27a689b2de3c29b3b70ab5f3f54d43fad1812ff54dbc87822ad48673"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "midi-as-uppercase-hex"],
+  "expected": "fixtures/expected/audio/gm-cat.expected.json"
+}

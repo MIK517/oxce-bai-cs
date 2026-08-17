@@ -226,5 +226,6 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    terrain, and cursor preview as later vertical slices need additional asset families.
 5. Run the indexed-window SDL3 event-loop smoke on Linux and macOS; Windows x64 event
    translation, resize/letterboxing, presentation, and early quit are validated.
-6. Proceed with corpus-driven music and AdLib support; CAT/WAV decoding, the owned
-   mixer/buses, and SDL3 default-device stream output are implemented.
+6. Complete the bounded FLI/FLC indexed-frame decoding foundation and cross-platform
+   SDL validation needed to close Phase 2. UFO GM streams convert compatibly to MIDI;
+   actual MIDI/AdLib synthesis and general mod-music playback remain later-phase work.
