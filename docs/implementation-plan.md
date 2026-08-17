@@ -224,9 +224,8 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
 4. Extend the resource browser beyond its compatible geoscape screen, battlescape
    terrain, and cursor preview as later vertical slices need additional asset families.
-5. Run the indexed-window SDL3 event-loop smoke on Linux and macOS; Windows x64 event
-   translation, resize/letterboxing, presentation, and early quit are validated.
-6. Complete cross-platform SDL validation needed to close Phase 2. Bounded FLI/FLC
-   indexed-frame and embedded-audio decoding is compatible, and UFO GM streams convert
-   compatibly to MIDI; actual video playback, MIDI/AdLib synthesis, and general
-   mod-music playback remain later-phase work.
+5. Begin Phase 3 with mod metadata discovery, activation ordering, dependency/conflict
+   diagnostics, and resource overlays built on the compatible virtual file catalog.
+6. Expand typed rule and script inventories alongside those vertical slices. Bounded
+   FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback,
+   MIDI/AdLib synthesis, and general mod-music playback remain later-phase work.

@@ -10,6 +10,8 @@ public sealed class SdlIndexedWindowHost : IGameHost
 {
     private readonly IIndexedLoopClient _client;
     private readonly SdlWindowOptions _options;
+    private int _presentedFrameCount;
+    private int _tickCount;
 
     public SdlIndexedWindowHost(IIndexedLoopClient client, SdlWindowOptions options)
     {
@@ -20,8 +22,13 @@ public sealed class SdlIndexedWindowHost : IGameHost
         _options = options;
     }
 
+    public SdlRunDiagnostics? LastRunDiagnostics { get; private set; }
+
     public int Run(CancellationToken cancellationToken = default)
     {
+        LastRunDiagnostics = null;
+        _presentedFrameCount = 0;
+        _tickCount = 0;
         if (cancellationToken.IsCancellationRequested)
         {
             return 0;
@@ -49,6 +56,8 @@ public sealed class SdlIndexedWindowHost : IGameHost
             }
 
             using var renderer = CreateRenderer(window);
+            var videoDriver = SdlRuntimeInfo.CurrentVideoDriver ?? "unknown";
+            var rendererName = SdlRuntimeInfo.GetRendererName(renderer.DangerousGetHandle()) ?? "unknown";
             RequireSuccess(
                 SdlNative.SDL_SetRenderLogicalPresentation(
                     renderer.DangerousGetHandle(),
@@ -62,7 +71,14 @@ public sealed class SdlIndexedWindowHost : IGameHost
                 "SDL_SetTextureScaleMode");
             try
             {
-                return RunLoop(renderer, texture, initialFrame.Width, initialFrame.Height, rgba, cancellationToken);
+                var result = RunLoop(renderer, texture, initialFrame.Width, initialFrame.Height, rgba, cancellationToken);
+                LastRunDiagnostics = new SdlRunDiagnostics(
+                    SdlRuntimeInfo.Version,
+                    videoDriver,
+                    rendererName,
+                    _tickCount,
+                    _presentedFrameCount);
+                return result;
             }
             finally
             {
@@ -101,6 +117,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
 
             var currentFrameTime = clock.Elapsed;
             _client.Tick(currentFrameTime - previousFrameTime);
+            _tickCount++;
             previousFrameTime = currentFrameTime;
             Present(renderer, texture, width, height, rgba);
             presented = true;
@@ -193,6 +210,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
                 IntPtr.Zero),
             "SDL_RenderTexture");
         RequireSuccess(SdlNative.SDL_RenderPresent(renderer.DangerousGetHandle()), "SDL_RenderPresent");
+        _presentedFrameCount++;
     }
 
     private static DesktopPlatform GetDesktopPlatform()
