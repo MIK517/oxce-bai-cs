@@ -18,6 +18,7 @@ adding a subsystem:
 - [Architecture](docs/architecture.md)
 - [Implementation plan](docs/implementation-plan.md)
 - [Phase 0 status](docs/phase-0-status.md)
+- [Phase 2 closure audit](docs/phase-2-status.md)
 - [Testing strategy](docs/testing-strategy.md)
 
 ## Initial commands
