@@ -26,8 +26,10 @@ to an RGBA sprite engine, while final presentation can still use modern textures
   `e2b336b10b037934af98308027410732ef7b22f2c6697d58092aa1c209fae7d7`.
 - SDL's zlib license is compatible with this project's GPL-3.0-or-later distribution.
 - Windows x64 window creation, indexed-frame presentation, resize/letterboxing, and the
-  event loop have been exercised. SDL3 events are translated into engine-owned input
-  values before crossing the platform boundary. Linux, macOS, audio output, and packaged
-  native deployment remain separate validation work.
+  event loop have been exercised manually. A path-scoped CI workflow builds the
+  checksum-pinned SDL 3.4.10 source and requires published-app loading, indexed presentation,
+  and dummy-audio streaming through Linux X11 and macOS Cocoa. SDL3 events are translated
+  into engine-owned input values before crossing the platform boundary. Physical-device
+  audio and release packaging remain separate validation work.
 - A future Android host may reuse the platform boundary, but desktop data compatibility
   and feature completion take priority and mobile UI may differ substantially.

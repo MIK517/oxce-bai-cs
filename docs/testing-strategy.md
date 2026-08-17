@@ -56,6 +56,12 @@ Use exact indexed-buffer assertions for software primitives and resource decoder
 complete screens use structural assertions and tolerant snapshots; UI and final pixels
 are allowed to differ. Always test that gameplay-relevant information is present.
 
+The path-scoped `SDL validation` workflow builds the pinned SDL source inside each hosted
+runner, publishes `Oxce.App`, and stages the native shared library beside the app before
+execution. Linux must report the X11 backend under Xvfb; macOS must report Cocoa. Both
+must present at least one indexed frame and complete the dummy-audio callback smoke. A
+macOS dummy-video fallback is diagnostic only and deliberately leaves the job failed.
+
 ### Robustness and performance
 
 Fuzz or property-test binary readers, YAML adapters, script parsing, and save loading.
