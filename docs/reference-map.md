@@ -17,6 +17,7 @@ change summaries.
 | `src/Geoscape/` | `Oxce.Gameplay` | Globe presentation splits into Rendering/Engine |
 | `src/Battlescape/` | `Oxce.Gameplay` | Map/unit rendering splits into Rendering |
 | `src/Engine/Surface.*`, `Palette.*`, shaders/scalers | `Oxce.Rendering` | Preserve indexed semantics, not necessarily algorithms |
+| `src/Engine/FlcPlayer.*` | `Oxce.Formats` | Bounded FLI/FLC container, indexed-frame, palette, and embedded-audio decoding; playback belongs in Engine/platform integration |
 | `src/Interface/`, state presentation in other folders | `Oxce.Engine` + `Oxce.Rendering` | UI may be redesigned while preserving actions/information |
 | `src/Engine/Game.*`, `State.*`, `Action.*`, `Timer.*` | `Oxce.Engine` | State stack, loop, commands, clocks |
 | SDL/OpenGL/audio/input code | `Oxce.Platform.Sdl` | Prefer SDL3; no native types leak upward |

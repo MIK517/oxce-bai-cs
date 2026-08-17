@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "flc-indexed",
+  "description": "Compares indexed FLI palette, BRUN, LC, SS2, COPY, BLACK, and ignored type-18 chunk decoding with the OXCE reference implementation.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "flc-indexed-v1",
+      "referenceFiles": "src/Engine/FlcPlayer.cpp;src/Engine/FlcPlayer.h"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/video/flc-indexed.hex",
+      "size": 767,
+      "sha256": "79695f93358aa0a74121117a6e4aa074cbffd1b4ffe18413bada0d6c5e0b57a0"
+    },
+    {
+      "path": "fixtures/reference-probes/video/flc_indexed_probe.cpp",
+      "size": 7842,
+      "sha256": "8d850bd0f3c04b21591af8e4758c1cb62da4ebf611145396d6310830e21fdccd"
+    }
+  ],
+  "normalization": ["canonical-json-v1", "pixels-and-rgb-palette-as-uppercase-hex"],
+  "expected": "fixtures/expected/video/flc-indexed.expected.json"
+}
