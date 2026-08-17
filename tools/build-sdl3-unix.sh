@@ -19,10 +19,14 @@ curl --fail --location --retry 3 \
     "https://github.com/libsdl-org/SDL/releases/download/release-$sdl_version/SDL3-$sdl_version.tar.gz" \
     --output "$archive"
 
-if command -v sha256sum >/dev/null 2>&1; then
-    echo "$archive_sha256  $archive" | sha256sum --check --status
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    actual_sha256="$(shasum -a 256 "$archive" | awk '{ print $1 }')"
 else
-    [[ "$(shasum -a 256 "$archive" | awk '{ print $1 }')" == "$archive_sha256" ]]
+    actual_sha256="$(sha256sum "$archive" | awk '{ print $1 }')"
+fi
+if [[ "$actual_sha256" != "$archive_sha256" ]]; then
+    echo "SDL archive checksum mismatch: expected $archive_sha256, found $actual_sha256." >&2
+    exit 1
 fi
 
 tar -xzf "$archive" -C "$work_directory"
