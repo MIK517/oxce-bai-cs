@@ -45,4 +45,5 @@ to gameplay code. It also keeps a future Android host on the same backend bounda
 - Dummy-device callback streaming is exercised with the published application on Windows,
   Linux, and macOS; physical-device validation remains a release and packaging concern.
 - Adding a decoder package still requires license, maintenance, Native AOT, and corpus
-  review under the repository engineering rules.
+  review under the repository engineering rules. ADR 0007 records the corpus-driven
+  music decoding and synthesis strategy.
