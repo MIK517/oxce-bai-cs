@@ -14,5 +14,6 @@ public interface IIndexedLoopClient
 
     void HandleInput(in GameInputEvent input);
 
-    void Tick(TimeSpan elapsed);
+    /// <summary>Advances simulation by one fixed host-selected step.</summary>
+    void Tick(TimeSpan fixedInterval);
 }

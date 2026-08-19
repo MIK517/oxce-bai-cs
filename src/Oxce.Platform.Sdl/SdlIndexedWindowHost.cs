@@ -1,7 +1,7 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Oxce.Engine;
 using Oxce.Engine.Input;
+using Oxce.Engine.Timing;
 using Oxce.Rendering;
 
 namespace Oxce.Platform.Sdl;
@@ -10,16 +10,21 @@ public sealed class SdlIndexedWindowHost : IGameHost
 {
     private readonly IIndexedLoopClient _client;
     private readonly SdlWindowOptions _options;
+    private readonly IMonotonicClock _clock;
     private int _presentedFrameCount;
     private int _tickCount;
 
-    public SdlIndexedWindowHost(IIndexedLoopClient client, SdlWindowOptions options)
+    public SdlIndexedWindowHost(
+        IIndexedLoopClient client,
+        SdlWindowOptions options,
+        IMonotonicClock? clock = null)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(options);
         options.Validate();
         _client = client;
         _options = options;
+        _clock = clock ?? new StopwatchMonotonicClock();
     }
 
     public SdlRunDiagnostics? LastRunDiagnostics { get; private set; }
@@ -102,8 +107,9 @@ public sealed class SdlIndexedWindowHost : IGameHost
         byte[] rgba,
         CancellationToken cancellationToken)
     {
-        var clock = Stopwatch.StartNew();
-        var previousFrameTime = TimeSpan.Zero;
+        var runStart = _clock.Elapsed;
+        var scheduler = new FixedStepScheduler(_options.SimulationStep, _options.MaximumCatchUpSteps);
+        scheduler.Reset(runStart);
         var targetFrameTime = TimeSpan.FromSeconds(1d / _options.TargetFrameRate);
         var presented = false;
         var quit = false;
@@ -115,19 +121,19 @@ public sealed class SdlIndexedWindowHost : IGameHost
                 break;
             }
 
-            var currentFrameTime = clock.Elapsed;
-            _client.Tick(currentFrameTime - previousFrameTime);
-            _tickCount++;
-            previousFrameTime = currentFrameTime;
+            var frameStart = _clock.Elapsed;
+            var advance = scheduler.AdvanceTo(frameStart, _client.Tick);
+            _tickCount = checked(_tickCount + advance.ExecutedSteps);
             Present(renderer, texture, width, height, rgba);
             presented = true;
 
-            if (_options.MaximumRunTime is { } maximumRunTime && clock.Elapsed >= maximumRunTime)
+            if (_options.MaximumRunTime is { } maximumRunTime &&
+                _clock.Elapsed - runStart >= maximumRunTime)
             {
                 break;
             }
 
-            var remaining = targetFrameTime - (clock.Elapsed - currentFrameTime);
+            var remaining = targetFrameTime - (_clock.Elapsed - frameStart);
             if (remaining > TimeSpan.Zero)
             {
                 SdlNative.SDL_Delay((uint)Math.Floor(remaining.TotalMilliseconds));
