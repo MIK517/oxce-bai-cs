@@ -22,6 +22,10 @@ undefined behavior already present in the reference engine. Compatibility includ
 The initial compatibility corpus must include bundled standard mods plus at least one
 large, script-heavy community mod. Passing only vanilla rules is insufficient.
 
+Loadable C# assemblies are an additional trusted extension mechanism. They do not
+replace or weaken OXCE mod and script compatibility, and an existing OXCE mod must not
+need managed code to retain its reference behavior.
+
 ### Saves
 
 - Read campaign and active-battlescape saves produced by the targeted C++ OXCE branch.
@@ -88,4 +92,3 @@ Create machine-readable or tabular matrices under `docs/compatibility/` during P
 
 Each entry should be `not started`, `partial`, `compatible`, or `intentionally differs`,
 with fixture names and reference source locations.
-

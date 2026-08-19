@@ -11,7 +11,7 @@ change summaries.
 | `src/Engine/FileMap.*` | `Oxce.Mods` | Layered resource catalog, lookup precedence, and provenance |
 | `src/Engine/Script.*`, `ScriptBind.h` and `ScriptRegister` methods | `Oxce.Scripting` | Grammar, VM, types, and binding catalog |
 | `src/Mod/` | `Oxce.Mods` | Rules, resources, mod ordering and merge |
-| `src/Savegame/` persistence methods | `Oxce.Savegames` | Runtime models may be shared with Gameplay through lower-level contracts |
+| `src/Savegame/` persistence methods | `Oxce.Savegames` + `Oxce.Gameplay` | `Savegames` owns the external schema/adapters; `Gameplay` owns runtime state, identities, restoration, and final invariant validation under ADR 0008 |
 | `src/Savegame/SaveConverter.*` | `Oxce.Formats` + `Oxce.Savegames` | Original game binary save import |
 | `src/Basescape/` non-UI logic | `Oxce.Gameplay` | UI/state code belongs in Engine/presentation |
 | `src/Geoscape/` | `Oxce.Gameplay` | Globe presentation splits into Rendering/Engine |

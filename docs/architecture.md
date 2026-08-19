@@ -16,8 +16,8 @@
 | `Oxce.Formats` | YAML compatibility DOM and codecs for original X-COM binary/resource formats |
 | `Oxce.Scripting` | OXCE lexer/parser, type system, compiler/IR, VM, events, bindings infrastructure |
 | `Oxce.Mods` | Mod discovery/order, ruleset composition, typed rules, resource catalog |
-| `Oxce.Savegames` | Save schema, compatible read/write, object/reference reconstruction, migrations |
-| `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution |
+| `Oxce.Savegames` | External save schema, compatible read/write, migrations, unknown-field preservation, and adapters to gameplay-owned capture/restore contracts |
+| `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution, mutable runtime state, invariants, and save-neutral capture/restore contracts |
 | `Oxce.Rendering` | Indexed surfaces, palettes, software primitives, text/layout models, render commands |
 | `Oxce.Engine` | State stack, loop, input abstractions, clocks, orchestration, headless host |
 | `Oxce.Platform.Sdl` | SDL3 native interop, windows, input devices, audio, GPU presentation |
@@ -29,20 +29,20 @@ will inspect, normalize, hash, and compare reference artifacts.
 ## Dependency direction
 
 ```text
-App -> Engine -> Gameplay -> Savegames -> Mods -> Scripting
- |       |          |            |          |        |
- |       +----------+------------+----------+------> Core
- |                                                   ^
- +-> Platform.Sdl -> Rendering ----------------------+ 
-
-Formats -> Core
-Mods -> Formats
-Savegames -> Formats
+App -> Engine -> Gameplay -> Mods -> Scripting -> Core
+App -> Savegames -> Gameplay
+Savegames -> Formats -> Core
+Savegames -> Mods
+App -> Platform.Sdl -> Engine
+Platform.Sdl -> Rendering -> Core
 ```
 
-This is a starting dependency graph, not permission to create cycles. If gameplay
-models needed by saves cause a cycle, move stable contracts/value objects downward or
-introduce narrow interfaces; do not add reciprocal project references.
+`Gameplay` must not reference `Savegames`. `Savegames` is an external adapter that
+references gameplay-owned, save-neutral capture and restoration contracts. The
+application composes the adapter with the simulation. Do not introduce reciprocal
+references or move mutable runtime state into a common persistence-shaped model merely
+to avoid this dependency direction. See
+[ADR 0008](decisions/0008-gameplay-owned-state-and-save-adapters.md).
 
 ## Runtime composition
 
@@ -50,7 +50,8 @@ The application composes four independently testable pipelines:
 
 1. **Content:** locate files -> parse formats -> order mods -> merge rules -> validate.
 2. **Simulation:** input command -> gameplay rule -> state mutation -> events.
-3. **Persistence:** runtime state <-> compatibility save representation <-> YAML.
+3. **Persistence:** gameplay capture/restore contracts <-> compatibility save
+   representation <-> YAML.
 4. **Presentation:** state snapshot -> indexed/software render commands -> SDL output.
 
 The headless host runs the first three without SDL. Compatibility tests should prefer
@@ -61,9 +62,34 @@ this path and use presentation tests only where visibility or decoded graphics m
 - Use explicit stable string IDs for rules and resources.
 - Separate unresolved DTO/node data from validated linked rules.
 - Separate immutable rule definitions from mutable campaign/battle state.
+- Gameplay owns mutable campaign/battle state, its invariants, persistent identities,
+  and the semantic contracts used to capture and restore it.
+- Save adapters own external field names, legacy defaults, versions, migrations,
+  unknown YAML preservation, and atomic file replacement. Raw YAML nodes and
+  serializer concerns do not enter gameplay state.
+- Restoration is staged: parse and bound external data, allocate stable identities,
+  populate values, resolve object/rule references, restore script values, validate the
+  complete graph in gameplay, and only then publish the state.
+- Capture must observe a consistent simulation state. Start with a straightforward
+  snapshot and measure it; large tactical collections may later use segmented visitors
+  or copy-on-write, but persistence must not mutate live state while writing.
 - Resolve cross-references in a dedicated link/validation pass.
 - Represent optional/missing/null distinctly where OXCE does.
 - Keep serialization logic near compatibility DTOs or codecs, not spread through UI.
+
+Do not use reflection, `InternalsVisibleTo`, public setters added for deserialization,
+or partially initialized runtime entities as the persistence boundary. Save loading may
+need restoration operations unavailable to ordinary gameplay commands, but those
+operations remain explicit gameplay APIs and enforce final invariants.
+
+## Managed extensions
+
+Loadable C# assemblies are trusted engine extensions, not a replacement for compatible
+OXCE mods or scripts. Their stable contracts belong in a small, versioned abstractions
+assembly when the first extension slice is implemented. Extensions receive narrow,
+read-only views or snapshots and submit commands through validated gameplay APIs; they
+do not receive mutable runtime entities, persistence DTOs, or YAML nodes. In-process
+assemblies are not a security boundary and must be treated as fully trusted code.
 
 ## Rendering
 
@@ -77,4 +103,3 @@ simulation, but legacy resources and palette-index semantics remain supported.
 Start with self-contained .NET deployments and SDL3 dynamic libraries. Do not make
 Native AOT a Phase 0 requirement. Keep reflection and dynamic-code usage controlled so
 AOT can be evaluated after scripting, YAML, and platform dependencies stabilize.
-

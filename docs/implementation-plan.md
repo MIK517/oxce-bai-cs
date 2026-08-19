@@ -125,12 +125,21 @@ until all of its script bindings and events are implemented.
 
 Deliverables:
 
-- Immutable rules linked to distinct mutable campaign and battle state models.
-- Campaign header and body loading, object IDs/references, mod validation, RNG state,
-  script values, and unknown/version handling.
+- Immutable rules linked to distinct mutable campaign and battle state models owned by
+  `Oxce.Gameplay`; gameplay also owns stable persistent identities and save-neutral
+  capture/restoration contracts.
+- Reverse the bootstrap project dependency so `Oxce.Savegames` adapts to gameplay
+  contracts and `Oxce.Gameplay` has no persistence reference, as required by ADR 0008.
+- Campaign header and body adapters covering object IDs/references, mod validation, RNG
+  state, script values, versions, migrations, and persistence-owned unknown-field
+  sidecars.
+- Staged restoration that validates the complete object/rule/script graph in gameplay
+  before publishing it; no reflection, persistence-only public setters, or partially
+  initialized runtime entities.
 - Stable save writing and atomic/recoverable file replacement.
 - Original UFO/TFTD save import supported by the reference converter.
-- Semantic snapshot and round-trip comparison tooling.
+- Consistent semantic capture plus round-trip comparison tooling. Measure snapshot
+  allocation and latency before adding segmented or copy-on-write tactical capture.
 
 Exit gate:
 
@@ -218,6 +227,8 @@ The following can proceed in parallel after Phase 1 interfaces stabilize:
 
 Gameplay work should be sliced end-to-end across rules, state, scripting, persistence,
 and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
+Each slice uses gameplay-owned capture/restoration contracts and an external save
+adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
@@ -234,3 +245,6 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
 6. Expand typed rule and script inventories alongside those vertical slices. Bounded
    FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
    and the ADR 0007 music decoding/synthesis work remain later-phase work.
+7. Before adding mutable campaign state, reverse the `Gameplay`/`Savegames` project
+   dependency and add the smallest campaign capture/restoration contract needed by the
+   first strategic vertical slice; do not create speculative all-game DTOs.
