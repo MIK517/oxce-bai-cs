@@ -43,6 +43,20 @@ public sealed class VirtualFileCatalogTests
     }
 
     [Fact]
+    public void SameLayerCaseCollisionUsesLastEntryWithoutDuplicatingDirectoryName()
+    {
+        var layer = Layer(
+            "collision",
+            "collision-mod",
+            ("GEOGRAPH/WORLD.DAT", "first-spelling"),
+            ("geograph/world.dat", "last-spelling"));
+
+        Assert.True(layer.TryGet("GeOgRaPh\\WoRlD.dAt", out var winner));
+        Assert.Equal("last-spelling", winner?.SourcePath);
+        Assert.Equal(["world.dat"], layer.List("GEOGRAPH"));
+    }
+
+    [Fact]
     public void DirectoryScanIsDeterministicBoundedAndReadable()
     {
         using var temporary = new TemporaryDirectory();
