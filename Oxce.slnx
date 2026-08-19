@@ -11,6 +11,9 @@
     <Project Path="src/Oxce.Savegames/Oxce.Savegames.csproj" />
     <Project Path="src/Oxce.Scripting/Oxce.Scripting.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/Oxce.Benchmarks/Oxce.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Oxce.CompatibilityTests/Oxce.CompatibilityTests.csproj" />
     <Project Path="tests/Oxce.UnitTests/Oxce.UnitTests.csproj" />

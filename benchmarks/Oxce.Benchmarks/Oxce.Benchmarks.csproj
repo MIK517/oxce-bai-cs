@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Oxce.Engine/Oxce.Engine.csproj" />
+    <ProjectReference Include="../../src/Oxce.Formats/Oxce.Formats.csproj" />
+    <ProjectReference Include="../../src/Oxce.Mods/Oxce.Mods.csproj" />
+    <ProjectReference Include="../../src/Oxce.Rendering/Oxce.Rendering.csproj" />
+  </ItemGroup>
+</Project>

@@ -9,6 +9,10 @@ Phase 2 evidence and explicit playback deferrals are tracked in
 The directory-backed Phase 3 mod-loading foundation and its explicit deferrals are
 tracked in [`phase-3-status.md`](phase-3-status.md).
 
+Controlled optimization measurement is defined in
+[`performance-baselines.md`](performance-baselines.md); CI compiles but does not execute
+the BenchmarkDotNet project.
+
 ## Objective and delivery strategy
 
 Deliver a compatibility-complete .NET 10 engine in executable vertical slices. The C++

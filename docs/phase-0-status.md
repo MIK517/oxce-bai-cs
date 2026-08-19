@@ -24,13 +24,14 @@ matrices.
 - GitHub Actions builds, formats, and tests the repository on hosted Windows, Linux,
   and macOS runners. The first complete matrix passed on 2026-08-11.
 
-## Continuing inventories and deferred baselines
+## Continuing inventories and performance baselines
 
 - Expand broad source inventory candidates into individual rule keys, script APIs,
   save nodes, formats, options, and gameplay scenarios as exact loaders are inspected.
-- Establish meaningful performance baselines when mod loading, tactical pathfinding,
-  AI turns, and indexed drawing operations exist. Recording placeholder timings before
-  those operations exist would provide false assurance.
+- The standalone BenchmarkDotNet suite now measures VFS scanning/catalog construction,
+  path normalization/layered lookup, YAML parsing/mapping lookup, indexed blits/frame
+  conversion, and mixer throughput. See `performance-baselines.md`. Add tactical
+  pathfinding and AI-turn scenarios only when those executable gameplay paths exist.
 
 ## Current exit-gate assessment
 
