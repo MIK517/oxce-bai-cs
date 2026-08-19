@@ -6,6 +6,9 @@ Current bootstrap evidence and remaining gates are tracked in
 Phase 2 evidence and explicit playback deferrals are tracked in
 [`phase-2-status.md`](phase-2-status.md).
 
+The directory-backed Phase 3 mod-loading foundation and its explicit deferrals are
+tracked in [`phase-3-status.md`](phase-3-status.md).
+
 ## Objective and delivery strategy
 
 Deliver a compatibility-complete .NET 10 engine in executable vertical slices. The C++
@@ -85,8 +88,9 @@ Exit gate:
 
 Deliverables:
 
-- Mod metadata discovery, master selection, dependencies/conflicts, activation, ordering,
-  resource overlays, and diagnostics.
+- Mod metadata discovery, master selection, master-chain dependencies, activation,
+  ordering, resource overlays, and diagnostics. OXCE has no general dependency/conflict
+  collections; do not invent a port-specific schema as part of compatibility work.
 - Generic ruleset merge pipeline reproducing OXCE inheritance, replacement, deletion,
   list ordering, and reference resolution.
 - Typed rule objects grouped by vertical slice, starting with interfaces/resources and
@@ -241,8 +245,9 @@ adapter; persistence representations must not become runtime models.
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
 4. Extend the resource browser beyond its compatible geoscape screen, battlescape
    terrain, and cursor preview as later vertical slices need additional asset families.
-5. Begin Phase 3 with mod metadata discovery, activation ordering, dependency/conflict
-   diagnostics, and resource overlays built on the compatible virtual file catalog.
+5. Extend the completed directory-backed Phase 3 loading foundation with ZIP-contained
+   mod discovery, external `loadResources` mapping, persisted activation reconciliation,
+   and engine-version enforcement before starting generic rule merging.
 6. Expand typed rule and script inventories alongside those vertical slices. Bounded
    FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
    and the ADR 0007 music decoding/synthesis work remain later-phase work.
