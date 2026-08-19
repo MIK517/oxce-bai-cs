@@ -50,8 +50,9 @@ Deliverables:
   multiple documents, locations, references/aliases, and deterministic emission.
 - Typed conversion helpers matching OXCE defaults, numeric parsing, enum handling, and
   error reporting.
-- Logging, diagnostics, command-line paths, options foundation, localization primitives,
-  IDs, coordinates, clocks, and injected random sources.
+- Owned structured diagnostics with bounded collection and a standard logging adapter;
+  command-line paths, options foundation, localization primitives, IDs, coordinates,
+  clocks, and injected random sources.
 
 Exit gate:
 
