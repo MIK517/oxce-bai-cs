@@ -2,7 +2,6 @@
   <ItemGroup>
     <ProjectReference Include="../Oxce.Core/Oxce.Core.csproj" />
     <ProjectReference Include="../Oxce.Mods/Oxce.Mods.csproj" />
-    <ProjectReference Include="../Oxce.Savegames/Oxce.Savegames.csproj" />
     <ProjectReference Include="../Oxce.Scripting/Oxce.Scripting.csproj" />
   </ItemGroup>
 </Project>
