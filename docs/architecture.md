@@ -12,7 +12,7 @@
 
 | Project | Responsibility |
 |---|---|
-| `Oxce.Core` | Small shared primitives, identifiers, coordinates, time, diagnostics, randomness abstractions |
+| `Oxce.Core` | Small shared primitives, identifiers, coordinates, time, owned structured diagnostics, randomness abstractions |
 | `Oxce.Formats` | YAML compatibility DOM and codecs for original X-COM binary/resource formats |
 | `Oxce.Scripting` | OXCE lexer/parser, type system, compiler/IR, VM, events, bindings infrastructure |
 | `Oxce.Mods` | Mod discovery/order, ruleset composition, typed rules, resource catalog |
@@ -25,6 +25,11 @@
 
 Tests and tooling are deliberately separate from production code. `Oxce.FixtureTool`
 will inspect, normalize, hash, and compare reference artifacts.
+
+Compatibility-facing code reports owned structured diagnostics through
+`IDiagnosticSink`. Formatting and output providers remain composition concerns;
+`Oxce.Engine` adapts diagnostic events to Microsoft logging without exposing logging
+types to lower projects. See [ADR 0009](decisions/0009-structured-diagnostics-and-logging.md).
 
 ## Dependency direction
 
