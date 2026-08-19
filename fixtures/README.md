@@ -8,6 +8,10 @@ manifest are relative to the repository root and use forward slashes.
 - `manifests/` describes inputs, hashes, normalization, and expected output.
 - `private/` is ignored and reserved for original game data and non-redistributable mods.
 
+`public/mods/load-order` is the redistributable Phase 3 mod-loading fixture. It exercises
+master-chain expansion, active-master filtering, overlay provenance, and descending
+per-mod ruleset order without containing original game or community-mod content.
+
 Manifest schema version 1 is described by `manifest.schema.json`. A C++ oracle fixture
 uses reference kind `cpp-reference` and must record the full reference commit. Fixtures
 used to test the harness itself use `tool-self-test`; they do not claim C++ parity.

@@ -1,0 +1,5 @@
+id: xcom1
+name: Synthetic X-COM Master
+version: 1.2
+isMaster: true
+reservedSpace: 0

@@ -1,0 +1,5 @@
+id: addon
+name: Synthetic Add-on
+master: expansion
+requiredMasterModVersion: 2.0
+version: 1.0

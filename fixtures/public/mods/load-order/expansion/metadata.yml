@@ -1,0 +1,5 @@
+id: expansion
+name: Synthetic Expansion Master
+version: 2.0
+isMaster: true
+master: xcom1
