@@ -76,7 +76,7 @@ public sealed class VirtualFileCatalog
         var result = new VirtualFileEntry?[_layers.Length];
         for (var index = 0; index < _layers.Length; ++index)
         {
-            _layers[index].TryGet(canonicalPath, out result[index]);
+            _layers[index].TryGetCanonical(canonicalPath, out result[index]);
         }
 
         return result;

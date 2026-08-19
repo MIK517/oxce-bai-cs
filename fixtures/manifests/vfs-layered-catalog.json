@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "vfs-layered-catalog",
-  "description": "Compares case-insensitive lookup, layer precedence, vertical slices, directory unions, and ruleset ordering.",
+  "description": "Compares same-layer case-collision behavior, case-insensitive lookup, layer precedence, vertical slices, directory unions, and ruleset ordering.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
