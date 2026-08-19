@@ -8,7 +8,7 @@ change summaries.
 | Reference area | Primary .NET owner | Notes |
 |---|---|---|
 | `src/Engine/Yaml.*`, `CatFile.*`, `GMCat.*` | `Oxce.Formats` | Compatibility adapters and binary/resource codecs |
-| `src/Engine/FileMap.*` | `Oxce.Mods` | Layered resource catalog, lookup precedence, and provenance |
+| `src/Engine/ModInfo.*`, `FileMap.*`, relevant activation code in `Options.cpp` | `Oxce.Mods` | Metadata, master-chain validation/activation, layered resource catalog, ruleset order, lookup precedence, and provenance |
 | `src/Engine/Script.*`, `ScriptBind.h` and `ScriptRegister` methods | `Oxce.Scripting` | Grammar, VM, types, and binding catalog |
 | `src/Mod/` | `Oxce.Mods` | Rules, resources, mod ordering and merge |
 | `src/Savegame/` persistence methods | `Oxce.Savegames` + `Oxce.Gameplay` | `Savegames` owns the external schema/adapters; `Gameplay` owns runtime state, identities, restoration, and final invariant validation under ADR 0008 |
