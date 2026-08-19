@@ -18,7 +18,8 @@ Fixture tests feed external data to one subsystem and compare a stable semantic 
 - YAML input -> normalized node tree, diagnostics, and source locations.
 - Resource file -> dimensions, palette indices, records, links, or decoded sample hash.
 - Script -> tokens, typed IR, diagnostics, execution trace, and final variables.
-- Save -> normalized semantic snapshot -> save -> reload -> equivalent snapshot.
+- Save -> external representation -> staged gameplay restoration -> semantic snapshot
+  -> save through the external adapter -> reload -> equivalent snapshot.
 
 Do not assert emitted whitespace unless the reference parser requires it.
 
@@ -49,6 +50,11 @@ Headless scenarios exercise player-visible flows:
 
 Scenarios compare semantic snapshots: rule IDs, positions, ownership, stats, inventories,
 events, legal actions, and outcomes with random-specific fields masked when appropriate.
+Save scenarios also verify that invalid graphs are never published, stable identities
+survive round trips, forward/cyclic references resolve deliberately, and eligible
+unknown fields remain attached only to surviving entities. These tests cross the
+gameplay-owned capture/restoration boundary defined by ADR 0008; they do not serialize
+runtime objects directly.
 
 ### Presentation tests
 
@@ -67,7 +73,8 @@ macOS dummy-video fallback is diagnostic only and deliberately leaves the job fa
 Fuzz or property-test binary readers, YAML adapters, script parsing, and save loading.
 Set explicit limits for file size, decompression, recursion, collections, and scripts.
 Maintain representative performance budgets for mod loading, save loading, pathfinding,
-AI turns, and frame allocations.
+AI turns, and frame allocations. Measure consistent strategic and tactical snapshot
+latency and allocation before adopting segmented capture, visitors, or copy-on-write.
 
 ## Fixture layout
 
