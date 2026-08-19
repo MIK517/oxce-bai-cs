@@ -96,12 +96,8 @@ public sealed class VirtualFileLayer
         while (pending.Count != 0)
         {
             var current = pending.Pop();
-            var children = Directory.EnumerateFileSystemEntries(current.Path)
-                .Order(StringComparer.Ordinal)
-                .ToArray();
-            for (var index = children.Length - 1; index >= 0; --index)
+            foreach (var child in Directory.EnumerateFileSystemEntries(current.Path))
             {
-                var child = children[index];
                 var attributes = File.GetAttributes(child);
                 if ((attributes & FileAttributes.ReparsePoint) != 0)
                 {
@@ -145,6 +141,9 @@ public sealed class VirtualFileLayer
 
     public bool TryGet(string relativePath, out VirtualFileEntry? entry) =>
         _resources.TryGetValue(VirtualPath.NormalizeFile(relativePath), out entry);
+
+    internal bool TryGetCanonical(string canonicalPath, out VirtualFileEntry? entry) =>
+        _resources.TryGetValue(canonicalPath, out entry);
 
     public IReadOnlyList<string> List(string relativeDirectory)
     {
