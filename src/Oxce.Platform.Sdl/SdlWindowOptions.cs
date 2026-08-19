@@ -6,6 +6,10 @@ public sealed record SdlWindowOptions(string Title)
 
     public int TargetFrameRate { get; init; } = 60;
 
+    public TimeSpan SimulationStep { get; init; } = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / 60);
+
+    public int MaximumCatchUpSteps { get; init; } = 8;
+
     public bool Resizable { get; init; } = true;
 
     public bool ExitOnEscape { get; init; } = true;
@@ -22,6 +26,16 @@ public sealed record SdlWindowOptions(string Title)
         if (TargetFrameRate > 1000)
         {
             throw new ArgumentOutOfRangeException(nameof(TargetFrameRate));
+        }
+
+        if (SimulationStep <= TimeSpan.Zero || SimulationStep > TimeSpan.FromSeconds(1))
+        {
+            throw new ArgumentOutOfRangeException(nameof(SimulationStep));
+        }
+
+        if (MaximumCatchUpSteps is < 1 or > 1024)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaximumCatchUpSteps));
         }
 
         if (MaximumRunTime is { } maximumRunTime)
