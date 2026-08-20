@@ -7,13 +7,30 @@ public static class ModLoadPlanner
 {
     public static ModLoadPlan Create(
         ModCatalog catalog,
+        ModActivationState activationState,
+        ModEngineIdentity engineIdentity,
+        IDiagnosticSink? diagnostics = null)
+    {
+        ArgumentNullException.ThrowIfNull(activationState);
+        return Create(
+            catalog,
+            activationState.Activations,
+            activationState.ActiveMasterId,
+            engineIdentity,
+            diagnostics);
+    }
+
+    public static ModLoadPlan Create(
+        ModCatalog catalog,
         IEnumerable<ModActivation> activations,
         string activeMasterId,
+        ModEngineIdentity engineIdentity,
         IDiagnosticSink? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(activations);
         ArgumentException.ThrowIfNullOrWhiteSpace(activeMasterId);
+        ArgumentNullException.ThrowIfNull(engineIdentity);
         diagnostics ??= NullDiagnosticSink.Instance;
         var ordered = new List<ModCandidate>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -86,13 +103,26 @@ public static class ModLoadPlanner
                     valid = false;
                 }
 
+                if (!engineIdentity.Supports(item.Metadata))
+                {
+                    diagnostics.Report(Diagnostic(
+                        ModDiagnosticCodes.RequiredExtendedEngine,
+                        DiagnosticSeverity.Error,
+                        $"Mod '{item.Metadata.Id}' requires engine '{item.Metadata.RequiredExtendedEngine}' " +
+                        $"version '{item.Metadata.RequiredExtendedVersion}', but the application provides " +
+                        $"'{engineIdentity.Name}' version '{engineIdentity.Version}'.",
+                        item,
+                        item.Metadata.RequiredExtendedEngine));
+                    valid = false;
+                }
+
                 ordered.Add(item);
             }
         }
 
         var groups = ordered.Select(candidate => new ModLoadGroup(
             candidate,
-            Array.AsReadOnly(candidate.Layer.Rulesets
+            Array.AsReadOnly(candidate.Layers.SelectMany(layer => layer.Rulesets)
                 .OrderByDescending(entry => entry.SourcePath, StringComparer.Ordinal)
                 .ToArray())));
         return new ModLoadPlan(groups, valid);
