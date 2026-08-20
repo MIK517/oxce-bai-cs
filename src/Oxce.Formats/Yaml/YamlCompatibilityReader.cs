@@ -51,31 +51,43 @@ public static class YamlCompatibilityReader
         options.Validate();
 
         var fullPath = Path.GetFullPath(path);
-        return Parse(ReadUtf8File(fullPath, options.MaxBytes), fullPath, options);
-    }
-
-    private static string ReadUtf8File(string path, int maxBytes)
-    {
         using var input = new FileStream(
-            path,
+            fullPath,
             FileMode.Open,
             FileAccess.Read,
             FileShare.Read,
             bufferSize: 81920,
             FileOptions.SequentialScan);
-        if (input.Length > maxBytes)
+        return Parse(input, fullPath, options);
+    }
+
+    public static YamlDocumentSet Parse(
+        Stream input,
+        string sourceName,
+        YamlReadOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
+        options ??= new YamlReadOptions();
+        options.Validate();
+        if (!input.CanRead)
         {
-            throw LimitError(path, $"YAML input exceeds the {maxBytes}-byte limit.");
+            throw new ArgumentException("The YAML input stream must be readable.", nameof(input));
         }
 
-        using var output = new MemoryStream(capacity: checked((int)input.Length));
+        if (input.CanSeek && input.Length - input.Position > options.MaxBytes)
+        {
+            throw LimitError(sourceName, $"YAML input exceeds the {options.MaxBytes}-byte limit.");
+        }
+
+        using var output = new MemoryStream();
         var buffer = new byte[81920];
         int read;
         while ((read = input.Read(buffer, 0, buffer.Length)) != 0)
         {
-            if (output.Length + read > maxBytes)
+            if (output.Length + read > options.MaxBytes)
             {
-                throw LimitError(path, $"YAML input exceeds the {maxBytes}-byte limit.");
+                throw LimitError(sourceName, $"YAML input exceeds the {options.MaxBytes}-byte limit.");
             }
 
             output.Write(buffer, 0, read);
@@ -85,11 +97,11 @@ public static class YamlCompatibilityReader
         {
             var yaml = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
                 .GetString(output.GetBuffer(), 0, checked((int)output.Length));
-            return yaml.Length > 0 && yaml[0] == '\uFEFF' ? yaml[1..] : yaml;
+            return Parse(yaml.Length > 0 && yaml[0] == '\uFEFF' ? yaml[1..] : yaml, sourceName, options);
         }
         catch (DecoderFallbackException exception)
         {
-            throw new YamlFormatException("YAML input is not valid UTF-8.", UnknownSpan(path), exception);
+            throw new YamlFormatException("YAML input is not valid UTF-8.", UnknownSpan(sourceName), exception);
         }
     }
 

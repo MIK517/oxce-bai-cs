@@ -26,6 +26,29 @@ public static class ModMetadataReader
         return Read(mapping, modPath, diagnostics);
     }
 
+    public static ModMetadata Read(
+        Stream metadata,
+        string sourceName,
+        string modPath,
+        IDiagnosticSink? diagnostics = null,
+        YamlReadOptions? yamlOptions = null)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(modPath);
+        diagnostics ??= NullDiagnosticSink.Instance;
+        var documents = YamlCompatibilityReader.Parse(metadata, sourceName, yamlOptions);
+        if (documents.Documents.Count == 0 || documents.Documents[0].Root is not YamlMappingNode mapping)
+        {
+            SourceSpan? source = documents.Documents.Count == 0 ? null : documents.Documents[0].Root.Span;
+            throw new YamlFormatException(
+                "Mod metadata root must be a mapping.",
+                source ?? new SourceSpan(sourceName, new SourcePosition(1, 1, 0), new SourcePosition(1, 1, 0)));
+        }
+
+        return Read(mapping, modPath, diagnostics);
+    }
+
     public static ModMetadata Read(YamlMappingNode mapping, string modPath, IDiagnosticSink? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(mapping);

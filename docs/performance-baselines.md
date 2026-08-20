@@ -81,6 +81,12 @@ construction time; converting the already-built mutable catalog would cost more.
 long-lived finalized catalog. Reconsider freezing the resolved catalog first, rather
 than every individual layer.
 
+The Phase 3 lazy ZIP-source implementation was checked against the same directory scan
+workload on 2026-08-20. Its specialized loose-file representation measured 93.74 ms and
+4.38 MB, retaining the item 7 allocation level; ZIP-only state does not enlarge ordinary
+directory entries. Short-run timing remains informational rather than a performance
+gate.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time

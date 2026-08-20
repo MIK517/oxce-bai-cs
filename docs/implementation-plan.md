@@ -249,9 +249,9 @@ adapter; persistence representations must not become runtime models.
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
 4. Extend the resource browser beyond its compatible geoscape screen, battlescape
    terrain, and cursor preview as later vertical slices need additional asset families.
-5. Extend the completed directory-backed Phase 3 loading foundation with ZIP-contained
-   mod discovery, external `loadResources` mapping, persisted activation reconciliation,
-   and engine-version enforcement before starting generic rule merging.
+5. Start the generic ruleset merge pipeline now that directory/ZIP discovery, external
+   `loadResources` mapping, persisted activation reconciliation, and engine-version
+   enforcement complete the Phase 3 mod-loading foundation.
 6. Expand typed rule and script inventories alongside those vertical slices. Bounded
    FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
    and the ADR 0007 music decoding/synthesis work remain later-phase work.

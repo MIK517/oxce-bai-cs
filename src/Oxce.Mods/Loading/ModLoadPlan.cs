@@ -17,5 +17,5 @@ public sealed class ModLoadPlan
 
     public bool IsValid { get; }
 
-    public VirtualFileCatalog CreateVirtualFileCatalog() => new(Groups.Select(group => group.Mod.Layer));
+    public VirtualFileCatalog CreateVirtualFileCatalog() => new(Groups.SelectMany(group => group.Mod.Layers));
 }

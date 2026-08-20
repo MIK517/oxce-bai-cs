@@ -10,7 +10,9 @@ manifest are relative to the repository root and use forward slashes.
 
 `public/mods/load-order` is the redistributable Phase 3 mod-loading fixture. It exercises
 master-chain expansion, active-master filtering, overlay provenance, and descending
-per-mod ruleset order without containing original game or community-mod content.
+per-mod ruleset order without containing original game or community-mod content. Unit
+tests build complementary single-/multi-mod ZIP and external-resource layouts at runtime
+from synthetic text so binary archive artifacts do not need to be retained.
 
 Manifest schema version 1 is described by `manifest.schema.json`. A C++ oracle fixture
 uses reference kind `cpp-reference` and must record the full reference commit. Fixtures

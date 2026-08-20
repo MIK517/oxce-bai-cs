@@ -39,7 +39,7 @@ public sealed class VirtualFileLayer
         {
             ArgumentNullException.ThrowIfNull(source);
             var canonicalPath = VirtualPath.NormalizeFile(source.RelativePath);
-            var entry = new VirtualFileEntry(canonicalPath, source.SourcePath, provenance);
+            var entry = source.CreateEntry(canonicalPath, provenance);
             if (IsRuleset(canonicalPath))
             {
                 if (!ignoreRulesets)
