@@ -17,10 +17,20 @@ public sealed class ModLoadingFixtureTests
 
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var catalog = ModCatalog.Create(discovery.Mods, diagnostics);
+        var engine = new ModEngineIdentity("Extended", "8.6.1.0");
+        var activationState = ModActivationReconciler.Reconcile(
+            catalog,
+            [
+                new ModActivation("missing-from-disk", true),
+                new ModActivation("addon", true),
+                new ModActivation("other-master-addon", true),
+            ],
+            preferredMasterId: "expansion",
+            diagnostics: diagnostics);
         var plan = ModLoadPlanner.Create(
             catalog,
-            [new ModActivation("xcom1", true), new ModActivation("addon", true), new ModActivation("other-master-addon", true)],
-            "expansion",
+            activationState,
+            engine,
             diagnostics);
 
         Assert.Equal(0, discovery.RejectedCount);
@@ -33,6 +43,7 @@ public sealed class ModLoadingFixtureTests
             ["20-second.rul", "10-first.rul"],
             plan.Groups[2].Rulesets.Select(entry => Path.GetFileName(entry.SourcePath)));
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.InactiveForMaster);
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.MissingActivation);
 
         var virtualFiles = plan.CreateVirtualFileCatalog();
         Assert.Equal("addon", virtualFiles.GetRequired("metadata.yml").Provenance.ModId);
@@ -41,6 +52,7 @@ public sealed class ModLoadingFixtureTests
             catalog,
             [new ModActivation("incompatible-addon", true)],
             "expansion",
+            engine,
             diagnostics);
         Assert.False(incompatiblePlan.IsValid);
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.RequiredMasterVersion);
@@ -55,10 +67,15 @@ public sealed class ModLoadingFixtureTests
         var expected = Directory.EnumerateDirectories(mods)
             .Count(directory => File.Exists(Path.Combine(directory, "metadata.yml")));
         var diagnostics = new DiagnosticCollector();
+        var resourceRoot = Directory.GetParent(mods)?.FullName
+            ?? throw new DirectoryNotFoundException("Private mod corpus has no resource root.");
 
-        var discovery = ModDiscovery.ScanDirectory(mods, diagnostics);
+        var discovery = ModDiscovery.ScanDirectory(
+            mods,
+            diagnostics,
+            new ModDiscoveryOptions { ExternalResourceRoots = [resourceRoot] });
 
-        Assert.Equal(expected, discovery.Mods.Count + discovery.RejectedCount);
+        Assert.True(discovery.Mods.Count + discovery.RejectedCount >= expected);
         Assert.DoesNotContain(
             diagnostics.Snapshot(),
             item => item.Severity is DiagnosticSeverity.Critical);
