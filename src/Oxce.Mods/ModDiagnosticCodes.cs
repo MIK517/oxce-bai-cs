@@ -19,4 +19,7 @@ public static class ModDiagnosticCodes
     public const string RequiredExtendedEngine = "OXCE-MOD-0015";
     public const string MultipleActiveMasters = "OXCE-MOD-0016";
     public const string NoAvailableMaster = "OXCE-MOD-0017";
+    public const string DuplicateNewRule = "OXCE-MOD-0018";
+    public const string MissingOverrideRule = "OXCE-MOD-0019";
+    public const string MissingUpdateRule = "OXCE-MOD-0020";
 }

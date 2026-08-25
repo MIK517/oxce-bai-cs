@@ -1,0 +1,6 @@
+items:
+  - delete: ITEM_NEW
+  - type: ITEM_NEW
+    costBuy: 75
+  - override: ITEM_A
+    costBuy: 130
