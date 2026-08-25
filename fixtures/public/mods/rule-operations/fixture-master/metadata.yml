@@ -1,0 +1,5 @@
+id: fixture-master
+name: Named Rule Operation Fixture
+version: 1.0
+isMaster: true
+reservedSpace: 0

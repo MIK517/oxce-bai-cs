@@ -1,0 +1,7 @@
+items:
+  - type: ITEM_A
+    costBuy: 100
+  - type: ITEM_REMOVED
+    costBuy: 25
+  - new: ITEM_NEW
+    costBuy: 50

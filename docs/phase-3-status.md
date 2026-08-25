@@ -41,6 +41,17 @@ every top-level directory with `metadata.yml` in the optional `fixtures/private/
 corpus without committing private mod data. Unit fixtures create bounded single- and
 multi-mod archives and external directory/archive layers at runtime from synthetic text.
 
+The first generic ruleset-composition slice is also implemented. Typed rule families
+register their section name and identity key, and the composer replays the compatible
+file order into an unresolved named-rule registry. It implements ordinary
+update-or-create declarations plus `new`, `override`, `update`, `delete`, and `ignore`,
+preserves reference insertion/deletion ordering, records creation and update provenance,
+rejects conflicting or missing main nodes, requires one mapping document per ruleset,
+and bounds total operations and nested `refNode` mappings. Surviving rules retain their
+ordered YAML operation history so typed loaders—not a speculative generic map merge—own
+property-level semantics. The executable fixture is under
+`fixtures/public/mods/rule-operations`.
+
 Authoritative C++ references inspected for this slice:
 
 - `src/Engine/ModInfo.cpp`: `ModInfo::ModInfo`, `ModInfo::load`,
@@ -52,11 +63,17 @@ Authoritative C++ references inspected for this slice:
 - `src/Engine/CrossPlatform.cpp`: `parseVersion` and `isHigherThanCurrentVersion`.
 - `src/Mod/Mod.cpp`: `Mod::loadAll` and `Mod::loadMod`; the latter sorts each mod's
   rulesets by descending full path immediately before parsing.
+- `src/Mod/Mod.cpp`: `Mod::loadFile`, `Mod::loadRule`, `loadRuleInfoHelper`, and
+  `refNodeTestDeepth` for named-rule dispatch, lifecycle markers, index ordering, soft
+  failures, and the 64-level `refNode` guard.
+- Individual `src/Mod/Rule*.cpp::load` methods, including `RuleItem::load`, confirm that
+  property merging and `refNode` application belong to typed loaders rather than a
+  universal YAML merge.
 
 ## Deliberate remaining Phase 3 work
 
-- Implement generic ruleset parsing/merging, resource configuration, typed rules, and
-  rule linking. The completed mod-loading slice produces their compatible input order.
+- Implement typed property merging, resource configuration, typed rules, and rule
+  linking by replaying the completed unresolved named-rule operation histories.
 
 OXCE metadata does not define general multi-dependency or conflict collections. Its
 compatibility relationship is the single `master` chain plus optional required master

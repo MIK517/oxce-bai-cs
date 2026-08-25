@@ -1,0 +1,9 @@
+items:
+  - update: ITEM_A
+    costBuy: 120
+  - override: ITEM_MISSING
+    costBuy: 999
+  - new: ITEM_A
+    costBuy: 999
+  - delete: ITEM_REMOVED
+  - ignore: UNUSED_ENTRY
