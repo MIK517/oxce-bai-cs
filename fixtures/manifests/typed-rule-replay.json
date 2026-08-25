@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "typed-rule-replay",
+  "description": "Compares family-owned refNode recursion, missing-value preservation, and generic sequence/map replacement across ordered named-rule updates.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "typed-rule-replay-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/mods/typed-rule-replay/fixture/Ruleset/fixture.rul",
+      "size": 310,
+      "sha256": "7d7beb95ff19fb2fed938c9ae109a74dd9fa79808d1f755791d67bf5caacb1f5"
+    },
+    {
+      "path": "fixtures/reference-probes/mods/typed_rule_replay_probe.cpp",
+      "size": 4569,
+      "sha256": "165486ea4282ed7957373a4edc9391eb74144d1d09f2ac2ad0401c1d5cff59bf"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/typed-rule-replay.expected.json"
+}
