@@ -249,9 +249,11 @@ adapter; persistence representations must not become runtime models.
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
 4. Extend the resource browser beyond its compatible geoscape screen, battlescape
    terrain, and cursor preview as later vertical slices need additional asset families.
-5. Implement the first typed interface/resource rule slice by replaying the completed
-   unresolved named-rule histories. Capture that family's scalar, list/map, `refNode`,
-   default, and link behavior from C++ rather than adding a universal YAML map merge.
+5. Implement the typed-loader core before individual rule families: the complete
+   section/identity registry, property-specific history replay, provenance-aware
+   diagnostics, consumed-key auditing, bounds, immutable publication stages, and a
+   normalized dump schema. Continue to capture scalar, list/map, `refNode`, default,
+   and link behavior from C++ rather than adding a universal YAML map merge.
 6. Expand typed rule and script inventories alongside those vertical slices. Bounded
    FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
    and the ADR 0007 music decoding/synthesis work remain later-phase work.

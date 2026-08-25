@@ -72,8 +72,24 @@ Authoritative C++ references inspected for this slice:
 
 ## Deliberate remaining Phase 3 work
 
-- Implement typed property merging, resource configuration, typed rules, and rule
-  linking by replaying the completed unresolved named-rule operation histories.
+Phase 3 closes through four explicit gates rather than treating metadata discovery as
+a fully loaded mod:
+
+1. **Typed loading infrastructure:** register every supported section and identity
+   key, replay property-specific inheritance from unresolved operation histories,
+   retain source provenance, diagnose unconsumed keys, and bound typed loading.
+2. **Typed content:** implement resource/interface/localization, campaign-start,
+   strategic, tactical, terrain/deployment, mission/event, and global rule families.
+3. **Link and resource resolution:** publish immutable rule catalogs only after the
+   reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
+   complete. Resource declarations remain platform-neutral descriptors.
+4. **Corpus closure:** compare normalized typed-rule dumps, load the bundled standard
+   mods, and audit at least one large script-heavy private mod with stable manifests.
+
+Content loading reports distinct `composed`, `typed`, `linked`,
+`resources-resolved`, and `scripts-compiled` capabilities. Phase 3 must preserve and
+diagnose script-bearing nodes without silently claiming that they compile; compatible
+script compilation and execution remain the Phase 4 gate.
 
 OXCE metadata does not define general multi-dependency or conflict collections. Its
 compatibility relationship is the single `master` chain plus optional required master
