@@ -14,6 +14,12 @@ public static class RulesetComposer
 
     public static UnresolvedRuleCatalog Compose(
         ModLoadPlan plan,
+        IDiagnosticSink? diagnostics = null,
+        RulesetCompositionOptions? options = null) =>
+        Compose(plan, RuleSectionRegistry.NamedRuleSections, diagnostics, options);
+
+    public static UnresolvedRuleCatalog Compose(
+        ModLoadPlan plan,
         IEnumerable<RuleSectionDefinition> sections,
         IDiagnosticSink? diagnostics = null,
         RulesetCompositionOptions? options = null)

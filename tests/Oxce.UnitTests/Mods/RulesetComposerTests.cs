@@ -118,6 +118,27 @@ public sealed class RulesetComposerTests
         Assert.Throws<YamlFormatException>(() => Compose("items: [{type: A}, {type: B}]", options: options));
     }
 
+    [Fact]
+    public void DefaultCompositionUsesTheCompleteNamedSectionRegistry()
+    {
+        using var fixture = new TemporaryRulesetMod("items: [{type: ITEM_A}]\nmusics: [{type: MUSIC_A}]");
+        var discovery = ModDiscovery.ScanDirectory(fixture.Root);
+        var catalog = ModCatalog.Create(discovery.Mods);
+        var plan = ModLoadPlanner.Create(
+            catalog,
+            [new ModActivation("fixture", true)],
+            "fixture",
+            new ModEngineIdentity("Extended", "8.6.1.0"));
+
+        var rules = RulesetComposer.Compose(plan);
+
+        Assert.Equal(RuleSectionRegistry.NamedRuleSections.Count, rules.Sections.Count);
+        Assert.True(rules.TryGetSection("items", out var items));
+        Assert.Equal("ITEM_A", Assert.Single(items!.Rules).Id);
+        Assert.True(rules.TryGetSection("musics", out var musics));
+        Assert.Equal("MUSIC_A", Assert.Single(musics!.Rules).Id);
+    }
+
     private static UnresolvedRuleCatalog Compose(
         string yaml,
         IDiagnosticSink? diagnostics = null,

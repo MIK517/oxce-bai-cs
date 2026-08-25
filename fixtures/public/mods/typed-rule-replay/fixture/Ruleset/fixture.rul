@@ -1,0 +1,16 @@
+probeRules:
+  - type: RULE_A
+    refNode:
+      label: inherited
+      value: 10
+      values: [1, 2]
+      mapping: {zeta: 9}
+    value: 20
+    mapping: {alpha: 1, beta: 2}
+    script: "return 1;"
+  - update: RULE_A
+    enabled: true
+    values: [3]
+    mapping: {gamma: 4}
+  - type: RULE_B
+    label: direct
