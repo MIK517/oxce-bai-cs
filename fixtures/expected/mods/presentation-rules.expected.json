@@ -1,0 +1,44 @@
+{
+  "interface": {
+    "button": {
+      "color": 3,
+      "height": 20,
+      "tftdMode": true,
+      "width": 10,
+      "x": 1,
+      "y": 2
+    },
+    "palette": "PAL_NEW"
+  },
+  "music": {
+    "catalogPosition": 2147483647,
+    "normalization": 0.5,
+    "resolvedName": "TRACK"
+  },
+  "sprite": {
+    "file": "Resources/b.png",
+    "height": 200,
+    "singleImage": true,
+    "width": 320
+  },
+  "strings": {
+    "STR_COUNT_one": "Singular",
+    "STR_COUNT_other": "Plural",
+    "STR_ONE": "Replaced"
+  },
+  "video": {
+    "slide": {
+      "color": 2147483647,
+      "height": 200,
+      "width": 320,
+      "x": 0,
+      "y": 0
+    },
+    "useUfoAudioSequence": false,
+    "videos": [
+      "A.FLC",
+      "B.FLC"
+    ],
+    "winGame": true
+  }
+}
