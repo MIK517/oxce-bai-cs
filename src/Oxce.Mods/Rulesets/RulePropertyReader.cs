@@ -74,6 +74,9 @@ public sealed class RulePropertyReader
     public int ReadInt32(string key, int defaultValue) =>
         TryGet(key, out var node) ? YamlValueReader.ReadInt32(node!) : defaultValue;
 
+    public float ReadSingle(string key, float defaultValue) =>
+        TryGet(key, out var node) ? YamlValueReader.ReadSingle(node!) : defaultValue;
+
     public bool ReadBoolean(string key, bool defaultValue) =>
         TryGet(key, out var node) ? YamlValueReader.ReadBoolean(node!) : defaultValue;
 
