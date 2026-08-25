@@ -1,0 +1,27 @@
+{
+  "rules": [
+    {
+      "enabled": true,
+      "id": "RULE_A",
+      "label": "inherited",
+      "mapping": [
+        [
+          "gamma",
+          4
+        ]
+      ],
+      "value": 20,
+      "values": [
+        3
+      ]
+    },
+    {
+      "enabled": false,
+      "id": "RULE_B",
+      "label": "direct",
+      "mapping": [],
+      "value": 0,
+      "values": []
+    }
+  ]
+}

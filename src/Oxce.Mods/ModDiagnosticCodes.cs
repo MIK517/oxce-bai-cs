@@ -22,4 +22,6 @@ public static class ModDiagnosticCodes
     public const string DuplicateNewRule = "OXCE-MOD-0018";
     public const string MissingOverrideRule = "OXCE-MOD-0019";
     public const string MissingUpdateRule = "OXCE-MOD-0020";
+    public const string UnconsumedRuleProperty = "OXCE-MOD-0021";
+    public const string DeferredRuleProperty = "OXCE-MOD-0022";
 }

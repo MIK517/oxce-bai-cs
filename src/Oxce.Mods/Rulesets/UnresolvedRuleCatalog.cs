@@ -63,6 +63,7 @@ public sealed class UnresolvedRuleSection
 public sealed class UnresolvedRuleCatalog
 {
     private readonly ReadOnlyDictionary<string, UnresolvedRuleSection> _byName;
+    private readonly ContentLoadCapabilities _capabilities;
 
     internal UnresolvedRuleCatalog(IEnumerable<UnresolvedRuleSection> sections)
     {
@@ -70,9 +71,12 @@ public sealed class UnresolvedRuleCatalog
         Sections = new ReadOnlyCollection<UnresolvedRuleSection>(ordered);
         _byName = new ReadOnlyDictionary<string, UnresolvedRuleSection>(
             ordered.ToDictionary(section => section.Definition.Name, StringComparer.Ordinal));
+        _capabilities = ContentLoadCapabilities.Composed;
     }
 
     public IReadOnlyList<UnresolvedRuleSection> Sections { get; }
+
+    public ContentLoadCapabilities Capabilities => _capabilities;
 
     public bool TryGetSection(string name, out UnresolvedRuleSection? section)
     {
