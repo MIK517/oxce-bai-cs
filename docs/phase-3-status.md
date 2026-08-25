@@ -70,14 +70,46 @@ Authoritative C++ references inspected for this slice:
   property merging and `refNode` application belong to typed loaders rather than a
   universal YAML merge.
 
+## Typed-loader core
+
+The typed-loader core is implemented. Its central registry matches all 38 C++
+`loadRule`-dispatched sections and separately classifies the eight non-generic special
+sections by replacement, merge, append, or append/delete behavior. The default ruleset
+composer uses that registry while still allowing isolated synthetic families in tests.
+
+Typed family loaders replay surviving rule operations in source order, create immutable
+ordered sections with creation/last-update provenance, and require each family to opt
+into `refNode` recursion exactly where its C++ loader does. Property readers preserve
+missing-value defaults, expose the owned YAML conversions, bound input property nodes,
+report unconsumed keys as errors, and distinguish deliberately deferred script fields
+with their own structured diagnostic. Composed and typed capabilities are reported
+separately; later slices advance linking, resource resolution, and script compilation.
+
+`Oxce.FixtureTool dump-rules` emits a bounded, deterministic `composed`-stage JSON dump
+with section identities, rule order, operation kinds, semantic YAML nodes, and normalized
+source provenance. The `typed-rule-replay` fixture captures family-owned recursive
+inheritance plus scalar preservation and sequence/map replacement from the pinned C++
+reference. It is intentionally a loader-contract fixture rather than the first concrete
+game rule family.
+
+Additional authoritative C++ references inspected for this slice:
+
+- `src/Mod/Mod.cpp`: `Mod::loadResourceConfigFile`, `Mod::loadFile`, and `Mod::loadRule`
+  for the complete section registry, identity keys, lifecycle dispatch, and operation
+  order.
+- `src/Mod/RuleItemCategory.cpp`: `RuleItemCategory::load` for family-owned recursive
+  `refNode` application, missing-value preservation, and property replacement.
+- `src/Engine/Yaml.h` and the pinned rapidyaml integration for generic scalar,
+  sequence, and map reads used by the executable oracle probe.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
 a fully loaded mod:
 
-1. **Typed loading infrastructure:** register every supported section and identity
-   key, replay property-specific inheritance from unresolved operation histories,
-   retain source provenance, diagnose unconsumed keys, and bound typed loading.
+1. **Typed loading infrastructure (foundation complete):** extend the core with each
+   concrete family's property contract while retaining source provenance, explicit
+   consumed/deferred keys, and bounded typed loading.
 2. **Typed content:** implement resource/interface/localization, campaign-start,
    strategic, tactical, terrain/deployment, mission/event, and global rule families.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
