@@ -1,0 +1,39 @@
+interfaces:
+  - type: IFACE
+    refNode:
+      palette: PAL_OLD
+      elements:
+        - id: button
+          pos: [1, 2]
+          color: 3
+    palette: PAL_NEW
+    elements:
+      - id: button
+        size: [10, 20]
+        TFTDMode: true
+musics:
+  - type: TRACK
+  - update: TRACK
+    normalization: 0.5
+cutscenes:
+  - type: winGame
+    useUfoAudioSequence: true
+    videos: [A.FLC]
+    slideshow:
+      slides:
+        - imagePath: Resources/slide.png
+  - update: winGame
+    videos: [B.FLC]
+extraStrings:
+  - type: en-US
+    strings:
+      STR_ONE: One
+      STR_COUNT: {one: Singular, other: Plural}
+  - type: en-US
+    strings: {STR_ONE: Replaced}
+extraSprites:
+  - type: SET
+    files: {0: Resources/a.png}
+  - delete: SET
+  - typeSingle: SET
+    fileSingle: Resources/b.png

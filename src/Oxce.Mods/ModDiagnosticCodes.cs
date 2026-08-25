@@ -24,4 +24,5 @@ public static class ModDiagnosticCodes
     public const string MissingUpdateRule = "OXCE-MOD-0020";
     public const string UnconsumedRuleProperty = "OXCE-MOD-0021";
     public const string DeferredRuleProperty = "OXCE-MOD-0022";
+    public const string MissingDeclaredResource = "OXCE-MOD-0023";
 }

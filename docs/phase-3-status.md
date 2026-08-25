@@ -102,6 +102,52 @@ Additional authoritative C++ references inspected for this slice:
 - `src/Engine/Yaml.h` and the pinned rapidyaml integration for generic scalar,
   sequence, and map reads used by the executable oracle probe.
 
+## Presentation and resource declarations
+
+The first concrete typed-content slice is implemented. It loads immutable interface,
+music, sound-definition, custom-palette, and cutscene rules with their reference
+defaults and family-specific incremental behavior. Interface `refNode` recursion and
+element-by-ID updates are owned by the interface loader; music fields preserve missing
+values; sound ranges and sound lists append; palette maps replace; and cutscene video,
+audio, and slide lists append while `useUfoAudioSequence` resets on every operation as
+in the reference engine.
+
+The special `extraStrings`, `extraSprites`, and `extraSounds` sections are also composed.
+Plural strings flatten to suffixed keys and later language entries overlay earlier
+values. Sprite declarations retain per-mod provenance, legacy `typeSingle`/`fileSingle`
+defaults, append by type, and delete a type's accumulated declaration list. Sound
+declarations append with provenance. Explicit sprite, sound, palette, and sound-catalog
+paths can be checked against the platform-neutral virtual-file catalog with structured
+missing-resource diagnostics.
+
+Metadata-selected resource-configuration rulesets are also replayed into a separate
+preload sound-definition view before the complete ruleset view. This preserves the
+reference distinction needed to configure original CAT loading without hiding the
+file's later ordinary ruleset replay.
+
+This slice deliberately does not claim the linked or resources-resolved capability.
+Interface sound references preserve scalar or `{index, mod}` ownership, but their final
+offset depends on the target sound set's shared range plus each mod's reserved offset.
+That calculation and decoded resource publication belong to the reference-ordered link
+and resource pass after the remaining set declarations exist.
+
+The executable `presentation-rules` fixture was captured from the pinned C++ YAML
+semantics. It covers recursive interface element merge, music defaults, cutscene
+append/reset behavior, plural-string flattening, and sprite delete/re-add defaults.
+
+Additional authoritative C++ references inspected for this slice:
+
+- `src/Mod/RuleInterface.cpp` and `.h` for recursive inheritance, element defaults and
+  merge behavior, background/music fields, and `GEO.CAT` sound references.
+- `src/Mod/RuleMusic.cpp`, `RuleVideo.cpp`, `SoundDefinition.cpp`, and
+  `CustomPalettes.cpp` for defaults and append/replacement behavior.
+- `src/Mod/ExtraStrings.cpp`, `ExtraSprites.cpp`, and `ExtraSounds.cpp` for special
+  section composition, legacy aliases, file/folder declarations, and mod ownership.
+- `src/Mod/Mod.cpp`: `loadOffsetNode`, `loadSpriteOffset`, `loadSoundOffset`,
+  `loadResourceConfigFile`, and `loadExtraResources` for offset validation and resource
+  load ordering.
+- `src/Language/Language.cpp`: `Language::loadRule` for language-specific overlay.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
@@ -110,8 +156,9 @@ a fully loaded mod:
 1. **Typed loading infrastructure (foundation complete):** extend the core with each
    concrete family's property contract while retaining source provenance, explicit
    consumed/deferred keys, and bounded typed loading.
-2. **Typed content:** implement resource/interface/localization, campaign-start,
-   strategic, tactical, terrain/deployment, mission/event, and global rule families.
+2. **Typed content:** resource/interface/localization declarations are complete;
+   campaign-start, strategic, tactical, terrain/deployment, mission/event, and global
+   rule families remain.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
    reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
    complete. Resource declarations remain platform-neutral descriptors.
