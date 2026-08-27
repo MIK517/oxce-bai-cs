@@ -1,0 +1,47 @@
+{
+  "category": [
+    200,
+    true,
+    ["RIGHT_HAND", "LEFT_HAND"]
+  ],
+  "craft": [
+    200,
+    4,
+    1,
+    900,
+    2,
+    1,
+    "CRAFT_WEAPON"
+  ],
+  "craftWeapon": [
+    "LAUNCHER",
+    "CLIP",
+    40,
+    10,
+    5,
+    6
+  ],
+  "manufacture": [
+    100,
+    5,
+    1,
+    2,
+    1
+  ],
+  "research": [
+    200,
+    0,
+    1,
+    {
+      "EVENT_B": 1,
+      "EVENT_C": 3
+    }
+  ],
+  "shortcut": "PRODUCT",
+  "ufo": [
+    "STR_MEDIUM_UC",
+    7,
+    1500
+  ],
+  "weaponSetCount": 1
+}
