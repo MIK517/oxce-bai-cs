@@ -17,6 +17,8 @@ public abstract class TypedRuleFamilyLoader<TBuilder, TRule>
 
     protected abstract TBuilder Create(string id);
 
+    protected virtual TBuilder Create(UnresolvedRule rule) => Create(rule.Id);
+
     protected abstract void Apply(TBuilder builder, RulePropertyReader reader);
 
     protected abstract TRule Freeze(TBuilder builder);
@@ -42,7 +44,7 @@ public abstract class TypedRuleFamilyLoader<TBuilder, TRule>
         var rules = new List<TypedRule<TRule>>(unresolved.Rules.Count);
         foreach (var unresolvedRule in unresolved.Rules)
         {
-            var builder = Create(unresolvedRule.Id);
+            var builder = Create(unresolvedRule);
             var deferredProperties = new List<DeferredRuleProperty>();
             foreach (var operation in unresolvedRule.Operations)
             {

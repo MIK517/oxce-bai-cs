@@ -139,6 +139,22 @@ public sealed class RulesetComposerTests
         Assert.Equal("MUSIC_A", Assert.Single(musics!.Rules).Id);
     }
 
+    [Fact]
+    public void CreationOrdinalRetainsGapsLeftByDeletedRules()
+    {
+        const string yaml = """
+            items:
+              - type: A
+              - type: B
+              - delete: A
+              - type: C
+            """;
+
+        var rules = Compose(yaml);
+
+        Assert.Equal([1, 2], Assert.Single(rules.Sections).Rules.Select(rule => rule.CreationOrdinal));
+    }
+
     private static UnresolvedRuleCatalog Compose(
         string yaml,
         IDiagnosticSink? diagnostics = null,
