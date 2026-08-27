@@ -1,0 +1,48 @@
+itemCategories:
+  - type: DELETED_CATEGORY
+  - type: CATEGORY
+    invOrder: [RIGHT_HAND]
+weaponSets:
+  - type: SET
+    weapons: [LAUNCHER]
+items:
+  - type: LAUNCHER
+  - type: CLIP
+    clipSize: 5
+  - type: PRODUCT
+craftWeapons:
+  - type: CRAFT_WEAPON
+    launcher: LAUNCHER
+    clip: CLIP
+    damage: 40
+    ammoMax: 10
+    rearmRate: 5
+    projectileSpeed: 6
+crafts:
+  - type: DELETED_CRAFT
+  - type: CRAFT
+    soldiers: 4
+    vehicles: 1
+    weaponTypes: [2, [1, 2]]
+    fixedWeapons: [CRAFT_WEAPON]
+ufos:
+  - type: UFO
+    size: STR_MEDIUM
+    blobSize: 9
+    speedMax: 1500
+research:
+  - name: RES_A
+    cost: 10
+  - name: RES_B
+    requires: [RES_A]
+    events: {EVENT_A: 2, EVENT_B: 1}
+manufacture:
+  - name: PRODUCT
+    time: 5
+    requires: [RES_A]
+    requiredItems: {CLIP: 1}
+    producedItems: {PRODUCT: 1}
+manufactureShortcut:
+  - name: PRODUCT_ALT
+    startFrom: PRODUCT
+    breakDownItems: [PRODUCT]
