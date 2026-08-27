@@ -1,0 +1,15 @@
+itemCategories:
+  - delete: DELETED_CATEGORY
+  - update: CATEGORY
+    hidden: true
+    invOrder: !add [LEFT_HAND]
+crafts:
+  - delete: DELETED_CRAFT
+  - update: CRAFT
+    radarRange: 900
+research:
+  - update: RES_B
+    events: {EVENT_A: 0, EVENT_C: 3}
+manufacture:
+  - update: PRODUCT
+    requiredItems: !add {LAUNCHER: 2}
