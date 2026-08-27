@@ -99,6 +99,20 @@ public sealed class TypedRuleFamilyLoaderTests
     }
 
     [Fact]
+    public void FamilyCanPreserveAllRemainingDynamicProperties()
+    {
+        const string yaml = "probeRules: [{type: RULE_A, dynamicScriptValue: 7}]";
+        var diagnostics = new DiagnosticCollector();
+        using var fixture = new TemporaryRulesetMod(yaml);
+        var unresolved = Compose(fixture.Root, ProbeSection, diagnostics);
+
+        var typed = new DynamicProbeLoader().Load(Assert.Single(unresolved.Sections), diagnostics);
+
+        Assert.Equal("dynamicScriptValue", Assert.Single(Assert.Single(typed.Rules).DeferredProperties).Key);
+        Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.UnconsumedRuleProperty);
+    }
+
+    [Fact]
     public void LoaderRejectsASectionWithDifferentIdentityContract()
     {
         using var fixture = new TemporaryRulesetMod("wrong: [{id: A}]");
@@ -191,6 +205,16 @@ public sealed class TypedRuleFamilyLoaderTests
         bool Enabled,
         IReadOnlyList<int> Values,
         int NestedValue);
+
+    private sealed class DynamicProbeLoader : TypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
+    {
+        public DynamicProbeLoader() : base(ProbeSection) { }
+        protected override ProbeBuilder Create(string id) => new(id);
+        protected override void Apply(ProbeBuilder builder, RulePropertyReader reader) =>
+            reader.DeferRemaining("dynamic script values require Phase 4 registration");
+        protected override ProbeRule Freeze(ProbeBuilder builder) =>
+            new(builder.Id, builder.Label, builder.Value, builder.Enabled, builder.Values, builder.NestedValue);
+    }
 
     private sealed class TemporaryRulesetMod : IDisposable
     {

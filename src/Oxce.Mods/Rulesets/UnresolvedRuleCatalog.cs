@@ -21,13 +21,16 @@ public sealed record UnresolvedRuleOperation(
 
 public sealed class UnresolvedRule
 {
-    internal UnresolvedRule(string id, IEnumerable<UnresolvedRuleOperation> operations)
+    internal UnresolvedRule(string id, int creationOrdinal, IEnumerable<UnresolvedRuleOperation> operations)
     {
         Id = id;
+        CreationOrdinal = creationOrdinal;
         Operations = new ReadOnlyCollection<UnresolvedRuleOperation>(operations.ToArray());
     }
 
     public string Id { get; }
+
+    public int CreationOrdinal { get; }
 
     public IReadOnlyList<UnresolvedRuleOperation> Operations { get; }
 

@@ -1,0 +1,20 @@
+countries:
+  - type: COUNTRY
+    fundingBase: 100
+    labelLon: 180
+    areas: [[10, 20, 30, -30]]
+regions:
+  - type: REGION
+    areas: [[0, 30, -10, 10]]
+    missionWeights: {MISSION_A: 5, MISSION_B: 2}
+facilities:
+  - type: DELETED
+  - type: FACILITY
+    size: 2
+    mapName: MAP_A
+    buildCostItems: {ITEM_A: {build: 2}}
+startingBase:
+  facilities: [A]
+  crafts: [C]
+startingTime: {year: 2000, hour: 8}
+initialFunding: 6000
