@@ -1,0 +1,47 @@
+{
+  "country": {
+    "areaCount": 2,
+    "fundingBase": 100,
+    "fundingCap": 500,
+    "labelLongitude": 3.1415926535897931
+  },
+  "facilities": [
+    [
+      "FACILITY",
+      200,
+      2,
+      2
+    ],
+    [
+      "FACILITY_C",
+      300,
+      1,
+      1
+    ]
+  ],
+  "region": {
+    "areaCount": 1,
+    "missionWeights": {
+      "MISSION_B": 2,
+      "MISSION_C": 3
+    }
+  },
+  "settings": {
+    "baseCraft": "C",
+    "baseFacility": "B",
+    "initialFunding": 6000,
+    "startingTime": [
+      6,
+      1,
+      1,
+      2000,
+      8,
+      30,
+      0
+    ],
+    "transferCosts": [
+      3,
+      2
+    ]
+  }
+}

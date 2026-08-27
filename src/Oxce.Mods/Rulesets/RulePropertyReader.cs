@@ -165,6 +165,29 @@ public sealed class RulePropertyReader
         return true;
     }
 
+    public void DeferRemaining(string reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        EnsureOpen();
+        foreach (var entry in _node.Entries)
+        {
+            var key = entry.ScalarKey;
+            if (key is null || _consumed.Contains(key))
+            {
+                continue;
+            }
+
+            _consumed.Add(key);
+            _deferredProperties.Add(new DeferredRuleProperty(key, entry.Value, reason, _source));
+            _diagnostics.Report(new DiagnosticEvent(
+                ModDiagnosticCodes.DeferredRuleProperty,
+                DiagnosticSeverity.Warning,
+                $"Rule property '{key}' is preserved but deferred: {reason}",
+                entry.Key.Span,
+                Context()));
+        }
+    }
+
     internal void Complete()
     {
         EnsureOpen();
