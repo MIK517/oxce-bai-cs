@@ -1,0 +1,5 @@
+id: fixture
+name: Campaign Start Rules Fixture
+version: 1.0
+isMaster: true
+reservedSpace: 1000

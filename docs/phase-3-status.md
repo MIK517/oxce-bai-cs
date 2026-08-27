@@ -148,6 +148,58 @@ Additional authoritative C++ references inspected for this slice:
   load ordering.
 - `src/Language/Language.cpp`: `Language::loadRule` for language-specific overlay.
 
+## Campaign-start rules
+
+The campaign-start typed slice is implemented for countries, extra globe labels,
+regions, and base facilities. Geographic degrees are converted to radians at load time,
+inverted latitude bounds are normalized, country and region area append/reset behavior
+is retained, mission zones replace as a collection, and mission weights update by key
+with zero removing an entry. Country script nodes and dynamically registered script
+values are retained as explicit Phase 4 deferrals rather than discarded.
+
+Facilities retain reference constructor defaults, recursive `refNode` application,
+legacy `size`, editable `!add`/`!remove` name collections, mod-owned sprite and sound
+references, incremental build/refund item costs, creation-derived `listOrder`, storage
+and craft positions, replacement relationships, and other campaign-visible capacity and
+cost fields. Creation ordinals now live in the generic unresolved rule model, including
+gaps left by deleted rules; this also supplies compatible default ordering to later
+craft, item, armor, research, and manufacture loaders. Facility vertical map-level
+definitions are preserved with an explicit deferral to the terrain/deployment slice.
+
+Starting-base templates are preserved as immutable YAML mappings and use the reference
+shallow overlay: keys in a later template replace earlier values while missing top-level
+keys are inherited. Difficulty-specific templates fall back to the default. Starting
+time, difficulty, funding, personnel costs and timing, transfer-cost factors, campaign
+research gates, base-function requirements, defeat thresholds, and base/operation name
+parts retain their reference defaults and per-file updates.
+
+Internal facility validation reports missing replacement/build-over references,
+destroyed-facility size mismatches, invalid replacement layouts, missing map names,
+out-of-area storage tiles, missing global destroyed-facility references, and the
+128-name base-function limit with source provenance where available. This catalog stays
+at the typed capability: event, research, item, sprite, and sound targets cannot be fully
+linked until their owning slices are loaded.
+
+The executable `campaign-start-rules` fixture covers geographic conversion and merge,
+weighted mission updates, deleted-rule ordering gaps, facility defaults, shallow
+starting-base overlay, and partial starting-time/global updates against the pinned C++
+reference semantics.
+
+Additional authoritative C++ references inspected for this slice:
+
+- `src/Mod/RuleCountry.cpp` and `.h` for country/globe-label defaults, areas, base
+  functions, event links, and script envelopes.
+- `src/Mod/RuleRegion.cpp` and `.h`, plus `src/Savegame/WeightedOptions.cpp`, for area
+  reset, mission-zone conversion, mission weights, and region selection values.
+- `src/Mod/RuleBaseFacility.cpp` and `.h`, plus `src/Mod/MapScript.h`, for facility
+  defaults, editable properties, incremental costs, derived ordering, and after-load
+  validation.
+- `src/Mod/Mod.cpp`: `RuleListOrderedFactory`, `loadBaseFunction`, `loadNames`,
+  `loadUnorderedNames`, the global `loadFile` campaign fields, and new-game setup.
+- `src/Engine/Yaml.cpp`: `YamlNodeReader::emitDescendants` for shallow template overlay.
+- `src/Savegame/GameTime.cpp` and `src/Menu/NewGameState.cpp` for starting-time defaults
+  and difficulty-specific starting-base selection.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
@@ -156,9 +208,9 @@ a fully loaded mod:
 1. **Typed loading infrastructure (foundation complete):** extend the core with each
    concrete family's property contract while retaining source provenance, explicit
    consumed/deferred keys, and bounded typed loading.
-2. **Typed content:** resource/interface/localization declarations are complete;
-   campaign-start, strategic, tactical, terrain/deployment, mission/event, and global
-   rule families remain.
+2. **Typed content:** resource/interface/localization and campaign-start declarations
+   are complete; strategic, tactical, terrain/deployment, mission/event, and remaining
+   global rule families remain.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
    reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
    complete. Resource declarations remain platform-neutral descriptors.

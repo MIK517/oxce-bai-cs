@@ -1,0 +1,17 @@
+countries:
+  - update: COUNTRY
+    fundingCap: 500
+    areas: [[350, 10, -20, 20]]
+regions:
+  - update: REGION
+    deleteOldAreas: true
+    areas: [[30, 60, -20, 20]]
+    missionWeights: {MISSION_A: 0, MISSION_C: 3}
+facilities:
+  - delete: DELETED
+  - type: FACILITY_C
+    mapName: MAP_C
+startingBase:
+  facilities: [B]
+startingTime: {minute: 30}
+transferCosts: {globalCostMult: 3, globalCostDiv: 2}

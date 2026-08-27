@@ -262,6 +262,7 @@ public static class RulesetComposer
     {
         private readonly Dictionary<string, MutableRule> _byId = new(StringComparer.Ordinal);
         private readonly List<MutableRule> _ordered = [];
+        private int _nextCreationOrdinal;
 
         public SectionState(RuleSectionDefinition definition) => Definition = definition;
 
@@ -269,7 +270,7 @@ public static class RulesetComposer
 
         public void Add(string id, UnresolvedRuleOperation operation)
         {
-            var rule = new MutableRule(id, operation);
+            var rule = new MutableRule(id, _nextCreationOrdinal++, operation);
             _byId.Add(id, rule);
             _ordered.Add(rule);
         }
@@ -288,18 +289,21 @@ public static class RulesetComposer
 
         public UnresolvedRuleSection Freeze() => new(
             Definition,
-            _ordered.Select(rule => new UnresolvedRule(rule.Id, rule.Operations)));
+            _ordered.Select(rule => new UnresolvedRule(rule.Id, rule.CreationOrdinal, rule.Operations)));
     }
 
     private sealed class MutableRule
     {
-        public MutableRule(string id, UnresolvedRuleOperation operation)
+        public MutableRule(string id, int creationOrdinal, UnresolvedRuleOperation operation)
         {
             Id = id;
+            CreationOrdinal = creationOrdinal;
             Operations = [operation];
         }
 
         public string Id { get; }
+
+        public int CreationOrdinal { get; }
 
         public List<UnresolvedRuleOperation> Operations { get; }
     }
