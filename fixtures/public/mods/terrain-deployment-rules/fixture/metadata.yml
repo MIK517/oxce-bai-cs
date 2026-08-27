@@ -1,0 +1,5 @@
+id: fixture
+name: Terrain deployment fixture
+version: 1.0
+isMaster: true
+reservedSpace: 1000
