@@ -200,6 +200,50 @@ Additional authoritative C++ references inspected for this slice:
 - `src/Savegame/GameTime.cpp` and `src/Menu/NewGameState.cpp` for starting-time defaults
   and difficulty-specific starting-base selection.
 
+## Item rules
+
+The item family is implemented as a separate prerequisite slice because its declaration
+contract is larger than the craft, UFO, research, and manufacture families combined.
+Items retain constructor defaults, recursive `refNode` application, deletion-aware
+creation/list ordering, strategic purchase/recovery fields, inventory dimensions and
+restrictions, medikit and AI values, targeting/spawn configuration, and environmental
+restrictions. Editable research, category, base-function, inventory-section, recovery,
+zombie-unit, and compatible-ammo collections preserve replacement, `!add`, and
+`!remove` behavior.
+
+All four ammo slots retain compatible names and load/unload costs. Aimed, auto, snap,
+and melee actions retain ranges, accuracy, shot counts, ammo-slot bounds, optional ammo
+overrides, six-component costs, flat/percentage flags, and configuration names. Global
+use, mind-control, panic, throw, prime, and unprime costs preserve nullable component
+semantics. Battle-type assignment applies the reference side effects for craft-equipment
+visibility, psi requirements/range/dropoff/targeting, fuse defaults, melee ammo use, and
+corpse damage. Damage and melee-damage declarations retain predefined-type identity plus
+ordered `blastRadius` and alteration overlays; an untyped default profile retains the
+reference `RuleDamageType` constructor values.
+
+Sprite, sound, animation, transparency, and preview indexes retain the declaring mod ID
+until shared resource ranges can resolve their final offsets. Internal validation covers
+zero-clip weapon ammo declarations, item spawn/ammo references, and recovery
+transformation restrictions. Research, unit, inventory, item-category, built-in damage,
+and resource links remain deferred, so the catalog deliberately reports only the typed
+capability. Stat-bonus, item-event, and dynamically registered script nodes are preserved
+with Phase 4 deferral diagnostics.
+
+The executable `item-rules` fixture covers constructor and battle-type defaults,
+recursive inheritance, editable collection updates, deleted-rule ordering gaps, action
+costs, damage overlays, and partial update behavior against the pinned C++ reference
+semantics.
+
+Additional authoritative C++ references inspected for this slice:
+
+- `src/Mod/RuleItem.cpp` and `.h` for constructor defaults, property order, battle-type
+  side effects, action/ammo parsing, and after-load invariants.
+- `src/Mod/RuleDamageType.cpp` and `.h` for default damage profiles and alteration keys.
+- `src/Mod/RuleStatBonus.cpp` and `src/Mod/ModScript.h` for stat-bonus and item-script
+  envelopes retained for Phase 4.
+- `src/Mod/Mod.cpp`: editable name/map loaders, base functions, nullable names, and
+  sprite/sound/transparency offset ownership.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
@@ -208,9 +252,9 @@ a fully loaded mod:
 1. **Typed loading infrastructure (foundation complete):** extend the core with each
    concrete family's property contract while retaining source provenance, explicit
    consumed/deferred keys, and bounded typed loading.
-2. **Typed content:** resource/interface/localization and campaign-start declarations
-   are complete; strategic, tactical, terrain/deployment, mission/event, and remaining
-   global rule families remain.
+2. **Typed content:** resource/interface/localization, campaign-start, and item
+   declarations are complete; remaining strategic/tactical, terrain/deployment,
+   mission/event, and global rule families remain.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
    reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
    complete. Resource declarations remain platform-neutral descriptors.
