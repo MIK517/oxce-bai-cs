@@ -332,22 +332,22 @@ Additional authoritative C++ references inspected for this slice:
 
 ## Terrain and deployment rules
 
-The next vertical slice owns terrain declarations, map-script command lists, MCD
-patches, alien races, environmental effects, starting conditions, and alien
+The terrain/deployment slice implements terrain declarations, map-script command lists,
+MCD patches, alien races, environmental effects, starting conditions, and alien
 deployments. Keeping these families together makes their references executable in one
 catalog: terrains and deployments select map scripts and environmental effects;
 deployments select terrains, races, and starting conditions; and map scripts contain
 the commands that make those selections observable.
 
-The slice will preserve constructor defaults, recursive `refNode` updates, editable
+The slice preserves constructor defaults, recursive `refNode` updates, editable
 collections, special-section replacement/merge behavior, command-specific map-script
-defaults and validation, and declaring-mod ownership for resource offsets. It will add
+defaults and validation, and declaring-mod ownership for resource offsets. It adds
 relationship diagnostics and derived lookups without advancing beyond the `typed`
 capability. Map/MCD binary decoding, resource-offset resolution, random selection,
 battlescape execution, and script-language compilation remain owned by later resource,
 Phase 4, or Phase 5 work.
 
-Acceptance requires a public layered fixture and a pinned C++ oracle covering terrain
+The public layered fixture and pinned C++ oracle cover terrain
 updates, map-script replacement and deletion, MCD-patch merging, alien-race weights,
 environment and starting-condition overlays, deployment defaults, and cross-family
 references. Malformed commands, bounded collection inputs, and missing relationship
@@ -358,8 +358,9 @@ Authoritative C++ references for this slice:
 - `src/Mod/RuleTerrain.cpp` and `.h`, `src/Mod/MapBlock.cpp` and `.h`, and
   `src/Mod/MapScript.cpp` and `.h` for terrain defaults, map-block updates, command
   parsing, and map-script selection.
-- `src/Mod/MapData.cpp` and `.h`, and `src/Mod/MapDataSet.cpp` and `.h` for MCD patch
-  declarations and their later application to decoded map data.
+- `src/Mod/MCDPatch.cpp` and `.h`, `src/Mod/MapData.cpp` and `.h`, and
+  `src/Mod/MapDataSet.cpp` and `.h` for MCD patch declarations and their later
+  application to decoded map data.
 - `src/Mod/AlienRace.cpp` and `.h`, `src/Mod/RuleEnviroEffects.cpp` and `.h`, and
   `src/Mod/RuleStartingCondition.cpp` and `.h` for weighted races, environmental
   conditions, editable restrictions, and after-load links.
@@ -378,8 +379,8 @@ a fully loaded mod:
    concrete family's property contract while retaining source provenance, explicit
    consumed/deferred keys, and bounded typed loading.
 2. **Typed content:** resource/interface/localization, campaign-start, item,
-   equipment/production, and personnel/tactical declarations are complete; remaining
-   terrain/deployment, mission/event, and global rule families remain.
+   equipment/production, personnel/tactical, and terrain/deployment declarations are
+   complete; remaining mission/event and global rule families remain.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
    reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
    complete. Resource declarations remain platform-neutral descriptors.
