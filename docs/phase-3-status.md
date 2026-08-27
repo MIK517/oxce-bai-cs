@@ -244,6 +244,46 @@ Additional authoritative C++ references inspected for this slice:
 - `src/Mod/Mod.cpp`: editable name/map loaders, base functions, nullable names, and
   sprite/sound/transparency offset ownership.
 
+## Equipment and production rules
+
+The equipment/production slice implements typed item-category, weapon-set,
+craft-weapon, craft, UFO, research, manufacture, and manufacture-shortcut declarations.
+It preserves constructor defaults, recursive `refNode` updates, deletion-aware list
+ordering, editable sequence/map behavior, fixed craft weapon-slot expansion, craft and
+UFO stat overlays, UFO size normalization and blob limits, research protected-topic
+groups, incremental weighted events, manufacture product defaults, random products,
+and shallow spawned-soldier template overlays.
+
+Relationship validation covers category replacement, weapon-set items, craft-weapon
+launcher/clip and ammunition invariants, fixed craft weapons and refuel items, research
+graphs and the requirements/cost invariant, manufacture inputs/outputs and positive
+time, and manufacture-shortcut sources. These checks consume the item catalog from the
+previous slice while keeping the catalog capability at `typed`; final immutable linking
+and manufacture-shortcut derivation remain part of the reference-ordered closure pass.
+
+The executable `equipment-production-rules` fixture covers rule deletion and ordering
+gaps, editable inventory-order and required-item updates, craft weapon-slot expansion,
+UFO normalization and capping, research event removal/addition, and manufacture maps
+against the pinned C++ reference semantics. Terrain, deployment, pilot, resource-offset,
+event, personnel, and script links are retained or explicitly deferred to their owning
+slices.
+
+Additional authoritative C++ references inspected for this slice:
+
+- `src/Mod/RuleItemCategory.cpp` and `.h`, and `src/Mod/RuleWeaponSet.cpp` and `.h`,
+  for defaults, editable collections, and item links.
+- `src/Mod/RuleCraftWeapon.cpp` and `.h`, and `src/Mod/RuleCraft.cpp` and `.h`, for
+  weapon/craft defaults, stat overlays, slot expansion, resource ownership, derived
+  capacities, and after-load invariants.
+- `src/Mod/RuleUfo.cpp` and `.h` for constructor defaults, size normalization, blob
+  limits, root/race stat overlays, and marker/sound ownership.
+- `src/Mod/RuleResearch.cpp` and `.h`, `src/Mod/RuleManufacture.cpp` and `.h`, and
+  `src/Mod/RuleManufactureShortcut.cpp` and `.h` for editable graphs/maps, protected
+  free research, weighted events, shallow soldier overlays, and shortcut declarations.
+- `src/Savegame/WeightedOptions.cpp`, `src/Engine/Yaml.cpp`, and `src/Mod/Mod.cpp` for
+  incremental weights, shallow overlay, creation ordinals, editable loaders, link order,
+  and manufacture-shortcut derivation.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
@@ -252,9 +292,9 @@ a fully loaded mod:
 1. **Typed loading infrastructure (foundation complete):** extend the core with each
    concrete family's property contract while retaining source provenance, explicit
    consumed/deferred keys, and bounded typed loading.
-2. **Typed content:** resource/interface/localization, campaign-start, and item
-   declarations are complete; remaining strategic/tactical, terrain/deployment,
-   mission/event, and global rule families remain.
+2. **Typed content:** resource/interface/localization, campaign-start, item, and
+   equipment/production declarations are complete; remaining personnel/tactical,
+   terrain/deployment, mission/event, and global rule families remain.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
    reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
    complete. Resource declarations remain platform-neutral descriptors.
