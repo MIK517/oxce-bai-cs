@@ -1,0 +1,8 @@
+items:
+  - update: WEAPON
+    categories: !add [PATCH]
+    costSell: 25
+    loadOrder: -1
+  - type: PSI
+    battleType: 9
+    manaRequired: true

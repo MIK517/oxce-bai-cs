@@ -1,0 +1,21 @@
+items:
+  - type: DELETED
+  - type: AMMO
+    battleType: 2
+    clipSize: 6
+  - type: WEAPON
+    refNode:
+      battleType: 1
+      compatibleAmmo: [AMMO]
+      categories: [BASE]
+      costBuy: 100
+      transferTime: 48
+      accuracyAimed: 60
+      tuAimed: 30
+      costAimed: {energy: 5}
+      confAimed: {shots: 2, ammoSlot: 0}
+    damageType: 3
+    blastRadius: 4
+    damageAlter: {ToHealth: 0.75, IgnoreDirection: true}
+    fireSound: [2, 100]
+  - delete: DELETED
