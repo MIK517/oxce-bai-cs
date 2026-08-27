@@ -284,6 +284,52 @@ Additional authoritative C++ references inspected for this slice:
   incremental weights, shallow overlay, creation ordinals, editable loaders, link order,
   and manufacture-shortcut derivation.
 
+## Personnel and tactical-unit rules
+
+The personnel/tactical slice implements typed inventories, armors, skills, soldier
+types, battlescape units, soldier bonuses, soldier transformations, and commendations.
+It preserves each family's creation-order increment, recursive `refNode` updates,
+editable collections and maps, signed 16-bit unit-stat behavior, nonzero stat merging,
+inventory hand identity, armor movement and damage modifiers, armor-size immunity side
+effects, shallow spawned-soldier overlays, skill cost/flat declarations, weighted
+built-in weapon sets, transformation stat bounds and events, and commendation criteria.
+
+Relationship validation covers inventory movement-cost targets; armor corpse, item,
+soldier, research, commendation, and bonus references; skill items and bonuses; soldier
+armor, special-weapon, and skill links; unit armor, spawn, recovery, and built-in weapon
+links; transformation inputs and outputs; and commendation research, unit, and bonus
+links. The validation result also publishes the reference-derived armor eligibility and
+unique storage-item caches without claiming that the typed catalog itself is fully
+linked.
+
+The executable `personnel-tactical-rules` fixture covers deletion-aware 10-, 100-, and
+1-step ordering, inventory hand/cost data, armor stat and movement overlays, skill mode
+normalization, soldier stat-cap fallback and name-pool reset, unit built-in weapon
+weights, soldier bonuses, transformation event removal, and commendation criteria
+against the pinned C++ reference semantics. Sound/sprite indexes retain declaring mod
+ownership. Name-pool file decoding, layer surface/resource verification, stat-bonus
+expressions, tactical event scripts, and dynamic script values remain explicitly
+deferred to resource closure or Phase 4.
+
+Additional authoritative C++ references inspected for this slice:
+
+- `src/Mod/RuleInventory.cpp` and `.h` for slot/cost replacement, hand identity, and
+  10-step deletion-aware ordering.
+- `src/Mod/Armor.cpp` and `.h`, plus `src/Mod/RuleStatBonus.cpp`, for armor defaults,
+  nullable immunities, size effects, movement costs, damage/stat overlays, resource
+  ownership, relationship checks, and eligibility/storage caches.
+- `src/Mod/RuleSkill.cpp` and `.h`, and `src/Mod/RuleItem.h`, for target/battle-type
+  normalization, nullable six-component costs, flat flags, and item/bonus links.
+- `src/Mod/RuleSoldier.cpp` and `.h`, `src/Mod/Unit.cpp` and `.h`, for signed unit stats,
+  merge semantics, one-step soldier ordering, shallow templates, weighted weapons,
+  resource ownership, height limits, and after-load invariants.
+- `src/Mod/RuleSoldierBonus.cpp` and `.h`, `src/Mod/RuleSoldierTransformation.cpp` and
+  `.h`, and `src/Mod/RuleCommendations.cpp` and `.h` for bonus stats, transformation
+  bounds/events, editable requirements, award criteria, and cross-links.
+- `src/Mod/Mod.cpp`, `src/Engine/Yaml.cpp`, and `src/Savegame/WeightedOptions.cpp` for
+  editable loaders, shallow overlays, reference link order, derived caches, and
+  incremental weights.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
@@ -292,8 +338,8 @@ a fully loaded mod:
 1. **Typed loading infrastructure (foundation complete):** extend the core with each
    concrete family's property contract while retaining source provenance, explicit
    consumed/deferred keys, and bounded typed loading.
-2. **Typed content:** resource/interface/localization, campaign-start, item, and
-   equipment/production declarations are complete; remaining personnel/tactical,
+2. **Typed content:** resource/interface/localization, campaign-start, item,
+   equipment/production, and personnel/tactical declarations are complete; remaining
    terrain/deployment, mission/event, and global rule families remain.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
    reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
