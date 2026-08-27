@@ -1,0 +1,16 @@
+invs:
+  - delete: DELETED_INV
+armors:
+  - delete: DELETED_ARMOR
+  - update: ARMOR
+    stats: {health: 0, firing: 7}
+skills:
+  - update: SKILL
+    targetMode: 16
+soldiers:
+  - delete: DELETED_SOLDIER
+  - update: SOLDIER
+    minStats: {health: 0, firing: 40}
+soldierTransformation:
+  - update: TRANSFORM
+    events: {EVENT_A: 0, EVENT_B: 3}

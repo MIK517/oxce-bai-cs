@@ -1,0 +1,82 @@
+invs:
+  - id: DELETED_INV
+  - id: STR_RIGHT_HAND
+    x: 10
+    slots: [[0, 0]]
+    costs: {STR_LEFT_HAND: 8}
+  - id: STR_LEFT_HAND
+    costs: {STR_RIGHT_HAND: 8}
+items:
+  - type: CORPSE
+    battleType: 11
+  - type: ARMOR_ITEM
+  - type: WEAPON
+    battleType: 1
+    clipSize: 1
+  - type: LIVE
+  - type: PRODUCT
+research:
+  - name: RES
+armors:
+  - type: DELETED_ARMOR
+  - type: ARMOR
+    corpseBattle: [CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [1]
+    storeItem: ARMOR_ITEM
+    units: [SOLDIER]
+    builtInWeapons: [WEAPON]
+    requires: RES
+    requiresAward: MEDAL
+    requiresBonus: BONUS
+    stats: {health: 5}
+    moveCost: {runPercent: [80, 70]}
+    damageModifier: [0.5]
+soldierBonuses:
+  - name: BONUS
+    stats: {firing: 5}
+skills:
+  - type: SKILL
+    targetMode: 99
+    battleType: 1
+    tuUse: 12
+    costUse: {energy: 4}
+    compatibleWeapons: [WEAPON]
+    requiredBonuses: [BONUS]
+soldiers:
+  - type: DELETED_SOLDIER
+  - type: SOLDIER
+    armor: ARMOR
+    specialWeapon: WEAPON
+    minStats: {health: 30}
+    statCaps: {health: 60}
+    skills: [SKILL]
+    soldierNames: [first.nam, delete, second.nam]
+units:
+  - type: UNIT
+    armor: ARMOR
+    liveAlien: LIVE
+    stats: {health: 35}
+    standHeight: 20
+    floatHeight: 5
+    builtInWeaponSets: [[WEAPON]]
+    weightedBuiltInWeaponSets: [{SET_A: 2}]
+soldierTransformation:
+  - name: TRANSFORM
+    requires: [RES]
+    producedItem: PRODUCT
+    producedSoldierType: SOLDIER
+    producedSoldierArmor: ARMOR
+    allowedSoldierTypes: [SOLDIER]
+    requiredItems: {WEAPON: 1}
+    requiredCommendations: {MEDAL: 1}
+    soldierBonusType: BONUS
+    requiredMinStats: {health: 20}
+    events: {EVENT_A: 2}
+commendations:
+  - type: MEDAL
+    description: DESC
+    criteria: {kills: [1, 2]}
+    soldierBonusTypes: [BONUS]
+    requires: [RES]
+    units: [SOLDIER]
