@@ -370,6 +370,43 @@ Authoritative C++ references for this slice:
   section dispatch, special-section composition, editable helpers, link order, and
   incremental weights.
 
+## Mission, event, and ufopaedia rules
+
+The next vertical slice owns UFO trajectories, alien mission definitions, arc scripts,
+event scripts, geoscape events, recurring and ad-hoc mission scripts, and ufopaedia
+articles. Grouping these families closes the strategic-content graph in one CI run:
+mission scripts select alien missions, races, and regions; alien missions select UFOs,
+trajectories, and deployments; event scripts select events; and articles link the
+resulting content to player-visible reference material.
+
+The slice will preserve constructor defaults, recursive `refNode` updates, weighted
+timeline behavior, shallow spawned-soldier overlays, mission-script invariants,
+ufopaedia replacement/deletion and list ordering, and lossless script-bearing nodes.
+Relationship checks will cover the already typed campaign, item, equipment, personnel,
+terrain, and deployment catalogs without claiming script compilation or full immutable
+link closure.
+
+Acceptance requires a layered public fixture and pinned C++ oracle covering trajectory
+replacement, mission weights and side effects, arc/event selections, mission-script
+weight timelines and validation, event overlays, and ufopaedia update/deletion.
+Malformed waypoint/article/script shapes and missing cross-family references require
+focused unit coverage.
+
+Authoritative C++ references for this slice:
+
+- `src/Mod/UfoTrajectory.cpp` and `.h`, and `src/Mod/RuleAlienMission.cpp` and `.h`
+  for trajectory defaults, mission waves, weighted timelines, and retaliation effects.
+- `src/Mod/RuleArcScript.cpp` and `.h`, `src/Mod/RuleEventScript.cpp` and `.h`, and
+  `src/Mod/RuleMissionScript.cpp` and `.h` for strategic-script defaults, trigger maps,
+  weighted selections, recurrence constraints, and ad-hoc reuse.
+- `src/Mod/RuleEvent.cpp` and `.h` for event defaults, item/personnel payloads,
+  research links, and shallow spawned-soldier templates.
+- `src/Mod/ArticleDefinition.cpp` and `.h` for article type dispatch, shared and
+  type-specific properties, page inheritance, deletion, and list ordering.
+- `src/Mod/Mod.cpp`, `src/Engine/Yaml.cpp`, and `src/Savegame/WeightedOptions.cpp` for
+  section order, special ufopaedia composition, shallow overlay, link/sort passes, and
+  incremental weights.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
