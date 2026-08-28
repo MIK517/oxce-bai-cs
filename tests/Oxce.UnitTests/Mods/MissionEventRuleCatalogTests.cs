@@ -120,7 +120,7 @@ public sealed class MissionEventRuleCatalogTests
     { using var fixture = new TemporaryMissionMod(("fixture.rul", yaml)); Assert.Throws<YamlFormatException>(() => MissionEventRuleCatalog.Load(CreatePlan(fixture.Root))); }
 
     [Fact]
-    public void ReportsMissingStrategicReferences()
+    public void ReportsMissingRuntimeStrategicReferencesAsWarnings()
     {
         const string yaml = """
             alienMissions:
@@ -146,12 +146,13 @@ public sealed class MissionEventRuleCatalogTests
             EquipmentProductionRuleCatalog.Load(plan), PersonnelTacticalRuleCatalog.Load(plan),
             TerrainDeploymentRuleCatalog.Load(plan), diagnostics);
 
-        Assert.False(validation.IsValid);
-        Assert.DoesNotContain(validation.Issues, issue => issue.Property == "waves.ufo");
-        Assert.Contains(validation.Issues, issue => issue.Property == "missionWeights");
-        Assert.Contains(validation.Issues, issue => issue.Property == "items");
-        Assert.Contains(validation.Issues, issue => issue.RuleId == "MISSING_ARTICLE_ITEM");
-        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.MissingRuleReference);
+        Assert.True(validation.IsValid);
+        Assert.Empty(validation.Issues);
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference &&
+            item.Context.RuleId == "MISSION" && item.Context.RelatedId == "MISSING_TRAJECTORY");
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference &&
+            item.Context.RuleId == "MISSING_ARTICLE_ITEM");
+        Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
 
     [Fact]
@@ -197,8 +198,11 @@ public sealed class MissionEventRuleCatalogTests
             (issue.RuleId is "DIRECT_SITE" or "OBJECTIVE_SITE" or "NO_SPAWN") &&
             issue.Property == "waves.ufo");
         Assert.DoesNotContain(validation.Issues, issue => issue.RuleId == "GENERIC_TFTD_ARTICLE");
-        Assert.Contains(validation.Issues, issue => issue.RuleId == "MISSING_TFTD_CRAFT");
-        Assert.Contains(validation.Issues, issue => issue.RuleId == "MISSING_TFTD_USO");
+        Assert.True(validation.IsValid);
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference &&
+            item.Context.RuleId == "MISSING_TFTD_CRAFT");
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference &&
+            item.Context.RuleId == "MISSING_TFTD_USO");
     }
 
     private static ModLoadPlan CreatePlan(string root)

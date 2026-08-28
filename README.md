@@ -10,8 +10,9 @@ files, consume the same original X-COM assets, and reproduce the same game rules
 It is not a goal to reproduce the C++ engine's random sequence, pixel output, or UI
 layout exactly.
 
-The repository is an early compatibility implementation. Read these documents before
-adding a subsystem:
+The repository is an active compatibility implementation: the original-asset and
+mod/typed-rule phases are closed, while scripting, saves, gameplay, and application
+integration continue. Read these documents before adding a subsystem:
 
 - [Agent onboarding](AGENTS.md)
 - [Compatibility contract](docs/compatibility-contract.md)
@@ -19,6 +20,7 @@ adding a subsystem:
 - [Implementation plan](docs/implementation-plan.md)
 - [Phase 0 status](docs/phase-0-status.md)
 - [Phase 2 closure audit](docs/phase-2-status.md)
+- [Phase 3 closure audit](docs/phase-3-status.md)
 - [Testing strategy](docs/testing-strategy.md)
 
 ## Initial commands

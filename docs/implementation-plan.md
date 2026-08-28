@@ -6,8 +6,8 @@ Current bootstrap evidence and remaining gates are tracked in
 Phase 2 evidence and explicit playback deferrals are tracked in
 [`phase-2-status.md`](phase-2-status.md).
 
-The directory-backed Phase 3 mod-loading foundation and its explicit deferrals are
-tracked in [`phase-3-status.md`](phase-3-status.md).
+The completed Phase 3 mod-loading and typed-rule closure, including its explicit
+later-phase deferrals, is tracked in [`phase-3-status.md`](phase-3-status.md).
 
 Controlled optimization measurement is defined in
 [`performance-baselines.md`](performance-baselines.md); CI compiles but does not execute
@@ -90,9 +90,9 @@ Exit gate:
 
 ## Phase 3 — Mod system and typed rules
 
-Status: implementation substantially complete; installation-level closure remains a
-gate. Resource decoding/offset publication and script compilation remain assigned to
-their owning later phases.
+Status: **Done**. See the [Phase 3 closure audit](phase-3-status.md). Resource
+decoding/offset publication and script compilation remain assigned to their owning
+later phases.
 
 Deliverables:
 
@@ -124,16 +124,15 @@ corpus exercises the large script-heavy 40k chain, but a synthetic empty `xcom1`
 cannot supply copyrighted base rules; that run proves parsing and typed-manifest breadth,
 not a complete `linked` result.
 
-Installation-level acceptance on 2026-08-28 established two distinct outcomes. A
-complete `xcom1` installation reaches `linked` with no errors. The 40k/Rosigma chain
-composes and reaches `typed`, but does not reach `linked`. Corpus-scale inputs exposed
-and now cover `refNode` identity consumption, reference-compatible Ufopaedia type
-dispatch, and alien-mission waves that may spawn a UFO, a deployment, or no object. The
-post-fix run has 204 relationship diagnostics requiring reference lookup-policy
-classification and five unsupported transformation properties. A clean Rosigma repeat
-after that classification remains required before Phase 3 is marked Done. Unsupported
-properties and genuine invalid relationships must continue to be diagnosed rather than
-silently discarded.
+Installation-level acceptance on 2026-08-28 closes the Phase 3 gate. Complete `xcom1`
+and `xcom1` -> `40k` -> `40k_ROSIGMA_edits` installations both reach `linked` with zero
+validation issues or error diagnostics. Corpus-scale inputs exposed and now cover
+`refNode` identity consumption, reference-compatible Ufopaedia type dispatch,
+alien-mission waves that may spawn a UFO, a deployment, or no object, and the
+distinction between eager `afterLoad` links and IDs retained for runtime lookup. The
+Rosigma run reports 204 unresolved runtime IDs as explicit warnings and preserves five
+unsupported transformation properties as deferred-property warnings; neither class is
+silently discarded or mistaken for a completed later-phase capability.
 
 ## Phase 4 — OXCE scripting language
 

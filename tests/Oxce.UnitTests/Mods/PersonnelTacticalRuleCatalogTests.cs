@@ -109,6 +109,7 @@ public sealed class PersonnelTacticalRuleCatalogTests
             soldierTransformation:
               - name: TRANSFORM
                 requires: [RES]
+                requiresBuyBaseFunc: [WORKSHOP]
                 producedItem: PRODUCT
                 producedSoldierType: SOLDIER
                 producedSoldierArmor: ARMOR
@@ -185,6 +186,8 @@ public sealed class PersonnelTacticalRuleCatalogTests
         Assert.Equal(["ARMOR", "LARGE"], validation.Caches.ArmorsForSoldiers);
         Assert.Equal(["ARMOR_ITEM"], validation.Caches.ArmorStorageItems);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.UnconsumedRuleProperty);
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleProperty &&
+            item.Context.RuleId == "TRANSFORM" && item.Message.Contains("requiresBuyBaseFunc", StringComparison.Ordinal));
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
 
@@ -224,12 +227,12 @@ public sealed class PersonnelTacticalRuleCatalogTests
             ItemRuleCatalog.Load(plan), EquipmentProductionRuleCatalog.Load(plan), diagnostics);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Issues, issue => issue.Property == "costs");
+        Assert.DoesNotContain(result.Issues, issue => issue.Property == "costs");
         Assert.Contains(result.Issues, issue => issue.Property == "corpseGeo");
         Assert.Contains(result.Issues, issue => issue.Property == "compatibleWeapons");
         Assert.Contains(result.Issues, issue => issue.Property == "spawnUnit");
         Assert.Contains(diagnostics.Snapshot(), item =>
-            item.Code == ModDiagnosticCodes.MissingRuleReference && item.Context.RuleType == "invs");
+            item.Code == ModDiagnosticCodes.DeferredRuleReference && item.Context.RuleType == "invs");
     }
 
     [Theory]
