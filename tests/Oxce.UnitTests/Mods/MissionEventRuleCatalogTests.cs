@@ -147,11 +147,58 @@ public sealed class MissionEventRuleCatalogTests
             TerrainDeploymentRuleCatalog.Load(plan), diagnostics);
 
         Assert.False(validation.IsValid);
-        Assert.Contains(validation.Issues, issue => issue.Property == "waves.ufo");
+        Assert.DoesNotContain(validation.Issues, issue => issue.Property == "waves.ufo");
         Assert.Contains(validation.Issues, issue => issue.Property == "missionWeights");
         Assert.Contains(validation.Issues, issue => issue.Property == "items");
         Assert.Contains(validation.Issues, issue => issue.RuleId == "MISSING_ARTICLE_ITEM");
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.MissingRuleReference);
+    }
+
+    [Fact]
+    public void AcceptsReferenceCompatibleMissionWaveAndUfopaediaTargets()
+    {
+        const string yaml = """
+            ufoTrajectories:
+              - id: TRAJECTORY
+                waypoints: [[0, 0, 0]]
+            alienMissions:
+              - type: DIRECT_SITE
+                waves: [{ufo: DEPLOYMENT, trajectory: TRAJECTORY}]
+              - type: OBJECTIVE_SITE
+                objective: 3
+                waves: [{ufo: RUNTIME_SELECTED_DEPLOYMENT, trajectory: TRAJECTORY, objective: true}]
+              - type: NO_SPAWN
+                waves: [{ufo: INTENTIONALLY_MISSING, trajectory: TRAJECTORY}]
+            alienDeployments:
+              - type: DEPLOYMENT
+                markerName: STR_SITE
+            ufopaedia:
+              - id: GENERIC_TFTD_ARTICLE
+                type_id: 10
+              - id: MISSING_TFTD_CRAFT
+                type_id: 11
+              - id: MISSING_TFTD_USO
+                type_id: 17
+            """;
+        using var fixture = new TemporaryMissionMod(("fixture.rul", yaml));
+        var plan = CreatePlan(fixture.Root);
+        var catalog = MissionEventRuleCatalog.Load(plan);
+        var diagnostics = new DiagnosticCollector();
+
+        var validation = catalog.ValidateRelationships(
+            CampaignStartRuleCatalog.Load(plan),
+            ItemRuleCatalog.Load(plan),
+            EquipmentProductionRuleCatalog.Load(plan),
+            PersonnelTacticalRuleCatalog.Load(plan),
+            TerrainDeploymentRuleCatalog.Load(plan),
+            diagnostics);
+
+        Assert.DoesNotContain(validation.Issues, issue =>
+            (issue.RuleId is "DIRECT_SITE" or "OBJECTIVE_SITE" or "NO_SPAWN") &&
+            issue.Property == "waves.ufo");
+        Assert.DoesNotContain(validation.Issues, issue => issue.RuleId == "GENERIC_TFTD_ARTICLE");
+        Assert.Contains(validation.Issues, issue => issue.RuleId == "MISSING_TFTD_CRAFT");
+        Assert.Contains(validation.Issues, issue => issue.RuleId == "MISSING_TFTD_USO");
     }
 
     private static ModLoadPlan CreatePlan(string root)
