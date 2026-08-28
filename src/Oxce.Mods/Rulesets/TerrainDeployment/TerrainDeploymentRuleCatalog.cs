@@ -30,13 +30,21 @@ public sealed class TerrainDeploymentRuleCatalog
         RulesetCompositionOptions? compositionOptions = null, TypedRuleLoadOptions? typedOptions = null)
     {
         diagnostics ??= NullDiagnosticSink.Instance; compositionOptions ??= new(); compositionOptions.Validate();
-        var unresolved = RulesetComposer.Compose(plan, Names.Select(TerrainDeploymentYaml.Section), diagnostics, compositionOptions);
+        var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
+        var unresolved = RulesetComposer.Compose(documents, Names.Select(TerrainDeploymentYaml.Section), diagnostics, compositionOptions);
+        return Load(unresolved, documents, diagnostics, compositionOptions, typedOptions);
+    }
+
+    internal static TerrainDeploymentRuleCatalog Load(UnresolvedRuleCatalog unresolved,
+        RulesetDocumentCatalog documents, IDiagnosticSink diagnostics,
+        RulesetCompositionOptions compositionOptions, TypedRuleLoadOptions? typedOptions)
+    {
         return new(new TerrainRuleLoader().Load(Required(unresolved, "terrains"), diagnostics, typedOptions),
             new AlienRaceRuleLoader().Load(Required(unresolved, "alienRaces"), diagnostics, typedOptions),
             new EnviroEffectsRuleLoader().Load(Required(unresolved, "enviroEffects"), diagnostics, typedOptions),
             new StartingConditionRuleLoader().Load(Required(unresolved, "startingConditions"), diagnostics, typedOptions),
             new AlienDeploymentRuleLoader().Load(Required(unresolved, "alienDeployments"), diagnostics, typedOptions),
-            TerrainSpecialRulesComposer.Compose(plan, compositionOptions));
+            TerrainSpecialRulesComposer.Compose(documents, compositionOptions));
     }
 
     public TerrainDeploymentValidation ValidateRelationships(ItemRuleCatalog items,

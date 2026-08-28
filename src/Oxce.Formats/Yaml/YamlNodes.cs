@@ -92,6 +92,9 @@ public sealed record YamlMappingEntry(YamlNode Key, YamlNode Value)
 
 public sealed class YamlMappingNode : YamlNode
 {
+    private const int IndexedLookupThreshold = 16;
+    private Dictionary<string, YamlNode>? _scalarIndex;
+
     public YamlMappingNode(
         SourceSpan span,
         IEnumerable<YamlMappingEntry> entries,
@@ -108,6 +111,11 @@ public sealed class YamlMappingNode : YamlNode
     public bool TryGet(string key, out YamlNode? value)
     {
         ArgumentNullException.ThrowIfNull(key);
+        if (Entries.Count >= IndexedLookupThreshold)
+        {
+            return GetScalarIndex().TryGetValue(key, out value);
+        }
+
         foreach (var entry in Entries)
         {
             if (string.Equals(entry.ScalarKey, key, StringComparison.Ordinal))
@@ -119,6 +127,26 @@ public sealed class YamlMappingNode : YamlNode
 
         value = null;
         return false;
+    }
+
+    private Dictionary<string, YamlNode> GetScalarIndex()
+    {
+        var index = Volatile.Read(ref _scalarIndex);
+        if (index is not null)
+        {
+            return index;
+        }
+
+        var created = new Dictionary<string, YamlNode>(Entries.Count, StringComparer.Ordinal);
+        foreach (var entry in Entries)
+        {
+            if (entry.ScalarKey is { } key)
+            {
+                created.TryAdd(key, entry.Value);
+            }
+        }
+
+        return Interlocked.CompareExchange(ref _scalarIndex, created, null) ?? created;
     }
 
     public IEnumerable<YamlNode> GetAll(string key)

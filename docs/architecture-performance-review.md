@@ -12,6 +12,22 @@ This review records work that is cheapest to complete before those projects depe
 the current bootstrap APIs. Optimizations remain subject to controlled before/after
 measurement; compatibility behavior is not traded for lower startup time or memory.
 
+## Implementation outcome
+
+The first corrective slice is implemented on
+`codex/architecture-performance-foundations`: diagnostic severity is summarized beyond
+the retention limit, aggregate content builds share one parsed document catalog, large
+mapping lookup uses a semantics-preserving lazy index, presentation is revision-driven,
+and the Phase 3 benchmark is split by stage. The measured results and retention decision
+are recorded in [`performance-baselines.md`](performance-baselines.md).
+
+Reference-engine files consulted for this slice were `src/Engine/FileMap.cpp` and
+`src/Engine/FileMap.h` for ordered ruleset file access, `src/Mod/Mod.cpp` for ruleset
+load order and indexed root access, and `src/Engine/Yaml.cpp` plus
+`src/Engine/Yaml.h` for indexed scalar-key lookup. In particular, the reference reader's
+index uses first-in insertion semantics; the C# index preserves the same first-match
+lookup while retaining ordered duplicate nodes for compatibility inspection.
+
 ## Findings and required corrections
 
 ### Error state must not depend on retained diagnostic messages

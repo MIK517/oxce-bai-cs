@@ -76,14 +76,23 @@ public sealed class SdlIndexedWindowHost : IGameHost
                 "SDL_SetTextureScaleMode");
             try
             {
-                var result = RunLoop(renderer, texture, initialFrame.Width, initialFrame.Height, rgba, cancellationToken);
-                LastRunDiagnostics = new SdlRunDiagnostics(
-                    SdlRuntimeInfo.Version,
-                    videoDriver,
-                    rendererName,
-                    _tickCount,
-                    _presentedFrameCount);
-                return result;
+                var pinnedPixels = GCHandle.Alloc(rgba, GCHandleType.Pinned);
+                try
+                {
+                    var result = RunLoop(renderer, texture, initialFrame.Width, initialFrame.Height, rgba,
+                        pinnedPixels.AddrOfPinnedObject(), cancellationToken);
+                    LastRunDiagnostics = new SdlRunDiagnostics(
+                        SdlRuntimeInfo.Version,
+                        videoDriver,
+                        rendererName,
+                        _tickCount,
+                        _presentedFrameCount);
+                    return result;
+                }
+                finally
+                {
+                    pinnedPixels.Free();
+                }
             }
             finally
             {
@@ -105,6 +114,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
         int width,
         int height,
         byte[] rgba,
+        IntPtr rgbaAddress,
         CancellationToken cancellationToken)
     {
         var runStart = _clock.Elapsed;
@@ -112,6 +122,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
         scheduler.Reset(runStart);
         var targetFrameTime = TimeSpan.FromSeconds(1d / _options.TargetFrameRate);
         var presented = false;
+        var presentedRevision = 0L;
         var quit = false;
         while (!quit && !cancellationToken.IsCancellationRequested && !_client.ExitRequested)
         {
@@ -124,8 +135,13 @@ public sealed class SdlIndexedWindowHost : IGameHost
             var frameStart = _clock.Elapsed;
             var advance = scheduler.AdvanceTo(frameStart, _client.Tick);
             _tickCount = checked(_tickCount + advance.ExecutedSteps);
-            Present(renderer, texture, width, height, rgba);
-            presented = true;
+            var revision = _client.PresentationRevision;
+            if (!presented || revision != presentedRevision)
+            {
+                Present(renderer, texture, width, height, rgba, rgbaAddress);
+                presented = true;
+                presentedRevision = revision;
+            }
 
             if (_options.MaximumRunTime is { } maximumRunTime &&
                 _clock.Elapsed - runStart >= maximumRunTime)
@@ -142,7 +158,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
 
         if (!presented && !cancellationToken.IsCancellationRequested && !_client.ExitRequested)
         {
-            Present(renderer, texture, width, height, rgba);
+            Present(renderer, texture, width, height, rgba, rgbaAddress);
         }
 
         return 0;
@@ -182,7 +198,8 @@ public sealed class SdlIndexedWindowHost : IGameHost
         SdlTextureHandle texture,
         int width,
         int height,
-        byte[] rgba)
+        byte[] rgba,
+        IntPtr rgbaAddress)
     {
         var frame = _client.Frame;
         if (frame.Width != width || frame.Height != height)
@@ -191,21 +208,13 @@ public sealed class SdlIndexedWindowHost : IGameHost
         }
 
         IndexedFrameConverter.ConvertToRgba32(frame, _client.Palette, rgba);
-        var pinnedPixels = GCHandle.Alloc(rgba, GCHandleType.Pinned);
-        try
-        {
-            RequireSuccess(
-                SdlNative.SDL_UpdateTexture(
-                    texture.DangerousGetHandle(),
-                    IntPtr.Zero,
-                    pinnedPixels.AddrOfPinnedObject(),
-                    checked(width * IndexedFrameConverter.RgbaBytesPerPixel)),
-                "SDL_UpdateTexture");
-        }
-        finally
-        {
-            pinnedPixels.Free();
-        }
+        RequireSuccess(
+            SdlNative.SDL_UpdateTexture(
+                texture.DangerousGetHandle(),
+                IntPtr.Zero,
+                rgbaAddress,
+                checked(width * IndexedFrameConverter.RgbaBytesPerPixel)),
+            "SDL_UpdateTexture");
 
         RequireSuccess(SdlNative.SDL_RenderClear(renderer.DangerousGetHandle()), "SDL_RenderClear");
         RequireSuccess(

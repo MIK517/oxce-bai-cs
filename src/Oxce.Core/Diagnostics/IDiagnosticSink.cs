@@ -27,6 +27,8 @@ public sealed class DiagnosticCollector : IDiagnosticSink
     private readonly List<DiagnosticEvent> _diagnostics = [];
     private readonly int _maximumDiagnostics;
     private int _droppedCount;
+    private int _reportedCount;
+    private int _highestSeverity = -1;
 
     public DiagnosticCollector(int maximumDiagnostics = DefaultMaximumDiagnostics)
     {
@@ -45,11 +47,48 @@ public sealed class DiagnosticCollector : IDiagnosticSink
         }
     }
 
+    public int ReportedCount
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _reportedCount;
+            }
+        }
+    }
+
+    public DiagnosticSeverity? HighestSeverity
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _highestSeverity < 0 ? null : (DiagnosticSeverity)_highestSeverity;
+            }
+        }
+    }
+
+    public bool HasSeverityAtLeast(DiagnosticSeverity severity)
+    {
+        if (!Enum.IsDefined(severity))
+        {
+            throw new ArgumentOutOfRangeException(nameof(severity));
+        }
+
+        lock (_sync)
+        {
+            return _highestSeverity >= (int)severity;
+        }
+    }
+
     public void Report(DiagnosticEvent diagnostic)
     {
         ArgumentNullException.ThrowIfNull(diagnostic);
         lock (_sync)
         {
+            _reportedCount = checked(_reportedCount + 1);
+            _highestSeverity = Math.Max(_highestSeverity, (int)diagnostic.Severity);
             if (_diagnostics.Count < _maximumDiagnostics)
             {
                 _diagnostics.Add(diagnostic);

@@ -152,9 +152,8 @@ internal static class FixtureTool
             activations,
             masterId,
             new ModEngineIdentity("Extended", "8.6.1.0"));
-        var content = Phase3ContentCatalog.Load(plan);
+        var content = Phase3ContentCatalog.Build(plan);
         var normalized = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
-            plan,
             content,
             new RulesetCatalogNormalizationOptions
             {
@@ -172,7 +171,7 @@ internal static class FixtureTool
             output.WriteLine(destination);
         }
 
-        return content.Capabilities.Has(ContentLoadStage.Linked) ? 0 : 1;
+        return content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? 0 : 1;
     }
 
     private static int Usage(TextWriter error)

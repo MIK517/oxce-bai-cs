@@ -48,20 +48,31 @@ public sealed class Phase3ContentCatalog
         ModLoadPlan plan,
         IDiagnosticSink? diagnostics = null,
         RulesetCompositionOptions? compositionOptions = null,
+        TypedRuleLoadOptions? typedOptions = null) =>
+        Build(plan, diagnostics, compositionOptions, typedOptions).Catalog;
+
+    public static Phase3ContentBuild Build(
+        ModLoadPlan plan,
+        IDiagnosticSink? diagnostics = null,
+        RulesetCompositionOptions? compositionOptions = null,
         TypedRuleLoadOptions? typedOptions = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
         diagnostics ??= NullDiagnosticSink.Instance;
+        compositionOptions ??= new RulesetCompositionOptions();
+        compositionOptions.Validate();
         var collector = new DiagnosticCollector();
         var sink = new ForwardingDiagnosticSink(diagnostics, collector);
 
-        var presentation = PresentationRuleCatalog.Load(plan, sink, compositionOptions, typedOptions);
-        var campaign = CampaignStartRuleCatalog.Load(plan, sink, compositionOptions, typedOptions);
-        var items = ItemRuleCatalog.Load(plan, sink, compositionOptions, typedOptions);
-        var equipment = EquipmentProductionRuleCatalog.Load(plan, sink, compositionOptions, typedOptions);
-        var personnel = PersonnelTacticalRuleCatalog.Load(plan, sink, compositionOptions, typedOptions);
-        var terrain = TerrainDeploymentRuleCatalog.Load(plan, sink, compositionOptions, typedOptions);
-        var missions = MissionEventRuleCatalog.Load(plan, sink, compositionOptions, typedOptions);
+        var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
+        var composed = RulesetComposer.Compose(documents, sink, compositionOptions);
+        var presentation = PresentationRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
+        var campaign = CampaignStartRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
+        var items = ItemRuleCatalog.Load(composed, sink, typedOptions);
+        var equipment = EquipmentProductionRuleCatalog.Load(composed, sink, typedOptions);
+        var personnel = PersonnelTacticalRuleCatalog.Load(composed, sink, typedOptions);
+        var terrain = TerrainDeploymentRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
+        var missions = MissionEventRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
 
         var campaignValidation = campaign.ValidateInternalRelationships(sink);
         var itemValidation = items.ValidateInternalRelationships(sink);
@@ -80,15 +91,16 @@ public sealed class Phase3ContentCatalog
             terrainValidation,
             missionValidation,
             closureValidation);
-        var hasError = collector.Snapshot().Any(item => item.Severity >= DiagnosticSeverity.Error);
+        var hasError = collector.HasSeverityAtLeast(DiagnosticSeverity.Error);
         var capabilities = ContentLoadCapabilities.Composed.AdvanceTo(ContentLoadStage.Typed);
         if (validation.IsValid && !hasError)
         {
             capabilities = capabilities.AdvanceTo(ContentLoadStage.Linked);
         }
 
-        return new Phase3ContentCatalog(
+        var catalog = new Phase3ContentCatalog(
             presentation, campaign, items, equipment, personnel, terrain, missions, validation, capabilities);
+        return new Phase3ContentBuild(catalog, composed, documents.ParsedFileCount);
     }
 
     private sealed class ForwardingDiagnosticSink(IDiagnosticSink destination, IDiagnosticSink collector)
@@ -101,6 +113,11 @@ public sealed class Phase3ContentCatalog
         }
     }
 }
+
+public sealed record Phase3ContentBuild(
+    Phase3ContentCatalog Catalog,
+    UnresolvedRuleCatalog ComposedRules,
+    int ParsedFileCount);
 
 public sealed record Phase3ContentValidation(
     CampaignStartValidation CampaignStart,

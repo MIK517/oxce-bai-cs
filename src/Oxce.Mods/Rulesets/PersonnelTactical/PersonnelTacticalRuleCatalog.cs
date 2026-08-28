@@ -50,6 +50,14 @@ public sealed class PersonnelTacticalRuleCatalog
         compositionOptions.Validate();
         var unresolved = RulesetComposer.Compose(
             plan, Names.Select(PersonnelTacticalYaml.Section), diagnostics, compositionOptions);
+        return Load(unresolved, diagnostics, typedOptions);
+    }
+
+    internal static PersonnelTacticalRuleCatalog Load(
+        UnresolvedRuleCatalog unresolved,
+        IDiagnosticSink diagnostics,
+        TypedRuleLoadOptions? typedOptions)
+    {
         return new PersonnelTacticalRuleCatalog(
             new InventoryRuleLoader().Load(Required(unresolved, "invs"), diagnostics, typedOptions),
             new ArmorRuleLoader().Load(Required(unresolved, "armors"), diagnostics, typedOptions),

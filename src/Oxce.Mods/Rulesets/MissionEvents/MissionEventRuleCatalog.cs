@@ -29,7 +29,15 @@ public sealed class MissionEventRuleCatalog
         RulesetCompositionOptions? compositionOptions = null, TypedRuleLoadOptions? typedOptions = null)
     {
         diagnostics ??= NullDiagnosticSink.Instance; compositionOptions ??= new(); compositionOptions.Validate();
-        var unresolved = RulesetComposer.Compose(plan, Names.Select(MissionEventYaml.Section), diagnostics, compositionOptions);
+        var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
+        var unresolved = RulesetComposer.Compose(documents, Names.Select(MissionEventYaml.Section), diagnostics, compositionOptions);
+        return Load(unresolved, documents, diagnostics, compositionOptions, typedOptions);
+    }
+
+    internal static MissionEventRuleCatalog Load(UnresolvedRuleCatalog unresolved,
+        RulesetDocumentCatalog documents, IDiagnosticSink diagnostics,
+        RulesetCompositionOptions compositionOptions, TypedRuleLoadOptions? typedOptions)
+    {
         return new(new UfoTrajectoryRuleLoader().Load(Required(unresolved, "ufoTrajectories"), diagnostics, typedOptions),
             new AlienMissionRuleLoader().Load(Required(unresolved, "alienMissions"), diagnostics, typedOptions),
             new StrategicScriptRuleLoader("arcScripts", StrategicScriptKind.Arc).Load(Required(unresolved, "arcScripts"), diagnostics, typedOptions),
@@ -37,7 +45,7 @@ public sealed class MissionEventRuleCatalog
             new EventRuleLoader().Load(Required(unresolved, "events"), diagnostics, typedOptions),
             new StrategicScriptRuleLoader("missionScripts", StrategicScriptKind.Mission).Load(Required(unresolved, "missionScripts"), diagnostics, typedOptions),
             new StrategicScriptRuleLoader("adhocScripts", StrategicScriptKind.Mission).Load(Required(unresolved, "adhocScripts"), diagnostics, typedOptions),
-            UfopaediaComposer.Compose(plan, compositionOptions));
+            UfopaediaComposer.Compose(documents, compositionOptions));
     }
 
     public MissionEventValidation ValidateRelationships(CampaignStartRuleCatalog campaign, ItemRuleCatalog items,

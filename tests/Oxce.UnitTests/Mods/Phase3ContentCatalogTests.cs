@@ -56,14 +56,16 @@ public sealed class Phase3ContentCatalogTests
     {
         using var fixture = new TemporaryMod("items: [{type: ITEM}]");
         var plan = CreatePlan(fixture.Root);
-        var catalog = Phase3ContentCatalog.Load(plan);
+        var build = Phase3ContentCatalog.Build(plan);
+        var catalog = build.Catalog;
+        Assert.Equal(1, build.ParsedFileCount);
         var options = new RulesetCatalogNormalizationOptions
         {
             NormalizeSourceName = source => Path.GetRelativePath(fixture.Root, source).Replace('\\', '/'),
         };
 
-        var first = Phase3ContentManifestNormalizer.NormalizeToJson(plan, catalog, options);
-        var second = Phase3ContentManifestNormalizer.NormalizeToJson(plan, catalog, options);
+        var first = Phase3ContentManifestNormalizer.NormalizeToJson(build, options);
+        var second = Phase3ContentManifestNormalizer.NormalizeToJson(build, options);
 
         Assert.Equal(first, second);
         Assert.Contains("\"stage\": \"linked\"", first, StringComparison.Ordinal);
@@ -71,9 +73,7 @@ public sealed class Phase3ContentCatalogTests
         Assert.Contains("\"name\": \"items\"", first, StringComparison.Ordinal);
         Assert.Contains("\"id\": \"ITEM\"", first, StringComparison.Ordinal);
         Assert.Throws<InvalidOperationException>(() => Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
-            plan,
-            catalog,
-            options with { MaximumOutputBytes = 100 }));
+            build, options with { MaximumOutputBytes = 100 }));
     }
 
     private static ModLoadPlan CreatePlan(string root)
