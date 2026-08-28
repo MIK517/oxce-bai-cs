@@ -407,6 +407,19 @@ Authoritative C++ references for this slice:
   section order, special ufopaedia composition, shallow overlay, link/sort passes, and
   incremental weights.
 
+## Phase 3 corpus closure
+
+The final Phase 3 branch will add an aggregate content loader and a bounded normalized
+typed manifest. It will load all family catalogs, run local and cross-family validation
+in reference dependency order, and advance to `linked` only when the complete typed
+graph is valid. Resource resolution and script compilation remain independent gates.
+
+Closure acceptance requires deterministic whole-catalog manifests, all public mod
+fixtures loading through the aggregate path, optional private mod-corpus coverage, and
+a benchmark for aggregate load plus manifest generation. ADR 0012 records why closure
+wraps the existing family catalogs instead of creating a duplicate reflection-shaped
+compatibility model.
+
 ## Deliberate remaining Phase 3 work
 
 Phase 3 closes through four explicit gates rather than treating metadata discovery as
