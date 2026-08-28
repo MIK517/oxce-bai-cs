@@ -1,0 +1,12 @@
+mapScripts:
+  - type: REPLACED
+    delete: REPLACED
+    commands: [{type: resize, size: [4, 5]}]
+MCDPatches:
+  - type: URBAN
+    data: [{MCDIndex: 2, noFloor: true, LOFTS: [1, 2]}]
+terrains:
+  - update: TERRAIN
+    addOnly: true
+    mapBlocks: [{name: EXTRA}]
+    civilianTypes: !remove [FEMALE_CIVILIAN]
