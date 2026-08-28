@@ -47,7 +47,12 @@ public sealed class MissionEventRuleCatalog
         diagnostics ??= NullDiagnosticSink.Instance; var issues = new List<MissionEventValidationIssue>();
         foreach (var mission in AlienMissions.Rules)
         {
-            foreach (var wave in mission.Value.Waves) { Require(mission, "waves.ufo", wave.Ufo, equipment.Ufos); Require(mission, "waves.trajectory", wave.Trajectory, UfoTrajectories); }
+            foreach (var wave in mission.Value.Waves)
+            {
+                // The reference runtime permits a UFO, a direct deployment, or no spawned object.
+                // Only trajectories are an unconditional eager lookup for every wave.
+                Require(mission, "waves.trajectory", wave.Trajectory, UfoTrajectories);
+            }
             foreach (var entry in mission.Value.RaceWeights) foreach (var id in entry.Weights.Keys) Require(mission, "raceWeights", id, terrain.AlienRaces);
             foreach (var entry in mission.Value.RegionWeights) foreach (var id in entry.Weights.Keys) Require(mission, "regionWeights", id, campaign.Regions);
             Optional(mission, "interruptResearch", mission.Value.Strings["interruptResearch"], equipment.Research);
@@ -77,10 +82,12 @@ public sealed class MissionEventRuleCatalog
             {
                 case 1: RequireArticle(article, equipment.Crafts); break;
                 case 2: RequireArticle(article, equipment.CraftWeapons); break;
-                case 3 or 4 or 10 or 13 or 14 or 17: RequireArticle(article, items.Items); break;
+                case 3 or 4 or 13 or 14: RequireArticle(article, items.Items); break;
                 case 5 or 15: RequireArticle(article, personnel.Armors); break;
                 case 6 or 16: RequireArticle(article, campaign.Facilities); break;
-                case 9: RequireArticle(article, equipment.Ufos); break;
+                case 9 or 17: RequireArticle(article, equipment.Ufos); break;
+                case 11: RequireArticle(article, equipment.Crafts); break;
+                case 12: RequireArticle(article, equipment.CraftWeapons); break;
                 case 18: RequireArticle(article, personnel.Soldiers); break;
                 case 19: RequireArticle(article, personnel.Units); break;
             }

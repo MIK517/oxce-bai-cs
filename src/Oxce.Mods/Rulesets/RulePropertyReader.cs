@@ -95,7 +95,7 @@ public sealed class RulePropertyReader
                 node!.Span);
         }
 
-        ApplyNested(mapping, apply);
+        ApplyNested(mapping, apply, consumeLifecycleKeys: true);
     }
 
     public bool ApplyMapping(string key, Action<RulePropertyReader> apply)
@@ -113,7 +113,7 @@ public sealed class RulePropertyReader
                 node!.Span);
         }
 
-        ApplyNested(mapping, apply);
+        ApplyNested(mapping, apply, consumeLifecycleKeys: false);
         return true;
     }
 
@@ -141,7 +141,7 @@ public sealed class RulePropertyReader
                     item.Span);
             }
 
-            ApplyNested(mapping, apply);
+            ApplyNested(mapping, apply, consumeLifecycleKeys: false);
         }
 
         return true;
@@ -223,7 +223,10 @@ public sealed class RulePropertyReader
         RuleType: _section.Name,
         RuleId: _ruleId);
 
-    private void ApplyNested(YamlMappingNode mapping, Action<RulePropertyReader> apply)
+    private void ApplyNested(
+        YamlMappingNode mapping,
+        Action<RulePropertyReader> apply,
+        bool consumeLifecycleKeys)
     {
         var nested = new RulePropertyReader(
             mapping,
@@ -234,7 +237,7 @@ public sealed class RulePropertyReader
             _options,
             _budget,
             _deferredProperties,
-            consumeLifecycleKeys: false);
+            consumeLifecycleKeys);
         apply(nested);
         nested.Complete();
     }
