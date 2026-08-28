@@ -1,0 +1,5608 @@
+{
+  "schemaVersion": 1,
+  "reference": {
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15"
+  },
+  "core": {
+    "limits": {
+      "ScriptMaxOut": 9,
+      "ScriptMaxArg": 16,
+      "ScriptMaxRegPointerFactor": 64
+    },
+    "primitiveTypes": [
+      "__",
+      "DummyClass",
+      "int",
+      "label",
+      "null",
+      "text"
+    ],
+    "builtInOperations": [
+      "abs",
+      "add",
+      "add_shade",
+      "aggregate",
+      "begin",
+      "bit_and",
+      "bit_count",
+      "bit_not",
+      "bit_or",
+      "bit_xor",
+      "break",
+      "call",
+      "clear",
+      "const",
+      "continue",
+      "debug_assert",
+      "debug_flush",
+      "debug_impl",
+      "debug_log",
+      "div",
+      "else",
+      "end",
+      "exit",
+      "get_color",
+      "get_shade",
+      "goto",
+      "if",
+      "limit",
+      "limit_lower",
+      "limit_upper",
+      "loop",
+      "mod",
+      "mul",
+      "muldiv",
+      "offset",
+      "offsetmod",
+      "pow",
+      "return",
+      "set",
+      "set_color",
+      "set_shade",
+      "shl",
+      "shr",
+      "sqrt",
+      "sub",
+      "swap",
+      "test_eq",
+      "test_le",
+      "var",
+      "wavegen_cos",
+      "wavegen_rect",
+      "wavegen_saw",
+      "wavegen_sin",
+      "wavegen_tri"
+    ]
+  },
+  "registrations": {
+    "scriptRegisterDefinitions": [
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Armor",
+        "member": "",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1285
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Tile",
+        "member": "",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1331
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Soldier",
+        "member": "",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2348
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "SavedGame",
+        "member": "",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3695
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "SavedBattleGame",
+        "member": "",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3708
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Craft",
+        "member": "",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2384
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Country",
+        "member": "",
+        "source": "src/Savegame/Country.cpp",
+        "line": 378
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "BattleUnitVisibility",
+        "member": "",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7507
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "BattleUnit",
+        "member": "",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7262
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "BattleItem",
+        "member": "",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1523
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "StatAdjustment",
+        "member": "",
+        "source": "src/Mod/Unit.cpp",
+        "line": 557
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Unit",
+        "member": "",
+        "source": "src/Mod/Unit.cpp",
+        "line": 540
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleUfo",
+        "member": "",
+        "source": "src/Mod/RuleUfo.cpp",
+        "line": 493
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleSoldierBonus",
+        "member": "",
+        "source": "src/Mod/RuleSoldierBonus.cpp",
+        "line": 151
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleSoldier",
+        "member": "",
+        "source": "src/Mod/RuleSoldier.cpp",
+        "line": 659
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleSkill",
+        "member": "",
+        "source": "src/Mod/RuleSkill.cpp",
+        "line": 127
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleResearch",
+        "member": "",
+        "source": "src/Mod/RuleResearch.cpp",
+        "line": 325
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleItem",
+        "member": "",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2916
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleInventory",
+        "member": "",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 316
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleCraft",
+        "member": "",
+        "source": "src/Mod/RuleCraft.cpp",
+        "line": 846
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "RuleCountry",
+        "member": "",
+        "source": "src/Mod/RuleCountry.cpp",
+        "line": 220
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Mod",
+        "member": "",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6704
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "Ufo",
+        "member": "",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1295
+      },
+      {
+        "category": "script-register",
+        "name": "",
+        "owner": "StatsForNerdsState",
+        "member": "",
+        "source": "src/Ufopaedia/StatsForNerdsState.cpp",
+        "line": 4347
+      }
+    ],
+    "bindingNameCandidates": [
+      {
+        "category": "binding-name",
+        "name": "SIDE_FRONT",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1289
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_BLUE1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7480
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_BLUE0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7479
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_BROWN0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7478
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_GRAY",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7477
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_GREEN1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7476
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_GREEN0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7475
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_RED",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7474
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_YELLOW",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7473
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_NULL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7472
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_FACE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7470
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_HAIR",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7469
+      },
+      {
+        "category": "binding-name",
+        "name": "UNIT_RANK_COMMANDER",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7467
+      },
+      {
+        "category": "binding-name",
+        "name": "UNIT_RANK_COLONEL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7466
+      },
+      {
+        "category": "binding-name",
+        "name": "UNIT_RANK_CAPTAIN",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7465
+      },
+      {
+        "category": "binding-name",
+        "name": "UNIT_RANK_SERGEANT",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7464
+      },
+      {
+        "category": "binding-name",
+        "name": "UNIT_RANK_SQUADDIE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7463
+      },
+      {
+        "category": "binding-name",
+        "name": "UNIT_RANK_ROOKIE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7462
+      },
+      {
+        "category": "binding-name",
+        "name": "BODYPART_RIGHTLEG",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7460
+      },
+      {
+        "category": "binding-name",
+        "name": "BODYPART_LEFTLEG",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7459
+      },
+      {
+        "category": "binding-name",
+        "name": "BODYPART_RIGHTARM",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7458
+      },
+      {
+        "category": "binding-name",
+        "name": "BODYPART_LEFTARM",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7457
+      },
+      {
+        "category": "binding-name",
+        "name": "BODYPART_TORSO",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7456
+      },
+      {
+        "category": "binding-name",
+        "name": "BODYPART_HEAD",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7455
+      },
+      {
+        "category": "binding-name",
+        "name": "getTileShade",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7452
+      },
+      {
+        "category": "binding-name",
+        "name": "setTurnsSinceStunned",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7444
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurnsSinceStunned",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7443
+      },
+      {
+        "category": "binding-name",
+        "name": "setTTurnsLeftSpottedForSnipersByFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7441
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_BROWN1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7481
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_BROWN2",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7482
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_PURPLE0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7483
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_PURPLE1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7484
+      },
+      {
+        "category": "binding-name",
+        "name": "getShieldPercentage",
+        "owner": "Craft",
+        "member": "add",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2398
+      },
+      {
+        "category": "binding-name",
+        "name": "getShieldMax",
+        "owner": "Craft",
+        "member": "addField",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2397
+      },
+      {
+        "category": "binding-name",
+        "name": "getShield",
+        "owner": "Craft",
+        "member": "add",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2396
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamagePercentage",
+        "owner": "Craft",
+        "member": "add",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2394
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageMax",
+        "owner": "Craft",
+        "member": "addField",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2393
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamage",
+        "owner": "Craft",
+        "member": "add",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2392
+      },
+      {
+        "category": "binding-name",
+        "name": "getId",
+        "owner": "Craft",
+        "member": "add",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2390
+      },
+      {
+        "category": "binding-name",
+        "name": "SATISFACTION_HAPPY",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 399
+      },
+      {
+        "category": "binding-name",
+        "name": "SATISFACTION_SATISIFIED",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 398
+      },
+      {
+        "category": "binding-name",
+        "name": "SATISFACTION_UNHAPPY",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 397
+      },
+      {
+        "category": "binding-name",
+        "name": "SATISFACTION_ALIENPACT",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 396
+      },
+      {
+        "category": "binding-name",
+        "name": "getCurrentActivityXcom",
+        "owner": "Country",
+        "member": "add",
+        "source": "src/Savegame/Country.cpp",
+        "line": 391
+      },
+      {
+        "category": "binding-name",
+        "name": "getCurrentActivityAlien",
+        "owner": "Country",
+        "member": "add",
+        "source": "src/Savegame/Country.cpp",
+        "line": 390
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurnsLeftSpottedForSnipersByFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7440
+      },
+      {
+        "category": "binding-name",
+        "name": "getCurrentFunding",
+        "owner": "Country",
+        "member": "add",
+        "source": "src/Savegame/Country.cpp",
+        "line": 389
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleCountry",
+        "owner": "Country",
+        "member": "addRules",
+        "source": "src/Savegame/Country.cpp",
+        "line": 385
+      },
+      {
+        "category": "binding-name",
+        "name": "movement_type_slide",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7500
+      },
+      {
+        "category": "binding-name",
+        "name": "movement_type_fly",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7499
+      },
+      {
+        "category": "binding-name",
+        "name": "movement_type_walk",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7498
+      },
+      {
+        "category": "binding-name",
+        "name": "GENDER_FEMALE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7496
+      },
+      {
+        "category": "binding-name",
+        "name": "GENDER_MALE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7495
+      },
+      {
+        "category": "binding-name",
+        "name": "LOOK_AFRICAN",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7493
+      },
+      {
+        "category": "binding-name",
+        "name": "LOOK_ORIENTAL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7492
+      },
+      {
+        "category": "binding-name",
+        "name": "LOOK_BROWNHAIR",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7491
+      },
+      {
+        "category": "binding-name",
+        "name": "LOOK_BLONDE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7490
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_SPECIAL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7487
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_SILVER",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7486
+      },
+      {
+        "category": "binding-name",
+        "name": "COLOR_X1_BLUE2",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7485
+      },
+      {
+        "category": "binding-name",
+        "name": "getPact",
+        "owner": "Country",
+        "member": "add",
+        "source": "src/Savegame/Country.cpp",
+        "line": 387
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleCraft",
+        "owner": "Craft",
+        "member": "addRules",
+        "source": "src/Savegame/Craft.cpp",
+        "line": 2400
+      },
+      {
+        "category": "binding-name",
+        "name": "setTurnsLeftSpottedForSnipers",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7438
+      },
+      {
+        "category": "binding-name",
+        "name": "setTurnsSinceSpottedByFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7435
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleUnit",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7397
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleArmor",
+        "owner": "BattleUnit",
+        "member": "addRules",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7396
+      },
+      {
+        "category": "binding-name",
+        "name": "getOverKillDamage",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7395
+      },
+      {
+        "category": "binding-name",
+        "name": "getOriginalFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7393
+      },
+      {
+        "category": "binding-name",
+        "name": "getFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7392
+      },
+      {
+        "category": "binding-name",
+        "name": "getVisibleUnitsCount",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7391
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseNormalEnergyPercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7389
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseNormalTimePercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7388
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseClimbEnergyPercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7387
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseClimbTimePercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7386
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseFlyEnergyPercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7385
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseFlyTimePercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7384
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseEnergyPercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7383
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseTimePercent",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7382
+      },
+      {
+        "category": "binding-name",
+        "name": "setMovementType",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7380
+      },
+      {
+        "category": "binding-name",
+        "name": "getOriginalMovementType",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7379
+      },
+      {
+        "category": "binding-name",
+        "name": "getMovementType",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7378
+      },
+      {
+        "category": "binding-name",
+        "name": "getMovmentType",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7377
+      },
+      {
+        "category": "binding-name",
+        "name": "getFatalwoundsMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7369
+      },
+      {
+        "category": "binding-name",
+        "name": "getFatalwounds",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7368
+      },
+      {
+        "category": "binding-name",
+        "name": "addFatalwounds",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7367
+      },
+      {
+        "category": "binding-name",
+        "name": "setFatalwounds",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7366
+      },
+      {
+        "category": "binding-name",
+        "name": "getFatalwoundsTotal",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7365
+      },
+      {
+        "category": "binding-name",
+        "name": "getArmorMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7363
+      },
+      {
+        "category": "binding-name",
+        "name": "setArmorMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7362
+      },
+      {
+        "category": "binding-name",
+        "name": "getArmor",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7361
+      },
+      {
+        "category": "binding-name",
+        "name": "addArmor",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7360
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleSoldier",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7398
+      },
+      {
+        "category": "binding-name",
+        "name": "getGeoscapeSoldier",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7399
+      },
+      {
+        "category": "binding-name",
+        "name": "getGeoscapeSoldier",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7400
+      },
+      {
+        "category": "binding-name",
+        "name": "reduceByBravery",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7401
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurnsSinceSpottedByFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7434
+      },
+      {
+        "category": "binding-name",
+        "name": "setTurnsSinceSpotted",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7432
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurnsSinceSpotted",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7431
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7428
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition.getZ",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7427
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition.getY",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7426
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition.getX",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7425
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpecialItem",
+        "owner": "BattleUnit",
+        "member": "addList",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7423
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpecialItem",
+        "owner": "BattleUnit",
+        "member": "addList",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7422
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpecialItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7421
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpecialItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7420
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpecialItem.size",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7419
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "addList",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7418
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurnsLeftSpottedForSnipers",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7437
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "addList",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7417
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7415
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem.size",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7414
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7413
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7412
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7411
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7410
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7409
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7408
+      },
+      {
+        "category": "binding-name",
+        "name": "getLeftHandWeapon",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7407
+      },
+      {
+        "category": "binding-name",
+        "name": "getLeftHandWeapon",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7406
+      },
+      {
+        "category": "binding-name",
+        "name": "getRightHandWeapon",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7405
+      },
+      {
+        "category": "binding-name",
+        "name": "getRightHandWeapon",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7404
+      },
+      {
+        "category": "binding-name",
+        "name": "reduceByResistance",
+        "owner": "BattleUnit",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7402
+      },
+      {
+        "category": "binding-name",
+        "name": "getInventoryItem",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7416
+      },
+      {
+        "category": "binding-name",
+        "name": "setArmor",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7359
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurn",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3715
+      },
+      {
+        "category": "binding-name",
+        "name": "getSize.getX",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3717
+      },
+      {
+        "category": "binding-name",
+        "name": "getObjectSpecialTileType",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1375
+      },
+      {
+        "category": "binding-name",
+        "name": "getFloorSpecialTileType",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1374
+      },
+      {
+        "category": "binding-name",
+        "name": "getDistanceVoxel",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1372
+      },
+      {
+        "category": "binding-name",
+        "name": "getDistanceTile",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1371
+      },
+      {
+        "category": "binding-name",
+        "name": "getUnit",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1369
+      },
+      {
+        "category": "binding-name",
+        "name": "makeDiscovered",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1366
+      },
+      {
+        "category": "binding-name",
+        "name": "isDiscovered",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1365
+      },
+      {
+        "category": "binding-name",
+        "name": "getShade",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1363
+      },
+      {
+        "category": "binding-name",
+        "name": "getSmoke",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1362
+      },
+      {
+        "category": "binding-name",
+        "name": "getFire",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1361
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1360
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition.getZ",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1359
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition.getY",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1358
+      },
+      {
+        "category": "binding-name",
+        "name": "getPosition.getX",
+        "owner": "Tile",
+        "member": "add",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1357
+      },
+      {
+        "category": "binding-name",
+        "name": "sub",
+        "owner": "Tile",
+        "member": "addFreeFunction",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1350
+      },
+      {
+        "category": "binding-name",
+        "name": "add",
+        "owner": "Tile",
+        "member": "addFreeFunction",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1349
+      },
+      {
+        "category": "binding-name",
+        "name": "mul",
+        "owner": "Tile",
+        "member": "addFreeFunction",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1348
+      },
+      {
+        "category": "binding-name",
+        "name": "muldiv",
+        "owner": "Tile",
+        "member": "addFreeFunction",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1347
+      },
+      {
+        "category": "binding-name",
+        "name": "mul",
+        "owner": "Tile",
+        "member": "addFreeFunction",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1346
+      },
+      {
+        "category": "binding-name",
+        "name": "getZ",
+        "owner": "Tile",
+        "member": "addField",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1344
+      },
+      {
+        "category": "binding-name",
+        "name": "getY",
+        "owner": "Tile",
+        "member": "addField",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1343
+      },
+      {
+        "category": "binding-name",
+        "name": "getX",
+        "owner": "Tile",
+        "member": "addField",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1342
+      },
+      {
+        "category": "binding-name",
+        "name": "setHealthMissing",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2372
+      },
+      {
+        "category": "binding-name",
+        "name": "getHealthMissing",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2371
+      },
+      {
+        "category": "binding-name",
+        "name": "setManaMissing",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2370
+      },
+      {
+        "category": "binding-name",
+        "name": "getManaMissing",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2369
+      },
+      {
+        "category": "binding-name",
+        "name": "setWoundRecovery",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2368
+      },
+      {
+        "category": "binding-name",
+        "name": "STT_TILE",
+        "owner": "Tile",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1379
+      },
+      {
+        "category": "binding-name",
+        "name": "STT_START_POINT",
+        "owner": "Tile",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1380
+      },
+      {
+        "category": "binding-name",
+        "name": "STT_END_POINT",
+        "owner": "Tile",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1381
+      },
+      {
+        "category": "binding-name",
+        "name": "getAltitude",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1301
+      },
+      {
+        "category": "binding-name",
+        "name": "addTextRow",
+        "owner": "StatsForNerdsState",
+        "member": "add",
+        "source": "src/Ufopaedia/StatsForNerdsState.cpp",
+        "line": 4355
+      },
+      {
+        "category": "binding-name",
+        "name": "addIntRow",
+        "owner": "StatsForNerdsState",
+        "member": "add",
+        "source": "src/Ufopaedia/StatsForNerdsState.cpp",
+        "line": 4354
+      },
+      {
+        "category": "binding-name",
+        "name": "DETECTION_HYPERWAVE",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1340
+      },
+      {
+        "category": "binding-name",
+        "name": "DETECTION_RADAR",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1339
+      },
+      {
+        "category": "binding-name",
+        "name": "DETECTION_NONE",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1338
+      },
+      {
+        "category": "binding-name",
+        "name": "UFO_IGNORE_ME",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1336
+      },
+      {
+        "category": "binding-name",
+        "name": "UFO_DESTROYED",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1335
+      },
+      {
+        "category": "binding-name",
+        "name": "UFO_CRASHED",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1334
+      },
+      {
+        "category": "binding-name",
+        "name": "UFO_LANDED",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1333
+      },
+      {
+        "category": "binding-name",
+        "name": "UFO_FLYING",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1332
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleUfo",
+        "owner": "Ufo",
+        "member": "addRules",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1324
+      },
+      {
+        "category": "binding-name",
+        "name": "getHyperDetected",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1322
+      },
+      {
+        "category": "binding-name",
+        "name": "getDetected",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1321
+      },
+      {
+        "category": "binding-name",
+        "name": "getWoundRecovery",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2367
+      },
+      {
+        "category": "binding-name",
+        "name": "getHuntMode",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1319
+      },
+      {
+        "category": "binding-name",
+        "name": "isEscorting",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1317
+      },
+      {
+        "category": "binding-name",
+        "name": "isHunting",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1316
+      },
+      {
+        "category": "binding-name",
+        "name": "isHunterKiller",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1315
+      },
+      {
+        "category": "binding-name",
+        "name": "getShieldPercentage",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1313
+      },
+      {
+        "category": "binding-name",
+        "name": "getShieldMax",
+        "owner": "Ufo",
+        "member": "addField",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1312
+      },
+      {
+        "category": "binding-name",
+        "name": "getShield",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1311
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamagePercentage",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1309
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageMax",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1308
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamage",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1307
+      },
+      {
+        "category": "binding-name",
+        "name": "getVisibility",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1305
+      },
+      {
+        "category": "binding-name",
+        "name": "getStatus",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1304
+      },
+      {
+        "category": "binding-name",
+        "name": "getRules",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1303
+      },
+      {
+        "category": "binding-name",
+        "name": "getId",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1302
+      },
+      {
+        "category": "binding-name",
+        "name": "getHuntBehavior",
+        "owner": "Ufo",
+        "member": "add",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1318
+      },
+      {
+        "category": "binding-name",
+        "name": "getAnimFrame",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3716
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleSoldier",
+        "owner": "Soldier",
+        "member": "addFunc",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2366
+      },
+      {
+        "category": "binding-name",
+        "name": "getLook",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2358
+      },
+      {
+        "category": "binding-name",
+        "name": "getGlobalShade",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3750
+      },
+      {
+        "category": "binding-name",
+        "name": "getDepth",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3749
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurnSide",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3748
+      },
+      {
+        "category": "binding-name",
+        "name": "randomRange",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3746
+      },
+      {
+        "category": "binding-name",
+        "name": "randomChance",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3745
+      },
+      {
+        "category": "binding-name",
+        "name": "flashLongMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3743
+      },
+      {
+        "category": "binding-name",
+        "name": "flashLongMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3742
+      },
+      {
+        "category": "binding-name",
+        "name": "flashLongMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3741
+      },
+      {
+        "category": "binding-name",
+        "name": "flashLongMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3740
+      },
+      {
+        "category": "binding-name",
+        "name": "flashLongMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3739
+      },
+      {
+        "category": "binding-name",
+        "name": "flashMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3737
+      },
+      {
+        "category": "binding-name",
+        "name": "flashMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3736
+      },
+      {
+        "category": "binding-name",
+        "name": "flashMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3735
+      },
+      {
+        "category": "binding-name",
+        "name": "flashMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3734
+      },
+      {
+        "category": "binding-name",
+        "name": "flashMessage",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3733
+      },
+      {
+        "category": "binding-name",
+        "name": "getGeoscapeGame",
+        "owner": "SavedBattleGame",
+        "member": "addPair",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3731
+      },
+      {
+        "category": "binding-name",
+        "name": "setReinforcementsItemLevel",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3729
+      },
+      {
+        "category": "binding-name",
+        "name": "getReinforcementsItemLevel",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3728
+      },
+      {
+        "category": "binding-name",
+        "name": "setAlienItemLevel",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3727
+      },
+      {
+        "category": "binding-name",
+        "name": "getAlienItemLevel",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3726
+      },
+      {
+        "category": "binding-name",
+        "name": "getItems",
+        "owner": "SavedBattleGame",
+        "member": "addList",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3724
+      },
+      {
+        "category": "binding-name",
+        "name": "getUnits.byFaction",
+        "owner": "SavedBattleGame",
+        "member": "addList",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3723
+      },
+      {
+        "category": "binding-name",
+        "name": "getUnits",
+        "owner": "SavedBattleGame",
+        "member": "addList",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3722
+      },
+      {
+        "category": "binding-name",
+        "name": "getTile",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3721
+      },
+      {
+        "category": "binding-name",
+        "name": "getTile",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3720
+      },
+      {
+        "category": "binding-name",
+        "name": "getSize.getZ",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3719
+      },
+      {
+        "category": "binding-name",
+        "name": "getSize.getY",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3718
+      },
+      {
+        "category": "binding-name",
+        "name": "FACTION_PLAYER",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3752
+      },
+      {
+        "category": "binding-name",
+        "name": "FACTION_HOSTILE",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3753
+      },
+      {
+        "category": "binding-name",
+        "name": "FACTION_NEUTRAL",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3754
+      },
+      {
+        "category": "binding-name",
+        "name": "tryConcealUnit",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3756
+      },
+      {
+        "category": "binding-name",
+        "name": "getGender",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2357
+      },
+      {
+        "category": "binding-name",
+        "name": "getRank",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2356
+      },
+      {
+        "category": "binding-name",
+        "name": "getId",
+        "owner": "Soldier",
+        "member": "addField",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2355
+      },
+      {
+        "category": "binding-name",
+        "name": "isResearched",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3740
+      },
+      {
+        "category": "binding-name",
+        "name": "getCountries",
+        "owner": "SavedGame",
+        "member": "addList",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3738
+      },
+      {
+        "category": "binding-name",
+        "name": "getCountries",
+        "owner": "SavedGame",
+        "member": "addList",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3737
+      },
+      {
+        "category": "binding-name",
+        "name": "getDaysPassed",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3735
+      },
+      {
+        "category": "binding-name",
+        "name": "getMonthsPassed",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3734
+      },
+      {
+        "category": "binding-name",
+        "name": "difficultyLevel",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3733
+      },
+      {
+        "category": "binding-name",
+        "name": "getRandomState",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3731
+      },
+      {
+        "category": "binding-name",
+        "name": "getTime",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3730
+      },
+      {
+        "category": "binding-name",
+        "name": "getSecondsPastMidnight",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3723
+      },
+      {
+        "category": "binding-name",
+        "name": "getDaysPastEpoch",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3722
+      },
+      {
+        "category": "binding-name",
+        "name": "getLookVariant",
+        "owner": "Soldier",
+        "member": "add",
+        "source": "src/Savegame/Soldier.cpp",
+        "line": 2359
+      },
+      {
+        "category": "binding-name",
+        "name": "getYear",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3721
+      },
+      {
+        "category": "binding-name",
+        "name": "getDay",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3719
+      },
+      {
+        "category": "binding-name",
+        "name": "getHour",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3718
+      },
+      {
+        "category": "binding-name",
+        "name": "getMinute",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3717
+      },
+      {
+        "category": "binding-name",
+        "name": "getSecond",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3716
+      },
+      {
+        "category": "binding-name",
+        "name": "randomRangeSymmetric",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3706
+      },
+      {
+        "category": "binding-name",
+        "name": "randomRange",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3705
+      },
+      {
+        "category": "binding-name",
+        "name": "randomChance",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3704
+      },
+      {
+        "category": "binding-name",
+        "name": "DIFF_SUPERHUMAN",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3768
+      },
+      {
+        "category": "binding-name",
+        "name": "DIFF_GENIUS",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3767
+      },
+      {
+        "category": "binding-name",
+        "name": "DIFF_VETERAN",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3766
+      },
+      {
+        "category": "binding-name",
+        "name": "DIFF_EXPERIENCED",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3765
+      },
+      {
+        "category": "binding-name",
+        "name": "DIFF_BEGINNER",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3764
+      },
+      {
+        "category": "binding-name",
+        "name": "difficultyLevel",
+        "owner": "SavedBattleGame",
+        "member": "add",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3758
+      },
+      {
+        "category": "binding-name",
+        "name": "getMonth",
+        "owner": "SavedGame",
+        "member": "add",
+        "source": "src/Savegame/SavedGame.cpp",
+        "line": 3720
+      },
+      {
+        "category": "binding-name",
+        "name": "addTextFormatRow",
+        "owner": "StatsForNerdsState",
+        "member": "add",
+        "source": "src/Ufopaedia/StatsForNerdsState.cpp",
+        "line": 4356
+      },
+      {
+        "category": "binding-name",
+        "name": "setFire",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7356
+      },
+      {
+        "category": "binding-name",
+        "name": "addMorale",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7352
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_AMMO",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2955
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_FIREARM",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2954
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_NONE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2953
+      },
+      {
+        "category": "binding-name",
+        "name": "getRandomDamage",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2944
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToWound",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2942
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToTime",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2941
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToTile",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2940
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToStun",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2939
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToMorale",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2938
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToMana",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2937
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToItem",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2936
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToHealth",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2935
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToEnergy",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2934
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToArmor",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2933
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageToArmorPre",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2932
+      },
+      {
+        "category": "binding-name",
+        "name": "getArmorIgnore",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2930
+      },
+      {
+        "category": "binding-name",
+        "name": "getArmorEffectiveness",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2929
+      },
+      {
+        "category": "binding-name",
+        "name": "getRandomType",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2927
+      },
+      {
+        "category": "binding-name",
+        "name": "getResistType",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2926
+      },
+      {
+        "category": "binding-name",
+        "name": "isAreaOfEffect",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2924
+      },
+      {
+        "category": "binding-name",
+        "name": "isDirect",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2923
+      },
+      {
+        "category": "binding-name",
+        "name": "INV_HAND",
+        "owner": "RuleInventory",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 330
+      },
+      {
+        "category": "binding-name",
+        "name": "INV_SLOT",
+        "owner": "RuleInventory",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 329
+      },
+      {
+        "category": "binding-name",
+        "name": "INV_GROUND",
+        "owner": "RuleInventory",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 328
+      },
+      {
+        "category": "binding-name",
+        "name": "getMoveToCost",
+        "owner": "RuleInventory",
+        "member": "add",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 324
+      },
+      {
+        "category": "binding-name",
+        "name": "isLeftHand",
+        "owner": "RuleInventory",
+        "member": "add",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 323
+      },
+      {
+        "category": "binding-name",
+        "name": "isRightHand",
+        "owner": "RuleInventory",
+        "member": "add",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 322
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_MELEE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2956
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_GRENADE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2957
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_PROXIMITYGRENADE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2958
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_MEDIKIT",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2959
+      },
+      {
+        "category": "binding-name",
+        "name": "getCost",
+        "owner": "RuleResearch",
+        "member": "add",
+        "source": "src/Mod/RuleResearch.cpp",
+        "line": 329
+      },
+      {
+        "category": "binding-name",
+        "name": "hasCategory",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2990
+      },
+      {
+        "category": "binding-name",
+        "name": "isSingleTarget",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2989
+      },
+      {
+        "category": "binding-name",
+        "name": "isBlockingBothHands",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2988
+      },
+      {
+        "category": "binding-name",
+        "name": "isTwoHanded",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2987
+      },
+      {
+        "category": "binding-name",
+        "name": "isWaterOnly",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2986
+      },
+      {
+        "category": "binding-name",
+        "name": "getWaypoints",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2985
+      },
+      {
+        "category": "binding-name",
+        "name": "getBattleType",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2984
+      },
+      {
+        "category": "binding-name",
+        "name": "getWeight",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2983
+      },
+      {
+        "category": "binding-name",
+        "name": "getArmorValue",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2982
+      },
+      {
+        "category": "binding-name",
+        "name": "getMeleeDamageType",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2980
+      },
+      {
+        "category": "binding-name",
+        "name": "getMeleePower",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2979
+      },
+      {
+        "category": "binding-name",
+        "name": "getDamageType",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2978
+      },
+      {
+        "category": "binding-name",
+        "name": "getType",
+        "owner": "RuleInventory",
+        "member": "add",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 321
+      },
+      {
+        "category": "binding-name",
+        "name": "getPower",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2977
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracyThrow",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2974
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracySnap",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2973
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracyPanic",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2972
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracyMind",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2971
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracyMelee",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2970
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracyAuto",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2969
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracyAimed",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2968
+      },
+      {
+        "category": "binding-name",
+        "name": "getType",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2966
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_CORPSE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2964
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_FLARE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2963
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_PSIAMP",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2962
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_MINDPROBE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2961
+      },
+      {
+        "category": "binding-name",
+        "name": "BT_SCANNER",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2960
+      },
+      {
+        "category": "binding-name",
+        "name": "getAccuracyUse",
+        "owner": "RuleItem",
+        "member": "add",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2975
+      },
+      {
+        "category": "binding-name",
+        "name": "getPoints",
+        "owner": "RuleResearch",
+        "member": "add",
+        "source": "src/Mod/RuleResearch.cpp",
+        "line": 330
+      },
+      {
+        "category": "binding-name",
+        "name": "getId",
+        "owner": "RuleInventory",
+        "member": "add",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 320
+      },
+      {
+        "category": "binding-name",
+        "name": "getVehiclesMax",
+        "owner": "RuleCraft",
+        "member": "add",
+        "source": "src/Mod/RuleCraft.cpp",
+        "line": 854
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseTimePercent",
+        "owner": "Armor",
+        "member": "addField",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1326
+      },
+      {
+        "category": "binding-name",
+        "name": "getArmor",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1323
+      },
+      {
+        "category": "binding-name",
+        "name": "getSize",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1319
+      },
+      {
+        "category": "binding-name",
+        "name": "getPersonalLightNeutral",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1318
+      },
+      {
+        "category": "binding-name",
+        "name": "getPersonalLightHostile",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1317
+      },
+      {
+        "category": "binding-name",
+        "name": "getPersonalLight",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1316
+      },
+      {
+        "category": "binding-name",
+        "name": "getVisibilityThroughFire",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1315
+      },
+      {
+        "category": "binding-name",
+        "name": "getHeatVision",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1314
+      },
+      {
+        "category": "binding-name",
+        "name": "getAntiCamouflageAtDay",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1313
+      },
+      {
+        "category": "binding-name",
+        "name": "getAntiCamouflageAtDark",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1312
+      },
+      {
+        "category": "binding-name",
+        "name": "getCamouflageAtDay",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1311
+      },
+      {
+        "category": "binding-name",
+        "name": "getCamouflageAtDark",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1310
+      },
+      {
+        "category": "binding-name",
+        "name": "getVisibilityAtDay",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1309
+      },
+      {
+        "category": "binding-name",
+        "name": "getVisibilityAtDark",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1308
+      },
+      {
+        "category": "binding-name",
+        "name": "getConstantAnimation",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1306
+      },
+      {
+        "category": "binding-name",
+        "name": "getDeathFrames",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1305
+      },
+      {
+        "category": "binding-name",
+        "name": "getDrawBubbles",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1304
+      },
+      {
+        "category": "binding-name",
+        "name": "getDrawingRoutine",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1303
+      },
+      {
+        "category": "binding-name",
+        "name": "getRequiredResearch",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1301
+      },
+      {
+        "category": "binding-name",
+        "name": "getCorpseBattlescape",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1299
+      },
+      {
+        "category": "binding-name",
+        "name": "getCorpseBattlescape",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1298
+      },
+      {
+        "category": "binding-name",
+        "name": "getCorpseGeoscape",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1297
+      },
+      {
+        "category": "binding-name",
+        "name": "getType",
+        "owner": "Armor",
+        "member": "add",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1295
+      },
+      {
+        "category": "binding-name",
+        "name": "SIDE_UNDER",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1293
+      },
+      {
+        "category": "binding-name",
+        "name": "SIDE_REAR",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1292
+      },
+      {
+        "category": "binding-name",
+        "name": "SIDE_RIGHT",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1291
+      },
+      {
+        "category": "binding-name",
+        "name": "SIDE_LEFT",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1290
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseEnergyPercent",
+        "owner": "Armor",
+        "member": "addField",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1327
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseNormalTimePercent",
+        "owner": "Armor",
+        "member": "addField",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1328
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseNormalEnergyPercent",
+        "owner": "Armor",
+        "member": "addField",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1329
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseFlyTimePercent",
+        "owner": "Armor",
+        "member": "addField",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1330
+      },
+      {
+        "category": "binding-name",
+        "name": "getSoldiersMax",
+        "owner": "RuleCraft",
+        "member": "add",
+        "source": "src/Mod/RuleCraft.cpp",
+        "line": 853
+      },
+      {
+        "category": "binding-name",
+        "name": "getWeaponsMax",
+        "owner": "RuleCraft",
+        "member": "add",
+        "source": "src/Mod/RuleCraft.cpp",
+        "line": 852
+      },
+      {
+        "category": "binding-name",
+        "name": "getType",
+        "owner": "RuleCraft",
+        "member": "add",
+        "source": "src/Mod/RuleCraft.cpp",
+        "line": 850
+      },
+      {
+        "category": "binding-name",
+        "name": "getFundingCap",
+        "owner": "RuleCountry",
+        "member": "add",
+        "source": "src/Mod/RuleCountry.cpp",
+        "line": 224
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleInventoryGround",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6739
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleInventoryBelt",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6738
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleInventoryBackpack",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6737
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleInventoryLeftHand",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6736
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleInventoryRightHand",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6735
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleInventory",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6734
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleSoldier",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6733
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleResearch",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6732
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleSkill",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6731
+      },
+      {
+        "category": "binding-name",
+        "name": "getPilotsMax",
+        "owner": "RuleCraft",
+        "member": "add",
+        "source": "src/Mod/RuleCraft.cpp",
+        "line": 855
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleArmor",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6730
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleUnit",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6728
+      },
+      {
+        "category": "binding-name",
+        "name": "getSmokeReduction",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6726
+      },
+      {
+        "category": "binding-name",
+        "name": "getMaxViewDistance",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6725
+      },
+      {
+        "category": "binding-name",
+        "name": "getMaxDarknessToSeeUnits",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6724
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpriteOffsetSmoke",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6723
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpriteOffsetHit",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6722
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpriteOffsetHandob",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6721
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpriteOffsetFloorob",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6720
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpriteOffsetBigobs",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6719
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpriteOffsetBasebits",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6718
+      },
+      {
+        "category": "binding-name",
+        "name": "getSoundOffsetGeo",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6717
+      },
+      {
+        "category": "binding-name",
+        "name": "getSoundOffsetBattle",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6716
+      },
+      {
+        "category": "binding-name",
+        "name": "MoveCost.getBaseFlyEnergyPercent",
+        "owner": "Armor",
+        "member": "addField",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1331
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleItem",
+        "owner": "Mod",
+        "member": "add",
+        "source": "src/Mod/Mod.cpp",
+        "line": 6729
+      },
+      {
+        "category": "binding-name",
+        "name": "getFire",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7355
+      },
+      {
+        "category": "binding-name",
+        "name": "getLookup",
+        "owner": "RuleResearch",
+        "member": "add",
+        "source": "src/Mod/RuleResearch.cpp",
+        "line": 331
+      },
+      {
+        "category": "binding-name",
+        "name": "getType",
+        "owner": "RuleSkill",
+        "member": "add",
+        "source": "src/Mod/RuleSkill.cpp",
+        "line": 131
+      },
+      {
+        "category": "binding-name",
+        "name": "getVisibilityThroughFire",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7309
+      },
+      {
+        "category": "binding-name",
+        "name": "getHeatVision",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7308
+      },
+      {
+        "category": "binding-name",
+        "name": "getPsiVision",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7307
+      },
+      {
+        "category": "binding-name",
+        "name": "getMaxViewDistance",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7306
+      },
+      {
+        "category": "binding-name",
+        "name": "getMaxViewDistanceAtDay",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7305
+      },
+      {
+        "category": "binding-name",
+        "name": "getMaxViewDistanceAtDark",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7304
+      },
+      {
+        "category": "binding-name",
+        "name": "makeVisible",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7302
+      },
+      {
+        "category": "binding-name",
+        "name": "isVisible",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7301
+      },
+      {
+        "category": "binding-name",
+        "name": "disableIndicators",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7299
+      },
+      {
+        "category": "binding-name",
+        "name": "getWalkingPhase",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7298
+      },
+      {
+        "category": "binding-name",
+        "name": "getTurretDirection",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7297
+      },
+      {
+        "category": "binding-name",
+        "name": "getAggression",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7296
+      },
+      {
+        "category": "binding-name",
+        "name": "getIntelligence",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7295
+      },
+      {
+        "category": "binding-name",
+        "name": "getDirection",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7294
+      },
+      {
+        "category": "binding-name",
+        "name": "getReactionScore",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7293
+      },
+      {
+        "category": "binding-name",
+        "name": "isWoundable",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7292
+      },
+      {
+        "category": "binding-name",
+        "name": "isFearable",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7291
+      },
+      {
+        "category": "binding-name",
+        "name": "isAiming",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7290
+      },
+      {
+        "category": "binding-name",
+        "name": "isCollapsing",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7289
+      },
+      {
+        "category": "binding-name",
+        "name": "isFlying",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7288
+      },
+      {
+        "category": "binding-name",
+        "name": "isWalking",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7287
+      },
+      {
+        "category": "binding-name",
+        "name": "isStanding",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7286
+      },
+      {
+        "category": "binding-name",
+        "name": "isKilled",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7285
+      },
+      {
+        "category": "binding-name",
+        "name": "isStunned",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7284
+      },
+      {
+        "category": "binding-name",
+        "name": "isKneeled",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7283
+      },
+      {
+        "category": "binding-name",
+        "name": "isFloating",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7282
+      },
+      {
+        "category": "binding-name",
+        "name": "getRecolor",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7281
+      },
+      {
+        "category": "binding-name",
+        "name": "setSpawnUnit",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7311
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpawnUnit",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7312
+      },
+      {
+        "category": "binding-name",
+        "name": "setSpawnUnitInstantRespawn",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7313
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpawnUnitInstantRespawn",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7314
+      },
+      {
+        "category": "binding-name",
+        "name": "setMorale",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7351
+      },
+      {
+        "category": "binding-name",
+        "name": "getMoraleMax",
+        "owner": "BattleUnit",
+        "member": "addFake",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7350
+      },
+      {
+        "category": "binding-name",
+        "name": "getMorale",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7349
+      },
+      {
+        "category": "binding-name",
+        "name": "addStun",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7347
+      },
+      {
+        "category": "binding-name",
+        "name": "setStun",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7346
+      },
+      {
+        "category": "binding-name",
+        "name": "getStunMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7345
+      },
+      {
+        "category": "binding-name",
+        "name": "getStun",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7344
+      },
+      {
+        "category": "binding-name",
+        "name": "addEnergy",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7342
+      },
+      {
+        "category": "binding-name",
+        "name": "setEnergy",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7341
+      },
+      {
+        "category": "binding-name",
+        "name": "getEnergyMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7340
+      },
+      {
+        "category": "binding-name",
+        "name": "getEnergy",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7339
+      },
+      {
+        "category": "binding-name",
+        "name": "addMana",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7337
+      },
+      {
+        "category": "binding-name",
+        "name": "setMana",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7336
+      },
+      {
+        "category": "binding-name",
+        "name": "getLookVariant",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7280
+      },
+      {
+        "category": "binding-name",
+        "name": "getManaMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7335
+      },
+      {
+        "category": "binding-name",
+        "name": "addHealthWithOverkill",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7332
+      },
+      {
+        "category": "binding-name",
+        "name": "setHealthWithOverkill",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7331
+      },
+      {
+        "category": "binding-name",
+        "name": "addHealth",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7330
+      },
+      {
+        "category": "binding-name",
+        "name": "setHealth",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7329
+      },
+      {
+        "category": "binding-name",
+        "name": "getHealthMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7328
+      },
+      {
+        "category": "binding-name",
+        "name": "getHealth",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7327
+      },
+      {
+        "category": "binding-name",
+        "name": "addTimeUnits",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7325
+      },
+      {
+        "category": "binding-name",
+        "name": "setTimeUnits",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7324
+      },
+      {
+        "category": "binding-name",
+        "name": "getTimeUnitsMax",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7323
+      },
+      {
+        "category": "binding-name",
+        "name": "getTimeUnits",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7322
+      },
+      {
+        "category": "binding-name",
+        "name": "getPreviousOwner",
+        "owner": "BattleUnit",
+        "member": "addPair",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7319
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpawnUnitFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7316
+      },
+      {
+        "category": "binding-name",
+        "name": "setSpawnUnitFaction",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7315
+      },
+      {
+        "category": "binding-name",
+        "name": "getMana",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7334
+      },
+      {
+        "category": "binding-name",
+        "name": "getNeededItem",
+        "owner": "RuleResearch",
+        "member": "add",
+        "source": "src/Mod/RuleResearch.cpp",
+        "line": 332
+      },
+      {
+        "category": "binding-name",
+        "name": "getLook",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7279
+      },
+      {
+        "category": "binding-name",
+        "name": "getRankUnified",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7277
+      },
+      {
+        "category": "binding-name",
+        "name": "isAmmo",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1550
+      },
+      {
+        "category": "binding-name",
+        "name": "getTotalWeight",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1549
+      },
+      {
+        "category": "binding-name",
+        "name": "getGlow",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1548
+      },
+      {
+        "category": "binding-name",
+        "name": "getId",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1547
+      },
+      {
+        "category": "binding-name",
+        "name": "getOwner",
+        "owner": "BattleItem",
+        "member": "addPair",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1546
+      },
+      {
+        "category": "binding-name",
+        "name": "getPreviousOwner",
+        "owner": "BattleItem",
+        "member": "addPair",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1545
+      },
+      {
+        "category": "binding-name",
+        "name": "InventoryMoveCost.getBaseTimePercent",
+        "owner": "BattleItem",
+        "member": "addField",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1543
+      },
+      {
+        "category": "binding-name",
+        "name": "getMoveToCost",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1542
+      },
+      {
+        "category": "binding-name",
+        "name": "getSlot",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1541
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoForAction",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1539
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoForAction",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1538
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoForSlot",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1537
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoForSlot",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1536
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoItem",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1535
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoItem",
+        "owner": "BattleItem",
+        "member": "addFunc",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1534
+      },
+      {
+        "category": "binding-name",
+        "name": "getBattleUnit",
+        "owner": "BattleItem",
+        "member": "addPair",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1533
+      },
+      {
+        "category": "binding-name",
+        "name": "getRuleItem",
+        "owner": "BattleItem",
+        "member": "addRules",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1532
+      },
+      {
+        "category": "binding-name",
+        "name": "getLiveAlienGeoscape",
+        "owner": "Unit",
+        "member": "add",
+        "source": "src/Mod/Unit.cpp",
+        "line": 549
+      },
+      {
+        "category": "binding-name",
+        "name": "getCivilianRecoverySoldierType",
+        "owner": "Unit",
+        "member": "add",
+        "source": "src/Mod/Unit.cpp",
+        "line": 548
+      },
+      {
+        "category": "binding-name",
+        "name": "getCivilianRecoveryItemType",
+        "owner": "Unit",
+        "member": "add",
+        "source": "src/Mod/Unit.cpp",
+        "line": 547
+      },
+      {
+        "category": "binding-name",
+        "name": "getSpawnUnit",
+        "owner": "Unit",
+        "member": "add",
+        "source": "src/Mod/Unit.cpp",
+        "line": 546
+      },
+      {
+        "category": "binding-name",
+        "name": "getType",
+        "owner": "Unit",
+        "member": "add",
+        "source": "src/Mod/Unit.cpp",
+        "line": 545
+      },
+      {
+        "category": "binding-name",
+        "name": "getWeaponReload",
+        "owner": "RuleUfo",
+        "member": "add",
+        "source": "src/Mod/RuleUfo.cpp",
+        "line": 500
+      },
+      {
+        "category": "binding-name",
+        "name": "getWeaponPower",
+        "owner": "RuleUfo",
+        "member": "add",
+        "source": "src/Mod/RuleUfo.cpp",
+        "line": 499
+      },
+      {
+        "category": "binding-name",
+        "name": "getWeaponRange",
+        "owner": "RuleUfo",
+        "member": "add",
+        "source": "src/Mod/RuleUfo.cpp",
+        "line": 498
+      },
+      {
+        "category": "binding-name",
+        "name": "getRadius",
+        "owner": "RuleUfo",
+        "member": "add",
+        "source": "src/Mod/RuleUfo.cpp",
+        "line": 497
+      },
+      {
+        "category": "binding-name",
+        "name": "getType",
+        "owner": "RuleSoldier",
+        "member": "add",
+        "source": "src/Mod/RuleSoldier.cpp",
+        "line": 667
+      },
+      {
+        "category": "binding-name",
+        "name": "isSpecialWeapon",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1551
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoQuantityMax",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1553
+      },
+      {
+        "category": "binding-name",
+        "name": "getAmmoQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1554
+      },
+      {
+        "category": "binding-name",
+        "name": "setAmmoQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1555
+      },
+      {
+        "category": "binding-name",
+        "name": "getRank",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7276
+      },
+      {
+        "category": "binding-name",
+        "name": "getId",
+        "owner": "BattleUnit",
+        "member": "addField",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7275
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_TRIGGER_PROXY_GRENADE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1592
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_TRIGGER_TIMED_GRENADE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1591
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_NONE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1590
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_UNPRIME",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1589
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_PRIME",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1588
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_PANIC",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1587
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_MINDCONTROL",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1586
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_THROW",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1585
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_USE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1584
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_HIT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1583
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_LAUNCH",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1582
+      },
+      {
+        "category": "binding-name",
+        "name": "getGender",
+        "owner": "BattleUnit",
+        "member": "add",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7278
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_AIMEDSHOT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1581
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_AUTOSHOT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1579
+      },
+      {
+        "category": "binding-name",
+        "name": "getActionCost.getTimeUnits",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1573
+      },
+      {
+        "category": "binding-name",
+        "name": "setStimulantQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1571
+      },
+      {
+        "category": "binding-name",
+        "name": "getStimulantQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1570
+      },
+      {
+        "category": "binding-name",
+        "name": "setPainKillerQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1568
+      },
+      {
+        "category": "binding-name",
+        "name": "getPainKillerQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1567
+      },
+      {
+        "category": "binding-name",
+        "name": "setHealQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1565
+      },
+      {
+        "category": "binding-name",
+        "name": "getHealQuantity",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1564
+      },
+      {
+        "category": "binding-name",
+        "name": "setFuseEnabled",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1562
+      },
+      {
+        "category": "binding-name",
+        "name": "isFuseEnabled",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1561
+      },
+      {
+        "category": "binding-name",
+        "name": "setFuseTimer",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1559
+      },
+      {
+        "category": "binding-name",
+        "name": "getFuseTimerDefault",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1558
+      },
+      {
+        "category": "binding-name",
+        "name": "getFuseTimer",
+        "owner": "BattleItem",
+        "member": "add",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1557
+      },
+      {
+        "category": "binding-name",
+        "name": "BA_SNAPSHOT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1580
+      },
+      {
+        "category": "binding-name",
+        "name": "addTextFormatRow",
+        "owner": "StatsForNerdsState",
+        "member": "add",
+        "source": "src/Ufopaedia/StatsForNerdsState.cpp",
+        "line": 4357
+      }
+    ],
+    "constantNameCandidates": [
+      {
+        "category": "constant-name",
+        "name": "SIDE_FRONT",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1289
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_LAUNCH",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1582
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_AIMEDSHOT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1581
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_AMMO",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2955
+      },
+      {
+        "category": "constant-name",
+        "name": "SIDE_LEFT",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1290
+      },
+      {
+        "category": "constant-name",
+        "name": "SIDE_RIGHT",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1291
+      },
+      {
+        "category": "constant-name",
+        "name": "SIDE_REAR",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1292
+      },
+      {
+        "category": "constant-name",
+        "name": "SIDE_UNDER",
+        "owner": "Armor",
+        "member": "addCustomConst",
+        "source": "src/Mod/Armor.cpp",
+        "line": 1293
+      },
+      {
+        "category": "constant-name",
+        "name": "INV_GROUND",
+        "owner": "RuleInventory",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 328
+      },
+      {
+        "category": "constant-name",
+        "name": "INV_SLOT",
+        "owner": "RuleInventory",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 329
+      },
+      {
+        "category": "constant-name",
+        "name": "INV_HAND",
+        "owner": "RuleInventory",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleInventory.cpp",
+        "line": 330
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_NONE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2953
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_FIREARM",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2954
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_MELEE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2956
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_SNAPSHOT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1580
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_GRENADE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2957
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_PROXIMITYGRENADE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2958
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_MEDIKIT",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2959
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_SCANNER",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2960
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_MINDPROBE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2961
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_PSIAMP",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2962
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_FLARE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2963
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_HIT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1583
+      },
+      {
+        "category": "constant-name",
+        "name": "BT_CORPSE",
+        "owner": "RuleItem",
+        "member": "addCustomConst",
+        "source": "src/Mod/RuleItem.cpp",
+        "line": 2964
+      },
+      {
+        "category": "constant-name",
+        "name": "UNIT_RANK_COMMANDER",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7467
+      },
+      {
+        "category": "constant-name",
+        "name": "UNIT_RANK_CAPTAIN",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7465
+      },
+      {
+        "category": "global-constant-name",
+        "name": "RuleList.",
+        "owner": "",
+        "member": "addConst",
+        "source": "src/Mod/Mod.cpp",
+        "line": 389
+      },
+      {
+        "category": "constant-name",
+        "name": "DETECTION_HYPERWAVE",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1340
+      },
+      {
+        "category": "constant-name",
+        "name": "DETECTION_RADAR",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1339
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_USE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1584
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_THROW",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1585
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_MINDCONTROL",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1586
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_PANIC",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1587
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_PRIME",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1588
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_UNPRIME",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1589
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_NONE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1590
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_TRIGGER_TIMED_GRENADE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1591
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_TRIGGER_PROXY_GRENADE",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1592
+      },
+      {
+        "category": "constant-name",
+        "name": "BODYPART_HEAD",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7455
+      },
+      {
+        "category": "constant-name",
+        "name": "BODYPART_TORSO",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7456
+      },
+      {
+        "category": "constant-name",
+        "name": "BODYPART_LEFTARM",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7457
+      },
+      {
+        "category": "constant-name",
+        "name": "BODYPART_RIGHTARM",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7458
+      },
+      {
+        "category": "constant-name",
+        "name": "BODYPART_LEFTLEG",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7459
+      },
+      {
+        "category": "constant-name",
+        "name": "BODYPART_RIGHTLEG",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7460
+      },
+      {
+        "category": "constant-name",
+        "name": "UNIT_RANK_ROOKIE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7462
+      },
+      {
+        "category": "constant-name",
+        "name": "UNIT_RANK_SQUADDIE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7463
+      },
+      {
+        "category": "constant-name",
+        "name": "UNIT_RANK_SERGEANT",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7464
+      },
+      {
+        "category": "constant-name",
+        "name": "UNIT_RANK_COLONEL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7466
+      },
+      {
+        "category": "global-constant-name",
+        "name": "RuleList.",
+        "owner": "",
+        "member": "addConst",
+        "source": "src/Mod/Mod.cpp",
+        "line": 390
+      },
+      {
+        "category": "constant-name",
+        "name": "BA_AUTOSHOT",
+        "owner": "BattleItem",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleItem.cpp",
+        "line": 1579
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_FACE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7470
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_PURPLE0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7483
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_RED",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7474
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_GREEN0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7475
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_GREEN1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7476
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_GRAY",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7477
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_BROWN0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7478
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_BLUE0",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7479
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_BLUE1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7480
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_BROWN1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7481
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_BROWN2",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7482
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_PURPLE1",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7484
+      },
+      {
+        "category": "constant-name",
+        "name": "movement_type_walk",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7498
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_BLUE2",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7485
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_SILVER",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7486
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_SPECIAL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7487
+      },
+      {
+        "category": "constant-name",
+        "name": "LOOK_BLONDE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7490
+      },
+      {
+        "category": "constant-name",
+        "name": "LOOK_BROWNHAIR",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7491
+      },
+      {
+        "category": "constant-name",
+        "name": "LOOK_ORIENTAL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7492
+      },
+      {
+        "category": "constant-name",
+        "name": "LOOK_AFRICAN",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7493
+      },
+      {
+        "category": "constant-name",
+        "name": "GENDER_MALE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7495
+      },
+      {
+        "category": "constant-name",
+        "name": "GENDER_FEMALE",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7496
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_YELLOW",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7473
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_HAIR",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7469
+      },
+      {
+        "category": "constant-name",
+        "name": "movement_type_fly",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7499
+      },
+      {
+        "category": "constant-name",
+        "name": "DETECTION_NONE",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1338
+      },
+      {
+        "category": "constant-name",
+        "name": "COLOR_X1_NULL",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7472
+      },
+      {
+        "category": "constant-name",
+        "name": "DIFF_GENIUS",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3767
+      },
+      {
+        "category": "constant-name",
+        "name": "SATISFACTION_UNHAPPY",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 397
+      },
+      {
+        "category": "constant-name",
+        "name": "SATISFACTION_SATISIFIED",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 398
+      },
+      {
+        "category": "constant-name",
+        "name": "SATISFACTION_HAPPY",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 399
+      },
+      {
+        "category": "constant-name",
+        "name": "FACTION_PLAYER",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3752
+      },
+      {
+        "category": "constant-name",
+        "name": "FACTION_HOSTILE",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3753
+      },
+      {
+        "category": "constant-name",
+        "name": "FACTION_NEUTRAL",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3754
+      },
+      {
+        "category": "constant-name",
+        "name": "DIFF_BEGINNER",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3764
+      },
+      {
+        "category": "constant-name",
+        "name": "DIFF_EXPERIENCED",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3765
+      },
+      {
+        "category": "constant-name",
+        "name": "DIFF_VETERAN",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3766
+      },
+      {
+        "category": "constant-name",
+        "name": "DIFF_SUPERHUMAN",
+        "owner": "SavedBattleGame",
+        "member": "addCustomConst",
+        "source": "src/Savegame/SavedBattleGame.cpp",
+        "line": 3768
+      },
+      {
+        "category": "constant-name",
+        "name": "movement_type_slide",
+        "owner": "BattleUnit",
+        "member": "addCustomConst",
+        "source": "src/Savegame/BattleUnit.cpp",
+        "line": 7500
+      },
+      {
+        "category": "constant-name",
+        "name": "STT_TILE",
+        "owner": "Tile",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1379
+      },
+      {
+        "category": "constant-name",
+        "name": "STT_START_POINT",
+        "owner": "Tile",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1380
+      },
+      {
+        "category": "constant-name",
+        "name": "STT_END_POINT",
+        "owner": "Tile",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Tile.cpp",
+        "line": 1381
+      },
+      {
+        "category": "constant-name",
+        "name": "UFO_FLYING",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1332
+      },
+      {
+        "category": "constant-name",
+        "name": "UFO_LANDED",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1333
+      },
+      {
+        "category": "constant-name",
+        "name": "UFO_CRASHED",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1334
+      },
+      {
+        "category": "constant-name",
+        "name": "UFO_DESTROYED",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1335
+      },
+      {
+        "category": "constant-name",
+        "name": "UFO_IGNORE_ME",
+        "owner": "Ufo",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Ufo.cpp",
+        "line": 1336
+      },
+      {
+        "category": "constant-name",
+        "name": "SATISFACTION_ALIENPACT",
+        "owner": "Country",
+        "member": "addCustomConst",
+        "source": "src/Savegame/Country.cpp",
+        "line": 396
+      },
+      {
+        "category": "global-constant-name",
+        "name": "SCRIPT_VERSION_DATE",
+        "owner": "",
+        "member": "addConst",
+        "source": "src/Mod/Mod.cpp",
+        "line": 393
+      }
+    ],
+    "tagValueTypes": [
+      {
+        "category": "tag-value-type",
+        "name": "RuleList",
+        "owner": "",
+        "member": "addTagValueType",
+        "source": "src/Mod/Mod.cpp",
+        "line": 388
+      }
+    ],
+    "parserTypes": [
+      {
+        "category": "parser-type",
+        "name": "RecolorUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 93
+      },
+      {
+        "category": "parser-type",
+        "name": "NewTurnItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 181
+      },
+      {
+        "category": "parser-type",
+        "name": "RecolorItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 185
+      },
+      {
+        "category": "parser-type",
+        "name": "SelectItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 189
+      },
+      {
+        "category": "parser-type",
+        "name": "VaporParticleBaseParser",
+        "owner": "ScriptParser",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 193
+      },
+      {
+        "category": "parser-type",
+        "name": "TryPsiAttackItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 207
+      },
+      {
+        "category": "parser-type",
+        "name": "TryMeleeAttackItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 213
+      },
+      {
+        "category": "parser-type",
+        "name": "CreateItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 176
+      },
+      {
+        "category": "parser-type",
+        "name": "SellCostItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 218
+      },
+      {
+        "category": "parser-type",
+        "name": "StatsForNerdsItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 227
+      },
+      {
+        "category": "parser-type",
+        "name": "BonusStatsBaseParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 236
+      },
+      {
+        "category": "parser-type",
+        "name": "NewMonthCountryParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 277
+      },
+      {
+        "category": "parser-type",
+        "name": "DetectUfoFromBaseParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 286
+      },
+      {
+        "category": "parser-type",
+        "name": "DetectUfoFromCraftParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 291
+      },
+      {
+        "category": "parser-type",
+        "name": "StatsForNerdsUfoParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 296
+      },
+      {
+        "category": "parser-type",
+        "name": "BuyCostItemParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 223
+      },
+      {
+        "category": "parser-type",
+        "name": "StatsForNerdsCraftParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 305
+      },
+      {
+        "category": "parser-type",
+        "name": "StatsForNerdsArmorParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 167
+      },
+      {
+        "category": "parser-type",
+        "name": "ReturnFromMissionUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 158
+      },
+      {
+        "category": "parser-type",
+        "name": "SelectUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 98
+      },
+      {
+        "category": "parser-type",
+        "name": "SelectMoveSoundUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 102
+      },
+      {
+        "category": "parser-type",
+        "name": "ReactionUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 106
+      },
+      {
+        "category": "parser-type",
+        "name": "VisibilityUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 111
+      },
+      {
+        "category": "parser-type",
+        "name": "AiCalculateTargetWeightParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 116
+      },
+      {
+        "category": "parser-type",
+        "name": "HitUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 121
+      },
+      {
+        "category": "parser-type",
+        "name": "AwardExperienceParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 162
+      },
+      {
+        "category": "parser-type",
+        "name": "SkillUseUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 126
+      },
+      {
+        "category": "parser-type",
+        "name": "TryMeleeAttackUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 134
+      },
+      {
+        "category": "parser-type",
+        "name": "DamageUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 138
+      },
+      {
+        "category": "parser-type",
+        "name": "DamageSpecialUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 142
+      },
+      {
+        "category": "parser-type",
+        "name": "HealUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 146
+      },
+      {
+        "category": "parser-type",
+        "name": "CreateUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 150
+      },
+      {
+        "category": "parser-type",
+        "name": "NewTurnUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 154
+      },
+      {
+        "category": "parser-type",
+        "name": "TryPsiAttackUnitParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 130
+      },
+      {
+        "category": "parser-type",
+        "name": "ApplySoldierBonusesParser",
+        "owner": "ScriptParserEvents",
+        "member": "",
+        "source": "src/Mod/ModScript.h",
+        "line": 314
+      }
+    ],
+    "scriptValueOwners": [
+      {
+        "category": "script-values-owner",
+        "name": "T",
+        "owner": "",
+        "member": "",
+        "source": "src/Engine/ScriptBind.h",
+        "line": 1629
+      },
+      {
+        "category": "script-values-owner",
+        "name": "SavedGame",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/SavedGame.h",
+        "line": 180
+      },
+      {
+        "category": "script-values-owner",
+        "name": "SavedBattleGame",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/SavedBattleGame.h",
+        "line": 133
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Craft",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/Craft.h",
+        "line": 110
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Country",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/Country.h",
+        "line": 50
+      },
+      {
+        "category": "script-values-owner",
+        "name": "BattleUnit",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/BattleUnit.h",
+        "line": 207
+      },
+      {
+        "category": "script-values-owner",
+        "name": "BattleItem",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/BattleItem.h",
+        "line": 67
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleUfo",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleUfo.h",
+        "line": 186
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleUfo",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleUfo.h",
+        "line": 95
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleSoldierBonus",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleSoldierBonus.h",
+        "line": 118
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleSoldierBonus",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleSoldierBonus.h",
+        "line": 57
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleSoldier",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleSoldier.h",
+        "line": 227
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Soldier",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/Soldier.h",
+        "line": 93
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleSoldier",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleSoldier.h",
+        "line": 101
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleSkill",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleSkill.h",
+        "line": 47
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleResearch",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleResearch.h",
+        "line": 66
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleItem",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleItem.h",
+        "line": 1044
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleItem",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleItem.h",
+        "line": 486
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleCraft",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleCraft.h",
+        "line": 422
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleCraft",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleCraft.h",
+        "line": 239
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleCountry",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleCountry.h",
+        "line": 52
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Mod",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/Mod.cpp",
+        "line": 416
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Mod",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/Mod.cpp",
+        "line": 333
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Armor",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/Armor.h",
+        "line": 461
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Armor",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/Armor.h",
+        "line": 188
+      },
+      {
+        "category": "script-values-owner",
+        "name": "RuleSkill",
+        "owner": "",
+        "member": "",
+        "source": "src/Mod/RuleSkill.h",
+        "line": 90
+      },
+      {
+        "category": "script-values-owner",
+        "name": "Ufo",
+        "owner": "",
+        "member": "",
+        "source": "src/Savegame/Ufo.h",
+        "line": 85
+      }
+    ]
+  },
+  "caveats": [
+    "Binding and constant entries are source candidates; overload signatures and owning parser groups require semantic refinement.",
+    "Gameplay bindings are inventoried here but remain implemented with their owning gameplay slices."
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "cases": [
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "return-only",
+      "result": 7,
+      "seed": 7,
+      "source": "return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "set-output",
+      "result": 42,
+      "seed": 7,
+      "source": "set result 42; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "locals-and-arithmetic",
+      "result": 42,
+      "seed": 0,
+      "source": "var int temp; set temp 0x6; mul temp 0b111; set result temp; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "conditional",
+      "result": 11,
+      "seed": 7,
+      "source": "if eq result 7; set result 11; else; set result 13; end; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "comment",
+      "result": 15,
+      "seed": 0,
+      "source": "# leading comment\nset result 0o17; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027missing-return\u0027: script need to end with return statement",
+        "    for code in "
+      ],
+      "name": "missing-return",
+      "result": 0,
+      "seed": 0,
+      "source": "set result 1;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Invalid operation \u0027explode\u0027",
+        "Error in parsing script \u0027Probe\u0027 for \u0027unknown-operation\u0027: invalid operation in line: \u0027explode result;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "unknown-operation",
+      "result": 0,
+      "seed": 0,
+      "source": "explode result; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027unreachable\u0027: unreachable code after return in line: \u0027set result 1;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "unreachable",
+      "result": 0,
+      "seed": 0,
+      "source": "return result; set result 1;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027invalid-number\u0027: invalid argument \u00270xg\u0027 in line: \u0027set result 0xg;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "invalid-number",
+      "result": 0,
+      "seed": 0,
+      "source": "set result 0xg; return result;"
+    }
+  ]
+}
