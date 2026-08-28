@@ -22,6 +22,13 @@ Setup constructs files, layers, YAML, surfaces, palettes, clips, and output buff
 outside the measured operations. Batched benchmarks declare their operations-per-invoke
 count, so reported time and allocation columns remain per logical operation.
 
+The aggregate Phase 3 workload is retained as an end-to-end startup signal, but it must
+not be the only content measurement. The architecture review requires separate
+parse/compose, type/link-from-composed-input, and manifest workloads plus parse-pass
+instrumentation. Optional private runs should exercise complete `xcom1` and large
+community-mod chains. See
+[`architecture-performance-review.md`](architecture-performance-review.md).
+
 ## Running and comparing results
 
 Build validation, including CI, compiles the benchmark project as part of `Oxce.slnx`
