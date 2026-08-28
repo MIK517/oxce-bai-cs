@@ -445,9 +445,9 @@ Authoritative C++ references inspected for closure:
 
 The Phase 3 implementation boundary is complete for metadata/VFS discovery, named and
 implemented special rule composition, typed declarations, explicit relationship
-validation, and deterministic corpus auditing. The Phase 3 exit gate is not yet closed:
-installation-level evidence found compatibility defects in diagnostic replay and
-relationship validation that the smaller committed fixtures do not exercise.
+validation, and deterministic corpus auditing. Installation-level acceptance closes
+the Phase 3 exit gate; the corpus defects found beyond the smaller committed fixtures
+are covered by focused public regression tests.
 Cross-cutting global tables that are not yet consumed by a typed family remain preserved
 in composed YAML and are focused follow-up work; they are not presented as typed runtime
 state. Decoded resource publication and shared sprite/sound offsets belong to the
@@ -472,15 +472,33 @@ That local acceptance run was performed on 2026-08-28:
   treats a mission wave's `ufo` field as an unconditional eager lookup. The reference
   runtime permits that field to select a UFO, a directly spawned deployment, or no
   spawned object.
-- After those corrections, the standard chain remains clean and Rosigma reports 204
-  relationship diagnostics plus five unsupported `requiresBuyBaseFunc` properties on
-  soldier transformations. The C++ transformation loader consumes `requiresBaseFunc`,
-  not `requiresBuyBaseFunc`, so those five are retained as explicit unsupported input.
+- Reference-policy classification follows the exact `Mod::loadAll` `afterLoad` pass.
+  Missing rules resolved during that eager pass remain error diagnostics and prevent
+  `linked`; unresolved identifiers retained as strings for runtime selection are
+  preserved and reported with warning `OXCE-MOD-0026` without becoming validation
+  issues.
+- The final complete Rosigma run reached `linked` with zero validation issues and zero
+  error diagnostics. Its 8,818 warnings comprise 8,613 explicitly deferred properties,
+  204 unresolved runtime references, and one existing version-format warning.
+- The five `requiresBuyBaseFunc` properties on soldier transformations remain within
+  the deferred-property count. The C++ transformation loader consumes
+  `requiresBaseFunc`, not `requiresBuyBaseFunc`, so the port diagnoses and preserves
+  those inputs without interpreting them as another property.
 
-The remaining 204 relationships require focused comparison with the reference engine's
-eager, optional, sentinel, and runtime lookup behavior; they must not be waived in bulk.
-The community-mod exit gate is satisfied only after that policy work lets Rosigma reach
-`linked` without suppressing genuine errors.
+The relationship classification was performed per owning C++ loader rather than by
+waiving a corpus-specific list. Public fixtures verify that runtime script/event,
+deployment, Ufopaedia, inventory/category, and transformation IDs warn while eager
+armor, unit, item, research, manufacture, facility, country-event, and similar links
+still fail intentionally.
+
+Additional authoritative C++ references inspected for final link policy:
+
+- `src/Mod/Mod.cpp`: the exact rule families included in the eager `afterLoad` pass.
+- `src/Mod/RuleItem.cpp`, `RuleCraft.cpp`, `RuleBaseFacility.cpp`,
+  `RuleResearch.cpp`, and `RuleEvent.cpp`: eager pointer links versus runtime IDs.
+- `src/Mod/RuleSoldierTransformation.cpp`, `RuleInventory.cpp`, `RuleTerrain.cpp`,
+  `AlienRace.cpp`, and `AlienDeployment.cpp`: string-retained/runtime relationships and
+  unsupported transformation input.
 
 Content loading reports distinct `composed`, `typed`, `linked`,
 `resources-resolved`, and `scripts-compiled` capabilities. Phase 3 must preserve and
