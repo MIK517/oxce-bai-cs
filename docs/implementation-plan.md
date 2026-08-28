@@ -126,12 +126,14 @@ not a complete `linked` result.
 
 Installation-level acceptance on 2026-08-28 established two distinct outcomes. A
 complete `xcom1` installation reaches `linked` with no errors. The 40k/Rosigma chain
-composes and reaches `typed`, but does not reach `linked`: corpus-scale inputs exposed a
-`refNode` identity-consumption defect and relationship checks that are stricter than the
-reference engine's polymorphic or runtime lookups. Those closure semantics, followed by
-a clean repeat of the same installation run, remain required before Phase 3 is marked
-Done. Unsupported properties and genuine invalid relationships must continue to be
-diagnosed rather than silently discarded.
+composes and reaches `typed`, but does not reach `linked`. Corpus-scale inputs exposed
+and now cover `refNode` identity consumption, reference-compatible Ufopaedia type
+dispatch, and alien-mission waves that may spawn a UFO, a deployment, or no object. The
+post-fix run has 204 relationship diagnostics requiring reference lookup-policy
+classification and five unsupported transformation properties. A clean Rosigma repeat
+after that classification remains required before Phase 3 is marked Done. Unsupported
+properties and genuine invalid relationships must continue to be diagnosed rather than
+silently discarded.
 
 ## Phase 4 — OXCE scripting language
 
