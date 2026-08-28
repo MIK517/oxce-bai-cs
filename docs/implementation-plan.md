@@ -90,8 +90,9 @@ Exit gate:
 
 ## Phase 3 — Mod system and typed rules
 
-Status: complete for the boundary below. Resource decoding/offset publication and
-script compilation remain assigned to their owning later phases.
+Status: implementation substantially complete; installation-level closure remains a
+gate. Resource decoding/offset publication and script compilation remain assigned to
+their owning later phases.
 
 Deliverables:
 
@@ -112,15 +113,25 @@ is a schema-versioned manifest rather than reflection serialization of the runti
 graph; it includes normalized provenance, deferred counts, and a composed semantic
 digest suitable for fixture comparison.
 
-Exit gate:
+Exit gate and evidence:
 
 - Bundled standard mods resolve without unsupported nodes.
 - Selected large community mods parse and link; unsupported features fail explicitly,
   never by silent ignore.
 
-The optional private-corpus gate currently exercises the large script-heavy 40k chain.
-It may remain `typed` when references supplied by copyrighted base content are absent;
-unsupported properties and relationships are diagnosed rather than silently discarded.
+Bundled public fixtures satisfy the automated repository gate. The optional private
+corpus exercises the large script-heavy 40k chain, but a synthetic empty `xcom1` master
+cannot supply copyrighted base rules; that run proves parsing and typed-manifest breadth,
+not a complete `linked` result.
+
+Installation-level acceptance on 2026-08-28 established two distinct outcomes. A
+complete `xcom1` installation reaches `linked` with no errors. The 40k/Rosigma chain
+composes and reaches `typed`, but does not reach `linked`: corpus-scale inputs exposed a
+`refNode` identity-consumption defect and relationship checks that are stricter than the
+reference engine's polymorphic or runtime lookups. Those closure semantics, followed by
+a clean repeat of the same installation run, remain required before Phase 3 is marked
+Done. Unsupported properties and genuine invalid relationships must continue to be
+diagnosed rather than silently discarded.
 
 ## Phase 4 — OXCE scripting language
 

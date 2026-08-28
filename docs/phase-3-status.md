@@ -443,13 +443,42 @@ Authoritative C++ references inspected for closure:
 
 ## Phase 3 completion boundary
 
-Phase 3 is complete for metadata/VFS discovery, named and implemented special rule
-composition, typed declarations, explicit relationship validation, and deterministic
-corpus auditing. Cross-cutting global tables that are not yet consumed by a typed family
-remain preserved in composed YAML and are focused follow-up work; they are not presented
-as typed runtime state. Decoded resource publication and shared sprite/sound offsets
-belong to the resource-owner integration work, while compatible script compilation and
-execution remain the Phase 4 gate.
+The Phase 3 implementation boundary is complete for metadata/VFS discovery, named and
+implemented special rule composition, typed declarations, explicit relationship
+validation, and deterministic corpus auditing. The Phase 3 exit gate is not yet closed:
+installation-level evidence found compatibility defects in diagnostic replay and
+relationship validation that the smaller committed fixtures do not exercise.
+Cross-cutting global tables that are not yet consumed by a typed family remain preserved
+in composed YAML and are focused follow-up work; they are not presented as typed runtime
+state. Decoded resource publication and shared sprite/sound offsets belong to the
+resource-owner integration work, while compatible script compilation and execution
+remain the Phase 4 gate.
+
+The committed corpus is sufficient for deterministic CI but cannot contain original
+game rules or assets. The optional private test substitutes an empty synthetic `xcom1`
+master, so it demonstrates broad community-mod parsing and typed-manifest generation
+without claiming a fully linked installation. A user-owned complete UFO/TFTD content
+tree plus selected mods is the appropriate local acceptance run for that final evidence.
+
+That local acceptance run was performed on 2026-08-28:
+
+- The complete standard `xcom1` chain reached `linked` with zero validation issues and
+  zero error diagnostics. Its 19 warnings were explicitly deferred later-phase fields.
+- The complete `xcom1` -> `40k` -> `40k_ROSIGMA_edits` chain produced a deterministic
+  typed manifest but stopped at `typed`. It reported 493 unconsumed identity properties
+  from `refNode` replay and 994 missing-reference diagnostics.
+- Of the relationship diagnostics, 652 came from treating generic TFTD Ufopaedia
+  articles (`type_id: 10`) as item articles, and 153 came from requiring every alien
+  mission wave target to be a UFO even though the reference engine also accepts a
+  directly spawned alien deployment. The remaining 189 diagnostics require focused
+  comparison with the reference engine's eager, optional, sentinel, and runtime lookup
+  behavior; they must not be waived in bulk.
+
+Phase 3 closure therefore needs a focused compatibility branch covering `refNode`
+identity consumption, polymorphic mission-wave targets, corrected Ufopaedia type
+linking, and reference-based classification of the remaining relationship families.
+The same two installation probes should then be repeated; the community-mod exit gate
+is satisfied only after Rosigma reaches `linked` without suppressing genuine errors.
 
 Content loading reports distinct `composed`, `typed`, `linked`,
 `resources-resolved`, and `scripts-compiled` capabilities. Phase 3 must preserve and
