@@ -1,0 +1,42 @@
+ufoTrajectories:
+  - id: TRAJ
+    groundTimer: 7
+    waypoints: [[1, 2, 3]]
+alienMissions:
+  - type: MISSION
+    waves: [{ufo: UFO, count: 2, trajectory: TRAJ, timer: 30, objective: true}]
+    missionWeights: {0: 5}
+    raceWeights: {0: {RACE: 2}}
+    regionWeights: {0: {REGION: 3}}
+    multiUfoRetaliationExtra: true
+arcScripts:
+  - type: ARC
+    sequentialArcs: [RESEARCH]
+    randomArcs: {RESEARCH: 2}
+events:
+  - name: EVENT
+    description: DESCRIPTION
+    everyItemList: [ITEM]
+    spawnedSoldier: {name: FIRST, stats: {tu: 40}}
+eventScripts:
+  - type: EVENT_SCRIPT
+    oneTimeSequentialEvents: [EVENT]
+    eventWeights: {0: {EVENT: 4}}
+    missionMinRuns: 2
+    counterMin: 3
+missionScripts:
+  - type: SCRIPT
+    varName: runs
+    maxRuns: 2
+    missionWeights: {0: {MISSION: 5}}
+    raceWeights: {0: {RACE: 2}}
+    regionWeights: {0: {REGION: 2}}
+adhocScripts:
+  - type: ADHOC
+    adhocMissionScriptTags: [TAG]
+ufopaedia:
+  - id: ITEM
+    type_id: 4
+    section: STR_ITEMS
+    title: TITLE
+    text: FIRST
