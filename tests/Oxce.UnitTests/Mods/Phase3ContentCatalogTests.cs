@@ -24,7 +24,7 @@ public sealed class Phase3ContentCatalogTests
     }
 
     [Fact]
-    public void MissingCrossFamilyReferenceStopsAtTypedStage()
+    public void MissingRuntimeReferenceAdvancesToLinkedStageWithWarning()
     {
         using var fixture = new TemporaryMod("events: [{name: EVENT, everyItemList: [MISSING]}]");
         var diagnostics = new DiagnosticCollector();
@@ -32,9 +32,10 @@ public sealed class Phase3ContentCatalogTests
         var catalog = Phase3ContentCatalog.Load(CreatePlan(fixture.Root), diagnostics);
 
         Assert.True(catalog.Capabilities.Has(ContentLoadStage.Typed));
-        Assert.False(catalog.Capabilities.Has(ContentLoadStage.Linked));
-        Assert.False(catalog.Validation.IsValid);
-        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.MissingRuleReference);
+        Assert.True(catalog.Capabilities.Has(ContentLoadStage.Linked));
+        Assert.True(catalog.Validation.IsValid);
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference);
+        Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
 
     [Fact]
