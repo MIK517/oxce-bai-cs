@@ -19,6 +19,7 @@ public sealed class TypedRuleFamilyLoaderTests
             probeRules:
               - type: RULE_A
                 refNode:
+                  type: INHERITED_IDENTITY
                   label: inherited
                   value: 10
                   values: [1, 2]
@@ -28,13 +29,18 @@ public sealed class TypedRuleFamilyLoaderTests
                 enabled: true
             """;
 
-        var typed = Load(yaml);
+        var diagnostics = new DiagnosticCollector();
+
+        var typed = Load(yaml, diagnostics);
 
         var rule = Assert.Single(typed.Rules).Value;
         Assert.Equal("inherited", rule.Label);
         Assert.Equal(20, rule.Value);
         Assert.Equal([3], rule.Values);
         Assert.True(rule.Enabled);
+        Assert.DoesNotContain(diagnostics.Snapshot(), item =>
+            item.Code == ModDiagnosticCodes.UnconsumedRuleProperty &&
+            item.Message.Contains("'type'", StringComparison.Ordinal));
         Assert.True(typed.Capabilities.Has(ContentLoadStage.Composed | ContentLoadStage.Typed));
         Assert.False(typed.Capabilities.Has(ContentLoadStage.Linked));
     }
