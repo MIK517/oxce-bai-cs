@@ -51,7 +51,13 @@ aliases, and merge keys:
 .\tools\capture-cat-reference.ps1
 .\tools\capture-gm-cat-reference.ps1
 .\tools\capture-flc-indexed-reference.ps1
+.\tools\capture-script-core-reference.ps1
 ```
+
+The script-core probe compiles the pinned reference `Script.cpp` itself and captures
+accept/reject diagnostics plus deterministic final output for a binding-free integer
+parser. It is the first Phase 4 compiler/VM oracle; later fixtures extend it by grammar,
+type, control-flow, runtime-error, event, and binding families.
 
 The scripts discover the conventional sibling checkout and the categorized
 `C#/...` plus `CPP/...` layout. Otherwise pass `-ReferenceRoot` or set the portable

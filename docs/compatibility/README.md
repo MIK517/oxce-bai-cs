@@ -27,6 +27,18 @@ Use `-ReferenceRoot` when the checkout lives elsewhere. Candidate rule keys are 
 source scan and must be confirmed against exact loader functions before being promoted
 to compatibility entries.
 
+`script-inventory.json` is the Phase 4 source ledger for core operations, limits,
+`ScriptRegister` definitions, binding/constant name candidates, parser types, and
+persistent script-value owners. Refresh it against the same pinned checkout with:
+
+```powershell
+.\tools\update-script-inventory.ps1
+```
+
+Binding entries are candidates until their overload signatures and owning parser groups
+are semantically classified; the inventory is an auditable starting point, not a claim
+that the bindings are implemented.
+
 - [YAML and rulesets](yaml-rulesets.md)
 - [Files and resource catalog](files.md)
 - [Scripting](scripting.md)
