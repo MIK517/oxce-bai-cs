@@ -372,21 +372,21 @@ Authoritative C++ references for this slice:
 
 ## Mission, event, and ufopaedia rules
 
-The next vertical slice owns UFO trajectories, alien mission definitions, arc scripts,
+The mission/event slice implements UFO trajectories, alien mission definitions, arc scripts,
 event scripts, geoscape events, recurring and ad-hoc mission scripts, and ufopaedia
 articles. Grouping these families closes the strategic-content graph in one CI run:
 mission scripts select alien missions, races, and regions; alien missions select UFOs,
 trajectories, and deployments; event scripts select events; and articles link the
 resulting content to player-visible reference material.
 
-The slice will preserve constructor defaults, recursive `refNode` updates, weighted
+The slice preserves constructor defaults, recursive `refNode` updates, weighted
 timeline behavior, shallow spawned-soldier overlays, mission-script invariants,
 ufopaedia replacement/deletion and list ordering, and lossless script-bearing nodes.
-Relationship checks will cover the already typed campaign, item, equipment, personnel,
+Relationship checks cover the already typed campaign, item, equipment, personnel,
 terrain, and deployment catalogs without claiming script compilation or full immutable
 link closure.
 
-Acceptance requires a layered public fixture and pinned C++ oracle covering trajectory
+The layered public fixture and pinned C++ oracle cover trajectory
 replacement, mission weights and side effects, arc/event selections, mission-script
 weight timelines and validation, event overlays, and ufopaedia update/deletion.
 Malformed waypoint/article/script shapes and missing cross-family references require
@@ -416,8 +416,8 @@ a fully loaded mod:
    concrete family's property contract while retaining source provenance, explicit
    consumed/deferred keys, and bounded typed loading.
 2. **Typed content:** resource/interface/localization, campaign-start, item,
-   equipment/production, personnel/tactical, and terrain/deployment declarations are
-   complete; remaining mission/event and global rule families remain.
+   equipment/production, personnel/tactical, terrain/deployment, and mission/event
+   declarations are complete; only focused global-table closure remains.
 3. **Link and resource resolution:** publish immutable rule catalogs only after the
    reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
    complete. Resource declarations remain platform-neutral descriptors.
