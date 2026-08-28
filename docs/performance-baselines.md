@@ -14,6 +14,7 @@ not required.
 | Path handling | Normalize 1,024 mixed-case backslash paths, perform mixed hit/miss catalog lookups, and compare legacy per-layer normalization with one-time slice normalization. |
 | Finalized maps | Compare `Dictionary` and `FrozenDictionary` construction, allocation, and mixed hit/miss lookup at 2,000 and 16,000 entries. |
 | YAML | Parse a 1,000-entry ruleset-shaped mapping and repeatedly look up keys near its end plus missing keys. |
+| Phase 3 content | Compose, type, dependency-validate, and normalize the bundled mission/event fixture through the aggregate catalog. |
 | Indexed rendering | Opaque 320x200 blit, transparent 64x80 sprite blit, and 640x400 indexed-to-RGBA conversion. |
 | Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices. |
 

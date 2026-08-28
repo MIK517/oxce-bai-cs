@@ -51,10 +51,15 @@ public static class RulesetComposer
             {
                 using var input = file.OpenRead();
                 var documents = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
+                if (documents.Documents.Count == 0)
+                {
+                    continue;
+                }
+
                 if (documents.Documents.Count != 1)
                 {
                     throw Error(
-                        documents.Documents.Count == 0 ? UnknownSpan(file.SourcePath) : documents.Documents[1].Span,
+                        documents.Documents[1].Span,
                         "Ruleset files must contain exactly one YAML document.");
                 }
 
