@@ -219,13 +219,13 @@ public sealed class EquipmentProductionRuleCatalogTests
         var result = content.ValidateRelationships(items, diagnostics);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Issues, issue => issue.Property == "replaceBy");
+        Assert.DoesNotContain(result.Issues, issue => issue.Property == "replaceBy");
         Assert.Contains(result.Issues, issue => issue.Property == "launcher");
         Assert.Contains(result.Issues, issue => issue.Property == "projectileSpeed");
         Assert.Contains(result.Issues, issue => issue.Property == "time");
         Assert.Contains(result.Issues, issue => issue.Property == "startFrom");
         Assert.Contains(diagnostics.Snapshot(), item =>
-            item.Code == ModDiagnosticCodes.MissingRuleReference && item.Context.RuleType == "itemCategories");
+            item.Code == ModDiagnosticCodes.DeferredRuleReference && item.Context.RuleType == "itemCategories");
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.InvalidRuleRelationship);
         Assert.False(content.Capabilities.Has(ContentLoadStage.Linked));
     }

@@ -46,15 +46,15 @@ public sealed class TerrainDeploymentRuleCatalog
         diagnostics ??= NullDiagnosticSink.Instance; var issues = new List<TerrainDeploymentValidationIssue>();
         foreach (var terrain in Terrains.Rules)
         {
-            Optional(terrain, "enviroEffects", terrain.Value.EnviroEffects, EnviroEffects);
-            OptionalScript(terrain, "script", terrain.Value.MapScript);
-            foreach (var id in terrain.Value.MapScripts) OptionalScript(terrain, "mapScripts", id);
+            DeferOptional(terrain, "enviroEffects", terrain.Value.EnviroEffects, EnviroEffects);
+            DeferOptionalScript(terrain, "script", terrain.Value.MapScript);
+            foreach (var id in terrain.Value.MapScripts) DeferOptionalScript(terrain, "mapScripts", id);
         }
         foreach (var script in MapScripts.Values)
             foreach (var command in script.Commands)
                 foreach (var id in command.RandomTerrain)
                     if (id is not "globeTerrain" and not "baseTerrain" && !Terrains.TryGet(id, out _))
-                        MissingSpecial(script, "randomTerrain", id);
+                        DeferredSpecial(script, "randomTerrain", id);
         foreach (var effect in EnviroEffects.Rules)
             foreach (var pair in effect.Value.ArmorTransformations)
             {
@@ -63,7 +63,8 @@ public sealed class TerrainDeploymentRuleCatalog
             }
         foreach (var condition in StartingConditions.Rules)
         {
-            foreach (var id in condition.Value.RequiredItems.Keys) Require(condition, "requiredItems", id, items.Items);
+            foreach (var id in condition.Value.RequiredItems.Keys)
+                if (!items.Items.TryGet(id, out _)) Deferred(condition, "requiredItems", id);
             foreach (var pair in condition.Value.CraftTransformations)
             { Require(condition, "craftTransformations", pair.Key, equipment.Crafts); Require(condition, "craftTransformations", pair.Value, equipment.Crafts); }
             foreach (var id in condition.Value.NameCollections["forbiddenArmorsInNextStage"])
@@ -71,22 +72,25 @@ public sealed class TerrainDeploymentRuleCatalog
         }
         foreach (var deployment in AlienDeployments.Rules)
         {
-            Optional(deployment, "enviroEffects", deployment.Value.Strings["enviroEffects"], EnviroEffects);
-            Optional(deployment, "startingCondition", deployment.Value.Strings["startingCondition"], StartingConditions);
-            Optional(deployment, "race", deployment.Value.Strings["race"], AlienRaces);
-            foreach (var id in deployment.Value.RandomRaces) Require(deployment, "randomRace", id, AlienRaces);
-            foreach (var id in deployment.Value.Terrains) Require(deployment, "terrains", id, Terrains);
-            OptionalScript(deployment, "script", deployment.Value.Strings["script"]);
-            foreach (var id in deployment.Value.MapScripts) OptionalScript(deployment, "mapScripts", id);
+            DeferOptional(deployment, "enviroEffects", deployment.Value.Strings["enviroEffects"], EnviroEffects);
+            DeferOptional(deployment, "startingCondition", deployment.Value.Strings["startingCondition"], StartingConditions);
+            DeferOptional(deployment, "race", deployment.Value.Strings["race"], AlienRaces);
+            foreach (var id in deployment.Value.RandomRaces)
+                if (!AlienRaces.TryGet(id, out _)) Deferred(deployment, "randomRace", id);
+            foreach (var id in deployment.Value.Terrains)
+                if (!Terrains.TryGet(id, out _)) Deferred(deployment, "terrains", id);
+            DeferOptionalScript(deployment, "script", deployment.Value.Strings["script"]);
+            foreach (var id in deployment.Value.MapScripts) DeferOptionalScript(deployment, "mapScripts", id);
             var bounty = deployment.Value.Strings["missionBountyItem"];
-            if (bounty.Length != 0) Require(deployment, "missionBountyItem", bounty, items.Items);
+            if (bounty.Length != 0 && !items.Items.TryGet(bounty, out _))
+                Deferred(deployment, "missionBountyItem", bounty);
         }
         return new(issues.AsReadOnly());
 
-        void OptionalScript<T>(TypedRule<T> owner, string property, string id) where T : notnull
-        { if (id.Length != 0 && id != "DEFAULT" && !MapScripts.ContainsKey(id)) Missing(owner, property, id); }
-        void Optional<T, TRule>(TypedRule<T> owner, string property, string id, TypedRuleSection<TRule> section) where T : notnull where TRule : notnull
-        { if (id.Length != 0 && !section.TryGet(id, out _)) Missing(owner, property, id); }
+        void DeferOptionalScript<T>(TypedRule<T> owner, string property, string id) where T : notnull
+        { if (id.Length != 0 && id != "DEFAULT" && !MapScripts.ContainsKey(id)) Deferred(owner, property, id); }
+        void DeferOptional<T, TRule>(TypedRule<T> owner, string property, string id, TypedRuleSection<TRule> section) where T : notnull where TRule : notnull
+        { if (id.Length != 0 && !section.TryGet(id, out _)) Deferred(owner, property, id); }
         void Require<T, TRule>(TypedRule<T> owner, string property, string id, TypedRuleSection<TRule> section) where T : notnull where TRule : notnull
         { if (!section.TryGet(id, out _)) Missing(owner, property, id); }
         void Missing<T>(TypedRule<T> owner, string property, string id) where T : notnull
@@ -96,13 +100,13 @@ public sealed class TerrainDeploymentRuleCatalog
                 $"Rule '{owner.Id}' property '{property}' references missing rule '{id}'.", owner.LastUpdateSource.Span,
                 new(owner.LastUpdateSource.LayerId, owner.LastUpdateSource.ModId, owner.Value.GetType().Name, owner.Id, id)));
         }
-        void MissingSpecial(MapScriptRule owner, string property, string id)
+        void Deferred<T>(TypedRule<T> owner, string property, string id) where T : notnull =>
+            RuleReferenceDiagnostics.ReportDeferred(
+                diagnostics, owner.LastUpdateSource, owner.Value.GetType().Name, owner.Id, property, id);
+        void DeferredSpecial(MapScriptRule owner, string property, string id)
         {
-            issues.Add(new(owner.Id, property, id, "Referenced rule does not exist."));
-            diagnostics.Report(new(ModDiagnosticCodes.MissingRuleReference, DiagnosticSeverity.Error,
-                $"Map script '{owner.Id}' property '{property}' references missing terrain '{id}'.",
-                owner.LastUpdateSource.Span, new(owner.LastUpdateSource.LayerId, owner.LastUpdateSource.ModId,
-                    "mapScripts", owner.Id, id)));
+            RuleReferenceDiagnostics.ReportDeferred(
+                diagnostics, owner.LastUpdateSource, "mapScripts", owner.Id, property, id);
         }
     }
 

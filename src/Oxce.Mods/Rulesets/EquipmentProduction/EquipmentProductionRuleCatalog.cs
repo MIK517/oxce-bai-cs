@@ -81,7 +81,7 @@ public sealed class EquipmentProductionRuleCatalog
         {
             foreach (var category in ItemCategories.Rules)
                 if (category.Value.ReplaceBy.Length != 0 && !ItemCategories.TryGet(category.Value.ReplaceBy, out _))
-                    Missing(category, "replaceBy", category.Value.ReplaceBy);
+                    Deferred(category, "replaceBy", category.Value.ReplaceBy);
         }
 
         void ValidateWeaponSets()
@@ -122,7 +122,7 @@ public sealed class EquipmentProductionRuleCatalog
                 var refuel = craft.Value.Strings["refuelItem"];
                 if (refuel.Length != 0 && !items.Items.TryGet(refuel, out _)) Missing(craft, "refuelItem", refuel);
                 foreach (var weapon in craft.Value.FixedWeapons.Where(value => value.Length != 0))
-                    if (!CraftWeapons.TryGet(weapon, out _)) Missing(craft, "fixedWeapons", weapon);
+                    if (!CraftWeapons.TryGet(weapon, out _)) Deferred(craft, "fixedWeapons", weapon);
             }
         }
 
@@ -201,6 +201,12 @@ public sealed class EquipmentProductionRuleCatalog
         void Missing<T>(TypedRule<T> owner, string property, string id) where T : notnull
         {
             Report(owner, property, id, "Referenced rule does not exist.", ModDiagnosticCodes.MissingRuleReference);
+        }
+
+        void Deferred<T>(TypedRule<T> owner, string property, string id) where T : notnull
+        {
+            RuleReferenceDiagnostics.ReportDeferred(
+                diagnostics, owner.LastUpdateSource, SectionName<T>(), owner.Id, property, id);
         }
 
         void Invalid<T>(TypedRule<T> owner, string property, string? id, string message) where T : notnull

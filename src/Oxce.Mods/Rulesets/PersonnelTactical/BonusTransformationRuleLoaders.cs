@@ -44,6 +44,8 @@ internal sealed class SoldierTransformationRuleLoader :
             builder.Booleans[key] = reader.ReadBoolean(key, builder.Booleans[key]);
         PersonnelTacticalYaml.EditableNames(reader, "requires", builder.Requirements);
         PersonnelTacticalYaml.EditableNames(reader, "requiresBaseFunc", builder.RequiredBaseFunctions, unique: true);
+        reader.Defer("requiresBuyBaseFunc",
+            "the reference soldier-transformation loader does not consume this property");
         PersonnelTacticalYaml.EditableNames(reader, "allowedSoldierTypes", builder.AllowedSoldierTypes);
         PersonnelTacticalYaml.EditableNames(
             reader, "requiredPreviousTransformations", builder.RequiredPreviousTransformations);

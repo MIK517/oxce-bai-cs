@@ -86,7 +86,7 @@ public sealed class PersonnelTacticalRuleCatalog
         {
             foreach (var rule in Inventories.Rules)
                 foreach (var id in rule.Value.Costs.Keys)
-                    if (!Inventories.TryGet(id, out _)) Missing(rule, "costs", id);
+                    if (!Inventories.TryGet(id, out _)) Deferred(rule, "costs", id);
         }
 
         void ValidateArmors()
@@ -166,13 +166,13 @@ public sealed class PersonnelTacticalRuleCatalog
             foreach (var rule in Transformations.Rules)
             {
                 foreach (var id in rule.Value.Requirements)
-                    if (!equipment.Research.TryGet(id, out _)) Missing(rule, "requires", id);
-                RequireOptionalItem(rule, "producedItem", rule.Value.Strings["producedItem"]);
-                RequireOptional(rule, "producedSoldierType", rule.Value.Strings["producedSoldierType"], Soldiers);
-                RequireOptional(rule, "producedSoldierArmor", rule.Value.Strings["producedSoldierArmor"], Armors);
-                RequireOptional(rule, "soldierBonusType", rule.Value.Strings["soldierBonusType"], Bonuses);
+                    if (!equipment.Research.TryGet(id, out _)) Deferred(rule, "requires", id);
+                DeferOptionalItem(rule, "producedItem", rule.Value.Strings["producedItem"]);
+                DeferOptional(rule, "producedSoldierType", rule.Value.Strings["producedSoldierType"], Soldiers);
+                DeferOptional(rule, "producedSoldierArmor", rule.Value.Strings["producedSoldierArmor"], Armors);
+                DeferOptional(rule, "soldierBonusType", rule.Value.Strings["soldierBonusType"], Bonuses);
                 foreach (var id in rule.Value.AllowedSoldierTypes)
-                    if (!Soldiers.TryGet(id, out _)) Missing(rule, "allowedSoldierTypes", id);
+                    if (!Soldiers.TryGet(id, out _)) Deferred(rule, "allowedSoldierTypes", id);
                 foreach (var pair in new[]
                 {
                     ("requiredPreviousTransformations", rule.Value.RequiredPreviousTransformations),
@@ -180,10 +180,11 @@ public sealed class PersonnelTacticalRuleCatalog
                     ("removeTransformations", rule.Value.RemovedTransformations),
                 })
                     foreach (var id in pair.Item2)
-                        if (!Transformations.TryGet(id, out _)) Missing(rule, pair.Item1, id);
-                foreach (var id in rule.Value.RequiredItems.Keys) RequireItem(rule, "requiredItems", id);
+                        if (!Transformations.TryGet(id, out _)) Deferred(rule, pair.Item1, id);
+                foreach (var id in rule.Value.RequiredItems.Keys)
+                    if (!items.Items.TryGet(id, out _)) Deferred(rule, "requiredItems", id);
                 foreach (var id in rule.Value.RequiredCommendations.Keys)
-                    if (!Commendations.TryGet(id, out _)) Missing(rule, "requiredCommendations", id);
+                    if (!Commendations.TryGet(id, out _)) Deferred(rule, "requiredCommendations", id);
             }
         }
 
@@ -233,6 +234,23 @@ public sealed class PersonnelTacticalRuleCatalog
         {
             if (id.Length != 0 && id != "STR_NULL" && !target.TryGet(id, out _)) Missing(owner, property, id);
         }
+
+        void DeferOptionalItem<T>(TypedRule<T> owner, string property, string id) where T : notnull
+        {
+            if (id.Length != 0 && id != "STR_NULL" && id != "STR_NONE" && !items.Items.TryGet(id, out _))
+                Deferred(owner, property, id);
+        }
+
+        void DeferOptional<T, TRule>(
+            TypedRule<T> owner, string property, string id, TypedRuleSection<TRule> target)
+            where T : notnull where TRule : notnull
+        {
+            if (id.Length != 0 && id != "STR_NULL" && !target.TryGet(id, out _)) Deferred(owner, property, id);
+        }
+
+        void Deferred<T>(TypedRule<T> owner, string property, string id) where T : notnull =>
+            RuleReferenceDiagnostics.ReportDeferred(
+                diagnostics, owner.LastUpdateSource, SectionName<T>(), owner.Id, property, id);
 
         void Missing<T>(TypedRule<T> owner, string property, string id) where T : notnull =>
             Report(owner, property, id, "Referenced rule does not exist.", ModDiagnosticCodes.MissingRuleReference);

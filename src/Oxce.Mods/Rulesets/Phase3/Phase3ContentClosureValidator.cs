@@ -23,80 +23,80 @@ internal static class Phase3ContentClosureValidator
         }
         foreach (var region in content.Campaign.Regions.Rules)
         {
-            Each(region, "missionWeights", region.Value.MissionWeights.Keys, content.Missions.AlienMissions);
-            Optional(region, "missionRegion", region.Value.MissionRegion, content.Campaign.Regions);
+            DeferEach(region, "missionWeights", region.Value.MissionWeights.Keys, content.Missions.AlienMissions);
+            DeferOptional(region, "missionRegion", region.Value.MissionRegion, content.Campaign.Regions);
         }
         foreach (var facility in content.Campaign.Facilities.Rules)
         {
-            Each(facility, "requires", facility.Value.Requires, content.Equipment.Research);
+            DeferEach(facility, "requires", facility.Value.Requires, content.Equipment.Research);
             Optional(facility, "ammoItem", facility.Value.AmmoItem, content.Items.Items);
-            Each(facility, "buildCostItems", facility.Value.BuildCostItems.Keys, content.Items.Items);
+            DeferEach(facility, "buildCostItems", facility.Value.BuildCostItems.Keys, content.Items.Items);
         }
 
         foreach (var item in content.Items.Items.Rules)
         {
             Each(item, "requires", item.Value.Requirements, content.Equipment.Research);
             Each(item, "requiresBuy", item.Value.BuyRequirements, content.Equipment.Research);
-            Each(item, "categories", item.Value.Categories, content.Equipment.ItemCategories);
+            DeferEach(item, "categories", item.Value.Categories, content.Equipment.ItemCategories);
             Each(item, "supportedInventorySections", item.Value.SupportedInventorySections,
                 content.Personnel.Inventories);
             Optional(item, "defaultInventorySlot", item.Value.Values.NullableName("defaultInventorySlot"),
                 content.Personnel.Inventories);
-            Optional(item, "zombieUnit", item.Value.Values.NullableName("zombieUnit"), content.Personnel.Units);
+            DeferOptional(item, "zombieUnit", item.Value.Values.NullableName("zombieUnit"), content.Personnel.Units);
             Optional(item, "spawnUnit", item.Value.Values.NullableName("spawnUnit"), content.Personnel.Units);
-            Optional(item, "requiresBuyCountry", item.Value.Values.GetString("requiresBuyCountry"),
+            DeferOptional(item, "requiresBuyCountry", item.Value.Values.GetString("requiresBuyCountry"),
                 content.Campaign.Countries);
-            Each(item, "zombieUnitByType", item.Value.ZombieUnitsByType.Values, content.Personnel.Units);
-            Each(item, "zombieUnitByMaleArmor", item.Value.ZombieUnitsByMaleArmor.Keys,
+            DeferEach(item, "zombieUnitByType", item.Value.ZombieUnitsByType.Values, content.Personnel.Units);
+            DeferEach(item, "zombieUnitByMaleArmor", item.Value.ZombieUnitsByMaleArmor.Keys,
                 content.Personnel.Armors);
-            Each(item, "zombieUnitByMaleArmor", item.Value.ZombieUnitsByMaleArmor.Values,
+            DeferEach(item, "zombieUnitByMaleArmor", item.Value.ZombieUnitsByMaleArmor.Values,
                 content.Personnel.Units);
-            Each(item, "zombieUnitByFemaleArmor", item.Value.ZombieUnitsByFemaleArmor.Keys,
+            DeferEach(item, "zombieUnitByFemaleArmor", item.Value.ZombieUnitsByFemaleArmor.Keys,
                 content.Personnel.Armors);
-            Each(item, "zombieUnitByFemaleArmor", item.Value.ZombieUnitsByFemaleArmor.Values,
+            DeferEach(item, "zombieUnitByFemaleArmor", item.Value.ZombieUnitsByFemaleArmor.Values,
                 content.Personnel.Units);
         }
 
         foreach (var craft in content.Equipment.Crafts.Rules)
         {
-            Each(craft, "requires", craft.Value.Requirements, content.Equipment.Research);
+            DeferEach(craft, "requires", craft.Value.Requirements, content.Equipment.Research);
             Each(craft, "requiredPilotBonuses", craft.Value.RequiredPilotBonuses, content.Personnel.Bonuses);
         }
         foreach (var ufo in content.Equipment.Ufos.Rules)
         {
-            Optional(ufo, "craftCustomDeployment", ufo.Value.Stats.CraftCustomDeployment,
+            DeferOptional(ufo, "craftCustomDeployment", ufo.Value.Stats.CraftCustomDeployment,
                 content.Terrain.AlienDeployments);
-            Optional(ufo, "missionCustomDeployment", ufo.Value.Stats.MissionCustomDeployment,
+            DeferOptional(ufo, "missionCustomDeployment", ufo.Value.Stats.MissionCustomDeployment,
                 content.Terrain.AlienDeployments);
         }
         foreach (var research in content.Equipment.Research.Rules)
         {
-            Optional(research, "spawnedItem", research.Value.SpawnedItem, content.Items.Items);
-            Each(research, "spawnedItemList", research.Value.SpawnedItemList, content.Items.Items);
-            Optional(research, "spawnedEvent", research.Value.SpawnedEvent, content.Missions.Events);
-            Each(research, "events", research.Value.Events.Keys, content.Missions.Events);
+            DeferOptional(research, "spawnedItem", research.Value.SpawnedItem, content.Items.Items);
+            DeferEach(research, "spawnedItemList", research.Value.SpawnedItemList, content.Items.Items);
+            DeferOptional(research, "spawnedEvent", research.Value.SpawnedEvent, content.Missions.Events);
+            DeferEach(research, "events", research.Value.Events.Keys, content.Missions.Events);
         }
         foreach (var manufacture in content.Equipment.Manufacture.Rules)
         {
-            Optional(manufacture, "spawnedPersonType", manufacture.Value.SpawnedPersonType,
+            DeferOptional(manufacture, "spawnedPersonType", manufacture.Value.SpawnedPersonType,
                 content.Personnel.Soldiers);
-            Each(manufacture, "events", manufacture.Value.Events.Keys, content.Missions.Events);
+            DeferEach(manufacture, "events", manufacture.Value.Events.Keys, content.Missions.Events);
         }
 
         foreach (var soldier in content.Personnel.Soldiers.Rules)
-            Each(soldier, "requires", soldier.Value.Requirements, content.Equipment.Research);
+            DeferEach(soldier, "requires", soldier.Value.Requirements, content.Equipment.Research);
         foreach (var transformation in content.Personnel.Transformations.Rules)
-            Each(transformation, "events", transformation.Value.Events.Keys, content.Missions.Events);
+            DeferEach(transformation, "events", transformation.Value.Events.Keys, content.Missions.Events);
 
         foreach (var terrain in content.Terrain.Terrains.Rules)
-            Each(terrain, "civilianTypes", terrain.Value.CivilianTypes, content.Personnel.Units);
+            DeferEach(terrain, "civilianTypes", terrain.Value.CivilianTypes, content.Personnel.Units);
         foreach (var race in content.Terrain.AlienRaces.Rules)
         {
-            Optional(race, "baseCustomDeploy", race.Value.BaseCustomDeploy, content.Terrain.AlienDeployments);
-            Optional(race, "baseCustomMission", race.Value.BaseCustomMission, content.Missions.AlienMissions);
-            Each(race, "members", race.Value.Members, content.Personnel.Units);
+            DeferOptional(race, "baseCustomDeploy", race.Value.BaseCustomDeploy, content.Terrain.AlienDeployments);
+            DeferOptional(race, "baseCustomMission", race.Value.BaseCustomMission, content.Missions.AlienMissions);
+            DeferEach(race, "members", race.Value.Members, content.Personnel.Units);
             foreach (var members in race.Value.RandomMembers)
-                Each(race, "randomMembers", members, content.Personnel.Units);
+                DeferEach(race, "randomMembers", members, content.Personnel.Units);
         }
         foreach (var condition in content.Terrain.StartingConditions.Rules)
         {
@@ -115,25 +115,25 @@ internal static class Phase3ContentClosureValidator
 
             void Collection<TRule>(TypedRule<StartingConditionRule> owner,
                 string key, TypedRuleSection<TRule> target) where TRule : notnull =>
-                Each(owner, key, owner.Value.NameCollections[key], target);
+                DeferEach(owner, key, owner.Value.NameCollections[key], target);
         }
         foreach (var deployment in content.Terrain.AlienDeployments.Rules)
         {
-            Each(deployment, "civiliansByType", deployment.Value.CiviliansByType.Keys, content.Personnel.Units);
-            Optional(deployment, "customUfo", deployment.Value.Strings["customUfo"], content.Equipment.Ufos);
-            Optional(deployment, "nextStage", deployment.Value.Strings["nextStage"],
+            DeferEach(deployment, "civiliansByType", deployment.Value.CiviliansByType.Keys, content.Personnel.Units);
+            DeferOptional(deployment, "customUfo", deployment.Value.Strings["customUfo"], content.Equipment.Ufos);
+            DeferOptional(deployment, "nextStage", deployment.Value.Strings["nextStage"],
                 content.Terrain.AlienDeployments);
-            Optional(deployment, "upgradeRace", deployment.Value.Strings["upgradeRace"], content.Terrain.AlienRaces);
-            Optional(deployment, "unlockedResearch", deployment.Value.Strings["unlockedResearch"],
+            DeferOptional(deployment, "upgradeRace", deployment.Value.Strings["upgradeRace"], content.Terrain.AlienRaces);
+            DeferOptional(deployment, "unlockedResearch", deployment.Value.Strings["unlockedResearch"],
                 content.Equipment.Research);
-            Optional(deployment, "unlockedResearchOnFailure",
+            DeferOptional(deployment, "unlockedResearchOnFailure",
                 deployment.Value.Strings["unlockedResearchOnFailure"], content.Equipment.Research);
-            Optional(deployment, "unlockedResearchOnDespawn",
+            DeferOptional(deployment, "unlockedResearchOnDespawn",
                 deployment.Value.Strings["unlockedResearchOnDespawn"], content.Equipment.Research);
             foreach (var entry in deployment.Value.HuntMissionWeights)
-                Each(deployment, "huntMissionWeights", entry.Value.Keys, content.Missions.AlienMissions);
+                DeferEach(deployment, "huntMissionWeights", entry.Value.Keys, content.Missions.AlienMissions);
             foreach (var entry in deployment.Value.AlienBaseUpgrades)
-                Each(deployment, "alienBaseUpgrades", entry.Value.Keys, content.Terrain.AlienDeployments);
+                DeferEach(deployment, "alienBaseUpgrades", entry.Value.Keys, content.Terrain.AlienDeployments);
         }
 
         return new Phase3ContentClosureValidation(Array.AsReadOnly(issues.ToArray()));
@@ -152,6 +152,25 @@ internal static class Phase3ContentClosureValidator
                 if (id.Length != 0 && id != "STR_NULL" && !target.TryGet(id, out _))
                     Missing(owner, property, id, target.Definition.Name);
         }
+
+        void DeferOptional<TOwner, TTarget>(TypedRule<TOwner> owner, string property, string? id,
+            TypedRuleSection<TTarget> target) where TOwner : notnull where TTarget : notnull
+        {
+            if (!string.IsNullOrEmpty(id) && id != "STR_NULL" && !target.TryGet(id, out _))
+                Deferred(owner, property, id, target.Definition.Name);
+        }
+
+        void DeferEach<TOwner, TTarget>(TypedRule<TOwner> owner, string property, IEnumerable<string> ids,
+            TypedRuleSection<TTarget> target) where TOwner : notnull where TTarget : notnull
+        {
+            foreach (var id in ids)
+                if (id.Length != 0 && id != "STR_NULL" && !target.TryGet(id, out _))
+                    Deferred(owner, property, id, target.Definition.Name);
+        }
+
+        void Deferred<TOwner>(TypedRule<TOwner> owner, string property, string id, string target)
+            where TOwner : notnull => RuleReferenceDiagnostics.ReportDeferred(
+                diagnostics, owner.LastUpdateSource, target, owner.Id, property, id);
 
         void Missing<TOwner>(TypedRule<TOwner> owner, string property, string id, string target)
             where TOwner : notnull
