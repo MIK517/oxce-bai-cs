@@ -95,6 +95,45 @@ workload on 2026-08-20. Its specialized loose-file representation measured 93.74
 directory entries. Short-run timing remains informational rather than a performance
 gate.
 
+## 2026-08-29 content-build and YAML evaluation
+
+Measured on Windows 11 with a Ryzen 9 7940HS, .NET SDK 10.0.302, runtime 10.0.10,
+BenchmarkDotNet 0.15.8, and the documented `Short` job. The before content result is
+from documentation commit `b8e6d56`; the after result is from the single-parse candidate
+on `codex/architecture-performance-foundations`.
+
+Parsing every ordered ruleset once and sharing the resulting immutable document catalog
+across composition, typed family loading, special sections, and manifest normalization
+reduced the public Phase 3 end-to-end workload from 3.198 ms and 3.62 MB to 424.285 us
+and 485.98 KB. That is approximately a 7.5-times throughput improvement and an 87%
+allocation reduction on the fixture. The after benchmark also separates the stages:
+
+| Stage | Mean | Allocated |
+|---|---:|---:|
+| Parse ruleset documents | 218.344 us | 290.30 KB |
+| Compose parsed documents | 8.413 us | 33.15 KB |
+| Load and validate aggregate catalog | 422.549 us | 417.05 KB |
+| Normalize a prebuilt manifest | 57.053 us | 70.03 KB |
+
+The parsed-file count is exposed by the build result and asserted by tests, so future
+aggregate consumers cannot silently reintroduce multiple parse passes without changing
+observable instrumentation.
+
+A lazy ordinal scalar-key index for mappings with at least 16 entries reduced the
+representative repeated lookup from 2.891 us and 32 B to 8.450 ns and zero allocation,
+approximately 342 times faster. Representative parse allocation increased from
+4,329,992 B to 4,338,000 B (8,008 B, or 0.18%). Parse timing changed from 3.155 ms to
+3.391 ms, but the short-run confidence intervals are broad and overlap, so this is not
+evidence of a parse regression. The index preserves the ordered entries, first-value
+`TryGet` behavior, and duplicate enumeration through `GetAll`; the measured lookup gain
+justifies retaining it.
+
+The SDL host now uses an explicit presentation revision and keeps its RGBA staging
+buffer pinned for the run. An unchanged frame performs no indexed-to-RGBA conversion,
+texture upload, clear, copy, or present operation. This is a structural elimination of
+the entire idle-frame workload rather than a faster implementation of it; native SDL
+smoke validation remains part of the platform validation workflow.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time

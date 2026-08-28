@@ -18,23 +18,14 @@ internal static class CampaignStartSettingsComposer
         };
 
     public static CampaignStartSettings Compose(ModLoadPlan plan, RulesetCompositionOptions options)
+        => Compose(RulesetDocumentCatalog.Parse(plan, options), options);
+
+    public static CampaignStartSettings Compose(RulesetDocumentCatalog documents, RulesetCompositionOptions options)
     {
         var builder = new CampaignStartSettingsBuilder();
-        foreach (var group in plan.Groups)
+        foreach (var document in documents.Documents)
         {
-            foreach (var file in group.Rulesets)
-            {
-                using var input = file.OpenRead();
-                var documents = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
-                if (documents.Documents.Count == 0) continue;
-                if (documents.Documents.Count != 1)
-                    throw new YamlFormatException("Ruleset files must contain exactly one YAML document.",
-                        documents.Documents[1].Span);
-                if (documents.Documents[0].Root is YamlNullNode) continue;
-                if (documents.Documents[0].Root is not YamlMappingNode root)
-                    throw new YamlFormatException("Ruleset document root must be a mapping.", documents.Documents[0].Root.Span);
-                Apply(builder, root);
-            }
+            Apply(builder, document.Root);
         }
         return new CampaignStartSettings(builder);
     }
@@ -115,9 +106,4 @@ internal static class CampaignStartSettingsComposer
         mapping.TryGet(key, out var node) ? YamlValueReader.ReadBoolean(node!) : current;
     private static string Read(YamlMappingNode mapping, string key, string current) =>
         mapping.TryGet(key, out var node) ? YamlValueReader.ReadString(node!) : current;
-    private static SourceSpan UnknownSpan(string sourcePath)
-    {
-        var position = new SourcePosition(1, 1, 0);
-        return new SourceSpan(sourcePath, position, position);
-    }
 }

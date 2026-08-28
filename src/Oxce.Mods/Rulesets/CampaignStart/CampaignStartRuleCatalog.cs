@@ -37,15 +37,26 @@ public sealed class CampaignStartRuleCatalog
         diagnostics ??= NullDiagnosticSink.Instance;
         compositionOptions ??= new RulesetCompositionOptions();
         compositionOptions.Validate();
+        var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
         var unresolved = RulesetComposer.Compose(
-            plan, Names.Select(RequiredDefinition), diagnostics, compositionOptions);
+            documents, Names.Select(RequiredDefinition), diagnostics, compositionOptions);
+        return Load(unresolved, documents, diagnostics, compositionOptions, typedOptions);
+    }
+
+    internal static CampaignStartRuleCatalog Load(
+        UnresolvedRuleCatalog unresolved,
+        RulesetDocumentCatalog documents,
+        IDiagnosticSink diagnostics,
+        RulesetCompositionOptions compositionOptions,
+        TypedRuleLoadOptions? typedOptions)
+    {
         return new CampaignStartRuleCatalog(
             new CountryRuleLoader("countries").Load(Required(unresolved, "countries"), diagnostics, typedOptions),
             new CountryRuleLoader("extraGlobeLabels").Load(
                 Required(unresolved, "extraGlobeLabels"), diagnostics, typedOptions),
             new RegionRuleLoader().Load(Required(unresolved, "regions"), diagnostics, typedOptions),
             new BaseFacilityRuleLoader().Load(Required(unresolved, "facilities"), diagnostics, typedOptions),
-            CampaignStartSettingsComposer.Compose(plan, compositionOptions));
+            CampaignStartSettingsComposer.Compose(documents, compositionOptions));
     }
 
     public CampaignStartValidation ValidateInternalRelationships(IDiagnosticSink? diagnostics = null)

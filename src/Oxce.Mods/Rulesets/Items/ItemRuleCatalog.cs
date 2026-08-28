@@ -26,6 +26,14 @@ public sealed class ItemRuleCatalog
         compositionOptions.Validate();
         var definition = RequiredDefinition();
         var unresolved = RulesetComposer.Compose(plan, [definition], diagnostics, compositionOptions);
+        return Load(unresolved, diagnostics, typedOptions);
+    }
+
+    internal static ItemRuleCatalog Load(
+        UnresolvedRuleCatalog unresolved,
+        IDiagnosticSink diagnostics,
+        TypedRuleLoadOptions? typedOptions)
+    {
         if (!unresolved.TryGetSection("items", out var section)) throw new InvalidOperationException();
         return new ItemRuleCatalog(new ItemRuleLoader().Load(section!, diagnostics, typedOptions));
     }

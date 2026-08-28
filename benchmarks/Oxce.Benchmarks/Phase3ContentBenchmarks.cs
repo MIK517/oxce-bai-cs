@@ -12,6 +12,8 @@ public class Phase3ContentBenchmarks
 {
     private string _fixtureRoot = null!;
     private ModLoadPlan _plan = null!;
+    private RulesetDocumentCatalog _documents = null!;
+    private Phase3ContentBuild _build = null!;
     private RulesetCatalogNormalizationOptions _normalization = null!;
 
     [GlobalSetup]
@@ -29,14 +31,32 @@ public class Phase3ContentBenchmarks
         {
             NormalizeSourceName = source => Path.GetRelativePath(_fixtureRoot, source).Replace('\\', '/'),
         };
+        _documents = RulesetDocumentCatalog.Parse(_plan);
+        _build = Phase3ContentCatalog.Build(_plan);
+    }
+
+    [Benchmark(Baseline = true)]
+    public byte[] LoadValidateAndNormalizeManifest()
+    {
+        var build = Phase3ContentCatalog.Build(_plan);
+        return Phase3ContentManifestNormalizer.NormalizeToUtf8Json(build, _normalization);
     }
 
     [Benchmark]
-    public byte[] LoadValidateAndNormalizeManifest()
-    {
-        var catalog = Phase3ContentCatalog.Load(_plan);
-        return Phase3ContentManifestNormalizer.NormalizeToUtf8Json(_plan, catalog, _normalization);
-    }
+    public RulesetDocumentCatalog ParseRulesetDocuments() =>
+        RulesetDocumentCatalog.Parse(_plan);
+
+    [Benchmark]
+    public UnresolvedRuleCatalog ComposeParsedDocuments() =>
+        RulesetComposer.Compose(_documents);
+
+    [Benchmark]
+    public Phase3ContentBuild LoadAndValidate() =>
+        Phase3ContentCatalog.Build(_plan);
+
+    [Benchmark]
+    public byte[] NormalizePrebuiltManifest() =>
+        Phase3ContentManifestNormalizer.NormalizeToUtf8Json(_build, _normalization);
 
     private static string FindRepositoryRoot()
     {

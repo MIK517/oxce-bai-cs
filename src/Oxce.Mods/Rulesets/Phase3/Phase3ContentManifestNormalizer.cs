@@ -22,6 +22,24 @@ public static class Phase3ContentManifestNormalizer
         options.Validate();
 
         var composed = RulesetComposer.Compose(plan);
+        return NormalizeToUtf8Json(catalog, composed, options);
+    }
+
+    public static byte[] NormalizeToUtf8Json(
+        Phase3ContentBuild build,
+        RulesetCatalogNormalizationOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(build);
+        options ??= new RulesetCatalogNormalizationOptions();
+        options.Validate();
+        return NormalizeToUtf8Json(build.Catalog, build.ComposedRules, options);
+    }
+
+    private static byte[] NormalizeToUtf8Json(
+        Phase3ContentCatalog catalog,
+        UnresolvedRuleCatalog composed,
+        RulesetCatalogNormalizationOptions options)
+    {
         var digest = ComputeComposedDigest(composed, options);
 
         using var output = new MemoryStream();
@@ -105,6 +123,11 @@ public static class Phase3ContentManifestNormalizer
         Phase3ContentCatalog catalog,
         RulesetCatalogNormalizationOptions? options = null) =>
         Encoding.UTF8.GetString(NormalizeToUtf8Json(plan, catalog, options));
+
+    public static string NormalizeToJson(
+        Phase3ContentBuild build,
+        RulesetCatalogNormalizationOptions? options = null) =>
+        Encoding.UTF8.GetString(NormalizeToUtf8Json(build, options));
 
     private static void WriteSection<TRule>(
         Utf8JsonWriter writer,

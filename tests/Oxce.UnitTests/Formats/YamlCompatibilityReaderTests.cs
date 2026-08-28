@@ -37,6 +37,21 @@ public sealed class YamlCompatibilityReaderTests
     }
 
     [Fact]
+    public void LargeMappingIndexPreservesFirstDuplicateAndOrderedDuplicates()
+    {
+        var yaml = string.Join('\n', Enumerable.Range(0, 16).Select(index => $"key{index}: value{index}")) +
+            "\nduplicate: first\nduplicate: second\n";
+
+        var mapping = ParseMapping(yaml);
+
+        Assert.Equal("first", YamlValueReader.ReadString(Required(mapping, "duplicate")));
+        Assert.Equal(
+            ["first", "second"],
+            mapping.GetAll("duplicate").Select(YamlValueReader.ReadString));
+        Assert.False(mapping.TryGet("missing", out _));
+    }
+
+    [Fact]
     public void ParseReportsOneBasedSourceLocationForMalformedInput()
     {
         const string yaml = "items:\n  - type: STR_RIFLE\n    cost: [100, 200\n";

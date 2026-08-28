@@ -13,24 +13,21 @@ internal static class TerrainSpecialRulesComposer
     { "bigWall", "TUWalk", "TUFly", "TUSlide", "deathTile", "terrainHeight", "specialType", "explosive", "armor", "flammability", "fuel", "footstepSound", "HEBlock", "objectType" };
 
     public static TerrainSpecialRules Compose(ModLoadPlan plan, RulesetCompositionOptions options)
+        => Compose(RulesetDocumentCatalog.Parse(plan, options), options);
+
+    public static TerrainSpecialRules Compose(RulesetDocumentCatalog documents, RulesetCompositionOptions options)
     {
         var scripts = new Dictionary<string, MapScriptRule>(StringComparer.Ordinal);
         var patches = new Dictionary<string, List<McdPatchEntry>>(StringComparer.Ordinal);
         var patchSources = new Dictionary<string, RuleOperationSource>(StringComparer.Ordinal);
         var operations = 0;
-        foreach (var group in plan.Groups)
-            foreach (var file in group.Rulesets)
+        foreach (var document in documents.Documents)
             {
-                using var input = file.OpenRead();
-                var stream = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
-                if (stream.Documents.Count == 0) continue;
-                if (stream.Documents.Count != 1) throw Error(stream.Documents[1].Span,
-                    "Ruleset files must contain exactly one YAML document.");
-                if (stream.Documents[0].Root is YamlNullNode) continue;
-                if (stream.Documents[0].Root is not YamlMappingNode root) throw Error(stream.Documents[0].Root.Span, "Ruleset document root must be a mapping.");
+                var root = document.Root;
                 ReadSection(root, "mapScripts", item =>
                 {
-                    Count(item); var source = Source(item, group.Mod.Metadata.Id, file.Provenance.LayerId, file.SourcePath);
+                    Count(item); var source = Source(item, document.Mod.Metadata.Id,
+                        document.File.Provenance.LayerId, document.File.SourcePath);
                     var id = RequiredString(item, "type");
                     if (item.TryGet("delete", out var deleted)) id = YamlValueReader.ReadString(deleted!);
                     scripts[id] = new MapScriptRule(id, ReadCommands(item), source);
@@ -40,7 +37,8 @@ internal static class TerrainSpecialRulesComposer
                     Count(item); var id = RequiredString(item, "type");
                     if (!patches.TryGetValue(id, out var entries)) patches[id] = entries = [];
                     entries.AddRange(ReadPatchEntries(item));
-                    patchSources[id] = Source(item, group.Mod.Metadata.Id, file.Provenance.LayerId, file.SourcePath);
+                    patchSources[id] = Source(item, document.Mod.Metadata.Id,
+                        document.File.Provenance.LayerId, document.File.SourcePath);
                 });
             }
         return new TerrainSpecialRules(

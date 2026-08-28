@@ -35,6 +35,28 @@ public static class RulesetComposer
         options ??= new RulesetCompositionOptions();
         options.Validate();
 
+        var documents = RulesetDocumentCatalog.Parse(plan, options);
+        return Compose(documents, sections, diagnostics, options);
+    }
+
+    public static UnresolvedRuleCatalog Compose(
+        RulesetDocumentCatalog documents,
+        IDiagnosticSink? diagnostics = null,
+        RulesetCompositionOptions? options = null) =>
+        Compose(documents, RuleSectionRegistry.NamedRuleSections, diagnostics, options);
+
+    public static UnresolvedRuleCatalog Compose(
+        RulesetDocumentCatalog documents,
+        IEnumerable<RuleSectionDefinition> sections,
+        IDiagnosticSink? diagnostics = null,
+        RulesetCompositionOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+        ArgumentNullException.ThrowIfNull(sections);
+        diagnostics ??= NullDiagnosticSink.Instance;
+        options ??= new RulesetCompositionOptions();
+        options.Validate();
+
         var definitions = sections.ToArray();
         var duplicate = definitions.GroupBy(item => item.Name, StringComparer.Ordinal)
             .FirstOrDefault(group => group.Count() > 1);
@@ -45,62 +67,34 @@ public static class RulesetComposer
 
         var states = definitions.Select(definition => new SectionState(definition)).ToArray();
         var operationCount = 0;
-        foreach (var group in plan.Groups)
+        foreach (var document in documents.Documents)
         {
-            foreach (var file in group.Rulesets)
+            foreach (var state in states)
             {
-                using var input = file.OpenRead();
-                var documents = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
-                if (documents.Documents.Count == 0)
+                if (!document.Root.TryGet(state.Definition.Name, out var sectionNode))
                 {
                     continue;
                 }
 
-                if (documents.Documents.Count != 1)
+                if (sectionNode is not YamlSequenceNode sequence)
                 {
-                    throw Error(
-                        documents.Documents[1].Span,
-                        "Ruleset files must contain exactly one YAML document.");
+                    throw Error(sectionNode!.Span, $"Rule section '{state.Definition.Name}' must be a sequence.");
                 }
 
-                var root = documents.Documents[0].Root;
-                if (root is YamlNullNode)
+                foreach (var item in sequence.Items)
                 {
-                    continue;
-                }
-
-                if (root is not YamlMappingNode mapping)
-                {
-                    throw Error(root.Span, "Ruleset document root must be a mapping.");
-                }
-
-                foreach (var state in states)
-                {
-                    if (!mapping.TryGet(state.Definition.Name, out var sectionNode))
+                    operationCount = checked(operationCount + 1);
+                    if (operationCount > options.MaximumRuleOperations)
                     {
-                        continue;
+                        throw Error(item.Span, $"Ruleset input exceeds the {options.MaximumRuleOperations}-operation limit.");
                     }
 
-                    if (sectionNode is not YamlSequenceNode sequence)
+                    if (item is not YamlMappingNode ruleNode)
                     {
-                        throw Error(sectionNode!.Span, $"Rule section '{state.Definition.Name}' must be a sequence.");
+                        throw Error(item.Span, $"Entries in rule section '{state.Definition.Name}' must be mappings.");
                     }
 
-                    foreach (var item in sequence.Items)
-                    {
-                        operationCount = checked(operationCount + 1);
-                        if (operationCount > options.MaximumRuleOperations)
-                        {
-                            throw Error(item.Span, $"Ruleset input exceeds the {options.MaximumRuleOperations}-operation limit.");
-                        }
-
-                        if (item is not YamlMappingNode ruleNode)
-                        {
-                            throw Error(item.Span, $"Entries in rule section '{state.Definition.Name}' must be mappings.");
-                        }
-
-                        Apply(state, ruleNode, group.Mod.Metadata.Id, file, diagnostics);
-                    }
+                    Apply(state, ruleNode, document.Mod.Metadata.Id, document.File, diagnostics);
                 }
             }
         }
@@ -256,12 +250,6 @@ public static class RulesetComposer
                 RuleId: id)));
 
     private static YamlFormatException Error(SourceSpan span, string message) => new(message, span);
-
-    private static SourceSpan UnknownSpan(string sourcePath)
-    {
-        var position = new SourcePosition(1, 1, 0);
-        return new SourceSpan(sourcePath, position, position);
-    }
 
     private sealed class SectionState
     {

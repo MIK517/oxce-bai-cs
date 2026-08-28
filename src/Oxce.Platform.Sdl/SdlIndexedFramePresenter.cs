@@ -44,6 +44,8 @@ public static class SdlIndexedFramePresenter
 
         public IndexedPalette Palette { get; }
 
+        public long PresentationRevision => 0;
+
         public bool ExitRequested => false;
 
         public void HandleInput(in GameInputEvent input)
