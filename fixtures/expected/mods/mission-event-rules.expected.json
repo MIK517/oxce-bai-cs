@@ -1,0 +1,48 @@
+{
+  "adhoc": [
+    1
+  ],
+  "alienMission": [
+    2,
+    30,
+    true,
+    5,
+    true,
+    4,
+    3
+  ],
+  "arc": [
+    0,
+    -1,
+    2
+  ],
+  "article": [
+    4,
+    100,
+    2,
+    "PAGE_1",
+    "PATCHED",
+    "PAGE_2"
+  ],
+  "event": [
+    "DESCRIPTION",
+    1,
+    "PATCH",
+    true
+  ],
+  "eventScript": [
+    3,
+    4
+  ],
+  "missionScript": [
+    2,
+    5
+  ],
+  "trajectory": [
+    7,
+    1,
+    1,
+    2,
+    3
+  ]
+}

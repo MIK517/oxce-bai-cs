@@ -1,0 +1,13 @@
+alienMissions:
+  - update: MISSION
+    raceWeights: {0: {RACE: 0, RACE_2: 4}}
+events:
+  - update: EVENT
+    spawnedSoldier: {name: PATCH}
+ufopaedia:
+  - id: ITEM
+    text: PATCHED
+    pages: [{title: PAGE_1}, {text: PAGE_2}]
+  - id: DELETED
+    type_id: 8
+  - delete: DELETED
