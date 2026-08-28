@@ -46,7 +46,8 @@ register their section name and identity key, and the composer replays the compa
 file order into an unresolved named-rule registry. It implements ordinary
 update-or-create declarations plus `new`, `override`, `update`, `delete`, and `ignore`,
 preserves reference insertion/deletion ordering, records creation and update provenance,
-rejects conflicting or missing main nodes, requires one mapping document per ruleset,
+rejects conflicting or missing main nodes, accepts empty/comment-only rulesets, requires
+one mapping document for non-empty rulesets,
 and bounds total operations and nested `refNode` mappings. Surviving rules retain their
 ordered YAML operation history so typed loaders—not a speculative generic map merge—own
 property-level semantics. The executable fixture is under
@@ -407,22 +408,48 @@ Authoritative C++ references for this slice:
   section order, special ufopaedia composition, shallow overlay, link/sort passes, and
   incremental weights.
 
-## Deliberate remaining Phase 3 work
+## Phase 3 corpus closure
 
-Phase 3 closes through four explicit gates rather than treating metadata discovery as
-a fully loaded mod:
+Phase 3 content closure is implemented. `Phase3ContentCatalog` constructs every named
+family and composed special section, runs family and remaining cross-family checks in
+dependency order, and advances from `typed` to `linked` only when the implemented graph
+has no relationship issue or error diagnostic. The closure pass covers campaign events
+and missions, item/category/inventory/unit links, research/manufacture results and
+events, personnel research/events, and terrain race/deployment links in addition to the
+family validators. Resource resolution and script compilation remain independent gates.
 
-1. **Typed loading infrastructure (foundation complete):** extend the core with each
-   concrete family's property contract while retaining source provenance, explicit
-   consumed/deferred keys, and bounded typed loading.
-2. **Typed content:** resource/interface/localization, campaign-start, item,
-   equipment/production, personnel/tactical, terrain/deployment, and mission/event
-   declarations are complete; only focused global-table closure remains.
-3. **Link and resource resolution:** publish immutable rule catalogs only after the
-   reference-ordered cross-link, validation, derived-rule, cache, and sorting passes
-   complete. Resource declarations remain platform-neutral descriptors.
-4. **Corpus closure:** compare normalized typed-rule dumps, load the bundled standard
-   mods, and audit at least one large script-heavy private mod with stable manifests.
+`Oxce.FixtureTool dump-typed-rules` emits the bounded schema-versioned audit manifest.
+It records the load stage, validation count, reference-ordered section identities,
+ordered IDs, normalized creation/update provenance, deferred-property counts, special
+section summaries, and a streaming semantic SHA-256 of composed operations. It does not
+serialize runtime rule objects or materialize a second large normalized dump merely to
+calculate the digest.
+
+Every bundled public mod fixture passes through this aggregate path. When the ignored
+private corpus is available, the gate supplies its missing synthetic `xcom1` master and
+loads the script-heavy 40k chain through the same path and manifest generator. This
+corpus exposed and now covers two reference-compatible input behaviors: comment-only
+ruleset files are empty, and legacy Windows-1252 rulesets fall back after strict UTF-8
+decoding. Reused YAML anchor names also resolve subsequent aliases against the most
+recent preceding declaration, as used by the corpus. The benchmark suite includes the
+aggregate compose/type/validate/manifest workload.
+
+Authoritative C++ references inspected for closure:
+
+- `src/Mod/Mod.cpp`: `Mod::loadAll`, `Mod::loadMod`, `Mod::loadFile`, and the ordered
+  `afterLoad`/link passes around lines 2118-2279.
+- `src/Engine/Yaml.h` and the pinned rapidyaml reader for empty roots, legacy byte input,
+  anchor reuse, aliases, and merge handling.
+
+## Phase 3 completion boundary
+
+Phase 3 is complete for metadata/VFS discovery, named and implemented special rule
+composition, typed declarations, explicit relationship validation, and deterministic
+corpus auditing. Cross-cutting global tables that are not yet consumed by a typed family
+remain preserved in composed YAML and are focused follow-up work; they are not presented
+as typed runtime state. Decoded resource publication and shared sprite/sound offsets
+belong to the resource-owner integration work, while compatible script compilation and
+execution remain the Phase 4 gate.
 
 Content loading reports distinct `composed`, `typed`, `linked`,
 `resources-resolved`, and `scripts-compiled` capabilities. Phase 3 must preserve and

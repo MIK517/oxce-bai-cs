@@ -23,7 +23,8 @@ internal static class TerrainSpecialRulesComposer
             {
                 using var input = file.OpenRead();
                 var stream = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
-                if (stream.Documents.Count != 1) throw Error(stream.Documents.Count == 0 ? Unknown(file.SourcePath) : stream.Documents[1].Span,
+                if (stream.Documents.Count == 0) continue;
+                if (stream.Documents.Count != 1) throw Error(stream.Documents[1].Span,
                     "Ruleset files must contain exactly one YAML document.");
                 if (stream.Documents[0].Root is YamlNullNode) continue;
                 if (stream.Documents[0].Root is not YamlMappingNode root) throw Error(stream.Documents[0].Root.Span, "Ruleset document root must be a mapping.");

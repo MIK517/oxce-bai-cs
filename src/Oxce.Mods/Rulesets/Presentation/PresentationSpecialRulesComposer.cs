@@ -19,10 +19,15 @@ internal static class PresentationSpecialRulesComposer
             {
                 using var input = file.OpenRead();
                 var stream = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
+                if (stream.Documents.Count == 0)
+                {
+                    continue;
+                }
+
                 if (stream.Documents.Count != 1)
                 {
                     throw new YamlFormatException("Ruleset files must contain exactly one YAML document.",
-                        stream.Documents.Count == 0 ? UnknownSpan(file.SourcePath) : stream.Documents[1].Span);
+                        stream.Documents[1].Span);
                 }
 
                 if (stream.Documents[0].Root is YamlNullNode)

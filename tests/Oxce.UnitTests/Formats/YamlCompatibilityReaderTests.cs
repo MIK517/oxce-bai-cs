@@ -97,6 +97,26 @@ public sealed class YamlCompatibilityReaderTests
     }
 
     [Fact]
+    public void ReusedAnchorNameResolvesToMostRecentPrecedingDefinition()
+    {
+        var document = ParseMapping("first: &value 1\nbefore: *value\nsecond: &value 2\nafter: *value\n");
+
+        Assert.Equal(1, YamlValueReader.ReadInt32(Required(document, "before")));
+        Assert.Equal(2, YamlValueReader.ReadInt32(Required(document, "after")));
+    }
+
+    [Fact]
+    public void StreamFallsBackToWindows1252ForLegacyRulesets()
+    {
+        using var input = new MemoryStream([.. "name: Caf"u8, 0xB4, .. "e\n"u8]);
+
+        var documents = YamlCompatibilityReader.Parse(input, "legacy.rul");
+        var mapping = Assert.IsType<YamlMappingNode>(documents.Documents[0].Root);
+
+        Assert.Equal("Caf´e", YamlValueReader.ReadString(Required(mapping, "name")));
+    }
+
+    [Fact]
     public void ValueReaderDistinguishesMissingDefaultsFromExplicitNull()
     {
         var documents = YamlCompatibilityReader.Parse("count: 7\noptional: null\n", "values.yml");
