@@ -90,6 +90,9 @@ Exit gate:
 
 ## Phase 3 — Mod system and typed rules
 
+Status: complete for the boundary below. Resource decoding/offset publication and
+script compilation remain assigned to their owning later phases.
+
 Deliverables:
 
 - Mod metadata discovery, master selection, master-chain dependencies, activation,
@@ -99,14 +102,25 @@ Deliverables:
   list ordering, and reference resolution.
 - Typed rule objects grouped by vertical slice, starting with interfaces/resources and
   campaign-start data, then strategic and tactical rules.
-- Localization, extra strings/sprites/sounds, interface themes, and resource offsets.
+- Localization, extra strings/sprites/sounds, interface themes, and platform-neutral
+  resource declarations. Decoded resources and final shared offsets advance through the
+  separate `resources-resolved` gate owned by resource/runtime integration.
 - A rule dump/diff command that compares normalized C++ and .NET resolved rules.
+
+Implemented closure uses deterministic composed and typed audit dumps. The typed dump
+is a schema-versioned manifest rather than reflection serialization of the runtime
+graph; it includes normalized provenance, deferred counts, and a composed semantic
+digest suitable for fixture comparison.
 
 Exit gate:
 
 - Bundled standard mods resolve without unsupported nodes.
 - Selected large community mods parse and link; unsupported features fail explicitly,
   never by silent ignore.
+
+The optional private-corpus gate currently exercises the large script-heavy 40k chain.
+It may remain `typed` when references supplied by copyrighted base content are absent;
+unsupported properties and relationships are diagnosed rather than silently discarded.
 
 ## Phase 4 — OXCE scripting language
 

@@ -25,21 +25,7 @@ public static class YamlCompatibilityReader
             throw LimitError(sourceName, $"YAML input exceeds the {options.MaxBytes}-byte limit.");
         }
 
-        try
-        {
-            using var textReader = new StringReader(yaml);
-            var parser = new DotNetYamlParser(textReader);
-            return new DomBuilder(parser, sourceName, options).Build();
-        }
-        catch (YamlFormatException)
-        {
-            throw;
-        }
-        catch (YamlException exception)
-        {
-            var span = CreateSpan(sourceName, exception.Start, exception.End);
-            throw new YamlFormatException("Invalid YAML syntax.", span, exception);
-        }
+        return ParseCore(yaml, sourceName, options);
     }
 
     public static YamlDocumentSet ParseFile(
@@ -93,16 +79,58 @@ public static class YamlCompatibilityReader
             output.Write(buffer, 0, read);
         }
 
+        string yaml;
         try
         {
-            var yaml = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+            yaml = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
                 .GetString(output.GetBuffer(), 0, checked((int)output.Length));
-            return Parse(yaml.Length > 0 && yaml[0] == '\uFEFF' ? yaml[1..] : yaml, sourceName, options);
         }
-        catch (DecoderFallbackException exception)
+        catch (DecoderFallbackException)
         {
-            throw new YamlFormatException("YAML input is not valid UTF-8.", UnknownSpan(sourceName), exception);
+            yaml = DecodeWindows1252(output.GetBuffer(), checked((int)output.Length));
         }
+
+        return ParseCore(yaml.Length > 0 && yaml[0] == '\uFEFF' ? yaml[1..] : yaml, sourceName, options);
+    }
+
+    private static YamlDocumentSet ParseCore(string yaml, string sourceName, YamlReadOptions options)
+    {
+        try
+        {
+            using var textReader = new StringReader(yaml);
+            var parser = new DotNetYamlParser(textReader);
+            return new DomBuilder(parser, sourceName, options).Build();
+        }
+        catch (YamlFormatException)
+        {
+            throw;
+        }
+        catch (YamlException exception)
+        {
+            var span = CreateSpan(sourceName, exception.Start, exception.End);
+            throw new YamlFormatException("Invalid YAML syntax.", span, exception);
+        }
+    }
+
+    private static string DecodeWindows1252(byte[] bytes, int count)
+    {
+        ReadOnlySpan<char> replacements =
+        [
+            '\u20AC', '\u0081', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',
+            '\u02C6', '\u2030', '\u0160', '\u2039', '\u0152', '\u008D', '\u017D', '\u008F',
+            '\u0090', '\u2018', '\u2019', '\u201C', '\u201D', '\u2022', '\u2013', '\u2014',
+            '\u02DC', '\u2122', '\u0161', '\u203A', '\u0153', '\u009D', '\u017E', '\u0178',
+        ];
+        var characters = new char[count];
+        for (var index = 0; index < count; ++index)
+        {
+            var value = bytes[index];
+            characters[index] = value is >= 0x80 and <= 0x9F
+                ? replacements[value - 0x80]
+                : (char)value;
+        }
+
+        return new string(characters);
     }
 
     private static YamlFormatException LimitError(string sourceName, string message)
@@ -208,7 +236,7 @@ public static class YamlCompatibilityReader
             YamlNode node = scalar.Style == DotNetScalarStyle.Plain && IsNullSpelling(scalar.Value)
                 ? new YamlNullNode(span, scalar.Value, tag, anchor)
                 : new YamlScalarNode(span, scalar.Value, ConvertStyle(scalar.Style), tag, anchor);
-            RegisterAnchor(anchor, node, scalar);
+            RegisterAnchor(anchor, node);
             return node;
         }
 
@@ -228,7 +256,7 @@ public static class YamlCompatibilityReader
                 items,
                 ValueOrNull(sequence.Tag),
                 anchor);
-            RegisterAnchor(anchor, node, sequence);
+            RegisterAnchor(anchor, node);
             return node;
         }
 
@@ -258,7 +286,7 @@ public static class YamlCompatibilityReader
                 CombineMergedAndExplicitEntries(mergedEntries, explicitEntries),
                 ValueOrNull(mapping.Tag),
                 anchor);
-            RegisterAnchor(anchor, node, mapping);
+            RegisterAnchor(anchor, node);
             return node;
         }
 
@@ -320,17 +348,16 @@ public static class YamlCompatibilityReader
                 .Concat(explicitEntries);
         }
 
-        private void RegisterAnchor(string? anchor, YamlNode node, ParsingEvent source)
+        private void RegisterAnchor(string? anchor, YamlNode node)
         {
             if (anchor is null)
             {
                 return;
             }
 
-            if (!_anchors.TryAdd(anchor, node))
-            {
-                throw Error(source, $"YAML anchor '&{anchor}' is defined more than once.");
-            }
+            // yaml-cpp resolves an alias against the most recently declared preceding anchor.
+            // Real OXCE rulesets intentionally reuse anchor names in distant rule blocks.
+            _anchors[anchor] = node;
         }
 
         private T Take<T>()
