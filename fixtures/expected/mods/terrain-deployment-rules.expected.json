@@ -1,0 +1,43 @@
+{
+  "deployment": [
+    2,
+    4,
+    1
+  ],
+  "environment": [
+    5,
+    29
+  ],
+  "mapCommand": [
+    2,
+    2,
+    0,
+    7,
+    4
+  ],
+  "mcdPatch": [
+    2,
+    2,
+    true,
+    2
+  ],
+  "race": [
+    100,
+    2
+  ],
+  "replacement": [
+    4,
+    5,
+    0
+  ],
+  "startingCondition": [
+    1,
+    1
+  ],
+  "terrain": [
+    2,
+    2,
+    1,
+    3
+  ]
+}
