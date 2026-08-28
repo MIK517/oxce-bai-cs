@@ -26,9 +26,10 @@ internal static class CampaignStartSettingsComposer
             {
                 using var input = file.OpenRead();
                 var documents = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
+                if (documents.Documents.Count == 0) continue;
                 if (documents.Documents.Count != 1)
                     throw new YamlFormatException("Ruleset files must contain exactly one YAML document.",
-                        documents.Documents.Count == 0 ? UnknownSpan(file.SourcePath) : documents.Documents[1].Span);
+                        documents.Documents[1].Span);
                 if (documents.Documents[0].Root is YamlNullNode) continue;
                 if (documents.Documents[0].Root is not YamlMappingNode root)
                     throw new YamlFormatException("Ruleset document root must be a mapping.", documents.Documents[0].Root.Span);
