@@ -27,4 +27,5 @@ public static class ModDiagnosticCodes
     public const string MissingDeclaredResource = "OXCE-MOD-0023";
     public const string MissingRuleReference = "OXCE-MOD-0024";
     public const string InvalidRuleRelationship = "OXCE-MOD-0025";
+    public const string DeferredRuleReference = "OXCE-MOD-0026";
 }

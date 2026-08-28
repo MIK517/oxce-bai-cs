@@ -143,12 +143,15 @@ public sealed class TerrainDeploymentRuleCatalogTests
             EquipmentProductionRuleCatalog.Load(plan), PersonnelTacticalRuleCatalog.Load(plan), diagnostics);
 
         Assert.False(validation.IsValid);
-        Assert.Contains(validation.Issues, issue => issue.Property == "enviroEffects");
         Assert.Contains(validation.Issues, issue => issue.Property == "armorTransformations");
-        Assert.Contains(validation.Issues, issue => issue.Property == "requiredItems");
-        Assert.Contains(validation.Issues, issue => issue.Property == "terrains");
-        Assert.Contains(validation.Issues, issue => issue.Property == "randomTerrain");
+        Assert.Contains(validation.Issues, issue => issue.Property == "craftTransformations");
+        Assert.DoesNotContain(validation.Issues, issue => issue.Property == "enviroEffects");
+        Assert.DoesNotContain(validation.Issues, issue => issue.Property == "requiredItems");
+        Assert.DoesNotContain(validation.Issues, issue => issue.Property == "terrains");
+        Assert.DoesNotContain(validation.Issues, issue => issue.Property == "randomTerrain");
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.MissingRuleReference);
+        Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference &&
+            item.Context.RelatedId == "MISSING_SCRIPT_TERRAIN");
     }
 
     private static ModLoadPlan CreatePlan(string root)
