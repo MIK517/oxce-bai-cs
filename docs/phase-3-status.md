@@ -465,20 +465,22 @@ That local acceptance run was performed on 2026-08-28:
 - The complete standard `xcom1` chain reached `linked` with zero validation issues and
   zero error diagnostics. Its 19 warnings were explicitly deferred later-phase fields.
 - The complete `xcom1` -> `40k` -> `40k_ROSIGMA_edits` chain produced a deterministic
-  typed manifest but stopped at `typed`. It reported 493 unconsumed identity properties
-  from `refNode` replay and 994 missing-reference diagnostics.
-- Of the relationship diagnostics, 652 came from treating generic TFTD Ufopaedia
-  articles (`type_id: 10`) as item articles, and 153 came from requiring every alien
-  mission wave target to be a UFO even though the reference engine also accepts a
-  directly spawned alien deployment. The remaining 189 diagnostics require focused
-  comparison with the reference engine's eager, optional, sentinel, and runtime lookup
-  behavior; they must not be waived in bulk.
+  typed manifest but initially stopped at `typed` with 493 unconsumed identity
+  properties from `refNode` replay and 994 missing-reference diagnostics.
+- The first closure correction consumes lifecycle and identity keys only for `refNode`
+  replay, dispatches Ufopaedia links by the complete reference type enum, and no longer
+  treats a mission wave's `ufo` field as an unconditional eager lookup. The reference
+  runtime permits that field to select a UFO, a directly spawned deployment, or no
+  spawned object.
+- After those corrections, the standard chain remains clean and Rosigma reports 204
+  relationship diagnostics plus five unsupported `requiresBuyBaseFunc` properties on
+  soldier transformations. The C++ transformation loader consumes `requiresBaseFunc`,
+  not `requiresBuyBaseFunc`, so those five are retained as explicit unsupported input.
 
-Phase 3 closure therefore needs a focused compatibility branch covering `refNode`
-identity consumption, polymorphic mission-wave targets, corrected Ufopaedia type
-linking, and reference-based classification of the remaining relationship families.
-The same two installation probes should then be repeated; the community-mod exit gate
-is satisfied only after Rosigma reaches `linked` without suppressing genuine errors.
+The remaining 204 relationships require focused comparison with the reference engine's
+eager, optional, sentinel, and runtime lookup behavior; they must not be waived in bulk.
+The community-mod exit gate is satisfied only after that policy work lets Rosigma reach
+`linked` without suppressing genuine errors.
 
 Content loading reports distinct `composed`, `typed`, `linked`,
 `resources-resolved`, and `scripts-compiled` capabilities. Phase 3 must preserve and
