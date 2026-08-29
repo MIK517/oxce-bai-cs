@@ -43,6 +43,35 @@
     {
       "compiled": false,
       "diagnostics": [
+        "Incorrect type of argument \u0027done\u0027 of type []",
+        "Error in matching arguments for operator \u0027goto\u0027",
+        "Error in parsing script \u0027Probe\u0027 for \u0027forward-label\u0027: invalid operation in line: \u0027goto done;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "forward-label",
+      "result": 0,
+      "seed": 0,
+      "source": "goto done; set result 1; done: set result 21; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "counted-loop",
+      "result": 6,
+      "seed": 0,
+      "source": "var int sum; set sum 0; loop var i 4; add sum i; end; set result sum; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "nested-scope",
+      "result": 5,
+      "seed": 0,
+      "source": "begin; var int local 5; set result local; end; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
         "Error in parsing script \u0027Probe\u0027 for \u0027missing-return\u0027: script need to end with return statement",
         "    for code in "
       ],
@@ -84,6 +113,104 @@
       "result": 0,
       "seed": 0,
       "source": "set result 0xg; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027missing-semicolon\u0027: invalid line: \u0027return result\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "missing-semicolon",
+      "result": 0,
+      "seed": 0,
+      "source": "return result"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027invalid-punctuation\u0027: invalid argument \u0027@\u0027 in line: \u0027set result @;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "invalid-punctuation",
+      "result": 0,
+      "seed": 0,
+      "source": "set result @; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027invalid-text-escape\u0027: invalid argument \u0027\u0022bad\\n\u0027 in line: \u0027debug_log \u0022bad\\n\u0022; return result;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "invalid-text-escape",
+      "result": 0,
+      "seed": 0,
+      "source": "debug_log \u0022bad\\n\u0022; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "integer-overflow",
+      "result": -2147483648,
+      "seed": 0,
+      "source": "set result 2147483648; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Operation \u0027break\u0027 outside \u0027loop\u0027",
+        "Error in matching arguments for operator \u0027break\u0027",
+        "Error in parsing script \u0027Probe\u0027 for \u0027break-outside-loop\u0027: invalid operation in line: \u0027break;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "break-outside-loop",
+      "result": 0,
+      "seed": 0,
+      "source": "break; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027variable-after-operation\u0027: invalid variable definition after other operations in line: \u0027var int late;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "variable-after-operation",
+      "result": 0,
+      "seed": 0,
+      "source": "clear result; var int late; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027too-many-arguments\u0027: invalid line: \u0027set result 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "too-many-arguments",
+      "result": 0,
+      "seed": 0,
+      "source": "set result 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027unclosed-block\u0027: script have missed \u0027end;\u0027",
+        "    for code in "
+      ],
+      "name": "unclosed-block",
+      "result": 0,
+      "seed": 0,
+      "source": "begin; return result;"
+    },
+    {
+      "compiled": false,
+      "diagnostics": [
+        "Error in parsing script \u0027Probe\u0027 for \u0027duplicate-label\u0027: invalid label \u0027mark\u0027 in line: \u0027mark: clear result;\u0027 (at 1)",
+        "    for code in "
+      ],
+      "name": "duplicate-label",
+      "result": 0,
+      "seed": 0,
+      "source": "mark: clear result; mark: return result;"
     }
   ]
 }

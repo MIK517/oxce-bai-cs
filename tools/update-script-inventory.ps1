@@ -141,17 +141,46 @@ $registerMatch = [regex]::Match(
     $scriptHeaderText, '(?m)^constexpr size_t ScriptMaxReg = (?<factor>[0-9]+)\*sizeof\(void\*\);')
 if (-not $registerMatch.Success) { throw "Could not find ScriptMaxReg in src/Engine/Script.h." }
 $limits['ScriptMaxRegPointerFactor'] = [int]$registerMatch.Groups['factor'].Value
+$eventsMaxMatch = [regex]::Match($scriptHeaderText, '(?m)^\s*constexpr static size_t EventsMax = (?<value>[0-9]+);')
+$offsetScaleMatch = [regex]::Match($scriptHeaderText, '(?m)^\s*constexpr static size_t OffsetScale = (?<value>[0-9]+);')
+$offsetMaxMatch = [regex]::Match($scriptHeaderText, '(?m)^\s*constexpr static size_t OffsetMax = (?<factor>[0-9]+) \* OffsetScale;')
+if (-not $eventsMaxMatch.Success -or -not $offsetScaleMatch.Success -or -not $offsetMaxMatch.Success) {
+    throw "Could not find event limits in src/Engine/Script.h."
+}
+$limits['EventsMax'] = [int]$eventsMaxMatch.Groups['value'].Value
+$limits['EventOffsetScale'] = [int]$offsetScaleMatch.Groups['value'].Value
+$limits['EventOffsetMax'] = [int]$offsetMaxMatch.Groups['factor'].Value * [int]$offsetScaleMatch.Groups['value'].Value
+
+$typeEncoding = [ordered]@{
+    baseStep = 16
+    invalid = 0
+    null = 16
+    int = 32
+    label = 48
+    text = 64
+    separator = 80
+    firstCustom = 96
+    modifiers = [ordered]@{
+        register = 1
+        writableRegister = 3
+        pointer = 4
+        editablePointer = 12
+    }
+}
 
 $inventory = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
     reference = [ordered]@{
         repository = 'oxce-bai'
         commit = $referenceCommit
     }
     core = [ordered]@{
         limits = $limits
+        typeEncoding = $typeEncoding
         primitiveTypes = @($primitiveTypes + @('label', 'null') | Sort-Object -Unique)
         builtInOperations = @($macroOperations + $directOperations | Sort-Object -Unique)
+        macroOperations = @($macroOperations | Sort-Object -Unique)
+        directRegistrations = @($directOperations | Sort-Object -Unique)
     }
     registrations = [ordered]@{
         scriptRegisterDefinitions = @($registerDefinitions)
