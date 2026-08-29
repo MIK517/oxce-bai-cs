@@ -10,6 +10,11 @@ public interface IIndexedLoopClient
 
     IndexedPalette Palette { get; }
 
+    /// <summary>
+    /// Changes whenever the indexed frame or palette requires presentation.
+    /// </summary>
+    long PresentationRevision { get; }
+
     bool ExitRequested { get; }
 
     void HandleInput(in GameInputEvent input);

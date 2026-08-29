@@ -8,6 +8,9 @@
 4. The port may improve internal design without changing mod-visible semantics.
 5. Headless execution is a first-class capability for fast scenario testing.
 
+The current pre-Phase-4 architecture and performance corrections are tracked in the
+[2026-08-29 architecture and performance review](architecture-performance-review.md).
+
 ## Projects
 
 | Project | Responsibility |
@@ -61,6 +64,12 @@ The application composes four independently testable pipelines:
 
 The headless host runs the first three without SDL. Compatibility tests should prefer
 this path and use presentation tests only where visibility or decoded graphics matter.
+
+Content composition is one staged build, not one parse per typed consumer. Ordered
+ruleset inputs are parsed once into session-owned compatibility nodes, dispatched to
+named and special composers, typed, linked, resource-resolved, and script-compiled. The
+published content snapshot is immutable; parse-only state may be released once retained
+unknown/deferred nodes and compiled scripts have explicit owners.
 
 ## Data modeling
 

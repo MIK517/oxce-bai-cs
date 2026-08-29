@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Oxce.Core.Diagnostics;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Discovery;
@@ -30,6 +31,8 @@ internal static class FixtureTool
                     DumpTypedRules(modsRoot, masterId, null, output),
                 ["dump-typed-rules", var modsRoot, var masterId, var destination] =>
                     DumpTypedRules(modsRoot, masterId, destination, output),
+                ["audit-typed-install", var modsRoot, var resourceRoot, var masterId, var destination] =>
+                    AuditTypedInstall(modsRoot, resourceRoot, masterId, destination, output),
                 ["compare", var expected, var actual] => Compare(expected, actual, output),
                 _ => Usage(error),
             };
@@ -152,9 +155,8 @@ internal static class FixtureTool
             activations,
             masterId,
             new ModEngineIdentity("Extended", "8.6.1.0"));
-        var content = Phase3ContentCatalog.Load(plan);
+        var content = Phase3ContentCatalog.Build(plan);
         var normalized = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
-            plan,
             content,
             new RulesetCatalogNormalizationOptions
             {
@@ -172,7 +174,59 @@ internal static class FixtureTool
             output.WriteLine(destination);
         }
 
-        return content.Capabilities.Has(ContentLoadStage.Linked) ? 0 : 1;
+        return content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? 0 : 1;
+    }
+
+    private static int AuditTypedInstall(
+        string modsRoot,
+        string resourceRoot,
+        string masterId,
+        string destination,
+        TextWriter output)
+    {
+        var root = Path.GetFullPath(modsRoot);
+        var diagnostics = new DiagnosticCollector(100_000);
+        var discovery = ModDiscovery.ScanDirectory(
+            root,
+            diagnostics,
+            new ModDiscoveryOptions { ExternalResourceRoots = [Path.GetFullPath(resourceRoot)] });
+        var catalog = ModCatalog.Create(discovery.Mods, diagnostics);
+        var activations = catalog.Mods.Values
+            .OrderBy(mod => mod.Metadata.Id, StringComparer.Ordinal)
+            .Select(mod => new ModActivation(mod.Metadata.Id, true));
+        var plan = ModLoadPlanner.Create(
+            catalog,
+            activations,
+            masterId,
+            new ModEngineIdentity("Extended", "8.6.1.0"),
+            diagnostics);
+        var content = Phase3ContentCatalog.Build(plan, diagnostics);
+        var normalized = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
+            content,
+            new RulesetCatalogNormalizationOptions
+            {
+                NormalizeSourceName = source => Path.GetRelativePath(root, source).Replace('\\', '/'),
+            });
+        var destinationPath = Path.GetFullPath(destination);
+        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+        File.WriteAllBytes(destinationPath, normalized);
+
+        var retained = diagnostics.Snapshot();
+        var errors = retained.Count(item => item.Severity >= DiagnosticSeverity.Error);
+        output.WriteLine(JsonSerializer.Serialize(new
+        {
+            stage = content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
+            parsedFiles = content.ParsedFileCount,
+            diagnostics = diagnostics.ReportedCount,
+            errors,
+            warnings = retained.Count(item => item.Severity == DiagnosticSeverity.Warning),
+            droppedDiagnostics = diagnostics.DroppedCount,
+            manifestBytes = normalized.Length,
+            destination = destinationPath,
+        }));
+
+        return content.Catalog.Capabilities.Has(ContentLoadStage.Linked) &&
+            !diagnostics.HasSeverityAtLeast(DiagnosticSeverity.Error) ? 0 : 1;
     }
 
     private static int Usage(TextWriter error)
@@ -184,6 +238,7 @@ internal static class FixtureTool
         error.WriteLine("  fixture normalize-yaml <input.yml> [output.json]");
         error.WriteLine("  fixture dump-rules <mods-root> <master-id> [output.json]");
         error.WriteLine("  fixture dump-typed-rules <mods-root> <master-id> [output.json]");
+        error.WriteLine("  fixture audit-typed-install <mods-root> <resource-root> <master-id> <output.json>");
         error.WriteLine("  fixture compare <expected.json> <actual.json>");
         return 2;
     }
