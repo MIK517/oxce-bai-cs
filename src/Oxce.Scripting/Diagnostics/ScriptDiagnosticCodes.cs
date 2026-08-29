@@ -25,4 +25,10 @@ public static class ScriptDiagnosticCodes
     public const string RuntimeOperationFailed = "OXCE-SCR-0021";
     public const string ExecutionLimitExceeded = "OXCE-SCR-0022";
     public const string TraceLimitExceeded = "OXCE-SCR-0023";
+    public const string MissingBindingProvider = "OXCE-SCR-0024";
+    public const string BindingOperationFailed = "OXCE-SCR-0025";
+    public const string InvalidEventDefinition = "OXCE-SCR-0026";
+    public const string UnknownEventDefinition = "OXCE-SCR-0027";
+    public const string EventLimitExceeded = "OXCE-SCR-0028";
+    public const string InvalidScriptValueState = "OXCE-SCR-0029";
 }

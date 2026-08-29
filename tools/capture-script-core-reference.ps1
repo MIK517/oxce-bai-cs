@@ -2,6 +2,7 @@
 param(
     [string] $ReferenceRoot,
     [string] $OutputPath = (Join-Path $PSScriptRoot "..\artifacts\reference-script-core\script-core.actual.json"),
+    [string] $ProbeStem = "script_core_probe",
     [string] $ExpectedCommit = "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15"
 )
 
@@ -41,10 +42,10 @@ if (-not $devCommand) {
 
 $work = Join-Path $repository "artifacts\reference-script-core"
 [IO.Directory]::CreateDirectory($work) | Out-Null
-$probe = Join-Path $repository "fixtures\reference-probes\scripting\script_core_probe.cpp"
+$probe = Join-Path $repository "fixtures\reference-probes\scripting\$ProbeStem.cpp"
 $scriptSource = Join-Path $reference "src\Engine\Script.cpp"
 $yamlSource = Join-Path $reference "src\Engine\Yaml.cpp"
-$executable = Join-Path $work "script_core_probe.exe"
+$executable = Join-Path $work "$ProbeStem.exe"
 $includeSource = Join-Path $reference "src"
 $includeSdl = Join-Path $reference "deps\include\SDL"
 $includeYaml = Join-Path $reference "libs\rapidyaml"
@@ -66,21 +67,21 @@ $compile = 'call "{0}" -no_logo -arch=x64 -host_arch=x64 && cd /d "{9}" && cl.ex
     $yamlSource, ($yamlSources -join ' '), $executable, $work
 & $env:ComSpec /d /c $compile
 if ($LASTEXITCODE -ne 0) {
-    throw "The C++ script-core reference probe failed to compile."
+    throw "The C++ scripting reference probe '$ProbeStem' failed to compile."
 }
 
 $raw = & $executable
 if ($LASTEXITCODE -ne 0) {
-    throw "The C++ script-core reference probe failed."
+    throw "The C++ scripting reference probe '$ProbeStem' failed."
 }
 
-$rawPath = Join-Path $work "script-core.raw.json"
+$rawPath = Join-Path $work "$ProbeStem.raw.json"
 [IO.File]::WriteAllText($rawPath, ($raw -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
 $destination = [IO.Path]::GetFullPath($OutputPath)
 & dotnet run --project (Join-Path $repository "tools\Oxce.FixtureTool") `
     --configuration Release --no-restore -- normalize $rawPath $destination
 if ($LASTEXITCODE -ne 0) {
-    throw "The C++ script-core output could not be normalized."
+    throw "The C++ scripting output from '$ProbeStem' could not be normalized."
 }
 
 Write-Output $destination
