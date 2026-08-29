@@ -37,9 +37,9 @@ against the same pinned checkout with:
 .\tools\update-script-inventory.ps1
 ```
 
-Binding entries are candidates until their overload signatures and owning parser groups
-are semantically classified; the inventory is an auditable starting point, not a claim
-that the bindings are implemented.
+Binding inventory entries are candidates. The separately captured `script-api-catalog`
+fixture is the reviewed, template-resolved declaration source; declaration compatibility
+does not claim that later gameplay providers are implemented.
 
 - [YAML and rulesets](yaml-rulesets.md)
 - [Files and resource catalog](files.md)

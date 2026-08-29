@@ -2,5 +2,8 @@
   <ItemGroup>
     <ProjectReference Include="../Oxce.Core/Oxce.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../fixtures/expected/scripting/script-api-catalog.expected.json"
+                      LogicalName="Oxce.Scripting.script-api-catalog.json" />
+  </ItemGroup>
 </Project>
-
