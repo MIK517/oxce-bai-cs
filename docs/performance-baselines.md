@@ -134,6 +134,24 @@ texture upload, clear, copy, or present operation. This is a structural eliminat
 the entire idle-frame workload rather than a faster implementation of it; native SDL
 smoke validation remains part of the platform validation workflow.
 
+### Private 40k/Rosigma installation acceptance
+
+The same candidate was checked against the user-owned complete
+`xcom1` -> `40k` -> `40k_ROSIGMA_edits` chain on 2026-08-29. The audit consumed 512
+ruleset files sourced from the installation and mapped its declared external `UFO`
+resource directory. Both candidate runs reached `linked`, reported the expected 8,818
+warnings and zero errors, and emitted the same 9,274,826-byte typed manifest with SHA-256
+`6153996A44CFB42DD39FEAB6B56FD1BB7A55530FB2CF8A14B3B9655AFFE3728C`.
+
+As a direct behavioral and wall-clock comparison, documentation commit `b8e6d56` was
+run against the identical isolated input. Its two process-level runs took 14.593 and
+14.869 seconds; the candidate took 4.888 and 4.918 seconds. The averages are 14.731
+versus 4.903 seconds, approximately a 3.0-times end-to-end improvement. All four output
+manifests were byte-identical. These timings include process startup, mod/resource
+discovery, parsing, composition, typing, validation, and manifest writing. They are
+acceptance evidence rather than a BenchmarkDotNet performance gate, but they confirm
+that the synthetic-fixture improvement carries over to the intended large mod chain.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time
