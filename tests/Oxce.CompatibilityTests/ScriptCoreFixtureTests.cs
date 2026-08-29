@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Oxce.FixtureSupport;
+using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Lexing;
+using Oxce.Scripting.Runtime;
 using Oxce.Scripting.Syntax;
 using Xunit;
 
@@ -20,7 +22,7 @@ public sealed class ScriptCoreFixtureTests
             File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root)));
         var cases = document.RootElement.GetProperty("cases").EnumerateArray().ToArray();
 
-        Assert.Equal(21, cases.Length);
+        Assert.Equal(33, cases.Length);
         AssertCase(cases, "return-only", compiled: true, result: 7);
         AssertCase(cases, "set-output", compiled: true, result: 42);
         AssertCase(cases, "locals-and-arithmetic", compiled: true, result: 42);
@@ -42,6 +44,18 @@ public sealed class ScriptCoreFixtureTests
         AssertRejected(cases, "too-many-arguments", "invalid line");
         AssertRejected(cases, "unclosed-block", "missed 'end;'");
         AssertRejected(cases, "duplicate-label", "invalid label");
+        AssertCase(cases, "arithmetic-wrap", compiled: true, result: -1);
+        AssertCase(cases, "aggregate-offset", compiled: true, result: 3);
+        AssertCase(cases, "division-modulo", compiled: true, result: -14);
+        AssertCase(cases, "bit-operations", compiled: true, result: 29);
+        AssertCase(cases, "math-limits", compiled: true, result: 400);
+        AssertCase(cases, "discrete-waves", compiled: true, result: 0);
+        AssertCase(cases, "trigonometric-waves", compiled: true, result: -20);
+        AssertCase(cases, "color-and-shade", compiled: true, result: 15);
+        AssertCase(cases, "combined-conditions", compiled: true, result: 21);
+        AssertCase(cases, "conditional-else-if", compiled: true, result: 20);
+        AssertCase(cases, "loop-control", compiled: true, result: 8);
+        AssertRuntimeFailure(cases, "division-by-zero", result: 9);
     }
 
     [Fact]
@@ -60,6 +74,34 @@ public sealed class ScriptCoreFixtureTests
         var overflow = ScriptLexer.Tokenize(Source(cases, "integer-overflow"));
         Assert.Contains(overflow.Tokens,
             token => token.Kind == ScriptTokenKind.Numeric && token.NumericValue == int.MinValue);
+    }
+
+    [Fact]
+    public void ManagedCompilerAndVmMatchCapturedCoreOutcomes()
+    {
+        var cases = ReadCases();
+        var definition = new ScriptParserDefinition("Probe", ["result"]);
+
+        foreach (var item in cases)
+        {
+            var name = item.GetProperty("name").GetString()!;
+            var expectedCompiled = item.GetProperty("compiled").GetBoolean();
+            var compiled = ScriptCompiler.Compile(Source(cases, name), definition, name);
+            Assert.Equal(expectedCompiled, compiled.Succeeded);
+            if (expectedCompiled)
+            {
+                var initial = new Dictionary<string, int>(StringComparer.Ordinal)
+                {
+                    ["result"] = item.GetProperty("seed").GetInt32(),
+                };
+                var executed = ScriptVm.Execute(compiled.Program!, initial);
+                var expectedStatus = name == "division-by-zero"
+                    ? ScriptExecutionStatus.RuntimeError
+                    : ScriptExecutionStatus.Completed;
+                Assert.Equal(expectedStatus, executed.Status);
+                Assert.Equal(item.GetProperty("result").GetInt32(), executed.Outputs["result"]);
+            }
+        }
     }
 
     private static JsonElement[] ReadCases()
@@ -91,6 +133,15 @@ public sealed class ScriptCoreFixtureTests
         Assert.False(item.GetProperty("compiled").GetBoolean());
         Assert.Contains(item.GetProperty("diagnostics").EnumerateArray(),
             value => value.GetString()!.Contains(message, StringComparison.Ordinal));
+    }
+
+    private static void AssertRuntimeFailure(JsonElement[] cases, string name, int result)
+    {
+        var item = Assert.Single(cases, value => value.GetProperty("name").GetString() == name);
+        Assert.True(item.GetProperty("compiled").GetBoolean());
+        Assert.Equal(result, item.GetProperty("result").GetInt32());
+        Assert.Contains(item.GetProperty("diagnostics").EnumerateArray(),
+            value => value.GetString()!.Contains("Invalid script operation", StringComparison.Ordinal));
     }
 
     private static string FindRepositoryRoot()
