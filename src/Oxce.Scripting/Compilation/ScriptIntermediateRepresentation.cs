@@ -1,5 +1,6 @@
 using Oxce.Core.Diagnostics;
 using Oxce.Scripting.Binding;
+using Oxce.Scripting.Api;
 using Oxce.Scripting.Types;
 
 namespace Oxce.Scripting.Compilation;
@@ -80,7 +81,8 @@ public sealed class ScriptProgram
         IEnumerable<ScriptInstruction> instructions,
         IEnumerable<ScriptTypeRef> outputs,
         int registerBytes,
-        IEnumerable<ScriptRegisterDefinition>? registers = null)
+        IEnumerable<ScriptRegisterDefinition>? registers = null,
+        IEnumerable<ScriptBindingDeclaration>? bindings = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(parserName);
         ArgumentNullException.ThrowIfNull(instructions);
@@ -90,6 +92,7 @@ public sealed class ScriptProgram
         Instructions = Array.AsReadOnly(instructions.ToArray());
         Outputs = Array.AsReadOnly(outputs.ToArray());
         Registers = Array.AsReadOnly((registers ?? []).ToArray());
+        Bindings = Array.AsReadOnly((bindings ?? []).ToArray());
         RegisterBytes = registerBytes;
         if (Outputs.Count > ScriptLimits.MaximumOutputs)
         {
@@ -107,6 +110,8 @@ public sealed class ScriptProgram
     public int RegisterBytes { get; }
 
     public IReadOnlyList<ScriptRegisterDefinition> Registers { get; }
+
+    public IReadOnlyList<ScriptBindingDeclaration> Bindings { get; }
 }
 
 public sealed record ScriptRegisterDefinition(

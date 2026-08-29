@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ordered-update",
+      "result": 16
+    },
+    {
+      "accepted": true,
+      "diagnostics": [
+        "Unknown script name \u0027missing\u0027 for \u0027update\u0027 at line 0",
+        "    in ",
+        "Unknown script name \u0027alsoMissing\u0027 for \u0027delete\u0027 at line 0",
+        "    in "
+      ],
+      "name": "unknown-update-delete",
+      "result": 2
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        "Unknown script name \u0027missing\u0027 for \u0027override\u0027 at line 0"
+      ],
+      "name": "unknown-override",
+      "result": 1
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "delete-existing",
+      "result": 2
+    },
+    {
+      "accepted": true,
+      "diagnostics": [
+        "Invalid offset for \u0027Probe\u0027 equal: \u00270\u0027",
+        "    for node at line 0 in "
+      ],
+      "name": "ignore-and-zero-offset",
+      "result": 2
+    }
+  ]
+}

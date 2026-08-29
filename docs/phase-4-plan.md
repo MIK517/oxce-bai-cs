@@ -99,7 +99,7 @@ save YAML, migrations, unknown fields, and transactional restoration.
 
 ## Feature branches and CI policy
 
-Phase 4 is delivered through four sequential branches. Each branch contains reviewable
+Phase 4 is delivered through five sequential branches. Each branch contains reviewable
 commits but is pushed only after its integration gate passes locally. The next branch
 starts from `main` after the previous branch is synchronously rebased and merged.
 
@@ -110,9 +110,13 @@ starts from `main` after the previous branch is synchronously rebased and merged
    runtime limits, traces, and robustness tests. Synthetic host dispatch moves to the
    API/events branch so its contracts are built from the reviewed catalog rather than
    a temporary parallel abstraction.
-3. `codex/phase4-script-api-events`: exact API catalog, generated declarations,
-   globals, tags, event composition/execution, and script-value state seam.
-4. `codex/phase4-content-closure`: durable content snapshot, script compilation stage,
+3. `codex/phase4-script-api-events`: catalog/runtime contracts, provider separation,
+   globals, tags, event composition/execution, and script-value state seam. The detailed
+   audit and split rationale are recorded in the
+   [API/events review](phase-4-api-events-review.md).
+4. `codex/phase4-api-catalog`: exact reviewed API catalog, generated declarations,
+   parser membership, custom types, receiver/separator lowering, and drift checks.
+5. `codex/phase4-content-closure`: durable content snapshot, script compilation stage,
    capability gating, public/private corpus closure, benchmarks, and final documentation.
 
 This is the smallest practical branch count. One branch would combine unrelated risk
@@ -127,7 +131,8 @@ platform paths.
 |---|---|---|
 | `codex/phase4-language-foundation` | merged | Lexer, syntax tree, type and symbol foundations, overload scoring, bounded register layout, immutable IR, initial pinned core oracle. |
 | `codex/phase4-core-vm` | implemented for review | Scalar declarations and returns, structured control flow, all public binding-free core operation families, bounded register VM, structured runtime failures, and optional traces. The pinned oracle now covers 33 compile/execution cases. |
-| `codex/phase4-script-api-events` | pending | Exact catalog, host dispatch, globals, tags, event composition, and value-state seam. |
+| `codex/phase4-script-api-events` | implemented for review | Immutable catalog contracts, catalog-driven scalar host calls, explicit missing providers, global event composition/execution, typed tags, and transactional value-state seam. The pinned event oracle covers ordering and all five mutation directives. |
+| `codex/phase4-api-catalog` | pending | Exact declarations for all reviewed registration roots, parser membership, custom/reference types, receiver/separator lowering, generation, and drift checks. |
 | `codex/phase4-content-closure` | pending | Content compilation/capability integration, corpus closure, benchmarks, and closure audit. |
 
 ## Authoritative references
