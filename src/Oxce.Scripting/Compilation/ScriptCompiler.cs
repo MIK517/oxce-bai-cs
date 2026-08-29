@@ -135,13 +135,12 @@ public sealed class ScriptCompiler
 
     private void DeclareConstants()
     {
-        var type = new ScriptTypeRef(ScriptPrimitiveTypes.Scalar);
         foreach (var constant in _definition.ApiCatalog.GetConstants(_definition.ParserGroups))
         {
             if (!_symbols.TryDeclare(new ScriptSymbol(
                 constant.Name,
                 ScriptSymbolKind.Constant,
-                type,
+                constant.Type,
                 ConstantValue: constant.Value)))
             {
                 Error(ScriptDiagnosticCodes.DuplicateSymbol,
@@ -198,39 +197,70 @@ public sealed class ScriptCompiler
                 statement.Span);
             return;
         }
-        if (statement.Arguments.Count is not (2 or 3) || statement.Arguments[0].Lexeme != "int" ||
-            statement.Arguments[1].Kind != ScriptTokenKind.Symbol)
+        var typeTokenCount = statement.Arguments.Count > 0 &&
+            statement.Arguments[0].Lexeme is "ptr" or "ptre" ? 2 : 1;
+        var validCount = typeTokenCount == 1
+            ? statement.Arguments.Count is 2 or 3
+            : statement.Arguments.Count is 3 or 4;
+        if (!validCount || statement.Arguments[typeTokenCount].Kind != ScriptTokenKind.Symbol ||
+            !TryDeclarationType(statement.Arguments, typeTokenCount, out var definition, out var type))
         {
             Error(ScriptDiagnosticCodes.InvalidDeclaration,
-                "An integer variable declaration has the form 'var int name [value];'.",
+                "A variable declaration has the form 'var [ptr|ptre] type name [value];'.",
                 statement.Span);
             return;
         }
 
-        var name = statement.Arguments[1].Lexeme;
-        if (!_layout.TryAllocate(ScalarType, useReferenceLayout: false, out var offset))
+        var name = statement.Arguments[typeTokenCount].Lexeme;
+        if (!_layout.TryAllocate(definition!, type.IsReference, out var offset))
         {
             Error(ScriptDiagnosticCodes.RegisterLimitExceeded,
                 $"Variable '{name}' exceeds the script register limit.",
-                statement.Arguments[1].Span);
+                statement.Arguments[typeTokenCount].Span);
             return;
         }
-        var type = new ScriptTypeRef(
-            ScriptPrimitiveTypes.Scalar,
-            ScriptTypeModifier.Register | ScriptTypeModifier.Writable);
         if (!_symbols.TryDeclare(new ScriptSymbol(name, ScriptSymbolKind.Local, type, offset)))
         {
             Error(ScriptDiagnosticCodes.DuplicateSymbol, $"Script symbol '{name}' is already defined.",
-                statement.Arguments[1].Span);
+                statement.Arguments[typeTokenCount].Span);
             return;
         }
         _registers.Add(new ScriptRegisterDefinition(name, type, offset, IsOutput: false));
         Emit(
-            statement.Arguments.Count == 2 ? CoreScriptOperation.Clear : CoreScriptOperation.Set,
+            statement.Arguments.Count == typeTokenCount + 1 ? CoreScriptOperation.Clear : CoreScriptOperation.Set,
             statement.Span,
-            statement.Arguments.Count == 2
+            statement.Arguments.Count == typeTokenCount + 1
                 ? [ScriptOperand.Register(offset)]
-                : [ScriptOperand.Register(offset), ReadValue(statement.Arguments[2])]);
+                : [ScriptOperand.Register(offset), ReadValue(statement.Arguments[typeTokenCount + 1])]);
+    }
+
+    private bool TryDeclarationType(
+        IReadOnlyList<ScriptToken> tokens,
+        int typeTokenCount,
+        out ScriptTypeDefinition? definition,
+        out ScriptTypeRef type)
+    {
+        var name = tokens[typeTokenCount - 1].Lexeme;
+        if (name == "int")
+        {
+            definition = ScalarType;
+        }
+        else if (!_definition.ApiCatalog.TryGetType(name, out definition))
+        {
+            type = default;
+            return false;
+        }
+        var modifiers = ScriptTypeModifier.Register | ScriptTypeModifier.Writable;
+        if (typeTokenCount == 2)
+        {
+            modifiers |= ScriptTypeModifier.Reference;
+            if (tokens[0].Lexeme == "ptre")
+            {
+                modifiers |= ScriptTypeModifier.EditableReference;
+            }
+        }
+        type = new ScriptTypeRef(definition!.Id, modifiers);
+        return true;
     }
 
     private void CompileConstant(ScriptStatementSyntax statement)
@@ -425,10 +455,10 @@ public sealed class ScriptCompiler
 
     private void CompileReturn(ScriptStatementSyntax statement)
     {
-        if (statement.Arguments.Count != _definition.OutputNames.Count)
+        if (statement.Arguments.Count != 0 && statement.Arguments.Count != _definition.OutputNames.Count)
         {
             Error(ScriptDiagnosticCodes.InvalidArguments,
-                $"Return requires {_definition.OutputNames.Count} value(s).",
+                $"Return accepts either no values or {_definition.OutputNames.Count} value(s).",
                 statement.Span);
             return;
         }
@@ -535,7 +565,8 @@ public sealed class ScriptCompiler
         {
             var parameter = declaration.Parameters[index];
             var argument = arguments[index];
-            if (parameter.Type.Id != argument.Type.Id ||
+            var isNullReference = argument.Type.Id == ScriptPrimitiveTypes.Null && parameter.Type.IsReference;
+            if (!isNullReference && parameter.Type.Id != argument.Type.Id ||
                 parameter.Writable && (!argument.Type.IsWritable || argument.Operand.Kind != ScriptOperandKind.Register) ||
                 parameter.Type.IsReference && !argument.Type.IsReference ||
                 parameter.Type.IsEditableReference && !argument.Type.IsEditableReference ||
@@ -608,6 +639,12 @@ public sealed class ScriptCompiler
                 ScriptOperand.IntegerValue(0),
                 new ScriptTypeRef(ScriptPrimitiveTypes.Separator));
         }
+        if (token.Kind == ScriptTokenKind.Symbol && token.Lexeme == "null")
+        {
+            return new TypedOperand(
+                ScriptOperand.IntegerValue(0),
+                new ScriptTypeRef(ScriptPrimitiveTypes.Null, ScriptTypeModifier.Reference));
+        }
         if (token.Kind == ScriptTokenKind.Symbol)
         {
             if (_symbols.TryResolve(token.Lexeme, out var symbol))
@@ -616,7 +653,7 @@ public sealed class ScriptCompiler
                 {
                     return new TypedOperand(
                         ScriptOperand.IntegerValue(constant),
-                        new ScriptTypeRef(ScriptPrimitiveTypes.Scalar));
+                        symbol.Type);
                 }
                 if (symbol?.RegisterOffset is int offset)
                 {

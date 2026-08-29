@@ -3,6 +3,7 @@ using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
+using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Phase3;
 
 namespace Oxce.Benchmarks;
@@ -20,7 +21,7 @@ public class Phase3ContentBenchmarks
     public void Setup()
     {
         var root = FindRepositoryRoot();
-        _fixtureRoot = Path.Combine(root, "fixtures", "public", "mods", "mission-event-rules");
+        _fixtureRoot = Path.Combine(root, "fixtures", "public", "mods", "script-content");
         var discovery = ModDiscovery.ScanDirectory(_fixtureRoot);
         _plan = ModLoadPlanner.Create(
             ModCatalog.Create(discovery.Mods),
@@ -53,6 +54,10 @@ public class Phase3ContentBenchmarks
     [Benchmark]
     public Phase3ContentBuild LoadAndValidate() =>
         Phase3ContentCatalog.Build(_plan);
+
+    [Benchmark]
+    public ContentSnapshot LoadValidateAndCompileScripts() =>
+        ContentSnapshotBuilder.Build(_plan);
 
     [Benchmark]
     public byte[] NormalizePrebuiltManifest() =>

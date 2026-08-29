@@ -1,0 +1,6 @@
+extended:
+  tags:
+    RuleMod:
+      CONTENT_GLOBAL: int
+    RuleItem:
+      CONTENT_POWER: int
