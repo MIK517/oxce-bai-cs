@@ -106,8 +106,10 @@ starts from `main` after the previous branch is synchronously rebased and merged
 1. `codex/phase4-language-foundation`: architecture decision, refined foundational
    inventory, expanded oracle, lexer, syntax, types, symbols, register layout, overload
    resolution, and immutable IR contracts.
-2. `codex/phase4-core-vm`: control-flow lowering, core operations, VM, runtime limits,
-   traces, synthetic bindings, and robustness tests.
+2. `codex/phase4-core-vm`: control-flow lowering, binding-free core operations, VM,
+   runtime limits, traces, and robustness tests. Synthetic host dispatch moves to the
+   API/events branch so its contracts are built from the reviewed catalog rather than
+   a temporary parallel abstraction.
 3. `codex/phase4-script-api-events`: exact API catalog, generated declarations,
    globals, tags, event composition/execution, and script-value state seam.
 4. `codex/phase4-content-closure`: durable content snapshot, script compilation stage,
@@ -118,6 +120,15 @@ and prevent useful review; one branch per low-level slice would multiply the thr
 and coverage workflow without creating additional integration confidence. SDL validation
 should not run because these branches do not modify application, rendering, engine, or
 platform paths.
+
+### Delivery status
+
+| Branch | Status | Evidence / remaining boundary |
+|---|---|---|
+| `codex/phase4-language-foundation` | merged | Lexer, syntax tree, type and symbol foundations, overload scoring, bounded register layout, immutable IR, initial pinned core oracle. |
+| `codex/phase4-core-vm` | implemented for review | Scalar declarations and returns, structured control flow, all public binding-free core operation families, bounded register VM, structured runtime failures, and optional traces. The pinned oracle now covers 33 compile/execution cases. |
+| `codex/phase4-script-api-events` | pending | Exact catalog, host dispatch, globals, tags, event composition, and value-state seam. |
+| `codex/phase4-content-closure` | pending | Content compilation/capability integration, corpus closure, benchmarks, and closure audit. |
 
 ## Authoritative references
 

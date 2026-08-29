@@ -211,6 +211,104 @@
       "result": 0,
       "seed": 0,
       "source": "mark: clear result; mark: return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "arithmetic-wrap",
+      "result": -1,
+      "seed": 0,
+      "source": "set result 2147483647; add result 1; mul result 2; sub result 1; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "aggregate-offset",
+      "result": 3,
+      "seed": 0,
+      "source": "set result 3; aggregate result 4 5; offset result 2 -3; offsetmod result 2 5 11; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "division-modulo",
+      "result": -14,
+      "seed": 0,
+      "source": "set result -17; div result 5; mod result 2; set result 21; muldiv result -4 6; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "bit-operations",
+      "result": 29,
+      "seed": 0,
+      "source": "set result 10; shl result 2; shr result 1; bit_or result 5; bit_and result 23; bit_xor result 3; bit_not result; bit_count result; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "math-limits",
+      "result": 400,
+      "seed": 0,
+      "source": "set result -81; abs result; sqrt result; pow result 3; limit result 100 500; limit_upper result 400; limit_lower result 300; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "discrete-waves",
+      "result": 0,
+      "seed": 0,
+      "source": "set result -2; wavegen_rect result 8 3 9; wavegen_saw result 10 7 4; wavegen_tri result 12 8 3; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "trigonometric-waves",
+      "result": -20,
+      "seed": 0,
+      "source": "set result 3; wavegen_sin result 12 100; wavegen_cos result 12 40; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "color-and-shade",
+      "result": 15,
+      "seed": 0,
+      "source": "set result 0x23; get_color result result; set_color result 7; set_shade result 12; add_shade result 5; get_shade result result; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "combined-conditions",
+      "result": 21,
+      "seed": 6,
+      "source": "if and ge result 5 lt result 10 neq result 7; set result 21; else; set result 22; end; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "conditional-else-if",
+      "result": 20,
+      "seed": 2,
+      "source": "if eq result 1; set result 10; else eq result 2; set result 20; else; set result 30; end; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [],
+      "name": "loop-control",
+      "result": 8,
+      "seed": 0,
+      "source": "set result 0; loop var i 6; if eq i 2; continue; end; if eq i 5; break; end; add result i; end; return result;"
+    },
+    {
+      "compiled": true,
+      "diagnostics": [
+        "Invalid script operation"
+      ],
+      "name": "division-by-zero",
+      "result": 9,
+      "seed": 0,
+      "source": "set result 9; div result 0; set result 10; return result;"
     }
   ]
 }

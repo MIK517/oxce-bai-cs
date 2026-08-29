@@ -9,14 +9,14 @@
     "buildOptions": {
       "architecture": "x64",
       "compiler": "MSVC 19.51",
-        "probe": "script-core-v2"
+        "probe": "script-core-v3"
     }
   },
   "inputs": [
     {
       "path": "fixtures/reference-probes/scripting/script_core_probe.cpp",
-      "size": 4377,
-      "sha256": "5fd6f734127c0f72a3c0b58483415e9d01f5daf0e0fe5deb95d64fef92e3c169"
+      "size": 6094,
+      "sha256": "9a11dcc981f85450bf2b6cac4b6ea9da200ff47120df5b4bbddc813e0257922d"
     }
   ],
   "normalization": ["canonical-json-v1"],

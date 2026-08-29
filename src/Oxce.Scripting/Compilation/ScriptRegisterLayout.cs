@@ -15,6 +15,8 @@ public sealed class ScriptRegisterLayout
 
     public int UsedBytes { get; private set; }
 
+    public int PeakBytes { get; private set; }
+
     public int ScopeDepth => _scopeStarts.Count + 1;
 
     public void PushScope() => _scopeStarts.Push(UsedBytes);
@@ -43,6 +45,7 @@ public sealed class ScriptRegisterLayout
 
         offset = aligned;
         UsedBytes = aligned + size;
+        PeakBytes = Math.Max(PeakBytes, UsedBytes);
         return true;
     }
 }
