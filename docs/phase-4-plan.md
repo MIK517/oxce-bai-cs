@@ -130,10 +130,10 @@ platform paths.
 | Branch | Status | Evidence / remaining boundary |
 |---|---|---|
 | `codex/phase4-language-foundation` | merged | Lexer, syntax tree, type and symbol foundations, overload scoring, bounded register layout, immutable IR, initial pinned core oracle. |
-| `codex/phase4-core-vm` | implemented for review | Scalar declarations and returns, structured control flow, all public binding-free core operation families, bounded register VM, structured runtime failures, and optional traces. The pinned oracle now covers 33 compile/execution cases. |
-| `codex/phase4-script-api-events` | implemented for review | Immutable catalog contracts, catalog-driven scalar host calls, explicit missing providers, global event composition/execution, typed tags, and transactional value-state seam. The pinned event oracle covers ordering and all five mutation directives. |
-| `codex/phase4-api-catalog` | implemented for review | The pinned metadata probe resolves 60 concrete parsers, 755 overloads, 132 constants, and 94 emitted type forms with zero unresolved declarations. The reviewed fixture is the embedded runtime source; typed parser construction, receiver rewriting, separator matching, and count/ID drift checks consume it. See the [catalog review](phase-4-api-catalog-review.md). |
-| `codex/phase4-content-closure` | pending | Content compilation/capability integration, corpus closure, benchmarks, and closure audit. |
+| `codex/phase4-core-vm` | merged | Scalar declarations and returns, structured control flow, all public binding-free core operation families, bounded register VM, structured runtime failures, and optional traces. The pinned oracle covers 33 compile/execution cases. |
+| `codex/phase4-script-api-events` | merged | Immutable catalog contracts, catalog-driven scalar host calls, explicit missing providers, global event composition/execution, typed tags, and transactional value-state seam. The pinned event oracle covers ordering and all five mutation directives. |
+| `codex/phase4-api-catalog` | merged | The pinned metadata probe resolves 60 concrete parsers, 755 overloads, 132 constants, and 94 emitted type forms with zero unresolved declarations. The reviewed fixture is the embedded runtime source; typed parser construction, receiver rewriting, separator matching, and count/ID drift checks consume it. See the [catalog review](phase-4-api-catalog-review.md). |
+| `codex/phase4-content-closure` | implemented for review | Durable one-parse content snapshot, transactional script-stage gating, defaults/tags/events/rule/stat compilation, public/private corpus closure, benchmark coverage, and [closure audit](phase-4-status.md). |
 
 ## Authoritative references
 

@@ -14,7 +14,7 @@ not required.
 | Path handling | Normalize 1,024 mixed-case backslash paths, perform mixed hit/miss catalog lookups, and compare legacy per-layer normalization with one-time slice normalization. |
 | Finalized maps | Compare `Dictionary` and `FrozenDictionary` construction, allocation, and mixed hit/miss lookup at 2,000 and 16,000 entries. |
 | YAML | Parse a 1,000-entry ruleset-shaped mapping and repeatedly look up keys near its end plus missing keys. |
-| Phase 3 content | Compose, type, dependency-validate, and normalize the bundled mission/event fixture through the aggregate catalog. |
+| Phase 3/4 content | Compose, type, dependency-validate, compile defaults/tags/events/rule scripts/stat bonuses, and normalize the bundled script-content fixture through the aggregate snapshot. |
 | Indexed rendering | Opaque 320x200 blit, transparent 64x80 sprite blit, and 640x400 indexed-to-RGBA conversion. |
 | Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices. |
 
@@ -118,6 +118,13 @@ allocation reduction on the fixture. The after benchmark also separates the stag
 The parsed-file count is exposed by the build result and asserted by tests, so future
 aggregate consumers cannot silently reintroduce multiple parse passes without changing
 observable instrumentation.
+
+Phase 4 retains the parsed document catalog in the durable snapshot and adds
+`LoadValidateAndCompileScripts` beside the earlier stage measurements. It uses the
+public `script-content` fixture and covers the seven defaults plus global tags/events,
+rule scripts, initial values, and legacy stat conversion. No timing is recorded here:
+the benchmark is compiled in CI and dry-run validated locally, while statistical
+baselines must follow the controlled-machine procedure above.
 
 A lazy ordinal scalar-key index for mappings with at least 16 entries reduced the
 representative repeated lookup from 2.891 us and 32 B to 8.450 ns and zero allocation,
