@@ -4,6 +4,7 @@ using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
+using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Phase3;
 using Xunit;
 
@@ -84,8 +85,22 @@ public sealed class Phase3ContentCorpusTests
                 master.Metadata.Id,
                 new ModEngineIdentity("Extended", "8.6.1.0"));
             Assert.True(plan.IsValid);
-            var content = Phase3ContentCatalog.Build(plan);
+            var snapshot = ContentSnapshotBuilder.Build(plan);
+            var content = snapshot.Content;
             Assert.True(content.Catalog.Capabilities.Has(ContentLoadStage.Typed));
+            var scriptErrors = snapshot.Diagnostics.Where(static item =>
+                item.Severity >= DiagnosticSeverity.Error &&
+                (item.Code == ModDiagnosticCodes.InvalidScriptContent ||
+                 item.Code.StartsWith("OXCE-SCRIPT-", StringComparison.Ordinal))).ToArray();
+            Assert.Empty(scriptErrors);
+            if (content.Catalog.Capabilities.Has(ContentLoadStage.Linked) &&
+                !snapshot.Diagnostics.Any(static item => item.Severity >= DiagnosticSeverity.Error))
+            {
+                Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), string.Join(
+                Environment.NewLine,
+                snapshot.Diagnostics.Where(static item => item.Severity >= DiagnosticSeverity.Error)
+                    .Take(25).Select(static item => item.Message)));
+            }
             var manifest = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
                 content,
                 new RulesetCatalogNormalizationOptions

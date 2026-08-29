@@ -28,4 +28,5 @@ public static class ModDiagnosticCodes
     public const string MissingRuleReference = "OXCE-MOD-0024";
     public const string InvalidRuleRelationship = "OXCE-MOD-0025";
     public const string DeferredRuleReference = "OXCE-MOD-0026";
+    public const string InvalidScriptContent = "OXCE-MOD-0027";
 }

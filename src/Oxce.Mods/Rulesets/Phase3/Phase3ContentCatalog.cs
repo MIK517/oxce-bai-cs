@@ -100,7 +100,7 @@ public sealed class Phase3ContentCatalog
 
         var catalog = new Phase3ContentCatalog(
             presentation, campaign, items, equipment, personnel, terrain, missions, validation, capabilities);
-        return new Phase3ContentBuild(catalog, composed, documents.ParsedFileCount);
+        return new Phase3ContentBuild(catalog, composed, documents, documents.ParsedFileCount);
     }
 
     private sealed class ForwardingDiagnosticSink(IDiagnosticSink destination, IDiagnosticSink collector)
@@ -117,6 +117,7 @@ public sealed class Phase3ContentCatalog
 public sealed record Phase3ContentBuild(
     Phase3ContentCatalog Catalog,
     UnresolvedRuleCatalog ComposedRules,
+    RulesetDocumentCatalog Documents,
     int ParsedFileCount);
 
 public sealed record Phase3ContentValidation(
