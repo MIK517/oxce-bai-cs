@@ -104,4 +104,7 @@ Unit and compatibility tests use centrally pinned xUnit v3 packages on Microsoft
 Testing Platform v2. Coverlet provides cross-platform coverage. The separate
 `Oxce.FixtureTool` command-line application validates manifests and supports hashing,
 canonical JSON normalization, YAML semantic-tree normalization, and semantic comparison
-outside the test runner.
+outside the test runner. `audit-typed-install` accepts an isolated mod root, an owned
+external-resource root, an active master ID, and a manifest destination. It reports the
+content stage, parsed-file and diagnostic counts, and manifest size so complete private
+installations can be audited without copying or committing their assets.

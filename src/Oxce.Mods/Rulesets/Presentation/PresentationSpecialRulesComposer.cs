@@ -7,55 +7,35 @@ namespace Oxce.Mods.Rulesets.Presentation;
 internal static class PresentationSpecialRulesComposer
 {
     public static PresentationSpecialRules Compose(ModLoadPlan plan, RulesetCompositionOptions options)
+        => Compose(RulesetDocumentCatalog.Parse(plan, options), options);
+
+    public static PresentationSpecialRules Compose(RulesetDocumentCatalog documents, RulesetCompositionOptions options)
     {
         var strings = new Dictionary<string, SortedDictionary<string, string>>(StringComparer.Ordinal);
         var sprites = new Dictionary<string, List<ExtraSpriteDeclaration>>(StringComparer.Ordinal);
         var sounds = new List<ExtraSoundDeclaration>();
         var operations = 0;
 
-        foreach (var group in plan.Groups)
+        foreach (var document in documents.Documents)
         {
-            foreach (var file in group.Rulesets)
+            var root = document.Root;
+            ReadSequence(root, "extraStrings", item =>
             {
-                using var input = file.OpenRead();
-                var stream = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
-                if (stream.Documents.Count == 0)
-                {
-                    continue;
-                }
-
-                if (stream.Documents.Count != 1)
-                {
-                    throw new YamlFormatException("Ruleset files must contain exactly one YAML document.",
-                        stream.Documents[1].Span);
-                }
-
-                if (stream.Documents[0].Root is YamlNullNode)
-                {
-                    continue;
-                }
-
-                if (stream.Documents[0].Root is not YamlMappingNode root)
-                {
-                    throw new YamlFormatException("Ruleset document root must be a mapping.", stream.Documents[0].Root.Span);
-                }
-
-                ReadSequence(root, "extraStrings", item =>
-                {
-                    Count(item);
-                    ReadStrings(item, strings);
-                });
-                ReadSequence(root, "extraSprites", item =>
-                {
-                    Count(item);
-                    ReadSprite(item, group.Mod.Metadata.Id, file.Provenance.LayerId, file.SourcePath, sprites);
-                });
-                ReadSequence(root, "extraSounds", item =>
-                {
-                    Count(item);
-                    sounds.Add(ReadSound(item, group.Mod.Metadata.Id, file.Provenance.LayerId, file.SourcePath));
-                });
-            }
+                Count(item);
+                ReadStrings(item, strings);
+            });
+            ReadSequence(root, "extraSprites", item =>
+            {
+                Count(item);
+                ReadSprite(item, document.Mod.Metadata.Id, document.File.Provenance.LayerId,
+                    document.File.SourcePath, sprites);
+            });
+            ReadSequence(root, "extraSounds", item =>
+            {
+                Count(item);
+                sounds.Add(ReadSound(item, document.Mod.Metadata.Id, document.File.Provenance.LayerId,
+                    document.File.SourcePath));
+            });
         }
 
         return new PresentationSpecialRules(strings, sprites, sounds);

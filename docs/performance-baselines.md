@@ -22,6 +22,13 @@ Setup constructs files, layers, YAML, surfaces, palettes, clips, and output buff
 outside the measured operations. Batched benchmarks declare their operations-per-invoke
 count, so reported time and allocation columns remain per logical operation.
 
+The aggregate Phase 3 workload is retained as an end-to-end startup signal, but it must
+not be the only content measurement. The architecture review requires separate
+parse/compose, type/link-from-composed-input, and manifest workloads plus parse-pass
+instrumentation. Optional private runs should exercise complete `xcom1` and large
+community-mod chains. See
+[`architecture-performance-review.md`](architecture-performance-review.md).
+
 ## Running and comparing results
 
 Build validation, including CI, compiles the benchmark project as part of `Oxce.slnx`
@@ -87,6 +94,63 @@ workload on 2026-08-20. Its specialized loose-file representation measured 93.74
 4.38 MB, retaining the item 7 allocation level; ZIP-only state does not enlarge ordinary
 directory entries. Short-run timing remains informational rather than a performance
 gate.
+
+## 2026-08-29 content-build and YAML evaluation
+
+Measured on Windows 11 with a Ryzen 9 7940HS, .NET SDK 10.0.302, runtime 10.0.10,
+BenchmarkDotNet 0.15.8, and the documented `Short` job. The before content result is
+from documentation commit `b8e6d56`; the after result is from the single-parse candidate
+on `codex/architecture-performance-foundations`.
+
+Parsing every ordered ruleset once and sharing the resulting immutable document catalog
+across composition, typed family loading, special sections, and manifest normalization
+reduced the public Phase 3 end-to-end workload from 3.198 ms and 3.62 MB to 424.285 us
+and 485.98 KB. That is approximately a 7.5-times throughput improvement and an 87%
+allocation reduction on the fixture. The after benchmark also separates the stages:
+
+| Stage | Mean | Allocated |
+|---|---:|---:|
+| Parse ruleset documents | 218.344 us | 290.30 KB |
+| Compose parsed documents | 8.413 us | 33.15 KB |
+| Load and validate aggregate catalog | 422.549 us | 417.05 KB |
+| Normalize a prebuilt manifest | 57.053 us | 70.03 KB |
+
+The parsed-file count is exposed by the build result and asserted by tests, so future
+aggregate consumers cannot silently reintroduce multiple parse passes without changing
+observable instrumentation.
+
+A lazy ordinal scalar-key index for mappings with at least 16 entries reduced the
+representative repeated lookup from 2.891 us and 32 B to 8.450 ns and zero allocation,
+approximately 342 times faster. Representative parse allocation increased from
+4,329,992 B to 4,338,000 B (8,008 B, or 0.18%). Parse timing changed from 3.155 ms to
+3.391 ms, but the short-run confidence intervals are broad and overlap, so this is not
+evidence of a parse regression. The index preserves the ordered entries, first-value
+`TryGet` behavior, and duplicate enumeration through `GetAll`; the measured lookup gain
+justifies retaining it.
+
+The SDL host now uses an explicit presentation revision and keeps its RGBA staging
+buffer pinned for the run. An unchanged frame performs no indexed-to-RGBA conversion,
+texture upload, clear, copy, or present operation. This is a structural elimination of
+the entire idle-frame workload rather than a faster implementation of it; native SDL
+smoke validation remains part of the platform validation workflow.
+
+### Private 40k/Rosigma installation acceptance
+
+The same candidate was checked against the user-owned complete
+`xcom1` -> `40k` -> `40k_ROSIGMA_edits` chain on 2026-08-29. The audit consumed 512
+ruleset files sourced from the installation and mapped its declared external `UFO`
+resource directory. Both candidate runs reached `linked`, reported the expected 8,818
+warnings and zero errors, and emitted the same 9,274,826-byte typed manifest with SHA-256
+`6153996A44CFB42DD39FEAB6B56FD1BB7A55530FB2CF8A14B3B9655AFFE3728C`.
+
+As a direct behavioral and wall-clock comparison, documentation commit `b8e6d56` was
+run against the identical isolated input. Its two process-level runs took 14.593 and
+14.869 seconds; the candidate took 4.888 and 4.918 seconds. The averages are 14.731
+versus 4.903 seconds, approximately a 3.0-times end-to-end improvement. All four output
+manifests were byte-identical. These timings include process startup, mod/resource
+discovery, parsing, composition, typing, validation, and manifest writing. They are
+acceptance evidence rather than a BenchmarkDotNet performance gate, but they confirm
+that the synthetic-fixture improvement carries over to the intended large mod chain.
 
 ## Dependency review
 

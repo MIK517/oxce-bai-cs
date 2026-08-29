@@ -45,10 +45,25 @@ public sealed class PresentationRuleCatalog
         compositionOptions ??= new RulesetCompositionOptions();
         compositionOptions.Validate();
         var definitions = Names.Select(RequiredSection).ToArray();
-        var unresolved = RulesetComposer.Compose(plan, definitions, diagnostics, compositionOptions);
-        var resourceConfigPlan = CreateResourceConfigPlan(plan);
+        var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
+        var unresolved = RulesetComposer.Compose(documents, definitions, diagnostics, compositionOptions);
+        return Load(unresolved, documents, diagnostics, compositionOptions, typedOptions);
+    }
+
+    internal static PresentationRuleCatalog Load(
+        UnresolvedRuleCatalog unresolved,
+        RulesetDocumentCatalog documents,
+        IDiagnosticSink diagnostics,
+        RulesetCompositionOptions compositionOptions,
+        TypedRuleLoadOptions? typedOptions)
+    {
+        var resourceConfigDocuments = documents.Filter(static (mod, file) =>
+        {
+            var configured = mod.Metadata.ResourceConfigFile;
+            return configured.Length != 0 && file.CanonicalPath == VirtualPath.NormalizeFile(configured);
+        });
         var resourceConfig = RulesetComposer.Compose(
-            resourceConfigPlan,
+            resourceConfigDocuments,
             [RequiredSection("soundDefs")],
             diagnostics,
             compositionOptions);
@@ -59,7 +74,7 @@ public sealed class PresentationRuleCatalog
             new SoundDefinitionRuleLoader().Load(Required(resourceConfig, "soundDefs"), diagnostics, typedOptions),
             new CustomPaletteRuleLoader().Load(Required(unresolved, "customPalettes"), diagnostics, typedOptions),
             new VideoRuleLoader().Load(Required(unresolved, "cutscenes"), diagnostics, typedOptions),
-            PresentationSpecialRulesComposer.Compose(plan, compositionOptions));
+            PresentationSpecialRulesComposer.Compose(documents, compositionOptions));
     }
 
     public PresentationResourceValidation ValidateDeclaredResources(
@@ -133,22 +148,6 @@ public sealed class PresentationRuleCatalog
     private static UnresolvedRuleSection Required(UnresolvedRuleCatalog catalog, string name) =>
         catalog.TryGetSection(name, out var section) ? section! : throw new InvalidOperationException();
 
-    private static ModLoadPlan CreateResourceConfigPlan(ModLoadPlan plan)
-    {
-        var groups = plan.Groups.Select(group =>
-        {
-            var configured = group.Mod.Metadata.ResourceConfigFile;
-            if (configured.Length == 0)
-            {
-                return new ModLoadGroup(group.Mod, Array.Empty<VirtualFileEntry>());
-            }
-
-            var canonical = VirtualPath.NormalizeFile(configured);
-            var matches = group.Rulesets.Where(file => file.CanonicalPath == canonical).ToArray();
-            return new ModLoadGroup(group.Mod, Array.AsReadOnly(matches));
-        });
-        return new ModLoadPlan(groups, plan.IsValid);
-    }
 }
 
 public sealed record DeclaredResourceReference(

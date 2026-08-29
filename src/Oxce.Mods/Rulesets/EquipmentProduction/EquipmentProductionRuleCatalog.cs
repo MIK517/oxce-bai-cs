@@ -49,6 +49,14 @@ public sealed class EquipmentProductionRuleCatalog
         compositionOptions.Validate();
         var unresolved = RulesetComposer.Compose(
             plan, Names.Select(EquipmentYaml.Section), diagnostics, compositionOptions);
+        return Load(unresolved, diagnostics, typedOptions);
+    }
+
+    internal static EquipmentProductionRuleCatalog Load(
+        UnresolvedRuleCatalog unresolved,
+        IDiagnosticSink diagnostics,
+        TypedRuleLoadOptions? typedOptions)
+    {
         return new EquipmentProductionRuleCatalog(
             new ItemCategoryRuleLoader().Load(Required(unresolved, "itemCategories"), diagnostics, typedOptions),
             new WeaponSetRuleLoader().Load(Required(unresolved, "weaponSets"), diagnostics, typedOptions),

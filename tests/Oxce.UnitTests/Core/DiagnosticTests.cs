@@ -17,6 +17,23 @@ public sealed class DiagnosticTests
 
         Assert.Equal(["OXCE1001", "OXCE1002"], collector.Snapshot().Select(item => item.Code).ToArray());
         Assert.Equal(1, collector.DroppedCount);
+        Assert.Equal(3, collector.ReportedCount);
+        Assert.Equal(DiagnosticSeverity.Critical, collector.HighestSeverity);
+        Assert.True(collector.HasSeverityAtLeast(DiagnosticSeverity.Error));
+    }
+
+    [Fact]
+    public void CollectorSummarizesSeverityAfterRetentionLimit()
+    {
+        var collector = new DiagnosticCollector(maximumDiagnostics: 1);
+        collector.Report(Event("OXCE1001", DiagnosticSeverity.Warning));
+        collector.Report(Event("OXCE1002", DiagnosticSeverity.Error));
+
+        Assert.Single(collector.Snapshot());
+        Assert.Equal(1, collector.DroppedCount);
+        Assert.Equal(2, collector.ReportedCount);
+        Assert.Equal(DiagnosticSeverity.Error, collector.HighestSeverity);
+        Assert.True(collector.HasSeverityAtLeast(DiagnosticSeverity.Error));
     }
 
     [Fact]

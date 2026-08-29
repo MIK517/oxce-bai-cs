@@ -84,10 +84,9 @@ public sealed class Phase3ContentCorpusTests
                 master.Metadata.Id,
                 new ModEngineIdentity("Extended", "8.6.1.0"));
             Assert.True(plan.IsValid);
-            var content = Phase3ContentCatalog.Load(plan);
-            Assert.True(content.Capabilities.Has(ContentLoadStage.Typed));
+            var content = Phase3ContentCatalog.Build(plan);
+            Assert.True(content.Catalog.Capabilities.Has(ContentLoadStage.Typed));
             var manifest = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
-                plan,
                 content,
                 new RulesetCatalogNormalizationOptions
                 {

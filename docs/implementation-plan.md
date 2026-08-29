@@ -267,22 +267,24 @@ adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
-1. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
+1. Complete the correctness and measured startup work from the
+   [2026-08-29 architecture and performance review](architecture-performance-review.md):
+   diagnostic summaries independent of retention, one parse per aggregate content
+   build, stage-focused benchmarks, evaluated YAML scalar-key indexing, and explicit
+   presentation invalidation.
+2. Begin Phase 4 with the compact VM and generated/auditable binding catalog described
+   in the review; preserve exact 32-bit, overload, ordering, and error semantics.
+3. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
    investigated.
-2. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
+4. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
    formats, options, and gameplay scenarios as their loaders are inspected.
-3. Expand representative YAML coverage alongside each rule and save loader; the generic
+5. Expand representative YAML coverage alongside each rule and save loader; the generic
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
-4. Extend the resource browser beyond its compatible geoscape screen, battlescape
+6. Extend the resource browser beyond its compatible geoscape screen, battlescape
    terrain, and cursor preview as later vertical slices need additional asset families.
-5. Implement the typed-loader core before individual rule families: the complete
-   section/identity registry, property-specific history replay, provenance-aware
-   diagnostics, consumed-key auditing, bounds, immutable publication stages, and a
-   normalized dump schema. Continue to capture scalar, list/map, `refNode`, default,
-   and link behavior from C++ rather than adding a universal YAML map merge.
-6. Expand typed rule and script inventories alongside those vertical slices. Bounded
+7. Expand typed rule and script inventories alongside those vertical slices. Bounded
    FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
    and the ADR 0007 music decoding/synthesis work remain later-phase work.
-7. Before adding mutable campaign state, reverse the `Gameplay`/`Savegames` project
-   dependency and add the smallest campaign capture/restoration contract needed by the
-   first strategic vertical slice; do not create speculative all-game DTOs.
+8. Add the smallest campaign capture/restoration contract needed by the first strategic
+   vertical slice. The `Savegames` -> `Gameplay` dependency direction is already in
+   place; do not create speculative all-game DTOs.

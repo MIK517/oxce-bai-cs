@@ -8,15 +8,14 @@ namespace Oxce.Mods.Rulesets.MissionEvents;
 internal static class UfopaediaComposer
 {
     public static IReadOnlyDictionary<string, UfopaediaArticleRule> Compose(ModLoadPlan plan, RulesetCompositionOptions options)
+        => Compose(RulesetDocumentCatalog.Parse(plan, options), options);
+
+    public static IReadOnlyDictionary<string, UfopaediaArticleRule> Compose(RulesetDocumentCatalog documents, RulesetCompositionOptions options)
     {
         var articles = new Dictionary<string, ArticleBuilder>(StringComparer.Ordinal); var listOrder = 0; var operations = 0;
-        foreach (var group in plan.Groups) foreach (var file in group.Rulesets)
+        foreach (var document in documents.Documents)
         {
-            using var input = file.OpenRead(); var stream = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
-            if (stream.Documents.Count == 0) continue;
-            if (stream.Documents.Count != 1) throw Error(stream.Documents[1].Span, "Ruleset files must contain exactly one YAML document.");
-            if (stream.Documents[0].Root is YamlNullNode) continue;
-            if (stream.Documents[0].Root is not YamlMappingNode root) throw Error(stream.Documents[0].Root.Span, "Ruleset document root must be a mapping.");
+            var root = document.Root;
             if (!root.TryGet("ufopaedia", out var node)) continue;
             if (node is not YamlSequenceNode sequence) throw Error(node!.Span, "Rule section 'ufopaedia' must be a sequence.");
             foreach (var item in sequence.Items)
@@ -34,7 +33,8 @@ internal static class UfopaediaComposer
                     articles[id] = article = new(id, type);
                 }
                 Apply(article, map, listOrder);
-                article.Source = new(file.Provenance.LayerId, group.Mod.Metadata.Id, file.SourcePath, item.Span);
+                article.Source = new(document.File.Provenance.LayerId, document.Mod.Metadata.Id,
+                    document.File.SourcePath, item.Span);
             }
         }
         return new ReadOnlyDictionary<string, UfopaediaArticleRule>(articles.ToDictionary(pair => pair.Key, pair => pair.Value.Freeze(), StringComparer.Ordinal));
