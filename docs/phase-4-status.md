@@ -24,10 +24,19 @@ owning gameplay slices.
 ## Compatibility evidence
 
 The content closure was checked against every bundled public mod fixture and the
-locally available private `xcom1` -> `40k` -> `40k_ROSIGMA_edits` corpus. The audit
-reported no script-specific errors. Installations that already have unrelated Phase 3
-validation errors do not claim `ScriptsCompiled`; their script envelopes are still
-compiled and audited separately. The synthetic `script-content` fixture exercises a
+locally available private `xcom1` -> `40k` -> `40k_ROSIGMA_edits` corpus. A direct
+full-installation audit exposed and then closed unique-best editable-pointer overload
+scoring, catalog list-loop lowering, custom-type operations sharing scalar core names,
+hidden typed value copy, and file-scoped `RuleList.current`. The final audit parsed 512
+ruleset files, attempted 3,875 scripts, retained 3,536 compiled artifacts, composed 31
+event plans, registered 580 tags, validated 13,651 initial values, and reached
+`scripts-compiled` with 8,818 expected warnings and zero errors. Three runs emitted the
+same 9,591,410-byte typed manifest with SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
+
+Installations with unrelated validation errors do not claim `ScriptsCompiled`; their
+script envelopes are still compiled and audited separately. The synthetic
+`script-content` fixture exercises a
 retained-document `tagsFile`, global and rule typed values, an ordered global event, a
 rule-local script, and a generated legacy stat-bonus script.
 
@@ -42,7 +51,8 @@ Authoritative reference files inspected for this slice:
 - `src/Mod/Mod.cpp` and `src/Mod/ModScript.h` for file-order global loading, parser
   construction, tags, events, and default registration;
 - `src/Engine/Script.cpp`, `Script.h`, and `ScriptBind.h` for declarations, null
-  references, return behavior, global tags, events, and compiled containers;
+  references, unique-best overload scoring, list-loop lowering, hidden typed
+  operations, return behavior, global tags, events, and compiled containers;
 - `src/Mod/RuleStatBonus.cpp` for the complete ordered stat term table, coefficient
   scaling, generated source, and rounding;
 - `src/Mod/RuleItem.cpp`, `Armor.cpp`, `RuleSoldierBonus.cpp`, and the other cataloged
