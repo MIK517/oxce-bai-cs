@@ -1,5 +1,6 @@
 using Oxce.Core.Diagnostics;
 using Oxce.Scripting.Binding;
+using Oxce.Scripting.Api;
 using Oxce.Scripting.Diagnostics;
 using Oxce.Scripting.Lexing;
 using Oxce.Scripting.Symbols;
@@ -18,6 +19,7 @@ public sealed class ScriptCompiler
     private readonly List<DiagnosticEvent> _diagnostics = [];
     private readonly List<ScriptInstruction> _instructions = [];
     private readonly List<ScriptRegisterDefinition> _registers = [];
+    private readonly Dictionary<int, ScriptBindingDeclaration> _bindings = [];
     private readonly ScriptSymbolTable _symbols = new();
     private readonly ScriptRegisterLayout _layout = new();
     private readonly Stack<ControlFrame> _frames = new();
@@ -54,6 +56,7 @@ public sealed class ScriptCompiler
         }
 
         DeclareOutputs();
+        DeclareConstants();
         foreach (var statement in syntax.Statements)
         {
             CompileStatement(statement);
@@ -85,7 +88,8 @@ public sealed class ScriptCompiler
             _instructions,
             outputs,
             _layout.PeakBytes,
-            _registers);
+            _registers,
+            _bindings.Values.OrderBy(static binding => binding.Id.Value));
         return new ScriptCompileResult(program, _diagnostics);
     }
 
@@ -106,6 +110,25 @@ public sealed class ScriptCompiler
                 throw new InvalidOperationException($"Duplicate validated output name '{name}'.");
             }
             _registers.Add(new ScriptRegisterDefinition(name, type, offset, IsOutput: true));
+        }
+    }
+
+    private void DeclareConstants()
+    {
+        var type = new ScriptTypeRef(ScriptPrimitiveTypes.Scalar);
+        foreach (var constant in _definition.ApiCatalog.GetConstants(_definition.ParserGroups))
+        {
+            if (!_symbols.TryDeclare(new ScriptSymbol(
+                constant.Name,
+                ScriptSymbolKind.Constant,
+                type,
+                ConstantValue: constant.Value)))
+            {
+                Error(ScriptDiagnosticCodes.DuplicateSymbol,
+                    $"Global script symbol '{constant.Name}' conflicts with another declaration.",
+                    null);
+                return;
+            }
         }
     }
 
@@ -407,9 +430,7 @@ public sealed class ScriptCompiler
     {
         if (!CoreScriptOperationNames.TryGet(statement.Operation.Lexeme, out var operation))
         {
-            Error(ScriptDiagnosticCodes.UnknownOperation,
-                $"Invalid operation '{statement.Operation.Lexeme}'.",
-                statement.Operation.Span);
+            CompileBinding(statement);
             return;
         }
         Current.CanDeclare = false;
@@ -428,6 +449,61 @@ public sealed class ScriptCompiler
             return;
         }
         Emit(operation, statement.Span, arguments);
+    }
+
+    private void CompileBinding(ScriptStatementSyntax statement)
+    {
+        var candidates = _definition.ApiCatalog.GetBindings(statement.Operation.Lexeme, _definition.ParserGroups);
+        if (candidates.Count == 0)
+        {
+            Error(ScriptDiagnosticCodes.UnknownOperation,
+                $"Invalid operation '{statement.Operation.Lexeme}'.",
+                statement.Operation.Span);
+            return;
+        }
+
+        var arguments = statement.Arguments.Select(ReadValue).ToArray();
+        if (HasErrors)
+        {
+            return;
+        }
+        var matching = candidates.Where(candidate => BindingMatches(candidate, arguments)).ToArray();
+        if (matching.Length != 1)
+        {
+            Error(
+                matching.Length == 0 ? ScriptDiagnosticCodes.NoMatchingOverload : ScriptDiagnosticCodes.AmbiguousOverload,
+                matching.Length == 0
+                    ? $"No overload of '{statement.Operation.Lexeme}' accepts these arguments."
+                    : $"Operation '{statement.Operation.Lexeme}' is ambiguous for these arguments.",
+                statement.Span);
+            return;
+        }
+
+        var selected = matching[0];
+        _bindings.TryAdd(selected.Id.Value, selected);
+        Emit(CoreScriptOperation.HostCall, statement.Span,
+            [ScriptOperand.Binding(selected.Id.Value), .. arguments]);
+    }
+
+    private static bool BindingMatches(
+        ScriptBindingDeclaration declaration,
+        ScriptOperand[] arguments)
+    {
+        if (declaration.Parameters.Count != arguments.Length)
+        {
+            return false;
+        }
+        for (var index = 0; index < arguments.Length; index++)
+        {
+            var parameter = declaration.Parameters[index];
+            if (parameter.Type.Id != ScriptPrimitiveTypes.Scalar ||
+                parameter.Writable && arguments[index].Kind != ScriptOperandKind.Register ||
+                arguments[index].Kind is not (ScriptOperandKind.Register or ScriptOperandKind.Scalar))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private ScriptOperand[] ReadCondition(ScriptStatementSyntax statement)

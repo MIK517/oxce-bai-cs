@@ -41,6 +41,7 @@ public enum CoreScriptOperation
     GetShade,
     SetShade,
     AddShade,
+    HostCall,
 }
 
 public enum ScriptConditionKind

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "script-events",
+  "description": "Captures reference global-script mutation diagnostics, offset ordering around the current script, deletion, ignore, and invalid-offset behavior.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "script-events-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/scripting/script_events_probe.cpp",
+      "size": 4076,
+      "sha256": "70815b14412ea5d9d954fead2383f9e0030481b1ed11ab195d88d82cf35d8b34"
+    }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/scripting/script-events.expected.json"
+}

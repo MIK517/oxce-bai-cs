@@ -3,6 +3,7 @@ using System.Numerics;
 using Oxce.Core.Diagnostics;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Diagnostics;
+using Oxce.Scripting.Api;
 
 namespace Oxce.Scripting.Runtime;
 
@@ -27,6 +28,7 @@ public enum ScriptExecutionStatus
     RuntimeError,
     ExecutionLimit,
     TraceLimit,
+    MissingCapability,
 }
 
 public sealed record ScriptTraceEntry(
@@ -72,12 +74,13 @@ public static class ScriptVm
     public static ScriptExecutionResult Execute(
         ScriptProgram program,
         IReadOnlyDictionary<string, int>? initialOutputs = null,
-        ScriptExecutionOptions? options = null)
+        ScriptExecutionOptions? options = null,
+        ScriptHostBindings? hostBindings = null)
     {
         ArgumentNullException.ThrowIfNull(program);
         options ??= new ScriptExecutionOptions();
         options.Validate();
-        return new Execution(program, initialOutputs, options).Run();
+        return new Execution(program, initialOutputs, options, hostBindings ?? ScriptHostBindings.Empty).Run();
     }
 
     private sealed class Execution
@@ -86,18 +89,26 @@ public static class ScriptVm
         private readonly ScriptExecutionOptions _options;
         private readonly int[] _registers;
         private readonly ScriptRegisterDefinition[] _outputs;
+        private readonly ScriptHostBindings _hostBindings;
+        private readonly Dictionary<int, ScriptBindingDeclaration> _bindingDeclarations;
         private readonly List<DiagnosticEvent> _diagnostics = [];
         private readonly List<ScriptTraceEntry> _trace = [];
         private int _instructionIndex;
         private int _steps;
+        private ScriptExecutionStatus _operationFailureStatus = ScriptExecutionStatus.RuntimeError;
+        private string _operationFailureCode = ScriptDiagnosticCodes.RuntimeOperationFailed;
+        private string? _operationFailureMessage;
 
         public Execution(
             ScriptProgram program,
             IReadOnlyDictionary<string, int>? initialOutputs,
-            ScriptExecutionOptions options)
+            ScriptExecutionOptions options,
+            ScriptHostBindings hostBindings)
         {
             _program = program;
             _options = options;
+            _hostBindings = hostBindings;
+            _bindingDeclarations = program.Bindings.ToDictionary(static binding => binding.Id.Value);
             _registers = new int[checked((program.RegisterBytes + sizeof(int) - 1) / sizeof(int))];
             _outputs = program.Registers.Where(static register => register.IsOutput).ToArray();
             initialOutputs ??= new Dictionary<string, int>();
@@ -153,9 +164,10 @@ public static class ScriptVm
                 if (!succeeded)
                 {
                     return Fail(
-                        ScriptExecutionStatus.RuntimeError,
-                        ScriptDiagnosticCodes.RuntimeOperationFailed,
-                        $"Script operation '{CoreScriptOperationNames.Get(operation)}' failed.",
+                        _operationFailureStatus,
+                        _operationFailureCode,
+                        _operationFailureMessage ??
+                            $"Script operation '{CoreScriptOperationNames.Get(operation)}' failed.",
                         instruction.Source);
                 }
                 if (operation == CoreScriptOperation.Return)
@@ -288,9 +300,53 @@ public static class ScriptVm
                 case CoreScriptOperation.AddShade:
                     return WriteResult(operands[0], AddShade(Read(operands[0]), Read(operands[1])),
                         out destinationValue);
+                case CoreScriptOperation.HostCall:
+                    return InvokeHost(operands, out destinationValue);
                 default:
                     return false;
             }
+        }
+
+        private bool InvokeHost(IReadOnlyList<ScriptOperand> operands, out int? destinationValue)
+        {
+            destinationValue = null;
+            var id = new ScriptBindingId(operands[0].Scalar);
+            if (!_bindingDeclarations.TryGetValue(id.Value, out var declaration))
+            {
+                _operationFailureMessage = $"Compiled script binding {id.Value} has no declaration.";
+                return false;
+            }
+            if (!_hostBindings.TryGet(id, out var handler))
+            {
+                _operationFailureStatus = ScriptExecutionStatus.MissingCapability;
+                _operationFailureCode = ScriptDiagnosticCodes.MissingBindingProvider;
+                _operationFailureMessage =
+                    $"Script binding '{declaration.Name}' is declared but no runtime provider is installed.";
+                return false;
+            }
+
+            Span<int> arguments = stackalloc int[declaration.Parameters.Count];
+            for (var index = 0; index < arguments.Length; index++)
+            {
+                arguments[index] = Read(operands[index + 1]);
+            }
+            var result = handler!(arguments);
+            if (!result.Succeeded)
+            {
+                _operationFailureCode = ScriptDiagnosticCodes.BindingOperationFailed;
+                _operationFailureMessage =
+                    $"Script binding '{declaration.Name}' failed: {result.Error ?? "unspecified provider error"}";
+                return false;
+            }
+            for (var index = 0; index < arguments.Length; index++)
+            {
+                if (declaration.Parameters[index].Writable)
+                {
+                    Write(operands[index + 1].Scalar, arguments[index]);
+                    destinationValue = arguments[index];
+                }
+            }
+            return true;
         }
 
         private bool EvaluateCondition(IReadOnlyList<ScriptOperand> operands)
