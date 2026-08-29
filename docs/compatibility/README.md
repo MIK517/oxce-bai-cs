@@ -29,7 +29,9 @@ to compatibility entries.
 
 `script-inventory.json` is the Phase 4 source ledger for core operations, limits,
 `ScriptRegister` definitions, binding/constant name candidates, parser types, and
-persistent script-value owners. Refresh it against the same pinned checkout with:
+persistent script-value owners. Schema version 2 also records exact foundational type
+encoding, event limits, macro-defined operations, and direct registrations. Refresh it
+against the same pinned checkout with:
 
 ```powershell
 .\tools\update-script-inventory.ps1

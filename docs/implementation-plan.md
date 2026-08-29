@@ -136,6 +136,12 @@ silently discarded or mistaken for a completed later-phase capability.
 
 ## Phase 4 — OXCE scripting language
 
+The detailed baseline, completion contract, implementation slices, and four-branch
+delivery sequence are recorded in the [Phase 4 implementation plan](phase-4-plan.md).
+Binding declarations are completed in this phase; gameplay binding implementations
+remain part of their owning vertical slices as defined by
+[ADR 0013](decisions/0013-compiled-scripting-and-host-bindings.md).
+
 Deliverables:
 
 - Lexer/parser with source positions and reference-compatible diagnostics.
@@ -267,24 +273,20 @@ adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
-1. Complete the correctness and measured startup work from the
-   [2026-08-29 architecture and performance review](architecture-performance-review.md):
-   diagnostic summaries independent of retention, one parse per aggregate content
-   build, stage-focused benchmarks, evaluated YAML scalar-key indexing, and explicit
-   presentation invalidation.
-2. Begin Phase 4 with the compact VM and generated/auditable binding catalog described
+1. Begin Phase 4 with the language foundation, compact VM, and generated/auditable
+   binding catalog described
    in the review; preserve exact 32-bit, overload, ordering, and error semantics.
-3. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
+2. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
    investigated.
-4. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
+3. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
    formats, options, and gameplay scenarios as their loaders are inspected.
-5. Expand representative YAML coverage alongside each rule and save loader; the generic
+4. Expand representative YAML coverage alongside each rule and save loader; the generic
    scalar, enum, container, DOM, normalization, and emission foundation is in place.
-6. Extend the resource browser beyond its compatible geoscape screen, battlescape
+5. Extend the resource browser beyond its compatible geoscape screen, battlescape
    terrain, and cursor preview as later vertical slices need additional asset families.
-7. Expand typed rule and script inventories alongside those vertical slices. Bounded
+6. Expand typed rule and script inventories alongside those vertical slices. Bounded
    FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
    and the ADR 0007 music decoding/synthesis work remain later-phase work.
-8. Add the smallest campaign capture/restoration contract needed by the first strategic
+7. Add the smallest campaign capture/restoration contract needed by the first strategic
    vertical slice. The `Savegames` -> `Gameplay` dependency direction is already in
    place; do not create speculative all-game DTOs.

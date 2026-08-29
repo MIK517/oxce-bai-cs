@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "reference": {
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15"
@@ -8,7 +8,26 @@
     "limits": {
       "ScriptMaxOut": 9,
       "ScriptMaxArg": 16,
-      "ScriptMaxRegPointerFactor": 64
+      "ScriptMaxRegPointerFactor": 64,
+      "EventsMax": 256,
+      "EventOffsetScale": 100,
+      "EventOffsetMax": 10000
+    },
+    "typeEncoding": {
+      "baseStep": 16,
+      "invalid": 0,
+      "null": 16,
+      "int": 32,
+      "label": 48,
+      "text": 64,
+      "separator": 80,
+      "firstCustom": 96,
+      "modifiers": {
+        "register": 1,
+        "writableRegister": 3,
+        "pointer": 4,
+        "editablePointer": 12
+      }
     },
     "primitiveTypes": [
       "__",
@@ -73,6 +92,67 @@
       "wavegen_saw",
       "wavegen_sin",
       "wavegen_tri"
+    ],
+    "macroOperations": [
+      "abs",
+      "add",
+      "add_shade",
+      "aggregate",
+      "bit_and",
+      "bit_count",
+      "bit_not",
+      "bit_or",
+      "bit_xor",
+      "call",
+      "clear",
+      "div",
+      "exit",
+      "get_color",
+      "get_shade",
+      "goto",
+      "limit",
+      "limit_lower",
+      "limit_upper",
+      "mod",
+      "mul",
+      "muldiv",
+      "offset",
+      "offsetmod",
+      "pow",
+      "set",
+      "set_color",
+      "set_shade",
+      "shl",
+      "shr",
+      "sqrt",
+      "sub",
+      "swap",
+      "test_eq",
+      "test_le",
+      "wavegen_cos",
+      "wavegen_rect",
+      "wavegen_saw",
+      "wavegen_sin",
+      "wavegen_tri"
+    ],
+    "directRegistrations": [
+      "begin",
+      "break",
+      "clear",
+      "const",
+      "continue",
+      "debug_assert",
+      "debug_flush",
+      "debug_impl",
+      "debug_log",
+      "else",
+      "end",
+      "if",
+      "loop",
+      "return",
+      "set",
+      "test_eq",
+      "var"
     ]
   },
   "registrations": {
