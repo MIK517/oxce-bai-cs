@@ -22,25 +22,25 @@ internal static class TerrainSpecialRulesComposer
         var patchSources = new Dictionary<string, RuleOperationSource>(StringComparer.Ordinal);
         var operations = 0;
         foreach (var document in documents.Documents)
+        {
+            var root = document.Root;
+            ReadSection(root, "mapScripts", item =>
             {
-                var root = document.Root;
-                ReadSection(root, "mapScripts", item =>
-                {
-                    Count(item); var source = Source(item, document.Mod.Metadata.Id,
-                        document.File.Provenance.LayerId, document.File.SourcePath);
-                    var id = RequiredString(item, "type");
-                    if (item.TryGet("delete", out var deleted)) id = YamlValueReader.ReadString(deleted!);
-                    scripts[id] = new MapScriptRule(id, ReadCommands(item), source);
-                });
-                ReadSection(root, "MCDPatches", item =>
-                {
-                    Count(item); var id = RequiredString(item, "type");
-                    if (!patches.TryGetValue(id, out var entries)) patches[id] = entries = [];
-                    entries.AddRange(ReadPatchEntries(item));
-                    patchSources[id] = Source(item, document.Mod.Metadata.Id,
-                        document.File.Provenance.LayerId, document.File.SourcePath);
-                });
-            }
+                Count(item); var source = Source(item, document.Mod.Metadata.Id,
+                    document.File.Provenance.LayerId, document.File.SourcePath);
+                var id = RequiredString(item, "type");
+                if (item.TryGet("delete", out var deleted)) id = YamlValueReader.ReadString(deleted!);
+                scripts[id] = new MapScriptRule(id, ReadCommands(item), source);
+            });
+            ReadSection(root, "MCDPatches", item =>
+            {
+                Count(item); var id = RequiredString(item, "type");
+                if (!patches.TryGetValue(id, out var entries)) patches[id] = entries = [];
+                entries.AddRange(ReadPatchEntries(item));
+                patchSources[id] = Source(item, document.Mod.Metadata.Id,
+                    document.File.Provenance.LayerId, document.File.SourcePath);
+            });
+        }
         return new TerrainSpecialRules(
             new ReadOnlyDictionary<string, MapScriptRule>(scripts),
             new ReadOnlyDictionary<string, McdPatchRule>(patches.ToDictionary(pair => pair.Key,
