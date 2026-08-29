@@ -1,0 +1,19 @@
+extended:
+  tagsFile: Ruleset/a-tags.rul
+  globals:
+    CONTENT_GLOBAL: 3
+  scripts:
+    newTurnItem:
+      - new: content-fixture
+        offset: 1.25
+        code: return;
+
+items:
+  - type: CONTENT_ITEM
+    damageBonus:
+      strength: 0.25
+      healthCurrent: [0.1, 0.2]
+    tags:
+      CONTENT_POWER: 7
+    scripts:
+      newTurnItem: return;

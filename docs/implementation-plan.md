@@ -136,8 +136,10 @@ silently discarded or mistaken for a completed later-phase capability.
 
 ## Phase 4 — OXCE scripting language
 
-The detailed baseline, completion contract, implementation slices, and four-branch
+The detailed baseline, completion contract, implementation slices, and five-branch
 delivery sequence are recorded in the [Phase 4 implementation plan](phase-4-plan.md).
+The completed implementation boundary and corpus evidence are recorded in the
+[Phase 4 closure review](phase-4-status.md).
 Binding declarations are completed in this phase; gameplay binding implementations
 remain part of their owning vertical slices as defined by
 [ADR 0013](decisions/0013-compiled-scripting-and-host-bindings.md).

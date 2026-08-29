@@ -75,7 +75,10 @@ public sealed record ScriptConstantDeclaration(
     string Name,
     int Value,
     IReadOnlyList<string> ParserGroups,
-    ScriptReferenceLocation Reference);
+    ScriptReferenceLocation Reference)
+{
+    public ScriptTypeRef Type { get; init; } = new(ScriptPrimitiveTypes.Scalar);
+}
 
 public sealed record ScriptNamedValueDeclaration(string Name, ScriptTypeRef Type);
 
@@ -137,6 +140,7 @@ public sealed class ScriptApiCatalog
     private readonly ReadOnlyDictionary<string, IReadOnlyList<ScriptBindingDeclaration>> _bindingsByName;
     private readonly ReadOnlyDictionary<string, ScriptParserDeclaration> _parsersByName;
     private readonly ReadOnlyDictionary<ScriptTypeId, ScriptTypeDefinition> _typesById;
+    private readonly ReadOnlyDictionary<string, ScriptTypeDefinition> _typesByName;
 
     public ScriptApiCatalog(
         IEnumerable<ScriptBindingDeclaration> bindings,
@@ -212,6 +216,8 @@ public sealed class ScriptApiCatalog
             parserArray.ToDictionary(static parser => parser.Name, StringComparer.Ordinal));
         _typesById = new ReadOnlyDictionary<ScriptTypeId, ScriptTypeDefinition>(
             typeArray.ToDictionary(static type => type.Id));
+        _typesByName = new ReadOnlyDictionary<string, ScriptTypeDefinition>(
+            typeArray.ToDictionary(static type => type.Name, StringComparer.Ordinal));
     }
 
     public static ScriptApiCatalog Empty { get; } = new([]);
@@ -233,6 +239,9 @@ public sealed class ScriptApiCatalog
 
     public bool TryGetType(ScriptTypeId id, out ScriptTypeDefinition? definition) =>
         _typesById.TryGetValue(id, out definition);
+
+    public bool TryGetType(string name, out ScriptTypeDefinition? definition) =>
+        _typesByName.TryGetValue(name, out definition);
 
     public IEnumerable<ScriptConstantDeclaration> GetConstants(IReadOnlySet<string> parserGroups) =>
         Constants.Where(constant => constant.ParserGroups.Any(parserGroups.Contains));

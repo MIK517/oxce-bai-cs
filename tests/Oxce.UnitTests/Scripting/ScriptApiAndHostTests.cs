@@ -101,6 +101,23 @@ public sealed class ScriptApiAndHostTests
         Assert.Equal(10_002, Assert.Single(compiled.Program!.Bindings).Id.Value);
     }
 
+    [Fact]
+    public void ReferenceTypeDeclarationsAndNullInitializersCompile()
+    {
+        var definition = ScriptParserDefinition.FromCatalog(
+            "newTurnItem", ReferenceScriptApiCatalog.Instance);
+
+        var compiled = ScriptCompiler.Compile(
+            "var ptr RuleItem optional_rule null; var Position position; return;", definition);
+
+        Assert.True(compiled.Succeeded, string.Join(Environment.NewLine,
+            compiled.Diagnostics.Select(static diagnostic => diagnostic.Message)));
+        Assert.Contains(compiled.Program!.Registers,
+            register => register.Name == "optional_rule" && register.Type.IsReference);
+        Assert.Contains(compiled.Program.Registers,
+            register => register.Name == "position" && !register.Type.IsReference);
+    }
+
     private static readonly ScriptBindingId AdjustId = new(10_001);
     private static readonly ScriptTypeRef WritableInt = new(
         ScriptPrimitiveTypes.Scalar,
