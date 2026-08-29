@@ -340,6 +340,13 @@ public sealed class ScriptCompiler
 
     private void CompileLoop(ScriptStatementSyntax statement)
     {
+        if (statement.Arguments.Count >= 3 && statement.Arguments[0].Lexeme == "var" &&
+            statement.Arguments[1].Kind == ScriptTokenKind.Symbol &&
+            statement.Arguments[2].Lexeme.EndsWith(".list", StringComparison.Ordinal))
+        {
+            CompileListLoop(statement);
+            return;
+        }
         if (statement.Arguments.Count != 3 || statement.Arguments[0].Lexeme != "var" ||
             statement.Arguments[1].Kind != ScriptTokenKind.Symbol)
         {
@@ -374,6 +381,111 @@ public sealed class ScriptCompiler
             [ScriptOperand.Register(frame.LoopVariable), ScriptOperand.Register(frame.CounterRegister)]);
         Emit(CoreScriptOperation.Add, statement.Span,
             [ScriptOperand.Register(frame.CounterRegister), ScriptOperand.IntegerValue(1)]);
+    }
+
+    private void CompileListLoop(ScriptStatementSyntax statement)
+    {
+        var operationToken = statement.Arguments[2];
+        var operationName = operationToken.Lexeme;
+        var separator = operationName.IndexOf('.', StringComparison.Ordinal);
+        if (separator <= 0 || !_symbols.TryResolve(operationName[..separator], out var receiver) ||
+            receiver?.RegisterOffset is not int receiverOffset ||
+            !_definition.ApiCatalog.TryGetType(receiver.Type.Id, out var receiverType))
+        {
+            Error(ScriptDiagnosticCodes.UnknownOperation,
+                $"Invalid list operation '{operationToken.Lexeme}'.", operationToken.Span);
+            return;
+        }
+        operationName = $"{receiverType!.Name}.{operationName[(separator + 1)..]}";
+        var fixedArguments = new List<TypedOperand>
+        {
+            new(ScriptOperand.Register(receiverOffset), receiver.Type),
+        };
+        fixedArguments.AddRange(statement.Arguments.Skip(3).Select(ReadTypedValue));
+        if (HasErrors)
+        {
+            return;
+        }
+
+        var candidates = _definition.ApiCatalog.GetBindings(operationName, _definition.ParserGroups);
+        var scored = new List<(ScriptBindingDeclaration Declaration, int Score, int FirstSeparator, int SecondSeparator)>();
+        foreach (var candidate in candidates)
+        {
+            var firstSeparator = FindSeparator(candidate.Parameters, 0);
+            var secondSeparator = FindSeparator(candidate.Parameters, firstSeparator + 1);
+            if (firstSeparator != fixedArguments.Count || secondSeparator != firstSeparator + 3 ||
+                secondSeparator + 2 != candidate.Parameters.Count)
+            {
+                continue;
+            }
+            var score = ParametersScore(candidate.Parameters.Take(firstSeparator).ToArray(), fixedArguments);
+            if (score > 0)
+            {
+                scored.Add((candidate, score, firstSeparator, secondSeparator));
+            }
+        }
+        var bestScore = scored.Count == 0 ? 0 : scored.Max(static item => item.Score);
+        var best = scored.Where(item => item.Score == bestScore).ToArray();
+        if (best.Length != 1)
+        {
+            Error(best.Length == 0 ? ScriptDiagnosticCodes.NoMatchingOverload : ScriptDiagnosticCodes.AmbiguousOverload,
+                best.Length == 0
+                    ? $"No list overload of '{operationToken.Lexeme}' accepts these arguments."
+                    : $"List operation '{operationToken.Lexeme}' is ambiguous for these arguments.",
+                statement.Span);
+            return;
+        }
+
+        var selected = best[0];
+        var outputParameter = selected.Declaration.Parameters[^1];
+        Current.CanDeclare = false;
+        PushFrame(new ControlFrame(ControlFrameKind.Loop));
+        var frame = Current;
+        frame.CounterRegister = AllocateHidden(statement.Span);
+        frame.LimitRegister = AllocateHidden(statement.Span);
+        frame.LoopVariable = AllocateLocal(
+            statement.Arguments[1].Lexeme,
+            outputParameter.Type,
+            statement.Arguments[1].Span);
+        if (HasErrors)
+        {
+            return;
+        }
+
+        var separatorArgument = new TypedOperand(
+            ScriptOperand.IntegerValue(0), new ScriptTypeRef(ScriptPrimitiveTypes.Separator));
+        var counterArgument = WritableScalar(frame.CounterRegister);
+        var limitArgument = WritableScalar(frame.LimitRegister);
+        var outputArgument = new TypedOperand(ScriptOperand.Register(frame.LoopVariable), outputParameter.Type);
+        var initArguments = fixedArguments.Concat([separatorArgument, counterArgument, limitArgument]).ToArray();
+        var initDeclaration = new ScriptBindingDeclaration(
+            new ScriptBindingId(2_000_000 + selected.Declaration.Id.Value),
+            operationName[..^".list".Length] + ".init",
+            selected.Declaration.Parameters.Take(selected.SecondSeparator),
+            selected.Declaration.ParserGroups,
+            selected.Declaration.Reference);
+        EmitBindingCall(initDeclaration, initArguments, statement.Span);
+
+        frame.LoopStart = _instructions.Count;
+        frame.BranchInstruction = Emit(CoreScriptOperation.BranchCondition, statement.Span,
+            [ScriptOperand.IntegerValue((int)ScriptConditionKind.All),
+             ScriptOperand.IntegerValue((int)ScriptConditionKind.LessThan),
+             ScriptOperand.Register(frame.CounterRegister), ScriptOperand.Register(frame.LimitRegister),
+             ScriptOperand.Label(0)]);
+        var listArguments = initArguments.Concat([separatorArgument, outputArgument]).ToArray();
+        EmitBindingCall(selected.Declaration, listArguments, statement.Span);
+    }
+
+    private static int FindSeparator(IReadOnlyList<ScriptBindingParameter> parameters, int start)
+    {
+        for (var index = Math.Max(0, start); index < parameters.Count; index++)
+        {
+            if (parameters[index].Type.Id == ScriptPrimitiveTypes.Separator)
+            {
+                return index;
+            }
+        }
+        return -1;
     }
 
     private void CompileBreak(ScriptStatementSyntax statement)
@@ -484,12 +596,6 @@ public sealed class ScriptCompiler
             return;
         }
         var expected = ArgumentCount(operation);
-        if (statement.Arguments.Count != expected &&
-            _definition.ApiCatalog.GetBindings(statement.Operation.Lexeme, _definition.ParserGroups).Count != 0)
-        {
-            CompileBinding(statement);
-            return;
-        }
         Current.CanDeclare = false;
         var typedArguments = statement.Arguments.Select(ReadTypedValue).ToArray();
         if (HasErrors)
@@ -497,9 +603,21 @@ public sealed class ScriptCompiler
             return;
         }
         var arguments = typedArguments.Select(static argument => argument.Operand).ToArray();
-        if (arguments.Length != expected || expected != 0 && arguments[0].Kind != ScriptOperandKind.Register ||
-            operation == CoreScriptOperation.Swap && arguments[1].Kind != ScriptOperandKind.Register ||
-            typedArguments.Any(static argument => argument.Type.Id != ScriptPrimitiveTypes.Scalar))
+        var coreCompatible = arguments.Length == expected &&
+            (expected == 0 || arguments[0].Kind == ScriptOperandKind.Register) &&
+            (operation != CoreScriptOperation.Swap || arguments[1].Kind == ScriptOperandKind.Register) &&
+            typedArguments.All(static argument => argument.Type.Id == ScriptPrimitiveTypes.Scalar);
+        if (!coreCompatible && TryCompileInternalValueBinding(statement, typedArguments))
+        {
+            return;
+        }
+        if (!coreCompatible &&
+            _definition.ApiCatalog.GetBindings(statement.Operation.Lexeme, _definition.ParserGroups).Count != 0)
+        {
+            CompileBinding(statement);
+            return;
+        }
+        if (!coreCompatible)
         {
             Error(ScriptDiagnosticCodes.InvalidArguments,
                 $"Operation '{statement.Operation.Lexeme}' requires {expected} compatible argument(s).",
@@ -507,6 +625,36 @@ public sealed class ScriptCompiler
             return;
         }
         Emit(operation, statement.Span, arguments);
+    }
+
+    private bool TryCompileInternalValueBinding(
+        ScriptStatementSyntax statement,
+        IReadOnlyList<TypedOperand> arguments)
+    {
+        if (statement.Operation.Lexeme != "set" || arguments.Count != 2 ||
+            arguments[0].Operand.Kind != ScriptOperandKind.Register ||
+            !arguments[0].Type.IsWritable || arguments[0].Type.Id == ScriptPrimitiveTypes.Scalar ||
+            arguments[0].Type.Id != arguments[1].Type.Id ||
+            arguments[0].Type.IsReference != arguments[1].Type.IsReference ||
+            arguments[0].Type.IsEditableReference && !arguments[1].Type.IsEditableReference)
+        {
+            return false;
+        }
+        var sourceModifiers = arguments[1].Type.Modifiers &
+            ~(ScriptTypeModifier.Register | ScriptTypeModifier.Writable);
+        var sourceType = new ScriptTypeRef(arguments[1].Type.Id, sourceModifiers);
+        var declaration = new ScriptBindingDeclaration(
+            new ScriptBindingId(3_000_000 + arguments[0].Type.Id.Value * 2 +
+                (arguments[0].Type.IsEditableReference ? 1 : 0)),
+            "set",
+            [
+                new ScriptBindingParameter("target", arguments[0].Type, true),
+                new ScriptBindingParameter("value", sourceType, false),
+            ],
+            _definition.ParserGroups,
+            new ScriptReferenceLocation("src/Engine/ScriptBind.h", 1577));
+        EmitBindingCall(declaration, arguments, statement.Span);
+        return true;
     }
 
     private void CompileBinding(ScriptStatementSyntax statement)
@@ -535,7 +683,10 @@ public sealed class ScriptCompiler
         {
             return;
         }
-        var matching = candidates.Where(candidate => BindingMatches(candidate, arguments)).ToArray();
+        var scored = candidates.Select(candidate => (Declaration: candidate, Score: BindingScore(candidate, arguments)))
+            .Where(static item => item.Score > 0).ToArray();
+        var bestScore = scored.Length == 0 ? 0 : scored.Max(static item => item.Score);
+        var matching = scored.Where(item => item.Score == bestScore).Select(static item => item.Declaration).ToArray();
         if (matching.Length != 1)
         {
             Error(
@@ -547,35 +698,61 @@ public sealed class ScriptCompiler
             return;
         }
 
-        var selected = matching[0];
-        _bindings.TryAdd(selected.Id.Value, selected);
-        Emit(CoreScriptOperation.HostCall, statement.Span,
-            [ScriptOperand.Binding(selected.Id.Value), .. arguments.Select(static argument => argument.Operand)]);
+        EmitBindingCall(matching[0], arguments, statement.Span);
     }
 
-    private static bool BindingMatches(
+    private void EmitBindingCall(
         ScriptBindingDeclaration declaration,
+        IReadOnlyList<TypedOperand> arguments,
+        SourceSpan span)
+    {
+        _bindings.TryAdd(declaration.Id.Value, declaration);
+        Emit(CoreScriptOperation.HostCall, span,
+            [ScriptOperand.Binding(declaration.Id.Value), .. arguments.Select(static argument => argument.Operand)]);
+    }
+
+    private static int BindingScore(
+        ScriptBindingDeclaration declaration,
+        IReadOnlyList<TypedOperand> arguments) => ParametersScore(declaration.Parameters, arguments);
+
+    private static int ParametersScore(
+        IReadOnlyList<ScriptBindingParameter> parameters,
         IReadOnlyList<TypedOperand> arguments)
     {
-        if (declaration.Parameters.Count != arguments.Count)
+        if (parameters.Count != arguments.Count)
         {
-            return false;
+            return 0;
         }
+        var score = 255;
         for (var index = 0; index < arguments.Count; index++)
         {
-            var parameter = declaration.Parameters[index];
+            var parameter = parameters[index];
             var argument = arguments[index];
             var isNullReference = argument.Type.Id == ScriptPrimitiveTypes.Null && parameter.Type.IsReference;
             if (!isNullReference && parameter.Type.Id != argument.Type.Id ||
                 parameter.Writable && (!argument.Type.IsWritable || argument.Operand.Kind != ScriptOperandKind.Register) ||
-                parameter.Type.IsReference && !argument.Type.IsReference ||
+                parameter.Type.IsReference != argument.Type.IsReference ||
                 parameter.Type.IsEditableReference && !argument.Type.IsEditableReference ||
+                parameter.Writable && parameter.Type.IsEditableReference != argument.Type.IsEditableReference ||
                 parameter.Type.Id == ScriptPrimitiveTypes.Separator && argument.Type.Id != ScriptPrimitiveTypes.Separator)
             {
-                return false;
+                return 0;
+            }
+            if (!isNullReference)
+            {
+                var argumentScore = 255;
+                if (parameter.Type.IsReference && !parameter.Type.IsEditableReference && argument.Type.IsEditableReference)
+                {
+                    argumentScore -= 128;
+                }
+                if (!parameter.Writable && argument.Type.IsWritable)
+                {
+                    argumentScore -= 64;
+                }
+                score = Math.Min(score, argumentScore);
             }
         }
-        return true;
+        return score;
     }
 
     private ScriptOperand[] ReadCondition(ScriptStatementSyntax statement)
@@ -687,12 +864,22 @@ public sealed class ScriptCompiler
         return 0;
     }
 
-    private int AllocateLocal(string name, SourceSpan span)
-    {
-        var offset = AllocateHidden(span);
-        var type = new ScriptTypeRef(
+    private int AllocateLocal(string name, SourceSpan span) => AllocateLocal(
+        name,
+        new ScriptTypeRef(
             ScriptPrimitiveTypes.Scalar,
-            ScriptTypeModifier.Register | ScriptTypeModifier.Writable);
+            ScriptTypeModifier.Register | ScriptTypeModifier.Writable),
+        span);
+
+    private int AllocateLocal(string name, ScriptTypeRef type, SourceSpan span)
+    {
+        var definition = ResolveType(type.Id);
+        if (!_layout.TryAllocate(definition, type.IsReference, out var offset))
+        {
+            Error(ScriptDiagnosticCodes.RegisterLimitExceeded,
+                $"Variable '{name}' exceeds the script register limit.", span);
+            return 0;
+        }
         if (!_symbols.TryDeclare(new ScriptSymbol(name, ScriptSymbolKind.Local, type, offset)))
         {
             Error(ScriptDiagnosticCodes.DuplicateSymbol, $"Script symbol '{name}' is already defined.", span);
@@ -700,6 +887,12 @@ public sealed class ScriptCompiler
         _registers.Add(new ScriptRegisterDefinition(name, type, offset, IsOutput: false));
         return offset;
     }
+
+    private static TypedOperand WritableScalar(int offset) => new(
+        ScriptOperand.Register(offset),
+        new ScriptTypeRef(
+            ScriptPrimitiveTypes.Scalar,
+            ScriptTypeModifier.Register | ScriptTypeModifier.Writable));
 
     private void PushFrame(ControlFrame frame)
     {

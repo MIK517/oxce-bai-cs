@@ -91,7 +91,7 @@ public sealed class Phase3ContentCorpusTests
             var scriptErrors = snapshot.Diagnostics.Where(static item =>
                 item.Severity >= DiagnosticSeverity.Error &&
                 (item.Code == ModDiagnosticCodes.InvalidScriptContent ||
-                 item.Code.StartsWith("OXCE-SCRIPT-", StringComparison.Ordinal))).ToArray();
+                 item.Code.StartsWith("OXCE-SCR-", StringComparison.Ordinal))).ToArray();
             Assert.Empty(scriptErrors);
             if (content.Catalog.Capabilities.Has(ContentLoadStage.Linked) &&
                 !snapshot.Diagnostics.Any(static item => item.Severity >= DiagnosticSeverity.Error))
