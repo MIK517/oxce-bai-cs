@@ -3,6 +3,8 @@ param(
     [string] $ReferenceRoot,
     [string] $OutputPath = (Join-Path $PSScriptRoot "..\artifacts\reference-script-core\script-core.actual.json"),
     [string] $ProbeStem = "script_core_probe",
+    [switch] $AllowUnresolvedProviderSymbols,
+    [string[]] $ExtraReferenceSources = @(),
     [string] $ExpectedCommit = "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15"
 )
 
@@ -52,6 +54,16 @@ $includeYaml = Join-Path $reference "libs\rapidyaml"
 $yamlSources = Get-ChildItem (Join-Path $includeYaml "c4") -Recurse -Filter *.cpp |
     Sort-Object FullName |
     ForEach-Object { '"' + $_.FullName + '"' }
+$extraSources = foreach ($relativeSource in $ExtraReferenceSources) {
+    $fullSource = [IO.Path]::GetFullPath((Join-Path $reference $relativeSource))
+    if (-not $fullSource.StartsWith($reference + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
+        -not (Test-Path -LiteralPath $fullSource -PathType Leaf) -or
+        $fullSource -match '["&|<>^]') {
+        throw "Extra reference source escapes the checkout or does not exist: $relativeSource"
+    }
+    '"' + $fullSource + '"'
+}
+$linkFlags = if ($AllowUnresolvedProviderSymbols) { "/OPT:REF /FORCE:UNRESOLVED" } else { "/OPT:REF" }
 
 foreach ($value in @(
     $devCommand, $probe, $scriptSource, $yamlSource, $executable,
@@ -62,9 +74,9 @@ foreach ($value in @(
     }
 }
 
-$compile = 'call "{0}" -no_logo -arch=x64 -host_arch=x64 && cd /d "{9}" && cl.exe /nologo /std:c++20 /EHsc /O2 /Gy /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /I"{1}" /I"{2}" /I"{3}" "{4}" "{5}" "{6}" {7} /Fe:"{8}" /link /OPT:REF' -f `
+$compile = 'call "{0}" -no_logo -arch=x64 -host_arch=x64 && cd /d "{9}" && cl.exe /nologo /std:c++20 /EHsc /O2 /Gy /DNDEBUG /D_CRT_SECURE_NO_WARNINGS /I"{1}" /I"{2}" /I"{3}" "{4}" "{5}" "{6}" {7} {11} /Fe:"{8}" /link {10}' -f `
     $devCommand, $includeSource, $includeSdl, $includeYaml, $probe, $scriptSource,
-    $yamlSource, ($yamlSources -join ' '), $executable, $work
+    $yamlSource, ($yamlSources -join ' '), $executable, $work, $linkFlags, ($extraSources -join ' ')
 & $env:ComSpec /d /c $compile
 if ($LASTEXITCODE -ne 0) {
     throw "The C++ scripting reference probe '$ProbeStem' failed to compile."

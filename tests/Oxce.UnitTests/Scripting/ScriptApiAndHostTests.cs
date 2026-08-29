@@ -77,6 +77,30 @@ public sealed class ScriptApiAndHostTests
             diagnostic => diagnostic.Code == ScriptDiagnosticCodes.NoMatchingOverload);
     }
 
+    [Fact]
+    public void ArgumentSeparatorParticipatesInOverloadMatchingWithoutRuntimeStorage()
+    {
+        var separated = new ScriptApiCatalog(
+            [
+                new ScriptBindingDeclaration(
+                    new ScriptBindingId(10_002),
+                    "separated",
+                    [
+                        new ScriptBindingParameter("target", WritableInt, true),
+                        new ScriptBindingParameter("separator", new ScriptTypeRef(ScriptPrimitiveTypes.Separator), false),
+                        new ScriptBindingParameter("value", Int, false),
+                    ],
+                    ["Probe"],
+                    Reference),
+            ]);
+        var definition = new ScriptParserDefinition("Probe", ["result"], separated, ["Probe"]);
+
+        var compiled = ScriptCompiler.Compile("separated result __ 1; return result;", definition);
+
+        Assert.True(compiled.Succeeded);
+        Assert.Equal(10_002, Assert.Single(compiled.Program!.Bindings).Id.Value);
+    }
+
     private static readonly ScriptBindingId AdjustId = new(10_001);
     private static readonly ScriptTypeRef WritableInt = new(
         ScriptPrimitiveTypes.Scalar,

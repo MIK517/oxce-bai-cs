@@ -77,27 +77,78 @@ public sealed record ScriptConstantDeclaration(
     IReadOnlyList<string> ParserGroups,
     ScriptReferenceLocation Reference);
 
-public sealed record ScriptParserDeclaration(
-    string Name,
-    string Group,
-    IReadOnlyList<string> OutputNames,
-    bool SupportsEvents,
-    ScriptReferenceLocation Reference);
+public sealed record ScriptNamedValueDeclaration(string Name, ScriptTypeRef Type);
+
+public sealed class ScriptParserDeclaration
+{
+    public ScriptParserDeclaration(
+        string name,
+        string group,
+        IReadOnlyList<string> outputNames,
+        bool supportsEvents,
+        ScriptReferenceLocation reference)
+        : this(
+            name,
+            group,
+            outputNames.Select(static output => new ScriptNamedValueDeclaration(
+                output,
+                new ScriptTypeRef(
+                    ScriptPrimitiveTypes.Scalar,
+                    ScriptTypeModifier.Register | ScriptTypeModifier.Writable))),
+            [],
+            supportsEvents,
+            reference)
+    {
+    }
+
+    public ScriptParserDeclaration(
+        string name,
+        string group,
+        IEnumerable<ScriptNamedValueDeclaration> outputs,
+        IEnumerable<ScriptNamedValueDeclaration> inputs,
+        bool supportsEvents,
+        ScriptReferenceLocation reference)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(group);
+        ArgumentNullException.ThrowIfNull(outputs);
+        ArgumentNullException.ThrowIfNull(inputs);
+        Name = name;
+        Group = group;
+        Outputs = Array.AsReadOnly(outputs.ToArray());
+        Inputs = Array.AsReadOnly(inputs.ToArray());
+        OutputNames = Array.AsReadOnly(Outputs.Select(static output => output.Name).ToArray());
+        SupportsEvents = supportsEvents;
+        Reference = reference.Validate();
+    }
+
+    public string Name { get; }
+    public string Group { get; }
+    public IReadOnlyList<ScriptNamedValueDeclaration> Outputs { get; }
+    public IReadOnlyList<ScriptNamedValueDeclaration> Inputs { get; }
+    public IReadOnlyList<string> OutputNames { get; }
+    public bool SupportsEvents { get; }
+    public ScriptReferenceLocation Reference { get; }
+}
 
 public sealed class ScriptApiCatalog
 {
     private readonly ReadOnlyDictionary<int, ScriptBindingDeclaration> _bindingsById;
     private readonly ReadOnlyDictionary<string, IReadOnlyList<ScriptBindingDeclaration>> _bindingsByName;
+    private readonly ReadOnlyDictionary<string, ScriptParserDeclaration> _parsersByName;
+    private readonly ReadOnlyDictionary<ScriptTypeId, ScriptTypeDefinition> _typesById;
 
     public ScriptApiCatalog(
         IEnumerable<ScriptBindingDeclaration> bindings,
         IEnumerable<ScriptConstantDeclaration>? constants = null,
-        IEnumerable<ScriptParserDeclaration>? parsers = null)
+        IEnumerable<ScriptParserDeclaration>? parsers = null,
+        IEnumerable<ScriptTypeDefinition>? types = null)
     {
         ArgumentNullException.ThrowIfNull(bindings);
         var bindingArray = bindings.ToArray();
         var constantArray = (constants ?? []).ToArray();
         var parserArray = (parsers ?? []).ToArray();
+        var typeArray = (types ?? []).Select(static type => type.Validate()).ToArray();
         foreach (var constant in constantArray)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(constant.Name);
@@ -112,22 +163,20 @@ public sealed class ScriptApiCatalog
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(parser.Name);
             ArgumentException.ThrowIfNullOrWhiteSpace(parser.Group);
-            ArgumentNullException.ThrowIfNull(parser.OutputNames);
-            if (parser.OutputNames.Count > ScriptLimits.MaximumOutputs ||
-                parser.OutputNames.Any(string.IsNullOrWhiteSpace) ||
-                parser.OutputNames.Distinct(StringComparer.Ordinal).Count() != parser.OutputNames.Count)
+            if (parser.Outputs.Count > ScriptLimits.MaximumOutputs ||
+                parser.Outputs.Any(static output => string.IsNullOrWhiteSpace(output.Name)) ||
+                parser.Outputs.Select(static output => output.Name).Distinct(StringComparer.Ordinal).Count() != parser.Outputs.Count ||
+                parser.Inputs.Any(static input => string.IsNullOrWhiteSpace(input.Name)) ||
+                parser.Inputs.Select(static input => input.Name).Distinct(StringComparer.Ordinal).Count() != parser.Inputs.Count ||
+                parser.Outputs.Concat(parser.Inputs).Select(static value => value.Name)
+                    .Distinct(StringComparer.Ordinal).Count() != parser.Outputs.Count + parser.Inputs.Count)
             {
-                throw new ArgumentException("Parser output names must be bounded, non-empty, and unique.", nameof(parsers));
+                throw new ArgumentException("Parser value names must be bounded, non-empty, and unique.", nameof(parsers));
             }
-            parser.Reference.Validate();
         }
         constantArray = constantArray.Select(static constant => constant with
         {
             ParserGroups = Array.AsReadOnly(constant.ParserGroups.ToArray()),
-        }).ToArray();
-        parserArray = parserArray.Select(static parser => parser with
-        {
-            OutputNames = Array.AsReadOnly(parser.OutputNames.ToArray()),
         }).ToArray();
         if (bindingArray.Select(static binding => binding.Id.Value).Distinct().Count() != bindingArray.Length)
         {
@@ -142,10 +191,16 @@ public sealed class ScriptApiCatalog
         {
             throw new ArgumentException("Parser names must be unique.", nameof(parsers));
         }
+        if (typeArray.Select(static type => type.Id).Distinct().Count() != typeArray.Length ||
+            typeArray.Select(static type => type.Name).Distinct(StringComparer.Ordinal).Count() != typeArray.Length)
+        {
+            throw new ArgumentException("Script type IDs and names must be unique.", nameof(types));
+        }
 
         Bindings = Array.AsReadOnly(bindingArray);
         Constants = Array.AsReadOnly(constantArray);
         Parsers = Array.AsReadOnly(parserArray);
+        Types = Array.AsReadOnly(typeArray);
         _bindingsById = new ReadOnlyDictionary<int, ScriptBindingDeclaration>(
             bindingArray.ToDictionary(static binding => binding.Id.Value));
         _bindingsByName = new ReadOnlyDictionary<string, IReadOnlyList<ScriptBindingDeclaration>>(
@@ -153,12 +208,17 @@ public sealed class ScriptApiCatalog
                 static group => group.Key,
                 static group => (IReadOnlyList<ScriptBindingDeclaration>)Array.AsReadOnly(group.ToArray()),
                 StringComparer.Ordinal));
+        _parsersByName = new ReadOnlyDictionary<string, ScriptParserDeclaration>(
+            parserArray.ToDictionary(static parser => parser.Name, StringComparer.Ordinal));
+        _typesById = new ReadOnlyDictionary<ScriptTypeId, ScriptTypeDefinition>(
+            typeArray.ToDictionary(static type => type.Id));
     }
 
     public static ScriptApiCatalog Empty { get; } = new([]);
     public IReadOnlyList<ScriptBindingDeclaration> Bindings { get; }
     public IReadOnlyList<ScriptConstantDeclaration> Constants { get; }
     public IReadOnlyList<ScriptParserDeclaration> Parsers { get; }
+    public IReadOnlyList<ScriptTypeDefinition> Types { get; }
 
     public IReadOnlyList<ScriptBindingDeclaration> GetBindings(string name, IReadOnlySet<string> parserGroups) =>
         _bindingsByName.TryGetValue(name, out var declarations)
@@ -167,6 +227,12 @@ public sealed class ScriptApiCatalog
 
     public bool TryGetBinding(ScriptBindingId id, out ScriptBindingDeclaration? declaration) =>
         _bindingsById.TryGetValue(id.Value, out declaration);
+
+    public bool TryGetParser(string name, out ScriptParserDeclaration? declaration) =>
+        _parsersByName.TryGetValue(name, out declaration);
+
+    public bool TryGetType(ScriptTypeId id, out ScriptTypeDefinition? definition) =>
+        _typesById.TryGetValue(id, out definition);
 
     public IEnumerable<ScriptConstantDeclaration> GetConstants(IReadOnlySet<string> parserGroups) =>
         Constants.Where(constant => constant.ParserGroups.Any(parserGroups.Contains));
