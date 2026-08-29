@@ -79,10 +79,22 @@ int main()
         { "locals-and-arithmetic", "var int temp; set temp 0x6; mul temp 0b111; set result temp; return result;", 0 },
         { "conditional", "if eq result 7; set result 11; else; set result 13; end; return result;", 7 },
         { "comment", "# leading comment\nset result 0o17; return result;", 0 },
+        { "forward-label", "goto done; set result 1; done: set result 21; return result;", 0 },
+        { "counted-loop", "var int sum; set sum 0; loop var i 4; add sum i; end; set result sum; return result;", 0 },
+        { "nested-scope", "begin; var int local 5; set result local; end; return result;", 0 },
         { "missing-return", "set result 1;", 0 },
         { "unknown-operation", "explode result; return result;", 0 },
         { "unreachable", "return result; set result 1;", 0 },
         { "invalid-number", "set result 0xg; return result;", 0 },
+        { "missing-semicolon", "return result", 0 },
+        { "invalid-punctuation", "set result @; return result;", 0 },
+        { "invalid-text-escape", "debug_log \"bad\\n\"; return result;", 0 },
+        { "integer-overflow", "set result 2147483648; return result;", 0 },
+        { "break-outside-loop", "break; return result;", 0 },
+        { "variable-after-operation", "clear result; var int late; return result;", 0 },
+        { "too-many-arguments", "set result 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0; return result;", 0 },
+        { "unclosed-block", "begin; return result;", 0 },
+        { "duplicate-label", "mark: clear result; mark: return result;", 0 },
     };
 
     std::cout << "{\"cases\":[";
