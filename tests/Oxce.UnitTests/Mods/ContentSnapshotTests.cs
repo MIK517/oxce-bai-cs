@@ -48,6 +48,7 @@ public sealed class ContentSnapshotTests
                   POWER: 7
                 scripts:
                   newTurnItem: return;
+                  selectItemSprite: add sprite_index RuleList.current; return sprite_index;
             """;
         using var fixture = new TemporaryMod(rules);
 
@@ -59,6 +60,8 @@ public sealed class ContentSnapshotTests
             script.ParserName == "newTurnItem");
         Assert.Contains(snapshot.Scripts, script => script.Scope == ContentScriptScope.Rule &&
             script.OwnerId == "ITEM" && script.ParserName == "newTurnItem");
+        Assert.Contains(snapshot.Scripts, script => script.Scope == ContentScriptScope.Rule &&
+            script.OwnerId == "ITEM" && script.ParserName == "selectItemSprite");
         Assert.Contains(snapshot.Scripts, script => script.Scope == ContentScriptScope.StatBonus &&
             script.OwnerId == "ITEM" && script.ParserName == "damageBonusBonusStats");
         Assert.Single(snapshot.EventPlans);
