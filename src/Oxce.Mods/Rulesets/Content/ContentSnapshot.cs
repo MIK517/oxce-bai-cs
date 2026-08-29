@@ -267,7 +267,7 @@ internal sealed class ContentScriptCompiler
     {
         CompileDocuments();
         Tags = _tagBuilder.Build();
-        var finalApi = CreateApi(Tags);
+        var finalApi = CreateApi(Tags, _plan.Groups[^1].Mod.Metadata.Id);
         CompileDefaults(finalApi);
         CompileRules(finalApi);
         ComposeEvents();
@@ -304,7 +304,7 @@ internal sealed class ContentScriptCompiler
                 {
                     LoadTags(tags!, document.File.SourcePath);
                 }
-                var api = CreateApi(_tagBuilder.Build());
+                var api = CreateApi(_tagBuilder.Build(), document.Mod.Metadata.Id);
                 _apiBySource[document.File.SourcePath] = api;
                 if (extended.TryGet("globals", out var globals))
                 {
@@ -315,7 +315,9 @@ internal sealed class ContentScriptCompiler
                     CompileGlobalScripts(scripts!, api, document.File.SourcePath);
                 }
             }
-            _apiBySource.TryAdd(document.File.SourcePath, CreateApi(_tagBuilder.Build()));
+            _apiBySource.TryAdd(
+                document.File.SourcePath,
+                CreateApi(_tagBuilder.Build(), document.Mod.Metadata.Id));
         }
     }
 
@@ -404,7 +406,7 @@ internal sealed class ContentScriptCompiler
         }
     }
 
-    private ScriptApiCatalog CreateApi(ScriptTagCatalog tags)
+    private ScriptApiCatalog CreateApi(ScriptTagCatalog tags, string currentModId)
     {
         var parserNames = _baseApi.Parsers.Select(static parser => parser.Name).ToArray();
         var constants = new List<ScriptConstantDeclaration>(_baseApi.Constants);
@@ -435,6 +437,12 @@ internal sealed class ContentScriptCompiler
                     name, index, parserNames, GeneratedReference));
             }
         }
+        var currentIndex = _plan.Groups.Select(static group => group.Mod.Metadata.Id)
+            .ToList().FindIndex(id => string.Equals(id, currentModId, StringComparison.Ordinal));
+        constants.Add(new ScriptConstantDeclaration(
+            "RuleList.master", 0, parserNames, GeneratedReference));
+        constants.Add(new ScriptConstantDeclaration(
+            "RuleList.current", currentIndex, parserNames, GeneratedReference));
         return new ScriptApiCatalog(_baseApi.Bindings, constants, _baseApi.Parsers, _baseApi.Types);
     }
 

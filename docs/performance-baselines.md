@@ -159,6 +159,23 @@ discovery, parsing, composition, typing, validation, and manifest writing. They 
 acceptance evidence rather than a BenchmarkDotNet performance gate, but they confirm
 that the synthetic-fixture improvement carries over to the intended large mod chain.
 
+### Phase 4 full-installation script acceptance
+
+The merged Phase 4 result and its corrective candidate were audited on 2026-08-30
+against the same user-owned installation with `audit-content-install`. The corrective
+run parsed 512 ruleset files, attempted 3,875 scripts, retained 3,536 compiled script
+artifacts, composed 31 event plans, registered 580 tags, and validated 13,651 initial
+values. It reached `scripts-compiled` with the installation's expected 8,818 warnings
+and zero errors. Three process-level runs emitted byte-identical 9,591,410-byte typed
+manifests with SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
+
+The corrective audit closed failures in unique-best editable-pointer overload scoring,
+catalog list-loop lowering, custom-type operations that share scalar core names, the
+hidden typed `set` binding, and file-scoped `RuleList.current`. The manifest hash differs
+from the Phase 3 acceptance above because later content work changed normalized output;
+the earlier result remains the historical performance comparison baseline.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time

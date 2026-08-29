@@ -118,6 +118,71 @@ public sealed class ScriptApiAndHostTests
             register => register.Name == "position" && !register.Type.IsReference);
     }
 
+    [Fact]
+    public void EditablePointerOverloadWinsOverReadonlyCompatibleOverload()
+    {
+        var definition = ScriptParserDefinition.FromCatalog(
+            "newTurnItem", ReferenceScriptApiCatalog.Instance);
+
+        var compiled = ScriptCompiler.Compile(
+            "var ptre BattleUnit unit; item.getOwner unit; return;", definition);
+
+        Assert.True(compiled.Succeeded, Messages(compiled));
+        Assert.Equal(10067, Assert.Single(compiled.Program!.Bindings).Id.Value);
+    }
+
+    [Fact]
+    public void CustomTypeBindingsCanOverrideScalarCoreOperationNames()
+    {
+        var definition = ScriptParserDefinition.FromCatalog(
+            "newTurnItem", ReferenceScriptApiCatalog.Instance);
+
+        var compiled = ScriptCompiler.Compile(
+            "var Position position; set position 1 2 3; mul position 2; sub position position; return;",
+            definition);
+
+        Assert.True(compiled.Succeeded, Messages(compiled));
+        Assert.Equal(["mul", "set", "sub"],
+            compiled.Program!.Bindings.Select(static binding => binding.Name).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void CatalogListLoopLowersToHiddenInitAndTypedStepCalls()
+    {
+        var definition = ScriptParserDefinition.FromCatalog(
+            "newTurnUnit", ReferenceScriptApiCatalog.Instance);
+
+        var compiled = ScriptCompiler.Compile(
+            "loop var inventory_item battle_game.getItems.list; end; return;", definition);
+
+        Assert.True(compiled.Succeeded, Messages(compiled));
+        Assert.Contains(compiled.Program!.Bindings,
+            binding => binding.Name == "BattleGame.getItems.init");
+        Assert.Contains(compiled.Program.Bindings,
+            binding => binding.Name == "BattleGame.getItems.list");
+        Assert.Contains(compiled.Program.Registers,
+            register => register.Name == "inventory_item" && register.Type.IsEditableReference);
+    }
+
+    [Fact]
+    public void HiddenCustomValueCopyCompilesAsTypedHostCall()
+    {
+        var definition = ScriptParserDefinition.FromCatalog(
+            "vaporParticleAmmo", ReferenceScriptApiCatalog.Instance);
+
+        var compiled = ScriptCompiler.Compile(
+            "set subvoxel_velocity subvoxel_trajectory_forward; return;", definition);
+
+        Assert.True(compiled.Succeeded, Messages(compiled));
+        var binding = Assert.Single(compiled.Program!.Bindings);
+        Assert.Equal("set", binding.Name);
+        Assert.Equal(binding.Parameters[0].Type.Id, binding.Parameters[1].Type.Id);
+    }
+
+    private static string Messages(ScriptCompileResult compiled) => string.Join(
+        Environment.NewLine,
+        compiled.Diagnostics.Select(static diagnostic => diagnostic.Message));
+
     private static readonly ScriptBindingId AdjustId = new(10_001);
     private static readonly ScriptTypeRef WritableInt = new(
         ScriptPrimitiveTypes.Scalar,

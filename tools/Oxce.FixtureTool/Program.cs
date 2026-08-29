@@ -6,6 +6,7 @@ using Oxce.Formats.Yaml;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
+using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Phase3;
 
 return FixtureTool.Run(args, Console.Out, Console.Error);
@@ -33,6 +34,8 @@ internal static class FixtureTool
                     DumpTypedRules(modsRoot, masterId, destination, output),
                 ["audit-typed-install", var modsRoot, var resourceRoot, var masterId, var destination] =>
                     AuditTypedInstall(modsRoot, resourceRoot, masterId, destination, output),
+                ["audit-content-install", var installationRoot, var masterId, var addOnId, var destination] =>
+                    AuditContentInstall(installationRoot, masterId, addOnId, destination, output),
                 ["compare", var expected, var actual] => Compare(expected, actual, output),
                 _ => Usage(error),
             };
@@ -200,12 +203,45 @@ internal static class FixtureTool
             masterId,
             new ModEngineIdentity("Extended", "8.6.1.0"),
             diagnostics);
-        var content = Phase3ContentCatalog.Build(plan, diagnostics);
+        return WriteContentAudit(plan, diagnostics, root, destination, output);
+    }
+
+    private static int AuditContentInstall(
+        string installationRoot,
+        string masterId,
+        string addOnId,
+        string destination,
+        TextWriter output)
+    {
+        var root = Path.GetFullPath(installationRoot);
+        var diagnostics = new DiagnosticCollector(100_000);
+        var options = new ModDiscoveryOptions { ExternalResourceRoots = [root] };
+        var standard = ModDiscovery.ScanDirectory(Path.Combine(root, "standard"), diagnostics, options);
+        var user = ModDiscovery.ScanDirectory(Path.Combine(root, "user", "mods"), diagnostics, options);
+        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
+        var plan = ModLoadPlanner.Create(
+            catalog,
+            [new ModActivation(masterId, true), new ModActivation(addOnId, true)],
+            masterId,
+            new ModEngineIdentity("Extended", "8.6.1.0"),
+            diagnostics);
+        return WriteContentAudit(plan, diagnostics, root, destination, output);
+    }
+
+    private static int WriteContentAudit(
+        ModLoadPlan plan,
+        DiagnosticCollector diagnostics,
+        string normalizationRoot,
+        string destination,
+        TextWriter output)
+    {
+        var snapshot = ContentSnapshotBuilder.Build(plan, diagnostics);
+        var content = snapshot.Content;
         var normalized = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
             content,
             new RulesetCatalogNormalizationOptions
             {
-                NormalizeSourceName = source => Path.GetRelativePath(root, source).Replace('\\', '/'),
+                NormalizeSourceName = source => Path.GetRelativePath(normalizationRoot, source).Replace('\\', '/'),
             });
         var destinationPath = Path.GetFullPath(destination);
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
@@ -215,17 +251,26 @@ internal static class FixtureTool
         var errors = retained.Count(item => item.Severity >= DiagnosticSeverity.Error);
         output.WriteLine(JsonSerializer.Serialize(new
         {
-            stage = content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
+            stage = snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled)
+                ? "scripts-compiled"
+                : content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
             parsedFiles = content.ParsedFileCount,
+            attemptedScripts = snapshot.CompiledScriptCount,
+            scriptArtifacts = snapshot.Scripts.Count,
+            eventPlans = snapshot.EventPlans.Count,
+            tags = snapshot.Tags.Tags.Count,
+            initialValues = snapshot.InitialValues.Count,
             diagnostics = diagnostics.ReportedCount,
             errors,
             warnings = retained.Count(item => item.Severity == DiagnosticSeverity.Warning),
             droppedDiagnostics = diagnostics.DroppedCount,
             manifestBytes = normalized.Length,
             destination = destinationPath,
+            firstErrors = retained.Where(item => item.Severity >= DiagnosticSeverity.Error)
+                .Take(20).Select(item => new { item.Code, item.Message, Source = item.Source?.ToString() }),
         }));
 
-        return content.Catalog.Capabilities.Has(ContentLoadStage.Linked) &&
+        return snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled) &&
             !diagnostics.HasSeverityAtLeast(DiagnosticSeverity.Error) ? 0 : 1;
     }
 
@@ -239,6 +284,7 @@ internal static class FixtureTool
         error.WriteLine("  fixture dump-rules <mods-root> <master-id> [output.json]");
         error.WriteLine("  fixture dump-typed-rules <mods-root> <master-id> [output.json]");
         error.WriteLine("  fixture audit-typed-install <mods-root> <resource-root> <master-id> <output.json>");
+        error.WriteLine("  fixture audit-content-install <installation-root> <master-id> <add-on-id> <output.json>");
         error.WriteLine("  fixture compare <expected.json> <actual.json>");
         return 2;
     }
