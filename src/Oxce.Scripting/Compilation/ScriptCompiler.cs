@@ -55,7 +55,7 @@ public sealed class ScriptCompiler
             return Failure();
         }
 
-        DeclareOutputs();
+        DeclareParameters();
         DeclareConstants();
         foreach (var statement in syntax.Statements)
         {
@@ -93,24 +93,44 @@ public sealed class ScriptCompiler
         return new ScriptCompileResult(program, _diagnostics);
     }
 
-    private void DeclareOutputs()
+    private void DeclareParameters()
     {
-        foreach (var name in _definition.OutputNames)
+        foreach (var output in _definition.Outputs)
         {
-            if (!_layout.TryAllocate(ScalarType, useReferenceLayout: false, out var offset))
-            {
-                throw new InvalidOperationException("Output definitions exceed the validated register limit.");
-            }
-            var type = new ScriptTypeRef(
-                ScriptPrimitiveTypes.Scalar,
-                ScriptTypeModifier.Register | ScriptTypeModifier.Writable);
-            var symbol = new ScriptSymbol(name, ScriptSymbolKind.Parameter, type, offset);
-            if (!_symbols.TryDeclare(symbol))
-            {
-                throw new InvalidOperationException($"Duplicate validated output name '{name}'.");
-            }
-            _registers.Add(new ScriptRegisterDefinition(name, type, offset, IsOutput: true));
+            DeclareParameter(output, isOutput: true);
         }
+        foreach (var input in _definition.Inputs)
+        {
+            DeclareParameter(input, isOutput: false);
+        }
+    }
+
+    private void DeclareParameter(ScriptNamedValueDeclaration value, bool isOutput)
+    {
+        var type = value.Type.IsRegister
+            ? value.Type
+            : new ScriptTypeRef(value.Type.Id, value.Type.Modifiers | ScriptTypeModifier.Register);
+        var definition = ResolveType(type.Id);
+        if (!_layout.TryAllocate(definition, type.IsReference, out var offset))
+        {
+            throw new InvalidOperationException("Parser parameter definitions exceed the validated register limit.");
+        }
+        if (!_symbols.TryDeclare(new ScriptSymbol(value.Name, ScriptSymbolKind.Parameter, type, offset)))
+        {
+            throw new InvalidOperationException($"Duplicate validated parser parameter name '{value.Name}'.");
+        }
+        _registers.Add(new ScriptRegisterDefinition(value.Name, type, offset, isOutput));
+    }
+
+    private ScriptTypeDefinition ResolveType(ScriptTypeId id)
+    {
+        if (_definition.ApiCatalog.TryGetType(id, out var definition))
+        {
+            return definition!;
+        }
+        return id == ScriptPrimitiveTypes.Scalar
+            ? ScalarType
+            : throw new InvalidOperationException($"Script type '{id}' has no layout declaration.");
     }
 
     private void DeclareConstants()
@@ -433,15 +453,23 @@ public sealed class ScriptCompiler
             CompileBinding(statement);
             return;
         }
+        var expected = ArgumentCount(operation);
+        if (statement.Arguments.Count != expected &&
+            _definition.ApiCatalog.GetBindings(statement.Operation.Lexeme, _definition.ParserGroups).Count != 0)
+        {
+            CompileBinding(statement);
+            return;
+        }
         Current.CanDeclare = false;
-        var arguments = statement.Arguments.Select(ReadValue).ToArray();
+        var typedArguments = statement.Arguments.Select(ReadTypedValue).ToArray();
         if (HasErrors)
         {
             return;
         }
-        var expected = ArgumentCount(operation);
+        var arguments = typedArguments.Select(static argument => argument.Operand).ToArray();
         if (arguments.Length != expected || expected != 0 && arguments[0].Kind != ScriptOperandKind.Register ||
-            operation == CoreScriptOperation.Swap && arguments[1].Kind != ScriptOperandKind.Register)
+            operation == CoreScriptOperation.Swap && arguments[1].Kind != ScriptOperandKind.Register ||
+            typedArguments.Any(static argument => argument.Type.Id != ScriptPrimitiveTypes.Scalar))
         {
             Error(ScriptDiagnosticCodes.InvalidArguments,
                 $"Operation '{statement.Operation.Lexeme}' requires {expected} compatible argument(s).",
@@ -453,7 +481,17 @@ public sealed class ScriptCompiler
 
     private void CompileBinding(ScriptStatementSyntax statement)
     {
-        var candidates = _definition.ApiCatalog.GetBindings(statement.Operation.Lexeme, _definition.ParserGroups);
+        var operationName = statement.Operation.Lexeme;
+        var arguments = new List<TypedOperand>();
+        var separator = operationName.IndexOf('.', StringComparison.Ordinal);
+        if (separator > 0 && _symbols.TryResolve(operationName[..separator], out var receiver) &&
+            receiver?.RegisterOffset is int receiverOffset &&
+            _definition.ApiCatalog.TryGetType(receiver.Type.Id, out var receiverType))
+        {
+            operationName = $"{receiverType!.Name}.{operationName[(separator + 1)..]}";
+            arguments.Add(new TypedOperand(ScriptOperand.Register(receiverOffset), receiver.Type));
+        }
+        var candidates = _definition.ApiCatalog.GetBindings(operationName, _definition.ParserGroups);
         if (candidates.Count == 0)
         {
             Error(ScriptDiagnosticCodes.UnknownOperation,
@@ -462,7 +500,7 @@ public sealed class ScriptCompiler
             return;
         }
 
-        var arguments = statement.Arguments.Select(ReadValue).ToArray();
+        arguments.AddRange(statement.Arguments.Select(ReadTypedValue));
         if (HasErrors)
         {
             return;
@@ -482,23 +520,26 @@ public sealed class ScriptCompiler
         var selected = matching[0];
         _bindings.TryAdd(selected.Id.Value, selected);
         Emit(CoreScriptOperation.HostCall, statement.Span,
-            [ScriptOperand.Binding(selected.Id.Value), .. arguments]);
+            [ScriptOperand.Binding(selected.Id.Value), .. arguments.Select(static argument => argument.Operand)]);
     }
 
     private static bool BindingMatches(
         ScriptBindingDeclaration declaration,
-        ScriptOperand[] arguments)
+        IReadOnlyList<TypedOperand> arguments)
     {
-        if (declaration.Parameters.Count != arguments.Length)
+        if (declaration.Parameters.Count != arguments.Count)
         {
             return false;
         }
-        for (var index = 0; index < arguments.Length; index++)
+        for (var index = 0; index < arguments.Count; index++)
         {
             var parameter = declaration.Parameters[index];
-            if (parameter.Type.Id != ScriptPrimitiveTypes.Scalar ||
-                parameter.Writable && arguments[index].Kind != ScriptOperandKind.Register ||
-                arguments[index].Kind is not (ScriptOperandKind.Register or ScriptOperandKind.Scalar))
+            var argument = arguments[index];
+            if (parameter.Type.Id != argument.Type.Id ||
+                parameter.Writable && (!argument.Type.IsWritable || argument.Operand.Kind != ScriptOperandKind.Register) ||
+                parameter.Type.IsReference && !argument.Type.IsReference ||
+                parameter.Type.IsEditableReference && !argument.Type.IsEditableReference ||
+                parameter.Type.Id == ScriptPrimitiveTypes.Separator && argument.Type.Id != ScriptPrimitiveTypes.Separator)
             {
                 return false;
             }
@@ -545,10 +586,27 @@ public sealed class ScriptCompiler
     }
 
     private ScriptOperand ReadValue(ScriptToken token)
+        => ReadTypedValue(token).Operand;
+
+    private TypedOperand ReadTypedValue(ScriptToken token)
     {
         if (token.Kind == ScriptTokenKind.Numeric)
         {
-            return ScriptOperand.IntegerValue(token.NumericValue!.Value);
+            return new TypedOperand(
+                ScriptOperand.IntegerValue(token.NumericValue!.Value),
+                new ScriptTypeRef(ScriptPrimitiveTypes.Scalar));
+        }
+        if (token.Kind == ScriptTokenKind.Text)
+        {
+            return new TypedOperand(
+                ScriptOperand.TextValue(token.TextValue!),
+                new ScriptTypeRef(ScriptPrimitiveTypes.Text));
+        }
+        if (token.Kind == ScriptTokenKind.Symbol && token.Lexeme == "__")
+        {
+            return new TypedOperand(
+                ScriptOperand.IntegerValue(0),
+                new ScriptTypeRef(ScriptPrimitiveTypes.Separator));
         }
         if (token.Kind == ScriptTokenKind.Symbol)
         {
@@ -556,16 +614,20 @@ public sealed class ScriptCompiler
             {
                 if (symbol?.ConstantValue is int constant)
                 {
-                    return ScriptOperand.IntegerValue(constant);
+                    return new TypedOperand(
+                        ScriptOperand.IntegerValue(constant),
+                        new ScriptTypeRef(ScriptPrimitiveTypes.Scalar));
                 }
                 if (symbol?.RegisterOffset is int offset)
                 {
-                    return ScriptOperand.Register(offset);
+                    return new TypedOperand(ScriptOperand.Register(offset), symbol.Type);
                 }
             }
         }
         Error(ScriptDiagnosticCodes.UnknownSymbol, $"Unknown integer value '{token.Lexeme}'.", token.Span);
-        return ScriptOperand.IntegerValue(0);
+        return new TypedOperand(
+            ScriptOperand.IntegerValue(0),
+            new ScriptTypeRef(ScriptPrimitiveTypes.Scalar));
     }
 
     private int ReadConstant(ScriptToken token)
@@ -692,6 +754,8 @@ public sealed class ScriptCompiler
         _diagnostics.Add(new DiagnosticEvent(code, DiagnosticSeverity.Error, message, span));
 
     private enum ControlFrameKind { Root, Begin, If, Else, Loop }
+
+    private readonly record struct TypedOperand(ScriptOperand Operand, ScriptTypeRef Type);
 
     private sealed class ControlFrame(ControlFrameKind kind, List<int>? finalJumpInstructions = null)
     {

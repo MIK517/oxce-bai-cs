@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "script-api-catalog",
+  "description": "Captures the exact template-resolved script parser signatures, constants, custom types, callable overloads, and parser membership emitted by the pinned reference engine.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "architecture": "x64",
+      "compiler": "MSVC 19.51",
+      "probe": "script-api-catalog-v1"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/scripting/script_api_catalog_probe.cpp",
+      "size": 2544,
+      "sha256": "6fc92ff1c899247f8509f61a4df24c2486cbf5b5a8646020a12889ada551b44f"
+    }
+  ],
+  "normalization": ["script-api-metadata-v1", "canonical-json-v1"],
+  "expected": "fixtures/expected/scripting/script-api-catalog.expected.json"
+}
