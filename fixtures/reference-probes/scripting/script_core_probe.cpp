@@ -95,6 +95,18 @@ int main()
         { "too-many-arguments", "set result 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0; return result;", 0 },
         { "unclosed-block", "begin; return result;", 0 },
         { "duplicate-label", "mark: clear result; mark: return result;", 0 },
+        { "arithmetic-wrap", "set result 2147483647; add result 1; mul result 2; sub result 1; return result;", 0 },
+        { "aggregate-offset", "set result 3; aggregate result 4 5; offset result 2 -3; offsetmod result 2 5 11; return result;", 0 },
+        { "division-modulo", "set result -17; div result 5; mod result 2; set result 21; muldiv result -4 6; return result;", 0 },
+        { "bit-operations", "set result 10; shl result 2; shr result 1; bit_or result 5; bit_and result 23; bit_xor result 3; bit_not result; bit_count result; return result;", 0 },
+        { "math-limits", "set result -81; abs result; sqrt result; pow result 3; limit result 100 500; limit_upper result 400; limit_lower result 300; return result;", 0 },
+        { "discrete-waves", "set result -2; wavegen_rect result 8 3 9; wavegen_saw result 10 7 4; wavegen_tri result 12 8 3; return result;", 0 },
+        { "trigonometric-waves", "set result 3; wavegen_sin result 12 100; wavegen_cos result 12 40; return result;", 0 },
+        { "color-and-shade", "set result 0x23; get_color result result; set_color result 7; set_shade result 12; add_shade result 5; get_shade result result; return result;", 0 },
+        { "combined-conditions", "if and ge result 5 lt result 10 neq result 7; set result 21; else; set result 22; end; return result;", 6 },
+        { "conditional-else-if", "if eq result 1; set result 10; else eq result 2; set result 20; else; set result 30; end; return result;", 2 },
+        { "loop-control", "set result 0; loop var i 6; if eq i 2; continue; end; if eq i 5; break; end; add result i; end; return result;", 0 },
+        { "division-by-zero", "set result 9; div result 0; set result 10; return result;", 0 },
     };
 
     std::cout << "{\"cases\":[";

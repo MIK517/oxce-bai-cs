@@ -79,7 +79,8 @@ public sealed class ScriptProgram
         string parserName,
         IEnumerable<ScriptInstruction> instructions,
         IEnumerable<ScriptTypeRef> outputs,
-        int registerBytes)
+        int registerBytes,
+        IEnumerable<ScriptRegisterDefinition>? registers = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(parserName);
         ArgumentNullException.ThrowIfNull(instructions);
@@ -88,6 +89,7 @@ public sealed class ScriptProgram
         ParserName = parserName;
         Instructions = Array.AsReadOnly(instructions.ToArray());
         Outputs = Array.AsReadOnly(outputs.ToArray());
+        Registers = Array.AsReadOnly((registers ?? []).ToArray());
         RegisterBytes = registerBytes;
         if (Outputs.Count > ScriptLimits.MaximumOutputs)
         {
@@ -103,6 +105,22 @@ public sealed class ScriptProgram
     public IReadOnlyList<ScriptTypeRef> Outputs { get; }
 
     public int RegisterBytes { get; }
+
+    public IReadOnlyList<ScriptRegisterDefinition> Registers { get; }
+}
+
+public sealed record ScriptRegisterDefinition(
+    string Name,
+    ScriptTypeRef Type,
+    int Offset,
+    bool IsOutput)
+{
+    public ScriptRegisterDefinition Validate()
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Name);
+        ArgumentOutOfRangeException.ThrowIfNegative(Offset);
+        return this;
+    }
 }
 
 public sealed class ScriptCompileResult

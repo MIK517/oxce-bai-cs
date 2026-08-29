@@ -14,4 +14,15 @@ public static class ScriptDiagnosticCodes
     public const string RegisterLimitExceeded = "OXCE-SCR-0010";
     public const string NoMatchingOverload = "OXCE-SCR-0011";
     public const string AmbiguousOverload = "OXCE-SCR-0012";
+    public const string UnknownOperation = "OXCE-SCR-0013";
+    public const string UnknownSymbol = "OXCE-SCR-0014";
+    public const string InvalidDeclaration = "OXCE-SCR-0015";
+    public const string InvalidArguments = "OXCE-SCR-0016";
+    public const string InvalidControlFlow = "OXCE-SCR-0017";
+    public const string MissingReturn = "OXCE-SCR-0018";
+    public const string UnreachableCode = "OXCE-SCR-0019";
+    public const string ProgramLimitExceeded = "OXCE-SCR-0020";
+    public const string RuntimeOperationFailed = "OXCE-SCR-0021";
+    public const string ExecutionLimitExceeded = "OXCE-SCR-0022";
+    public const string TraceLimitExceeded = "OXCE-SCR-0023";
 }
