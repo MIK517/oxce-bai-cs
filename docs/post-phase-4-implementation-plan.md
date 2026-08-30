@@ -24,13 +24,13 @@ must satisfy the repository's required compatibility workflow.
 
 ## Local full-installation corpus
 
-The currently available source is `D:\Games\OpenXCom\WH40kRosigma\`. A future staging
-tool will create a complete, self-contained data corpus under
+The currently available source is `D:\Games\OpenXCom\WH40kRosigma\`.
+`tools/stage-private-install.ps1` creates a complete, self-contained data corpus under
 `artifacts/private-install/`. Dependable discovery, resource resolution, decoding, and
 benchmark behavior take priority over saving disk space. The destination is already
 ignored by Git.
 
-The staging command must:
+The staging command:
 
 1. Accept an explicit source path and never embed that machine-specific path in tests.
 2. Copy into a new or explicitly selected directory under `artifacts/`; it must not
