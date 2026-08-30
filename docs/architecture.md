@@ -8,8 +8,11 @@
 4. The port may improve internal design without changing mod-visible semantics.
 5. Headless execution is a first-class capability for fast scenario testing.
 
-The current pre-Phase-4 architecture and performance corrections are tracked in the
+The implemented pre-Phase-4 corrections are recorded in the
 [2026-08-29 architecture and performance review](architecture-performance-review.md).
+The current runtime boundary, findings, and ordered follow-up work are recorded in the
+[post-Phase-4 assessment](post-phase-4-assessment.md) and
+[implementation plan](post-phase-4-implementation-plan.md).
 
 ## Projects
 
@@ -19,6 +22,7 @@ The current pre-Phase-4 architecture and performance corrections are tracked in 
 | `Oxce.Formats` | YAML compatibility DOM and codecs for original X-COM binary/resource formats |
 | `Oxce.Scripting` | OXCE lexer/parser, type system, compiler/IR, VM, events, bindings infrastructure |
 | `Oxce.Mods` | Mod discovery/order, ruleset composition, typed rules, resource catalog |
+| `Oxce.Resources` | Resolved-resource runtime, lazy decoding, streaming, bounded caches, preload groups, and cache/archive telemetry |
 | `Oxce.Savegames` | External save schema, compatible read/write, migrations, unknown-field preservation, and adapters to gameplay-owned capture/restore contracts |
 | `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution, mutable runtime state, invariants, and save-neutral capture/restore contracts |
 | `Oxce.Rendering` | Indexed surfaces, palettes, software primitives, text/layout models, render commands |
@@ -38,6 +42,9 @@ types to lower projects. See [ADR 0009](decisions/0009-structured-diagnostics-an
 
 ```text
 App -> Engine -> Gameplay -> Mods -> Scripting -> Core
+App -> Engine -> Resources -> Mods
+Resources -> Formats -> Core
+Resources -> Rendering -> Core
 App -> Savegames -> Gameplay
 Savegames -> Formats -> Core
 Savegames -> Mods
@@ -51,6 +58,11 @@ application composes the adapter with the simulation. Do not introduce reciproca
 references or move mutable runtime state into a common persistence-shaped model merely
 to avoid this dependency direction. See
 [ADR 0008](decisions/0008-gameplay-owned-state-and-save-adapters.md).
+
+`Gameplay` also must not reference `Oxce.Resources`; rule/resource IDs and gameplay
+decisions remain independent of decoded surfaces, audio, caches, and filesystem state.
+`Oxce.Resources` consumes lightweight descriptors resolved by `Oxce.Mods`, as defined
+by [ADR 0014](decisions/0014-dedicated-resource-runtime.md).
 
 ## Runtime composition
 
@@ -69,7 +81,9 @@ Content composition is one staged build, not one parse per typed consumer. Order
 ruleset inputs are parsed once into session-owned compatibility nodes, dispatched to
 named and special composers, typed, linked, resource-resolved, and script-compiled. The
 published content snapshot is immutable; parse-only state may be released once retained
-unknown/deferred nodes and compiled scripts have explicit owners.
+unknown/deferred nodes and compiled scripts have explicit owners. The normal runtime
+path must release parse/audit-only state after those ownership transfers; tools may
+request an explicit audit artifact when operation history is required.
 
 ## Data modeling
 
