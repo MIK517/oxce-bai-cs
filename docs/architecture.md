@@ -8,8 +8,11 @@
 4. The port may improve internal design without changing mod-visible semantics.
 5. Headless execution is a first-class capability for fast scenario testing.
 
-The current pre-Phase-4 architecture and performance corrections are tracked in the
+The implemented pre-Phase-4 corrections are recorded in the
 [2026-08-29 architecture and performance review](architecture-performance-review.md).
+The current runtime boundary, findings, and ordered follow-up work are recorded in the
+[post-Phase-4 assessment](post-phase-4-assessment.md) and
+[implementation plan](post-phase-4-implementation-plan.md).
 
 ## Projects
 
@@ -69,7 +72,9 @@ Content composition is one staged build, not one parse per typed consumer. Order
 ruleset inputs are parsed once into session-owned compatibility nodes, dispatched to
 named and special composers, typed, linked, resource-resolved, and script-compiled. The
 published content snapshot is immutable; parse-only state may be released once retained
-unknown/deferred nodes and compiled scripts have explicit owners.
+unknown/deferred nodes and compiled scripts have explicit owners. The normal runtime
+path must release parse/audit-only state after those ownership transfers; tools may
+request an explicit audit artifact when operation history is required.
 
 ## Data modeling
 
