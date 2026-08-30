@@ -25,6 +25,7 @@ documents before adding a subsystem:
 - [Phase 4 closure audit](docs/phase-4-status.md)
 - [Post-Phase-4 architecture assessment](docs/post-phase-4-assessment.md)
 - [Post-Phase-4 implementation plan](docs/post-phase-4-implementation-plan.md)
+- [Runtime performance targets](docs/performance-targets.md)
 - [Testing strategy](docs/testing-strategy.md)
 
 ## Initial commands

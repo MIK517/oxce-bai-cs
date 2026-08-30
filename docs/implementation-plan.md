@@ -12,6 +12,8 @@ later-phase deferrals, is tracked in [`phase-3-status.md`](phase-3-status.md).
 Controlled optimization measurement is defined in
 [`performance-baselines.md`](performance-baselines.md); CI compiles but does not execute
 the BenchmarkDotNet project.
+Post-Phase-4 engineering budgets and dependency-selection policy are defined in
+[`performance-targets.md`](performance-targets.md).
 
 ## Objective and delivery strategy
 
