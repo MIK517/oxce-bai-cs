@@ -136,6 +136,8 @@ silently discarded or mistaken for a completed later-phase capability.
 
 ## Phase 4 — OXCE scripting language
 
+Status: **Done**. See the [Phase 4 closure review](phase-4-status.md).
+
 The detailed baseline, completion contract, implementation slices, and five-branch
 delivery sequence are recorded in the [Phase 4 implementation plan](phase-4-plan.md).
 The completed implementation boundary and corpus evidence are recorded in the
@@ -164,30 +166,44 @@ Exit gate:
 This phase may overlap later gameplay work, but no gameplay subsystem is mod-compatible
 until all of its script bindings and events are implemented.
 
-## Phase 5 — Saves and runtime state foundation
+## Phase 5 — Runtime content and first persisted gameplay slice
+
+The ordered architecture and performance work that begins this phase is specified in
+the [post-Phase-4 implementation plan](post-phase-4-implementation-plan.md). It
+separates build/audit content from runtime content, compacts script execution, resolves
+and owns resources, and links the first strategic rules to runtime handles before
+gameplay depends on bootstrap representations.
 
 Deliverables:
 
-- Immutable rules linked to distinct mutable campaign and battle state models owned by
-  `Oxce.Gameplay`; gameplay also owns stable persistent identities and save-neutral
-  capture/restoration contracts.
-- Reverse the bootstrap project dependency so `Oxce.Savegames` adapts to gameplay
-  contracts and `Oxce.Gameplay` has no persistence reference, as required by ADR 0008.
-- Campaign header and body adapters covering object IDs/references, mod validation, RNG
-  state, script values, versions, migrations, and persistence-owned unknown-field
-  sidecars.
+- A compact immutable runtime content package that can release parse/audit-only state
+  after scripts and resources have explicit owners.
+- A reusable compact script execution ABI suitable for gameplay hot paths.
+- Resolved resource descriptors, exact shared offsets, lazy decoded ownership, bounded
+  caches, and an honest `resources-resolved` capability.
+- Content-scoped typed rule handles and strongly typed runtime projections for the first
+  strategic slice while preserving external IDs.
+- Distinct mutable campaign state owned by `Oxce.Gameplay`, including stable persistent
+  identities and save-neutral capture/restoration contracts for new-campaign creation,
+  calendar/time, countries/regions, and the starting base.
+- `Oxce.Savegames` adapters for the implemented state only, covering object
+  IDs/references, mod validation, script values, versions, migrations, and
+  persistence-owned unknown-field sidecars. `Oxce.Gameplay` retains no persistence
+  reference, as required by ADR 0008.
 - Staged restoration that validates the complete object/rule/script graph in gameplay
   before publishing it; no reflection, persistence-only public setters, or partially
   initialized runtime entities.
 - Stable save writing and atomic/recoverable file replacement.
-- Original UFO/TFTD save import supported by the reference converter.
 - Consistent semantic capture plus round-trip comparison tooling. Measure snapshot
-  allocation and latency before adding segmented or copy-on-write tactical capture.
+  allocation and latency before adding segmented or copy-on-write capture.
 
 Exit gate:
 
-- Representative early/mid/late campaign saves and active battle saves load, inspect,
-  save, and reload without semantic loss for implemented subsystems.
+- Vanilla and representative modded new campaigns can be created headlessly with
+  compatible starting state and installed script providers for the implemented slice.
+- Representative C++ saves containing the implemented state load, inspect, save, and
+  reload without semantic loss. Broader campaign, active-battle, and original-save
+  conversion support advances with the gameplay state that can validate it.
 - Missing-mod and corrupt-save failures are actionable and covered.
 
 ## Phase 6 — Playable strategic vertical slice
@@ -275,20 +291,19 @@ adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
-1. Begin Phase 4 with the language foundation, compact VM, and generated/auditable
-   binding catalog described
-   in the review; preserve exact 32-bit, overload, ordering, and error semantics.
-2. Add focused executable C++ oracle probes as compatibility-sensitive primitives are
-   investigated.
-3. Refine generated inventory candidates into exact rule keys, script APIs, save nodes,
-   formats, options, and gameplay scenarios as their loaders are inspected.
-4. Expand representative YAML coverage alongside each rule and save loader; the generic
-   scalar, enum, container, DOM, normalization, and emission foundation is in place.
-5. Extend the resource browser beyond its compatible geoscape screen, battlescape
-   terrain, and cursor preview as later vertical slices need additional asset families.
-6. Expand typed rule and script inventories alongside those vertical slices. Bounded
-   FLI/FLC decoding and UFO GM-to-MIDI conversion are compatible; actual video playback
-   and the ADR 0007 music decoding/synthesis work remain later-phase work.
-7. Add the smallest campaign capture/restoration contract needed by the first strategic
-   vertical slice. The `Savegames` -> `Gameplay` dependency direction is already in
-   place; do not create speculative all-game DTOs.
+1. Stage and manifest the permitted private `xcom1` -> `40k` -> `rosigma` installation
+   under ignored `artifacts/` through a reusable, path-parameterized tool.
+2. Measure retained content memory and script API scope construction, then separate
+   build/audit state from the published runtime content package without changing the
+   full-install manifest.
+3. Benchmark and compact script program/execution storage, including the frame ABI
+   needed for text/reference host calls and recursion.
+4. Record the resource-runtime ownership decision and implement exact resource
+   resolution, shared offsets, lazy decoding, and bounded caches.
+5. Add content-scoped rule handles and strongly typed runtime projections for campaign
+   creation, calendar/time, countries/regions, and the starting base.
+6. Deliver that first strategic slice with gameplay providers/events, save-neutral
+   capture/restoration contracts, compatible save adapters, headless scenarios, and
+   semantic round trips.
+7. Continue adding focused executable C++ probes, compatibility matrix entries, and
+   controlled benchmarks with every compatibility-sensitive slice.
