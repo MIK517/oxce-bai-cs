@@ -1,5 +1,13 @@
 # Save compatibility
 
+The normative implementation target is the pinned secondary C++ checkout at commit
+`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Ignored private fixtures currently cover
+early geoscape and active-battlescape saves for vanilla UFO, vanilla TFTD, and Rosigma;
+their provenance identifies OXCE Brutal 8.6 commit `ab5041e`. Treat them as required
+backward/migration inputs, not as evidence that the pinned revision's complete save
+schema or late-campaign state is covered. Capture fresh pinned-version and late-game
+saves as the owning gameplay slices make those states executable.
+
 Architecture note: [ADR 0008](../decisions/0008-gameplay-owned-state-and-save-adapters.md)
 assigns mutable state, persistent identities, and save-neutral capture/restoration
 contracts to `Oxce.Gameplay`. `Oxce.Savegames` owns the external OXCE schema, mappings,

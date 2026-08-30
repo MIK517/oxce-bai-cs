@@ -22,6 +22,7 @@ The current runtime boundary, findings, and ordered follow-up work are recorded 
 | `Oxce.Formats` | YAML compatibility DOM and codecs for original X-COM binary/resource formats |
 | `Oxce.Scripting` | OXCE lexer/parser, type system, compiler/IR, VM, events, bindings infrastructure |
 | `Oxce.Mods` | Mod discovery/order, ruleset composition, typed rules, resource catalog |
+| `Oxce.Resources` | Resolved-resource runtime, lazy decoding, streaming, bounded caches, preload groups, and cache/archive telemetry |
 | `Oxce.Savegames` | External save schema, compatible read/write, migrations, unknown-field preservation, and adapters to gameplay-owned capture/restore contracts |
 | `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution, mutable runtime state, invariants, and save-neutral capture/restore contracts |
 | `Oxce.Rendering` | Indexed surfaces, palettes, software primitives, text/layout models, render commands |
@@ -41,6 +42,9 @@ types to lower projects. See [ADR 0009](decisions/0009-structured-diagnostics-an
 
 ```text
 App -> Engine -> Gameplay -> Mods -> Scripting -> Core
+App -> Engine -> Resources -> Mods
+Resources -> Formats -> Core
+Resources -> Rendering -> Core
 App -> Savegames -> Gameplay
 Savegames -> Formats -> Core
 Savegames -> Mods
@@ -54,6 +58,11 @@ application composes the adapter with the simulation. Do not introduce reciproca
 references or move mutable runtime state into a common persistence-shaped model merely
 to avoid this dependency direction. See
 [ADR 0008](decisions/0008-gameplay-owned-state-and-save-adapters.md).
+
+`Gameplay` also must not reference `Oxce.Resources`; rule/resource IDs and gameplay
+decisions remain independent of decoded surfaces, audio, caches, and filesystem state.
+`Oxce.Resources` consumes lightweight descriptors resolved by `Oxce.Mods`, as defined
+by [ADR 0014](decisions/0014-dedicated-resource-runtime.md).
 
 ## Runtime composition
 
