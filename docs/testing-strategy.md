@@ -113,3 +113,28 @@ stage, parsed-file and diagnostic counts, and manifest size. The content audit a
 reports attempted and retained scripts, event plans, tags, initial values, and the first
 errors so complete private installations can be checked without copying or committing
 their assets.
+
+For owned full-install acceptance, `tools/stage-private-install.ps1` copies the
+complete data trees into an isolated destination below `artifacts/`, writes per-file
+sizes and SHA-256 hashes, and validates the published corpus. Its default destination
+is `artifacts/private-install`; `-ValidateOnly` rechecks every file without consulting
+the source data, and `-Refresh` replaces only the explicitly selected staged directory
+after a new copy validates. The source installation is never modified.
+
+```powershell
+.\tools\stage-private-install.ps1 -SourceRoot D:\path\to\owned-install
+.\tools\stage-private-install.ps1 -ValidateOnly
+```
+
+After a Release build, `tools/capture-private-content-baseline.ps1` runs the complete
+content audit in separate processes and records timing, allocation, conservative
+retained-managed-memory and process working-set measurements under the ignored
+`artifacts/baselines/` directory. The installation and output roots can be overridden
+explicitly. A staged corpus has already been fully read for hashing, so the first run
+is labelled `first-process`, not cold-cache; a controlled cold-cache result must be
+captured separately.
+
+```powershell
+dotnet build Oxce.slnx --configuration Release --no-restore
+.\tools\capture-private-content-baseline.ps1 -Runs 3
+```
