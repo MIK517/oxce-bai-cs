@@ -176,6 +176,40 @@ hidden typed `set` binding, and file-scoped `RuleList.current`. The manifest has
 from the Phase 3 acceptance above because later content work changed normalized output;
 the earlier result remains the historical performance comparison baseline.
 
+### Post-Phase-4 staged-corpus baseline
+
+The self-contained staging workflow was exercised on 2026-08-30 against the same owned
+40k/Rosigma installation. The staged corpus contains 29,926 files and 2,648,645,693
+bytes across `common`, `standard`, `UFO`, `TFTD`, and `user/mods`; an independent
+validation pass checked every size and SHA-256 hash. Raw content and the detailed
+manifest remain ignored under `artifacts/private-install/`.
+
+Three separate Release audit processes ran on Windows 11 build 26200, Ryzen 9 7940HS,
+16 logical processors, x64, and .NET SDK 10.0.302. The two labelled warm-process runs
+had these medians:
+
+| Measurement | Median |
+|---|---:|
+| Process elapsed, including discovery, audit normalization, and manifest write | 9.135 s |
+| Content snapshot build | 7.617 s |
+| Allocation during content snapshot build | 2.452 GiB |
+| Managed bytes retained over the pre-build baseline | 299.9 MiB |
+| Peak process working set | 657.2 MiB |
+
+All runs parsed 512 files, attempted 3,875 scripts, retained 3,536 artifacts, reported
+8,818 expected diagnostics with zero errors, and reproduced the 9,591,410-byte semantic
+manifest with SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
+
+This capture does not claim a cold-cache number because staging validation reads every
+file immediately beforehand. The retained-managed figure is a conservative process
+delta and can include build diagnostics still rooted by the audit call; therefore it
+establishes that content itself is below the 512 MiB budget, not its exact exclusive
+size. The content-build median alone exceeds the 5 s warm-startup target before later
+resource resolution exists, and the roughly 2.45 GiB transient allocation confirms
+that runtime ownership and build-session separation should remain the first
+optimization slice.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time

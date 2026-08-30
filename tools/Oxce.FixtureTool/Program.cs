@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Oxce.Core.Diagnostics;
@@ -235,20 +236,38 @@ internal static class FixtureTool
         string destination,
         TextWriter output)
     {
+        var managedBytesBeforeBuild = GC.GetTotalMemory(forceFullCollection: true);
+        var allocatedBytesBeforeBuild = GC.GetAllocatedBytesForCurrentThread();
+        var buildTimer = Stopwatch.StartNew();
         var snapshot = ContentSnapshotBuilder.Build(plan, diagnostics);
+        buildTimer.Stop();
+        var allocatedBytesDuringBuild = GC.GetAllocatedBytesForCurrentThread() - allocatedBytesBeforeBuild;
+        var retained = diagnostics.Snapshot();
+        var reportedDiagnostics = diagnostics.ReportedCount;
+        var droppedDiagnostics = diagnostics.DroppedCount;
+        var errors = retained.Count(item => item.Severity >= DiagnosticSeverity.Error);
+        var warnings = retained.Count(item => item.Severity == DiagnosticSeverity.Warning);
+        var firstErrors = retained.Where(item => item.Severity >= DiagnosticSeverity.Error)
+            .Take(20).Select(item => new { item.Code, item.Message, Source = item.Source?.ToString() }).ToArray();
+        var completedWithoutErrors = snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled) && errors == 0;
+        retained = default;
+        diagnostics = null!;
+        var managedBytesAfterBuild = GC.GetTotalMemory(forceFullCollection: true);
         var content = snapshot.Content;
+        var normalizationTimer = Stopwatch.StartNew();
         var normalized = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
             content,
             new RulesetCatalogNormalizationOptions
             {
                 NormalizeSourceName = source => Path.GetRelativePath(normalizationRoot, source).Replace('\\', '/'),
             });
+        normalizationTimer.Stop();
         var destinationPath = Path.GetFullPath(destination);
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
         File.WriteAllBytes(destinationPath, normalized);
 
-        var retained = diagnostics.Snapshot();
-        var errors = retained.Count(item => item.Severity >= DiagnosticSeverity.Error);
+        using var process = Process.GetCurrentProcess();
+        process.Refresh();
         output.WriteLine(JsonSerializer.Serialize(new
         {
             stage = snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled)
@@ -260,18 +279,24 @@ internal static class FixtureTool
             eventPlans = snapshot.EventPlans.Count,
             tags = snapshot.Tags.Tags.Count,
             initialValues = snapshot.InitialValues.Count,
-            diagnostics = diagnostics.ReportedCount,
+            diagnostics = reportedDiagnostics,
             errors,
-            warnings = retained.Count(item => item.Severity == DiagnosticSeverity.Warning),
-            droppedDiagnostics = diagnostics.DroppedCount,
+            warnings,
+            droppedDiagnostics,
             manifestBytes = normalized.Length,
+            buildElapsedMilliseconds = buildTimer.Elapsed.TotalMilliseconds,
+            normalizationElapsedMilliseconds = normalizationTimer.Elapsed.TotalMilliseconds,
+            allocatedBytesDuringBuild,
+            managedBytesBeforeBuild,
+            managedBytesAfterBuild,
+            managedBytesRetainedByBuild = managedBytesAfterBuild - managedBytesBeforeBuild,
+            workingSetBytes = process.WorkingSet64,
+            peakWorkingSetBytes = process.PeakWorkingSet64,
             destination = destinationPath,
-            firstErrors = retained.Where(item => item.Severity >= DiagnosticSeverity.Error)
-                .Take(20).Select(item => new { item.Code, item.Message, Source = item.Source?.ToString() }),
+            firstErrors,
         }));
 
-        return snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled) &&
-            !diagnostics.HasSeverityAtLeast(DiagnosticSeverity.Error) ? 0 : 1;
+        return completedWithoutErrors ? 0 : 1;
     }
 
     private static int Usage(TextWriter error)
