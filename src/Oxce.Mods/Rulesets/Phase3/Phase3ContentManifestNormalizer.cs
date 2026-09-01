@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Loading;
+using Oxce.Mods.Rulesets.Content;
 
 namespace Oxce.Mods.Rulesets.Phase3;
 
@@ -26,7 +27,7 @@ public static class Phase3ContentManifestNormalizer
     }
 
     public static byte[] NormalizeToUtf8Json(
-        Phase3ContentBuild build,
+        ContentBuildSession build,
         RulesetCatalogNormalizationOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(build);
@@ -35,7 +36,19 @@ public static class Phase3ContentManifestNormalizer
         return NormalizeToUtf8Json(build.Catalog, build.ComposedRules, options);
     }
 
-    private static byte[] NormalizeToUtf8Json(
+    public static byte[] NormalizeToUtf8Json(
+        RuntimeContent content,
+        ContentAuditArtifact auditArtifact,
+        RulesetCatalogNormalizationOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(auditArtifact);
+        options ??= new RulesetCatalogNormalizationOptions();
+        options.Validate();
+        return NormalizeToUtf8Json(content.Catalog, auditArtifact.ComposedRules, options);
+    }
+
+    public static byte[] NormalizeToUtf8Json(
         Phase3ContentCatalog catalog,
         UnresolvedRuleCatalog composed,
         RulesetCatalogNormalizationOptions options)
@@ -125,7 +138,7 @@ public static class Phase3ContentManifestNormalizer
         Encoding.UTF8.GetString(NormalizeToUtf8Json(plan, catalog, options));
 
     public static string NormalizeToJson(
-        Phase3ContentBuild build,
+        ContentBuildSession build,
         RulesetCatalogNormalizationOptions? options = null) =>
         Encoding.UTF8.GetString(NormalizeToUtf8Json(build, options));
 

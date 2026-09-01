@@ -37,6 +37,8 @@ internal static class FixtureTool
                     AuditTypedInstall(modsRoot, resourceRoot, masterId, destination, output),
                 ["audit-content-install", var installationRoot, var masterId, var addOnId, var destination] =>
                     AuditContentInstall(installationRoot, masterId, addOnId, destination, output),
+                ["measure-content-install", var installationRoot, var masterId, var addOnId] =>
+                    MeasureContentInstall(installationRoot, masterId, addOnId, output),
                 ["compare", var expected, var actual] => Compare(expected, actual, output),
                 _ => Usage(error),
             };
@@ -229,6 +231,97 @@ internal static class FixtureTool
         return WriteContentAudit(plan, diagnostics, root, destination, output);
     }
 
+    private static int MeasureContentInstall(
+        string installationRoot,
+        string masterId,
+        string addOnId,
+        TextWriter output)
+    {
+        var root = Path.GetFullPath(installationRoot);
+        var diagnostics = new DiagnosticCollector(100_000);
+        var options = new ModDiscoveryOptions { ExternalResourceRoots = [root] };
+        var standard = ModDiscovery.ScanDirectory(Path.Combine(root, "standard"), diagnostics, options);
+        var user = ModDiscovery.ScanDirectory(Path.Combine(root, "user", "mods"), diagnostics, options);
+        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
+        var plan = ModLoadPlanner.Create(
+            catalog,
+            [new ModActivation(masterId, true), new ModActivation(addOnId, true)],
+            masterId,
+            new ModEngineIdentity("Extended", "8.6.1.0"),
+            diagnostics);
+        var preBuildDiagnostics = diagnostics.Snapshot();
+        var preBuildErrorCount = preBuildDiagnostics.Count(static item =>
+            item.Severity >= DiagnosticSeverity.Error);
+        var preBuildReportedDiagnosticCount = diagnostics.ReportedCount;
+        var managedBytesBeforeBuild = GC.GetTotalMemory(forceFullCollection: true);
+        var allocatedBytesBeforeBuild = GC.GetAllocatedBytesForCurrentThread();
+        var timer = Stopwatch.StartNew();
+        var measurement = BuildRuntimeMeasurement(plan);
+        timer.Stop();
+        preBuildDiagnostics = default;
+        diagnostics = null!;
+        var managedBytesAfterBuild = GC.GetTotalMemory(forceFullCollection: true);
+        using var process = Process.GetCurrentProcess();
+        process.Refresh();
+        output.WriteLine(JsonSerializer.Serialize(new
+        {
+            stage = measurement.Content.Capabilities.Has(ContentLoadStage.ScriptsCompiled)
+                ? "scripts-compiled"
+                : measurement.Content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
+            parsedFiles = measurement.Content.ParsedFileCount,
+            attemptedScripts = measurement.CompiledScriptCount,
+            scriptArtifacts = measurement.Content.Scripts.Count,
+            eventPlans = measurement.Content.EventPlans.Count,
+            tags = measurement.Content.Tags.Tags.Count,
+            initialValues = measurement.Content.InitialValues.Count,
+            diagnostics = preBuildReportedDiagnosticCount + measurement.ReportedDiagnosticCount,
+            errors = preBuildErrorCount + measurement.ErrorCount,
+            sourceScopeCount = measurement.SourceScopeCount,
+            apiScopeCount = measurement.ApiScopeCount,
+            buildElapsedMilliseconds = timer.Elapsed.TotalMilliseconds,
+            allocatedBytesDuringBuild = GC.GetAllocatedBytesForCurrentThread() - allocatedBytesBeforeBuild,
+            managedBytesBeforeBuild,
+            managedBytesAfterBuild,
+            managedBytesRetainedRuntime = managedBytesAfterBuild - managedBytesBeforeBuild,
+            workingSetBytes = process.WorkingSet64,
+            peakWorkingSetBytes = process.PeakWorkingSet64,
+            parseElapsedMilliseconds = measurement.Measurements.Parse.ElapsedMilliseconds,
+            parseAllocatedBytes = measurement.Measurements.Parse.AllocatedBytes,
+            composeElapsedMilliseconds = measurement.Measurements.Compose.ElapsedMilliseconds,
+            composeAllocatedBytes = measurement.Measurements.Compose.AllocatedBytes,
+            typeAndLinkElapsedMilliseconds = measurement.Measurements.TypeAndLink.ElapsedMilliseconds,
+            typeAndLinkAllocatedBytes = measurement.Measurements.TypeAndLink.AllocatedBytes,
+            scriptCompilationElapsedMilliseconds = measurement.Measurements.ScriptCompilation.ElapsedMilliseconds,
+            scriptCompilationAllocatedBytes = measurement.Measurements.ScriptCompilation.AllocatedBytes,
+        }));
+        GC.KeepAlive(measurement.Content);
+        return measurement.Content.Capabilities.Has(ContentLoadStage.ScriptsCompiled) &&
+            preBuildErrorCount + measurement.ErrorCount == 0 ? 0 : 1;
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static RuntimeMeasurement BuildRuntimeMeasurement(ModLoadPlan plan)
+    {
+        var snapshot = ContentSnapshotBuilder.Build(plan);
+        return new RuntimeMeasurement(
+            snapshot.Content,
+            snapshot.Measurements,
+            snapshot.CompiledScriptCount,
+            snapshot.ReportedDiagnosticCount,
+            snapshot.Diagnostics.Count(static item => item.Severity >= DiagnosticSeverity.Error),
+            snapshot.SourceScopeCount,
+            snapshot.ApiScopeCount);
+    }
+
+    private sealed record RuntimeMeasurement(
+        RuntimeContent Content,
+        ContentBuildMeasurements Measurements,
+        int CompiledScriptCount,
+        int ReportedDiagnosticCount,
+        int ErrorCount,
+        int SourceScopeCount,
+        int ApiScopeCount);
+
     private static int WriteContentAudit(
         ModLoadPlan plan,
         DiagnosticCollector diagnostics,
@@ -239,7 +332,10 @@ internal static class FixtureTool
         var managedBytesBeforeBuild = GC.GetTotalMemory(forceFullCollection: true);
         var allocatedBytesBeforeBuild = GC.GetAllocatedBytesForCurrentThread();
         var buildTimer = Stopwatch.StartNew();
-        var snapshot = ContentSnapshotBuilder.Build(plan, diagnostics);
+        var snapshot = ContentSnapshotBuilder.Build(
+            plan,
+            diagnostics,
+            options: new ContentSnapshotOptions { RetainAuditArtifact = true });
         buildTimer.Stop();
         var allocatedBytesDuringBuild = GC.GetAllocatedBytesForCurrentThread() - allocatedBytesBeforeBuild;
         var retained = diagnostics.Snapshot();
@@ -254,14 +350,19 @@ internal static class FixtureTool
         diagnostics = null!;
         var managedBytesAfterBuild = GC.GetTotalMemory(forceFullCollection: true);
         var content = snapshot.Content;
+        var auditArtifact = snapshot.AuditArtifact ??
+            throw new InvalidOperationException("Content audit did not retain its requested audit artifact.");
         var normalizationTimer = Stopwatch.StartNew();
         var normalized = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
             content,
+            auditArtifact,
             new RulesetCatalogNormalizationOptions
             {
                 NormalizeSourceName = source => Path.GetRelativePath(normalizationRoot, source).Replace('\\', '/'),
             });
         normalizationTimer.Stop();
+        auditArtifact.Dispose();
+        var managedBytesAfterAuditRelease = GC.GetTotalMemory(forceFullCollection: true);
         var destinationPath = Path.GetFullPath(destination);
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
         File.WriteAllBytes(destinationPath, normalized);
@@ -284,12 +385,24 @@ internal static class FixtureTool
             warnings,
             droppedDiagnostics,
             manifestBytes = normalized.Length,
+            parseElapsedMilliseconds = snapshot.Measurements.Parse.ElapsedMilliseconds,
+            parseAllocatedBytes = snapshot.Measurements.Parse.AllocatedBytes,
+            composeElapsedMilliseconds = snapshot.Measurements.Compose.ElapsedMilliseconds,
+            composeAllocatedBytes = snapshot.Measurements.Compose.AllocatedBytes,
+            typeAndLinkElapsedMilliseconds = snapshot.Measurements.TypeAndLink.ElapsedMilliseconds,
+            typeAndLinkAllocatedBytes = snapshot.Measurements.TypeAndLink.AllocatedBytes,
+            scriptCompilationElapsedMilliseconds = snapshot.Measurements.ScriptCompilation.ElapsedMilliseconds,
+            scriptCompilationAllocatedBytes = snapshot.Measurements.ScriptCompilation.AllocatedBytes,
+            sourceScopeCount = snapshot.SourceScopeCount,
+            apiScopeCount = snapshot.ApiScopeCount,
             buildElapsedMilliseconds = buildTimer.Elapsed.TotalMilliseconds,
             normalizationElapsedMilliseconds = normalizationTimer.Elapsed.TotalMilliseconds,
             allocatedBytesDuringBuild,
             managedBytesBeforeBuild,
             managedBytesAfterBuild,
             managedBytesRetainedByBuild = managedBytesAfterBuild - managedBytesBeforeBuild,
+            managedBytesAfterAuditRelease,
+            managedBytesRetainedRuntime = managedBytesAfterAuditRelease - managedBytesBeforeBuild,
             workingSetBytes = process.WorkingSet64,
             peakWorkingSetBytes = process.PeakWorkingSet64,
             destination = destinationPath,
@@ -310,6 +423,7 @@ internal static class FixtureTool
         error.WriteLine("  fixture dump-typed-rules <mods-root> <master-id> [output.json]");
         error.WriteLine("  fixture audit-typed-install <mods-root> <resource-root> <master-id> <output.json>");
         error.WriteLine("  fixture audit-content-install <installation-root> <master-id> <add-on-id> <output.json>");
+        error.WriteLine("  fixture measure-content-install <installation-root> <master-id> <add-on-id>");
         error.WriteLine("  fixture compare <expected.json> <actual.json>");
         return 2;
     }

@@ -1,0 +1,11 @@
+extended:
+  tagsFile: Ruleset/a-tags.rul
+items:
+  - type: ADDON_ONLY
+    tags:
+      ADDON_POWER: current
+    scripts:
+      selectItemSprite: add sprite_index RuleList.current; return sprite_index;
+  - type: SHARED_ITEM
+    customCompatibilityPayload:
+      nested: addon

@@ -51,6 +51,11 @@ committed after review.
 
 ## Slice 1 — Runtime content ownership and measurement
 
+Status: completed on `codex/runtime-content-ownership` (2026-09-01). The normal
+publication root is `RuntimeContent`; `ContentBuildSession` and disposable
+`ContentAuditArtifact` own load-only state. The staged-corpus results and unchanged
+semantic hash are recorded in `performance-baselines.md`.
+
 Suggested branch: `codex/runtime-content-ownership`.
 
 ### Work

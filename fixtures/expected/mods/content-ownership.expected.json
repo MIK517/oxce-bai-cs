@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "parsedFiles": 4,
+  "tagNames": [
+    "Tag.MASTER_POWER",
+    "Tag.ADDON_POWER"
+  ],
+  "initialValues": {
+    "MASTER_ONLY/Tag.MASTER_POWER": 0,
+    "ADDON_ONLY/Tag.ADDON_POWER": 1
+  },
+  "scriptResults": {
+    "MASTER_ONLY/selectItemSprite": 0,
+    "ADDON_ONLY/selectItemSprite": 1
+  },
+  "sharedItemDeferredProperties": 2
+}
