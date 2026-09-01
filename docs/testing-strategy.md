@@ -75,6 +75,10 @@ Set explicit limits for file size, decompression, recursion, collections, and sc
 Maintain representative performance budgets for mod loading, save loading, pathfinding,
 AI turns, and frame allocations. Measure consistent strategic and tactical snapshot
 latency and allocation before adopting segmented capture, visitors, or copy-on-write.
+`ScriptVmBenchmarks` keeps allocating adapters and prepared scalar, host, and event
+frames side by side. A repeated unit fixture enforces zero managed allocation for a
+prepared, successful, non-traced binding-free scalar program; BenchmarkDotNet records
+the broader host and event costs.
 
 ## Fixture layout
 
