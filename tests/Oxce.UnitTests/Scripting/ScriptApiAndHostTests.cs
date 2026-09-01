@@ -68,6 +68,25 @@ public sealed class ScriptApiAndHostTests
     }
 
     [Fact]
+    public void ConstantScopeReusesSharedCatalogIndexes()
+    {
+        var scope = Catalog.CreateScope(
+            [new ScriptConstantDeclaration("FILE_VALUE", 11, ["Probe"], Reference)]);
+
+        Assert.True(scope.IsScope);
+        Assert.Same(Catalog.Bindings, scope.Bindings);
+        Assert.Same(Catalog.Parsers, scope.Parsers);
+        Assert.Same(Catalog.Types, scope.Types);
+        Assert.Single(Catalog.Constants);
+        Assert.Equal(2, scope.Constants.Count);
+        var compiled = ScriptCompiler.Compile(
+            "set result FILE_VALUE; return result;",
+            new ScriptParserDefinition("Probe", ["result"], scope, ["Probe"]));
+        Assert.True(compiled.Succeeded);
+        Assert.Equal(11, ScriptVm.Execute(compiled.Program!).Outputs["result"]);
+    }
+
+    [Fact]
     public void WritableBindingArgumentsRequireRegisters()
     {
         var compiled = Compile("adjust 1 2; return result;");

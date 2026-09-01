@@ -114,6 +114,12 @@ reports attempted and retained scripts, event plans, tags, initial values, and t
 errors so complete private installations can be checked without copying or committing
 their assets.
 
+`measure-content-install` uses the same discovery and activation path but publishes
+only `RuntimeContent` across an isolated build boundary. Its retained-memory result
+therefore excludes diagnostics, parsed documents, composed operation history, audit
+normalization, and manifest buffers. Use the audit and measurement commands together;
+the former is the compatibility oracle and the latter is the runtime ownership probe.
+
 For owned full-install acceptance, `tools/stage-private-install.ps1` copies the
 complete data trees into an isolated destination below `artifacts/`, writes per-file
 sizes and SHA-256 hashes, and validates the published corpus. Its default destination

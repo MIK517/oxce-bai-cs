@@ -1,0 +1,5 @@
+id: ownership-addon
+name: Content ownership fixture add-on
+version: 1.0
+master: ownership-master
+isMaster: false

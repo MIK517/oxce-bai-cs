@@ -85,7 +85,9 @@ public sealed class Phase3ContentCorpusTests
                 master.Metadata.Id,
                 new ModEngineIdentity("Extended", "8.6.1.0"));
             Assert.True(plan.IsValid);
-            var snapshot = ContentSnapshotBuilder.Build(plan);
+            var snapshot = ContentSnapshotBuilder.Build(
+                plan,
+                options: new ContentSnapshotOptions { RetainAuditArtifact = true });
             var content = snapshot.Content;
             Assert.True(content.Catalog.Capabilities.Has(ContentLoadStage.Typed));
             var scriptErrors = snapshot.Diagnostics.Where(static item =>
@@ -103,6 +105,7 @@ public sealed class Phase3ContentCorpusTests
             }
             var manifest = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
                 content,
+                Assert.IsType<ContentAuditArtifact>(snapshot.AuditArtifact),
                 new RulesetCatalogNormalizationOptions
                 {
                     NormalizeSourceName = source => Path.GetRelativePath(modsRoot, source).Replace('\\', '/'),

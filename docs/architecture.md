@@ -85,6 +85,12 @@ unknown/deferred nodes and compiled scripts have explicit owners. The normal run
 path must release parse/audit-only state after those ownership transfers; tools may
 request an explicit audit artifact when operation history is required.
 
+The concrete build-session, runtime-publication, structured-node, and optional-audit
+lifetimes are defined in [content lifetime](content-lifetime.md). Application code must
+publish `RuntimeContent`; retaining `ContentBuildSession` or `ContentSnapshot` as the
+runtime root would also retain build-only state. See
+[ADR 0015](decisions/0015-runtime-content-publication.md).
+
 ## Data modeling
 
 - Use explicit stable string IDs for rules and resources.

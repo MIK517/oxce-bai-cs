@@ -67,11 +67,21 @@ public abstract class TypedRuleFamilyLoader<TBuilder, TRule>
                 Freeze(builder),
                 unresolvedRule.CreationSource,
                 unresolvedRule.LastUpdateSource,
-                Array.AsReadOnly(deferredProperties.ToArray())));
+                new RuleCompatibilityData(deferredProperties)));
         }
 
         return new TypedRuleSection<TRule>(Section, rules);
     }
+}
+
+public sealed class RuleCompatibilityData
+{
+    internal RuleCompatibilityData(IEnumerable<DeferredRuleProperty> deferredProperties)
+    {
+        DeferredProperties = Array.AsReadOnly(deferredProperties.ToArray());
+    }
+
+    public IReadOnlyList<DeferredRuleProperty> DeferredProperties { get; }
 }
 
 public sealed record TypedRule<TRule>(
@@ -79,8 +89,11 @@ public sealed record TypedRule<TRule>(
     TRule Value,
     RuleOperationSource CreationSource,
     RuleOperationSource LastUpdateSource,
-    IReadOnlyList<DeferredRuleProperty> DeferredProperties)
-    where TRule : notnull;
+    RuleCompatibilityData CompatibilityData)
+    where TRule : notnull
+{
+    public IReadOnlyList<DeferredRuleProperty> DeferredProperties => CompatibilityData.DeferredProperties;
+}
 
 public sealed class TypedRuleSection<TRule>
     where TRule : notnull

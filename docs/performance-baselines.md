@@ -17,6 +17,7 @@ not required.
 | Phase 3/4 content | Compose, type, dependency-validate, compile defaults/tags/events/rule scripts/stat bonuses, and normalize the bundled script-content fixture through the aggregate snapshot. |
 | Indexed rendering | Opaque 320x200 blit, transparent 64x80 sprite blit, and 640x400 indexed-to-RGBA conversion. |
 | Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices. |
+| Content lifetime | Compare normal runtime publication with explicit audit-artifact retention for the public script-content fixture. |
 
 Setup constructs files, layers, YAML, surfaces, palettes, clips, and output buffers
 outside the measured operations. Batched benchmarks declare their operations-per-invoke
@@ -209,6 +210,44 @@ size. The content-build median alone exceeds the 5 s warm-startup target before 
 resource resolution exists, and the roughly 2.45 GiB transient allocation confirms
 that runtime ownership and build-session separation should remain the first
 optimization slice.
+
+### Runtime-content ownership result
+
+Slice 1 was measured on 2026-09-01 with the same staged corpus, host, x64 environment,
+and .NET SDK 10.0.302. Each of three samples used a semantic-audit process followed by
+a separate runtime-only measurement process. The two warm samples produced these
+medians:
+
+| Measurement | Pre-slice baseline | Slice 1 |
+|---|---:|---:|
+| Audit process elapsed | 9.135 s | 10.540 s |
+| Audit content-build elapsed | 7.617 s | 8.429 s |
+| Runtime build allocation | 2.452 GiB conservative audit measurement | 1.861 GiB |
+| Retained managed bytes | 299.9 MiB conservative audit delta | 156.1 MiB runtime-only |
+| Source-file/API scopes | one full catalog per source | 510 file views / 50 shared scopes |
+
+The allocation change is approximately a 24% reduction. The retained figures have
+different boundaries: the earlier result included diagnostics and audit state, while
+the new runtime-only command deliberately drops those objects before its forced-GC
+measurement. The new number is the repeatable publication baseline, not a claim that
+all of the apparent 48% difference came from runtime content.
+
+No wall-clock improvement is established. This capture was about 15% slower at the
+process boundary and 11% slower in the audited build than the earlier run, despite the
+allocation reduction. The runs occurred on different days without a pinned power or
+thermal state, so the result may combine environmental variance with a regression; it
+must not be presented as a speedup. Stage measurements on the runtime-only warm runs
+were approximately 2.335 s parse, 0.134 s compose, 2.312 s type/link, and 3.371 s
+script compilation. Those boundaries identify parsing and script compilation as the
+next profiling targets.
+
+All three audits retained the established 512 files, 3,875 attempted scripts, 3,536
+artifacts, 31 event plans, 580 tags, 13,651 initial values, 8,818 warnings, and zero
+errors. Their 9,591,410-byte manifests were byte-identical with SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
+Audit-mode retained memory remained approximately 300 MiB, demonstrating that the
+normal runtime reduction comes from releasing ownership rather than weakening the
+audit oracle.
 
 ## Dependency review
 
