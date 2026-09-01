@@ -93,6 +93,10 @@ Suggested branch: `codex/runtime-content-ownership`.
 
 Suggested branch: `codex/compact-script-runtime`.
 
+Status: complete on the planned branch. Packed programs, dense binding slots, source
+side tables, reusable scalar/text/reference frames, nested providers, transactional
+span/event execution, fixture coverage, and VM benchmarks satisfy the exit gate.
+
 ### Work
 
 - Add VM benchmarks before changing representation.

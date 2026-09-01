@@ -18,6 +18,7 @@ not required.
 | Indexed rendering | Opaque 320x200 blit, transparent 64x80 sprite blit, and 640x400 indexed-to-RGBA conversion. |
 | Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices. |
 | Content lifetime | Compare normal runtime publication with explicit audit-artifact retention for the public script-content fixture. |
+| Script VM | Compare the allocating result adapter with prepared scalar, host-call, and three-program event frames. |
 
 Setup constructs files, layers, YAML, surfaces, palettes, clips, and output buffers
 outside the measured operations. Batched benchmarks declare their operations-per-invoke
@@ -247,6 +248,36 @@ errors. Their 9,591,410-byte manifests were byte-identical with SHA-256
 Audit-mode retained memory remained approximately 300 MiB, demonstrating that the
 normal runtime reduction comes from releasing ownership rather than weakening the
 audit oracle.
+
+### Compact script-runtime result
+
+Slice 2 added `ScriptVmBenchmarks` before changing the runtime representation. On
+2026-09-01, the pre-change Dry smoke job reported 1,336 B for scalar execution, 1,504 B
+for scalar host-call execution, and 5,520 B for a three-program event chain through the
+only available result API.
+
+After introducing packed programs and prepared execution frames, the same six-workload
+Dry job on the Ryzen 9 7940HS, .NET SDK 10.0.302, and .NET runtime 10.0.10 reported:
+
+| Workload | Allocated | Dry elapsed |
+|---|---:|---:|
+| Result adapter, scalar | 2,168 B | 1.243 ms |
+| Result adapter, host call | 2,256 B | 1.225 ms |
+| Result adapter, three-program event | 7,824 B | 2.454 ms |
+| Prepared scalar frame | 0 B | 236.7 us |
+| Prepared host frame | 0 B | 245.2 us |
+| Prepared three-program event frame | 0 B | 324.7 us |
+
+The allocating adapter now includes construction of a bounded frame and intentionally
+remains a convenience API; gameplay hot paths must use the positional frame API. The
+zero-allocation result is also asserted over repeated scalar execution in the unit
+suite. Dry timings include cold-launch and single-iteration effects, so they establish
+workload operation and allocation boundaries but are not statistical speedup evidence.
+
+The staged Rosigma audit still compiled 512 files and 3,875 attempted scripts into
+3,536 artifacts with 8,818 warnings and zero errors. Its normalized 9,591,410-byte
+manifest retained SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
 
 ## Dependency review
 

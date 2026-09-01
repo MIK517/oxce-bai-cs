@@ -125,6 +125,15 @@ read-only views or snapshots and submit commands through validated gameplay APIs
 do not receive mutable runtime entities, persistence DTOs, or YAML nodes. In-process
 assemblies are not a security boundary and must be treated as fully trusted code.
 
+## Script runtime ownership
+
+Compiled scripts publish packed immutable instruction, operand, binding-slot, and
+source-map tables. Runtime callers own reusable bounded execution frames; those frames
+carry scalar, text, and reference values through nested host calls without making
+gameplay objects part of the compiler model. The allocating dictionary/result API is a
+tooling adapter, not the hot gameplay ABI. See
+[ADR 0016](decisions/0016-packed-script-runtime.md).
+
 ## Rendering
 
 Indexed 8-bit surfaces and palettes are the canonical compatibility layer. The SDL3

@@ -176,6 +176,104 @@ public sealed record ScriptEventExecutionResult(
 
 public static class ScriptEventRunner
 {
+    public static ScriptEventExecutionOutcome Execute(
+        ScriptEventPlan plan,
+        ScriptProgram current,
+        ReadOnlySpan<ScriptRuntimeValue> initialOutputs,
+        Span<ScriptRuntimeValue> outputs,
+        ScriptExecutionFrame frame,
+        ScriptExecutionOptions? executionOptions = null,
+        ScriptHostBindings? hostBindings = null,
+        int maximumEventExecutions = ScriptLimits.DefaultMaximumEventExecutions)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(frame);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumEventExecutions);
+        executionOptions ??= ScriptExecutionOptions.Default;
+        executionOptions.Validate();
+        var count = plan.Count + 1;
+        if (count > maximumEventExecutions)
+        {
+            return new ScriptEventExecutionOutcome(
+                ScriptExecutionStatus.ExecutionLimit,
+                0,
+                0,
+                ScriptDiagnosticCodes.EventLimitExceeded,
+                $"Script event execution exceeds the {maximumEventExecutions}-event limit.");
+        }
+        if (frame.CallDepth >= executionOptions.MaximumCallDepth || frame.CallDepth >= frame.MaximumCallDepth)
+        {
+            return new ScriptEventExecutionOutcome(
+                ScriptExecutionStatus.ExecutionLimit,
+                0,
+                0,
+                ScriptDiagnosticCodes.CallDepthExceeded,
+                $"Script call depth exceeds the {executionOptions.MaximumCallDepth}-frame limit.");
+        }
+        if (outputs.Length < current.Outputs.Count ||
+            initialOutputs.Length != 0 && initialOutputs.Length != current.Outputs.Count)
+        {
+            throw new ArgumentException("Event input and output spans must match the current program outputs.");
+        }
+        var values = frame.GetEventScratch(current.Outputs.Count);
+        initialOutputs.CopyTo(values);
+        var executions = 0;
+        var steps = 0;
+        for (var index = 0; index < plan.Before.Count; index++)
+        {
+            var outcome = ScriptVm.Execute(
+                plan.Before[index].Program,
+                values,
+                values,
+                frame,
+                executionOptions,
+                hostBindings);
+            steps += outcome.Steps;
+            executions++;
+            if (!outcome.Succeeded)
+            {
+                values.Clear();
+                return new ScriptEventExecutionOutcome(
+                    outcome.Status, executions, steps, outcome.DiagnosticCode, outcome.FailureMessage);
+            }
+        }
+        var currentOutcome = ScriptVm.Execute(current, values, values, frame, executionOptions, hostBindings);
+        steps += currentOutcome.Steps;
+        executions++;
+        if (!currentOutcome.Succeeded)
+        {
+            values.Clear();
+            return new ScriptEventExecutionOutcome(
+                currentOutcome.Status,
+                executions,
+                steps,
+                currentOutcome.DiagnosticCode,
+                currentOutcome.FailureMessage);
+        }
+        for (var index = 0; index < plan.After.Count; index++)
+        {
+            var outcome = ScriptVm.Execute(
+                plan.After[index].Program,
+                values,
+                values,
+                frame,
+                executionOptions,
+                hostBindings);
+            steps += outcome.Steps;
+            executions++;
+            if (!outcome.Succeeded)
+            {
+                values.Clear();
+                return new ScriptEventExecutionOutcome(
+                    outcome.Status, executions, steps, outcome.DiagnosticCode, outcome.FailureMessage);
+            }
+        }
+        values.CopyTo(outputs);
+        values.Clear();
+        return new ScriptEventExecutionOutcome(ScriptExecutionStatus.Completed, executions, steps);
+    }
+
     public static ScriptEventExecutionResult Execute(
         ScriptEventPlan plan,
         ScriptProgram current,
@@ -228,4 +326,14 @@ public static class ScriptEventRunner
             executions.AsReadOnly(),
             Array.Empty<DiagnosticEvent>());
     }
+}
+
+public readonly record struct ScriptEventExecutionOutcome(
+    ScriptExecutionStatus Status,
+    int Executions,
+    int Steps,
+    string? DiagnosticCode = null,
+    string? FailureMessage = null)
+{
+    public bool Succeeded => Status == ScriptExecutionStatus.Completed;
 }

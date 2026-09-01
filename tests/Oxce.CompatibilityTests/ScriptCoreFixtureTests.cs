@@ -100,6 +100,18 @@ public sealed class ScriptCoreFixtureTests
                     : ScriptExecutionStatus.Completed;
                 Assert.Equal(expectedStatus, executed.Status);
                 Assert.Equal(item.GetProperty("result").GetInt32(), executed.Outputs["result"]);
+
+                var frame = new ScriptExecutionFrame();
+                frame.Prepare(compiled.Program!);
+                var directInitial = new[] { item.GetProperty("seed").GetInt32() };
+                var directOutput = new[] { int.MaxValue };
+                var direct = ScriptVm.ExecuteScalar(compiled.Program!, directInitial, directOutput, frame);
+                Assert.Equal(expectedStatus, direct.Status);
+                Assert.Equal(
+                    expectedStatus == ScriptExecutionStatus.Completed
+                        ? item.GetProperty("result").GetInt32()
+                        : int.MaxValue,
+                    directOutput[0]);
             }
         }
     }
