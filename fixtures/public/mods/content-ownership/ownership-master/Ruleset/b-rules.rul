@@ -1,0 +1,11 @@
+extended:
+  tagsFile: Ruleset/a-tags.rul
+items:
+  - type: MASTER_ONLY
+    tags:
+      MASTER_POWER: current
+    scripts:
+      selectItemSprite: add sprite_index RuleList.current; return sprite_index;
+  - type: SHARED_ITEM
+    customCompatibilityPayload:
+      nested: master

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "content-ownership",
+  "description": "Pins multi-mod file-scoped tags, RuleList.current, duplicate tag declarations, repeated rule updates, and deferred compatibility data.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "probe": "behavior recorded from Mod.cpp and ScriptGlobal load lifecycle"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/public/mods/content-ownership/ownership-addon/metadata.yml",
+      "size": 113,
+      "sha256": "37d34f57c5653d50b0256ede95a73cfb784bace34d83de79b9d99f988bc556ea"
+    },
+    {
+      "path": "fixtures/public/mods/content-ownership/ownership-addon/Ruleset/a-tags.rul",
+      "size": 89,
+      "sha256": "8b8a2f38a60562f3e56bf4b1df8386007e4528328e4306b92bccd55d0fee3ad6"
+    },
+    {
+      "path": "fixtures/public/mods/content-ownership/ownership-addon/Ruleset/b-rules.rul",
+      "size": 273,
+      "sha256": "ee7f5e55ad545c36d99e91ee7cf41b3762fc2b85e9c7c91bba3c6ebe124c14f9"
+    },
+    {
+      "path": "fixtures/public/mods/content-ownership/ownership-master/metadata.yml",
+      "size": 88,
+      "sha256": "3b1e8c91170214218c5f0623df89dd660d0a015fc59dfa639bb6099651051cdd"
+    },
+    {
+      "path": "fixtures/public/mods/content-ownership/ownership-master/Ruleset/a-tags.rul",
+      "size": 61,
+      "sha256": "697164c868415ad6b36c28642a491c96aeb6b2f24099aca068e1ee7c6e7cc271"
+    },
+    {
+      "path": "fixtures/public/mods/content-ownership/ownership-master/Ruleset/b-rules.rul",
+      "size": 276,
+      "sha256": "954630c4aa7a82c79ff30c8c55530d88c2c0fd4f9b9d37ad200113fa441cbb22"
+    }
+  ],
+  "normalization": ["content-ownership-v1"],
+  "expected": "fixtures/expected/mods/content-ownership.expected.json"
+}

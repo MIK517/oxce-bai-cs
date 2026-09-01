@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.CampaignStart;
@@ -51,7 +52,7 @@ public sealed class Phase3ContentCatalog
         TypedRuleLoadOptions? typedOptions = null) =>
         Build(plan, diagnostics, compositionOptions, typedOptions).Catalog;
 
-    public static Phase3ContentBuild Build(
+    public static ContentBuildSession Build(
         ModLoadPlan plan,
         IDiagnosticSink? diagnostics = null,
         RulesetCompositionOptions? compositionOptions = null,
@@ -64,8 +65,24 @@ public sealed class Phase3ContentCatalog
         var collector = new DiagnosticCollector();
         var sink = new ForwardingDiagnosticSink(diagnostics, collector);
 
+        var parseStart = GC.GetAllocatedBytesForCurrentThread();
+        var timer = Stopwatch.StartNew();
         var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
+        timer.Stop();
+        var parse = new ContentBuildStageMeasurement(
+            timer.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - parseStart);
+
+        var composeStart = GC.GetAllocatedBytesForCurrentThread();
+        timer.Restart();
         var composed = RulesetComposer.Compose(documents, sink, compositionOptions);
+        timer.Stop();
+        var compose = new ContentBuildStageMeasurement(
+            timer.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - composeStart);
+
+        var typeStart = GC.GetAllocatedBytesForCurrentThread();
+        timer.Restart();
         var presentation = PresentationRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
         var campaign = CampaignStartRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
         var items = ItemRuleCatalog.Load(composed, sink, typedOptions);
@@ -100,7 +117,16 @@ public sealed class Phase3ContentCatalog
 
         var catalog = new Phase3ContentCatalog(
             presentation, campaign, items, equipment, personnel, terrain, missions, validation, capabilities);
-        return new Phase3ContentBuild(catalog, composed, documents, documents.ParsedFileCount);
+        timer.Stop();
+        var typeAndLink = new ContentBuildStageMeasurement(
+            timer.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - typeStart);
+        return new ContentBuildSession(
+            catalog,
+            composed,
+            documents,
+            documents.ParsedFileCount,
+            new ContentBuildMeasurements(parse, compose, typeAndLink, ContentBuildStageMeasurement.Empty));
     }
 
     private sealed class ForwardingDiagnosticSink(IDiagnosticSink destination, IDiagnosticSink collector)
@@ -114,11 +140,28 @@ public sealed class Phase3ContentCatalog
     }
 }
 
-public sealed record Phase3ContentBuild(
-    Phase3ContentCatalog Catalog,
-    UnresolvedRuleCatalog ComposedRules,
-    RulesetDocumentCatalog Documents,
-    int ParsedFileCount);
+public sealed class ContentBuildSession
+{
+    internal ContentBuildSession(
+        Phase3ContentCatalog catalog,
+        UnresolvedRuleCatalog composedRules,
+        RulesetDocumentCatalog documents,
+        int parsedFileCount,
+        ContentBuildMeasurements measurements)
+    {
+        Catalog = catalog;
+        ComposedRules = composedRules;
+        Documents = documents;
+        ParsedFileCount = parsedFileCount;
+        Measurements = measurements;
+    }
+
+    public Phase3ContentCatalog Catalog { get; }
+    public UnresolvedRuleCatalog ComposedRules { get; }
+    public RulesetDocumentCatalog Documents { get; }
+    public int ParsedFileCount { get; }
+    public ContentBuildMeasurements Measurements { get; }
+}
 
 public sealed record Phase3ContentValidation(
     CampaignStartValidation CampaignStart,

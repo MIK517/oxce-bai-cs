@@ -220,11 +220,54 @@ public sealed class ScriptApiCatalog
             typeArray.ToDictionary(static type => type.Name, StringComparer.Ordinal));
     }
 
+    private ScriptApiCatalog(
+        ScriptApiCatalog sharedCatalog,
+        IEnumerable<ScriptConstantDeclaration> scopedConstants)
+    {
+        ArgumentNullException.ThrowIfNull(sharedCatalog);
+        ArgumentNullException.ThrowIfNull(scopedConstants);
+        var local = scopedConstants.Select(static constant => constant with
+        {
+            ParserGroups = Array.AsReadOnly(constant.ParserGroups.ToArray()),
+        }).ToArray();
+        foreach (var constant in local)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(constant.Name);
+            if (constant.ParserGroups.Count == 0 || constant.ParserGroups.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new ArgumentException("Constants require at least one parser group.", nameof(scopedConstants));
+            }
+            constant.Reference.Validate();
+        }
+        var names = sharedCatalog.Constants.Select(static constant => constant.Name)
+            .ToHashSet(StringComparer.Ordinal);
+        if (local.Any(constant => !names.Add(constant.Name)))
+        {
+            throw new ArgumentException("Scoped constant names must be unique across the shared catalog.",
+                nameof(scopedConstants));
+        }
+
+        Bindings = sharedCatalog.Bindings;
+        Constants = Array.AsReadOnly(sharedCatalog.Constants.Concat(local).ToArray());
+        Parsers = sharedCatalog.Parsers;
+        Types = sharedCatalog.Types;
+        _bindingsById = sharedCatalog._bindingsById;
+        _bindingsByName = sharedCatalog._bindingsByName;
+        _parsersByName = sharedCatalog._parsersByName;
+        _typesById = sharedCatalog._typesById;
+        _typesByName = sharedCatalog._typesByName;
+        IsScope = true;
+    }
+
     public static ScriptApiCatalog Empty { get; } = new([]);
     public IReadOnlyList<ScriptBindingDeclaration> Bindings { get; }
     public IReadOnlyList<ScriptConstantDeclaration> Constants { get; }
     public IReadOnlyList<ScriptParserDeclaration> Parsers { get; }
     public IReadOnlyList<ScriptTypeDefinition> Types { get; }
+    public bool IsScope { get; }
+
+    public ScriptApiCatalog CreateScope(IEnumerable<ScriptConstantDeclaration> constants) =>
+        new(this, constants);
 
     public IReadOnlyList<ScriptBindingDeclaration> GetBindings(string name, IReadOnlySet<string> parserGroups) =>
         _bindingsByName.TryGetValue(name, out var declarations)

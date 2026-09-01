@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
@@ -18,6 +19,7 @@ public sealed record ContentSnapshotOptions
 {
     public int MaximumScripts { get; init; } = 100_000;
     public int MaximumDiagnostics { get; init; } = DiagnosticCollector.DefaultMaximumDiagnostics;
+    public bool RetainAuditArtifact { get; init; }
 
     public void Validate()
     {
@@ -55,42 +57,97 @@ public sealed record ContentInitialScriptValue(
     string SourcePath,
     int SourceLine);
 
-public sealed class ContentSnapshot
+public sealed class RuntimeContent
 {
-    internal ContentSnapshot(
-        Phase3ContentBuild content,
+    internal RuntimeContent(
+        Phase3ContentCatalog catalog,
         ContentLoadCapabilities capabilities,
+        int parsedFileCount,
         ScriptTagCatalog tags,
         IEnumerable<ContentScriptArtifact> scripts,
         IEnumerable<ContentScriptEventPlan> eventPlans,
-        IEnumerable<ContentInitialScriptValue> initialValues,
-        IEnumerable<DiagnosticEvent> diagnostics,
-        int reportedDiagnosticCount,
-        int droppedDiagnosticCount,
-        int compiledScriptCount)
+        IEnumerable<ContentInitialScriptValue> initialValues)
     {
-        Content = content;
+        Catalog = catalog;
         Capabilities = capabilities;
+        ParsedFileCount = parsedFileCount;
         Tags = tags;
         Scripts = Array.AsReadOnly(scripts.ToArray());
         EventPlans = Array.AsReadOnly(eventPlans.ToArray());
         InitialValues = Array.AsReadOnly(initialValues.ToArray());
-        Diagnostics = Array.AsReadOnly(diagnostics.ToArray());
-        ReportedDiagnosticCount = reportedDiagnosticCount;
-        DroppedDiagnosticCount = droppedDiagnosticCount;
-        CompiledScriptCount = compiledScriptCount;
     }
 
-    public Phase3ContentBuild Content { get; }
+    public Phase3ContentCatalog Catalog { get; }
     public ContentLoadCapabilities Capabilities { get; }
+    public int ParsedFileCount { get; }
     public ScriptTagCatalog Tags { get; }
     public IReadOnlyList<ContentScriptArtifact> Scripts { get; }
     public IReadOnlyList<ContentScriptEventPlan> EventPlans { get; }
     public IReadOnlyList<ContentInitialScriptValue> InitialValues { get; }
+}
+
+public sealed class ContentAuditArtifact : IDisposable
+{
+    private RulesetDocumentCatalog? _documents;
+    private UnresolvedRuleCatalog? _composedRules;
+
+    internal ContentAuditArtifact(ContentBuildSession session)
+    {
+        _documents = session.Documents;
+        _composedRules = session.ComposedRules;
+    }
+
+    public RulesetDocumentCatalog Documents => _documents ??
+        throw new ObjectDisposedException(nameof(ContentAuditArtifact));
+    public UnresolvedRuleCatalog ComposedRules => _composedRules ??
+        throw new ObjectDisposedException(nameof(ContentAuditArtifact));
+    public bool IsDisposed => _documents is null;
+
+    public void Dispose()
+    {
+        _documents = null;
+        _composedRules = null;
+    }
+}
+
+public sealed class ContentSnapshot
+{
+    internal ContentSnapshot(
+        RuntimeContent content,
+        IEnumerable<DiagnosticEvent> diagnostics,
+        int reportedDiagnosticCount,
+        int droppedDiagnosticCount,
+        int compiledScriptCount,
+        ContentBuildMeasurements measurements,
+        ContentAuditArtifact? auditArtifact,
+        int sourceScopeCount,
+        int apiScopeCount)
+    {
+        Content = content;
+        Diagnostics = Array.AsReadOnly(diagnostics.ToArray());
+        ReportedDiagnosticCount = reportedDiagnosticCount;
+        DroppedDiagnosticCount = droppedDiagnosticCount;
+        CompiledScriptCount = compiledScriptCount;
+        Measurements = measurements;
+        AuditArtifact = auditArtifact;
+        SourceScopeCount = sourceScopeCount;
+        ApiScopeCount = apiScopeCount;
+    }
+
+    public RuntimeContent Content { get; }
+    public ContentLoadCapabilities Capabilities => Content.Capabilities;
+    public ScriptTagCatalog Tags => Content.Tags;
+    public IReadOnlyList<ContentScriptArtifact> Scripts => Content.Scripts;
+    public IReadOnlyList<ContentScriptEventPlan> EventPlans => Content.EventPlans;
+    public IReadOnlyList<ContentInitialScriptValue> InitialValues => Content.InitialValues;
     public IReadOnlyList<DiagnosticEvent> Diagnostics { get; }
     public int ReportedDiagnosticCount { get; }
     public int DroppedDiagnosticCount { get; }
     public int CompiledScriptCount { get; }
+    public ContentBuildMeasurements Measurements { get; }
+    public ContentAuditArtifact? AuditArtifact { get; }
+    public int SourceScopeCount { get; }
+    public int ApiScopeCount { get; }
 }
 
 public static class ContentSnapshotBuilder
@@ -109,27 +166,40 @@ public static class ContentSnapshotBuilder
         IDiagnosticSink sink = diagnostics is null
             ? collector
             : new ForwardingDiagnosticSink(diagnostics, collector);
-        var content = Phase3ContentCatalog.Build(plan, sink, compositionOptions, typedOptions);
-        var compiler = new ContentScriptCompiler(plan, content, sink, options);
+        var session = Phase3ContentCatalog.Build(plan, sink, compositionOptions, typedOptions);
+        var compiler = new ContentScriptCompiler(plan, session, sink, options);
+        var scriptAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var scriptTimer = Stopwatch.StartNew();
         compiler.Compile();
+        scriptTimer.Stop();
+        var scriptMeasurement = new ContentBuildStageMeasurement(
+            scriptTimer.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - scriptAllocationStart);
 
-        var capabilities = content.Catalog.Capabilities;
+        var capabilities = session.Catalog.Capabilities;
         if (capabilities.Has(ContentLoadStage.Linked) &&
             !collector.HasSeverityAtLeast(DiagnosticSeverity.Error))
         {
             capabilities = capabilities.AdvanceTo(ContentLoadStage.ScriptsCompiled);
         }
-        return new ContentSnapshot(
-            content,
+        var runtime = new RuntimeContent(
+            session.Catalog,
             capabilities,
+            session.ParsedFileCount,
             compiler.Tags,
             compiler.Scripts,
             compiler.EventPlans,
-            compiler.InitialValues,
+            compiler.InitialValues);
+        return new ContentSnapshot(
+            runtime,
             collector.Snapshot(),
             collector.ReportedCount,
             collector.DroppedCount,
-            compiler.CompiledScriptCount);
+            compiler.CompiledScriptCount,
+            session.Measurements.WithScriptCompilation(scriptMeasurement),
+            options.RetainAuditArtifact ? new ContentAuditArtifact(session) : null,
+            compiler.SourceScopeCount,
+            compiler.ApiScopeCount);
     }
 
     private sealed class ForwardingDiagnosticSink(IDiagnosticSink destination, IDiagnosticSink collector)
@@ -224,13 +294,14 @@ internal sealed class ContentScriptCompiler
         });
 
     private readonly ModLoadPlan _plan;
-    private readonly Phase3ContentBuild _content;
+    private readonly ContentBuildSession _content;
     private readonly IDiagnosticSink _diagnostics;
     private readonly ContentSnapshotOptions _options;
     private readonly ScriptApiCatalog _baseApi = ReferenceScriptApiCatalog.Instance;
     private readonly ScriptTagCatalogBuilder _tagBuilder = new();
     private readonly Dictionary<string, ScriptTagDefinition> _tagsByName = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ScriptApiCatalog> _apiBySource = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(int TagCount, string ModId), ScriptApiCatalog> _apiScopes = [];
     private readonly Dictionary<string, List<ScriptEventMutation>> _eventMutations = new(StringComparer.Ordinal);
     private readonly Dictionary<(string Section, string Id, string Parser), ContentScriptArtifact> _ruleScripts = [];
     private readonly List<ContentScriptArtifact> _otherScripts = [];
@@ -240,7 +311,7 @@ internal sealed class ContentScriptCompiler
 
     public ContentScriptCompiler(
         ModLoadPlan plan,
-        Phase3ContentBuild content,
+        ContentBuildSession content,
         IDiagnosticSink diagnostics,
         ContentSnapshotOptions options)
     {
@@ -262,6 +333,8 @@ internal sealed class ContentScriptCompiler
     public IReadOnlyList<ContentScriptEventPlan> EventPlans => _eventPlans;
     public IReadOnlyList<ContentInitialScriptValue> InitialValues => _initialValues;
     public int CompiledScriptCount => _compiledScriptCount;
+    public int SourceScopeCount => _apiBySource.Count;
+    public int ApiScopeCount => _apiScopes.Count;
 
     public void Compile()
     {
@@ -408,9 +481,14 @@ internal sealed class ContentScriptCompiler
 
     private ScriptApiCatalog CreateApi(ScriptTagCatalog tags, string currentModId)
     {
+        var key = (tags.Tags.Count, currentModId);
+        if (_apiScopes.TryGetValue(key, out var existing))
+        {
+            return existing;
+        }
         var parserNames = _baseApi.Parsers.Select(static parser => parser.Name).ToArray();
-        var constants = new List<ScriptConstantDeclaration>(_baseApi.Constants);
-        var names = constants.Select(static constant => constant.Name).ToHashSet(StringComparer.Ordinal);
+        var constants = new List<ScriptConstantDeclaration>();
+        var names = _baseApi.Constants.Select(static constant => constant.Name).ToHashSet(StringComparer.Ordinal);
         foreach (var tag in tags.Tags)
         {
             if (!tags.TryGetType(tag.OwnerType, out var owner) ||
@@ -443,7 +521,9 @@ internal sealed class ContentScriptCompiler
             "RuleList.master", 0, parserNames, GeneratedReference));
         constants.Add(new ScriptConstantDeclaration(
             "RuleList.current", currentIndex, parserNames, GeneratedReference));
-        return new ScriptApiCatalog(_baseApi.Bindings, constants, _baseApi.Parsers, _baseApi.Types);
+        var scope = _baseApi.CreateScope(constants);
+        _apiScopes.Add(key, scope);
+        return scope;
     }
 
     private void CompileGlobalScripts(YamlNode node, ScriptApiCatalog api, string sourcePath)

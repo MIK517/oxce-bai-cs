@@ -1,0 +1,4 @@
+extended:
+  tags:
+    RuleItem:
+      MASTER_POWER: RuleList
