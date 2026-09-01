@@ -14,7 +14,7 @@ public class Phase3ContentBenchmarks
     private string _fixtureRoot = null!;
     private ModLoadPlan _plan = null!;
     private RulesetDocumentCatalog _documents = null!;
-    private Phase3ContentBuild _build = null!;
+    private ContentBuildSession _build = null!;
     private RulesetCatalogNormalizationOptions _normalization = null!;
 
     [GlobalSetup]
@@ -52,12 +52,18 @@ public class Phase3ContentBenchmarks
         RulesetComposer.Compose(_documents);
 
     [Benchmark]
-    public Phase3ContentBuild LoadAndValidate() =>
+    public ContentBuildSession LoadAndValidate() =>
         Phase3ContentCatalog.Build(_plan);
 
     [Benchmark]
     public ContentSnapshot LoadValidateAndCompileScripts() =>
         ContentSnapshotBuilder.Build(_plan);
+
+    [Benchmark]
+    public ContentSnapshot LoadValidateCompileScriptsAndRetainAudit() =>
+        ContentSnapshotBuilder.Build(
+            _plan,
+            options: new ContentSnapshotOptions { RetainAuditArtifact = true });
 
     [Benchmark]
     public byte[] NormalizePrebuiltManifest() =>

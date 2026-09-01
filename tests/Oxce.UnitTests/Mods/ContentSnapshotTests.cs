@@ -1,9 +1,11 @@
+using System.Runtime.CompilerServices;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.Scripting.Runtime;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -19,7 +21,8 @@ public sealed class ContentSnapshotTests
 
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), Diagnostics(snapshot));
         Assert.Equal(7, snapshot.Scripts.Count(script => script.Scope == ContentScriptScope.Default));
-        Assert.Equal(snapshot.Content.ParsedFileCount, snapshot.Content.Documents.ParsedFileCount);
+        Assert.Equal(1, snapshot.Content.ParsedFileCount);
+        Assert.Null(snapshot.AuditArtifact);
     }
 
     [Fact]
@@ -108,9 +111,103 @@ public sealed class ContentSnapshotTests
             diagnostic.Message.Contains("Unknown file name", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void MultiModScopesPreserveFileVisibilityAndAuditOwnershipIsExplicit()
+    {
+        var root = FindRepositoryRoot();
+        var fixture = Path.Combine(root, "fixtures", "public", "mods", "content-ownership");
+        var discovery = ModDiscovery.ScanDirectory(fixture);
+        var plan = ModLoadPlanner.Create(
+            ModCatalog.Create(discovery.Mods),
+            [new ModActivation("ownership-master", true), new ModActivation("ownership-addon", true)],
+            "ownership-master",
+            new ModEngineIdentity("Extended", "8.6.1.0"));
+
+        var runtimeOnly = ContentSnapshotBuilder.Build(plan);
+
+        Assert.Null(runtimeOnly.AuditArtifact);
+        Assert.Equal(4, runtimeOnly.Content.ParsedFileCount);
+        Assert.Equal(4, runtimeOnly.SourceScopeCount);
+        Assert.Equal(2, runtimeOnly.ApiScopeCount);
+        Assert.True(runtimeOnly.Measurements.Parse.AllocatedBytes > 0);
+        Assert.True(runtimeOnly.Measurements.ScriptCompilation.AllocatedBytes > 0);
+        Assert.Contains(runtimeOnly.InitialValues,
+            value => value.OwnerId == "MASTER_ONLY" && value.TagName == "Tag.MASTER_POWER" && value.Value == 0);
+        Assert.Contains(runtimeOnly.InitialValues,
+            value => value.OwnerId == "ADDON_ONLY" && value.TagName == "Tag.ADDON_POWER" && value.Value == 1);
+        Assert.Equal(0, ExecuteSpriteScript(runtimeOnly, "MASTER_ONLY"));
+        Assert.Equal(1, ExecuteSpriteScript(runtimeOnly, "ADDON_ONLY"));
+        Assert.True(runtimeOnly.Content.Catalog.Items.Items.TryGet("SHARED_ITEM", out var shared));
+        Assert.Contains(shared!.CompatibilityData.DeferredProperties,
+            property => property.Key == "customCompatibilityPayload");
+
+        var audited = ContentSnapshotBuilder.Build(
+            plan,
+            options: new ContentSnapshotOptions { RetainAuditArtifact = true });
+        var audit = Assert.IsType<ContentAuditArtifact>(audited.AuditArtifact);
+        Assert.Equal(4, audit.Documents.ParsedFileCount);
+        Assert.NotEmpty(audit.ComposedRules.Sections);
+        audit.Dispose();
+        Assert.True(audit.IsDisposed);
+        Assert.Throws<ObjectDisposedException>(() => audit.Documents);
+        Assert.True(audited.Content.Capabilities.Has(ContentLoadStage.ScriptsCompiled));
+    }
+
+    [Fact]
+    public void ReleasedAuditGraphsAreNotReachableFromRuntimeContent()
+    {
+        using var fixture = new TemporaryMod("items: [{type: ITEM, customPayload: {value: 1}}]");
+        var (runtime, documents, composed) = BuildRuntimeAndReleaseAudit(CreatePlan(fixture.Root));
+
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        Assert.False(documents.IsAlive);
+        Assert.False(composed.IsAlive);
+        Assert.True(runtime.Capabilities.Has(ContentLoadStage.ScriptsCompiled));
+        GC.KeepAlive(runtime);
+    }
+
     private static string Diagnostics(ContentSnapshot snapshot) => string.Join(
         Environment.NewLine,
         snapshot.Diagnostics.Select(static diagnostic => diagnostic.Message));
+
+    private static int ExecuteSpriteScript(ContentSnapshot snapshot, string ownerId)
+    {
+        var artifact = Assert.Single(snapshot.Scripts,
+            script => script.OwnerId == ownerId && script.ParserName == "selectItemSprite");
+        var result = ScriptVm.Execute(
+            artifact.Program,
+            new Dictionary<string, int> { ["sprite_index"] = 0 });
+        Assert.True(result.Succeeded);
+        return result.Outputs["sprite_index"];
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static (RuntimeContent Runtime, WeakReference Documents, WeakReference Composed)
+        BuildRuntimeAndReleaseAudit(ModLoadPlan plan)
+    {
+        var snapshot = ContentSnapshotBuilder.Build(
+            plan,
+            options: new ContentSnapshotOptions { RetainAuditArtifact = true });
+        var audit = snapshot.AuditArtifact!;
+        var documents = new WeakReference(audit.Documents);
+        var composed = new WeakReference(audit.ComposedRules);
+        audit.Dispose();
+        return (snapshot.Content, documents, composed);
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
+    }
 
     private static ModLoadPlan CreatePlan(string root)
     {

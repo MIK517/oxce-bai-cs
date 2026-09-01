@@ -63,10 +63,15 @@ external schema.
 
 ### Separate build/audit state from runtime content
 
-`ContentSnapshot` currently owns `Phase3ContentBuild`, which retains the complete
+At assessment time, `ContentSnapshot` owned `Phase3ContentBuild`, which retained the complete
 parsed `RulesetDocumentCatalog` and composed `UnresolvedRuleCatalog`. Typed rules also
 retain deferred YAML nodes. Consequently, a successful large content build keeps
 parse-time and audit-time object graphs alive for the runtime session.
+
+Resolved in Slice 1 on 2026-09-01: `RuntimeContent` is now the publication root,
+build-only graphs belong to `ContentBuildSession`, and tools must explicitly request
+and dispose `ContentAuditArtifact`. The remaining structured-node ownership is
+inventoried in `content-lifetime.md`.
 
 Introduce explicit lifetimes:
 
@@ -85,10 +90,13 @@ normal game path must not retain it by default.
 
 ### Use lightweight file-scoped script environments
 
-The script content builder reconstructs a complete `ScriptApiCatalog` for each source
+At assessment time, the script content builder reconstructed a complete `ScriptApiCatalog` for each source
 file to vary visible tags and `RuleList.current`. Each construction recopies and
 revalidates the shared binding, parser, and type indexes. A large installation therefore
 retains hundreds of near-identical catalogs.
+
+Resolved in Slice 1: shared declaration indexes now back lightweight immutable scopes
+cached by visible tag count and current mod identity.
 
 Keep one immutable base declaration catalog and add persistent or interned overlays for
 file-visible constants, tags, and the current mod index. Cache overlays by their tag

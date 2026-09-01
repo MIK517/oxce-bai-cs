@@ -52,18 +52,36 @@ for ($index = 1; $index -le $Runs; $index++) {
     }
 
     $summary = ($raw | Select-Object -Last 1) | ConvertFrom-Json
+    $memoryRaw = & dotnet $tool measure-content-install $installation $MasterId $AddOnId
+    $memoryExitCode = $LASTEXITCODE
+    if ($memoryExitCode -ne 0) {
+        throw "Runtime measurement run $index failed with exit code $memoryExitCode. Output: $($memoryRaw -join [Environment]::NewLine)"
+    }
+    $memory = ($memoryRaw | Select-Object -Last 1) | ConvertFrom-Json
     $results.Add([ordered]@{
         run = $index
         cacheState = if ($index -eq 1) { "first-process" } else { "warm-process" }
         processElapsedMilliseconds = $timer.Elapsed.TotalMilliseconds
         buildElapsedMilliseconds = [double]$summary.buildElapsedMilliseconds
         normalizationElapsedMilliseconds = [double]$summary.normalizationElapsedMilliseconds
-        allocatedBytesDuringBuild = [long]$summary.allocatedBytesDuringBuild
-        managedBytesBeforeBuild = [long]$summary.managedBytesBeforeBuild
-        managedBytesAfterBuild = [long]$summary.managedBytesAfterBuild
+        parseElapsedMilliseconds = [double]$memory.parseElapsedMilliseconds
+        parseAllocatedBytes = [long]$memory.parseAllocatedBytes
+        composeElapsedMilliseconds = [double]$memory.composeElapsedMilliseconds
+        composeAllocatedBytes = [long]$memory.composeAllocatedBytes
+        typeAndLinkElapsedMilliseconds = [double]$memory.typeAndLinkElapsedMilliseconds
+        typeAndLinkAllocatedBytes = [long]$memory.typeAndLinkAllocatedBytes
+        scriptCompilationElapsedMilliseconds = [double]$memory.scriptCompilationElapsedMilliseconds
+        scriptCompilationAllocatedBytes = [long]$memory.scriptCompilationAllocatedBytes
+        sourceScopeCount = [int]$memory.sourceScopeCount
+        apiScopeCount = [int]$memory.apiScopeCount
+        allocatedBytesDuringBuild = [long]$memory.allocatedBytesDuringBuild
+        managedBytesBeforeBuild = [long]$memory.managedBytesBeforeBuild
+        managedBytesAfterBuild = [long]$memory.managedBytesAfterBuild
         managedBytesRetainedByBuild = [long]$summary.managedBytesRetainedByBuild
-        workingSetBytes = [long]$summary.workingSetBytes
-        peakWorkingSetBytes = [long]$summary.peakWorkingSetBytes
+        managedBytesAfterAuditRelease = [long]$summary.managedBytesAfterAuditRelease
+        managedBytesRetainedRuntime = [long]$memory.managedBytesRetainedRuntime
+        workingSetBytes = [long]$memory.workingSetBytes
+        peakWorkingSetBytes = [long]$memory.peakWorkingSetBytes
         parsedFiles = [int]$summary.parsedFiles
         attemptedScripts = [int]$summary.attemptedScripts
         scriptArtifacts = [int]$summary.scriptArtifacts
@@ -108,7 +126,9 @@ $baseline = [ordered]@{
     aggregate = [ordered]@{
         warmProcessElapsedMedianMilliseconds = Get-Median @($warmResults.processElapsedMilliseconds)
         warmBuildElapsedMedianMilliseconds = Get-Median @($warmResults.buildElapsedMilliseconds)
-        warmManagedRetainedMedianBytes = Get-Median @($warmResults.managedBytesRetainedByBuild)
+        warmAllocatedMedianBytes = Get-Median @($warmResults.allocatedBytesDuringBuild)
+        warmManagedRetainedMedianBytes = Get-Median @($warmResults.managedBytesRetainedRuntime)
+        warmManagedRetainedWithAuditMedianBytes = Get-Median @($warmResults.managedBytesRetainedByBuild)
         warmPeakWorkingSetMedianBytes = Get-Median @($warmResults.peakWorkingSetBytes)
         semanticManifestsIdentical = $semanticManifestsIdentical
     }

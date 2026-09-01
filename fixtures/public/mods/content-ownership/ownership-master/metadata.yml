@@ -1,0 +1,4 @@
+id: ownership-master
+name: Content ownership fixture master
+version: 1.0
+isMaster: true
