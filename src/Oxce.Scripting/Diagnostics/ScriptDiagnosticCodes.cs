@@ -31,4 +31,5 @@ public static class ScriptDiagnosticCodes
     public const string UnknownEventDefinition = "OXCE-SCR-0027";
     public const string EventLimitExceeded = "OXCE-SCR-0028";
     public const string InvalidScriptValueState = "OXCE-SCR-0029";
+    public const string CallDepthExceeded = "OXCE-SCR-0030";
 }

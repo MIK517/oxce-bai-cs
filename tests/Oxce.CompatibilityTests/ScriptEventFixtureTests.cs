@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Events;
+using Oxce.Scripting.Runtime;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -31,6 +32,17 @@ public sealed class ScriptEventFixtureTests
             Program("mul result 2; return result;"),
             new Dictionary<string, int> { ["result"] = 1 });
         Assert.Equal(Value(cases, "ordered-update"), execution.Outputs["result"]);
+        var frame = new ScriptExecutionFrame();
+        var directInitial = new[] { ScriptRuntimeValue.FromScalar(1) };
+        var directOutput = new ScriptRuntimeValue[1];
+        var direct = ScriptEventRunner.Execute(
+            ordered.Plan!,
+            Program("mul result 2; return result;"),
+            directInitial,
+            directOutput,
+            frame);
+        Assert.True(direct.Succeeded);
+        Assert.Equal(Value(cases, "ordered-update"), directOutput[0].Scalar);
 
         var unknownOverride = ScriptEventComposer.Compose(
             [Event(ScriptEventMutationKind.Override, "missing", 100, "return result;")]);
