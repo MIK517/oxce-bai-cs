@@ -220,24 +220,23 @@ medians:
 
 | Measurement | Pre-slice baseline | Slice 1 |
 |---|---:|---:|
-| Audit process elapsed | 9.135 s | 10.540 s |
-| Audit content-build elapsed | 7.617 s | 8.429 s |
-| Runtime build allocation | 2.452 GiB conservative audit measurement | 1.861 GiB |
+| Audit process elapsed | 9.135 s | 9.272 s |
+| Audit content-build elapsed | 7.617 s | 7.279 s |
+| Runtime build allocation | 2.452 GiB conservative audit measurement | 1.883 GiB |
 | Retained managed bytes | 299.9 MiB conservative audit delta | 156.1 MiB runtime-only |
 | Source-file/API scopes | one full catalog per source | 510 file views / 50 shared scopes |
 
-The allocation change is approximately a 24% reduction. The retained figures have
+The allocation change is approximately a 23% reduction. The retained figures have
 different boundaries: the earlier result included diagnostics and audit state, while
 the new runtime-only command deliberately drops those objects before its forced-GC
 measurement. The new number is the repeatable publication baseline, not a claim that
 all of the apparent 48% difference came from runtime content.
 
-No wall-clock improvement is established. This capture was about 15% slower at the
-process boundary and 11% slower in the audited build than the earlier run, despite the
-allocation reduction. The runs occurred on different days without a pinned power or
-thermal state, so the result may combine environmental variance with a regression; it
-must not be presented as a speedup. Stage measurements on the runtime-only warm runs
-were approximately 2.335 s parse, 0.134 s compose, 2.312 s type/link, and 3.371 s
+No wall-clock improvement is established. The audit-process boundary was about 1.5%
+slower while the audited build was about 4.4% faster than the earlier run. The runs
+occurred on different days without a pinned power or thermal state, so neither change
+is evidence of a regression or speedup. Stage measurements on the runtime-only warm
+runs were approximately 2.345 s parse, 0.106 s compose, 2.152 s type/link, and 3.039 s
 script compilation. Those boundaries identify parsing and script compilation as the
 next profiling targets.
 
