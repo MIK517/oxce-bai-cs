@@ -29,4 +29,6 @@ public static class ModDiagnosticCodes
     public const string InvalidRuleRelationship = "OXCE-MOD-0025";
     public const string DeferredRuleReference = "OXCE-MOD-0026";
     public const string InvalidScriptContent = "OXCE-MOD-0027";
+    public const string InvalidResourceDescriptor = "OXCE-MOD-0028";
+    public const string ResourceLimitExceeded = "OXCE-MOD-0029";
 }

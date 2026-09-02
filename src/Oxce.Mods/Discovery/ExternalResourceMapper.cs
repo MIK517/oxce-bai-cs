@@ -72,6 +72,40 @@ internal static class ExternalResourceMapper
             layers.InsertRange(0, resourceLayers);
         }
 
+        if (candidate.Metadata.ExternalResourceDirectories.Count != 0)
+        {
+            var commonLayers = new List<VirtualFileLayer>();
+            var commonArchive = roots.Select(root => Path.Combine(root, "common.zip")).FirstOrDefault(File.Exists);
+            if (commonArchive is not null)
+            {
+                var archive = ZipArchiveIndex.Read(commonArchive, options.ArchiveScan);
+                var prefix = archive.ContainsPrefix("common") ? "common" : string.Empty;
+                var layer = archive.CreateLayer(
+                    prefix,
+                    new VirtualFileProvenance($"{candidate.Metadata.Id}:common:zip", candidate.Metadata.Id,
+                        commonArchive),
+                    ignoreRulesets: true);
+                if (layer.Entries.Any()) commonLayers.Add(layer);
+            }
+            var commonDirectory = roots.Select(root => Path.Combine(root, "common")).FirstOrDefault(Directory.Exists);
+            if (commonDirectory is not null)
+            {
+                var scan = options.LayerScan;
+                commonLayers.Add(VirtualFileLayer.ScanDirectory(
+                    commonDirectory,
+                    $"{candidate.Metadata.Id}:common:directory",
+                    candidate.Metadata.Id,
+                    new DirectoryScanOptions
+                    {
+                        MaximumFiles = scan.MaximumFiles,
+                        MaximumDepth = scan.MaximumDepth,
+                        MaximumRelativePathLength = scan.MaximumRelativePathLength,
+                        IgnoreRulesets = true,
+                    }));
+            }
+            layers.InsertRange(0, commonLayers);
+        }
+
         layers.AddRange(candidate.Layers);
         mapped = layers.Count == candidate.Layers.Count ? candidate : new ModCandidate(candidate.Metadata, layers);
         missingResource = null;

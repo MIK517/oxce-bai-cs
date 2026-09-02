@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "resource-resolution",
+  "description": "Pins multi-mod shared and reserved resource offsets plus resolved presentation, media, and terrain descriptors.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/Mod.cpp, ExtraSprites.cpp, ExtraSounds.cpp, SoundDefinition.cpp, RuleMusic.cpp, FileMap.cpp",
+      "probe": "fixtures/reference-probes/resources/resource_resolution_probe.cpp"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/resource-resolution/resource-addon/metadata.yml", "size": 130, "sha256": "5294f22d1f48653740d4567ee2d9119c73556ce2006b8f8bbb7a7c31bbeb6ffc" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-addon/Resources/addon.png", "size": 6, "sha256": "e2e38ccb8de2de54a901440a29ec244e28d0d44b8f52cf764912a9a2aed9bdd9" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-addon/Resources/override.png", "size": 9, "sha256": "46e0313ca59003e4def743b25cd1ed4a1276f99782e5cbf8bfa849ff4cf171db" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-addon/Resources/addon.wav", "size": 12, "sha256": "50e6ecd400d0c9a351e11909646b2b5726e55d442e5d281c7ca4c6bef6ed3a5b" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-addon/Ruleset/resources.rul", "size": 191, "sha256": "8b3282966627e0b9083e626387e8c9dcb883a317fb4b8f3591f3c4fed3f26356" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/MAPS/BLOCK.MAP", "size": 4, "sha256": "9817b74faa734cd7118808908760312a62ffec8d294babe95a2ce23869daa1cb" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/metadata.yml", "size": 106, "sha256": "4f52df646126292d028ff474ffe6870ffae2e30a925e8d10f88fcc27faa817cf" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/Resources/background.png", "size": 11, "sha256": "901641f13621d90fd52767470516b2b71c94797c4e1e7a044ceae27ea3c24863" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/Resources/master.png", "size": 7, "sha256": "9b3162498c21d7f960877099174ecea13410bd21d12440b2ea8868117fc08ae0" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/Resources/master.wav", "size": 13, "sha256": "0cf00c0b3b4528c3d19a8c10ec24268043db99f0941befbc0aecdedb559fa2c2" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/Resources/palette.dat", "size": 8, "sha256": "ad362be007434735f790538e0423b817fc935b5033f83a72e712cb0f31c44ae3" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/Resources/shared.png", "size": 7, "sha256": "cf99975aa7995fad86fae7f3b0905143f30a52501944dff26002afc99c3b8419" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/Resources/slide.png", "size": 6, "sha256": "d8bfbf38633d792a9cc6cd40659d8b10d7e6bd8eddf1ca50666fa1c82fe582e0" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/ROUTES/BLOCK.RMP", "size": 6, "sha256": "14efb72cccd6d3b17ec0d8f85d1283e032ccd2112efa329dfc50a0dcbc1f10e5" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/Ruleset/resources.rul", "size": 618, "sha256": "b28f6c462b8cf6032f1b5d1bc21859c60eb9d0482ec5bbb41c83a8b5904ea197" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/SOUND/clip.ogg", "size": 15, "sha256": "41c2b3cd419eb020c92546e0b8075038139f6e737a0912a283f737ee7957f6f9" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/SOUND/track.ogg", "size": 6, "sha256": "d543a2f9ecb1161115da947409497a0a31683864c13b34b181e5d786b6724435" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/TERRAIN/URBAN.MCD", "size": 4, "sha256": "773d7d0acaddeca3c853a4d854df36672439f8aaa48211fac0ab8651b9593e92" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/TERRAIN/URBAN.PCK", "size": 4, "sha256": "25e1566cc22a1513631028a5a9f17faf814d3c73d8745815dfa9c25d2c3c11bd" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/TERRAIN/URBAN.TAB", "size": 4, "sha256": "40cfae8acb2627ac5b6b871b5a3ed1dcb5315ff489ad3dd5d192dff5d59405cf" },
+    { "path": "fixtures/public/mods/resource-resolution/resource-master/VIDEO/clip.flc", "size": 6, "sha256": "152d7cac730e08f2e3200cf66a874885f3188a585d3be33689ac1ccd9ef4bd06" },
+    { "path": "fixtures/reference-probes/resources/resource_resolution_probe.cpp", "size": 517, "sha256": "1fbe2eb55fde886854ffb20e21edb228bfe020e8dbe81a398c40551983e248da" }
+  ],
+  "normalization": ["resource-descriptors-v1", "omit-content-generation", "omit-absolute-source-path"],
+  "expected": "fixtures/expected/mods/resource-resolution.expected.json"
+}

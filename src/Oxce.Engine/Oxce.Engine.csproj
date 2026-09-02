@@ -6,5 +6,6 @@
     <ProjectReference Include="../Oxce.Core/Oxce.Core.csproj" />
     <ProjectReference Include="../Oxce.Gameplay/Oxce.Gameplay.csproj" />
     <ProjectReference Include="../Oxce.Rendering/Oxce.Rendering.csproj" />
+    <ProjectReference Include="../Oxce.Resources/Oxce.Resources.csproj" />
   </ItemGroup>
 </Project>

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Phase 5.
+Accepted and implemented in post-Phase-4 Slice 3.
 
 ## Context
 
@@ -69,3 +69,19 @@ without decoded runtime assets.
   `Resources` -> `Engine` -> `Resources` cycle.
 - Cache and archive pooling decisions remain measured implementation choices rather
   than part of this project-boundary decision.
+
+## Implemented policy
+
+`ResourceRuntime` uses a size-accounted LRU with a 512 MiB default decoded budget and
+a 128 MiB per-entry ceiling. Loads are lazy unless a caller supplies an explicit
+preload group. Music and video descriptors are streaming-only and cannot enter the
+decoded cache. Handles carry a content-generation ID; stale handles are rejected and
+generation invalidation releases all retained entries. Cache telemetry reports hits,
+misses, loads, evictions, oversized rejections, retained bytes, and entry count.
+
+A 2026-09-02 ShortRun benchmark found 256 KiB directory and ZIP cold loads at 345.9 us
+and 349.8 us respectively; warm cache hits were 32.7 ns and 26.3 ns with no allocation.
+The roughly 1% cold-time difference does not justify archive leasing/pooling. ZIP
+entries continue to own an archive per uncached stream, avoiding shared archive
+lifetime and contention. Revisit only if a representative workload demonstrates a
+material uncached-entry bottleneck.

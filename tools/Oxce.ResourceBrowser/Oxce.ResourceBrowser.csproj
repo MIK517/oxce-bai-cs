@@ -7,5 +7,6 @@
     <ProjectReference Include="../../src/Oxce.Mods/Oxce.Mods.csproj" />
     <ProjectReference Include="../../src/Oxce.Platform.Sdl/Oxce.Platform.Sdl.csproj" />
     <ProjectReference Include="../../src/Oxce.Rendering/Oxce.Rendering.csproj" />
+    <ProjectReference Include="../../src/Oxce.Resources/Oxce.Resources.csproj" />
   </ItemGroup>
 </Project>
