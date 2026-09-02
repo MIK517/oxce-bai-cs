@@ -1,6 +1,6 @@
 # Content build and runtime lifetime
 
-Status date: 2026-09-01.
+Status date: 2026-09-02.
 
 Content loading has three explicit ownership domains. A caller must publish
 `RuntimeContent`, not the build result or build session.
@@ -8,7 +8,7 @@ Content loading has three explicit ownership domains. A caller must publish
 | Owner | Lifetime | Contents |
 |---|---|---|
 | `ContentBuildSession` | Load only | Parsed `RulesetDocumentCatalog`, composed `UnresolvedRuleCatalog`, typed catalog, and parse/compose/type-link measurements. |
-| `RuntimeContent` | Content generation | Linked typed catalogs, compiled script programs and event plans, tag definitions, initial script values, capabilities, and the parsed-file count. |
+| `RuntimeContent` | Content generation | Linked typed catalogs, immutable resolved-resource descriptors/handles, compiled script programs and event plans, tag definitions, initial script values, capabilities, and the parsed-file count. |
 | `ContentAuditArtifact` | Optional tool/audit lifetime | Parsed documents and composed operation history required for semantic manifests and composition inspection. It is explicitly requested and disposable. |
 
 `ContentSnapshot` is the build result: it carries the publishable `RuntimeContent`,
@@ -60,7 +60,7 @@ constructing a complete indexed API catalog for every ruleset file.
 ## Measurements
 
 Every build records elapsed time and current-thread allocation for parse, compose,
-type/link, and script-compilation stages. `audit-content-install` retains audit state
+type/link, resource-resolution, and script-compilation stages. `audit-content-install` retains audit state
 long enough to emit and hash the semantic manifest. `measure-content-install` runs in a
 separate process and returns only `RuntimeContent` across a non-inlined build boundary,
 so its post-GC retained measurement excludes build diagnostics, parsed documents,

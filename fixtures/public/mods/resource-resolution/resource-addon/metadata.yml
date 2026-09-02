@@ -1,0 +1,6 @@
+id: resource-addon
+name: Resource resolution fixture add-on
+version: 1.0
+master: resource-master
+isMaster: false
+reservedSpace: 1

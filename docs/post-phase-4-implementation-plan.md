@@ -131,6 +131,10 @@ span/event execution, fixture coverage, and VM benchmarks satisfy the exit gate.
 
 Suggested branch: `codex/resource-runtime-foundation`.
 
+Status: completed 2026-09-02. The public fixture, cache/ZIP tests, browser integration,
+and staged 40k/Rosigma audit pass; the audit resolves 24,623 descriptors with zero
+errors. Measured ZIP access did not justify archive pooling.
+
 ### Work
 
 - Record an ADR selecting the resource-runtime project/service boundary and dependency

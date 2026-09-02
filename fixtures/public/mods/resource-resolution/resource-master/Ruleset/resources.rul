@@ -1,0 +1,28 @@
+interfaces:
+  - type: UI
+    backgroundImage: Resources/background.png
+musics:
+  - type: TRACK
+    name: track
+customPalettes:
+  - type: PAL
+    file: Resources/palette.dat
+cutscenes:
+  - type: DEMO
+    videos: [clip.flc]
+    audioTracks: [clip.ogg]
+    slideshow:
+      slides:
+        - imagePath: Resources/slide.png
+extraSprites:
+  - type: SET.PCK
+    width: 32
+    height: 40
+    files: {1: Resources/shared.png, 2: Resources/master.png}
+extraSounds:
+  - type: SET.CAT
+    files: {1: Resources/master.wav}
+terrains:
+  - name: TERRAIN
+    mapDataSets: [URBAN]
+    mapBlocks: [{name: BLOCK, width: 20, length: 10}]

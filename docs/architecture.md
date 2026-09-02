@@ -85,6 +85,14 @@ unknown/deferred nodes and compiled scripts have explicit owners. The normal run
 path must release parse/audit-only state after those ownership transfers; tools may
 request an explicit audit artifact when operation history is required.
 
+Resource resolution is owned by `Oxce.Mods`: it converts declarations and VFS winners
+into immutable, provenance-bearing descriptors and generation-scoped typed handles.
+`Oxce.Resources` consumes those descriptors for lazy decode, explicit preload groups,
+streaming media, and a bounded size-aware LRU. The application and resource browser
+must use that service rather than opening descriptor source paths. Shared `common`
+assets are mapped below game-specific external data and mod layers so normal OXCE
+installation precedence is preserved.
+
 The concrete build-session, runtime-publication, structured-node, and optional-audit
 lifetimes are defined in [content lifetime](content-lifetime.md). Application code must
 publish `RuntimeContent`; retaining `ContentBuildSession` or `ContentSnapshot` as the

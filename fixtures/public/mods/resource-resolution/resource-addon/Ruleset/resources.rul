@@ -1,0 +1,8 @@
+extraSprites:
+  - type: SET.PCK
+    width: 32
+    height: 40
+    files: {1: Resources/override.png, 2: Resources/addon.png}
+extraSounds:
+  - type: SET.CAT
+    files: {1: Resources/addon.wav}

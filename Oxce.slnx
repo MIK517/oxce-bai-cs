@@ -8,6 +8,7 @@
     <Project Path="src/Oxce.Mods/Oxce.Mods.csproj" />
     <Project Path="src/Oxce.Platform.Sdl/Oxce.Platform.Sdl.csproj" />
     <Project Path="src/Oxce.Rendering/Oxce.Rendering.csproj" />
+    <Project Path="src/Oxce.Resources/Oxce.Resources.csproj" />
     <Project Path="src/Oxce.Savegames/Oxce.Savegames.csproj" />
     <Project Path="src/Oxce.Scripting/Oxce.Scripting.csproj" />
   </Folder>
