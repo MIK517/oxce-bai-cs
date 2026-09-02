@@ -1,0 +1,5 @@
+id: runtime-master
+name: Runtime rule linking fixture master
+version: 1.0
+isMaster: true
+reservedSpace: 1

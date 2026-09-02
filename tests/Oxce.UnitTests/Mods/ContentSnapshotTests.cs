@@ -20,8 +20,11 @@ public sealed class ContentSnapshotTests
         var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
 
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), Diagnostics(snapshot));
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
         Assert.Equal(7, snapshot.Scripts.Count(script => script.Scope == ContentScriptScope.Default));
         Assert.Equal(1, snapshot.Content.ParsedFileCount);
+        Assert.Equal(snapshot.Content.Resources.Generation, snapshot.Content.RuntimeRules.Generation);
+        Assert.True(snapshot.Measurements.RuntimeRuleLinking.AllocatedBytes > 0);
         Assert.Null(snapshot.AuditArtifact);
     }
 

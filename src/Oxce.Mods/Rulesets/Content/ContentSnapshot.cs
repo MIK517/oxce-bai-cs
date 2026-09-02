@@ -8,6 +8,7 @@ using Oxce.Mods.Loading;
 using Oxce.Mods.Files;
 using Oxce.Mods.Resources;
 using Oxce.Mods.Rulesets.Phase3;
+using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Scripting;
 using Oxce.Scripting.Api;
 using Oxce.Scripting.Compilation;
@@ -70,7 +71,8 @@ public sealed class RuntimeContent
         IEnumerable<ContentScriptArtifact> scripts,
         IEnumerable<ContentScriptEventPlan> eventPlans,
         IEnumerable<ContentInitialScriptValue> initialValues,
-        ResolvedResourceCatalog resources)
+        ResolvedResourceCatalog resources,
+        RuntimeRuleCatalog runtimeRules)
     {
         Catalog = catalog;
         Capabilities = capabilities;
@@ -80,6 +82,7 @@ public sealed class RuntimeContent
         EventPlans = Array.AsReadOnly(eventPlans.ToArray());
         InitialValues = Array.AsReadOnly(initialValues.ToArray());
         Resources = resources;
+        RuntimeRules = runtimeRules;
     }
 
     public Phase3ContentCatalog Catalog { get; }
@@ -90,6 +93,7 @@ public sealed class RuntimeContent
     public IReadOnlyList<ContentScriptEventPlan> EventPlans { get; }
     public IReadOnlyList<ContentInitialScriptValue> InitialValues { get; }
     public ResolvedResourceCatalog Resources { get; }
+    public RuntimeRuleCatalog RuntimeRules { get; }
 }
 
 public sealed class ContentAuditArtifact : IDisposable
@@ -203,6 +207,22 @@ public static class ContentSnapshotBuilder
         {
             capabilities = capabilities.AdvanceTo(ContentLoadStage.ScriptsCompiled);
         }
+        var runtimeLinkAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var runtimeLinkTimer = Stopwatch.StartNew();
+        var runtimeLink = RuntimeRuleLinker.Link(
+            session.Catalog,
+            resourceResolution.Catalog,
+            compiler.Scripts,
+            sink);
+        runtimeLinkTimer.Stop();
+        var runtimeLinkMeasurement = new ContentBuildStageMeasurement(
+            runtimeLinkTimer.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - runtimeLinkAllocationStart);
+        if (capabilities.Has(ContentLoadStage.ResourcesResolved) &&
+            capabilities.Has(ContentLoadStage.ScriptsCompiled) && runtimeLink.IsValid)
+        {
+            capabilities = capabilities.AdvanceTo(ContentLoadStage.RuntimeLinked);
+        }
         var runtime = new RuntimeContent(
             session.Catalog,
             capabilities,
@@ -211,14 +231,16 @@ public static class ContentSnapshotBuilder
             compiler.Scripts,
             compiler.EventPlans,
             compiler.InitialValues,
-            resourceResolution.Catalog);
+            resourceResolution.Catalog,
+            runtimeLink.Catalog);
         return new ContentSnapshot(
             runtime,
             collector.Snapshot(),
             collector.ReportedCount,
             collector.DroppedCount,
             compiler.CompiledScriptCount,
-            session.Measurements.WithResourceResolution(resourceMeasurement).WithScriptCompilation(scriptMeasurement),
+            session.Measurements.WithResourceResolution(resourceMeasurement).WithScriptCompilation(scriptMeasurement)
+                .WithRuntimeRuleLinking(runtimeLinkMeasurement),
             options.RetainAuditArtifact ? new ContentAuditArtifact(session) : null,
             compiler.SourceScopeCount,
             compiler.ApiScopeCount);

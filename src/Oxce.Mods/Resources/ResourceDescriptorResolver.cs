@@ -33,6 +33,7 @@ public static class ResourceDescriptorResolver
         var descriptors = new List<ResolvedResourceDescriptor>();
         var descriptorIds = new Dictionary<string, int>(StringComparer.Ordinal);
         var indexedSlots = new Dictionary<ResourceSlot, int>();
+        var resourceIndexes = new Dictionary<DeclaredResourceSlot, ResolvedResourceIndex>();
         var issues = new List<ResolvedResourceIssue>();
         var allocations = CreateAllocations(plan);
         var sharedSprites = new Dictionary<string, int>(options.SharedSpriteCounts, StringComparer.Ordinal);
@@ -60,13 +61,16 @@ public static class ResourceDescriptorResolver
                                      .Where(name => ImageExtensions.Contains(Path.GetExtension(name)))
                                      .Order(StringComparer.Ordinal))
                         {
-                            var resolvedIndex = ResolveIndex(index++, shared, allocation, "extraSprites",
+                            var declaredIndex = index++;
+                            var resolvedIndex = ResolveIndex(declaredIndex, shared, allocation, "extraSprites",
                                 declaration.Type, declaration.Source);
                             if (resolvedIndex is not null)
                             {
-                                AddFile(ResourceKind.Sprite, $"sprite/{declaration.Type}/{resolvedIndex}",
+                                var handle = AddFile(ResourceKind.Sprite, $"sprite/{declaration.Type}/{resolvedIndex}",
                                     file.Value + name, ResourceLoadPolicy.Cache, resolvedIndex,
                                     declaration.Width, declaration.Height, "extraSprites", declaration.Type, declaration.Source);
+                                Index(ResourceKind.Sprite, declaration.Type, declaration.Source.ModId,
+                                    declaredIndex, resolvedIndex.Value, handle);
                             }
                         }
                     }
@@ -76,9 +80,11 @@ public static class ResourceDescriptorResolver
                             declaration.Type, declaration.Source);
                         if (resolvedIndex is not null)
                         {
-                            AddFile(ResourceKind.Sprite, $"sprite/{declaration.Type}/{resolvedIndex}",
+                            var handle = AddFile(ResourceKind.Sprite, $"sprite/{declaration.Type}/{resolvedIndex}",
                                 file.Value, ResourceLoadPolicy.Cache, resolvedIndex,
                                 declaration.Width, declaration.Height, "extraSprites", declaration.Type, declaration.Source);
+                            Index(ResourceKind.Sprite, declaration.Type, declaration.Source.ModId,
+                                index, resolvedIndex.Value, handle);
                         }
                     }
                 }
@@ -96,13 +102,16 @@ public static class ResourceDescriptorResolver
                 {
                     foreach (var name in files.List(file.Value).Order(StringComparer.Ordinal))
                     {
-                        var resolvedIndex = ResolveIndex(index++, shared, allocation, "extraSounds",
+                        var declaredIndex = index++;
+                        var resolvedIndex = ResolveIndex(declaredIndex, shared, allocation, "extraSounds",
                             declaration.Type, declaration.Source);
                         if (resolvedIndex is not null)
                         {
-                            AddFile(ResourceKind.Sound, $"sound/{declaration.Type}/{resolvedIndex}",
+                            var handle = AddFile(ResourceKind.Sound, $"sound/{declaration.Type}/{resolvedIndex}",
                                 file.Value + name, ResourceLoadPolicy.Cache, resolvedIndex,
                                 0, 0, "extraSounds", declaration.Type, declaration.Source);
+                            Index(ResourceKind.Sound, declaration.Type, declaration.Source.ModId,
+                                declaredIndex, resolvedIndex.Value, handle);
                         }
                     }
                 }
@@ -112,9 +121,11 @@ public static class ResourceDescriptorResolver
                         declaration.Type, declaration.Source);
                     if (resolvedIndex is not null)
                     {
-                        AddFile(ResourceKind.Sound, $"sound/{declaration.Type}/{resolvedIndex}",
+                        var handle = AddFile(ResourceKind.Sound, $"sound/{declaration.Type}/{resolvedIndex}",
                             file.Value, ResourceLoadPolicy.Cache, resolvedIndex,
                             0, 0, "extraSounds", declaration.Type, declaration.Source);
+                        Index(ResourceKind.Sound, declaration.Type, declaration.Source.ModId,
+                            index, resolvedIndex.Value, handle);
                     }
                 }
             }
@@ -210,7 +221,7 @@ public static class ResourceDescriptorResolver
         }
 
         return new ResourceResolutionResult(
-            new ResolvedResourceCatalog(generation, descriptors),
+            new ResolvedResourceCatalog(generation, descriptors, resourceIndexes.Values),
             Array.AsReadOnly(issues.ToArray()));
 
         ModAllocation Allocation(string modId, RuleOperationSource source, string ownerId)
@@ -296,7 +307,7 @@ public static class ResourceDescriptorResolver
                 section, ownerId, candidates[0], source);
         }
 
-        void AddFile(ResourceKind kind, string id, string path, ResourceLoadPolicy policy, int? runtimeIndex,
+        ResourceHandle? AddFile(ResourceKind kind, string id, string path, ResourceLoadPolicy policy, int? runtimeIndex,
             int width, int height, string section, string ownerId, RuleOperationSource source)
         {
             if (!files.TryGet(path, out var entry))
@@ -304,9 +315,9 @@ public static class ResourceDescriptorResolver
                 Report(ModDiagnosticCodes.MissingDeclaredResource,
                     $"Rule '{ownerId}' in section '{section}' declares missing resource '{path}'.",
                     section, ownerId, path, source);
-                return;
+                return null;
             }
-            Add(kind, id, entry!, policy, runtimeIndex, width, height, section, ownerId);
+            return Add(kind, id, entry!, policy, runtimeIndex, width, height, section, ownerId);
         }
 
         void AddDirect(ResourceKind kind, string id, string path, ResourceLoadPolicy policy,
@@ -318,7 +329,7 @@ public static class ResourceDescriptorResolver
             }
         }
 
-        void Add(ResourceKind kind, string id, VirtualFileEntry entry, ResourceLoadPolicy policy, int? runtimeIndex,
+        ResourceHandle Add(ResourceKind kind, string id, VirtualFileEntry entry, ResourceLoadPolicy policy, int? runtimeIndex,
             int width, int height, string section, string ownerId)
         {
             if (runtimeIndex is not null)
@@ -330,7 +341,7 @@ public static class ResourceDescriptorResolver
                     descriptors[existingIndex] = new ResolvedResourceDescriptor(existing.Handle, existing.Id, kind,
                         entry.CanonicalPath, entry.SourcePath, entry.Provenance, policy, runtimeIndex,
                         width, height, section, ownerId);
-                    return;
+                    return existing.Handle;
                 }
             }
             if (descriptors.Count >= options.MaximumDescriptors)
@@ -351,6 +362,21 @@ public static class ResourceDescriptorResolver
             {
                 indexedSlots.Add(new ResourceSlot(kind, section, ownerId, runtimeIndex.Value), handle.Index);
             }
+            return handle;
+        }
+
+        void Index(
+            ResourceKind kind,
+            string setId,
+            string modId,
+            int declaredIndex,
+            int runtimeIndex,
+            ResourceHandle? handle)
+        {
+            if (!handle.HasValue) return;
+            var slot = new DeclaredResourceSlot(kind, setId, modId, declaredIndex);
+            resourceIndexes[slot] = new ResolvedResourceIndex(
+                kind, setId, modId, declaredIndex, runtimeIndex, handle.Value);
         }
 
         void Report(string code, string message, string section, string ownerId, string path, RuleOperationSource source)
@@ -462,4 +488,9 @@ public static class ResourceDescriptorResolver
 
     private readonly record struct ModAllocation(int Offset, int Size);
     private readonly record struct ResourceSlot(ResourceKind Kind, string Section, string OwnerId, int RuntimeIndex);
+    private readonly record struct DeclaredResourceSlot(
+        ResourceKind Kind,
+        string SetId,
+        string ModId,
+        int DeclaredIndex);
 }

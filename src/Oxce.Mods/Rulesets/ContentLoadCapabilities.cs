@@ -9,6 +9,7 @@ public enum ContentLoadStage
     Linked = 1 << 2,
     ResourcesResolved = 1 << 3,
     ScriptsCompiled = 1 << 4,
+    RuntimeLinked = 1 << 5,
 }
 
 public readonly record struct ContentLoadCapabilities(ContentLoadStage Stages)
@@ -31,6 +32,9 @@ public readonly record struct ContentLoadCapabilities(ContentLoadStage Stages)
                 ContentLoadStage.Linked | ContentLoadStage.ResourcesResolved,
             ContentLoadStage.ScriptsCompiled => ContentLoadStage.Composed | ContentLoadStage.Typed |
                 ContentLoadStage.Linked | ContentLoadStage.ScriptsCompiled,
+            ContentLoadStage.RuntimeLinked => ContentLoadStage.Composed | ContentLoadStage.Typed |
+                ContentLoadStage.Linked | ContentLoadStage.ResourcesResolved | ContentLoadStage.ScriptsCompiled |
+                ContentLoadStage.RuntimeLinked,
             _ => throw new ArgumentOutOfRangeException(nameof(stage)),
         };
         return new ContentLoadCapabilities(Stages | required);
