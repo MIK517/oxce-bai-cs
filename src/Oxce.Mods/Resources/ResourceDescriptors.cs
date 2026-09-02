@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.ObjectModel;
 using System.Threading;
 using Oxce.Mods.Files;
@@ -69,14 +70,25 @@ public sealed record ResolvedResourceDescriptor(
     string OwnerSection,
     string OwnerId);
 
+public sealed record ResolvedResourceIndex(
+    ResourceKind Kind,
+    string SetId,
+    string ModId,
+    int DeclaredIndex,
+    int RuntimeIndex,
+    ResourceHandle Handle);
+
 public sealed class ResolvedResourceCatalog
 {
     private readonly ResolvedResourceDescriptor[] _descriptors;
     private readonly ReadOnlyDictionary<string, ResourceHandle> _handlesById;
+    private readonly FrozenDictionary<(ResourceKind Kind, string SetId, string ModId, int DeclaredIndex), ResolvedResourceIndex>
+        _indexes;
 
     internal ResolvedResourceCatalog(
         ContentGenerationId generation,
-        IEnumerable<ResolvedResourceDescriptor> descriptors)
+        IEnumerable<ResolvedResourceDescriptor> descriptors,
+        IEnumerable<ResolvedResourceIndex>? indexes = null)
     {
         Generation = generation;
         _descriptors = descriptors.ToArray();
@@ -100,6 +112,8 @@ public sealed class ResolvedResourceCatalog
         _handlesById = new ReadOnlyDictionary<string, ResourceHandle>(
             _descriptors.ToDictionary(static descriptor => descriptor.Id, static descriptor => descriptor.Handle,
                 StringComparer.Ordinal));
+        _indexes = (indexes ?? []).ToFrozenDictionary(
+            static index => (index.Kind, index.SetId, index.ModId, index.DeclaredIndex));
     }
 
     public ContentGenerationId Generation { get; }
@@ -115,6 +129,14 @@ public sealed class ResolvedResourceCatalog
     }
 
     public bool TryGet(string id, out ResourceHandle handle) => _handlesById.TryGetValue(id, out handle);
+
+    public bool TryResolveIndex(
+        ResourceKind kind,
+        string setId,
+        string modId,
+        int declaredIndex,
+        out ResolvedResourceIndex? resolved) =>
+        _indexes.TryGetValue((kind, setId, modId, declaredIndex), out resolved);
 
     public ResourceHandle GetRequired(string id) => TryGet(id, out var handle)
         ? handle

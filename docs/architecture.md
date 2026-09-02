@@ -93,6 +93,13 @@ must use that service rather than opening descriptor source paths. Shared `commo
 assets are mapped below game-specific external data and mod layers so normal OXCE
 installation precedence is preserved.
 
+Runtime rule linking is also owned by `Oxce.Mods`. A successful content generation
+publishes dense immutable projections for the first strategic families, with typed
+generation-scoped handles for eager links and optional resolved handles alongside IDs
+for reference-defined runtime lookups. Numeric slots are internal and never enter mod
+or save schemas. Resource and script references share the same generation boundary.
+See [ADR 0017](decisions/0017-generation-scoped-runtime-rule-handles.md).
+
 The concrete build-session, runtime-publication, structured-node, and optional-audit
 lifetimes are defined in [content lifetime](content-lifetime.md). Application code must
 publish `RuntimeContent`; retaining `ContentBuildSession` or `ContentSnapshot` as the
@@ -102,6 +109,8 @@ runtime root would also retain build-only state. See
 ## Data modeling
 
 - Use explicit stable string IDs for rules and resources.
+- Use typed handles only inside a content generation; translate to and from stable IDs
+  at persistence, script, diagnostic, and extension boundaries.
 - Separate unresolved DTO/node data from validated linked rules.
 - Separate immutable rule definitions from mutable campaign/battle state.
 - Gameplay owns mutable campaign/battle state, its invariants, persistent identities,

@@ -31,4 +31,5 @@ public static class ModDiagnosticCodes
     public const string InvalidScriptContent = "OXCE-MOD-0027";
     public const string InvalidResourceDescriptor = "OXCE-MOD-0028";
     public const string ResourceLimitExceeded = "OXCE-MOD-0029";
+    public const string InvalidRuntimeRuleLink = "OXCE-MOD-0030";
 }

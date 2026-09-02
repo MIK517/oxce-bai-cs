@@ -127,7 +127,7 @@ public sealed class Phase3ContentCatalog
             documents,
             documents.ParsedFileCount,
             new ContentBuildMeasurements(parse, compose, typeAndLink, ContentBuildStageMeasurement.Empty,
-                ContentBuildStageMeasurement.Empty));
+                ContentBuildStageMeasurement.Empty, ContentBuildStageMeasurement.Empty));
     }
 
     private sealed class ForwardingDiagnosticSink(IDiagnosticSink destination, IDiagnosticSink collector)

@@ -305,6 +305,32 @@ This result does not justify adding an archive pool with shared lifetime, lockin
 file-handle complexity. The benchmark remains in-tree so that decision can be revisited
 if future streaming or uncached workloads show a material difference.
 
+### Runtime-rule-linking result
+
+Slice 4 was measured on 2026-09-02 on the same Ryzen 9 7940HS host, .NET SDK
+10.0.302, and .NET runtime 10.0.10. The `RuntimeRuleLinkingBenchmarks` ShortRun used
+the public multi-mod strategic fixture and allocated no managed memory per operation:
+
+| Workload | Mean | Relative to compatibility lookup |
+|---|---:|---:|
+| Compatibility-model string lookup | 6.073 ns | 1.00 |
+| Runtime-model boundary string lookup | 4.987 ns | 0.82 |
+| Pre-linked direct rule access | 1.256 ns | 0.21 |
+| Pre-linked relationship plus external-ID access | 2.289 ns | 0.38 |
+
+The intended gameplay path is pre-linked direct access; string lookup remains available
+at external boundaries. The nanosecond-scale fixture is a controlled representation
+comparison, not an end-to-end gameplay forecast.
+
+The three-process staged 40k/Rosigma capture reached `runtime-linked` with 12,542
+projected rules/scripts, 24,623 resource descriptors, 512 parsed files, 3,875 attempted
+scripts, 3,536 script artifacts, 8,818 warnings, and zero errors. Across the two warm
+runs, runtime linking had a 125.1 ms median and allocated 12.6 MiB. Complete build time
+was 7.189 s and runtime content retained 165.5 MiB over the pre-build baseline, about
+6.3 MiB above the Slice 3 result. All three semantic manifests remained byte-identical
+at 9,591,410 bytes with SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time
