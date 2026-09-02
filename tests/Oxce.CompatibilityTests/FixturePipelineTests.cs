@@ -8,6 +8,25 @@ namespace Oxce.CompatibilityTests;
 public sealed class FixturePipelineTests
 {
     [Fact]
+    public void EveryManifestIsValidAndReferencesPinnedFiles()
+    {
+        var root = FindRepositoryRoot();
+        var manifests = Directory.EnumerateFiles(
+                Path.Combine(root, "fixtures", "manifests"),
+                "*.json",
+                SearchOption.TopDirectoryOnly)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.NotEmpty(manifests);
+        foreach (var path in manifests)
+        {
+            var manifest = FixtureManifestLoader.Load(path);
+            FixtureManifestVerifier.VerifyFiles(manifest, root);
+        }
+    }
+
+    [Fact]
     public void BootstrapFixtureNormalizesToExpectedOutput()
     {
         var root = FindRepositoryRoot();

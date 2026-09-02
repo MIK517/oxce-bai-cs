@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Oxce.Core.Diagnostics;
+using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
@@ -17,8 +18,11 @@ public sealed class TypedRuleReplayFixtureTests
     public void TypedReplayMatchesPinnedReferenceFixture()
     {
         var root = FindRepositoryRoot();
+        var manifest = FixtureManifestLoader.Load(
+            Path.Combine(root, "fixtures", "manifests", "typed-rule-replay.json"));
+        FixtureManifestVerifier.VerifyFiles(manifest, root);
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "typed-rule-replay");
-        var expectedPath = Path.Combine(root, "fixtures", "expected", "mods", "typed-rule-replay.expected.json");
+        var expectedPath = Path.GetFullPath(manifest.Expected, root);
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var catalog = ModCatalog.Create(discovery.Mods, diagnostics);

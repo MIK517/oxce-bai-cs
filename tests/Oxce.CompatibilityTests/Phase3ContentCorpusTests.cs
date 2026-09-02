@@ -88,15 +88,17 @@ public sealed class Phase3ContentCorpusTests
             var snapshot = ContentSnapshotBuilder.Build(
                 plan,
                 options: new ContentSnapshotOptions { RetainAuditArtifact = true });
+            using var auditArtifact = Assert.IsType<ContentAuditArtifact>(snapshot.AuditArtifact);
             var content = snapshot.Content;
             Assert.True(content.Catalog.Capabilities.Has(ContentLoadStage.Typed));
             var scriptErrors = snapshot.Diagnostics.Where(static item =>
                 item.Severity >= DiagnosticSeverity.Error &&
                 (item.Code == ModDiagnosticCodes.InvalidScriptContent ||
                  item.Code.StartsWith("OXCE-SCR-", StringComparison.Ordinal))).ToArray();
-            Assert.Empty(scriptErrors);
-            if (content.Catalog.Capabilities.Has(ContentLoadStage.Linked) &&
-                !snapshot.Diagnostics.Any(static item => item.Severity >= DiagnosticSeverity.Error))
+            Assert.True(scriptErrors.Length == 0, string.Join(
+                Environment.NewLine,
+                scriptErrors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
+            if (content.Catalog.Capabilities.Has(ContentLoadStage.Linked))
             {
                 Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), string.Join(
                 Environment.NewLine,
@@ -105,7 +107,7 @@ public sealed class Phase3ContentCorpusTests
             }
             var manifest = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
                 content,
-                Assert.IsType<ContentAuditArtifact>(snapshot.AuditArtifact),
+                auditArtifact,
                 new RulesetCatalogNormalizationOptions
                 {
                     NormalizeSourceName = source => Path.GetRelativePath(modsRoot, source).Replace('\\', '/'),
