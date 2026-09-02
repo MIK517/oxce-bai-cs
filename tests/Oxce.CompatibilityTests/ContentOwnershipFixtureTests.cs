@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Oxce.FixtureSupport;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Content;
@@ -13,9 +14,12 @@ public sealed class ContentOwnershipFixtureTests
     public void MultiModFileScopesMatchPinnedBehavior()
     {
         var root = FindRepositoryRoot();
+        var manifest = FixtureManifestLoader.Load(
+            Path.Combine(root, "fixtures", "manifests", "content-ownership.json"));
+        FixtureManifestVerifier.VerifyFiles(manifest, root);
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "content-ownership");
         using var expectedDocument = JsonDocument.Parse(File.ReadAllText(
-            Path.Combine(root, "fixtures", "expected", "mods", "content-ownership.expected.json")));
+            Path.GetFullPath(manifest.Expected, root)));
         var expected = expectedDocument.RootElement;
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
