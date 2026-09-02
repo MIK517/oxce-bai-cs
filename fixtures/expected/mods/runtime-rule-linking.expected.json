@@ -1,0 +1,11 @@
+{
+  "generationShared": true,
+  "country": ["COUNTRY", 100, 900, "EVENT", "runtime-addon"],
+  "region": ["REGION", "REGION", 500000],
+  "facility": ["FACILITY", 450000, 50, "ITEM", "FACILITY", "runtime-addon", 1000],
+  "craft": ["CRAFT", 8, 2, "ITEM"],
+  "item": ["ITEM", 25, 10, 0.2],
+  "soldier": ["SOLDIER", "ARMOR", 100, "SKILL"],
+  "startingBase": ["FACILITY", "CRAFT", "SOLDIER", "ITEM", 5, 2],
+  "startingTime": [2, 3, 4, 2001, 5, 6, 7]
+}

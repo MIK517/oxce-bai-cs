@@ -171,6 +171,11 @@ errors. Measured ZIP access did not justify archive pooling.
 
 Suggested branch: `codex/runtime-rule-linking`.
 
+Status: completed 2026-09-02. Dense family storage, generation/family-safe handles,
+linked strategic projections, compact starting-base references, provenance and
+compatibility sidecars, public/full-install fixtures, and controlled lookup benchmarks
+satisfy the exit gate.
+
 ### Work
 
 - Define content-generation-scoped typed rule handles and dense immutable family

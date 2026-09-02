@@ -12,11 +12,15 @@ public sealed record ContentBuildMeasurements(
     ContentBuildStageMeasurement Compose,
     ContentBuildStageMeasurement TypeAndLink,
     ContentBuildStageMeasurement ResourceResolution,
-    ContentBuildStageMeasurement ScriptCompilation)
+    ContentBuildStageMeasurement ScriptCompilation,
+    ContentBuildStageMeasurement RuntimeRuleLinking)
 {
     public ContentBuildMeasurements WithResourceResolution(ContentBuildStageMeasurement measurement) =>
         this with { ResourceResolution = measurement };
 
     public ContentBuildMeasurements WithScriptCompilation(ContentBuildStageMeasurement measurement) =>
         this with { ScriptCompilation = measurement };
+
+    public ContentBuildMeasurements WithRuntimeRuleLinking(ContentBuildStageMeasurement measurement) =>
+        this with { RuntimeRuleLinking = measurement };
 }

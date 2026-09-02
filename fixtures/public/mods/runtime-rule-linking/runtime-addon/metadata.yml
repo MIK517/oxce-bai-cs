@@ -1,0 +1,6 @@
+id: runtime-addon
+name: Runtime rule linking fixture add-on
+version: 1.0
+master: runtime-master
+isMaster: false
+reservedSpace: 1

@@ -1,0 +1,62 @@
+countries:
+  - type: COUNTRY
+    fundingBase: 100
+    fundingCap: 400
+    areas: [[0, 30, -20, 20]]
+    signedPactEvent: EVENT
+regions:
+  - type: REGION
+    cost: 500000
+    areas: [[0, 30, -20, 20]]
+    missionRegion: REGION
+events:
+  - name: EVENT
+research:
+  - name: RESEARCH
+items:
+  - type: CORPSE
+    battleType: 11
+  - type: ITEM
+    requires: [RESEARCH]
+    costBuy: 25
+    costSell: 10
+    size: 0.2
+armors:
+  - type: ARMOR
+    corpseBattle: [CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [0]
+    storeItem: ITEM
+skills:
+  - type: SKILL
+    compatibleWeapons: [ITEM]
+soldiers:
+  - type: SOLDIER
+    armor: ARMOR
+    requires: [RESEARCH]
+    skills: [SKILL]
+    costBuy: 100
+crafts:
+  - type: CRAFT
+    requires: [RESEARCH]
+    refuelItem: ITEM
+    soldiers: 8
+    vehicles: 2
+facilities:
+  - type: FACILITY
+    mapName: BASEMAP
+    requires: [RESEARCH]
+    buildCost: 400000
+    storage: 50
+    buildCostItems: {ITEM: {build: 2, refund: 1}}
+    buildOverFacilities: [FACILITY]
+    leavesBehindOnSell: [FACILITY]
+    destroyedFacility: FACILITY
+startingBase:
+  facilities: [{type: FACILITY, x: 1, y: 2, buildTime: 0}]
+  crafts: [{type: CRAFT, id: 3}]
+  soldiers: [{type: SOLDIER, id: 4}]
+  items: {ITEM: 5}
+  randomSoldiers: {SOLDIER: 2}
+startingTime: {weekday: 2, day: 3, month: 4, year: 2001, hour: 5, minute: 6, second: 7}
+initialFunding: 6000
