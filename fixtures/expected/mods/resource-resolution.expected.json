@@ -1,0 +1,21 @@
+{
+  "stage": "resources-resolved",
+  "descriptors": [
+    {"Id":"sprite/SET.PCK/1","kind":"Sprite","CanonicalPath":"resources/override.png","ModId":"resource-addon","policy":"Cache","RuntimeIndex":1,"Width":32,"Height":40,"OwnerSection":"extraSprites","OwnerId":"SET.PCK"},
+    {"Id":"sprite/SET.PCK/2","kind":"Sprite","CanonicalPath":"resources/master.png","ModId":"resource-master","policy":"Cache","RuntimeIndex":2,"Width":32,"Height":40,"OwnerSection":"extraSprites","OwnerId":"SET.PCK"},
+    {"Id":"sprite/SET.PCK/1002","kind":"Sprite","CanonicalPath":"resources/addon.png","ModId":"resource-addon","policy":"Cache","RuntimeIndex":1002,"Width":32,"Height":40,"OwnerSection":"extraSprites","OwnerId":"SET.PCK"},
+    {"Id":"sound/SET.CAT/1","kind":"Sound","CanonicalPath":"resources/master.wav","ModId":"resource-master","policy":"Cache","RuntimeIndex":1,"Width":0,"Height":0,"OwnerSection":"extraSounds","OwnerId":"SET.CAT"},
+    {"Id":"sound/SET.CAT/1001","kind":"Sound","CanonicalPath":"resources/addon.wav","ModId":"resource-addon","policy":"Cache","RuntimeIndex":1001,"Width":0,"Height":0,"OwnerSection":"extraSounds","OwnerId":"SET.CAT"},
+    {"Id":"interface/UI/background","kind":"IndexedImage","CanonicalPath":"resources/background.png","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"interfaces","OwnerId":"UI"},
+    {"Id":"palette/PAL","kind":"Palette","CanonicalPath":"resources/palette.dat","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"customPalettes","OwnerId":"PAL"},
+    {"Id":"music/TRACK","kind":"Music","CanonicalPath":"sound/track.ogg","ModId":"resource-master","policy":"Stream","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"musics","OwnerId":"TRACK"},
+    {"Id":"video/DEMO/0","kind":"Video","CanonicalPath":"video/clip.flc","ModId":"resource-master","policy":"Stream","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"cutscenes","OwnerId":"DEMO"},
+    {"Id":"video-audio/DEMO/0","kind":"Music","CanonicalPath":"sound/clip.ogg","ModId":"resource-master","policy":"Stream","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"cutscenes","OwnerId":"DEMO"},
+    {"Id":"slide/DEMO/0","kind":"IndexedImage","CanonicalPath":"resources/slide.png","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":320,"Height":200,"OwnerSection":"cutscenes","OwnerId":"DEMO"},
+    {"Id":"terrain/TERRAIN/dataset/URBAN/mcd","kind":"Terrain","CanonicalPath":"terrain/urban.mcd","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"terrains","OwnerId":"TERRAIN"},
+    {"Id":"terrain/TERRAIN/dataset/URBAN/pck","kind":"Sprite","CanonicalPath":"terrain/urban.pck","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":32,"Height":40,"OwnerSection":"terrains","OwnerId":"TERRAIN"},
+    {"Id":"terrain/TERRAIN/dataset/URBAN/tab","kind":"Binary","CanonicalPath":"terrain/urban.tab","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"terrains","OwnerId":"TERRAIN"},
+    {"Id":"terrain/TERRAIN/map/BLOCK","kind":"Terrain","CanonicalPath":"maps/block.map","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":20,"Height":10,"OwnerSection":"terrains","OwnerId":"TERRAIN"},
+    {"Id":"terrain/TERRAIN/route/BLOCK","kind":"Terrain","CanonicalPath":"routes/block.rmp","ModId":"resource-master","policy":"Cache","RuntimeIndex":null,"Width":0,"Height":0,"OwnerSection":"terrains","OwnerId":"TERRAIN"}
+  ]
+}

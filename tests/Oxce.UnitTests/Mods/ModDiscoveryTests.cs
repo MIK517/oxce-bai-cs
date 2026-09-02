@@ -175,6 +175,32 @@ public sealed class ModDiscoveryTests
     }
 
     [Fact]
+    public void SharedCommonResourcesAreLowerPriorityThanGameAndModLayers()
+    {
+        using var fixture = new TemporaryModDirectory();
+        using var resources = new TemporaryModDirectory();
+        fixture.Add(
+            "master",
+            "id: master\nisMaster: true\nloadResources: [UFO]\n",
+            content: [("Resources/shared.dat", "mod")]);
+        resources.AddResourceDirectory("common",
+            ("Resources/shared.dat", "common"), ("Resources/common.dat", "common"));
+        resources.AddResourceDirectory("UFO",
+            ("Resources/shared.dat", "game"), ("Resources/game.dat", "game"));
+
+        var result = ModDiscovery.ScanDirectory(fixture.Path, options: new ModDiscoveryOptions
+        {
+            ExternalResourceRoots = [resources.Path],
+        });
+
+        var candidate = Assert.Single(result.Mods);
+        var catalog = new VirtualFileCatalog(candidate.Layers);
+        Assert.Equal("mod", ReadText(catalog.GetRequired("Resources/shared.dat")));
+        Assert.Equal("common", ReadText(catalog.GetRequired("Resources/common.dat")));
+        Assert.Equal("game", ReadText(catalog.GetRequired("Resources/game.dat")));
+    }
+
+    [Fact]
     public void OversizedExpandedArchiveEntryIsRejectedBeforeDiscovery()
     {
         using var fixture = new TemporaryModDirectory();

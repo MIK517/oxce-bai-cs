@@ -170,7 +170,8 @@
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.10, )",
           "Oxce.Core": "[1.0.0, )",
           "Oxce.Gameplay": "[1.0.0, )",
-          "Oxce.Rendering": "[1.0.0, )"
+          "Oxce.Rendering": "[1.0.0, )",
+          "Oxce.Resources": "[1.0.0, )"
         }
       },
       "oxce.formats": {
@@ -200,6 +201,15 @@
         "type": "Project",
         "dependencies": {
           "Oxce.Core": "[1.0.0, )"
+        }
+      },
+      "oxce.resources": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Formats": "[1.0.0, )",
+          "Oxce.Mods": "[1.0.0, )",
+          "Oxce.Rendering": "[1.0.0, )"
         }
       },
       "oxce.scripting": {

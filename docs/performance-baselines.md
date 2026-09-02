@@ -279,6 +279,32 @@ The staged Rosigma audit still compiled 512 files and 3,875 attempted scripts in
 manifest retained SHA-256
 `C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
 
+### Resource-runtime result
+
+Slice 3 was measured on 2026-09-02 on the same Ryzen 9 7940HS host, .NET SDK
+10.0.302, and .NET runtime 10.0.10. The staged 40k/Rosigma audit reached
+`scripts-compiled`, resolved 24,623 final immutable descriptors after overrides, and retained the established
+512 files, 3,875 attempted scripts, 3,536 script artifacts, 8,818 warnings, and zero
+errors. Across the two warm processes, resource resolution had a 203.2 ms median and
+allocated 32.1 MiB; the complete build had a 6.753 s median and retained 159.2 MiB of
+runtime content over its pre-build baseline. No resource body was decoded during startup.
+
+The `ResourceRuntimeBenchmarks` ShortRun used one 256 KiB payload through directory and
+compressed-ZIP VFS sources:
+
+| Workload | Mean | Allocated |
+|---|---:|---:|
+| Directory cold load into an empty runtime | 345.9 us | 849.3 KiB |
+| ZIP cold load into an empty runtime | 349.8 us | 1,239.2 KiB |
+| Directory warm cache hit | 32.7 ns | 0 B |
+| ZIP warm cache hit | 26.3 ns | 0 B |
+
+ZIP cold time was about 1.1% above directory cold time. Although opening an archive
+allocated more, the normal repeated path is the allocation-free decoded cache hit.
+This result does not justify adding an archive pool with shared lifetime, locking, and
+file-handle complexity. The benchmark remains in-tree so that decision can be revisited
+if future streaming or uncached workloads show a material difference.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time

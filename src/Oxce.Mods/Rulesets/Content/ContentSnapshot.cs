@@ -6,6 +6,7 @@ using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Files;
+using Oxce.Mods.Resources;
 using Oxce.Mods.Rulesets.Phase3;
 using Oxce.Scripting;
 using Oxce.Scripting.Api;
@@ -20,11 +21,13 @@ public sealed record ContentSnapshotOptions
     public int MaximumScripts { get; init; } = 100_000;
     public int MaximumDiagnostics { get; init; } = DiagnosticCollector.DefaultMaximumDiagnostics;
     public bool RetainAuditArtifact { get; init; }
+    public ResourceResolutionOptions ResourceResolution { get; init; } = new();
 
     public void Validate()
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumScripts);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumDiagnostics);
+        ResourceResolution.Validate();
     }
 }
 
@@ -66,7 +69,8 @@ public sealed class RuntimeContent
         ScriptTagCatalog tags,
         IEnumerable<ContentScriptArtifact> scripts,
         IEnumerable<ContentScriptEventPlan> eventPlans,
-        IEnumerable<ContentInitialScriptValue> initialValues)
+        IEnumerable<ContentInitialScriptValue> initialValues,
+        ResolvedResourceCatalog resources)
     {
         Catalog = catalog;
         Capabilities = capabilities;
@@ -75,6 +79,7 @@ public sealed class RuntimeContent
         Scripts = Array.AsReadOnly(scripts.ToArray());
         EventPlans = Array.AsReadOnly(eventPlans.ToArray());
         InitialValues = Array.AsReadOnly(initialValues.ToArray());
+        Resources = resources;
     }
 
     public Phase3ContentCatalog Catalog { get; }
@@ -84,6 +89,7 @@ public sealed class RuntimeContent
     public IReadOnlyList<ContentScriptArtifact> Scripts { get; }
     public IReadOnlyList<ContentScriptEventPlan> EventPlans { get; }
     public IReadOnlyList<ContentInitialScriptValue> InitialValues { get; }
+    public ResolvedResourceCatalog Resources { get; }
 }
 
 public sealed class ContentAuditArtifact : IDisposable
@@ -167,6 +173,22 @@ public static class ContentSnapshotBuilder
             ? collector
             : new ForwardingDiagnosticSink(diagnostics, collector);
         var session = Phase3ContentCatalog.Build(plan, sink, compositionOptions, typedOptions);
+        var capabilities = session.Catalog.Capabilities;
+        var resourceAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        var resourceTimer = Stopwatch.StartNew();
+        var resourceResolution = capabilities.Has(ContentLoadStage.Linked)
+            ? ResourceDescriptorResolver.Resolve(plan, session.Catalog, sink, options.ResourceResolution)
+            : new ResourceResolutionResult(
+                new ResolvedResourceCatalog(ContentGenerationId.Next(), []),
+                Array.Empty<ResolvedResourceIssue>());
+        resourceTimer.Stop();
+        var resourceMeasurement = new ContentBuildStageMeasurement(
+            resourceTimer.Elapsed.TotalMilliseconds,
+            GC.GetAllocatedBytesForCurrentThread() - resourceAllocationStart);
+        if (capabilities.Has(ContentLoadStage.Linked) && resourceResolution.IsValid)
+        {
+            capabilities = capabilities.AdvanceTo(ContentLoadStage.ResourcesResolved);
+        }
         var compiler = new ContentScriptCompiler(plan, session, sink, options);
         var scriptAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         var scriptTimer = Stopwatch.StartNew();
@@ -176,7 +198,6 @@ public static class ContentSnapshotBuilder
             scriptTimer.Elapsed.TotalMilliseconds,
             GC.GetAllocatedBytesForCurrentThread() - scriptAllocationStart);
 
-        var capabilities = session.Catalog.Capabilities;
         if (capabilities.Has(ContentLoadStage.Linked) &&
             !collector.HasSeverityAtLeast(DiagnosticSeverity.Error))
         {
@@ -189,14 +210,15 @@ public static class ContentSnapshotBuilder
             compiler.Tags,
             compiler.Scripts,
             compiler.EventPlans,
-            compiler.InitialValues);
+            compiler.InitialValues,
+            resourceResolution.Catalog);
         return new ContentSnapshot(
             runtime,
             collector.Snapshot(),
             collector.ReportedCount,
             collector.DroppedCount,
             compiler.CompiledScriptCount,
-            session.Measurements.WithScriptCompilation(scriptMeasurement),
+            session.Measurements.WithResourceResolution(resourceMeasurement).WithScriptCompilation(scriptMeasurement),
             options.RetainAuditArtifact ? new ContentAuditArtifact(session) : null,
             compiler.SourceScopeCount,
             compiler.ApiScopeCount);
