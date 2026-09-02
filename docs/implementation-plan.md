@@ -293,19 +293,10 @@ adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
-1. Stage and manifest the permitted private `xcom1` -> `40k` -> `rosigma` installation
-   under ignored `artifacts/` through a reusable, path-parameterized tool.
-2. Measure retained content memory and script API scope construction, then separate
-   build/audit state from the published runtime content package without changing the
-   full-install manifest.
-3. Benchmark and compact script program/execution storage, including the frame ABI
-   needed for text/reference host calls and recursion.
-4. Record the resource-runtime ownership decision and implement exact resource
-   resolution, shared offsets, lazy decoding, and bounded caches.
-5. Add content-scoped rule handles and strongly typed runtime projections for campaign
+1. Add content-scoped rule handles and strongly typed runtime projections for campaign
    creation, calendar/time, countries/regions, and the starting base.
-6. Deliver that first strategic slice with gameplay providers/events, save-neutral
+2. Deliver that first strategic slice with gameplay providers/events, save-neutral
    capture/restoration contracts, compatible save adapters, headless scenarios, and
    semantic round trips.
-7. Continue adding focused executable C++ probes, compatibility matrix entries, and
+3. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

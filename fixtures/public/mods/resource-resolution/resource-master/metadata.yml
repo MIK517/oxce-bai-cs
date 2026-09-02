@@ -1,0 +1,5 @@
+id: resource-master
+name: Resource resolution fixture master
+version: 1.0
+isMaster: true
+reservedSpace: 1
