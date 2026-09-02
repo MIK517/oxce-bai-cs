@@ -388,15 +388,15 @@ public static class ResourceDescriptorResolver
         Dictionary<string, int> sounds)
     {
         foreach (var pair in new Dictionary<string, string>(StringComparer.Ordinal)
-                 {
-                     ["BIGOBS.PCK"] = "UNITS/BIGOBS.TAB",
-                     ["FLOOROB.PCK"] = "UNITS/FLOOROB.TAB",
-                     ["HANDOB.PCK"] = "UNITS/HANDOB.TAB",
-                     ["SMOKE.PCK"] = "UFOGRAPH/SMOKE.TAB",
-                     ["HIT.PCK"] = "UFOGRAPH/HIT.TAB",
-                     ["BASEBITS.PCK"] = "GEOGRAPH/BASEBITS.TAB",
-                     ["INTICON.PCK"] = "GEOGRAPH/INTICON.TAB",
-                 })
+        {
+            ["BIGOBS.PCK"] = "UNITS/BIGOBS.TAB",
+            ["FLOOROB.PCK"] = "UNITS/FLOOROB.TAB",
+            ["HANDOB.PCK"] = "UNITS/HANDOB.TAB",
+            ["SMOKE.PCK"] = "UFOGRAPH/SMOKE.TAB",
+            ["HIT.PCK"] = "UFOGRAPH/HIT.TAB",
+            ["BASEBITS.PCK"] = "GEOGRAPH/BASEBITS.TAB",
+            ["INTICON.PCK"] = "GEOGRAPH/INTICON.TAB",
+        })
         {
             if (!sprites.ContainsKey(pair.Key) && files.TryGet(pair.Value, out var entry))
             {
