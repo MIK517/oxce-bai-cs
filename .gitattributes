@@ -26,3 +26,15 @@
 *.jpg binary
 *.png binary
 *.zip binary
+
+# OXCE asset formats are byte-exact, even when a small synthetic fixture happens
+# to contain only printable bytes and is therefore detected as text by Git.
+*.[Dd][Aa][Tt] binary
+*.[Ff][Ll][Cc] binary
+*.[Mm][Aa][Pp] binary
+*.[Mm][Cc][Dd] binary
+*.[Oo][Gg][Gg] binary
+*.[Pp][Cc][Kk] binary
+*.[Rr][Mm][Pp] binary
+*.[Tt][Aa][Bb] binary
+*.[Ww][Aa][Vv] binary
