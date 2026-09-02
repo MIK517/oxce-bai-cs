@@ -13,13 +13,14 @@ namespace Oxce.UnitTests.Scripting;
 public sealed class ScriptRuntimeFrameTests
 {
     [Fact]
-    public void PackedProgramDoesNotRetainInstructionObjectsOrOperandArrays()
+    public void PackedProgramDoesNotRetainInstructionObjectsOrOperandCollections()
     {
-        var (program, instruction) = CreatePackedProgramProbe();
+        var (program, instruction, operands) = CreatePackedProgramProbe();
 
         Collect();
 
         Assert.False(instruction.IsAlive);
+        Assert.False(operands.IsAlive);
         Assert.Single(program.Instructions);
         Assert.Equal(42, Assert.Single(program.Instructions[0].Operands).Scalar);
     }
@@ -35,12 +36,14 @@ public sealed class ScriptRuntimeFrameTests
         Assert.True(ScriptVm.ExecuteScalar(program, initial, output, frame).Succeeded);
 
         var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var allSucceeded = true;
         for (var index = 0; index < 100; index++)
         {
-            Assert.True(ScriptVm.ExecuteScalar(program, initial, output, frame).Succeeded);
+            allSucceeded &= ScriptVm.ExecuteScalar(program, initial, output, frame).Succeeded;
         }
         var allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
 
+        Assert.True(allSucceeded);
         Assert.Equal(allocatedBefore, allocatedAfter);
         Assert.Equal(29, output[0]);
     }
@@ -210,14 +213,15 @@ public sealed class ScriptRuntimeFrameTests
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static (ScriptProgram Program, WeakReference Instruction) CreatePackedProgramProbe()
+    private static (ScriptProgram Program, WeakReference Instruction, WeakReference Operands) CreatePackedProgramProbe()
     {
         var instruction = new ScriptInstruction(
             new ScriptOperationId((int)CoreScriptOperation.Set),
             [ScriptOperand.IntegerValue(42)],
             default);
         var weak = new WeakReference(instruction);
-        return (new ScriptProgram("Probe", [instruction], [], 4), weak);
+        var operands = new WeakReference(instruction.Operands);
+        return (new ScriptProgram("Probe", [instruction], [], 4), weak, operands);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
