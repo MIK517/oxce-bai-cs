@@ -293,10 +293,9 @@ adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
-1. Add content-scoped rule handles and strongly typed runtime projections for campaign
-   creation, calendar/time, countries/regions, and the starting base.
-2. Deliver that first strategic slice with gameplay providers/events, save-neutral
+1. Deliver the first strategic slice with gameplay providers/events, save-neutral
    capture/restoration contracts, compatible save adapters, headless scenarios, and
    semantic round trips.
+2. Add the smallest SDL presentation needed to inspect and operate the headless slice.
 3. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

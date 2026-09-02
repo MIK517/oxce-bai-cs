@@ -265,8 +265,9 @@ internal static class FixtureTool
         process.Refresh();
         output.WriteLine(JsonSerializer.Serialize(new
         {
-            stage = measurement.Content.Capabilities.Has(ContentLoadStage.ScriptsCompiled)
-                ? "scripts-compiled"
+            stage = measurement.Content.Capabilities.Has(ContentLoadStage.RuntimeLinked)
+                ? "runtime-linked"
+                : measurement.Content.Capabilities.Has(ContentLoadStage.ScriptsCompiled) ? "scripts-compiled"
                 : measurement.Content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
             parsedFiles = measurement.Content.ParsedFileCount,
             attemptedScripts = measurement.CompiledScriptCount,
@@ -275,6 +276,7 @@ internal static class FixtureTool
             tags = measurement.Content.Tags.Tags.Count,
             initialValues = measurement.Content.InitialValues.Count,
             resourceDescriptors = measurement.Content.Resources.Descriptors.Count,
+            runtimeRuleCount = RuntimeRuleCount(measurement.Content.RuntimeRules),
             diagnostics = preBuildReportedDiagnosticCount + measurement.ReportedDiagnosticCount,
             errors = preBuildErrorCount + measurement.ErrorCount,
             sourceScopeCount = measurement.SourceScopeCount,
@@ -296,9 +298,11 @@ internal static class FixtureTool
             resourceResolutionAllocatedBytes = measurement.Measurements.ResourceResolution.AllocatedBytes,
             scriptCompilationElapsedMilliseconds = measurement.Measurements.ScriptCompilation.ElapsedMilliseconds,
             scriptCompilationAllocatedBytes = measurement.Measurements.ScriptCompilation.AllocatedBytes,
+            runtimeRuleLinkingElapsedMilliseconds = measurement.Measurements.RuntimeRuleLinking.ElapsedMilliseconds,
+            runtimeRuleLinkingAllocatedBytes = measurement.Measurements.RuntimeRuleLinking.AllocatedBytes,
         }));
         GC.KeepAlive(measurement.Content);
-        return measurement.Content.Capabilities.Has(ContentLoadStage.ScriptsCompiled) &&
+        return measurement.Content.Capabilities.Has(ContentLoadStage.RuntimeLinked) &&
             preBuildErrorCount + measurement.ErrorCount == 0 ? 0 : 1;
     }
 
@@ -348,7 +352,7 @@ internal static class FixtureTool
         var warnings = retained.Count(item => item.Severity == DiagnosticSeverity.Warning);
         var firstErrors = retained.Where(item => item.Severity >= DiagnosticSeverity.Error)
             .Take(20).Select(item => new { item.Code, item.Message, Source = item.Source?.ToString() }).ToArray();
-        var completedWithoutErrors = snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled) && errors == 0;
+        var completedWithoutErrors = snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked) && errors == 0;
         retained = default;
         diagnostics = null!;
         var managedBytesAfterBuild = GC.GetTotalMemory(forceFullCollection: true);
@@ -374,8 +378,9 @@ internal static class FixtureTool
         process.Refresh();
         output.WriteLine(JsonSerializer.Serialize(new
         {
-            stage = snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled)
-                ? "scripts-compiled"
+            stage = snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked)
+                ? "runtime-linked"
+                : snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled) ? "scripts-compiled"
                 : content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
             parsedFiles = content.ParsedFileCount,
             attemptedScripts = snapshot.CompiledScriptCount,
@@ -384,6 +389,7 @@ internal static class FixtureTool
             tags = snapshot.Tags.Tags.Count,
             initialValues = snapshot.InitialValues.Count,
             resourceDescriptors = snapshot.Content.Resources.Descriptors.Count,
+            runtimeRuleCount = RuntimeRuleCount(snapshot.Content.RuntimeRules),
             diagnostics = reportedDiagnostics,
             errors,
             warnings,
@@ -399,6 +405,8 @@ internal static class FixtureTool
             resourceResolutionAllocatedBytes = snapshot.Measurements.ResourceResolution.AllocatedBytes,
             scriptCompilationElapsedMilliseconds = snapshot.Measurements.ScriptCompilation.ElapsedMilliseconds,
             scriptCompilationAllocatedBytes = snapshot.Measurements.ScriptCompilation.AllocatedBytes,
+            runtimeRuleLinkingElapsedMilliseconds = snapshot.Measurements.RuntimeRuleLinking.ElapsedMilliseconds,
+            runtimeRuleLinkingAllocatedBytes = snapshot.Measurements.RuntimeRuleLinking.AllocatedBytes,
             sourceScopeCount = snapshot.SourceScopeCount,
             apiScopeCount = snapshot.ApiScopeCount,
             buildElapsedMilliseconds = buildTimer.Elapsed.TotalMilliseconds,
@@ -417,6 +425,11 @@ internal static class FixtureTool
 
         return completedWithoutErrors ? 0 : 1;
     }
+
+    private static int RuntimeRuleCount(Oxce.Mods.Rulesets.Runtime.RuntimeRuleCatalog rules) =>
+        rules.Countries.Count + rules.Regions.Count + rules.Facilities.Count + rules.Crafts.Count +
+        rules.CraftWeapons.Count + rules.Items.Count + rules.Soldiers.Count + rules.Armors.Count +
+        rules.Skills.Count + rules.Research.Count + rules.Events.Count + rules.Scripts.Count;
 
     private static int Usage(TextWriter error)
     {

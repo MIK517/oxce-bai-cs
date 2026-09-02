@@ -1,0 +1,12 @@
+countries:
+  - update: COUNTRY
+    fundingCap: 900
+extraSprites:
+  - type: BASEBITS.PCK
+    width: 32
+    height: 40
+    files: {0: Resources/facility.png}
+facilities:
+  - update: FACILITY
+    buildCost: 450000
+    spriteShape: {index: 0, mod: current}

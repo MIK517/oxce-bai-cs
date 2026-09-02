@@ -8,7 +8,7 @@ Content loading has three explicit ownership domains. A caller must publish
 | Owner | Lifetime | Contents |
 |---|---|---|
 | `ContentBuildSession` | Load only | Parsed `RulesetDocumentCatalog`, composed `UnresolvedRuleCatalog`, typed catalog, and parse/compose/type-link measurements. |
-| `RuntimeContent` | Content generation | Linked typed catalogs, immutable resolved-resource descriptors/handles, compiled script programs and event plans, tag definitions, initial script values, capabilities, and the parsed-file count. |
+| `RuntimeContent` | Content generation | Linked typed catalogs, dense runtime rule projections and handles, immutable resolved-resource descriptors/handles, compiled script programs and event plans, tag definitions, initial script values, capabilities, and the parsed-file count. |
 | `ContentAuditArtifact` | Optional tool/audit lifetime | Parsed documents and composed operation history required for semantic manifests and composition inspection. It is explicitly requested and disposable. |
 
 `ContentSnapshot` is the build result: it carries the publishable `RuntimeContent`,
@@ -26,8 +26,8 @@ runtime projection:
 
 | Current owner | Structured data | Planned consumer/disposition |
 |---|---|---|
-| `RuleCompatibilityData` on each typed rule | Deferred and unknown rule properties with provenance | Resource/script projection or a compact forward-compatibility sidecar; audit history remains separate. |
-| `CampaignStartSettings` | Difficulty-specific starting-base mappings | Phase 5 campaign creation and save-neutral starting-base projection. |
+| `RuleCompatibilityData` on each typed rule | Deferred and unknown rule properties with provenance | The first strategic projections expose these through a separately named runtime compatibility sidecar; audit history remains separate. Later families follow the same boundary. |
+| `CampaignStartSettings` compatibility catalog | Difficulty-specific starting-base mappings | Facility, craft, soldier, item, random-soldier, and time/funding fields now have bounded runtime projections. Remaining base/template fields stay compatibility-only until their gameplay owner lands. |
 | Manufacture, soldier, unit, and event rules | Spawned-soldier templates and soldier stat-string structures | Phase 4 rule projections and Phase 5 campaign/personnel creation. |
 | Terrain and map-script rules | Map-block item/fuse payloads, tunnel/vertical-level payloads, deployment/reinforcement/event structures, and alien-race evolution | `Oxce.Resources` terrain descriptors and later tactical mission generation. |
 | Ufopaedia rules | Type-specific rectangle/layout structures | Presentation/resource projection. |
@@ -60,7 +60,7 @@ constructing a complete indexed API catalog for every ruleset file.
 ## Measurements
 
 Every build records elapsed time and current-thread allocation for parse, compose,
-type/link, resource-resolution, and script-compilation stages. `audit-content-install` retains audit state
+type/link, resource-resolution, script-compilation, and runtime-rule-linking stages. `audit-content-install` retains audit state
 long enough to emit and hash the semantic manifest. `measure-content-install` runs in a
 separate process and returns only `RuntimeContent` across a non-inlined build boundary,
 so its post-GC retained measurement excludes build diagnostics, parsed documents,
