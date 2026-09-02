@@ -7,6 +7,7 @@
 *.slnx text eol=lf
 *.json text eol=lf
 *.hex text eol=lf
+*.rul text eol=lf
 *.md text eol=lf
 *.tsv text eol=lf
 *.yml text eol=lf
