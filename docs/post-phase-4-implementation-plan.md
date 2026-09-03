@@ -295,6 +295,12 @@ together.
 
 Suggested branch: `codex/managed-extension-foundation`.
 
+Status: completed 2026-09-03 for the contracts and current campaign proof. Manual
+manifest loading, API negotiation, isolated dependencies, callback containment,
+campaign adaptation, and the bounded save-neutral state document are executable.
+OXCE save integration and tactical AI remain at their explicitly documented ownership
+gates rather than being represented by placeholders.
+
 ### Work available now
 
 - Add dependency-light `Oxce.Extensions.Abstractions` and the `Oxce.Extensions` host.
