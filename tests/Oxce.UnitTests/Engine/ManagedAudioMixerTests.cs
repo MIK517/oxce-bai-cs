@@ -119,4 +119,33 @@ public sealed class ManagedAudioMixerTests
         mixer.Mix(output);
         Assert.Equal(new short[] { 0, 0 }, output);
     }
+
+    [Fact]
+    public async Task ControlUpdatesAndRepeatedCallbacksRemainBoundedAndDeadlockFree()
+    {
+        using var mixer = new ManagedAudioMixer(48_000, maximumEffectVoices: 32);
+        var clip = new PcmAudioClip(new short[8_192], 48_000, 2);
+        using var playback = mixer.Play(
+            clip,
+            new AudioPlaybackOptions(AudioBus.Effects, LoopCount: -1, Gain: 0.25f));
+        var testCancellation = TestContext.Current.CancellationToken;
+        using var stop = new CancellationTokenSource();
+        var control = Task.Run(() =>
+        {
+            var gain = 0d;
+            while (!stop.IsCancellationRequested)
+            {
+                mixer.SetBusGain(AudioBus.Effects, gain);
+                gain = gain == 0 ? 1 : 0;
+                Thread.Yield();
+            }
+        }, testCancellation);
+        var output = new short[512];
+
+        for (var index = 0; index < 10_000; index++) mixer.Mix(output);
+        stop.Cancel();
+        await control.WaitAsync(TimeSpan.FromSeconds(5), testCancellation);
+
+        Assert.True(playback.IsPlaying);
+    }
 }

@@ -24,8 +24,13 @@ case "$mode" in
         frames="$(awk -F': ' '/^SDL presented frames:/ { print $2 }' <<<"$output")"
         ticks="$(awk -F': ' '/^SDL ticks:/ { print $2 }' <<<"$output")"
         renderer="$(awk -F': ' '/^SDL renderer:/ { print $2 }' <<<"$output")"
+        suppressed="$(awk -F': ' '/^SDL suppressed presentations:/ { print $2 }' <<<"$output")"
+        maximum_us="$(awk -F': ' '/^SDL maximum presentation us:/ { print $2 }' <<<"$output")"
         [[ "$frames" =~ ^[1-9][0-9]*$ ]]
         [[ "$ticks" =~ ^[1-9][0-9]*$ ]]
+        [[ "$suppressed" =~ ^[1-9][0-9]*$ ]]
+        [[ "$maximum_us" =~ ^[0-9]+([.][0-9]+)?$ ]]
+        awk -v value="$maximum_us" 'BEGIN { exit !(value > 0) }'
         [[ -n "$renderer" && "$renderer" != "unknown" ]]
         ;;
     audio)

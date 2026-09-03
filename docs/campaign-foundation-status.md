@@ -26,8 +26,15 @@ binding.
 
 The headless `campaign-scenario` command creates a deterministic campaign, places its
 base, advances one minute, writes atomically, reloads, and reports semantic counts and
-timings. A minimal SDL presentation is intentionally the immediately following slice,
-as allowed by the agreed headless-first sequencing.
+timings. The immediately following performance-hardening slice added a minimal indexed
+campaign overview. `Oxce.Engine` renders the save-neutral view and submits existing
+commands; SDL remains a platform host. The app command accepts the same self-contained
+installation inputs, lets the user click to place the starting base, advances one
+minute per Space press, suppresses unchanged uploads, and optionally saves on exit:
+
+```powershell
+dotnet run --project src/Oxce.App --configuration Release -- --campaign-sdl artifacts/private-install xcom1 - artifacts/campaign-foundation/ui.sav
+```
 
 ## Compatibility evidence
 
@@ -70,4 +77,5 @@ These are single cold-process integration observations, not microbenchmark means
 - full personnel/craft fields, inventory operations, transfers, facilities, and
   finance rather than placeholder mutation of opaque save nodes;
 - gameplay script providers/events when their owning commands arrive;
-- the minimal SDL campaign inspector/starting-base interaction.
+- richer localized text and controls as personnel, inventory, craft, and finance
+  actions become available.

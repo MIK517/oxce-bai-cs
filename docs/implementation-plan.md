@@ -208,12 +208,13 @@ Exit gate:
   conversion support advances with the gameplay state that can validate it.
 - Missing-mod and corrupt-save failures are actionable and covered.
 
-Status (2026-09-03): the headless campaign foundation satisfies this gate for public,
+Status (2026-09-03): the campaign foundation satisfies this gate for public,
 vanilla UFO, and staged 40k/Rosigma scenarios. Supplied vanilla UFO and Rosigma saves,
 including opaque active-battle state, load and round-trip their implemented strategic
 subset. See [campaign foundation status](campaign-foundation-status.md) and
-[ADR 0018](decisions/0018-campaign-state-and-oxce-save-overlay.md). TFTD acceptance and
-the minimal SDL view are explicit next-slice work.
+[ADR 0018](decisions/0018-campaign-state-and-oxce-save-overlay.md). A minimal indexed
+SDL view now creates and operates this slice without coupling gameplay to SDL. TFTD
+acceptance remains explicit follow-up work.
 
 ## Phase 6 — Playable strategic vertical slice
 
@@ -300,9 +301,8 @@ adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
-1. Deliver the first strategic slice with gameplay providers/events, save-neutral
-   capture/restoration contracts, compatible save adapters, headless scenarios, and
-   semantic round trips.
-2. Add the smallest SDL presentation needed to inspect and operate the headless slice.
+1. Close the TFTD runtime-projection property that blocks its campaign/save acceptance.
+2. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
+   persisted strategic slice, including their owning script providers and UI actions.
 3. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.
