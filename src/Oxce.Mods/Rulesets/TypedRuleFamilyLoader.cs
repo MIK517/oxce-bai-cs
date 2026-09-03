@@ -44,10 +44,12 @@ public abstract class TypedRuleFamilyLoader<TBuilder, TRule>
         var rules = new List<TypedRule<TRule>>(unresolved.Rules.Count);
         foreach (var unresolvedRule in unresolved.Rules)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             var builder = Create(unresolvedRule);
             var deferredProperties = new List<DeferredRuleProperty>();
             foreach (var operation in unresolvedRule.Operations)
             {
+                options.CancellationToken.ThrowIfCancellationRequested();
                 var reader = new RulePropertyReader(
                     operation.Node,
                     operation.Source,

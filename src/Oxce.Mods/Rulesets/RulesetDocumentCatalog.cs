@@ -43,11 +43,14 @@ public sealed class RulesetDocumentCatalog
         var parsedFileCount = 0;
         foreach (var group in plan.Groups)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             foreach (var file in group.Rulesets)
             {
+                options.CancellationToken.ThrowIfCancellationRequested();
                 parsedFileCount = checked(parsedFileCount + 1);
                 using var input = file.OpenRead();
                 var stream = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
+                options.CancellationToken.ThrowIfCancellationRequested();
                 if (stream.Documents.Count == 0)
                 {
                     continue;

@@ -8,6 +8,8 @@ public sealed record TypedRuleLoadOptions
 
     public DiagnosticSeverity UnconsumedPropertySeverity { get; init; } = DiagnosticSeverity.Error;
 
+    public CancellationToken CancellationToken { get; init; }
+
     internal void Validate()
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumPropertyNodes);

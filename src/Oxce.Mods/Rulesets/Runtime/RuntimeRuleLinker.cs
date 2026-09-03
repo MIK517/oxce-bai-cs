@@ -13,6 +13,11 @@ using EventRule = Oxce.Mods.Rulesets.MissionEvents.EventRule;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
+public sealed record RuntimeRuleLinkOptions
+{
+    public CancellationToken CancellationToken { get; init; }
+}
+
 /// <summary>
 /// Compiles compatibility-facing typed rules into the dense, generation-scoped form used by gameplay.
 /// Reference behavior: RuleCountry.cpp/RuleRegion.cpp/RuleBaseFacility.cpp/RuleCraft.cpp/RuleItem.cpp/
@@ -24,12 +29,16 @@ public static class RuntimeRuleLinker
         Phase3ContentCatalog content,
         ResolvedResourceCatalog resources,
         IReadOnlyList<ContentScriptArtifact>? scripts = null,
-        IDiagnosticSink? diagnostics = null)
+        IDiagnosticSink? diagnostics = null,
+        RuntimeRuleLinkOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(resources);
         scripts ??= [];
         diagnostics ??= NullDiagnosticSink.Instance;
+        options ??= new RuntimeRuleLinkOptions();
+        var cancellationToken = options.CancellationToken;
+        cancellationToken.ThrowIfCancellationRequested();
         var generation = resources.Generation;
         var issues = new List<RuntimeRuleLinkIssue>();
 
@@ -45,8 +54,9 @@ public static class RuntimeRuleLinker
         var skillHandles = Handles<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills);
         var researchHandles = Handles<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research);
         var eventHandles = Handles<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events);
-        var scriptBuild = BuildScripts(generation, scripts);
+        var scriptBuild = BuildScripts(generation, scripts, cancellationToken);
 
+        cancellationToken.ThrowIfCancellationRequested();
         var countries = BuildFamily<CountryRuleFamily, CountryRule, RuntimeCountryRule>(
             generation, content.CampaignStart.Countries, rule => new RuntimeCountryRule(
                 rule.Value.FundingBase,
@@ -64,6 +74,7 @@ public static class RuntimeRuleLinker
                 OptionalRequired(eventHandles, rule.Value.RejoinedXcomEvent, "countries", rule, "rejoinedXcomEvent"),
                 ScriptsFor(scriptBuild.ByOwner, "countries", rule.Id)));
 
+        cancellationToken.ThrowIfCancellationRequested();
         var regions = BuildFamily<RegionRuleFamily, RegionRule, RuntimeRegionRule>(
             generation, content.CampaignStart.Regions, rule => new RuntimeRegionRule(
                 rule.Value.BaseCost,
@@ -76,6 +87,7 @@ public static class RuntimeRuleLinker
                 rule.Value.ProvidedBaseFunctions,
                 rule.Value.ForbiddenBaseFunctions));
 
+        cancellationToken.ThrowIfCancellationRequested();
         var facilities = BuildFamily<FacilityRuleFamily, BaseFacilityRule, RuntimeFacilityRule>(
             generation, content.CampaignStart.Facilities, rule => new RuntimeFacilityRule(
                 rule.Value.SizeX,
@@ -113,6 +125,7 @@ public static class RuntimeRuleLinker
                 Resource(rule.Value.HitSound, "GEO.CAT", ResourceKind.Sound, resources),
                 Resource(rule.Value.PlaceSound, "GEO.CAT", ResourceKind.Sound, resources)));
 
+        cancellationToken.ThrowIfCancellationRequested();
         var crafts = BuildFamily<CraftRuleFamily, CraftRule, RuntimeCraftRule>(
             generation, content.EquipmentProduction.Crafts, rule => new RuntimeCraftRule(
                 rule.Value.Integers["listOrder"],
@@ -134,6 +147,7 @@ public static class RuntimeRuleLinker
                     "crafts", rule, "fixedWeapons"),
                 ScriptsFor(scriptBuild.ByOwner, "crafts", rule.Id)));
 
+        cancellationToken.ThrowIfCancellationRequested();
         var items = BuildFamily<ItemRuleFamily, ItemRule, RuntimeItemRule>(
             generation, content.Items.Items, rule => new RuntimeItemRule(
                 rule.Value.Values.GetString("name"),
@@ -151,6 +165,7 @@ public static class RuntimeRuleLinker
                     .ToArray()),
                 ScriptsFor(scriptBuild.ByOwner, "items", rule.Id)));
 
+        cancellationToken.ThrowIfCancellationRequested();
         var armors = BuildFamily<ArmorRuleFamily, ArmorRule, RuntimeArmorRule>(
             generation, content.PersonnelTactical.Armors, rule => new RuntimeArmorRule(
                 rule.Value.Integers["listOrder"],
@@ -159,6 +174,7 @@ public static class RuntimeRuleLinker
                 rule.Value.Strings["storeItem"],
                 OptionalItem(itemHandles, rule.Value.Strings["storeItem"])));
 
+        cancellationToken.ThrowIfCancellationRequested();
         var soldiers = BuildFamily<SoldierRuleFamily, SoldierRule, RuntimeSoldierRule>(
             generation, content.PersonnelTactical.Soldiers, rule => new RuntimeSoldierRule(
                 rule.Value.Integers["listOrder"],
@@ -173,6 +189,7 @@ public static class RuntimeRuleLinker
                 RequiredMany(skillHandles, rule.Value.Skills, "soldiers", rule, "skills"),
                 ScriptsFor(scriptBuild.ByOwner, "soldiers", rule.Id)));
 
+        cancellationToken.ThrowIfCancellationRequested();
         var settings = BuildCampaignSettings(content.CampaignStart.Settings);
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
@@ -191,6 +208,7 @@ public static class RuntimeRuleLinker
             scriptBuild.Family,
             settings,
             compatibility);
+        cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, Array.AsReadOnly(issues.ToArray()));
 
         RuntimeCampaignSettings BuildCampaignSettings(CampaignStartSettings source)
@@ -374,12 +392,16 @@ public static class RuntimeRuleLinker
             null);
     }
 
-    private static ScriptBuild BuildScripts(ContentGenerationId generation, IReadOnlyList<ContentScriptArtifact> scripts)
+    private static ScriptBuild BuildScripts(
+        ContentGenerationId generation,
+        IReadOnlyList<ContentScriptArtifact> scripts,
+        CancellationToken cancellationToken)
     {
         var owners = new Dictionary<(string Section, string Id), List<RuleHandle<RuntimeScriptFamily>>>();
         var rules = new RuntimeRule<RuntimeScriptRule>[scripts.Count];
         for (var index = 0; index < scripts.Count; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var script = scripts[index];
             var handle = new RuleHandle<RuntimeScriptFamily>(generation, index);
             var key = (script.OwnerSection, script.OwnerId);

@@ -1,11 +1,8 @@
-using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
 using Oxce.Engine;
 using Oxce.Gameplay.Campaigns;
-using Oxce.Mods.Discovery;
+using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Loading;
-using Oxce.Mods.Rulesets;
-using Oxce.Mods.Rulesets.Content;
 using Oxce.Platform.Sdl;
 using Oxce.Savegames.Oxce;
 
@@ -13,29 +10,16 @@ internal static class CampaignSdlCommand
 {
     public static int Run(string installationRoot, string masterId, string addOnId, string destination)
     {
-        var root = Path.GetFullPath(installationRoot);
-        var diagnostics = new DiagnosticCollector(100_000);
-        var options = new ModDiscoveryOptions { ExternalResourceRoots = [root] };
-        var standard = ModDiscovery.ScanDirectory(Path.Combine(root, "standard"), diagnostics, options);
-        var user = ModDiscovery.ScanDirectory(Path.Combine(root, "user", "mods"), diagnostics, options);
-        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
-        string[] activeMods = addOnId == "-" ? [masterId] : [masterId, addOnId];
-        var plan = ModLoadPlanner.Create(
-            catalog,
-            activeMods.Select(static id => new ModActivation(id, true)),
-            masterId,
-            new ModEngineIdentity("Extended", "8.6.1.0"),
-            diagnostics);
-        var content = ContentSnapshotBuilder.Build(plan, diagnostics);
-        if (!content.Capabilities.Has(ContentLoadStage.RuntimeLinked))
-        {
-            var errors = content.Diagnostics.Where(static item => item.Severity >= DiagnosticSeverity.Error);
-            throw new InvalidDataException(string.Join(Environment.NewLine,
-                errors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
-        }
+        var request = InstallationLoadRequest.ForMasterAndAddOn(
+            installationRoot, masterId, addOnId, new ModEngineIdentity("Extended", "8.6.1.0"));
+        var loaded = InstallationContentLoader.Load(request);
+        if (!loaded.IsSuccess) throw new InvalidDataException(loaded.DescribeFailure());
+        var content = loaded.Content!;
+        loaded = null!;
+        var activeMods = request.ActiveMods;
 
         var campaign = CampaignFactory.Create(
-            content.Content,
+            content,
             new NewCampaignRequest(new CampaignId(Guid.NewGuid()), "SDL campaign", masterId, activeMods,
                 CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(0x4F584345UL),

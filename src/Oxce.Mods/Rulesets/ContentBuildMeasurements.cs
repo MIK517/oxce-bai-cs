@@ -1,5 +1,18 @@
 namespace Oxce.Mods.Rulesets;
 
+public enum ContentBuildProgressStage
+{
+    Parsing,
+    Composition,
+    TypeAndLink,
+    ResourceResolution,
+    ScriptCompilation,
+    RuntimeRuleLinking,
+    Completed,
+}
+
+public readonly record struct ContentBuildProgress(ContentBuildProgressStage Stage);
+
 public readonly record struct ContentBuildStageMeasurement(
     double ElapsedMilliseconds,
     long AllocatedBytes)

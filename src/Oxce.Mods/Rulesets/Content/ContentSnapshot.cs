@@ -23,6 +23,8 @@ public sealed record ContentSnapshotOptions
     public int MaximumDiagnostics { get; init; } = DiagnosticCollector.DefaultMaximumDiagnostics;
     public bool RetainAuditArtifact { get; init; }
     public ResourceResolutionOptions ResourceResolution { get; init; } = new();
+    public CancellationToken CancellationToken { get; init; }
+    public IProgress<ContentBuildProgress>? Progress { get; init; }
 
     public void Validate()
     {
@@ -176,12 +178,36 @@ public static class ContentSnapshotBuilder
         IDiagnosticSink sink = diagnostics is null
             ? collector
             : new ForwardingDiagnosticSink(diagnostics, collector);
-        var session = Phase3ContentCatalog.Build(plan, sink, compositionOptions, typedOptions);
+        options.CancellationToken.ThrowIfCancellationRequested();
+        compositionOptions = (compositionOptions ?? new RulesetCompositionOptions()) with
+        {
+            CancellationToken = options.CancellationToken,
+        };
+        typedOptions = (typedOptions ?? new TypedRuleLoadOptions()) with
+        {
+            CancellationToken = options.CancellationToken,
+        };
+        var session = Phase3ContentCatalog.Build(
+            plan,
+            sink,
+            compositionOptions,
+            typedOptions,
+            options.Progress);
         var capabilities = session.Catalog.Capabilities;
+        options.CancellationToken.ThrowIfCancellationRequested();
+        options.Progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.ResourceResolution));
+        var resourceOptions = options.ResourceResolution with
+        {
+            CancellationToken = options.CancellationToken,
+        };
         var resourceAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         var resourceTimer = Stopwatch.StartNew();
         var resourceResolution = capabilities.Has(ContentLoadStage.Linked)
-            ? ResourceDescriptorResolver.Resolve(plan, session.Catalog, sink, options.ResourceResolution)
+            ? ResourceDescriptorResolver.Resolve(
+                plan,
+                session.Catalog,
+                sink,
+                resourceOptions)
             : new ResourceResolutionResult(
                 new ResolvedResourceCatalog(ContentGenerationId.Next(), []),
                 Array.Empty<ResolvedResourceIssue>());
@@ -193,6 +219,8 @@ public static class ContentSnapshotBuilder
         {
             capabilities = capabilities.AdvanceTo(ContentLoadStage.ResourcesResolved);
         }
+        options.CancellationToken.ThrowIfCancellationRequested();
+        options.Progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.ScriptCompilation));
         var compiler = new ContentScriptCompiler(plan, session, sink, options);
         var scriptAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         var scriptTimer = Stopwatch.StartNew();
@@ -207,13 +235,16 @@ public static class ContentSnapshotBuilder
         {
             capabilities = capabilities.AdvanceTo(ContentLoadStage.ScriptsCompiled);
         }
+        options.CancellationToken.ThrowIfCancellationRequested();
+        options.Progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.RuntimeRuleLinking));
         var runtimeLinkAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         var runtimeLinkTimer = Stopwatch.StartNew();
         var runtimeLink = RuntimeRuleLinker.Link(
             session.Catalog,
             resourceResolution.Catalog,
             compiler.Scripts,
-            sink);
+            sink,
+            new RuntimeRuleLinkOptions { CancellationToken = options.CancellationToken });
         runtimeLinkTimer.Stop();
         var runtimeLinkMeasurement = new ContentBuildStageMeasurement(
             runtimeLinkTimer.Elapsed.TotalMilliseconds,
@@ -233,6 +264,8 @@ public static class ContentSnapshotBuilder
             compiler.InitialValues,
             resourceResolution.Catalog,
             runtimeLink.Catalog);
+        options.CancellationToken.ThrowIfCancellationRequested();
+        options.Progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.Completed));
         return new ContentSnapshot(
             runtime,
             collector.Snapshot(),
@@ -382,11 +415,15 @@ internal sealed class ContentScriptCompiler
 
     public void Compile()
     {
+        _options.CancellationToken.ThrowIfCancellationRequested();
         CompileDocuments();
+        _options.CancellationToken.ThrowIfCancellationRequested();
         Tags = _tagBuilder.Build();
         var finalApi = CreateApi(Tags, _plan.Groups[^1].Mod.Metadata.Id);
         CompileDefaults(finalApi);
+        _options.CancellationToken.ThrowIfCancellationRequested();
         CompileRules(finalApi);
+        _options.CancellationToken.ThrowIfCancellationRequested();
         ComposeEvents();
     }
 
@@ -406,8 +443,10 @@ internal sealed class ContentScriptCompiler
     {
         foreach (var document in _content.Documents.Documents)
         {
+            _options.CancellationToken.ThrowIfCancellationRequested();
             foreach (var extendedNode in document.Root.GetAll("extended"))
             {
+                _options.CancellationToken.ThrowIfCancellationRequested();
                 if (extendedNode is not YamlMappingNode extended)
                 {
                     Invalid("The 'extended' node must be a mapping.", extendedNode, document.File.SourcePath);
@@ -476,6 +515,7 @@ internal sealed class ContentScriptCompiler
         }
         foreach (var ownerEntry in owners.Entries)
         {
+            _options.CancellationToken.ThrowIfCancellationRequested();
             var owner = ownerEntry.ScalarKey;
             if (owner is null || !_baseApi.TryGetType(owner + ".Tag", out var ownerType))
             {
@@ -579,6 +619,7 @@ internal sealed class ContentScriptCompiler
         }
         foreach (var entry in scripts.Entries)
         {
+            _options.CancellationToken.ThrowIfCancellationRequested();
             var parserName = entry.ScalarKey;
             if (parserName is null || parserName.EndsWith('#') ||
                 !api.TryGetParser(parserName, out var parser) || !parser!.SupportsEvents)
@@ -655,6 +696,7 @@ internal sealed class ContentScriptCompiler
     {
         foreach (var pair in DefaultScripts)
         {
+            _options.CancellationToken.ThrowIfCancellationRequested();
             CompileSource(ContentScriptScope.Default, "defaults", string.Empty, pair.Key, pair.Value.Value,
                 api, null, pair.Value.ReferencePath);
         }
@@ -664,10 +706,13 @@ internal sealed class ContentScriptCompiler
     {
         foreach (var section in _content.ComposedRules.Sections)
         {
+            _options.CancellationToken.ThrowIfCancellationRequested();
             foreach (var rule in section.Rules)
             {
+                _options.CancellationToken.ThrowIfCancellationRequested();
                 foreach (var operation in rule.Operations)
                 {
+                    _options.CancellationToken.ThrowIfCancellationRequested();
                     var api = _apiBySource.GetValueOrDefault(operation.Source.SourcePath, finalApi);
                     CompileRuleMapping(section.Definition.Name, rule.Id, operation.Node, api, operation.Source.SourcePath);
                 }
@@ -712,6 +757,7 @@ internal sealed class ContentScriptCompiler
         }
         foreach (var entry in scripts.Entries)
         {
+            _options.CancellationToken.ThrowIfCancellationRequested();
             var parserName = entry.ScalarKey;
             if (parserName is null || parserName.EndsWith('#'))
             {
