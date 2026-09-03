@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "campaign-foundation",
+  "description": "Pins the first save-neutral campaign, calendar, starting-base, command, and event scenario.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/Mod.cpp; src/Savegame/SavedGame.cpp, GameTime.cpp, Country.cpp, Region.cpp, Base.cpp, BaseFacility.cpp",
+      "probe": "fixtures/reference-probes/savegames/campaign_foundation_probe.cpp"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/runtime-rule-linking/runtime-master/metadata.yml", "size": 106, "sha256": "9c9b4da56a1714b17d6cef5947a1ef98b5f3a2ce127f0584c8292de4f9775953" },
+    { "path": "fixtures/public/mods/runtime-rule-linking/runtime-master/Ruleset/rules.rul", "size": 1356, "sha256": "e0aef56a5d864ed383701d2f11c5238150b32cd2894f5fde5215693ffe6a80c8" },
+    { "path": "fixtures/public/mods/runtime-rule-linking/runtime-addon/metadata.yml", "size": 129, "sha256": "8e38c46d2a2e30c9a96b3b74726541d7ef796b7d280df088becd5a6c123d4f23" },
+    { "path": "fixtures/public/mods/runtime-rule-linking/runtime-addon/Ruleset/patch.rul", "size": 253, "sha256": "d2e08ba2397c953aa1169ef72cc8e0a2e6a9bde52b4e21b6c97bfe7de2e37b25" },
+    { "path": "fixtures/reference-probes/savegames/campaign_foundation_probe.cpp", "size": 556, "sha256": "5a4306ba1016c46b08ec65ee6c6b25187de6b51afa15dc4ed29a204902249e25" }
+  ],
+  "normalization": ["campaign-foundation-v1", "external-rule-ids", "save-neutral-state"],
+  "expected": "fixtures/expected/savegames/campaign-foundation.expected.json"
+}

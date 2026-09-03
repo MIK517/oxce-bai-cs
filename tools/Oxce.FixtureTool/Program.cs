@@ -2,13 +2,16 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Oxce.Core.Diagnostics;
+using Oxce.Core.Random;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
+using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Phase3;
+using Oxce.Savegames.Oxce;
 
 return FixtureTool.Run(args, Console.Out, Console.Error);
 
@@ -39,6 +42,8 @@ internal static class FixtureTool
                     AuditContentInstall(installationRoot, masterId, addOnId, destination, output),
                 ["measure-content-install", var installationRoot, var masterId, var addOnId] =>
                     MeasureContentInstall(installationRoot, masterId, addOnId, output),
+                ["campaign-scenario", var installationRoot, var masterId, var addOnId, var destination] =>
+                    CampaignScenario(installationRoot, masterId, addOnId, destination, output),
                 ["compare", var expected, var actual] => Compare(expected, actual, output),
                 _ => Usage(error),
             };
@@ -306,6 +311,92 @@ internal static class FixtureTool
             preBuildErrorCount + measurement.ErrorCount == 0 ? 0 : 1;
     }
 
+    private static int CampaignScenario(
+        string installationRoot,
+        string masterId,
+        string addOnId,
+        string destination,
+        TextWriter output)
+    {
+        var root = Path.GetFullPath(installationRoot);
+        var diagnostics = new DiagnosticCollector(100_000);
+        var discoveryOptions = new ModDiscoveryOptions { ExternalResourceRoots = [root] };
+        var standard = ModDiscovery.ScanDirectory(Path.Combine(root, "standard"), diagnostics, discoveryOptions);
+        var user = ModDiscovery.ScanDirectory(Path.Combine(root, "user", "mods"), diagnostics, discoveryOptions);
+        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
+        var activeMods = addOnId == "-" ? [masterId] : new[] { masterId, addOnId };
+        var plan = ModLoadPlanner.Create(
+            catalog,
+            activeMods.Select(static id => new ModActivation(id, true)),
+            masterId,
+            new ModEngineIdentity("Extended", "8.6.1.0"),
+            diagnostics);
+        var contentTimer = Stopwatch.StartNew();
+        var contentSnapshot = ContentSnapshotBuilder.Build(plan, diagnostics);
+        contentTimer.Stop();
+        if (!contentSnapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked))
+        {
+            var errors = contentSnapshot.Diagnostics.Where(static item => item.Severity >= DiagnosticSeverity.Error);
+            throw new InvalidDataException(string.Join(Environment.NewLine,
+                errors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
+        }
+
+        var random = new SplitMix64RandomSource(0x4F584345UL);
+        var campaign = CampaignFactory.Create(
+            contentSnapshot.Content,
+            new NewCampaignRequest(
+                new CampaignId(Guid.Parse("61d27c50-c18d-4a2b-a4d0-0bd37b973727")),
+                "Headless acceptance",
+                masterId,
+                activeMods,
+                CampaignDifficulty.Beginner),
+            random,
+            new FixedCampaignClock(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
+        campaign.Execute(new PlaceStartingBase(0, "Acceptance Base", 1.0, 0.5));
+        campaign.Execute(new AdvanceCampaignTime(12));
+
+        var saveTimer = Stopwatch.StartNew();
+        OxceSaveAdapter.WriteAtomic(destination, campaign.Capture());
+        saveTimer.Stop();
+        var loadTimer = Stopwatch.StartNew();
+        var loaded = OxceSaveAdapter.LoadFile(
+            destination,
+            contentSnapshot.Content,
+            new SplitMix64RandomSource(1),
+            new OxceSaveLoadOptions(masterId, activeMods.ToHashSet(StringComparer.Ordinal)));
+        loadTimer.Stop();
+        var result = loaded.Campaign.Capture();
+        output.WriteLine(JsonSerializer.Serialize(new
+        {
+            scenario = "campaign-foundation-v1",
+            masterId,
+            activeMods,
+            contentElapsedMilliseconds = contentTimer.Elapsed.TotalMilliseconds,
+            saveElapsedMilliseconds = saveTimer.Elapsed.TotalMilliseconds,
+            loadElapsedMilliseconds = loadTimer.Elapsed.TotalMilliseconds,
+            saveBytes = new FileInfo(Path.GetFullPath(destination)).Length,
+            time = new
+            {
+                result.Time.Weekday,
+                result.Time.Day,
+                result.Time.Month,
+                result.Time.Year,
+                result.Time.Hour,
+                result.Time.Minute,
+                result.Time.Second,
+            },
+            countries = result.Countries.Count,
+            regions = result.Regions.Count,
+            bases = result.Bases.Count,
+            facilities = result.Bases.Sum(static baseState => baseState.Facilities.Count),
+            crafts = result.Bases.Sum(static baseState => baseState.Crafts.Count),
+            soldiers = result.Bases.Sum(static baseState => baseState.Soldiers.Count),
+            funds = result.Funds[^1],
+            destination = Path.GetFullPath(destination),
+        }));
+        return 0;
+    }
+
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     private static RuntimeMeasurement BuildRuntimeMeasurement(ModLoadPlan plan)
     {
@@ -443,7 +534,10 @@ internal static class FixtureTool
         error.WriteLine("  fixture audit-typed-install <mods-root> <resource-root> <master-id> <output.json>");
         error.WriteLine("  fixture audit-content-install <installation-root> <master-id> <add-on-id> <output.json>");
         error.WriteLine("  fixture measure-content-install <installation-root> <master-id> <add-on-id>");
+        error.WriteLine("  fixture campaign-scenario <installation-root> <master-id> <add-on-id|-> <save-path>");
         error.WriteLine("  fixture compare <expected.json> <actual.json>");
         return 2;
     }
+
+    private sealed record FixedCampaignClock(DateTimeOffset UtcNow) : ICampaignClock;
 }
