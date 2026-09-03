@@ -209,12 +209,12 @@ Exit gate:
 - Missing-mod and corrupt-save failures are actionable and covered.
 
 Status (2026-09-03): the campaign foundation satisfies this gate for public,
-vanilla UFO, and staged 40k/Rosigma scenarios. Supplied vanilla UFO and Rosigma saves,
+vanilla UFO, vanilla TFTD, and staged 40k/Rosigma scenarios. Supplied vanilla UFO,
+TFTD, and Rosigma saves,
 including opaque active-battle state, load and round-trip their implemented strategic
 subset. See [campaign foundation status](campaign-foundation-status.md) and
 [ADR 0018](decisions/0018-campaign-state-and-oxce-save-overlay.md). A minimal indexed
-SDL view now creates and operates this slice without coupling gameplay to SDL. TFTD
-acceptance remains explicit follow-up work.
+SDL view now creates and operates this slice without coupling gameplay to SDL.
 
 ## Phase 6 — Playable strategic vertical slice
 
@@ -299,10 +299,14 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
 Each slice uses gameplay-owned capture/restoration contracts and an external save
 adapter; persistence representations must not become runtime models.
 
+Time advancement now publishes fixed-size trigger summaries with allocation-free
+ordered replay, and presentation uses separate lightweight campaign query and command
+ports instead of persistence capture. See
+[ADR 0019](decisions/0019-bounded-time-events-and-campaign-queries.md).
+
 ## Immediate next tasks
 
-1. Close the TFTD runtime-projection property that blocks its campaign/save acceptance.
-2. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
+1. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
    persisted strategic slice, including their owning script providers and UI actions.
-3. Continue adding focused executable C++ probes, compatibility matrix entries, and
+2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.
