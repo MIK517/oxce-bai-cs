@@ -69,6 +69,7 @@ public static class RulesetComposer
         var operationCount = 0;
         foreach (var document in documents.Documents)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             foreach (var state in states)
             {
                 if (!document.Root.TryGet(state.Definition.Name, out var sectionNode))
@@ -83,6 +84,7 @@ public static class RulesetComposer
 
                 foreach (var item in sequence.Items)
                 {
+                    options.CancellationToken.ThrowIfCancellationRequested();
                     operationCount = checked(operationCount + 1);
                     if (operationCount > options.MaximumRuleOperations)
                     {
