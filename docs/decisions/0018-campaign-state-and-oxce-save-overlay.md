@@ -26,6 +26,16 @@ entities are overlaid onto that document while unknown fields and unimplemented
 collections remain intact. New saves use deterministic field order. File publication
 uses a flushed same-directory temporary file followed by replacement with a backup.
 
+Opaque nested fields are associated by semantic identity, never sequence position.
+Countries and regions use external rule ID; crafts and soldiers use type plus persistent
+ID. Bases use their non-negative persistent ID. Reference saves commonly omit the base
+`Target.id`, so import deterministically assigns unused IDs in source order and the next
+port write emits every base ID, including zero. Explicit duplicate base IDs are invalid.
+Facilities have no reference-engine ID and are identified within their owning base by
+the tuple `(type, x, y)`. Reordering retains opaque fields, while removing, replacing,
+or moving an entity does not transfer its opaque fields to a newly occupying list slot.
+Duplicate target identities fail rather than making sidecar ownership ambiguous.
+
 Capture initially performs straightforward immutable copies. Copy-on-write,
 segmentation, and mutable persistence DTOs are rejected until representative
 measurements show a need.
@@ -40,5 +50,7 @@ measurements show a need.
   unvalidated extension surface.
 - A source sidecar is required for lossless preservation of fields outside the
   implemented subset; a new save can only contain state this port knows how to emit.
+- Mutation-safe overlay depends on stable semantic identity. Fields belonging to
+  removed bases/facilities are discarded; they are never reassigned by list position.
 - The initial snapshot and YAML DOM allocate. Their measured costs are recorded and
   remain the baseline for later performance work.

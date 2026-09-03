@@ -15,6 +15,9 @@ restore validates the complete implemented graph before publishing it.
 format. It validates active mods, external rule IDs, history bounds, coordinates,
 facility placement, entity identities, and script tags. Unknown header/body fields and
 unimplemented nested state remain in an opaque YAML sidecar and survive overlay writes.
+Base sidecars follow persistent IDs and facility sidecars follow `(base ID, type, x, y)`;
+reordering, adding, or removing either entity cannot transfer unknown fields by list
+position. Reference saves without base IDs receive deterministic IDs on import.
 Writes use a flushed temporary file, atomic replacement, and a recoverable `.bak` when
 replacing an existing save.
 

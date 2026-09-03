@@ -257,6 +257,7 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         if (MonthsPassed < -1) throw new ArgumentOutOfRangeException(nameof(MonthsPassed));
         if (DaysPassed < 0) throw new ArgumentOutOfRangeException(nameof(DaysPassed));
         if (_bases.Count == 0) throw new InvalidDataException("A campaign must contain at least one base.");
+        EnsureUnique(_bases.Select(static item => item.Id), "base IDs");
         foreach (var pair in _nextIds)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(pair.Key);
@@ -418,9 +419,9 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         ? value
         : throw new InvalidDataException($"{kind} IDs must be positive.");
 
-    private static void EnsureUnique(IEnumerable<string> values, string name)
+    private static void EnsureUnique<T>(IEnumerable<T> values, string name) where T : notnull
     {
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var seen = new HashSet<T>();
         if (values.Any(value => !seen.Add(value))) throw new InvalidDataException($"Duplicate {name} were found.");
     }
 
