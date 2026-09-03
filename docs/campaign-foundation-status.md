@@ -44,12 +44,12 @@ and events against OXCE commit `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 Malformed state tests cover missing mods and rules, duplicate identities, overlapping
 facilities, invalid histories, invalid tags, and interrupted writes.
 
-The private test loads and round-trips every supplied vanilla UFO and 40k/Rosigma save,
-including active-battle saves. It compares the implemented snapshot after reload and
-therefore also exercises preservation of the unimplemented battle graph. TFTD private
-save acceptance is deferred because its current content build does not yet reach
-`runtime-linked` due to an earlier unprojected unit property; the save adapter itself
-does not special-case either game.
+The private test loads and round-trips every supplied vanilla UFO, vanilla TFTD, and
+40k/Rosigma save, including active-battle saves. It compares the implemented snapshot
+after reload and therefore also exercises preservation of the unimplemented battle
+graph. TFTD's legacy unit-level `zombieUnit` property is accepted as the reference
+`Unit::load` no-op rather than being projected as a relationship with invented
+semantics.
 
 The self-contained staged installation produced these headless acceptance results on
 the baseline host:
@@ -57,6 +57,7 @@ the baseline host:
 | Scenario | Content build | Atomic save | Reload | Save size |
 |---|---:|---:|---:|---:|
 | Vanilla UFO | 542.6 ms | 40.6 ms | 29.2 ms | 5,361 B |
+| Vanilla TFTD | 651.3 ms | 60.0 ms | 33.6 ms | 5,460 B |
 | 40k/Rosigma | 8,205.7 ms | 29.9 ms | 22.9 ms | 4,718 B |
 
 These are single cold-process integration observations, not microbenchmark means.
@@ -65,6 +66,8 @@ These are single cold-process integration observations, not microbenchmark means
 
 - `src/Mod/Mod.cpp`: `newSave`, starting-base selection, country/region construction,
   funding adjustment, and starting entities;
+- `src/Mod/Unit.cpp`: the loaded unit properties and the observed omission of the
+  legacy TFTD unit-level `zombieUnit` property;
 - `src/Savegame/SavedGame.cpp`: two-document load/save, global histories, IDs, bases,
   countries, regions, and tags;
 - `src/Savegame/GameTime.cpp`, `Country.cpp`, `Region.cpp`, `Base.cpp`,
@@ -73,7 +76,6 @@ These are single cold-process integration observations, not microbenchmark means
 
 ## Deliberate next boundaries
 
-- TFTD runtime projection closure and private-save acceptance;
 - full personnel/craft fields, inventory operations, transfers, facilities, and
   finance rather than placeholder mutation of opaque save nodes;
 - gameplay script providers/events when their owning commands arrive;

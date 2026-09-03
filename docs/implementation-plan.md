@@ -209,12 +209,12 @@ Exit gate:
 - Missing-mod and corrupt-save failures are actionable and covered.
 
 Status (2026-09-03): the campaign foundation satisfies this gate for public,
-vanilla UFO, and staged 40k/Rosigma scenarios. Supplied vanilla UFO and Rosigma saves,
+vanilla UFO, vanilla TFTD, and staged 40k/Rosigma scenarios. Supplied vanilla UFO,
+TFTD, and Rosigma saves,
 including opaque active-battle state, load and round-trip their implemented strategic
 subset. See [campaign foundation status](campaign-foundation-status.md) and
 [ADR 0018](decisions/0018-campaign-state-and-oxce-save-overlay.md). A minimal indexed
-SDL view now creates and operates this slice without coupling gameplay to SDL. TFTD
-acceptance remains explicit follow-up work.
+SDL view now creates and operates this slice without coupling gameplay to SDL.
 
 ## Phase 6 — Playable strategic vertical slice
 
@@ -301,7 +301,8 @@ adapter; persistence representations must not become runtime models.
 
 ## Immediate next tasks
 
-1. Close the TFTD runtime-projection property that blocks its campaign/save acceptance.
+1. Bound time-advance event retention and expose a narrow campaign query contract to
+   presentation clients before expanding mutable strategic state.
 2. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
    persisted strategic slice, including their owning script providers and UI actions.
 3. Continue adding focused executable C++ probes, compatibility matrix entries, and
