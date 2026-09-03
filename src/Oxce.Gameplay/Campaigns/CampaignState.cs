@@ -7,7 +7,7 @@ using Oxce.Scripting.Globals;
 
 namespace Oxce.Gameplay.Campaigns;
 
-public sealed class CampaignState
+public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
 {
     public const int BaseGridSize = 6;
     public const int MaximumCommandTicks = 1_000_000;
@@ -92,6 +92,22 @@ public sealed class CampaignState
     public CampaignSnapshot Capture()
     {
         lock (_transactionGate) return CaptureCore();
+    }
+
+    public CampaignOverview QueryOverview()
+    {
+        lock (_transactionGate)
+        {
+            return new CampaignOverview(
+                Identity.Id,
+                Identity.Name,
+                Time,
+                DaysPassed,
+                _funds[^1],
+                _countries.Count,
+                _regions.Count,
+                CampaignSnapshot.ReadOnly(_bases.Select(QueryBase)));
+        }
     }
 
     private CampaignSnapshot CaptureCore() => new(
@@ -188,14 +204,29 @@ public sealed class CampaignState
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(command.FiveSecondTicks);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(command.FiveSecondTicks, MaximumCommandTicks);
         var previous = Time;
-        var triggers = new CampaignTimeTrigger[command.FiveSecondTicks];
-        for (var index = 0; index < triggers.Length; index++)
+        var fiveSeconds = 0;
+        var tenMinutes = 0;
+        var thirtyMinutes = 0;
+        var oneHour = 0;
+        var oneDay = 0;
+        var oneMonth = 0;
+        for (var index = 0; index < command.FiveSecondTicks; index++)
         {
-            Time = Time.Advance(out triggers[index]);
-            if (triggers[index] == CampaignTimeTrigger.OneDay) DaysPassed++;
-            if (triggers[index] == CampaignTimeTrigger.OneMonth) MonthsPassed++;
+            Time = Time.Advance(out var trigger);
+            switch (trigger)
+            {
+                case CampaignTimeTrigger.FiveSeconds: fiveSeconds++; break;
+                case CampaignTimeTrigger.TenMinutes: tenMinutes++; break;
+                case CampaignTimeTrigger.ThirtyMinutes: thirtyMinutes++; break;
+                case CampaignTimeTrigger.OneHour: oneHour++; break;
+                case CampaignTimeTrigger.OneDay: oneDay++; DaysPassed++; break;
+                case CampaignTimeTrigger.OneMonth: oneMonth++; MonthsPassed++; break;
+                default: throw new InvalidOperationException($"Unknown campaign time trigger '{trigger}'.");
+            }
         }
-        return new CampaignCommandResult([new CampaignTimeAdvanced(previous, Time, Array.AsReadOnly(triggers))]);
+        var summary = new CampaignTimeTriggerSummary(
+            command.FiveSecondTicks, fiveSeconds, tenMinutes, thirtyMinutes, oneHour, oneDay, oneMonth);
+        return new CampaignCommandResult([new CampaignTimeAdvanced(previous, Time, summary)]);
     }
 
     private CampaignCommandResult Place(PlaceStartingBase command)
@@ -277,6 +308,23 @@ public sealed class CampaignState
         new ReadOnlyDictionary<string, int>(state.Items.ToDictionary(
             item => _content.RuntimeRules.Items.GetExternalId(item.Key), static item => item.Value,
             StringComparer.Ordinal)),
+        state.Scientists,
+        state.Engineers);
+
+    private CampaignBaseOverview QueryBase(BaseState state) => new(
+        state.Id,
+        state.Name,
+        state.Longitude,
+        state.Latitude,
+        CampaignSnapshot.ReadOnly(state.Facilities.Select(facility =>
+        {
+            var rule = _content.RuntimeRules.Facilities[facility.Rule].Value;
+            return new CampaignFacilityOverview(
+                facility.X, facility.Y, rule.SizeX, rule.SizeY, facility.BuildTime);
+        })),
+        state.Crafts.Count,
+        state.Soldiers.Count,
+        state.Items.Count,
         state.Scientists,
         state.Engineers);
 
