@@ -159,6 +159,10 @@ internal sealed class UnitRuleLoader : TypedRuleFamilyLoader<UnitBuilder, UnitRu
                 throw new YamlFormatException("Unit spawnedSoldier must be a mapping.", spawned!.Span);
             builder.SpawnedSoldierTemplate = PersonnelTacticalYaml.Overlay(mapping, builder.SpawnedSoldierTemplate);
         }
+
+        // Unit::load in the reference engine does not read this legacy TFTD property.
+        // Consume it without projecting a runtime relationship so strict loading matches that behavior.
+        _ = reader.TryGet("zombieUnit", out _);
     }
     protected override UnitRule Freeze(UnitBuilder builder) => new(
         PersonnelReadOnly.Dictionary(builder.Strings),

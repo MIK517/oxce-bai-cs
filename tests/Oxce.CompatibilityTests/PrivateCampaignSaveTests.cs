@@ -23,6 +23,7 @@ public sealed class PrivateCampaignSaveTests
             "The staged owned installation and private save corpus are not available in this checkout.");
 
         VerifyFamily(installation, saves, "vanilla-ufo", "xcom1", ["xcom1"]);
+        VerifyFamily(installation, saves, "vanilla-tftd", "xcom2", ["xcom2"]);
         VerifyFamily(installation, saves, "modded/rosigma", "40k", ["40k", "40k_ROSIGMA_edits"]);
     }
 

@@ -137,13 +137,14 @@ it, and emits a compact JSON result. Use `-` when there is no add-on:
 
 ```powershell
 dotnet run --project tools/Oxce.FixtureTool --configuration Release --no-build -- campaign-scenario artifacts/private-install xcom1 - artifacts/campaign-foundation/xcom1.sav
+dotnet run --project tools/Oxce.FixtureTool --configuration Release --no-build -- campaign-scenario artifacts/private-install xcom2 - artifacts/campaign-foundation/xcom2.sav
 dotnet run --project tools/Oxce.FixtureTool --configuration Release --no-build -- campaign-scenario artifacts/private-install 40k 40k_ROSIGMA_edits artifacts/campaign-foundation/rosigma.sav
 ```
 
 When private fixtures are present, compatibility tests round-trip every supplied
-vanilla UFO and 40k/Rosigma `.sav`/`.asav` through the implemented snapshot while
-retaining opaque fields. CI skips this owned-data check when those ignored fixtures
-are absent.
+vanilla UFO, vanilla TFTD, and 40k/Rosigma `.sav`/`.asav` through the implemented
+snapshot while retaining opaque fields. CI skips this owned-data check when those
+ignored fixtures are absent.
 
 For owned full-install acceptance, `tools/stage-private-install.ps1` copies the
 complete data trees into an isolated destination below `artifacts/`, writes per-file
