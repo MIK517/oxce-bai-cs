@@ -11,6 +11,7 @@ public class RenderingBenchmarks
     private IndexedSurface _transparentSprite = null!;
     private IndexedPalette _palette = null!;
     private byte[] _rgba = null!;
+    private IndexedPoint[] _polygon = null!;
 
     [GlobalSetup]
     public void Setup()
@@ -22,6 +23,11 @@ public class RenderingBenchmarks
         FillPattern(_transparentSprite, includeTransparency: true);
         _palette = IndexedPalette.CreateGrayscale();
         _rgba = new byte[_frame.Pixels.Length * IndexedFrameConverter.RgbaBytesPerPixel];
+        _polygon =
+        [
+            new IndexedPoint(80, 40), new IndexedPoint(560, 30), new IndexedPoint(620, 180),
+            new IndexedPoint(500, 360), new IndexedPoint(120, 380), new IndexedPoint(20, 190),
+        ];
         FillPattern(_frame, includeTransparency: false);
     }
 
@@ -34,6 +40,9 @@ public class RenderingBenchmarks
     [Benchmark]
     public void ConvertIndexedFrameToRgba() =>
         IndexedFrameConverter.ConvertToRgba32(_frame, _palette, _rgba);
+
+    [Benchmark]
+    public void FillSixPointPolygon() => _frame.FillPolygon(_polygon, 42);
 
     private static void FillPattern(IndexedSurface surface, bool includeTransparency)
     {

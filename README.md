@@ -11,9 +11,9 @@ It is not a goal to reproduce the C++ engine's random sequence, pixel output, or
 layout exactly.
 
 The repository is an active compatibility implementation: the original-asset,
-mod/typed-rule, and script-compilation phases are closed, while runtime script bindings,
-resource resolution, saves, gameplay, and application integration continue. Read these
-documents before adding a subsystem:
+mod/typed-rule, script-compilation, resource-runtime, runtime-rule-linking, and campaign
+foundation slices are closed, while broader gameplay and application integration
+continue. Read these documents before adding a subsystem:
 
 - [Agent onboarding](AGENTS.md)
 - [Compatibility contract](docs/compatibility-contract.md)
@@ -26,6 +26,7 @@ documents before adding a subsystem:
 - [Post-Phase-4 architecture assessment](docs/post-phase-4-assessment.md)
 - [Post-Phase-4 implementation plan](docs/post-phase-4-implementation-plan.md)
 - [Runtime performance targets](docs/performance-targets.md)
+- [Runtime performance-hardening status](docs/runtime-performance-hardening-status.md)
 - [Testing strategy](docs/testing-strategy.md)
 
 ## Initial commands
@@ -42,7 +43,16 @@ with `tools/Oxce.FixtureTool`; see [the fixture guide](fixtures/README.md).
 
 The optional SDL3 indexed-window and input-loop smoke test requires an
 [SDL 3.4.10](https://github.com/libsdl-org/SDL/releases/tag/release-3.4.10) native runtime
-on the library search path. On Windows, download the official VC archive and run:
+beside the published application or on the library search path. On Windows, the staging
+helper downloads and checksum-verifies the official x64 VC runtime:
+
+```powershell
+dotnet publish src\Oxce.App\Oxce.App.csproj --configuration Release --output artifacts\sdl-publish
+.\tools\stage-sdl3-windows.ps1 -DestinationDirectory artifacts\sdl-publish -WorkDirectory artifacts\sdl-work
+dotnet artifacts\sdl-publish\Oxce.App.dll --sdl-smoke
+```
+
+The existing interactive helper can instead use an already available SDL directory:
 
 ```powershell
 .\tools\run-sdl-smoke.ps1 -SdlDirectory <path-to-SDL3-x64-directory>
@@ -60,6 +70,20 @@ callback lifecycle check:
 .\tools\run-sdl-smoke.ps1 -Audio -DummyAudio `
     -SdlDirectory <path-to-SDL3-x64-directory>
 ```
+
+## Campaign foundation view
+
+The first strategic slice can be created and operated through a minimal indexed SDL
+view using a self-contained installation. Click the globe to place the starting base,
+press Space to advance one minute, and press Escape to save and quit:
+
+```powershell
+dotnet run --project src\Oxce.App --configuration Release -- `
+    --campaign-sdl artifacts\private-install xcom1 - artifacts\campaign-foundation\campaign.sav
+```
+
+Replace `xcom1` and `-` with a master and add-on ID for a modded campaign. Pass `-` as
+the final argument to run without saving.
 
 ## Resource browser
 

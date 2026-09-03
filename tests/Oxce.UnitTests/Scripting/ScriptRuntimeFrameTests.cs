@@ -212,6 +212,34 @@ public sealed class ScriptRuntimeFrameTests
         Assert.Equal(99, outputs[0].Scalar);
     }
 
+    [Fact]
+    public void PreparedEventSoakAllocatesNothingAndRemainsStable()
+    {
+        var before = Compile("add result 2; return result;", Definition());
+        var current = Compile("mul result 3; return result;", Definition());
+        var composed = ScriptEventComposer.Compose(
+        [
+            new ScriptEventMutation(
+                ScriptEventMutationKind.Append, string.Empty, -100, before, "probe", 1),
+        ]);
+        var frame = new ScriptExecutionFrame();
+        frame.Prepare(before);
+        frame.Prepare(current);
+        var initial = new[] { ScriptRuntimeValue.FromScalar(4) };
+        var outputs = new ScriptRuntimeValue[1];
+        Assert.True(ScriptEventRunner.Execute(composed.Plan!, current, initial, outputs, frame).Succeeded);
+
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var allSucceeded = true;
+        for (var index = 0; index < 10_000; index++)
+            allSucceeded &= ScriptEventRunner.Execute(composed.Plan!, current, initial, outputs, frame).Succeeded;
+        var allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.True(allSucceeded);
+        Assert.Equal(18, outputs[0].Scalar);
+        Assert.Equal(allocatedBefore, allocatedAfter);
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static (ScriptProgram Program, WeakReference Instruction, WeakReference Operands) CreatePackedProgramProbe()
     {

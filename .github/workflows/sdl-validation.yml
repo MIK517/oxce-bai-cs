@@ -15,6 +15,7 @@ on:
       - "tools/build-sdl3-unix.sh"
       - "tools/run-sdl3-unix-smoke.sh"
       - "tools/stage-sdl3-unix.sh"
+      - "tools/stage-sdl3-windows.ps1"
 
 permissions:
   contents: read
@@ -38,6 +39,9 @@ jobs:
           - name: macOS Cocoa
             os: macos-latest
             platform: macos
+          - name: Windows native
+            os: windows-latest
+            platform: windows
 
     steps:
       - name: Check out source
@@ -59,6 +63,7 @@ jobs:
             libxcursor-dev libxss-dev libxtst-dev xauth xvfb
 
       - name: Build pinned SDL runtime
+        if: matrix.platform != 'windows'
         shell: bash
         run: bash ./tools/build-sdl3-unix.sh "$RUNNER_TEMP/oxce-sdl3"
 
@@ -68,10 +73,23 @@ jobs:
           dotnet restore Oxce.slnx --locked-mode
           dotnet publish src/Oxce.App/Oxce.App.csproj \
             --configuration Release --no-restore \
-            --output "$RUNNER_TEMP/oxce-publish"
+            --output "${{ runner.temp }}/oxce-publish"
+
+      - name: Stage Unix SDL runtime
+        if: matrix.platform != 'windows'
+        shell: bash
+        run: |
           bash ./tools/stage-sdl3-unix.sh \
             "$RUNNER_TEMP/oxce-sdl3/install" \
             "$RUNNER_TEMP/oxce-publish"
+
+      - name: Stage pinned Windows SDL runtime
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          .\tools\stage-sdl3-windows.ps1 `
+            -DestinationDirectory "${{ runner.temp }}\oxce-publish" `
+            -WorkDirectory "${{ runner.temp }}\oxce-sdl3"
 
       - name: Run Linux X11 indexed-window smoke
         if: matrix.platform == 'linux'
@@ -101,11 +119,39 @@ jobs:
             "$RUNNER_TEMP/oxce-publish" video dummy
 
       - name: Run dummy-audio stream smoke
+        if: matrix.platform != 'windows'
         shell: bash
         run: |
           env SDL_AUDIO_DRIVER=dummy \
             bash ./tools/run-sdl3-unix-smoke.sh \
             "$RUNNER_TEMP/oxce-publish" audio dummy
+
+      - name: Run Windows native video and audio smoke
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $application = "${{ runner.temp }}\oxce-publish\Oxce.App.dll"
+          $env:SDL_VIDEO_DRIVER = "dummy"
+          $env:SDL_RENDER_DRIVER = "software"
+          $video = & dotnet $application --sdl-smoke
+          $video | Write-Output
+          $presented = [int](($video | Where-Object { $_ -like "SDL presented frames:*" }) -replace ".*: ", "")
+          $suppressed = [int](($video | Where-Object { $_ -like "SDL suppressed presentations:*" }) -replace ".*: ", "")
+          $maximumPresentation = [double]::Parse(
+            (($video | Where-Object { $_ -like "SDL maximum presentation us:*" }) -replace ".*: ", ""),
+            [Globalization.CultureInfo]::InvariantCulture)
+          if ($LASTEXITCODE -ne 0 -or $video -notcontains "SDL version: 3.4.10" -or
+              $video -notcontains "SDL video driver: dummy" -or $presented -lt 1 -or
+              $suppressed -lt 1 -or $maximumPresentation -le 0) {
+            throw "Windows SDL video smoke failed."
+          }
+          $env:SDL_AUDIO_DRIVER = "dummy"
+          $audio = & dotnet $application --sdl-audio-smoke
+          $audio | Write-Output
+          if ($LASTEXITCODE -ne 0 -or $audio -notcontains "SDL version: 3.4.10" -or
+              $audio -notcontains "SDL audio driver: dummy") {
+            throw "Windows SDL audio smoke failed."
+          }
 
       - name: Require macOS Cocoa validation
         if: matrix.platform == 'macos' && steps.cocoa-smoke.outcome == 'failure'
