@@ -15,8 +15,8 @@ not required.
 | Finalized maps | Compare `Dictionary` and `FrozenDictionary` construction, allocation, and mixed hit/miss lookup at 2,000 and 16,000 entries. |
 | YAML | Parse a 1,000-entry ruleset-shaped mapping and repeatedly look up keys near its end plus missing keys. |
 | Phase 3/4 content | Compose, type, dependency-validate, compile defaults/tags/events/rule scripts/stat bonuses, and normalize the bundled script-content fixture through the aggregate snapshot. |
-| Indexed rendering | Opaque 320x200 blit, transparent 64x80 sprite blit, and 640x400 indexed-to-RGBA conversion. |
-| Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices. |
+| Indexed rendering | Opaque 320x200 blit, transparent 64x80 sprite blit, six-point polygon fill, and 640x400 indexed-to-RGBA conversion. |
+| Audio | Mix 1,024 stereo frames from sixteen looping 48 kHz stereo voices, both uncontended and while a control thread continuously changes bus gain. |
 | Content lifetime | Compare normal runtime publication with explicit audit-artifact retention for the public script-content fixture. |
 | Script VM | Compare the allocating result adapter with prepared scalar, host-call, and three-program event frames. |
 
@@ -347,6 +347,42 @@ The representative capture is small enough that segmented or copy-on-write snaps
 are not justified yet. YAML parsing dominates allocations, but save operations are not
 a frame-time path. Revisit the design after personnel, inventory, missions, and the
 tactical graph are modeled; preserve this benchmark so growth is visible.
+
+### Runtime performance-hardening result
+
+Slice 6 was measured on 2026-09-03 on the same Ryzen 9 7940HS host, .NET SDK
+10.0.302, and .NET runtime 10.0.10. ShortRun results use 1,024-frame stereo output at
+48 kHz, so the buffer duration is 21.33 ms:
+
+| Workload | Mean | Allocated | Derived callback share |
+|---|---:|---:|---:|
+| Mix sixteen looping stereo voices | 110.886 ns/frame | 0 B | 113.55 us/callback; 0.53% |
+| Same mix while another thread continuously changes bus gain | 120.302 ns/frame | 0 B | 123.19 us/callback; 0.58% |
+
+Even deliberately continuous control activity adds only about 8.5% to mixer time and
+leaves the callback far below the 25%-of-buffer target. This does not justify replacing
+the current synchronization with a bounded command queue or immutable voice snapshots.
+The contention benchmark and a 10,000-callback deadlock/liveness test remain in-tree so
+that decision can be revisited when decoding and streaming voices are integrated.
+
+The indexed rendering baseline measured a changed 640x400 conversion at 280.937 us
+with zero allocation. A six-point polygon initially measured 6.245 us and 72 B per
+call. Caller-provided scratch storage plus stack/pooled convenience storage reduced the
+same workload to 6.192 us and zero allocation without changing raster output. The
+conversion result is well below the 4 ms presentation target and does not justify SIMD,
+dirty rectangles, locked textures, or a palette shader at this stage.
+
+The pinned SDL 3.4.10 Windows x64 dummy-backend smoke presented one changed 160x100
+frame in 2.560 ms and suppressed 123 unchanged presentation attempts during its
+two-second run. This is a local integration observation rather than a percentile.
+Runtime diagnostics and all three native CI jobs now expose changed-frame duration and
+idle suppression, allowing representative UI workloads to supply the eventual p95.
+
+Long-run regression tests cycle a three-entry resource working set 10,000 times under
+an eight-byte cache budget, emit/load a stable save 100 times, execute a prepared
+three-program script event 10,000 times with zero managed allocation, and compare two
+same-seed campaigns after 200,000 five-second ticks. These tests establish boundedness,
+stability, and determinism; they are not throughput benchmarks.
 
 ## Dependency review
 

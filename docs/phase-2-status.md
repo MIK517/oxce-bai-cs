@@ -16,7 +16,7 @@ matrices.
 | SCR/DAT, SPK, BDY, PCK/TAB, and general indexed images | public compatibility fixtures plus private PNG/GIF/BMP/LBM and UFO/TFTD/40k/Rosigma corpus tests | complete for the declared indexed formats |
 | CAT, MAP, RMP, MCD, LOFT, fonts, palettes, and identified original containers | bounded unit tests, C++ fixtures, and private corpus tests | complete for Phase 2 |
 | Owned-installation resource browser | `PrivateResourceBrowserTests` builds non-empty geoscape/battlescape previews for UFO and TFTD through `VirtualFileCatalog` | exit gate met |
-| SDL3 indexed presentation and input | Windows manual smoke plus required Linux X11 and macOS Cocoa CI smokes | foundation complete |
+| SDL3 indexed presentation and input | Required checksum-pinned Windows, Linux X11, and macOS Cocoa CI smokes | foundation complete |
 | Audio boundary and mixer decision | ADR 0006, managed-mixer fixtures, SDL3 dummy-device smokes on all three desktop systems | foundation complete |
 | Music decoder and synthesizer direction | ADR 0007 and supplied-corpus inventory | strategy complete; playback intentionally deferred |
 

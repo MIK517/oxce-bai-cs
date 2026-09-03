@@ -1,5 +1,7 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Engine;
+using Oxce.Engine.Input;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
@@ -85,6 +87,46 @@ public sealed class CampaignFoundationTests
 
         Assert.Throws<InvalidDataException>(() => CampaignState.Restore(invalid, content, random));
         Assert.Equal(previous, random.State);
+    }
+
+    [Fact]
+    public void LongRunningTimeSimulationIsDeterministic()
+    {
+        var content = LoadFixture();
+        var first = CampaignFactory.Create(content, Request(), new SplitMix64RandomSource(7), new FixedClock());
+        var second = CampaignFactory.Create(content, Request(), new SplitMix64RandomSource(7), new FixedClock());
+
+        first.Execute(new AdvanceCampaignTime(200_000));
+        second.Execute(new AdvanceCampaignTime(200_000));
+
+        Assert.Equivalent(first.Capture(), second.Capture(), strict: true);
+        Assert.True(first.Capture().DaysPassed > 0);
+    }
+
+    [Fact]
+    public void MinimalCampaignViewPlacesBaseAdvancesTimeAndSuppressesIdleWork()
+    {
+        var campaign = CampaignFactory.Create(
+            LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
+        var client = new CampaignOverviewClient(campaign);
+        var initialRevision = client.PresentationRevision;
+
+        client.Tick(TimeSpan.FromMilliseconds(16));
+        Assert.Equal(initialRevision, client.PresentationRevision);
+
+        var place = GameInputEvent.PointerButtonChange(
+            GameInputEventKind.PointerPressed, 0, 1, 160, 92, button: 1, clickCount: 1);
+        client.HandleInput(place);
+        Assert.Equal("First Base", Assert.Single(client.Snapshot.Bases).Name);
+        Assert.Equal(initialRevision + 1, client.PresentationRevision);
+
+        var previous = client.Snapshot.Time;
+        var advance = GameInputEvent.Key(
+            GameInputEventKind.KeyPressed, 0, 1, 0, CampaignOverviewClient.AdvanceMinuteKey,
+            InputKeyModifiers.None);
+        client.HandleInput(advance);
+        Assert.NotEqual(previous, client.Snapshot.Time);
+        Assert.Equal(initialRevision + 2, client.PresentationRevision);
     }
 
     internal static RuntimeContent LoadFixture()

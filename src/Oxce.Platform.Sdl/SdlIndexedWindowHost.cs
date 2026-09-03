@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Oxce.Engine;
 using Oxce.Engine.Input;
@@ -12,7 +13,10 @@ public sealed class SdlIndexedWindowHost : IGameHost
     private readonly SdlWindowOptions _options;
     private readonly IMonotonicClock _clock;
     private int _presentedFrameCount;
+    private int _suppressedPresentationCount;
     private int _tickCount;
+    private TimeSpan _totalPresentationDuration;
+    private TimeSpan _maximumPresentationDuration;
 
     public SdlIndexedWindowHost(
         IIndexedLoopClient client,
@@ -33,7 +37,10 @@ public sealed class SdlIndexedWindowHost : IGameHost
     {
         LastRunDiagnostics = null;
         _presentedFrameCount = 0;
+        _suppressedPresentationCount = 0;
         _tickCount = 0;
+        _totalPresentationDuration = TimeSpan.Zero;
+        _maximumPresentationDuration = TimeSpan.Zero;
         if (cancellationToken.IsCancellationRequested)
         {
             return 0;
@@ -86,7 +93,10 @@ public sealed class SdlIndexedWindowHost : IGameHost
                         videoDriver,
                         rendererName,
                         _tickCount,
-                        _presentedFrameCount);
+                        _presentedFrameCount,
+                        _suppressedPresentationCount,
+                        _totalPresentationDuration,
+                        _maximumPresentationDuration);
                     return result;
                 }
                 finally
@@ -121,8 +131,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
         var scheduler = new FixedStepScheduler(_options.SimulationStep, _options.MaximumCatchUpSteps);
         scheduler.Reset(runStart);
         var targetFrameTime = TimeSpan.FromSeconds(1d / _options.TargetFrameRate);
-        var presented = false;
-        var presentedRevision = 0L;
+        var revisions = new PresentationRevisionGate();
         var quit = false;
         while (!quit && !cancellationToken.IsCancellationRequested && !_client.ExitRequested)
         {
@@ -136,11 +145,13 @@ public sealed class SdlIndexedWindowHost : IGameHost
             var advance = scheduler.AdvanceTo(frameStart, _client.Tick);
             _tickCount = checked(_tickCount + advance.ExecutedSteps);
             var revision = _client.PresentationRevision;
-            if (!presented || revision != presentedRevision)
+            if (revisions.TryAccept(revision))
             {
                 Present(renderer, texture, width, height, rgba, rgbaAddress);
-                presented = true;
-                presentedRevision = revision;
+            }
+            else
+            {
+                _suppressedPresentationCount++;
             }
 
             if (_options.MaximumRunTime is { } maximumRunTime &&
@@ -156,7 +167,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
             }
         }
 
-        if (!presented && !cancellationToken.IsCancellationRequested && !_client.ExitRequested)
+        if (_presentedFrameCount == 0 && !cancellationToken.IsCancellationRequested && !_client.ExitRequested)
         {
             Present(renderer, texture, width, height, rgba, rgbaAddress);
         }
@@ -201,6 +212,7 @@ public sealed class SdlIndexedWindowHost : IGameHost
         byte[] rgba,
         IntPtr rgbaAddress)
     {
+        var started = Stopwatch.GetTimestamp();
         var frame = _client.Frame;
         if (frame.Width != width || frame.Height != height)
         {
@@ -226,6 +238,9 @@ public sealed class SdlIndexedWindowHost : IGameHost
             "SDL_RenderTexture");
         RequireSuccess(SdlNative.SDL_RenderPresent(renderer.DangerousGetHandle()), "SDL_RenderPresent");
         _presentedFrameCount++;
+        var elapsed = Stopwatch.GetElapsedTime(started);
+        _totalPresentationDuration += elapsed;
+        if (elapsed > _maximumPresentationDuration) _maximumPresentationDuration = elapsed;
     }
 
     private static DesktopPlatform GetDesktopPlatform()

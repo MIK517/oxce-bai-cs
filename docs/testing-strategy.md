@@ -62,11 +62,13 @@ Use exact indexed-buffer assertions for software primitives and resource decoder
 complete screens use structural assertions and tolerant snapshots; UI and final pixels
 are allowed to differ. Always test that gameplay-relevant information is present.
 
-The path-scoped `SDL validation` workflow builds the pinned SDL source inside each hosted
-runner, publishes `Oxce.App`, and stages the native shared library beside the app before
-execution. Linux must report the X11 backend under Xvfb; macOS must report Cocoa. Both
-must present at least one indexed frame and complete the dummy-audio callback smoke. A
-macOS dummy-video fallback is diagnostic only and deliberately leaves the job failed.
+The path-scoped `SDL validation` workflow publishes `Oxce.App` and stages a
+checksum-pinned SDL 3.4.10 native library beside it. Linux and macOS build the pinned
+source; Windows uses the official checksum-pinned x64 development archive. Linux must
+report X11 under Xvfb, macOS must report Cocoa, and Windows must report the dummy
+backend. Every platform must present at least one indexed frame, suppress unchanged
+frame uploads, and complete the dummy-audio callback smoke. A macOS dummy-video
+fallback is diagnostic only and deliberately leaves the job failed.
 
 ### Robustness and performance
 
@@ -78,7 +80,11 @@ latency and allocation before adopting segmented capture, visitors, or copy-on-w
 `ScriptVmBenchmarks` keeps allocating adapters and prepared scalar, host, and event
 frames side by side. A repeated unit fixture enforces zero managed allocation for a
 prepared, successful, non-traced binding-free scalar program; BenchmarkDotNet records
-the broader host and event costs.
+the broader host and event costs. Long-run unit workloads additionally exercise
+bounded cache churn, 100 stable save/reload cycles, 10,000 prepared script-event
+executions, 200,000 deterministic campaign ticks, and concurrent mixer control updates
+across 10,000 callbacks. These are regression/soak checks, not substitutes for
+statistical microbenchmarks or full-install acceptance.
 
 ## Fixture layout
 

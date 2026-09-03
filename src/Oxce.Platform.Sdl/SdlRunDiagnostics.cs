@@ -5,4 +5,12 @@ public sealed record SdlRunDiagnostics(
     string VideoDriver,
     string Renderer,
     int TickCount,
-    int PresentedFrameCount);
+    int PresentedFrameCount,
+    int SuppressedPresentationCount,
+    TimeSpan TotalPresentationDuration,
+    TimeSpan MaximumPresentationDuration)
+{
+    public TimeSpan AveragePresentationDuration => PresentedFrameCount == 0
+        ? TimeSpan.Zero
+        : TotalPresentationDuration / PresentedFrameCount;
+}

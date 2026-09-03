@@ -127,4 +127,24 @@ public sealed class IndexedSurfaceTests
         Assert.Equal(7, surface.GetPixel(3, 3));
         Assert.Equal(0, surface.GetPixel(1, 4));
     }
+
+    [Fact]
+    public void PolygonFillCanUseCallerOwnedScratchWithoutAllocating()
+    {
+        var surface = new IndexedSurface(16, 16);
+        IndexedPoint[] points =
+        [
+            new IndexedPoint(1, 1), new IndexedPoint(14, 2),
+            new IndexedPoint(12, 14), new IndexedPoint(2, 13),
+        ];
+        var scratch = new double[points.Length];
+        surface.FillPolygon(points, 7, scratch);
+
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        for (var index = 0; index < 1_000; index++) surface.FillPolygon(points, 7, scratch);
+        var allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
+
+        Assert.Equal(allocatedBefore, allocatedAfter);
+        Assert.Throws<ArgumentException>(() => surface.FillPolygon(points, 7, new double[3]));
+    }
 }
