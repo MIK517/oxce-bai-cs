@@ -310,9 +310,17 @@ scenario startup. Audit and memory-measurement tools reuse planning without surr
 their specialized lifetime controls. See
 [ADR 0020](decisions/0020-installation-bootstrap.md).
 
+Trusted managed extensions use a separate versioned abstractions assembly, manual
+installation, narrow capabilities, callback failure containment, and a bounded
+save-neutral state envelope. Tactical AI and live save integration remain attached to
+their owning gameplay slices. See
+[ADR 0021](decisions/0021-versioned-managed-extensions.md).
+
 ## Immediate next tasks
 
-1. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
+1. Complete the managed-extension foundation that the campaign contracts can exercise;
+   defer tactical AI and live extension-state saves to their owning slices.
+2. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
    persisted strategic slice, including their owning script providers and UI actions.
-2. Continue adding focused executable C++ probes, compatibility matrix entries, and
+3. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

@@ -26,6 +26,12 @@ Loadable C# assemblies are an additional trusted extension mechanism. They do no
 replace or weaken OXCE mod and script compatibility, and an existing OXCE mod must not
 need managed code to retain its reference behavior.
 
+Extension-free campaigns and saves remain within the normal OXCE compatibility scope.
+A managed extension may explicitly add behavior or namespaced save state that the
+reference engine cannot interpret; semantic reference-engine compatibility is then not
+claimed while that extension is enabled. Disabling extensions must not silently change
+the behavior or save shape of campaigns that never used them.
+
 ### Saves
 
 - Read campaign and active-battlescape saves produced by the targeted C++ OXCE branch.

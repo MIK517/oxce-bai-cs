@@ -27,6 +27,8 @@ The current runtime boundary, findings, and ordered follow-up work are recorded 
 | `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution, mutable runtime state, invariants, and save-neutral capture/restore contracts |
 | `Oxce.Rendering` | Indexed surfaces, palettes, software primitives, text/layout models, render commands |
 | `Oxce.Engine` | State stack, loop, input abstractions, clocks, orchestration, headless host |
+| `Oxce.Extensions.Abstractions` | Versioned, implementation-independent contracts for trusted managed extensions |
+| `Oxce.Extensions` | Manual extension discovery/loading, capability adapters, lifecycle, diagnostics, and failure containment |
 | `Oxce.Platform.Sdl` | SDL3 native interop, windows, input devices, audio, GPU presentation |
 | `Oxce.App` | Composition root, command line, configuration, startup and fatal diagnostics |
 
@@ -42,6 +44,8 @@ types to lower projects. See [ADR 0009](decisions/0009-structured-diagnostics-an
 
 ```text
 App -> Engine -> Gameplay -> Mods -> Scripting -> Core
+App -> Extensions -> Gameplay
+Extensions -> Extensions.Abstractions
 App -> Engine -> Resources -> Mods
 Resources -> Formats -> Core
 Resources -> Rendering -> Core
@@ -151,11 +155,19 @@ operations remain explicit gameplay APIs and enforce final invariants.
 ## Managed extensions
 
 Loadable C# assemblies are trusted engine extensions, not a replacement for compatible
-OXCE mods or scripts. Their stable contracts belong in a small, versioned abstractions
-assembly when the first extension slice is implemented. Extensions receive narrow,
-read-only query views and submit commands through validated gameplay APIs; they
-do not receive mutable runtime entities, persistence DTOs, or YAML nodes. In-process
-assemblies are not a security boundary and must be treated as fully trusted code.
+OXCE mods or scripts. Their stable contracts live in the small, versioned
+`Oxce.Extensions.Abstractions` assembly; discovery, loading, lifecycle, capability
+adaptation, and callback containment live in `Oxce.Extensions`. Extensions receive
+narrow, read-only query views and submit commands through validated gameplay APIs;
+they do not receive mutable runtime entities, persistence DTOs, YAML nodes, runtime
+handles, or a general service provider. In-process assemblies are not a security
+boundary and must be treated as fully trusted code.
+
+Versioned, bounded extension state is represented independently of YAML and is encoded
+by `Oxce.Savegames`. Extension-free saves remain in the ordinary compatibility scope;
+state declared necessary for continuation cannot be silently ignored when its owning
+extension is absent. The accepted policy and deferred tactical-AI capability are in
+[ADR 0021](decisions/0021-versioned-managed-extensions.md).
 
 ## Script runtime ownership
 

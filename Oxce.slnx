@@ -3,6 +3,8 @@
     <Project Path="src/Oxce.App/Oxce.App.csproj" />
     <Project Path="src/Oxce.Core/Oxce.Core.csproj" />
     <Project Path="src/Oxce.Engine/Oxce.Engine.csproj" />
+    <Project Path="src/Oxce.Extensions/Oxce.Extensions.csproj" />
+    <Project Path="src/Oxce.Extensions.Abstractions/Oxce.Extensions.Abstractions.csproj" />
     <Project Path="src/Oxce.Formats/Oxce.Formats.csproj" />
     <Project Path="src/Oxce.Gameplay/Oxce.Gameplay.csproj" />
     <Project Path="src/Oxce.Mods/Oxce.Mods.csproj" />
@@ -17,6 +19,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Oxce.CompatibilityTests/Oxce.CompatibilityTests.csproj" />
+    <Project Path="tests/Oxce.TestExtension/Oxce.TestExtension.csproj" />
     <Project Path="tests/Oxce.UnitTests/Oxce.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tools/">

@@ -1,5 +1,7 @@
+using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
 using Oxce.Engine;
+using Oxce.Extensions;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Loading;
@@ -24,7 +26,11 @@ internal static class CampaignSdlCommand
                 CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(0x4F584345UL),
             SystemCampaignClock.Instance);
-        var client = new CampaignOverviewClient(campaign, campaign);
+        var extensionDiagnostics = new DiagnosticCollector();
+        using var extensions = ManagedExtensionHost.LoadFromDirectory(
+            Path.Combine(Path.GetFullPath(installationRoot), "extensions"), extensionDiagnostics);
+        using var extensionSession = extensions.AttachCampaign(campaign, campaign);
+        var client = new CampaignOverviewClient(extensionSession, extensionSession);
         Console.WriteLine("Click the globe to place the starting base. Press Space to advance one minute; Escape quits.");
         var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET campaign foundation")
         {
@@ -36,6 +42,9 @@ internal static class CampaignSdlCommand
             OxceSaveAdapter.WriteAtomic(Path.GetFullPath(destination), campaign.Capture());
             Console.WriteLine($"Campaign saved to {Path.GetFullPath(destination)}");
         }
+        foreach (var diagnostic in extensionDiagnostics.Snapshot()
+                     .Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning))
+            Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
         return result;
     }
 }
