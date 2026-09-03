@@ -291,6 +291,42 @@ visibility, damage, AI, objectives, and tactical saves. Each slice expands rule
 projections, providers, state, save fields, scenarios, resource use, and benchmarks
 together.
 
+## Slice 7 — Versioned managed-extension foundation
+
+Suggested branch: `codex/managed-extension-foundation`.
+
+### Work available now
+
+- Add dependency-light `Oxce.Extensions.Abstractions` and the `Oxce.Extensions` host.
+- Implement bounded manual manifest discovery, API-version negotiation, isolated
+  dependency loading, lifecycle, structured diagnostics, and callback containment.
+- Adapt the current campaign overview, validated commands, and committed events into
+  explicit extension capabilities without exposing `Oxce.Gameplay` types.
+- Define and round-trip the bounded save-neutral extension-state envelope, including
+  required/optional state and schema/version metadata.
+- Prove the boundary with a test extension that references abstractions only.
+
+### Deferred work
+
+- OXCE-save root integration and live state capture wait for the first state-owning
+  extension or craft/mission slice.
+- The tactical AI provider contract waits for tactical identities, immutable decision
+  queries, validated actions, and deterministic decision context in Phase 7.
+- UI/content/telemetry capabilities, dependency graphs, package management, hot reload,
+  unloading, and process isolation remain demand-driven follow-up work.
+
+### Exit gate
+
+- A manually installed extension can load, negotiate version `0.1`, observe/query the
+  campaign, submit a validated command, and shut down without referencing implementation
+  assemblies.
+- Malformed, duplicate, incompatible, and throwing extensions fail deterministically
+  with bounded diagnostics and do not escape into the simulation loop.
+- Namespaced extension state round-trips independently of YAML and rejects malformed or
+  over-limit input.
+- Project dependency tests enforce the public boundary and all deferrals are documented
+  in [ADR 0021](decisions/0021-versioned-managed-extensions.md).
+
 ## Documentation and matrix work in every slice
 
 Every branch must update:
@@ -322,8 +358,10 @@ The decisions requested by the initial assessment are resolved as follows:
    private saves produced by OXCE Brutal 8.6 commit `ab5041e` are a backward/migration
    corpus. Fresh pinned-version saves should be captured when practical; missing
    late-game saves are a later breadth gate, not a blocker for the first slice.
-7. Defer a managed-extension abstractions assembly until one gameplay slice has tested
-   and matured the command, snapshot, identity, and event contracts.
+7. Add the managed-extension boundary after one gameplay slice has tested and matured
+   the command, snapshot, identity, and event contracts. The accepted versioning,
+   persistence, trust, installation, and deferral policy is recorded in
+   [ADR 0021](decisions/0021-versioned-managed-extensions.md).
 8. Select media dependencies per format using the redistribution, licensing, coverage,
    security, and size policy in `performance-targets.md`; managed or project-local
    native implementations are both acceptable when they satisfy that policy.
