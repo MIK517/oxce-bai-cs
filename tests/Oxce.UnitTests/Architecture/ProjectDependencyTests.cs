@@ -10,6 +10,7 @@ public sealed class ProjectDependencyTests
         {
             ["Oxce.App"] = Set(
                 "Oxce.Engine",
+                "Oxce.Extensions",
                 "Oxce.Formats",
                 "Oxce.Mods",
                 "Oxce.Platform.Sdl",
@@ -17,6 +18,8 @@ public sealed class ProjectDependencyTests
                 "Oxce.Savegames"),
             ["Oxce.Core"] = Set(),
             ["Oxce.Engine"] = Set("Oxce.Core", "Oxce.Gameplay", "Oxce.Rendering", "Oxce.Resources"),
+            ["Oxce.Extensions"] = Set("Oxce.Core", "Oxce.Extensions.Abstractions", "Oxce.Gameplay"),
+            ["Oxce.Extensions.Abstractions"] = Set(),
             ["Oxce.Formats"] = Set("Oxce.Core"),
             ["Oxce.Gameplay"] = Set("Oxce.Core", "Oxce.Mods", "Oxce.Scripting"),
             ["Oxce.Mods"] = Set("Oxce.Core", "Oxce.Formats", "Oxce.Scripting"),
@@ -58,6 +61,14 @@ public sealed class ProjectDependencyTests
         {
             Visit(project, graph, completed, active, path);
         }
+    }
+
+    [Fact]
+    public void TestManagedExtensionReferencesOnlyPublicAbstractions()
+    {
+        var project = Path.Combine(FindRepositoryRoot(), "tests", "Oxce.TestExtension", "Oxce.TestExtension.csproj");
+
+        Assert.Equal(Set("Oxce.Extensions.Abstractions"), ReadReferences(project));
     }
 
     private static void Visit(
