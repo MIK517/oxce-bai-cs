@@ -44,9 +44,8 @@ types to lower projects. See [ADR 0009](decisions/0009-structured-diagnostics-an
 
 ```text
 App -> Engine -> Gameplay -> Mods -> Scripting -> Core
-App -> Extensions -> Engine
+App -> Extensions -> Gameplay
 Extensions -> Extensions.Abstractions
-Savegames -> Extensions.Abstractions
 App -> Engine -> Resources -> Mods
 Resources -> Formats -> Core
 Resources -> Rendering -> Core

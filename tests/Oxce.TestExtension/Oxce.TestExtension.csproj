@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Oxce.Extensions.Abstractions/Oxce.Extensions.Abstractions.csproj" />
+  </ItemGroup>
+</Project>
