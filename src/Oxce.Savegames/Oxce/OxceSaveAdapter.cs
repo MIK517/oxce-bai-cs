@@ -207,9 +207,9 @@ public static class OxceSaveAdapter
         var defaultSoldier = content.RuntimeRules.Soldiers.Rules.Count == 0
             ? string.Empty
             : content.RuntimeRules.Soldiers.Rules[0].Id;
-        return Array.AsReadOnly(Sequence(body, "bases").Select(node =>
+        return Array.AsReadOnly(IdentifyBases(body).Select(identified =>
         {
-            var map = RequireMap(node, "base");
+            var map = identified.Value;
             var facilities = Sequence(map, "facilities").Select(item =>
             {
                 var facility = RequireMap(item, "facility");
@@ -231,7 +231,7 @@ public static class OxceSaveAdapter
             }).ToArray();
             var items = ReadIntMap(map, "items");
             return new BaseSnapshot(
-                Integer(map, "id", 0), String(map, "name", string.Empty), Double(map, "lon", 0),
+                identified.Id, String(map, "name", string.Empty), Double(map, "lon", 0),
                 Double(map, "lat", 0), Array.AsReadOnly(facilities), Array.AsReadOnly(crafts),
                 Array.AsReadOnly(soldiers), items, Integer(map, "scientists", 0), Integer(map, "engineers", 0));
         }).ToArray());
@@ -286,13 +286,14 @@ public static class OxceSaveAdapter
             map => String(map, "type", string.Empty), StringComparer.Ordinal);
         var originalRegions = Maps(source?.Body, "regions").ToDictionary(
             map => String(map, "type", string.Empty), StringComparer.Ordinal);
-        var originalBases = Maps(source?.Body, "bases").ToArray();
+        EnsureUnique(snapshot.Bases.Select(static item => item.Id), "base ID");
+        var originalBases = IdentifyBases(source?.Body).ToDictionary(static item => item.Id, static item => item.Value);
         var countries = snapshot.Countries.Select(country => BuildCountry(
             country, originalCountries.GetValueOrDefault(country.RuleId))).ToArray();
         var regions = snapshot.Regions.Select(region => BuildRegion(
             region, originalRegions.GetValueOrDefault(region.RuleId))).ToArray();
-        var bases = snapshot.Bases.Select((item, index) => BuildBase(
-            item, index < originalBases.Length ? originalBases[index] : null)).ToArray();
+        var bases = snapshot.Bases.Select(item => BuildBase(
+            item, originalBases.GetValueOrDefault(item.Id))).ToArray();
         return Overlay(source?.Body,
         [
             Pair("difficulty", Integer((int)snapshot.Difficulty)),
@@ -334,11 +335,12 @@ public static class OxceSaveAdapter
 
     private static YamlMappingNode BuildBase(BaseSnapshot value, YamlMappingNode? source)
     {
-        var oldFacilities = Maps(source, "facilities").ToArray();
+        EnsureUnique(value.Facilities.Select(FacilityIdentity), "facility identity");
+        var oldFacilities = Maps(source, "facilities").ToDictionary(FacilityIdentity);
         var oldCrafts = Maps(source, "crafts").ToDictionary(EntityIdentity, StringComparer.Ordinal);
         var oldSoldiers = Maps(source, "soldiers").ToDictionary(EntityIdentity, StringComparer.Ordinal);
-        var facilities = value.Facilities.Select((facility, index) => Overlay(
-            index < oldFacilities.Length ? oldFacilities[index] : null,
+        var facilities = value.Facilities.Select(facility => Overlay(
+            oldFacilities.GetValueOrDefault(FacilityIdentity(facility)),
             [
                 Pair("type", Scalar(facility.RuleId)), Pair("x", Integer(facility.X)), Pair("y", Integer(facility.Y)),
                 Pair("buildTime", facility.BuildTime == 0 ? null : Integer(facility.BuildTime)),
@@ -354,7 +356,7 @@ public static class OxceSaveAdapter
         return Overlay(source,
         [
             Pair("lon", Real(value.Longitude)), Pair("lat", Real(value.Latitude)),
-            Pair("id", value.Id == 0 ? null : Integer(value.Id)),
+            Pair("id", Integer(value.Id)),
             Pair("name", value.Name.Length == 0 ? null : Scalar(value.Name)),
             Pair("facilities", Sequence(facilities)), Pair("soldiers", Sequence(soldiers)),
             Pair("crafts", Sequence(crafts)),
@@ -368,6 +370,57 @@ public static class OxceSaveAdapter
 
     private static string EntityIdentity(CraftSnapshot value) => $"{value.RuleId}\0{value.Id}";
     private static string EntityIdentity(SoldierSnapshot value) => $"{value.RuleId}\0{value.Id}";
+
+    private static BaseFacilityIdentity FacilityIdentity(YamlMappingNode value) => new(
+        String(value, "type", string.Empty), Integer(value, "x", -1), Integer(value, "y", -1));
+
+    private static BaseFacilityIdentity FacilityIdentity(FacilitySnapshot value) => new(
+        value.RuleId, value.X, value.Y);
+
+    private static List<IdentifiedBase> IdentifyBases(YamlMappingNode? body)
+    {
+        var bases = Maps(body, "bases").ToArray();
+        var explicitIds = new HashSet<int>();
+        foreach (var map in bases)
+        {
+            if (!map.TryGet("id", out var node)) continue;
+            var id = YamlValueReader.ReadInt32(node!);
+            if (id < 0) throw new InvalidDataException("Base IDs cannot be negative.");
+            if (!explicitIds.Add(id)) throw new InvalidDataException($"Duplicate base ID '{id}'.");
+        }
+
+        var used = new HashSet<int>(explicitIds);
+        var next = 0;
+        var result = new List<IdentifiedBase>(bases.Length);
+        foreach (var map in bases)
+        {
+            int id;
+            if (map.TryGet("id", out var node))
+            {
+                id = YamlValueReader.ReadInt32(node!);
+            }
+            else
+            {
+                while (used.Contains(next)) next = checked(next + 1);
+                id = next;
+                used.Add(id);
+                next = checked(next + 1);
+            }
+            result.Add(new IdentifiedBase(id, map));
+        }
+        return result;
+    }
+
+    private static void EnsureUnique<T>(IEnumerable<T> values, string name) where T : notnull
+    {
+        var seen = new HashSet<T>();
+        foreach (var value in values)
+            if (!seen.Add(value)) throw new InvalidDataException($"Duplicate {name} '{value}'.");
+    }
+
+    private readonly record struct IdentifiedBase(int Id, YamlMappingNode Value);
+
+    private readonly record struct BaseFacilityIdentity(string RuleId, int X, int Y);
 
     private static YamlMappingNode? ScriptValues(IReadOnlyList<ScriptValueEntry> values) => values.Count == 0
         ? null
