@@ -208,6 +208,13 @@ Exit gate:
   conversion support advances with the gameplay state that can validate it.
 - Missing-mod and corrupt-save failures are actionable and covered.
 
+Status (2026-09-03): the headless campaign foundation satisfies this gate for public,
+vanilla UFO, and staged 40k/Rosigma scenarios. Supplied vanilla UFO and Rosigma saves,
+including opaque active-battle state, load and round-trip their implemented strategic
+subset. See [campaign foundation status](campaign-foundation-status.md) and
+[ADR 0018](decisions/0018-campaign-state-and-oxce-save-overlay.md). TFTD acceptance and
+the minimal SDL view are explicit next-slice work.
+
 ## Phase 6 — Playable strategic vertical slice
 
 Suggested order:

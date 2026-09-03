@@ -124,6 +124,10 @@ runtime root would also retain build-only state. See
 - Capture must observe a consistent simulation state. Start with a straightforward
   snapshot and measure it; large tactical collections may later use segmented visitors
   or copy-on-write, but persistence must not mutate live state while writing.
+- OXCE save adapters overlay implemented fields onto an opaque parsed source document
+  so later-strategy, tactical, and mod-owned nodes survive partial-model round trips;
+  gameplay never sees that sidecar. See
+  [ADR 0018](decisions/0018-campaign-state-and-oxce-save-overlay.md).
 - Resolve cross-references in a dedicated link/validation pass.
 - Represent optional/missing/null distinctly where OXCE does.
 - Keep serialization logic near compatibility DTOs or codecs, not spread through UI.

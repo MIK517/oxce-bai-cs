@@ -1,0 +1,122 @@
+using Oxce.Core.Random;
+using Oxce.Gameplay.Campaigns;
+using Oxce.Mods.Discovery;
+using Oxce.Mods.Loading;
+using Oxce.Mods.Rulesets;
+using Oxce.Mods.Rulesets.Content;
+using Xunit;
+
+namespace Oxce.UnitTests.Gameplay;
+
+public sealed class CampaignFoundationTests
+{
+    [Fact]
+    public void FiveSecondCalendarMatchesReferenceTriggerPrecedenceAndLeapYear()
+    {
+        var time = new CampaignTime(7, 29, 2, 2000, 23, 59, 55);
+
+        var next = time.Advance(out var trigger);
+
+        Assert.Equal(new CampaignTime(1, 1, 3, 2000, 0, 0, 0), next);
+        Assert.Equal(CampaignTimeTrigger.OneMonth, trigger);
+    }
+
+    [Fact]
+    public void NewCampaignCreatesLinkedWorldAndExecutesValidatedCommands()
+    {
+        var content = LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content,
+            Request(),
+            new SplitMix64RandomSource(42),
+            new FixedClock());
+
+        var initial = campaign.Capture();
+        Assert.Equal(6_000_000, Assert.Single(initial.Funds));
+        Assert.Equal("COUNTRY", Assert.Single(initial.Countries).RuleId);
+        Assert.Equal("REGION", Assert.Single(initial.Regions).RuleId);
+        var startingBase = Assert.Single(initial.Bases);
+        Assert.Equal("FACILITY", Assert.Single(startingBase.Facilities).RuleId);
+        Assert.Equal("CRAFT", Assert.Single(startingBase.Crafts).RuleId);
+        Assert.Equal(3, Assert.Single(startingBase.Crafts).Id);
+        Assert.Equal(3, startingBase.Soldiers.Count);
+        Assert.Equal(5, startingBase.Items["ITEM"]);
+
+        var placed = campaign.Execute(new PlaceStartingBase(0, "Alpha", 1.25, -0.5));
+        Assert.IsType<StartingBasePlaced>(Assert.Single(placed.Events));
+        var advanced = campaign.Execute(new AdvanceCampaignTime(12));
+        Assert.IsType<CampaignTimeAdvanced>(Assert.Single(advanced.Events));
+        Assert.Equal(7, campaign.Capture().Time.Minute);
+        Assert.Throws<InvalidOperationException>(() =>
+            campaign.Execute(new PlaceStartingBase(0, "Again", 1, 0)));
+    }
+
+    [Fact]
+    public void RestoreValidatesCompleteGraphBeforePublishing()
+    {
+        var content = LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content, Request(), new SplitMix64RandomSource(7), new FixedClock());
+        var snapshot = campaign.Capture();
+        var facility = Assert.Single(Assert.Single(snapshot.Bases).Facilities);
+        var invalidBase = Assert.Single(snapshot.Bases) with
+        {
+            Facilities = Array.AsReadOnly(new[] { facility, facility }),
+        };
+        var invalid = snapshot with { Bases = Array.AsReadOnly(new[] { invalidBase }) };
+
+        Assert.Throws<InvalidDataException>(() =>
+            CampaignState.Restore(invalid, content, new SplitMix64RandomSource(0)));
+
+        var restored = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(0));
+        Assert.Equivalent(snapshot, restored.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void FailedRestoreDoesNotPublishRandomState()
+    {
+        var content = LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content, Request(), new SplitMix64RandomSource(7), new FixedClock());
+        var snapshot = campaign.Capture();
+        var random = new SplitMix64RandomSource(99);
+        var previous = random.State;
+        var invalid = snapshot with { Funds = Array.AsReadOnly(Array.Empty<long>()) };
+
+        Assert.Throws<InvalidDataException>(() => CampaignState.Restore(invalid, content, random));
+        Assert.Equal(previous, random.State);
+    }
+
+    internal static RuntimeContent LoadFixture()
+    {
+        var root = FindRepositoryRoot();
+        var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
+        var discovery = ModDiscovery.ScanDirectory(fixture);
+        var plan = ModLoadPlanner.Create(
+            ModCatalog.Create(discovery.Mods),
+            [new ModActivation("runtime-master", true), new ModActivation("runtime-addon", true)],
+            "runtime-master",
+            new ModEngineIdentity("Extended", "8.6.1.0"));
+        return ContentSnapshotBuilder.Build(plan).Content;
+    }
+
+    internal static NewCampaignRequest Request() => new(
+        new CampaignId(Guid.Parse("11111111-2222-3333-4444-555555555555")),
+        "Campaign",
+        "runtime-master",
+        ["runtime-master", "runtime-addon"],
+        CampaignDifficulty.Beginner);
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
+            directory = directory.Parent;
+        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate repository root.");
+    }
+
+    internal sealed class FixedClock : ICampaignClock
+    {
+        public DateTimeOffset UtcNow => new(2026, 9, 2, 20, 0, 0, TimeSpan.Zero);
+    }
+}

@@ -208,6 +208,12 @@ satisfy the exit gate.
 
 Suggested branch: `codex/campaign-foundation-slice`.
 
+Status: completed 2026-09-03 for the headless foundation. Gameplay-owned state,
+transactional capture/restore, compatible overlay saves, public and owned-save
+acceptance, the headless scenario, and baselines are in place. The agreed minimal SDL
+presentation follows in Slice 6; executable script providers follow their first owning
+gameplay action rather than being invented before use.
+
 ### Work
 
 - Implement gameplay-owned campaign identity, game time/calendar, countries/regions,
