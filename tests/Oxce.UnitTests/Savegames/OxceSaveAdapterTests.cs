@@ -3,6 +3,7 @@ using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Savegames.Oxce;
 using Oxce.UnitTests.Gameplay;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace Oxce.UnitTests.Savegames;
@@ -56,6 +57,133 @@ public sealed class OxceSaveAdapterTests
         Assert.Contains("futureHeader: retained", emitted, StringComparison.Ordinal);
         Assert.Contains("futureBody:", emitted, StringComparison.Ordinal);
         Assert.Contains("futureCountry: yes", emitted, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BaseAndFacilityOpaqueFieldsFollowSemanticIdentityAcrossMutations()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content,
+            CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42),
+            new CampaignFoundationTests.FixedClock());
+        var snapshot = campaign.Capture();
+        var templateBase = Assert.Single(snapshot.Bases);
+        var templateFacility = Assert.Single(templateBase.Facilities);
+        var alpha = templateBase with
+        {
+            Id = 7,
+            Name = "Alpha",
+            Facilities = Array.AsReadOnly([
+                templateFacility with { X = 0, Y = 0 },
+                templateFacility with { X = 2, Y = 0, BuildTime = 3 },
+            ]),
+        };
+        var beta = new BaseSnapshot(
+            12,
+            "Beta",
+            2.5,
+            0.5,
+            Array.AsReadOnly([templateFacility with { X = 4, Y = 4 }]),
+            Array.AsReadOnly(Array.Empty<CraftSnapshot>()),
+            Array.AsReadOnly(Array.Empty<SoldierSnapshot>()),
+            new Dictionary<string, int>(StringComparer.Ordinal),
+            0,
+            0);
+        var initial = snapshot with { Bases = Array.AsReadOnly([alpha, beta]) };
+        var yaml = OxceSaveAdapter.Emit(initial)
+            .Replace("name: Alpha", "name: Alpha\n    opaqueBase: alpha", StringComparison.Ordinal)
+            .Replace("name: Beta", "name: Beta\n    opaqueBase: beta", StringComparison.Ordinal)
+            .Replace(
+                $"type: {templateFacility.RuleId}\n        x: 0\n        y: 0",
+                $"type: {templateFacility.RuleId}\n        x: 0\n        y: 0\n        opaqueFacility: alpha-zero",
+                StringComparison.Ordinal)
+            .Replace(
+                $"type: {templateFacility.RuleId}\n        x: 2\n        y: 0",
+                $"type: {templateFacility.RuleId}\n        x: 2\n        y: 0\n        opaqueFacility: alpha-two",
+                StringComparison.Ordinal)
+            .Replace(
+                $"type: {templateFacility.RuleId}\n        x: 4\n        y: 4",
+                $"type: {templateFacility.RuleId}\n        x: 4\n        y: 4\n        opaqueFacility: beta-four",
+                StringComparison.Ordinal);
+        Assert.Contains("opaqueFacility: alpha-two", yaml, StringComparison.Ordinal);
+        var loaded = OxceSaveAdapter.Load(
+            yaml, "identity.sav", content, new SplitMix64RandomSource(0), Options());
+        var loadedSnapshot = loaded.Campaign.Capture();
+        var loadedAlpha = Assert.Single(loadedSnapshot.Bases, item => item.Id == 7);
+        var loadedBeta = Assert.Single(loadedSnapshot.Bases, item => item.Id == 12);
+        var retainedFacility = Assert.Single(loadedAlpha.Facilities, item => item.X == 2 && item.Y == 0);
+        var changedAlpha = loadedAlpha with
+        {
+            Facilities = Array.AsReadOnly([
+                retainedFacility,
+                templateFacility with { X = 3, Y = 0 },
+            ]),
+        };
+        var gamma = beta with { Id = 20, Name = "Gamma", Facilities = Array.AsReadOnly(Array.Empty<FacilitySnapshot>()) };
+        var changed = loadedSnapshot with { Bases = Array.AsReadOnly([loadedBeta, gamma, changedAlpha]) };
+
+        var emitted = OxceSaveAdapter.Emit(changed, loaded.Source);
+        var emittedBases = ReadMaps(ReadBody(emitted), "bases").ToDictionary(ReadId);
+        var emittedBeta = emittedBases[12];
+        var emittedGamma = emittedBases[20];
+        var emittedAlpha = emittedBases[7];
+
+        Assert.Equal("beta", ReadString(emittedBeta, "opaqueBase"));
+        Assert.False(emittedGamma.TryGet("opaqueBase", out _));
+        Assert.Equal("alpha", ReadString(emittedAlpha, "opaqueBase"));
+        var alphaFacilities = ReadMaps(emittedAlpha, "facilities").ToDictionary(FacilityKey);
+        Assert.Equal("alpha-two", ReadString(alphaFacilities[(templateFacility.RuleId, 2, 0)], "opaqueFacility"));
+        Assert.False(alphaFacilities[(templateFacility.RuleId, 3, 0)].TryGet("opaqueFacility", out _));
+        Assert.DoesNotContain("alpha-zero", emitted, StringComparison.Ordinal);
+
+        var afterRemoval = OxceSaveAdapter.Emit(
+            loadedSnapshot with { Bases = Array.AsReadOnly([loadedAlpha]) }, loaded.Source);
+        Assert.DoesNotContain("opaqueBase: beta", afterRemoval, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MissingReferenceBaseIdsBecomeStableAndDuplicateIdsAreRejected()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content,
+            CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42),
+            new CampaignFoundationTests.FixedClock());
+        var snapshot = campaign.Capture();
+        var original = Assert.Single(snapshot.Bases);
+        var second = original with
+        {
+            Id = 1,
+            Name = "Second",
+            Facilities = Array.AsReadOnly(Array.Empty<FacilitySnapshot>()),
+            Crafts = Array.AsReadOnly(Array.Empty<CraftSnapshot>()),
+            Soldiers = Array.AsReadOnly(Array.Empty<SoldierSnapshot>()),
+            Items = new Dictionary<string, int>(StringComparer.Ordinal),
+        };
+        var yaml = Regex.Replace(
+            OxceSaveAdapter.Emit(snapshot with { Bases = Array.AsReadOnly([original, second]) }),
+            "^    id: [01]\\r?$",
+            string.Empty,
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+
+        var loaded = OxceSaveAdapter.Load(
+            yaml, "legacy-bases.sav", content, new SplitMix64RandomSource(0), Options());
+        var ids = loaded.Campaign.Capture().Bases.Select(static item => item.Id).ToArray();
+        var emitted = OxceSaveAdapter.Emit(loaded.Campaign.Capture(), loaded.Source);
+
+        Assert.Equal([0, 1], ids);
+        Assert.Contains("    id: 0", emitted, StringComparison.Ordinal);
+        Assert.Contains("    id: 1", emitted, StringComparison.Ordinal);
+        var duplicate = Regex.Replace(
+            emitted,
+            "^    id: 1\\r?$",
+            "    id: 0",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        Assert.Throws<InvalidDataException>(() => OxceSaveAdapter.Load(
+            duplicate, "duplicate-bases.sav", content, new SplitMix64RandomSource(0), Options()));
     }
 
     [Fact]
@@ -159,4 +287,30 @@ public sealed class OxceSaveAdapterTests
     private static OxceSaveLoadOptions Options() => new(
         "runtime-master",
         new HashSet<string>(["runtime-master", "runtime-addon"], StringComparer.Ordinal));
+
+    private static YamlMappingNode ReadBody(string yaml) => Assert.IsType<YamlMappingNode>(
+        Assert.Single(YamlCompatibilityReader.Parse(yaml, "emitted.sav").Documents.Skip(1)).Root);
+
+    private static YamlMappingNode[] ReadMaps(YamlMappingNode owner, string key)
+    {
+        Assert.True(owner.TryGet(key, out var node));
+        return YamlValueReader.ReadSequence(node!, item => Assert.IsType<YamlMappingNode>(item));
+    }
+
+    private static int ReadId(YamlMappingNode value) =>
+        YamlValueReader.ReadInt32(Required(value, "id"));
+
+    private static (string Type, int X, int Y) FacilityKey(YamlMappingNode value) => (
+        YamlValueReader.ReadString(Required(value, "type")),
+        YamlValueReader.ReadInt32(Required(value, "x")),
+        YamlValueReader.ReadInt32(Required(value, "y")));
+
+    private static string ReadString(YamlMappingNode owner, string key) =>
+        YamlValueReader.ReadString(Required(owner, key));
+
+    private static YamlNode Required(YamlMappingNode owner, string key)
+    {
+        Assert.True(owner.TryGet(key, out var node));
+        return node!;
+    }
 }
