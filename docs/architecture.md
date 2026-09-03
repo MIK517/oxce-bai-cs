@@ -124,6 +124,11 @@ runtime root would also retain build-only state. See
 - Capture must observe a consistent simulation state. Start with a straightforward
   snapshot and measure it; large tactical collections may later use segmented visitors
   or copy-on-write, but persistence must not mutate live state while writing.
+- Routine presentation reads use gameplay-owned query views rather than persistence
+  capture. Query and command ports are separate capabilities; the initial campaign
+  overview copies only scalar totals and visible base/facility data. Time-advance
+  events retain fixed-size trigger summaries with allocation-free ordered replay. See
+  [ADR 0019](decisions/0019-bounded-time-events-and-campaign-queries.md).
 - OXCE save adapters overlay implemented fields onto an opaque parsed source document
   so later-strategy, tactical, and mod-owned nodes survive partial-model round trips;
   gameplay never sees that sidecar. See
@@ -142,7 +147,7 @@ operations remain explicit gameplay APIs and enforce final invariants.
 Loadable C# assemblies are trusted engine extensions, not a replacement for compatible
 OXCE mods or scripts. Their stable contracts belong in a small, versioned abstractions
 assembly when the first extension slice is implemented. Extensions receive narrow,
-read-only views or snapshots and submit commands through validated gameplay APIs; they
+read-only query views and submit commands through validated gameplay APIs; they
 do not receive mutable runtime entities, persistence DTOs, or YAML nodes. In-process
 assemblies are not a security boundary and must be treated as fully trusted code.
 

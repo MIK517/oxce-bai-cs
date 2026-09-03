@@ -19,12 +19,15 @@ public sealed class CampaignOverviewClient : IIndexedLoopClient
     private const int GlobeTop = 32;
     private const int GlobeWidth = 288;
     private const int GlobeHeight = 120;
-    private readonly CampaignState _campaign;
+    private readonly ICampaignQuery _queries;
+    private readonly ICampaignCommandTarget _commands;
 
-    public CampaignOverviewClient(CampaignState campaign)
+    public CampaignOverviewClient(ICampaignQuery queries, ICampaignCommandTarget commands)
     {
-        ArgumentNullException.ThrowIfNull(campaign);
-        _campaign = campaign;
+        ArgumentNullException.ThrowIfNull(queries);
+        ArgumentNullException.ThrowIfNull(commands);
+        _queries = queries;
+        _commands = commands;
         Frame = new IndexedSurface(Width, Height);
         Palette = CreatePalette();
         Redraw();
@@ -38,13 +41,13 @@ public sealed class CampaignOverviewClient : IIndexedLoopClient
 
     public bool ExitRequested => false;
 
-    public CampaignSnapshot Snapshot => _campaign.Capture();
+    public CampaignOverview Overview => _queries.QueryOverview();
 
     public void HandleInput(in GameInputEvent input)
     {
         if (input.Kind == GameInputEventKind.KeyPressed && !input.IsRepeat && input.KeyCode == AdvanceMinuteKey)
         {
-            _campaign.Execute(new AdvanceCampaignTime(12));
+            _commands.Execute(new AdvanceCampaignTime(12));
             Redraw();
             return;
         }
@@ -56,11 +59,11 @@ public sealed class CampaignOverviewClient : IIndexedLoopClient
             return;
         }
 
-        var snapshot = _campaign.Capture();
-        if (snapshot.Bases.Count == 0 || !string.IsNullOrEmpty(snapshot.Bases[0].Name)) return;
+        var overview = _queries.QueryOverview();
+        if (overview.Bases.Count == 0 || overview.Bases[0].IsPlaced) return;
         var longitude = (input.X - GlobeLeft) / GlobeWidth * (2 * Math.PI);
         var latitude = (0.5 - ((input.Y - GlobeTop) / GlobeHeight)) * Math.PI;
-        _campaign.Execute(new PlaceStartingBase(0, "First Base", longitude, latitude));
+        _commands.Execute(new PlaceStartingBase(0, "First Base", longitude, latitude));
         Redraw();
     }
 
@@ -71,13 +74,13 @@ public sealed class CampaignOverviewClient : IIndexedLoopClient
 
     private void Redraw()
     {
-        var snapshot = _campaign.Capture();
+        var overview = _queries.QueryOverview();
         Frame.Clear(1);
-        DrawDate(snapshot.Time);
-        var baseState = snapshot.Bases.Count == 0 ? null : snapshot.Bases[0];
-        if (baseState is null || string.IsNullOrEmpty(baseState.Name)) DrawGlobePlacement();
+        DrawDate(overview.Time);
+        var baseState = overview.Bases.Count == 0 ? null : overview.Bases[0];
+        if (baseState is null || !baseState.IsPlaced) DrawGlobePlacement();
         else DrawBase(baseState);
-        DrawMetrics(snapshot);
+        DrawMetrics(overview);
         PresentationRevision = checked(PresentationRevision + 1);
     }
 
@@ -100,7 +103,7 @@ public sealed class CampaignOverviewClient : IIndexedLoopClient
         Frame.DrawLine(110, 121, 210, 121, 7);
     }
 
-    private void DrawBase(BaseSnapshot baseState)
+    private void DrawBase(CampaignBaseOverview baseState)
     {
         const int cell = 18;
         const int left = 24;
@@ -115,22 +118,22 @@ public sealed class CampaignOverviewClient : IIndexedLoopClient
         foreach (var facility in baseState.Facilities)
         {
             Frame.FillRectangle(left + facility.X * cell + 2, top + facility.Y * cell + 2,
-                cell - 3, cell - 3, facility.BuildTime == 0 ? (byte)12 : (byte)9);
+                facility.SizeX * cell - 3, facility.SizeY * cell - 3,
+                facility.BuildTime == 0 ? (byte)12 : (byte)9);
         }
-        DrawNumber(baseState.Crafts.Count, 160, 48, 13);
-        DrawNumber(baseState.Soldiers.Count, 160, 72, 14);
-        DrawNumber(baseState.Items.Count, 160, 96, 10);
+        DrawNumber(baseState.CraftCount, 160, 48, 13);
+        DrawNumber(baseState.SoldierCount, 160, 72, 14);
+        DrawNumber(baseState.ItemTypeCount, 160, 96, 10);
         DrawNumber(baseState.Scientists, 220, 48, 15);
         DrawNumber(baseState.Engineers, 220, 72, 15);
     }
 
-    private void DrawMetrics(CampaignSnapshot snapshot)
+    private void DrawMetrics(CampaignOverview overview)
     {
-        var funds = snapshot.Funds.Count == 0 ? 0 : snapshot.Funds[^1];
-        DrawNumber(snapshot.Countries.Count, 16, 170, 10);
-        DrawNumber(snapshot.Regions.Count, 64, 170, 12);
-        DrawNumber(snapshot.DaysPassed, 112, 170, 14);
-        DrawNumber(funds, 176, 170, funds < 0 ? (byte)9 : (byte)11);
+        DrawNumber(overview.CountryCount, 16, 170, 10);
+        DrawNumber(overview.RegionCount, 64, 170, 12);
+        DrawNumber(overview.DaysPassed, 112, 170, 14);
+        DrawNumber(overview.Funds, 176, 170, overview.Funds < 0 ? (byte)9 : (byte)11);
     }
 
     private void DrawNumber(long value, int x, int y, byte color, int minimumDigits = 1)

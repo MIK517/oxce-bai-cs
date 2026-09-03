@@ -178,6 +178,17 @@ hidden typed `set` binding, and file-scoped `RuleList.current`. The manifest has
 from the Phase 3 acceptance above because later content work changed normalized output;
 the earlier result remains the historical performance comparison baseline.
 
+### Campaign time-event retention
+
+Campaign time advancement originally retained one `CampaignTimeTrigger` per five-second
+tick. The maximum command therefore created a one-million-element event array even
+though consumers only needed aggregate notification and deterministic ordering. The
+campaign now accumulates a fixed-size six-counter summary and can replay the ordered
+sequence from its previous time and tick count through a struct enumerator. A warmed
+one-million-tick unit scenario must allocate no more than 16 KiB on the calling thread.
+This is a regression gate for retained memory, not a timing benchmark; per-tick gameplay
+and script actions will continue to execute synchronously in the authoritative loop.
+
 ### Post-Phase-4 staged-corpus baseline
 
 The self-contained staging workflow was exercised on 2026-08-30 against the same owned

@@ -40,7 +40,7 @@ internal static class CampaignSdlCommand
                 CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(0x4F584345UL),
             SystemCampaignClock.Instance);
-        var client = new CampaignOverviewClient(campaign);
+        var client = new CampaignOverviewClient(campaign, campaign);
         Console.WriteLine("Click the globe to place the starting base. Press Space to advance one minute; Escape quits.");
         var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET campaign foundation")
         {
