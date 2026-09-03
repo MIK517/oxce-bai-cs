@@ -212,6 +212,15 @@
           "Oxce.Rendering": "[1.0.0, )"
         }
       },
+      "oxce.savegames": {
+        "type": "Project",
+        "dependencies": {
+          "Oxce.Core": "[1.0.0, )",
+          "Oxce.Formats": "[1.0.0, )",
+          "Oxce.Gameplay": "[1.0.0, )",
+          "Oxce.Mods": "[1.0.0, )"
+        }
+      },
       "oxce.scripting": {
         "type": "Project",
         "dependencies": {

@@ -124,6 +124,21 @@ therefore excludes diagnostics, parsed documents, composed operation history, au
 normalization, and manifest buffers. Use the audit and measurement commands together;
 the former is the compatibility oracle and the latter is the runtime ownership probe.
 
+`campaign-scenario` is the headless acceptance path for the first persisted strategic
+slice. It builds runtime content from the staged installation, creates a deterministic
+campaign, places the starting base, advances time, atomically writes a save, reloads
+it, and emits a compact JSON result. Use `-` when there is no add-on:
+
+```powershell
+dotnet run --project tools/Oxce.FixtureTool --configuration Release --no-build -- campaign-scenario artifacts/private-install xcom1 - artifacts/campaign-foundation/xcom1.sav
+dotnet run --project tools/Oxce.FixtureTool --configuration Release --no-build -- campaign-scenario artifacts/private-install 40k 40k_ROSIGMA_edits artifacts/campaign-foundation/rosigma.sav
+```
+
+When private fixtures are present, compatibility tests round-trip every supplied
+vanilla UFO and 40k/Rosigma `.sav`/`.asav` through the implemented snapshot while
+retaining opaque fields. CI skips this owned-data check when those ignored fixtures
+are absent.
+
 For owned full-install acceptance, `tools/stage-private-install.ps1` copies the
 complete data trees into an isolated destination below `artifacts/`, writes per-file
 sizes and SHA-256 hashes, and validates the published corpus. Its default destination

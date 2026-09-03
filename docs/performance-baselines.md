@@ -331,6 +331,23 @@ was 7.189 s and runtime content retained 165.5 MiB over the pre-build baseline, 
 at 9,591,410 bytes with SHA-256
 `C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
 
+### Campaign capture and save result
+
+Slice 5 was measured on 2026-09-03 on the same Ryzen 9 7940HS host, .NET SDK
+10.0.302, and .NET runtime 10.0.10. `CampaignSaveBenchmarks` uses the supplied early
+40k/Rosigma save and its retained opaque YAML sidecar:
+
+| Workload | Mean | Allocated |
+|---|---:|---:|
+| Save-neutral capture | 12.98 us | 14.06 KiB |
+| OXCE YAML overlay emit | 241.81 us | 515.55 KiB |
+| YAML parse, link, validate, and restore | 1.361 ms | 1,761.91 KiB |
+
+The representative capture is small enough that segmented or copy-on-write snapshots
+are not justified yet. YAML parsing dominates allocations, but save operations are not
+a frame-time path. Revisit the design after personnel, inventory, missions, and the
+tactical graph are modeled; preserve this benchmark so growth is visible.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time
