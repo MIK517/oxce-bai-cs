@@ -1,0 +1,8 @@
+{
+  "time": [2, 3, 4, 2001, 5, 7, 5],
+  "funds": 6000000,
+  "country": ["COUNTRY", 6000000],
+  "region": "REGION",
+  "base": ["Alpha", 1.25, -0.5, "FACILITY", "CRAFT", 3, 3, 5],
+  "events": ["StartingBasePlaced", "CampaignTimeAdvanced"]
+}
