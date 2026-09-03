@@ -194,6 +194,7 @@ public sealed record ResourceResolutionOptions
         new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(StringComparer.Ordinal));
     public IReadOnlyDictionary<string, int> SharedSoundCounts { get; init; } =
         new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(StringComparer.Ordinal));
+    public CancellationToken CancellationToken { get; init; }
 
     internal void Validate()
     {

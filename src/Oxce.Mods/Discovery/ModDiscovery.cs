@@ -44,6 +44,7 @@ public static class ModDiscovery
         // replace an already-discovered ZIP mod with the same ID.
         foreach (var archivePath in archives)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var archive = ZipArchiveIndex.Read(archivePath, options.ArchiveScan);
@@ -74,6 +75,7 @@ public static class ModDiscovery
 
                 foreach (var prefix in prefixes)
                 {
+                    options.CancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         var candidate = ReadArchiveCandidate(archive, prefix, diagnostics, options);
@@ -111,6 +113,7 @@ public static class ModDiscovery
 
         foreach (var directory in directories)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             var fallbackId = Path.GetFileName(directory);
             var metadataPath = FindMetadataPath(directory);
             if (metadataPath is null)
@@ -137,7 +140,7 @@ public static class ModDiscovery
                     directory,
                     fallbackId,
                     metadata.Id,
-                    options.LayerScan);
+                    WithCancellation(options.LayerScan, options.CancellationToken));
                 if (!TryAdd(new ModCandidate(metadata, layer), ids, mods, diagnostics))
                 {
                     ++rejected;
@@ -164,6 +167,7 @@ public static class ModDiscovery
         var resourceRoots = options.ExternalResourceRoots.Select(Path.GetFullPath).ToArray();
         foreach (var candidate in mods)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             try
             {
                 if (ExternalResourceMapper.TryMap(candidate, resourceRoots, options, out var mapped, out var missingResource))
@@ -196,6 +200,17 @@ public static class ModDiscovery
 
         return new ModDiscoveryResult(resolved, rejected);
     }
+
+    private static DirectoryScanOptions WithCancellation(
+        DirectoryScanOptions source,
+        CancellationToken cancellationToken) => new()
+        {
+            MaximumFiles = source.MaximumFiles,
+            MaximumDepth = source.MaximumDepth,
+            MaximumRelativePathLength = source.MaximumRelativePathLength,
+            IgnoreRulesets = source.IgnoreRulesets,
+            CancellationToken = cancellationToken,
+        };
 
     private static ModCandidate ReadArchiveCandidate(
         ZipArchiveIndex archive,

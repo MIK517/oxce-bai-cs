@@ -54,6 +54,7 @@ internal static class ExternalResourceMapper
                         MaximumDepth = scan.MaximumDepth,
                         MaximumRelativePathLength = scan.MaximumRelativePathLength,
                         IgnoreRulesets = true,
+                        CancellationToken = options.CancellationToken,
                     });
                 if (layer.Entries.Count() > 1)
                 {
@@ -101,6 +102,7 @@ internal static class ExternalResourceMapper
                         MaximumDepth = scan.MaximumDepth,
                         MaximumRelativePathLength = scan.MaximumRelativePathLength,
                         IgnoreRulesets = true,
+                        CancellationToken = options.CancellationToken,
                     }));
             }
             layers.InsertRange(0, commonLayers);

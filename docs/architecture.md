@@ -21,7 +21,7 @@ The current runtime boundary, findings, and ordered follow-up work are recorded 
 | `Oxce.Core` | Small shared primitives, identifiers, coordinates, time, owned structured diagnostics, randomness abstractions |
 | `Oxce.Formats` | YAML compatibility DOM and codecs for original X-COM binary/resource formats |
 | `Oxce.Scripting` | OXCE lexer/parser, type system, compiler/IR, VM, events, bindings infrastructure |
-| `Oxce.Mods` | Mod discovery/order, ruleset composition, typed rules, resource catalog |
+| `Oxce.Mods` | Installation bootstrap, mod discovery/order, ruleset composition, typed rules, resource catalog |
 | `Oxce.Resources` | Resolved-resource runtime, lazy decoding, streaming, bounded caches, preload groups, and cache/archive telemetry |
 | `Oxce.Savegames` | External save schema, compatible read/write, migrations, unknown-field preservation, and adapters to gameplay-owned capture/restore contracts |
 | `Oxce.Gameplay` | Geoscape, bases, interception, battlescape, AI, mission generation, rule execution, mutable runtime state, invariants, and save-neutral capture/restore contracts |
@@ -105,6 +105,12 @@ lifetimes are defined in [content lifetime](content-lifetime.md). Application co
 publish `RuntimeContent`; retaining `ContentBuildSession` or `ContentSnapshot` as the
 runtime root would also retain build-only state. See
 [ADR 0015](decisions/0015-runtime-content-publication.md).
+
+Installation layout, activation planning, structured startup failures, coarse progress,
+and cancellable runtime publication are centralized in `Oxce.Mods.Bootstrap`. Normal
+application entry points receive only `RuntimeContent`; audit and measurement tools
+reuse planning while retaining explicit control of build-only lifetimes. See
+[ADR 0020](decisions/0020-installation-bootstrap.md).
 
 ## Data modeling
 
