@@ -47,7 +47,9 @@ public sealed class CampaignFoundationTests
         var placed = campaign.Execute(new PlaceStartingBase(0, "Alpha", 1.25, -0.5));
         Assert.IsType<StartingBasePlaced>(Assert.Single(placed.Events));
         var advanced = campaign.Execute(new AdvanceCampaignTime(12));
-        Assert.IsType<CampaignTimeAdvanced>(Assert.Single(advanced.Events));
+        var timeAdvanced = Assert.IsType<CampaignTimeAdvanced>(Assert.Single(advanced.Events));
+        Assert.Equal(12, timeAdvanced.Summary.TickCount);
+        Assert.Equal(12, timeAdvanced.Summary.FiveSeconds);
         Assert.Equal(7, campaign.Capture().Time.Minute);
         Assert.Throws<InvalidOperationException>(() =>
             campaign.Execute(new PlaceStartingBase(0, "Again", 1, 0)));
@@ -104,11 +106,32 @@ public sealed class CampaignFoundationTests
     }
 
     [Fact]
+    public void TimeAdvanceRetainsConstantSizeSummaryAndReplaysOrderedTriggers()
+    {
+        var campaign = CampaignFactory.Create(
+            LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
+        campaign.Execute(new AdvanceCampaignTime(1));
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(CampaignState.MaximumCommandTicks));
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        var advanced = Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events));
+        Assert.InRange(allocated, 0, 16_384);
+        Assert.Equal(CampaignState.MaximumCommandTicks, advanced.Summary.TickCount);
+        var replayed = new int[Enum.GetValues<CampaignTimeTrigger>().Length];
+        foreach (var trigger in advanced.Triggers) replayed[(int)trigger]++;
+        foreach (var trigger in Enum.GetValues<CampaignTimeTrigger>())
+            Assert.Equal(advanced.Summary.Count(trigger), replayed[(int)trigger]);
+        Assert.Equal(advanced.Summary.TickCount, replayed.Sum());
+    }
+
+    [Fact]
     public void MinimalCampaignViewPlacesBaseAdvancesTimeAndSuppressesIdleWork()
     {
         var campaign = CampaignFactory.Create(
             LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
-        var client = new CampaignOverviewClient(campaign);
+        var client = new CampaignOverviewClient(campaign, campaign);
         var initialRevision = client.PresentationRevision;
 
         client.Tick(TimeSpan.FromMilliseconds(16));
@@ -117,15 +140,17 @@ public sealed class CampaignFoundationTests
         var place = GameInputEvent.PointerButtonChange(
             GameInputEventKind.PointerPressed, 0, 1, 160, 92, button: 1, clickCount: 1);
         client.HandleInput(place);
-        Assert.Equal("First Base", Assert.Single(client.Snapshot.Bases).Name);
+        var placedBase = Assert.Single(client.Overview.Bases);
+        Assert.Equal("First Base", placedBase.Name);
+        Assert.Equal(1, Assert.Single(placedBase.Facilities).SizeX);
         Assert.Equal(initialRevision + 1, client.PresentationRevision);
 
-        var previous = client.Snapshot.Time;
+        var previous = client.Overview.Time;
         var advance = GameInputEvent.Key(
             GameInputEventKind.KeyPressed, 0, 1, 0, CampaignOverviewClient.AdvanceMinuteKey,
             InputKeyModifiers.None);
         client.HandleInput(advance);
-        Assert.NotEqual(previous, client.Snapshot.Time);
+        Assert.NotEqual(previous, client.Overview.Time);
         Assert.Equal(initialRevision + 2, client.PresentationRevision);
     }
 

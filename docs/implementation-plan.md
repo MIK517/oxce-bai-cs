@@ -299,11 +299,14 @@ and minimal UI. Avoid assigning all saves or all UI to a late integration phase.
 Each slice uses gameplay-owned capture/restoration contracts and an external save
 adapter; persistence representations must not become runtime models.
 
+Time advancement now publishes fixed-size trigger summaries with allocation-free
+ordered replay, and presentation uses separate lightweight campaign query and command
+ports instead of persistence capture. See
+[ADR 0019](decisions/0019-bounded-time-events-and-campaign-queries.md).
+
 ## Immediate next tasks
 
-1. Bound time-advance event retention and expose a narrow campaign query contract to
-   presentation clients before expanding mutable strategic state.
-2. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
+1. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
    persisted strategic slice, including their owning script providers and UI actions.
-3. Continue adding focused executable C++ probes, compatibility matrix entries, and
+2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

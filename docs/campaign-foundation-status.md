@@ -27,8 +27,11 @@ binding.
 The headless `campaign-scenario` command creates a deterministic campaign, places its
 base, advances one minute, writes atomically, reloads, and reports semantic counts and
 timings. The immediately following performance-hardening slice added a minimal indexed
-campaign overview. `Oxce.Engine` renders the save-neutral view and submits existing
-commands; SDL remains a platform host. The app command accepts the same self-contained
+campaign overview. `Oxce.Engine` renders a gameplay-owned view and submits existing
+commands through separate query/command ports; it does not capture persistence
+snapshots during redraw. Facility extents come from linked runtime rules, and long time
+advances retain a fixed-size trigger summary with allocation-free ordered replay. SDL
+remains a platform host. The app command accepts the same self-contained
 installation inputs, lets the user click to place the starting base, advances one
 minute per Space press, suppresses unchanged uploads, and optionally saves on exit:
 
@@ -73,6 +76,10 @@ These are single cold-process integration observations, not microbenchmark means
 - `src/Savegame/GameTime.cpp`, `Country.cpp`, `Region.cpp`, `Base.cpp`,
   `BaseFacility.cpp`, `Craft.cpp`, `Soldier.cpp`, and `Target.cpp`: field defaults,
   identity, coordinates, grid placement, and calendar behavior.
+
+The maximum one-million-tick command has a unit performance gate of 16 KiB allocated
+on the calling thread after warm-up. This guards retained trigger processing against
+returning to per-tick event arrays; it is not a wall-clock target.
 
 ## Deliberate next boundaries
 
