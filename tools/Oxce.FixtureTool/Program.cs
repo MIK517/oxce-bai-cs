@@ -7,6 +7,7 @@ using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Discovery;
+using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
@@ -221,19 +222,15 @@ internal static class FixtureTool
         string destination,
         TextWriter output)
     {
-        var root = Path.GetFullPath(installationRoot);
         var diagnostics = new DiagnosticCollector(100_000);
-        var options = new ModDiscoveryOptions { ExternalResourceRoots = [root] };
-        var standard = ModDiscovery.ScanDirectory(Path.Combine(root, "standard"), diagnostics, options);
-        var user = ModDiscovery.ScanDirectory(Path.Combine(root, "user", "mods"), diagnostics, options);
-        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
-        var plan = ModLoadPlanner.Create(
-            catalog,
-            [new ModActivation(masterId, true), new ModActivation(addOnId, true)],
-            masterId,
-            new ModEngineIdentity("Extended", "8.6.1.0"),
-            diagnostics);
-        return WriteContentAudit(plan, diagnostics, root, destination, output);
+        var request = InstallationRequest(installationRoot, masterId, addOnId);
+        var planned = InstallationPlanBuilder.Create(request, diagnostics);
+        if (!planned.IsSuccess) throw new InvalidDataException(planned.DescribeFailure());
+        var plan = planned.Plan!;
+        planned = null!;
+        request = null!;
+        return WriteContentAudit(
+            plan, diagnostics, Path.GetFullPath(installationRoot), destination, output);
     }
 
     private static int MeasureContentInstall(
@@ -242,18 +239,13 @@ internal static class FixtureTool
         string addOnId,
         TextWriter output)
     {
-        var root = Path.GetFullPath(installationRoot);
         var diagnostics = new DiagnosticCollector(100_000);
-        var options = new ModDiscoveryOptions { ExternalResourceRoots = [root] };
-        var standard = ModDiscovery.ScanDirectory(Path.Combine(root, "standard"), diagnostics, options);
-        var user = ModDiscovery.ScanDirectory(Path.Combine(root, "user", "mods"), diagnostics, options);
-        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
-        var plan = ModLoadPlanner.Create(
-            catalog,
-            [new ModActivation(masterId, true), new ModActivation(addOnId, true)],
-            masterId,
-            new ModEngineIdentity("Extended", "8.6.1.0"),
-            diagnostics);
+        var request = InstallationRequest(installationRoot, masterId, addOnId);
+        var planned = InstallationPlanBuilder.Create(request, diagnostics);
+        if (!planned.IsSuccess) throw new InvalidDataException(planned.DescribeFailure());
+        var plan = planned.Plan!;
+        planned = null!;
+        request = null!;
         var preBuildDiagnostics = diagnostics.Snapshot();
         var preBuildErrorCount = preBuildDiagnostics.Count(static item =>
             item.Severity >= DiagnosticSeverity.Error);
@@ -318,32 +310,18 @@ internal static class FixtureTool
         string destination,
         TextWriter output)
     {
-        var root = Path.GetFullPath(installationRoot);
-        var diagnostics = new DiagnosticCollector(100_000);
-        var discoveryOptions = new ModDiscoveryOptions { ExternalResourceRoots = [root] };
-        var standard = ModDiscovery.ScanDirectory(Path.Combine(root, "standard"), diagnostics, discoveryOptions);
-        var user = ModDiscovery.ScanDirectory(Path.Combine(root, "user", "mods"), diagnostics, discoveryOptions);
-        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
-        var activeMods = addOnId == "-" ? [masterId] : new[] { masterId, addOnId };
-        var plan = ModLoadPlanner.Create(
-            catalog,
-            activeMods.Select(static id => new ModActivation(id, true)),
-            masterId,
-            new ModEngineIdentity("Extended", "8.6.1.0"),
-            diagnostics);
+        var request = InstallationRequest(installationRoot, masterId, addOnId);
         var contentTimer = Stopwatch.StartNew();
-        var contentSnapshot = ContentSnapshotBuilder.Build(plan, diagnostics);
+        var contentResult = InstallationContentLoader.Load(request);
         contentTimer.Stop();
-        if (!contentSnapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked))
-        {
-            var errors = contentSnapshot.Diagnostics.Where(static item => item.Severity >= DiagnosticSeverity.Error);
-            throw new InvalidDataException(string.Join(Environment.NewLine,
-                errors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
-        }
+        if (!contentResult.IsSuccess) throw new InvalidDataException(contentResult.DescribeFailure());
+        var content = contentResult.Content!;
+        contentResult = null!;
+        var activeMods = request.ActiveMods;
 
         var random = new SplitMix64RandomSource(0x4F584345UL);
         var campaign = CampaignFactory.Create(
-            contentSnapshot.Content,
+            content,
             new NewCampaignRequest(
                 new CampaignId(Guid.Parse("61d27c50-c18d-4a2b-a4d0-0bd37b973727")),
                 "Headless acceptance",
@@ -361,7 +339,7 @@ internal static class FixtureTool
         var loadTimer = Stopwatch.StartNew();
         var loaded = OxceSaveAdapter.LoadFile(
             destination,
-            contentSnapshot.Content,
+            content,
             new SplitMix64RandomSource(1),
             new OxceSaveLoadOptions(masterId, activeMods.ToHashSet(StringComparer.Ordinal)));
         loadTimer.Stop();
@@ -396,6 +374,15 @@ internal static class FixtureTool
         }));
         return 0;
     }
+
+    private static InstallationLoadRequest InstallationRequest(
+        string installationRoot,
+        string masterId,
+        string addOnId) => InstallationLoadRequest.ForMasterAndAddOn(
+            installationRoot,
+            masterId,
+            addOnId,
+            new ModEngineIdentity("Extended", "8.6.1.0"));
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     private static RuntimeMeasurement BuildRuntimeMeasurement(ModLoadPlan plan)

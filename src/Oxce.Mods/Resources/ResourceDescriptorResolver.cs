@@ -28,6 +28,8 @@ public static class ResourceDescriptorResolver
         diagnostics ??= NullDiagnosticSink.Instance;
         options ??= new ResourceResolutionOptions();
         options.Validate();
+        var cancellationToken = options.CancellationToken;
+        cancellationToken.ThrowIfCancellationRequested();
         var files = plan.CreateVirtualFileCatalog();
         var generation = ContentGenerationId.Next();
         var descriptors = new List<ResolvedResourceDescriptor>();
@@ -42,8 +44,10 @@ public static class ResourceDescriptorResolver
 
         foreach (var pair in content.Presentation.Special.Sprites.OrderBy(static pair => pair.Key, StringComparer.Ordinal))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var declaration in pair.Value)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!ValidateSprite(declaration))
                 {
                     continue;
@@ -54,6 +58,7 @@ public static class ResourceDescriptorResolver
                 var shared = sharedSprites.GetValueOrDefault(declaration.Type);
                 foreach (var file in declaration.Files.OrderBy(static item => item.Key))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var index = file.Key;
                     if (file.Value.EndsWith('/'))
                     {
@@ -61,6 +66,7 @@ public static class ResourceDescriptorResolver
                                      .Where(name => ImageExtensions.Contains(Path.GetExtension(name)))
                                      .Order(StringComparer.Ordinal))
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             var declaredIndex = index++;
                             var resolvedIndex = ResolveIndex(declaredIndex, shared, allocation, "extraSprites",
                                 declaration.Type, declaration.Source);
@@ -93,15 +99,18 @@ public static class ResourceDescriptorResolver
 
         foreach (var declaration in content.Presentation.Special.Sounds)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var allocation = Allocation(declaration.Source.ModId, declaration.Source, declaration.Type);
             var shared = sharedSounds.GetValueOrDefault(declaration.Type);
             foreach (var file in declaration.Files.OrderBy(static item => item.Key))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var index = file.Key;
                 if (file.Value.EndsWith('/'))
                 {
                     foreach (var name in files.List(file.Value).Order(StringComparer.Ordinal))
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         var declaredIndex = index++;
                         var resolvedIndex = ResolveIndex(declaredIndex, shared, allocation, "extraSounds",
                             declaration.Type, declaration.Source);
@@ -133,6 +142,7 @@ public static class ResourceDescriptorResolver
 
         foreach (var rule in content.Presentation.SoundDefinitions.Rules)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (rule.Value.File.Length != 0)
             {
                 AddCandidate(ResourceKind.Sound, $"sound-def/{rule.Id}", [rule.Value.File, "SOUND/" + rule.Value.File],
@@ -141,6 +151,7 @@ public static class ResourceDescriptorResolver
         }
         foreach (var rule in content.Presentation.Interfaces.Rules)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             AddInterfaceImage(rule.Id, "background", rule.Value.BackgroundImage, rule.LastUpdateSource);
             AddInterfaceImage(rule.Id, "alternate-background", rule.Value.AlternateBackgroundImage,
                 rule.LastUpdateSource);
@@ -152,6 +163,7 @@ public static class ResourceDescriptorResolver
         }
         foreach (var rule in content.Presentation.CustomPalettes.Rules)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (rule.Value.File.Length != 0)
             {
                 AddFile(ResourceKind.Palette, $"palette/{rule.Id}", rule.Value.File, ResourceLoadPolicy.Cache,
@@ -162,11 +174,13 @@ public static class ResourceDescriptorResolver
                      .Where(name => name.EndsWith(".dat", StringComparison.OrdinalIgnoreCase))
                      .Order(StringComparer.Ordinal))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             AddDirect(ResourceKind.Font, $"font/{fontFile}", "Language/" + fontFile,
                 ResourceLoadPolicy.Preload, "fonts", fontFile);
         }
         foreach (var rule in content.Presentation.Music.Rules)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var name = rule.Value.ResolveName(rule.Id);
             var candidates = MusicExtensions
                 .Select(extension => "SOUND/" + name + extension)
@@ -176,6 +190,7 @@ public static class ResourceDescriptorResolver
         }
         foreach (var rule in content.Presentation.Videos.Rules)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             for (var index = 0; index < rule.Value.Videos.Count; index++)
             {
                 AddOptionalCandidate(ResourceKind.Video, $"video/{rule.Id}/{index}",
@@ -197,8 +212,10 @@ public static class ResourceDescriptorResolver
         }
         foreach (var rule in content.TerrainDeployment.Terrains.Rules)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var dataSet in rule.Value.MapDataSets.Distinct(StringComparer.Ordinal))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 AddFile(ResourceKind.Terrain, $"terrain/{rule.Id}/dataset/{dataSet}/mcd",
                     $"TERRAIN/{dataSet}.MCD", ResourceLoadPolicy.Cache, null, 0, 0,
                     "terrains", rule.Id, rule.LastUpdateSource);
@@ -211,6 +228,7 @@ public static class ResourceDescriptorResolver
             }
             foreach (var block in rule.Value.MapBlocks)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 AddOptionalCandidate(ResourceKind.Terrain, $"terrain/{rule.Id}/map/{block.Name}",
                     [$"MAPS/{block.Name}.MAP"], ResourceLoadPolicy.Cache,
                     "terrains", rule.Id, rule.LastUpdateSource, block.Width, block.Length);
@@ -220,6 +238,7 @@ public static class ResourceDescriptorResolver
             }
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return new ResourceResolutionResult(
             new ResolvedResourceCatalog(generation, descriptors, resourceIndexes.Values),
             Array.AsReadOnly(issues.ToArray()));

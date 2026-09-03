@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.CampaignStart;
+using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.EquipmentProduction;
 using Oxce.Mods.Rulesets.Items;
 using Oxce.Mods.Rulesets.MissionEvents;
@@ -56,17 +57,24 @@ public sealed class Phase3ContentCatalog
         ModLoadPlan plan,
         IDiagnosticSink? diagnostics = null,
         RulesetCompositionOptions? compositionOptions = null,
-        TypedRuleLoadOptions? typedOptions = null)
+        TypedRuleLoadOptions? typedOptions = null,
+        IProgress<ContentBuildProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
         diagnostics ??= NullDiagnosticSink.Instance;
         compositionOptions ??= new RulesetCompositionOptions();
+        var cancellationToken = compositionOptions.CancellationToken;
+        typedOptions ??= new TypedRuleLoadOptions();
+        if (cancellationToken.CanBeCanceled)
+            typedOptions = typedOptions with { CancellationToken = cancellationToken };
         compositionOptions.Validate();
         var collector = new DiagnosticCollector();
         var sink = new ForwardingDiagnosticSink(diagnostics, collector);
 
         var parseStart = GC.GetAllocatedBytesForCurrentThread();
         var timer = Stopwatch.StartNew();
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.Parsing));
         var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
         timer.Stop();
         var parse = new ContentBuildStageMeasurement(
@@ -75,6 +83,8 @@ public sealed class Phase3ContentCatalog
 
         var composeStart = GC.GetAllocatedBytesForCurrentThread();
         timer.Restart();
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.Composition));
         var composed = RulesetComposer.Compose(documents, sink, compositionOptions);
         timer.Stop();
         var compose = new ContentBuildStageMeasurement(
@@ -83,21 +93,35 @@ public sealed class Phase3ContentCatalog
 
         var typeStart = GC.GetAllocatedBytesForCurrentThread();
         timer.Restart();
+        cancellationToken.ThrowIfCancellationRequested();
+        progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.TypeAndLink));
         var presentation = PresentationRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
+        cancellationToken.ThrowIfCancellationRequested();
         var campaign = CampaignStartRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
+        cancellationToken.ThrowIfCancellationRequested();
         var items = ItemRuleCatalog.Load(composed, sink, typedOptions);
+        cancellationToken.ThrowIfCancellationRequested();
         var equipment = EquipmentProductionRuleCatalog.Load(composed, sink, typedOptions);
+        cancellationToken.ThrowIfCancellationRequested();
         var personnel = PersonnelTacticalRuleCatalog.Load(composed, sink, typedOptions);
+        cancellationToken.ThrowIfCancellationRequested();
         var terrain = TerrainDeploymentRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
+        cancellationToken.ThrowIfCancellationRequested();
         var missions = MissionEventRuleCatalog.Load(composed, documents, sink, compositionOptions, typedOptions);
 
         var campaignValidation = campaign.ValidateInternalRelationships(sink);
+        cancellationToken.ThrowIfCancellationRequested();
         var itemValidation = items.ValidateInternalRelationships(sink);
+        cancellationToken.ThrowIfCancellationRequested();
         var equipmentValidation = equipment.ValidateRelationships(items, sink);
+        cancellationToken.ThrowIfCancellationRequested();
         var personnelValidation = personnel.ValidateRelationships(items, equipment, sink);
+        cancellationToken.ThrowIfCancellationRequested();
         var terrainValidation = terrain.ValidateRelationships(items, equipment, personnel, sink);
+        cancellationToken.ThrowIfCancellationRequested();
         var missionValidation = missions.ValidateRelationships(
             campaign, items, equipment, personnel, terrain, sink);
+        cancellationToken.ThrowIfCancellationRequested();
         var closureValidation = Phase3ContentClosureValidator.Validate(
             new Phase3ContentCatalogView(campaign, items, equipment, personnel, terrain, missions), sink);
         var validation = new Phase3ContentValidation(

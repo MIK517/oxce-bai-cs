@@ -231,6 +231,8 @@ public sealed class DirectoryScanOptions
 
     public bool IgnoreRulesets { get; init; }
 
+    public CancellationToken CancellationToken { get; init; }
+
     internal void Validate()
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumFiles);

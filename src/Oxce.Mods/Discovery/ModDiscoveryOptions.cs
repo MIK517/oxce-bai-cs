@@ -20,6 +20,8 @@ public sealed record ModDiscoveryOptions
 
     public YamlReadOptions MetadataYaml { get; init; } = new();
 
+    public CancellationToken CancellationToken { get; init; }
+
     internal void Validate()
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumMods);

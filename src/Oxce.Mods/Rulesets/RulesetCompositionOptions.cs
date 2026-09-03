@@ -10,6 +10,8 @@ public sealed record RulesetCompositionOptions
 
     public YamlReadOptions Yaml { get; init; } = new();
 
+    public CancellationToken CancellationToken { get; init; }
+
     internal void Validate()
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumRuleOperations);

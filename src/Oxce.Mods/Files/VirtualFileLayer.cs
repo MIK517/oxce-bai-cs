@@ -95,9 +95,11 @@ public sealed class VirtualFileLayer
         pending.Push((root, 0));
         while (pending.Count != 0)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             var current = pending.Pop();
             foreach (var child in Directory.EnumerateFileSystemEntries(current.Path))
             {
+                options.CancellationToken.ThrowIfCancellationRequested();
                 var attributes = File.GetAttributes(child);
                 if ((attributes & FileAttributes.ReparsePoint) != 0)
                 {
@@ -132,6 +134,7 @@ public sealed class VirtualFileLayer
             }
         }
 
+        options.CancellationToken.ThrowIfCancellationRequested();
         files.Sort((left, right) => StringComparer.Ordinal.Compare(left.RelativePath, right.RelativePath));
         return FromEntries(
             new VirtualFileProvenance(layerId, modId, root),

@@ -304,6 +304,12 @@ ordered replay, and presentation uses separate lightweight campaign query and co
 ports instead of persistence capture. See
 [ADR 0019](decisions/0019-bounded-time-events-and-campaign-queries.md).
 
+Installation discovery, activation planning, runtime content publication, progress,
+cancellation, and structured failures are now centralized for application and headless
+scenario startup. Audit and memory-measurement tools reuse planning without surrendering
+their specialized lifetime controls. See
+[ADR 0020](decisions/0020-installation-bootstrap.md).
+
 ## Immediate next tasks
 
 1. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
