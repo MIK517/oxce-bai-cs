@@ -113,6 +113,25 @@ public sealed class ResourceRuntimeTests
         }
     }
 
+    [Fact]
+    public void LongRunningCacheChurnNeverExceedsItsBudget()
+    {
+        using var fixture = new ResourceFixture(("a.bin", "aaaa"), ("b.bin", "bbbb"), ("c.bin", "cccc"));
+        var catalog = fixture.CreateResolvedCatalog(ResourceLoadPolicy.Cache, "a.bin", "b.bin", "c.bin");
+        using var runtime = new ResourceRuntime(fixture.Files, catalog,
+            new ResourceCacheOptions { MaximumBytes = 8, MaximumEntryBytes = 8 });
+        var handles = new[]
+        {
+            catalog.GetRequired("a.bin"), catalog.GetRequired("b.bin"), catalog.GetRequired("c.bin"),
+        };
+
+        for (var index = 0; index < 10_000; index++) _ = runtime.LoadBytes(handles[index % handles.Length]);
+
+        Assert.InRange(runtime.Telemetry.CurrentBytes, 0, 8);
+        Assert.InRange(runtime.Telemetry.EntryCount, 0, 2);
+        Assert.True(runtime.Telemetry.Evictions > 0);
+    }
+
     private static void WriteEntry(ZipArchive archive, string name, string contents)
     {
         var entry = archive.CreateEntry(name);

@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace Oxce.Rendering;
 
 /// <summary>
@@ -119,6 +121,33 @@ public sealed class IndexedSurface
             throw new ArgumentException("A filled polygon requires at least three points.", nameof(points));
         }
 
+        const int stackIntersectionLimit = 128;
+        double[]? rented = null;
+        var intersections = points.Length <= stackIntersectionLimit
+            ? stackalloc double[points.Length]
+            : (rented = ArrayPool<double>.Shared.Rent(points.Length)).AsSpan(0, points.Length);
+        try
+        {
+            FillPolygon(points, color, intersections);
+        }
+        finally
+        {
+            if (rented is not null) ArrayPool<double>.Shared.Return(rented);
+        }
+    }
+
+    public void FillPolygon(ReadOnlySpan<IndexedPoint> points, byte color, Span<double> intersections)
+    {
+        if (points.Length < 3)
+        {
+            throw new ArgumentException("A filled polygon requires at least three points.", nameof(points));
+        }
+        if (intersections.Length < points.Length)
+        {
+            throw new ArgumentException("Polygon intersection scratch must match the point count.",
+                nameof(intersections));
+        }
+
         var minimumY = points[0].Y;
         var maximumY = points[0].Y;
         for (var index = 1; index < points.Length; index++)
@@ -129,7 +158,6 @@ public sealed class IndexedSurface
 
         var top = Math.Max(minimumY, 0);
         var bottom = Math.Min(maximumY, Height - 1);
-        var intersections = new double[points.Length];
         for (var y = top; y <= bottom; y++)
         {
             var intersectionCount = 0;
@@ -144,7 +172,7 @@ public sealed class IndexedSurface
                 }
             }
 
-            Array.Sort(intersections, 0, intersectionCount);
+            intersections[..intersectionCount].Sort();
             for (var index = 0; index + 1 < intersectionCount; index += 2)
             {
                 var left = Math.Max((long)Math.Ceiling(intersections[index]), 0);

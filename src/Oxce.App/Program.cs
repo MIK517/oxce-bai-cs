@@ -1,6 +1,13 @@
 using Oxce.Engine.Audio;
 using Oxce.Platform.Sdl;
 using Oxce.Rendering;
+using System.Globalization;
+
+if (args is ["--campaign-sdl", var installationRoot, var masterId, var addOnId, var destination])
+{
+    Environment.ExitCode = CampaignSdlCommand.Run(installationRoot, masterId, addOnId, destination);
+    return;
+}
 
 if (args.Length == 1 && string.Equals(args[0], "--sdl-audio-smoke", StringComparison.Ordinal))
 {
@@ -69,6 +76,9 @@ if (args.Length == 1 && string.Equals(args[0], "--sdl-smoke", StringComparison.O
     Console.WriteLine($"SDL renderer: {diagnostics.Renderer}");
     Console.WriteLine($"SDL ticks: {diagnostics.TickCount}");
     Console.WriteLine($"SDL presented frames: {diagnostics.PresentedFrameCount}");
+    Console.WriteLine($"SDL suppressed presentations: {diagnostics.SuppressedPresentationCount}");
+    Console.WriteLine($"SDL average presentation us: {diagnostics.AveragePresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
+    Console.WriteLine($"SDL maximum presentation us: {diagnostics.MaximumPresentationDuration.TotalMicroseconds.ToString("F3", CultureInfo.InvariantCulture)}");
     Console.WriteLine("SDL3 indexed-window event loop completed.");
     return;
 }
@@ -76,3 +86,4 @@ if (args.Length == 1 && string.Equals(args[0], "--sdl-smoke", StringComparison.O
 Console.WriteLine("OXCE .NET compatibility port");
 Console.WriteLine("Use --sdl-smoke to run the indexed-window SDL3 event-loop smoke test.");
 Console.WriteLine("Use --sdl-audio-smoke to run the SDL3 managed-mixer playback smoke test.");
+Console.WriteLine("Use --campaign-sdl <installation> <master> <add-on|-> <save|-> to run the campaign view.");

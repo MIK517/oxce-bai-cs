@@ -254,6 +254,14 @@ gameplay action rather than being invented before use.
 Suggested branch: `codex/runtime-performance-hardening` after representative workloads
 exist; individual measured fixes may instead accompany their owning vertical slices.
 
+Status: completed 2026-09-03. Controlled audio, polygon, frame-conversion, native-SDL,
+and soak workloads now cover the exit gate. Audio contention and full-frame conversion
+remain far below their budgets and do not justify a command queue, SIMD, dirty
+rectangles, locked textures, or a palette shader. Polygon scratch allocation was
+material and is now removed for ordinary polygons. Windows joins Linux and macOS in
+the pinned native SDL workflow. The campaign foundation's deferred minimal SDL view is
+also complete. See [runtime performance-hardening status](runtime-performance-hardening-status.md).
+
 ### Work
 
 - Measure audio callback duration and control-thread contention. If justified, precompute

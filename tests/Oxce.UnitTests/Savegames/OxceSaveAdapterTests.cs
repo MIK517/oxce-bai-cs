@@ -132,6 +132,30 @@ public sealed class OxceSaveAdapterTests
         }
     }
 
+    [Fact]
+    public void RepeatedSaveCyclesRemainSemanticallyAndByteStable()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content,
+            CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42),
+            new CampaignFoundationTests.FixedClock());
+        campaign.Execute(new PlaceStartingBase(0, "Alpha", 1.25, -0.5));
+        var expected = campaign.Capture();
+        string? stable = null;
+
+        for (var index = 0; index < 100; index++)
+        {
+            var yaml = OxceSaveAdapter.Emit(campaign.Capture());
+            stable ??= yaml;
+            Assert.Equal(stable, yaml);
+            campaign = OxceSaveAdapter.Load(
+                yaml, "cycle.sav", content, new SplitMix64RandomSource(0), Options()).Campaign;
+            Assert.Equivalent(expected, campaign.Capture(), strict: true);
+        }
+    }
+
     private static OxceSaveLoadOptions Options() => new(
         "runtime-master",
         new HashSet<string>(["runtime-master", "runtime-addon"], StringComparer.Ordinal));

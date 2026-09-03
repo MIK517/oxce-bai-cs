@@ -61,3 +61,62 @@ public class MixerBenchmarks : IDisposable
         GC.SuppressFinalize(this);
     }
 }
+
+[MemoryDiagnoser]
+public class MixerContentionBenchmarks : IDisposable
+{
+    private const int SampleRate = 48_000;
+    private const int OutputFrames = 1_024;
+    private ManagedAudioMixer _mixer = null!;
+    private short[] _destination = null!;
+    private IAudioPlayback[] _playbacks = null!;
+    private CancellationTokenSource _stop = null!;
+    private Thread _control = null!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        _mixer = new ManagedAudioMixer(SampleRate, maximumEffectVoices: 32);
+        _destination = new short[OutputFrames * 2];
+        var clip = new PcmAudioClip(new short[4_096 * 2], SampleRate, channels: 2);
+        _playbacks = Enumerable.Range(0, 16)
+            .Select(_ => _mixer.Play(clip,
+                new AudioPlaybackOptions(AudioBus.Effects, LoopCount: -1, Gain: 0.05f)))
+            .ToArray();
+        _stop = new CancellationTokenSource();
+        _control = new Thread(() =>
+        {
+            var gain = 0d;
+            while (!_stop.IsCancellationRequested)
+            {
+                _mixer.SetBusGain(AudioBus.Effects, gain);
+                gain = gain == 0 ? 1 : 0;
+                Thread.Yield();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Mixer benchmark control",
+        };
+        _control.Start();
+    }
+
+    [Benchmark(OperationsPerInvoke = OutputFrames)]
+    public void MixWhileControlThreadUpdatesGain() => _mixer.Mix(_destination);
+
+    [GlobalCleanup]
+    public void Cleanup() => Dispose();
+
+    public void Dispose()
+    {
+        _stop?.Cancel();
+        _control?.Join();
+        if (_playbacks is not null)
+        {
+            foreach (var playback in _playbacks) playback.Dispose();
+        }
+        _stop?.Dispose();
+        _mixer?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+}
