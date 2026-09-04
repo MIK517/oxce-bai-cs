@@ -395,6 +395,46 @@ three-program script event 10,000 times with zero managed allocation, and compar
 same-seed campaigns after 200,000 five-second ticks. These tests establish boundedness,
 stability, and determinism; they are not throughput benchmarks.
 
+### Script-compilation allocation result
+
+The September compiler-allocation slice was measured on 2026-09-04 on the same Ryzen 9
+7940HS host, .NET SDK 10.0.302, and .NET runtime 10.0.10. Tag scopes now use a monotonic
+catalog revision and materialize only on a scope-cache miss. Initial-value validation
+uses builder indexes directly. Binding candidates are indexed once by name and parser
+group, and ordinary/list overload selection uses one pass without temporary score and
+winner arrays.
+
+The public `script-content` ShortRun comparison produced:
+
+| Version | Mean | Allocated |
+|---|---:|---:|
+| Before | 827.2 us | 802.52 KiB |
+| After | 840.3 us | 778.83 KiB |
+
+Allocation fell by 23.69 KiB, or 2.95%. The timing confidence intervals overlap, so
+this workload establishes no speedup or regression. An attempted per-scope constant
+index increased allocation to 963.31 KiB and was removed before publication.
+
+The staged 40k/Rosigma comparison used the preceding runtime-rule-linking capture as
+its baseline and the same three-process audit/runtime harness. Warm medians were:
+
+| Measurement | Before | After | Change |
+|---|---:|---:|---:|
+| Script compilation | 2,433.1 ms | 1,926.1 ms | -20.8% observed |
+| Script compilation allocation | 816.7 MiB | 717.7 MiB | -12.1% |
+| Complete content build | 7,188.9 ms | 6,165.1 ms | -14.2% observed |
+| Complete build allocation | 1,942.1 MiB | 1,852.9 MiB | -4.6% |
+| Retained runtime content | 165.5 MiB | 168.6 MiB | +3.1 MiB |
+
+The retained increase includes the shared parser-group binding index and remains well
+inside the 512 MiB budget; it is accepted in exchange for about 99 MiB less transient
+script allocation. Wall-clock changes are observations rather than hard gates because
+the captures are not interleaved. All runs retained 512 files, 3,875 attempted scripts,
+3,536 artifacts, 580 tags, 13,651 initial values, 8,818 warnings, and zero errors. The
+50 API scopes caused 51 tag-catalog materializations including final publication, and
+all semantic manifests remained byte-identical at 9,591,410 bytes with SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time

@@ -60,6 +60,11 @@ compile errors, operation failures, missing providers, and invalid restored stat
   subsystems are executable.
 - Stable semantic IR may differ from reference bytecode while preserving observable
   language behavior.
+- Immutable binding declarations are indexed once by exact parser group; compiler
+  overload selection preserves declaration visibility, scoring, ordering, and ambiguity
+  behavior without allocating temporary candidate-result arrays.
+- File scopes share API catalogs by monotonic tag-catalog revision and current mod. A
+  final public tag catalog remains distinct from transient compiler builders.
 - Each gameplay slice must implement and test all providers and event sources it claims
   as compatible; `ScriptsCompiled` alone is not such a claim.
 - Phase 5 can restore script values transactionally without making YAML or save DTOs

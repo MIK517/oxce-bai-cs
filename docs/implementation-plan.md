@@ -318,16 +318,17 @@ their owning gameplay slices. See
 
 ## Immediate next tasks
 
-1. Close compatibility-preservation guardrails: distinguish new saves from loaded
-   rewrites, require the opaque source for rewrites, and use stable ruleset document
-   identity for file-local script visibility.
-2. Reduce script-compilation allocation by checking scope revisions before catalog
-   materialization and indexing parser-group bindings; retain the change only with
-   controlled stage/allocation measurements.
-3. Add a versioned, atomically published compiled-content cache whose invalidation key
+The September compatibility-guardrail and script-allocation slices are complete. New
+and loaded saves have distinct write paths, source visibility uses stable document
+identity, and the measured compiler changes reduce large-corpus script allocation while
+retaining the semantic manifest.
+
+1. Add a versioned, atomically published compiled-content cache whose invalidation key
    includes ordered mods, strong input identities, compatibility/API revisions, and
    compiler limits. Keep fresh-build audit comparison available.
-4. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
+2. Separate hot runtime projections from cold compatibility/provenance storage and
+   introduce versioned campaign/extension capabilities before the strategic API grows.
+3. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
    persisted strategic slice, including their owning script providers and UI actions.
-5. Continue adding focused executable C++ probes, compatibility matrix entries, and
+4. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

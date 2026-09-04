@@ -79,6 +79,7 @@ for ($index = 1; $index -le $Runs; $index++) {
         runtimeRuleLinkingAllocatedBytes = [long]$memory.runtimeRuleLinkingAllocatedBytes
         sourceScopeCount = [int]$memory.sourceScopeCount
         apiScopeCount = [int]$memory.apiScopeCount
+        tagCatalogBuildCount = [int]$memory.tagCatalogBuildCount
         allocatedBytesDuringBuild = [long]$memory.allocatedBytesDuringBuild
         managedBytesBeforeBuild = [long]$memory.managedBytesBeforeBuild
         managedBytesAfterBuild = [long]$memory.managedBytesAfterBuild
