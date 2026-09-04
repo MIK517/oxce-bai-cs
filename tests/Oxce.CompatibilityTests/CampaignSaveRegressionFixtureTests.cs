@@ -1,5 +1,6 @@
 using Oxce.Core.Random;
 using Oxce.Formats.Yaml;
+using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Content;
@@ -10,6 +11,21 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class CampaignSaveRegressionFixtureTests
 {
+    [Fact]
+    public void MonthBoundaryDayCountSurvivesSaveReload()
+    {
+        var content = LoadContent();
+        var loaded = OxceSaveAdapter.Load(ReadFixture(), "legacy-soldier.sav", content,
+            new SplitMix64RandomSource(0), Options());
+        loaded.Campaign.Execute(new AdvanceCampaignTime(1));
+        var yaml = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
+        var restored = OxceSaveAdapter.Load(yaml, "advanced.sav", content,
+            new SplitMix64RandomSource(0), Options()).Campaign.Capture();
+        Assert.Equal(31, restored.DaysPassed);
+        Assert.Equal(0, restored.MonthsPassed);
+        Assert.Equal(new CampaignTime(2, 1, 2, 1999, 0, 0, 0), restored.Time);
+    }
+
     [Fact]
     public void LegacySoldierFieldsSurviveTwoRewriteCycles()
     {
