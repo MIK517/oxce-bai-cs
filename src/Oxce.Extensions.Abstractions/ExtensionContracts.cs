@@ -72,7 +72,38 @@ public readonly record struct ExtensionApiRange(
 
 public static class ManagedExtensionApi
 {
-    public static ExtensionApiVersion Current { get; } = new(0, 1);
+    public static ExtensionApiVersion Current { get; } = new(0, 2);
+}
+
+public readonly record struct ExtensionCapabilityVersion
+{
+    public ExtensionCapabilityVersion(int major, int minor)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(major);
+        ArgumentOutOfRangeException.ThrowIfNegative(minor);
+        Major = major;
+        Minor = minor;
+    }
+
+    public int Major { get; }
+    public int Minor { get; }
+
+    public override string ToString() =>
+        $"{Major.ToString(System.Globalization.CultureInfo.InvariantCulture)}." +
+        Minor.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+public sealed record ExtensionCapabilityDescriptor
+{
+    public ExtensionCapabilityDescriptor(string id, ExtensionCapabilityVersion version)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        Id = id;
+        Version = version;
+    }
+
+    public string Id { get; }
+    public ExtensionCapabilityVersion Version { get; }
 }
 
 public sealed class ExtensionIdentity

@@ -206,10 +206,9 @@ public static class RuntimeRuleLinker
             IdentityFamily<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research),
             IdentityFamily<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events),
             scriptBuild.Family,
-            settings,
-            compatibility);
+            settings);
         cancellationToken.ThrowIfCancellationRequested();
-        return new RuntimeRuleLinkResult(catalog, Array.AsReadOnly(issues.ToArray()));
+        return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
 
         RuntimeCampaignSettings BuildCampaignSettings(CampaignStartSettings source)
         {

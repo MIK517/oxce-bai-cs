@@ -59,16 +59,17 @@ public sealed record CompiledContentCacheOptions
 
 internal sealed record CompiledContentCacheReadResult(
     RuntimeContent? Content,
+    ContentCompatibilityData? CompatibilityData,
     IReadOnlyList<DiagnosticEvent> Diagnostics,
     int CompiledScriptCount,
     CompiledContentCacheStatus Status,
     string? RejectionReason = null)
 {
     public static CompiledContentCacheReadResult Miss(CompiledContentCacheStatus status = CompiledContentCacheStatus.Miss) =>
-        new(null, [], 0, status);
+        new(null, null, [], 0, status);
 
     public static CompiledContentCacheReadResult Rejected(string reason) =>
-        new(null, [], 0, CompiledContentCacheStatus.Rejected, reason);
+        new(null, null, [], 0, CompiledContentCacheStatus.Rejected, reason);
 }
 
 internal static class CompiledContentCache
@@ -206,9 +207,10 @@ internal static class CompiledContentCache
             {
                 return CompiledContentCacheReadResult.Rejected("Cache contains build-error diagnostics.");
             }
-            var content = envelope.Content.Restore(contentOptions, cancellationToken);
+            var restored = envelope.Content.Restore(contentOptions, cancellationToken);
             return new CompiledContentCacheReadResult(
-                content,
+                restored.Content,
+                restored.CompatibilityData,
                 envelope.Diagnostics,
                 envelope.CompiledScriptCount,
                 CompiledContentCacheStatus.Hit);
@@ -246,7 +248,7 @@ internal static class CompiledContentCache
             var envelope = new CompiledContentCacheEnvelope(
                 FormatVersion,
                 key,
-                CachedRuntimeContent.Capture(snapshot.Content),
+                CachedRuntimeContent.Capture(snapshot),
                 snapshot.Diagnostics,
                 snapshot.CompiledScriptCount);
             using (var output = new FileStream(
@@ -482,15 +484,15 @@ internal sealed record CachedRuntimeContent(
     IReadOnlyList<CachedResourceDescriptor> Resources,
     IReadOnlyList<CachedResourceIndex> ResourceIndexes)
 {
-    public static CachedRuntimeContent Capture(RuntimeContent content) => new(
-        content.Catalog,
-        content.Capabilities,
-        content.ParsedFileCount,
-        CachedScriptTagCatalog.Capture(content.Tags),
-        content.Scripts,
-        content.EventPlans.Select(CachedScriptEventPlan.Capture).ToArray(),
-        content.InitialValues,
-        content.Resources.Descriptors.Select(static descriptor => new CachedResourceDescriptor(
+    public static CachedRuntimeContent Capture(ContentSnapshot snapshot) => new(
+        snapshot.CompatibilityData.Catalog,
+        snapshot.Content.Capabilities,
+        snapshot.Content.ParsedFileCount,
+        CachedScriptTagCatalog.Capture(snapshot.Content.Tags),
+        snapshot.Content.Scripts,
+        snapshot.Content.EventPlans.Select(CachedScriptEventPlan.Capture).ToArray(),
+        snapshot.Content.InitialValues,
+        snapshot.Content.Resources.Descriptors.Select(static descriptor => new CachedResourceDescriptor(
             descriptor.Id,
             descriptor.Kind,
             descriptor.CanonicalPath,
@@ -502,7 +504,7 @@ internal sealed record CachedRuntimeContent(
             descriptor.Height,
             descriptor.OwnerSection,
             descriptor.OwnerId)).ToArray(),
-        content.Resources.Indexes.Select(static index => new CachedResourceIndex(
+        snapshot.Content.Resources.Indexes.Select(static index => new CachedResourceIndex(
             index.Kind,
             index.SetId,
             index.ModId,
@@ -510,7 +512,9 @@ internal sealed record CachedRuntimeContent(
             index.RuntimeIndex,
             index.Handle.Index)).ToArray());
 
-    public RuntimeContent Restore(ContentSnapshotOptions options, CancellationToken cancellationToken)
+    public CachedRuntimeContentRestore Restore(
+        ContentSnapshotOptions options,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(options);
         cancellationToken.ThrowIfCancellationRequested();
@@ -566,18 +570,23 @@ internal sealed record CachedRuntimeContent(
         {
             throw new InvalidDataException("Compiled content cache failed runtime-rule relinking.");
         }
-        return new RuntimeContent(
-            Catalog,
-            Capabilities,
-            ParsedFileCount,
-            Tags.Restore(),
-            Scripts,
-            EventPlans.Select(static plan => plan.Restore()).ToArray(),
-            InitialValues,
-            resources,
-            runtimeRules.Catalog);
+        return new CachedRuntimeContentRestore(
+            new RuntimeContent(
+                Capabilities,
+                ParsedFileCount,
+                Tags.Restore(),
+                Scripts,
+                EventPlans.Select(static plan => plan.Restore()).ToArray(),
+                InitialValues,
+                resources,
+                runtimeRules.Catalog),
+            new ContentCompatibilityData(Catalog, runtimeRules.Compatibility));
     }
 }
+
+internal sealed record CachedRuntimeContentRestore(
+    RuntimeContent Content,
+    ContentCompatibilityData CompatibilityData);
 
 internal sealed record CachedScriptTagCatalog(
     IReadOnlyList<ScriptTagTypeDefinition> Types,
