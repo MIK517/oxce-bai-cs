@@ -130,6 +130,14 @@ therefore excludes diagnostics, parsed documents, composed operation history, au
 normalization, and manifest buffers. Use the audit and measurement commands together;
 the former is the compatibility oracle and the latter is the runtime ownership probe.
 
+`measure-cached-content-install` exercises the production loader and reports cache
+status, elapsed time, current-thread allocation, content counts, and cache size. Pass
+`-` as its cache directory for a fresh no-cache comparison. Cache tests require a new
+generation on restore and compare scripts, runtime rules, diagnostics, scoped script
+visibility, and retained deferred YAML. Corrupt or mismatched images must rebuild rather
+than weakening startup. `audit-content-install` deliberately bypasses the cache and
+remains the semantic compatibility oracle.
+
 `campaign-scenario` is the headless acceptance path for the first persisted strategic
 slice. It uses the same structured, cancellable installation bootstrap as the
 application, creates a deterministic campaign, places the starting base, advances time,
