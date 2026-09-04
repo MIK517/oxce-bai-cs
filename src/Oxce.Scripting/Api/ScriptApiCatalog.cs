@@ -138,6 +138,8 @@ public sealed class ScriptApiCatalog
 {
     private readonly ReadOnlyDictionary<int, ScriptBindingDeclaration> _bindingsById;
     private readonly ReadOnlyDictionary<string, IReadOnlyList<ScriptBindingDeclaration>> _bindingsByName;
+    private readonly ReadOnlyDictionary<(string Name, string ParserGroup),
+        IReadOnlyList<ScriptBindingDeclaration>> _bindingsByNameAndParserGroup;
     private readonly ReadOnlyDictionary<string, ScriptParserDeclaration> _parsersByName;
     private readonly ReadOnlyDictionary<ScriptTypeId, ScriptTypeDefinition> _typesById;
     private readonly ReadOnlyDictionary<string, ScriptTypeDefinition> _typesByName;
@@ -212,6 +214,7 @@ public sealed class ScriptApiCatalog
                 static group => group.Key,
                 static group => (IReadOnlyList<ScriptBindingDeclaration>)Array.AsReadOnly(group.ToArray()),
                 StringComparer.Ordinal));
+        _bindingsByNameAndParserGroup = IndexBindingsByParserGroup(bindingArray);
         _parsersByName = new ReadOnlyDictionary<string, ScriptParserDeclaration>(
             parserArray.ToDictionary(static parser => parser.Name, StringComparer.Ordinal));
         _typesById = new ReadOnlyDictionary<ScriptTypeId, ScriptTypeDefinition>(
@@ -253,6 +256,7 @@ public sealed class ScriptApiCatalog
         Types = sharedCatalog.Types;
         _bindingsById = sharedCatalog._bindingsById;
         _bindingsByName = sharedCatalog._bindingsByName;
+        _bindingsByNameAndParserGroup = sharedCatalog._bindingsByNameAndParserGroup;
         _parsersByName = sharedCatalog._parsersByName;
         _typesById = sharedCatalog._typesById;
         _typesByName = sharedCatalog._typesByName;
@@ -269,10 +273,23 @@ public sealed class ScriptApiCatalog
     public ScriptApiCatalog CreateScope(IEnumerable<ScriptConstantDeclaration> constants) =>
         new(this, constants);
 
-    public IReadOnlyList<ScriptBindingDeclaration> GetBindings(string name, IReadOnlySet<string> parserGroups) =>
-        _bindingsByName.TryGetValue(name, out var declarations)
+    public IReadOnlyList<ScriptBindingDeclaration> GetBindings(
+        string name,
+        IReadOnlySet<string> parserGroups)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(parserGroups);
+        if (parserGroups.Count == 1)
+        {
+            foreach (var parserGroup in parserGroups)
+            {
+                return _bindingsByNameAndParserGroup.GetValueOrDefault((name, parserGroup), []);
+            }
+        }
+        return _bindingsByName.TryGetValue(name, out var declarations)
             ? declarations.Where(binding => binding.ParserGroups.Any(parserGroups.Contains)).ToArray()
             : [];
+    }
 
     public bool TryGetBinding(ScriptBindingId id, out ScriptBindingDeclaration? declaration) =>
         _bindingsById.TryGetValue(id.Value, out declaration);
@@ -288,4 +305,16 @@ public sealed class ScriptApiCatalog
 
     public IEnumerable<ScriptConstantDeclaration> GetConstants(IReadOnlySet<string> parserGroups) =>
         Constants.Where(constant => constant.ParserGroups.Any(parserGroups.Contains));
+
+    private static ReadOnlyDictionary<(string Name, string ParserGroup),
+        IReadOnlyList<ScriptBindingDeclaration>> IndexBindingsByParserGroup(
+            IEnumerable<ScriptBindingDeclaration> bindings) => new(
+        bindings.SelectMany(static binding => binding.ParserGroups.Select(parserGroup =>
+                (Key: (binding.Name, parserGroup), Binding: binding)))
+            .GroupBy(static item => item.Key)
+            .ToDictionary(
+                static group => group.Key,
+                static group => (IReadOnlyList<ScriptBindingDeclaration>)
+                    Array.AsReadOnly(group.Select(static item => item.Binding).ToArray())));
+
 }

@@ -68,6 +68,60 @@ public sealed class ScriptApiAndHostTests
     }
 
     [Fact]
+    public void ParserGroupIndexesReuseCandidatesAndPreserveDeclarationOrder()
+    {
+        var first = new ScriptBindingDeclaration(
+            new ScriptBindingId(20_001), "probe", [], ["First"], Reference);
+        var shared = new ScriptBindingDeclaration(
+            new ScriptBindingId(20_002), "probe", [], ["First", "Second"], Reference);
+        var second = new ScriptBindingDeclaration(
+            new ScriptBindingId(20_003), "probe", [], ["Second"], Reference);
+        var catalog = new ScriptApiCatalog(
+            [first, shared, second],
+            [
+                new ScriptConstantDeclaration("FIRST", 1, ["First"], Reference),
+                new ScriptConstantDeclaration("SHARED", 2, ["First", "Second"], Reference),
+                new ScriptConstantDeclaration("SECOND", 3, ["Second"], Reference),
+            ]);
+        IReadOnlySet<string> firstGroup = new HashSet<string>(["First"], StringComparer.Ordinal);
+        IReadOnlySet<string> secondGroup = new HashSet<string>(["Second"], StringComparer.Ordinal);
+        IReadOnlySet<string> bothGroups = new HashSet<string>(["First", "Second"], StringComparer.Ordinal);
+
+        var firstLookup = catalog.GetBindings("probe", firstGroup);
+
+        Assert.Same(firstLookup, catalog.GetBindings("probe", firstGroup));
+        Assert.Equal([first, shared], firstLookup);
+        Assert.Equal([shared, second], catalog.GetBindings("probe", secondGroup));
+        Assert.Equal([first, shared, second], catalog.GetBindings("probe", bothGroups));
+    }
+
+    [Fact]
+    public void EqualBestBindingsRemainAmbiguousAfterSinglePassSelection()
+    {
+        var catalog = new ScriptApiCatalog(
+            [
+                new ScriptBindingDeclaration(
+                    new ScriptBindingId(21_001), "adjust",
+                    [new ScriptBindingParameter("target", WritableInt, true),
+                     new ScriptBindingParameter("delta", Int, false)],
+                    ["Probe"], Reference),
+                new ScriptBindingDeclaration(
+                    new ScriptBindingId(21_002), "adjust",
+                    [new ScriptBindingParameter("target", WritableInt, true),
+                     new ScriptBindingParameter("delta", Int, false)],
+                    ["Probe"], Reference),
+            ]);
+
+        var compiled = ScriptCompiler.Compile(
+            "adjust result 1; return result;",
+            new ScriptParserDefinition("Probe", ["result"], catalog, ["Probe"]));
+
+        Assert.False(compiled.Succeeded);
+        Assert.Contains(compiled.Diagnostics,
+            static diagnostic => diagnostic.Code == ScriptDiagnosticCodes.AmbiguousOverload);
+    }
+
+    [Fact]
     public void ConstantScopeReusesSharedCatalogIndexes()
     {
         var scope = Catalog.CreateScope(

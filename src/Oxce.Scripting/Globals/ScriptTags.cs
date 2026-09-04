@@ -63,7 +63,14 @@ public sealed class ScriptTagCatalogBuilder
     private readonly HashSet<string> _typeNames = new(StringComparer.Ordinal);
     private readonly HashSet<string> _valueTypes = new(StringComparer.Ordinal) { "int" };
     private readonly List<ScriptTagDefinition> _tags = [];
+    private readonly Dictionary<(ScriptTagTypeId Type, string Name), ScriptTagDefinition> _tagsByOwnerAndName = [];
+    private readonly Dictionary<ScriptTagTypeId, int> _tagCounts = [];
     private readonly HashSet<string> _globalNames = new(StringComparer.Ordinal);
+    private int _revision;
+
+    public int Revision => _revision;
+
+    public int TagCount => _tags.Count;
 
     public void AddType(ScriptTagTypeDefinition type)
     {
@@ -76,6 +83,7 @@ public sealed class ScriptTagCatalogBuilder
         }
         _types.Add(type.Id, type);
         _typeNames.Add(type.Name);
+        _revision = checked(_revision + 1);
     }
 
     public void AddValueType(string name)
@@ -85,6 +93,7 @@ public sealed class ScriptTagCatalogBuilder
         {
             throw new ArgumentException($"Script tag value type '{name}' is already registered.", nameof(name));
         }
+        _revision = checked(_revision + 1);
     }
 
     public ScriptTagDefinition AddTag(
@@ -109,7 +118,7 @@ public sealed class ScriptTagCatalogBuilder
         {
             throw new ArgumentException($"Script name '{qualifiedName}' is already used by another tag.", nameof(name));
         }
-        var index = _tags.Count(tag => tag.OwnerType == ownerType) + 1;
+        var index = checked(_tagCounts.GetValueOrDefault(ownerType) + 1);
         if (index > type.Limit)
         {
             throw new ArgumentOutOfRangeException(nameof(name),
@@ -118,7 +127,20 @@ public sealed class ScriptTagCatalogBuilder
         _globalNames.Add(qualifiedName);
         var tag = new ScriptTagDefinition(ownerType, index, qualifiedName, valueType, sourceFile);
         _tags.Add(tag);
+        _tagsByOwnerAndName.Add((ownerType, qualifiedName), tag);
+        _tagCounts[ownerType] = index;
+        _revision = checked(_revision + 1);
         return tag;
+    }
+
+    public bool TryGetTag(
+        ScriptTagTypeId ownerType,
+        string name,
+        out ScriptTagDefinition? tag)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var qualifiedName = name.StartsWith("Tag.", StringComparison.Ordinal) ? name : $"Tag.{name}";
+        return _tagsByOwnerAndName.TryGetValue((ownerType, qualifiedName), out tag);
     }
 
     public ScriptTagCatalog Build() => new(

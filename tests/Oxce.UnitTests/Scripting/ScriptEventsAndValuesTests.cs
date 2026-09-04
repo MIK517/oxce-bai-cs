@@ -12,6 +12,30 @@ namespace Oxce.UnitTests.Scripting;
 public sealed class ScriptEventsAndValuesTests
 {
     [Fact]
+    public void TagBuilderRevisionAndIndexedLookupTrackSuccessfulMutations()
+    {
+        var type = new ScriptTagTypeId(1);
+        var builder = new ScriptTagCatalogBuilder();
+
+        Assert.Equal(0, builder.Revision);
+        Assert.Equal(0, builder.TagCount);
+        builder.AddType(new ScriptTagTypeDefinition(type, "BattleUnit", 2));
+        builder.AddValueType("RuleList");
+        var tag = builder.AddTag(type, "score", "int", "probe.rul");
+
+        Assert.Equal(3, builder.Revision);
+        Assert.Equal(1, builder.TagCount);
+        Assert.True(builder.TryGetTag(type, "score", out var unqualified));
+        Assert.True(builder.TryGetTag(type, "Tag.score", out var qualified));
+        Assert.Same(tag, unqualified);
+        Assert.Same(tag, qualified);
+        _ = builder.Build();
+        Assert.Equal(3, builder.Revision);
+        Assert.Throws<ArgumentException>(() => builder.AddValueType("int"));
+        Assert.Equal(3, builder.Revision);
+    }
+
+    [Fact]
     public void EventsComposeByOffsetAroundCurrentAndUpdatesPreservePosition()
     {
         var composed = ScriptEventComposer.Compose(

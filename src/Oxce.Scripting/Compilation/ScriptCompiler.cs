@@ -401,14 +401,20 @@ public sealed class ScriptCompiler
         {
             new(ScriptOperand.Register(receiverOffset), receiver.Type),
         };
-        fixedArguments.AddRange(statement.Arguments.Skip(3).Select(ReadTypedValue));
+        for (var index = 3; index < statement.Arguments.Count; index++)
+        {
+            fixedArguments.Add(ReadTypedValue(statement.Arguments[index]));
+        }
         if (HasErrors)
         {
             return;
         }
 
         var candidates = _definition.ApiCatalog.GetBindings(operationName, _definition.ParserGroups);
-        var scored = new List<(ScriptBindingDeclaration Declaration, int Score, int FirstSeparator, int SecondSeparator)>();
+        ScriptBindingDeclaration? selectedDeclaration = null;
+        var selectedSecondSeparator = -1;
+        var bestScore = 0;
+        var ambiguous = false;
         foreach (var candidate in candidates)
         {
             var firstSeparator = FindSeparator(candidate.Parameters, 0);
@@ -418,26 +424,32 @@ public sealed class ScriptCompiler
             {
                 continue;
             }
-            var score = ParametersScore(candidate.Parameters.Take(firstSeparator).ToArray(), fixedArguments);
-            if (score > 0)
+            var score = ParametersScore(candidate.Parameters, firstSeparator, fixedArguments);
+            if (score > bestScore)
             {
-                scored.Add((candidate, score, firstSeparator, secondSeparator));
+                selectedDeclaration = candidate;
+                selectedSecondSeparator = secondSeparator;
+                bestScore = score;
+                ambiguous = false;
+            }
+            else if (score != 0 && score == bestScore)
+            {
+                ambiguous = true;
             }
         }
-        var bestScore = scored.Count == 0 ? 0 : scored.Max(static item => item.Score);
-        var best = scored.Where(item => item.Score == bestScore).ToArray();
-        if (best.Length != 1)
+        if (selectedDeclaration is null || ambiguous)
         {
-            Error(best.Length == 0 ? ScriptDiagnosticCodes.NoMatchingOverload : ScriptDiagnosticCodes.AmbiguousOverload,
-                best.Length == 0
+            Error(selectedDeclaration is null
+                    ? ScriptDiagnosticCodes.NoMatchingOverload
+                    : ScriptDiagnosticCodes.AmbiguousOverload,
+                selectedDeclaration is null
                     ? $"No list overload of '{operationToken.Lexeme}' accepts these arguments."
                     : $"List operation '{operationToken.Lexeme}' is ambiguous for these arguments.",
                 statement.Span);
             return;
         }
 
-        var selected = best[0];
-        var outputParameter = selected.Declaration.Parameters[^1];
+        var outputParameter = selectedDeclaration.Parameters[^1];
         Current.CanDeclare = false;
         PushFrame(new ControlFrame(ControlFrameKind.Loop));
         var frame = Current;
@@ -459,11 +471,11 @@ public sealed class ScriptCompiler
         var outputArgument = new TypedOperand(ScriptOperand.Register(frame.LoopVariable), outputParameter.Type);
         var initArguments = fixedArguments.Concat([separatorArgument, counterArgument, limitArgument]).ToArray();
         var initDeclaration = new ScriptBindingDeclaration(
-            new ScriptBindingId(2_000_000 + selected.Declaration.Id.Value),
+            new ScriptBindingId(2_000_000 + selectedDeclaration.Id.Value),
             operationName[..^".list".Length] + ".init",
-            selected.Declaration.Parameters.Take(selected.SecondSeparator),
-            selected.Declaration.ParserGroups,
-            selected.Declaration.Reference);
+            selectedDeclaration.Parameters.Take(selectedSecondSeparator),
+            selectedDeclaration.ParserGroups,
+            selectedDeclaration.Reference);
         EmitBindingCall(initDeclaration, initArguments, statement.Span);
 
         frame.LoopStart = _instructions.Count;
@@ -473,7 +485,7 @@ public sealed class ScriptCompiler
              ScriptOperand.Register(frame.CounterRegister), ScriptOperand.Register(frame.LimitRegister),
              ScriptOperand.Label(0)]);
         var listArguments = initArguments.Concat([separatorArgument, outputArgument]).ToArray();
-        EmitBindingCall(selected.Declaration, listArguments, statement.Span);
+        EmitBindingCall(selectedDeclaration, listArguments, statement.Span);
     }
 
     private static int FindSeparator(IReadOnlyList<ScriptBindingParameter> parameters, int start)
@@ -678,27 +690,43 @@ public sealed class ScriptCompiler
             return;
         }
 
-        arguments.AddRange(statement.Arguments.Select(ReadTypedValue));
+        foreach (var argument in statement.Arguments)
+        {
+            arguments.Add(ReadTypedValue(argument));
+        }
         if (HasErrors)
         {
             return;
         }
-        var scored = candidates.Select(candidate => (Declaration: candidate, Score: BindingScore(candidate, arguments)))
-            .Where(static item => item.Score > 0).ToArray();
-        var bestScore = scored.Length == 0 ? 0 : scored.Max(static item => item.Score);
-        var matching = scored.Where(item => item.Score == bestScore).Select(static item => item.Declaration).ToArray();
-        if (matching.Length != 1)
+        ScriptBindingDeclaration? selected = null;
+        var bestScore = 0;
+        var ambiguous = false;
+        foreach (var candidate in candidates)
+        {
+            var score = BindingScore(candidate, arguments);
+            if (score > bestScore)
+            {
+                selected = candidate;
+                bestScore = score;
+                ambiguous = false;
+            }
+            else if (score != 0 && score == bestScore)
+            {
+                ambiguous = true;
+            }
+        }
+        if (selected is null || ambiguous)
         {
             Error(
-                matching.Length == 0 ? ScriptDiagnosticCodes.NoMatchingOverload : ScriptDiagnosticCodes.AmbiguousOverload,
-                matching.Length == 0
+                selected is null ? ScriptDiagnosticCodes.NoMatchingOverload : ScriptDiagnosticCodes.AmbiguousOverload,
+                selected is null
                     ? $"No overload of '{statement.Operation.Lexeme}' accepts these arguments."
                     : $"Operation '{statement.Operation.Lexeme}' is ambiguous for these arguments.",
                 statement.Span);
             return;
         }
 
-        EmitBindingCall(matching[0], arguments, statement.Span);
+        EmitBindingCall(selected, arguments, statement.Span);
     }
 
     private void EmitBindingCall(
@@ -717,9 +745,14 @@ public sealed class ScriptCompiler
 
     private static int ParametersScore(
         IReadOnlyList<ScriptBindingParameter> parameters,
+        IReadOnlyList<TypedOperand> arguments) => ParametersScore(parameters, parameters.Count, arguments);
+
+    private static int ParametersScore(
+        IReadOnlyList<ScriptBindingParameter> parameters,
+        int parameterCount,
         IReadOnlyList<TypedOperand> arguments)
     {
-        if (parameters.Count != arguments.Count)
+        if (parameterCount != arguments.Count)
         {
             return 0;
         }
