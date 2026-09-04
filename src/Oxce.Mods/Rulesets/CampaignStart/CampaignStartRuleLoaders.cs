@@ -4,7 +4,7 @@ using Oxce.Mods.Rulesets.Presentation;
 
 namespace Oxce.Mods.Rulesets.CampaignStart;
 
-internal sealed class CountryRuleLoader(string sectionName) : TypedRuleFamilyLoader<CountryBuilder, CountryRule>(GetSection(sectionName))
+internal sealed class CountryRuleLoader(string sectionName) : IdOnlyTypedRuleFamilyLoader<CountryBuilder, CountryRule>(GetSection(sectionName))
 {
     protected override CountryBuilder Create(string id) => new(id);
 
@@ -51,7 +51,7 @@ internal sealed class CountryRuleLoader(string sectionName) : TypedRuleFamilyLoa
     }
 }
 
-internal sealed class RegionRuleLoader : TypedRuleFamilyLoader<RegionBuilder, RegionRule>
+internal sealed class RegionRuleLoader : IdOnlyTypedRuleFamilyLoader<RegionBuilder, RegionRule>
 {
     public RegionRuleLoader() : base(GetSection()) { }
     protected override RegionBuilder Create(string id) => new(id);
@@ -103,7 +103,6 @@ internal sealed class RegionRuleLoader : TypedRuleFamilyLoader<RegionBuilder, Re
 internal sealed class BaseFacilityRuleLoader : TypedRuleFamilyLoader<BaseFacilityBuilder, BaseFacilityRule>
 {
     public BaseFacilityRuleLoader() : base(GetSection()) { }
-    protected override BaseFacilityBuilder Create(string id) => throw new NotSupportedException();
     protected override BaseFacilityBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
 

@@ -5,7 +5,7 @@ using Oxce.Mods.Rulesets.Presentation;
 
 namespace Oxce.Mods.Rulesets.TerrainDeployment;
 
-internal sealed class TerrainRuleLoader : TypedRuleFamilyLoader<TerrainBuilder, TerrainRule>
+internal sealed class TerrainRuleLoader : IdOnlyTypedRuleFamilyLoader<TerrainBuilder, TerrainRule>
 {
     public TerrainRuleLoader() : base(TerrainDeploymentYaml.Section("terrains")) { }
     protected override TerrainBuilder Create(string id) => new(id);
@@ -72,7 +72,6 @@ internal sealed class TerrainRuleLoader : TypedRuleFamilyLoader<TerrainBuilder, 
 internal sealed class AlienRaceRuleLoader : TypedRuleFamilyLoader<AlienRaceBuilder, AlienRaceRule>
 {
     public AlienRaceRuleLoader() : base(TerrainDeploymentYaml.Section("alienRaces")) { }
-    protected override AlienRaceBuilder Create(string id) => throw new NotSupportedException();
     protected override AlienRaceBuilder Create(UnresolvedRule rule) => new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
     protected override void Apply(AlienRaceBuilder builder, RulePropertyReader reader)
     {
@@ -96,7 +95,7 @@ internal sealed class AlienRaceRuleLoader : TypedRuleFamilyLoader<AlienRaceBuild
         builder.RetaliationAggression, builder.RetaliationWeights.AsReadOnly(), builder.ListOrder);
 }
 
-internal sealed class EnviroEffectsRuleLoader : TypedRuleFamilyLoader<EnviroEffectsBuilder, EnviroEffectsRule>
+internal sealed class EnviroEffectsRuleLoader : IdOnlyTypedRuleFamilyLoader<EnviroEffectsBuilder, EnviroEffectsRule>
 {
     public EnviroEffectsRuleLoader() : base(TerrainDeploymentYaml.Section("enviroEffects")) { }
     protected override EnviroEffectsBuilder Create(string id) => new();
@@ -136,7 +135,7 @@ internal sealed class EnviroEffectsRuleLoader : TypedRuleFamilyLoader<EnviroEffe
     }
 }
 
-internal sealed class StartingConditionRuleLoader : TypedRuleFamilyLoader<StartingConditionBuilder, StartingConditionRule>
+internal sealed class StartingConditionRuleLoader : IdOnlyTypedRuleFamilyLoader<StartingConditionBuilder, StartingConditionRule>
 {
     public StartingConditionRuleLoader() : base(TerrainDeploymentYaml.Section("startingConditions")) { }
     protected override StartingConditionBuilder Create(string id) => new();
@@ -166,7 +165,7 @@ internal sealed class StartingConditionRuleLoader : TypedRuleFamilyLoader<Starti
         YamlValueReader.ReadMap(node, YamlValueReader.ReadString, YamlValueReader.ReadInt32).ToDictionary();
 }
 
-internal sealed class AlienDeploymentRuleLoader : TypedRuleFamilyLoader<AlienDeploymentBuilder, AlienDeploymentRule>
+internal sealed class AlienDeploymentRuleLoader : IdOnlyTypedRuleFamilyLoader<AlienDeploymentBuilder, AlienDeploymentRule>
 {
     public AlienDeploymentRuleLoader() : base(TerrainDeploymentYaml.Section("alienDeployments")) { }
     protected override AlienDeploymentBuilder Create(string id) => new();

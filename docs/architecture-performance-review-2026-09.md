@@ -112,13 +112,14 @@ Milestones should distinguish loader-core closure, declaration-schema compatibil
 semantic compatibility, and save round-trip compatibility. Compatibility matrices remain the
 authoritative gate for each vertical slice.
 
-### Simplify typed-loader construction and measure distribution profiles
+### Simplify typed-loader construction and measure distribution profiles (resolved)
 
-`TypedRuleFamilyLoader` forces some derived loaders to implement a construction method that can
-only throw. Make unresolved-rule construction the primary contract and provide an ID-only helper.
-For distribution size, measure framework-dependent and self-contained publication separately.
-Do not enable trimming or Native AOT by default until YAML and managed-extension loading have
-dedicated published-application tests.
+`TypedRuleFamilyLoader` now makes unresolved-rule construction its primary contract, while
+`IdOnlyTypedRuleFamilyLoader` adapts families whose constructors require only the external ID.
+The twelve unreachable throw-only construction overrides have been removed. Reproducible
+`win-x64` measurements now distinguish framework-dependent, self-contained, and SDL3-staged
+self-contained output. Trimming, single-file publication, and Native AOT remain disabled until
+YAML and managed-extension loading have dedicated published-application tests.
 
 ## Planned branches
 
@@ -141,8 +142,8 @@ avoiding CI runs for intermediate commits.
    - Introduce versioned campaign/extension capabilities alongside the existing v1 surface.
    - Add retained-heap and extension compatibility coverage.
 
-Resource-cache concurrency and publish-size changes remain measurement-gated follow-ups rather
-than unconditional feature branches.
+Resource-cache concurrency remains a measurement-gated follow-up rather than an unconditional
+feature branch. Publish-size changes remain gated by the recorded host baseline.
 
 ## Recommended order
 

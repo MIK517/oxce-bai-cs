@@ -17,7 +17,6 @@ internal sealed class ItemRuleLoader : TypedRuleFamilyLoader<ItemRuleBuilder, It
     ];
 
     public ItemRuleLoader() : base(GetSection()) { }
-    protected override ItemRuleBuilder Create(string id) => throw new NotSupportedException();
     protected override ItemRuleBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
 

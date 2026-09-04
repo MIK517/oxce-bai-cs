@@ -6,7 +6,6 @@ namespace Oxce.Mods.Rulesets.EquipmentProduction;
 internal sealed class ResearchRuleLoader : TypedRuleFamilyLoader<ResearchBuilder, ResearchRule>
 {
     public ResearchRuleLoader() : base(EquipmentYaml.Section("research")) { }
-    protected override ResearchBuilder Create(string id) => throw new NotSupportedException();
     protected override ResearchBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
     protected override void Apply(ResearchBuilder builder, RulePropertyReader reader)
@@ -77,7 +76,6 @@ internal sealed class ResearchRuleLoader : TypedRuleFamilyLoader<ResearchBuilder
 internal sealed class ManufactureRuleLoader : TypedRuleFamilyLoader<ManufactureBuilder, ManufactureRule>
 {
     public ManufactureRuleLoader() : base(EquipmentYaml.Section("manufacture")) { }
-    protected override ManufactureBuilder Create(string id) => throw new NotSupportedException();
     protected override ManufactureBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
     protected override void Apply(ManufactureBuilder builder, RulePropertyReader reader)
@@ -129,7 +127,7 @@ internal sealed class ManufactureRuleLoader : TypedRuleFamilyLoader<ManufactureB
 }
 
 internal sealed class ManufactureShortcutRuleLoader :
-    TypedRuleFamilyLoader<ManufactureShortcutBuilder, ManufactureShortcutRule>
+    IdOnlyTypedRuleFamilyLoader<ManufactureShortcutBuilder, ManufactureShortcutRule>
 {
     public ManufactureShortcutRuleLoader() : base(EquipmentYaml.Section("manufactureShortcut")) { }
     protected override ManufactureShortcutBuilder Create(string id) => new(id);

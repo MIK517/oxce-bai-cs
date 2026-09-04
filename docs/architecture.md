@@ -113,6 +113,11 @@ The complete typed catalog, deferred YAML, and provenance live in the separate c
 See [ADR 0017](decisions/0017-generation-scoped-runtime-rule-handles.md) and
 [ADR 0023](decisions/0023-hot-runtime-content-and-versioned-capabilities.md).
 
+Typed rule-family construction receives the complete `UnresolvedRule`, including its
+composition metadata. Families whose builders need only the stable external ID use the
+`IdOnlyTypedRuleFamilyLoader` adapter; loaders must not satisfy construction contracts with
+unreachable exception-throwing methods.
+
 The concrete build-session, runtime-publication, structured-node, and optional-audit
 lifetimes are defined in [content lifetime](content-lifetime.md). Application code must
 publish `RuntimeContent`; retaining `ContentBuildSession` or `ContentSnapshot` as the

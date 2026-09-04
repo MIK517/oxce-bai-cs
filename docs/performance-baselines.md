@@ -488,6 +488,26 @@ steady-state size rather than construction work. The fresh semantic manifest rem
 9,591,410 bytes with SHA-256
 `C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
 
+### Windows x64 publish-size baseline
+
+The distribution profiles were measured on 2026-09-04 with .NET SDK 10.0.302 on
+Windows 10.0.26200 x64. `tools/measure-windows-publish-size.ps1` performed Release
+RID-specific publishes with trimming, single-file publication, and Native AOT explicitly
+disabled. These raw `dotnet publish` directories include the default portable PDB files.
+The staged profile adds the checksum-pinned SDL 3.4.10 x64 library to a copy of the
+self-contained output.
+
+| `win-x64` profile | Files | Uncompressed | Optimal ZIP |
+|---|---:|---:|---:|
+| Framework-dependent | 32 | 5,776,074 bytes (5.51 MiB) | 1,976,790 bytes (1.89 MiB) |
+| Self-contained | 219 | 85,965,530 bytes (81.98 MiB) | 38,765,994 bytes (36.97 MiB) |
+| Staged self-contained with SDL3 | 220 | 88,770,266 bytes (84.66 MiB) | 39,969,597 bytes (38.12 MiB) |
+
+SDL3 contributes 2,804,736 bytes before compression. Compare future packaging work with
+the same profile and symbol policy; framework-dependent and self-contained totals are not
+interchangeable. Cross-platform distribution measurements are deferred until those hosts are
+available for release packaging.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time
