@@ -369,7 +369,8 @@ public static class OxceSaveAdapter
         EnsureUnique(value.Facilities.Select(FacilityIdentity), "facility identity");
         var oldFacilities = Maps(source, "facilities").ToDictionary(FacilityIdentity);
         var oldCrafts = Maps(source, "crafts").ToDictionary(EntityIdentity, StringComparer.Ordinal);
-        var oldSoldiers = Maps(source, "soldiers").ToDictionary(EntityIdentity, StringComparer.Ordinal);
+        // Soldier IDs are global; legacy saves may omit the type that ReadBases defaults.
+        var oldSoldiers = Maps(source, "soldiers").ToDictionary(map => Integer(map, "id", 0));
         var facilities = value.Facilities.Select(facility => Overlay(
             oldFacilities.GetValueOrDefault(FacilityIdentity(facility)),
             [
@@ -382,7 +383,7 @@ public static class OxceSaveAdapter
             ])).ToArray();
         var crafts = value.Crafts.Select(craft => Overlay(oldCrafts.GetValueOrDefault(EntityIdentity(craft)),
             [Pair("type", Scalar(craft.RuleId)), Pair("id", Integer(craft.Id))])).ToArray();
-        var soldiers = value.Soldiers.Select(soldier => Overlay(oldSoldiers.GetValueOrDefault(EntityIdentity(soldier)),
+        var soldiers = value.Soldiers.Select(soldier => Overlay(oldSoldiers.GetValueOrDefault(soldier.Id),
             [Pair("type", Scalar(soldier.RuleId)), Pair("id", Integer(soldier.Id))])).ToArray();
         return Overlay(source,
         [
@@ -400,7 +401,6 @@ public static class OxceSaveAdapter
         $"{String(value, "type", string.Empty)}\0{Integer(value, "id", 0)}";
 
     private static string EntityIdentity(CraftSnapshot value) => $"{value.RuleId}\0{value.Id}";
-    private static string EntityIdentity(SoldierSnapshot value) => $"{value.RuleId}\0{value.Id}";
 
     private static BaseFacilityIdentity FacilityIdentity(YamlMappingNode value) => new(
         String(value, "type", string.Empty), Integer(value, "x", -1), Integer(value, "y", -1));

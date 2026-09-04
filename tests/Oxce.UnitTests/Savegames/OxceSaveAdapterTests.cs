@@ -10,6 +10,45 @@ namespace Oxce.UnitTests.Savegames;
 
 public sealed class OxceSaveAdapterTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SoldierOpaqueFieldsFollowIdsWithExplicitOrLegacyTypes(bool omitType)
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(content, CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var initial = campaign.Capture();
+        var yaml = OxceSaveAdapter.EmitNewCampaign(initial);
+        foreach (var soldier in initial.Bases[0].Soldiers)
+        {
+            var identity = $"type: {soldier.RuleId}\n        id: {soldier.Id}";
+            yaml = yaml.Replace(identity,
+                (omitType ? string.Empty : $"type: {soldier.RuleId}\n        ") +
+                $"id: {soldier.Id}\n        name: Soldier {soldier.Id}\n        initialStats: {{tu: 60}}",
+                StringComparison.Ordinal);
+        }
+        var loaded = OxceSaveAdapter.Load(yaml, "soldiers.sav", content, new SplitMix64RandomSource(0), Options());
+        var snapshot = loaded.Campaign.Capture();
+        var originalBase = snapshot.Bases[0];
+        var survivors = originalBase.Soldiers.Skip(1).Reverse().ToArray();
+        var added = originalBase.Soldiers[0] with { Id = 99 };
+        var changed = snapshot with
+        {
+            Bases = Array.AsReadOnly([originalBase with { Soldiers = Array.AsReadOnly(survivors.Append(added).ToArray()) }]),
+        };
+        var emitted = OxceSaveAdapter.EmitLoadedCampaign(changed, loaded.Source);
+        var soldiers = ReadMaps(ReadMaps(ReadBody(emitted), "bases")[0], "soldiers");
+        foreach (var survivor in survivors)
+        {
+            var node = Assert.Single(soldiers, node => ReadId(node) == survivor.Id);
+            Assert.Equal($"Soldier {survivor.Id}", ReadString(node, "name"));
+            Assert.Equal(60, YamlValueReader.ReadInt32(Required(Assert.IsType<YamlMappingNode>(Required(node, "initialStats")), "tu")));
+        }
+        Assert.False(Assert.Single(soldiers, node => ReadId(node) == 99).TryGet("name", out _));
+        Assert.DoesNotContain(soldiers, node => ReadId(node) == originalBase.Soldiers[0].Id);
+    }
+
     [Fact]
     public void NewCampaignSaveReloadsSemanticallyAndUsesTwoDocumentSchema()
     {
