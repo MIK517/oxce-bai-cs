@@ -134,6 +134,7 @@ public sealed class ContentSnapshotTests
         Assert.Equal(4, runtimeOnly.Content.ParsedFileCount);
         Assert.Equal(4, runtimeOnly.SourceScopeCount);
         Assert.Equal(2, runtimeOnly.ApiScopeCount);
+        Assert.Equal(runtimeOnly.ApiScopeCount + 1, runtimeOnly.TagCatalogBuildCount);
         Assert.True(runtimeOnly.Measurements.Parse.AllocatedBytes > 0);
         Assert.True(runtimeOnly.Measurements.ScriptCompilation.AllocatedBytes > 0);
         Assert.Contains(runtimeOnly.InitialValues,

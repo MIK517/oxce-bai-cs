@@ -278,6 +278,7 @@ internal static class FixtureTool
             errors = preBuildErrorCount + measurement.ErrorCount,
             sourceScopeCount = measurement.SourceScopeCount,
             apiScopeCount = measurement.ApiScopeCount,
+            tagCatalogBuildCount = measurement.TagCatalogBuildCount,
             buildElapsedMilliseconds = timer.Elapsed.TotalMilliseconds,
             allocatedBytesDuringBuild = GC.GetAllocatedBytesForCurrentThread() - allocatedBytesBeforeBuild,
             managedBytesBeforeBuild,
@@ -395,7 +396,8 @@ internal static class FixtureTool
             snapshot.ReportedDiagnosticCount,
             snapshot.Diagnostics.Count(static item => item.Severity >= DiagnosticSeverity.Error),
             snapshot.SourceScopeCount,
-            snapshot.ApiScopeCount);
+            snapshot.ApiScopeCount,
+            snapshot.TagCatalogBuildCount);
     }
 
     private sealed record RuntimeMeasurement(
@@ -405,7 +407,8 @@ internal static class FixtureTool
         int ReportedDiagnosticCount,
         int ErrorCount,
         int SourceScopeCount,
-        int ApiScopeCount);
+        int ApiScopeCount,
+        int TagCatalogBuildCount);
 
     private static int WriteContentAudit(
         ModLoadPlan plan,
@@ -487,6 +490,7 @@ internal static class FixtureTool
             runtimeRuleLinkingAllocatedBytes = snapshot.Measurements.RuntimeRuleLinking.AllocatedBytes,
             sourceScopeCount = snapshot.SourceScopeCount,
             apiScopeCount = snapshot.ApiScopeCount,
+            tagCatalogBuildCount = snapshot.TagCatalogBuildCount,
             buildElapsedMilliseconds = buildTimer.Elapsed.TotalMilliseconds,
             normalizationElapsedMilliseconds = normalizationTimer.Elapsed.TotalMilliseconds,
             allocatedBytesDuringBuild,
