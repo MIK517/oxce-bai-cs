@@ -83,6 +83,7 @@ public sealed class InstallationLoadRequest
 public sealed class InstallationContentLoadOptions
 {
     public int MaximumDiagnostics { get; init; } = 100_000;
+    public bool RetainCompatibilityData { get; init; }
     public ContentSnapshotOptions Content { get; init; } = new();
     public CompiledContentCacheOptions Cache { get; init; } = new();
 
@@ -111,6 +112,7 @@ public sealed record InstallationPlanResult(
 
 public sealed record InstallationContentLoadResult(
     RuntimeContent? Content,
+    ContentCompatibilityData? CompatibilityData,
     ContentBuildMeasurements? Measurements,
     IReadOnlyList<DiagnosticEvent> Diagnostics,
     int ReportedDiagnosticCount,
@@ -266,6 +268,7 @@ public static class InstallationContentLoader
                 progress?.Report(new InstallationLoadProgress(stage));
                 return new InstallationContentLoadResult(
                     cached.Content,
+                    options.RetainCompatibilityData ? cached.CompatibilityData : null,
                     ContentBuildMeasurements.Empty,
                     collector.Snapshot(),
                     collector.ReportedCount,
@@ -279,6 +282,7 @@ public static class InstallationContentLoader
                 collector.HasSeverityAtLeast(DiagnosticSeverity.Error))
             {
                 return new InstallationContentLoadResult(
+                    null,
                     null,
                     snapshot.Measurements,
                     collector.Snapshot(),
@@ -300,6 +304,7 @@ public static class InstallationContentLoader
             progress?.Report(new InstallationLoadProgress(stage));
             return new InstallationContentLoadResult(
                 snapshot.Content,
+                options.RetainCompatibilityData ? snapshot.CompatibilityData : null,
                 snapshot.Measurements,
                 collector.Snapshot(),
                 collector.ReportedCount,
@@ -322,6 +327,7 @@ public static class InstallationContentLoader
         }
 
         InstallationContentLoadResult Failure(InstallationLoadFailure failure) => new(
+            null,
             null,
             null,
             collector.Snapshot(),

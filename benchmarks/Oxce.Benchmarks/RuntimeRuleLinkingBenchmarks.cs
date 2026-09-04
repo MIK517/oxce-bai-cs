@@ -4,6 +4,7 @@ using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Mods.Rulesets.Phase3;
 
 namespace Oxce.Benchmarks;
 
@@ -11,6 +12,7 @@ namespace Oxce.Benchmarks;
 public class RuntimeRuleLinkingBenchmarks
 {
     private RuntimeContent _content = null!;
+    private Phase3ContentCatalog _compatibility = null!;
     private RuleHandle<CountryRuleFamily> _country;
 
     [GlobalSetup]
@@ -23,14 +25,16 @@ public class RuntimeRuleLinkingBenchmarks
             [new ModActivation("runtime-master", true), new ModActivation("runtime-addon", true)],
             "runtime-master",
             new ModEngineIdentity("Extended", "8.6.1.0"));
-        _content = ContentSnapshotBuilder.Build(plan).Content;
+        var snapshot = ContentSnapshotBuilder.Build(plan);
+        _content = snapshot.Content;
+        _compatibility = snapshot.CompatibilityData.Catalog;
         _country = _content.RuntimeRules.Countries.GetRequired("COUNTRY");
     }
 
     [Benchmark(Baseline = true)]
     public int CompatibilityModelStringLookup()
     {
-        _content.Catalog.CampaignStart.Countries.TryGet("COUNTRY", out var rule);
+        _compatibility.CampaignStart.Countries.TryGet("COUNTRY", out var rule);
         return rule!.Value.FundingCap;
     }
 

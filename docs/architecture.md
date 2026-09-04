@@ -102,7 +102,10 @@ publishes dense immutable projections for the first strategic families, with typ
 generation-scoped handles for eager links and optional resolved handles alongside IDs
 for reference-defined runtime lookups. Numeric slots are internal and never enter mod
 or save schemas. Resource and script references share the same generation boundary.
-See [ADR 0017](decisions/0017-generation-scoped-runtime-rule-handles.md).
+The complete typed catalog, deferred YAML, and provenance live in the separate cold
+`ContentCompatibilityData` sidecar and are not retained by normal gameplay publication.
+See [ADR 0017](decisions/0017-generation-scoped-runtime-rule-handles.md) and
+[ADR 0023](decisions/0023-hot-runtime-content-and-versioned-capabilities.md).
 
 The concrete build-session, runtime-publication, structured-node, and optional-audit
 lifetimes are defined in [content lifetime](content-lifetime.md). Application code must
@@ -170,6 +173,12 @@ narrow, read-only query views and submit commands through validated gameplay API
 they do not receive mutable runtime entities, persistence DTOs, YAML nodes, runtime
 handles, or a general service provider. In-process assemblies are not a security
 boundary and must be treated as fully trusted code.
+
+The experimental API `0.2` grants campaign access as an explicit capability bundle.
+Query, command, and committed-event contracts have stable IDs and independent versions;
+query and command interfaces remain separate. New strategic or tactical features add or
+version narrow capabilities instead of growing one shared access interface. See
+[ADR 0023](decisions/0023-hot-runtime-content-and-versioned-capabilities.md).
 
 Versioned, bounded extension state is represented independently of YAML and is encoded
 by `Oxce.Savegames`. Extension-free saves remain in the ordinary compatibility scope;

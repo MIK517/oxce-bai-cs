@@ -40,6 +40,7 @@ public sealed class InstallationContentLoaderTests
             ],
             progress.Stages);
         Assert.Equal(CompiledContentCacheStatus.Miss, result.CacheStatus);
+        Assert.Null(result.CompatibilityData);
     }
 
     [Fact]
@@ -59,6 +60,8 @@ public sealed class InstallationContentLoaderTests
         Assert.True(second.IsSuccess, second.DescribeFailure());
         Assert.Equal(CompiledContentCacheStatus.Miss, first.CacheStatus);
         Assert.True(second.CacheStatus == CompiledContentCacheStatus.Hit, second.CacheRejectionReason);
+        Assert.Null(first.CompatibilityData);
+        Assert.Null(second.CompatibilityData);
         Assert.NotEqual(first.Content!.Resources.Generation, second.Content!.Resources.Generation);
         Assert.Equal(first.Content.ParsedFileCount, second.Content.ParsedFileCount);
         Assert.Equal(first.Content.Scripts.Count, second.Content.Scripts.Count);
@@ -150,11 +153,14 @@ public sealed class InstallationContentLoaderTests
     {
         using var installation = new TemporaryInstallation("content-ownership");
         var request = installation.Request("ownership-master", "ownership-addon");
+        var options = new InstallationContentLoadOptions { RetainCompatibilityData = true };
         var first = InstallationContentLoader.Load(
             request,
+            options,
             cancellationToken: TestContext.Current.CancellationToken);
         var cached = InstallationContentLoader.Load(
             request,
+            options,
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(first.IsSuccess, first.DescribeFailure());
@@ -162,7 +168,9 @@ public sealed class InstallationContentLoaderTests
         Assert.True(cached.CacheStatus == CompiledContentCacheStatus.Hit, cached.CacheRejectionReason);
         Assert.Equal(0, ExecuteSpriteScript(cached.Content!, "MASTER_ONLY"));
         Assert.Equal(1, ExecuteSpriteScript(cached.Content!, "ADDON_ONLY"));
-        Assert.True(cached.Content!.Catalog.Items.Items.TryGet("SHARED_ITEM", out var shared));
+        Assert.NotNull(first.CompatibilityData);
+        Assert.NotNull(cached.CompatibilityData);
+        Assert.True(cached.CompatibilityData!.Catalog.Items.Items.TryGet("SHARED_ITEM", out var shared));
         var deferred = Assert.Single(shared!.DeferredProperties,
             static property => property.Key == "customCompatibilityPayload" &&
                                property.Source.ModId == "ownership-addon");

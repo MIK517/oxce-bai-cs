@@ -2,15 +2,51 @@ namespace Oxce.Extensions.Abstractions;
 
 public interface ICampaignExtension
 {
-    void Attach(IExtensionCampaignAccess campaign, CancellationToken cancellationToken);
+    void Attach(ExtensionCampaignCapabilities campaign, CancellationToken cancellationToken);
     void OnEvent(ExtensionCampaignEvent campaignEvent);
     void Detach(CancellationToken cancellationToken);
 }
 
-public interface IExtensionCampaignAccess
+public interface IExtensionCampaignQueries
 {
     ExtensionCampaignOverview QueryOverview();
+}
+
+public interface IExtensionCampaignCommands
+{
     ExtensionCampaignCommandResult Execute(ExtensionCampaignCommand command);
+}
+
+public static class ExtensionCampaignCapabilityContracts
+{
+    public static ExtensionCapabilityDescriptor Queries { get; } =
+        new("oxce.campaign.queries", new ExtensionCapabilityVersion(1, 0));
+
+    public static ExtensionCapabilityDescriptor Commands { get; } =
+        new("oxce.campaign.commands", new ExtensionCapabilityVersion(1, 0));
+
+    public static ExtensionCapabilityDescriptor Events { get; } =
+        new("oxce.campaign.events", new ExtensionCapabilityVersion(1, 0));
+}
+
+public sealed class ExtensionCampaignCapabilities
+{
+    public ExtensionCampaignCapabilities(
+        IExtensionCampaignQueries queries,
+        IExtensionCampaignCommands commands)
+    {
+        Queries = queries ?? throw new ArgumentNullException(nameof(queries));
+        Commands = commands ?? throw new ArgumentNullException(nameof(commands));
+        QueryContract = ExtensionCampaignCapabilityContracts.Queries;
+        CommandContract = ExtensionCampaignCapabilityContracts.Commands;
+        EventContract = ExtensionCampaignCapabilityContracts.Events;
+    }
+
+    public ExtensionCapabilityDescriptor QueryContract { get; }
+    public ExtensionCapabilityDescriptor CommandContract { get; }
+    public ExtensionCapabilityDescriptor EventContract { get; }
+    public IExtensionCampaignQueries Queries { get; }
+    public IExtensionCampaignCommands Commands { get; }
 }
 
 public sealed record ExtensionCampaignOverview(

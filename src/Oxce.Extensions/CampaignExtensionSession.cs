@@ -6,7 +6,8 @@ namespace Oxce.Extensions;
 public sealed class CampaignExtensionSession :
     ICampaignQuery,
     ICampaignCommandTarget,
-    IExtensionCampaignAccess,
+    IExtensionCampaignQueries,
+    IExtensionCampaignCommands,
     IDisposable
 {
     private readonly ManagedExtensionHost _host;
@@ -26,12 +27,13 @@ public sealed class CampaignExtensionSession :
         _host = host;
         _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+        var capabilities = new ExtensionCampaignCapabilities(this, this);
         foreach (var extension in host.EnabledCampaignExtensions())
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                ((ICampaignExtension)extension.Instance).Attach(this, cancellationToken);
+                ((ICampaignExtension)extension.Instance).Attach(capabilities, cancellationToken);
                 _attached.Add(extension);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -51,7 +53,7 @@ public sealed class CampaignExtensionSession :
         return _queries.QueryOverview();
     }
 
-    ExtensionCampaignOverview IExtensionCampaignAccess.QueryOverview() => Map(QueryOverview());
+    ExtensionCampaignOverview IExtensionCampaignQueries.QueryOverview() => Map(QueryOverview());
 
     public CampaignCommandResult Execute(ICampaignCommand command)
     {
@@ -67,7 +69,7 @@ public sealed class CampaignExtensionSession :
         }
     }
 
-    ExtensionCampaignCommandResult IExtensionCampaignAccess.Execute(ExtensionCampaignCommand command)
+    ExtensionCampaignCommandResult IExtensionCampaignCommands.Execute(ExtensionCampaignCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
         var result = Execute(command switch

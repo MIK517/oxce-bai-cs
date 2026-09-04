@@ -143,7 +143,7 @@ public sealed class ContentSnapshotTests
             value => value.OwnerId == "ADDON_ONLY" && value.TagName == "Tag.ADDON_POWER" && value.Value == 1);
         Assert.Equal(0, ExecuteSpriteScript(runtimeOnly, "MASTER_ONLY"));
         Assert.Equal(1, ExecuteSpriteScript(runtimeOnly, "ADDON_ONLY"));
-        Assert.True(runtimeOnly.Content.Catalog.Items.Items.TryGet("SHARED_ITEM", out var shared));
+        Assert.True(runtimeOnly.CompatibilityData.Catalog.Items.Items.TryGet("SHARED_ITEM", out var shared));
         Assert.Contains(shared!.CompatibilityData.DeferredProperties,
             property => property.Key == "customCompatibilityPayload");
 
@@ -190,12 +190,13 @@ public sealed class ContentSnapshotTests
     public void ReleasedAuditGraphsAreNotReachableFromRuntimeContent()
     {
         using var fixture = new TemporaryMod("items: [{type: ITEM, customPayload: {value: 1}}]");
-        var (runtime, documents, composed) = BuildRuntimeAndReleaseAudit(CreatePlan(fixture.Root));
+        var (runtime, compatibility, documents, composed) = BuildRuntimeAndReleaseAudit(CreatePlan(fixture.Root));
 
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
 
+        Assert.False(compatibility.IsAlive);
         Assert.False(documents.IsAlive);
         Assert.False(composed.IsAlive);
         Assert.True(runtime.Capabilities.Has(ContentLoadStage.ScriptsCompiled));
@@ -218,17 +219,22 @@ public sealed class ContentSnapshotTests
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static (RuntimeContent Runtime, WeakReference Documents, WeakReference Composed)
+    private static (
+        RuntimeContent Runtime,
+        WeakReference Compatibility,
+        WeakReference Documents,
+        WeakReference Composed)
         BuildRuntimeAndReleaseAudit(ModLoadPlan plan)
     {
         var snapshot = ContentSnapshotBuilder.Build(
             plan,
             options: new ContentSnapshotOptions { RetainAuditArtifact = true });
         var audit = snapshot.AuditArtifact!;
+        var compatibility = new WeakReference(snapshot.CompatibilityData);
         var documents = new WeakReference(audit.Documents);
         var composed = new WeakReference(audit.ComposedRules);
         audit.Dispose();
-        return (snapshot.Content, documents, composed);
+        return (snapshot.Content, compatibility, documents, composed);
     }
 
     private static string FindRepositoryRoot()

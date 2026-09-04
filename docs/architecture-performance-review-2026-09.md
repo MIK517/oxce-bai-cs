@@ -63,6 +63,10 @@ grow substantially, publish a hot runtime representation and a cold compatibilit
 Unknown nodes, source provenance, and stable identities remain available without duplicating
 all known fields indefinitely. Retained memory should be reported by rule family.
 
+Resolved on 2026-09-04: `RuntimeContent` retains only dense execution data; typed rules,
+deferred YAML, and provenance moved to explicit `ContentCompatibilityData`. Staged
+40k/Rosigma retained runtime memory fell from 168.6 MiB to 30.2 MiB.
+
 ### Evolve campaign and extension APIs by capability
 
 Campaign commands, extension commands, and extension event mapping currently use separate
@@ -71,6 +75,11 @@ research, manufacture, and tactical slices would turn these into multi-file chan
 Keep validation and transactions centralized, but group operations into versioned feature
 capabilities and registered internal handlers. Extension contracts should expose stable IDs and
 narrow snapshots rather than mirror the complete internal domain graph.
+
+The extension-facing portion was resolved in API `0.2`: campaign query, command, and
+event contracts now have stable IDs and independent capability versions. Internal
+handler registration remains part of the next owning strategic slices rather than a
+generic framework added ahead of consumers.
 
 ### Close Unicode and case canonicalization before durable caching
 

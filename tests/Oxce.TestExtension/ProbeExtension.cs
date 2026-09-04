@@ -22,11 +22,15 @@ public sealed class ProbeExtension : IManagedExtension, ICampaignExtension, IMan
     public void Shutdown(CancellationToken cancellationToken) =>
         cancellationToken.ThrowIfCancellationRequested();
 
-    public void Attach(IExtensionCampaignAccess campaign, CancellationToken cancellationToken)
+    public void Attach(ExtensionCampaignCapabilities campaign, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        _ = campaign.QueryOverview();
-        _ = campaign.Execute(new ExtensionAdvanceCampaignTime(1));
+        if (campaign.QueryContract != ExtensionCampaignCapabilityContracts.Queries ||
+            campaign.CommandContract != ExtensionCampaignCapabilityContracts.Commands ||
+            campaign.EventContract != ExtensionCampaignCapabilityContracts.Events)
+            throw new InvalidOperationException("Unexpected campaign capability contract.");
+        _ = campaign.Queries.QueryOverview();
+        _ = campaign.Commands.Execute(new ExtensionAdvanceCampaignTime(1));
         _attached = 1;
     }
 
@@ -70,7 +74,7 @@ public sealed class ThrowOnEventExtension : IManagedExtension, ICampaignExtensio
     {
     }
 
-    public void Attach(IExtensionCampaignAccess campaign, CancellationToken cancellationToken)
+    public void Attach(ExtensionCampaignCapabilities campaign, CancellationToken cancellationToken)
     {
     }
 

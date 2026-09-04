@@ -225,7 +225,7 @@
         "type": "Project",
         "dependencies": {
           "Oxce.Core": "[1.0.0, )",
-          "Oxce.Extensions.Abstractions": "[0.1.0, )",
+          "Oxce.Extensions.Abstractions": "[0.2.0, )",
           "Oxce.Gameplay": "[1.0.0, )"
         }
       },
@@ -299,7 +299,7 @@
       "oxce.testextension": {
         "type": "Project",
         "dependencies": {
-          "Oxce.Extensions.Abstractions": "[0.1.0, )"
+          "Oxce.Extensions.Abstractions": "[0.2.0, )"
         }
       },
       "Microsoft.Extensions.Logging.Abstractions": {

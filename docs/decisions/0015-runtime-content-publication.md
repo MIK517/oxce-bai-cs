@@ -4,6 +4,11 @@
 
 Accepted for post-Phase-4 Slice 1.
 
+The later hot/cold split in
+[ADR 0023](0023-hot-runtime-content-and-versioned-capabilities.md) moves linked typed
+catalogs and deferred compatibility data out of `RuntimeContent`; this ADR's separation
+of build/audit roots remains in force.
+
 ## Context
 
 The Phase 4 `ContentSnapshot` published `Phase3ContentBuild`. That object retained the
