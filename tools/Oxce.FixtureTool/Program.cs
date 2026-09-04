@@ -334,7 +334,7 @@ internal static class FixtureTool
         campaign.Execute(new AdvanceCampaignTime(12));
 
         var saveTimer = Stopwatch.StartNew();
-        OxceSaveAdapter.WriteAtomic(destination, campaign.Capture());
+        OxceSaveAdapter.WriteNewCampaignAtomic(destination, campaign.Capture());
         saveTimer.Stop();
         var loadTimer = Stopwatch.StartNew();
         var loaded = OxceSaveAdapter.LoadFile(

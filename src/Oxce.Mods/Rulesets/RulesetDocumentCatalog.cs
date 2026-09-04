@@ -75,7 +75,7 @@ public sealed class RulesetDocumentCatalog
                         stream.Documents[0].Root.Span);
                 }
 
-                documents.Add(new RulesetDocument(group.Mod, file, root));
+                documents.Add(new RulesetDocument(parsedFileCount - 1, group.Mod, file, root));
             }
         }
 
@@ -84,6 +84,7 @@ public sealed class RulesetDocumentCatalog
 }
 
 internal sealed record RulesetDocument(
+    int DocumentId,
     ModCandidate Mod,
     VirtualFileEntry File,
     YamlMappingNode Root);

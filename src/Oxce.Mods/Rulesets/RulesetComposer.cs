@@ -96,7 +96,13 @@ public static class RulesetComposer
                         throw Error(item.Span, $"Entries in rule section '{state.Definition.Name}' must be mappings.");
                     }
 
-                    Apply(state, ruleNode, document.Mod.Metadata.Id, document.File, diagnostics);
+                    Apply(
+                        state,
+                        ruleNode,
+                        document.DocumentId,
+                        document.Mod.Metadata.Id,
+                        document.File,
+                        diagnostics);
                 }
             }
         }
@@ -107,6 +113,7 @@ public static class RulesetComposer
     private static void Apply(
         SectionState state,
         YamlMappingNode node,
+        int documentId,
         string modId,
         VirtualFileEntry file,
         IDiagnosticSink diagnostics)
@@ -184,7 +191,7 @@ public static class RulesetComposer
         var operation = new UnresolvedRuleOperation(
             kind,
             node,
-            new RuleOperationSource(file.Provenance.LayerId, modId, file.SourcePath, node.Span));
+            new RuleOperationSource(file.Provenance.LayerId, modId, file.SourcePath, node.Span, documentId));
         if (exists)
         {
             rule!.Operations.Add(operation);
