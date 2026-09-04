@@ -90,7 +90,8 @@ public sealed class Phase3ContentCorpusTests
                 options: new ContentSnapshotOptions { RetainAuditArtifact = true });
             using var auditArtifact = Assert.IsType<ContentAuditArtifact>(snapshot.AuditArtifact);
             var content = snapshot.Content;
-            Assert.True(content.Catalog.Capabilities.Has(ContentLoadStage.Typed));
+            var catalog = snapshot.CompatibilityData.Catalog;
+            Assert.True(catalog.Capabilities.Has(ContentLoadStage.Typed));
             var scriptErrors = snapshot.Diagnostics.Where(static item =>
                 item.Severity >= DiagnosticSeverity.Error &&
                 (item.Code == ModDiagnosticCodes.InvalidScriptContent ||
@@ -98,7 +99,7 @@ public sealed class Phase3ContentCorpusTests
             Assert.True(scriptErrors.Length == 0, string.Join(
                 Environment.NewLine,
                 scriptErrors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
-            if (content.Catalog.Capabilities.Has(ContentLoadStage.Linked))
+            if (catalog.Capabilities.Has(ContentLoadStage.Linked))
             {
                 Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), string.Join(
                 Environment.NewLine,
@@ -106,7 +107,7 @@ public sealed class Phase3ContentCorpusTests
                     .Take(25).Select(static item => item.Message)));
             }
             var manifest = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
-                content,
+                snapshot,
                 auditArtifact,
                 new RulesetCatalogNormalizationOptions
                 {

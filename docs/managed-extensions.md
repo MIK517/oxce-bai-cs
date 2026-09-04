@@ -18,15 +18,15 @@ and any private managed or native dependencies. The initial manifest schema is:
   "version": "1.0.0",
   "entryAssembly": "Vendor.Extension.dll",
   "entryType": "Vendor.Extension.EntryPoint",
-  "minimumApiVersion": "0.1",
-  "maximumApiVersionExclusive": "0.2"
+  "minimumApiVersion": "0.2",
+  "maximumApiVersionExclusive": "0.3"
 }
 ```
 
 IDs are case-sensitive and contain at most 128 ASCII letters, digits, dots, hyphens,
 or underscores. Entry assemblies must remain inside their extension directory. The
 entry type is a public, concrete `IManagedExtension` with a public parameterless
-constructor. The current experimental host API is `0.1`; compatibility uses the
+constructor. The current experimental host API is `0.2`; compatibility uses the
 half-open interval declared by the manifest.
 
 The host scans at most 256 immediate directories and reads manifests no larger than
@@ -36,10 +36,13 @@ identity remains stable. Extensions and dependencies remain loaded until process
 
 ## Current capabilities
 
-An extension can implement `ICampaignExtension` to receive a copied campaign overview,
-submit the currently implemented validated campaign commands, and observe the resulting
-committed events. Event callbacks cannot submit another command. Unknown future
-gameplay events are not exposed until an explicit abstraction projection is added.
+An extension can implement `ICampaignExtension` to receive an
+`ExtensionCampaignCapabilities` bundle. `oxce.campaign.queries`,
+`oxce.campaign.commands`, and `oxce.campaign.events` are independently versioned `1.0`
+contracts. Queries and commands use separate interfaces; committed events arrive only
+through the extension callback, and event callbacks cannot submit another command.
+Unknown future gameplay events are not exposed until an explicit versioned abstraction
+projection is added.
 
 Exceptions at lifecycle, campaign, or state callbacks disable the extension and emit
 structured `EXT` diagnostics. This protects host control flow, but it is not a sandbox:
