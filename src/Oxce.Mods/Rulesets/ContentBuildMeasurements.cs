@@ -28,6 +28,14 @@ public sealed record ContentBuildMeasurements(
     ContentBuildStageMeasurement ScriptCompilation,
     ContentBuildStageMeasurement RuntimeRuleLinking)
 {
+    public static ContentBuildMeasurements Empty { get; } = new(
+        ContentBuildStageMeasurement.Empty,
+        ContentBuildStageMeasurement.Empty,
+        ContentBuildStageMeasurement.Empty,
+        ContentBuildStageMeasurement.Empty,
+        ContentBuildStageMeasurement.Empty,
+        ContentBuildStageMeasurement.Empty);
+
     public ContentBuildMeasurements WithResourceResolution(ContentBuildStageMeasurement measurement) =>
         this with { ResourceResolution = measurement };
 

@@ -6,7 +6,8 @@ namespace Oxce.Mods.Rulesets.EquipmentProduction;
 
 public sealed class EquipmentProductionRuleCatalog
 {
-    private EquipmentProductionRuleCatalog(
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal EquipmentProductionRuleCatalog(
         TypedRuleSection<ItemCategoryRule> itemCategories,
         TypedRuleSection<WeaponSetRule> weaponSets,
         TypedRuleSection<CraftWeaponRule> craftWeapons,

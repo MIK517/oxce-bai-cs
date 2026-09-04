@@ -7,7 +7,8 @@ namespace Oxce.Mods.Rulesets.PersonnelTactical;
 
 public sealed class PersonnelTacticalRuleCatalog
 {
-    private PersonnelTacticalRuleCatalog(
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal PersonnelTacticalRuleCatalog(
         TypedRuleSection<InventoryRule> inventories,
         TypedRuleSection<ArmorRule> armors,
         TypedRuleSection<SkillRule> skills,

@@ -78,7 +78,8 @@ public abstract class TypedRuleFamilyLoader<TBuilder, TRule>
 
 public sealed class RuleCompatibilityData
 {
-    internal RuleCompatibilityData(IEnumerable<DeferredRuleProperty> deferredProperties)
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal RuleCompatibilityData(IReadOnlyList<DeferredRuleProperty> deferredProperties)
     {
         DeferredProperties = Array.AsReadOnly(deferredProperties.ToArray());
     }
@@ -102,7 +103,8 @@ public sealed class TypedRuleSection<TRule>
 {
     private readonly ReadOnlyDictionary<string, TypedRule<TRule>> _byId;
 
-    internal TypedRuleSection(RuleSectionDefinition definition, IEnumerable<TypedRule<TRule>> rules)
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal TypedRuleSection(RuleSectionDefinition definition, IReadOnlyList<TypedRule<TRule>> rules)
     {
         Definition = definition;
         var ordered = rules.ToArray();

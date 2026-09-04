@@ -53,6 +53,70 @@ public sealed class CampaignStartSettings
         OperationNamesLast = builder.OperationNamesLast.AsReadOnly();
     }
 
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal CampaignStartSettings(
+        IReadOnlyDictionary<StartingBaseVariant, YamlMappingNode> startingBases,
+        CampaignStartTime startingTime,
+        int startingDifficulty,
+        int costHireEngineer,
+        int costHireScientist,
+        int costEngineer,
+        int costScientist,
+        int personnelTransferTime,
+        int hireByCountryOdds,
+        int hireByRegionOdds,
+        int initialFunding,
+        int globalTransferCostMultiplier,
+        int globalTransferCostDivisor,
+        string psiUnlockResearch,
+        string fakeUnderwaterBaseUnlockResearch,
+        string newBaseUnlockResearch,
+        string hireScientistsUnlockResearch,
+        string hireEngineersUnlockResearch,
+        IReadOnlyList<string> hireScientistsRequiredBaseFunctions,
+        IReadOnlyList<string> hireEngineersRequiredBaseFunctions,
+        string destroyedFacility,
+        int defeatScore,
+        int defeatFunds,
+        bool difficultyDemigod,
+        IReadOnlyList<string> baseNamesFirst,
+        IReadOnlyList<string> baseNamesMiddle,
+        IReadOnlyList<string> baseNamesLast,
+        IReadOnlyList<string> operationNamesFirst,
+        IReadOnlyList<string> operationNamesLast)
+    {
+        StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
+            new Dictionary<StartingBaseVariant, YamlMappingNode>(startingBases));
+        StartingTime = startingTime;
+        StartingDifficulty = startingDifficulty;
+        CostHireEngineer = costHireEngineer;
+        CostHireScientist = costHireScientist;
+        CostEngineer = costEngineer;
+        CostScientist = costScientist;
+        PersonnelTransferTime = personnelTransferTime;
+        HireByCountryOdds = hireByCountryOdds;
+        HireByRegionOdds = hireByRegionOdds;
+        InitialFunding = initialFunding;
+        GlobalTransferCostMultiplier = globalTransferCostMultiplier;
+        GlobalTransferCostDivisor = globalTransferCostDivisor;
+        PsiUnlockResearch = psiUnlockResearch;
+        FakeUnderwaterBaseUnlockResearch = fakeUnderwaterBaseUnlockResearch;
+        NewBaseUnlockResearch = newBaseUnlockResearch;
+        HireScientistsUnlockResearch = hireScientistsUnlockResearch;
+        HireEngineersUnlockResearch = hireEngineersUnlockResearch;
+        HireScientistsRequiredBaseFunctions = Array.AsReadOnly(hireScientistsRequiredBaseFunctions.ToArray());
+        HireEngineersRequiredBaseFunctions = Array.AsReadOnly(hireEngineersRequiredBaseFunctions.ToArray());
+        DestroyedFacility = destroyedFacility;
+        DefeatScore = defeatScore;
+        DefeatFunds = defeatFunds;
+        DifficultyDemigod = difficultyDemigod;
+        BaseNamesFirst = Array.AsReadOnly(baseNamesFirst.ToArray());
+        BaseNamesMiddle = Array.AsReadOnly(baseNamesMiddle.ToArray());
+        BaseNamesLast = Array.AsReadOnly(baseNamesLast.ToArray());
+        OperationNamesFirst = Array.AsReadOnly(operationNamesFirst.ToArray());
+        OperationNamesLast = Array.AsReadOnly(operationNamesLast.ToArray());
+    }
+
     public IReadOnlyDictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; }
     public CampaignStartTime StartingTime { get; }
     public int StartingDifficulty { get; }

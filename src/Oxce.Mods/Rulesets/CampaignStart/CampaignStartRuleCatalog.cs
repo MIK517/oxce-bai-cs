@@ -5,7 +5,8 @@ namespace Oxce.Mods.Rulesets.CampaignStart;
 
 public sealed class CampaignStartRuleCatalog
 {
-    private CampaignStartRuleCatalog(
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal CampaignStartRuleCatalog(
         TypedRuleSection<CountryRule> countries,
         TypedRuleSection<CountryRule> globeLabels,
         TypedRuleSection<RegionRule> regions,

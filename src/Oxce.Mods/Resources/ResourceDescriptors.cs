@@ -81,6 +81,7 @@ public sealed record ResolvedResourceIndex(
 public sealed class ResolvedResourceCatalog
 {
     private readonly ResolvedResourceDescriptor[] _descriptors;
+    private readonly ResolvedResourceIndex[] _indexEntries;
     private readonly ReadOnlyDictionary<string, ResourceHandle> _handlesById;
     private readonly FrozenDictionary<(ResourceKind Kind, string SetId, string ModId, int DeclaredIndex), ResolvedResourceIndex>
         _indexes;
@@ -112,12 +113,15 @@ public sealed class ResolvedResourceCatalog
         _handlesById = new ReadOnlyDictionary<string, ResourceHandle>(
             _descriptors.ToDictionary(static descriptor => descriptor.Id, static descriptor => descriptor.Handle,
                 StringComparer.Ordinal));
-        _indexes = (indexes ?? []).ToFrozenDictionary(
+        _indexEntries = (indexes ?? []).ToArray();
+        _indexes = _indexEntries.ToFrozenDictionary(
             static index => (index.Kind, index.SetId, index.ModId, index.DeclaredIndex));
     }
 
     public ContentGenerationId Generation { get; }
     public IReadOnlyList<ResolvedResourceDescriptor> Descriptors => _descriptors;
+
+    public IReadOnlyList<ResolvedResourceIndex> Indexes => _indexEntries;
 
     public ResolvedResourceDescriptor this[ResourceHandle handle]
     {

@@ -5,6 +5,8 @@ namespace Oxce.Scripting.Api;
 
 public static class ReferenceScriptApiCatalog
 {
+    public const int SchemaVersion = 1;
+
     private const string ResourceName = "Oxce.Scripting.script-api-catalog.json";
     private static readonly ScriptReferenceLocation Reference = new("src/Engine/Script.cpp", 3906);
     private static readonly Lazy<ScriptApiCatalog> Catalog = new(LoadCore);

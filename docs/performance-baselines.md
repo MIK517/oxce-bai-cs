@@ -435,6 +435,29 @@ the captures are not interleaved. All runs retained 512 files, 3,875 attempted s
 all semantic manifests remained byte-identical at 9,591,410 bytes with SHA-256
 `C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
 
+### Compiled-content cache result
+
+The versioned-cache slice was measured on 2026-09-04 on the same Ryzen 9 7940HS host,
+.NET SDK 10.0.302, and .NET runtime 10.0.10. Each value below is the median of three
+separate production-loader processes against the staged 40k/Rosigma installation,
+except the one-time cache publication row:
+
+| Production load | Elapsed | Current-thread allocation | Change from fresh |
+|---|---:|---:|---:|
+| Cache disabled, fresh median | 7,811.5 ms | 1,888.6 MiB | baseline |
+| Stale rejection and cache publication | 11,621.3 ms | 2,078.2 MiB | +48.8% elapsed; +10.0% allocation |
+| Warm cache-hit median | 5,366.8 ms | 943.0 MiB | -31.3% elapsed; -50.1% allocation |
+
+The gzip image plus identity header is 19,037,803 bytes (18.16 MiB). All runs published
+512 parsed files, 3,536 script artifacts, 24,623 resource descriptors, and 3,387
+compatibility entries.
+The cache persists the cold compatibility graph but deliberately recreates generation
+handles and runtime-rule projections, so the remaining warm cost is not merely file I/O.
+The stale identity was rejected from the fixed header before decompression. The slower
+publication run is accepted because caching is optional, atomic, and amortized
+over later launches; a no-compression experiment produced a 231 MiB image and was
+rejected. Wall-clock values remain local observations rather than CI gates.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time
