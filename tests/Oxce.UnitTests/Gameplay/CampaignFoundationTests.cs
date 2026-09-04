@@ -12,6 +12,36 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class CampaignFoundationTests
 {
+    [Theory]
+    [InlineData(1999, 1, 30, false)]
+    [InlineData(1999, 1, 31, true)]
+    [InlineData(2000, 2, 29, true)]
+    [InlineData(1999, 12, 31, true)]
+    public void MidnightCountsEveryDayIncludingMonthBoundaries(int year, int month, int day, bool monthly)
+    {
+        var content = LoadFixture();
+        var original = CampaignFactory.Create(content, Request(), new SplitMix64RandomSource(42), new FixedClock());
+        var snapshot = original.Capture() with
+        {
+            Time = new CampaignTime(1, day, month, year, 23, 59, 55),
+            DaysPassed = 30,
+            MonthsPassed = 2,
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(0));
+        var result = campaign.Execute(new AdvanceCampaignTime(2));
+        Assert.Equal(31, campaign.DaysPassed);
+        Assert.Equal(monthly ? 3 : 2, campaign.MonthsPassed);
+        var advanced = Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events));
+        Assert.Equal(monthly ? 1 : 0, advanced.Summary.OneMonth);
+        Assert.Equal(monthly ? 0 : 1, advanced.Summary.OneDay);
+        var replay = advanced.Triggers.GetEnumerator();
+        Assert.True(replay.MoveNext());
+        Assert.Equal(monthly ? CampaignTimeTrigger.OneMonth : CampaignTimeTrigger.OneDay, replay.Current);
+        Assert.True(replay.MoveNext());
+        Assert.Equal(CampaignTimeTrigger.FiveSeconds, replay.Current);
+        Assert.False(replay.MoveNext());
+    }
+
     [Fact]
     public void FiveSecondCalendarMatchesReferenceTriggerPrecedenceAndLeapYear()
     {
