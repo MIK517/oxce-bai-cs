@@ -97,6 +97,14 @@ workload on 2026-08-20. Its specialized loose-file representation measured 93.74
 directory entries. Short-run timing remains informational rather than a performance
 gate.
 
+The portable Unicode canonicalization slice was measured on 2026-09-04 on the same
+Ryzen 9 7940HS host, .NET SDK 10.0.302, and runtime 10.0.10. The established ASCII
+normalization workload measured 102.4 ns and 376 B per operation, compared with the
+earlier 90.9 ns and 376 B baseline. A new representative Unicode workload measured
+343.6 ns and 216 B. The compatibility path remains a small part of discovery and content
+startup; ASCII inputs bypass rune mapping, while non-ASCII inputs receive scalar
+validation and the pinned-reference-compatible mapping.
+
 ## 2026-08-29 content-build and YAML evaluation
 
 Measured on Windows 11 with a Ryzen 9 7940HS, .NET SDK 10.0.302, runtime 10.0.10,

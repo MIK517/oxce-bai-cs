@@ -96,6 +96,7 @@ internal static class CompiledContentCache
         writer.String("OXCE compiled content cache");
         writer.Int32(FormatVersion);
         writer.Int32(CompilerRevision);
+        writer.Int32(VirtualPath.CanonicalizationVersion);
         writer.Int32(RulesetCatalogNormalizer.SchemaVersion);
         writer.Int32(Phase3ContentManifestNormalizer.SchemaVersion);
         writer.Int32(ReferenceScriptApiCatalog.SchemaVersion);
