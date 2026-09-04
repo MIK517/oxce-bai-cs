@@ -8,6 +8,38 @@ namespace Oxce.CompatibilityTests;
 public sealed class VirtualFileCatalogFixtureTests
 {
     [Fact]
+    public void UnicodeCanonicalizationMatchesCapturedWindowsCppReference()
+    {
+        var root = FindRepositoryRoot();
+        var manifestPath = Path.Combine(root, "fixtures", "manifests", "vfs-unicode-canonicalization.json");
+        var manifest = FixtureManifestLoader.Load(manifestPath);
+        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
+        var paths = File.ReadLines(fixturePath)
+            .Where(static line => line.Length != 0)
+            .Select(static line =>
+            {
+                var separator = line.IndexOf('\t');
+                if (separator < 0)
+                {
+                    throw new InvalidDataException("Unicode VFS fixture rows require an ID and path.");
+                }
+                var original = line[(separator + 1)..];
+                return new
+                {
+                    id = line[..separator],
+                    original,
+                    canonical = VirtualPath.NormalizeFile(original),
+                };
+            })
+            .ToArray();
+        var actual = JsonSerializer.SerializeToUtf8Bytes(new { paths });
+        var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
+
+        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+    }
+
+    [Fact]
     public void LayeredCatalogMatchesCapturedCppReference()
     {
         var root = FindRepositoryRoot();

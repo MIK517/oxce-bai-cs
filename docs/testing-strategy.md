@@ -108,6 +108,13 @@ Each expected fixture records:
 Do not commit original X-COM data. Prefer tiny synthetic files that isolate a format
 feature; use manifests and local hashes for end-to-end tests requiring owned assets.
 
+Virtual-path compatibility uses `vfs-unicode-canonicalization`, captured from pinned
+Windows OXCE `CharLowerW` behavior. It covers representative BMP and supplementary
+case pairs, compatibility characters, and composed/decomposed spellings. Generated
+directory and ZIP tests separately prove collision, prefix, original-spelling, and
+loose-over-archive behavior on every CI platform. Physical-path tests cover Unicode mod
+directories, archive names, save directories, and save filenames.
+
 ## Test and fixture runners
 
 Unit and compatibility tests use centrally pinned xUnit v3 packages on Microsoft

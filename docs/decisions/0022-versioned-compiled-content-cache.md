@@ -63,5 +63,8 @@ failure cannot turn a successful fresh content build into a startup failure.
   bypass the cache. The semantic manifest remains the fresh-build oracle.
 - Format evolution requires an explicit revision change or a participating assembly
   identity change; old entries fail closed and are replaced after a fresh build.
+- Virtual-path canonicalization has its own explicit key revision under
+  [ADR 0024](0024-portable-virtual-path-canonicalization.md), so lookup-policy changes
+  cannot reuse an image built with older resource identities.
 - The cache currently keeps one image per configured directory. Switching active mod
   sets replaces it rather than allowing unbounded per-profile cache growth.

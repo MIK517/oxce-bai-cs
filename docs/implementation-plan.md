@@ -318,9 +318,10 @@ their owning gameplay slices. See
 
 ## Immediate next tasks
 
-The September compatibility-guardrail, script-allocation, compiled-content-cache, and
-hot-runtime-partitioning slices are complete. The production content root no longer
-retains typed compatibility/provenance graphs, and managed-extension API `0.2` exposes
+The September compatibility-guardrail, script-allocation, compiled-content-cache,
+hot-runtime-partitioning, and portable Unicode-path slices are complete. The production
+content root no longer retains typed compatibility/provenance graphs, virtual resource
+identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
 1. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next

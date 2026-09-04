@@ -5,6 +5,7 @@ namespace Oxce.Mods.Files;
 internal sealed record ZipEntryDescriptor(
     int Index,
     string EntryName,
+    string OriginalPath,
     string CanonicalPath,
     long Length);
 
@@ -98,7 +99,12 @@ internal sealed class ZipArchiveIndex
 
             totalLength += entry.Length;
 
-            entries.Add(new ZipEntryDescriptor(index, entry.FullName, canonicalPath!, entry.Length));
+            entries.Add(new ZipEntryDescriptor(
+                index,
+                entry.FullName,
+                entry.FullName.Replace('\\', '/'),
+                canonicalPath!,
+                entry.Length));
         }
 
         return new ZipArchiveIndex(fullPath, entries.ToArray(), topLevelDirectories.ToArray(), rejected);
@@ -112,13 +118,14 @@ internal sealed class ZipArchiveIndex
         ArgumentNullException.ThrowIfNull(prefix);
         ArgumentNullException.ThrowIfNull(provenance);
         var canonicalPrefix = prefix.Length == 0 ? string.Empty : VirtualPath.NormalizeDirectory(prefix) + "/";
+        var prefixSegmentCount = prefix.Length == 0
+            ? 0
+            : prefix.Replace('\\', '/').TrimEnd('/').Count(static character => character == '/') + 1;
         var sources = Entries
             .Where(entry => canonicalPrefix.Length == 0 || entry.CanonicalPath.StartsWith(canonicalPrefix, StringComparison.Ordinal))
             .Select(entry =>
             {
-                var relativePath = canonicalPrefix.Length == 0
-                    ? entry.CanonicalPath
-                    : entry.CanonicalPath[canonicalPrefix.Length..];
+                var relativePath = RemovePrefixSegments(entry.OriginalPath, prefixSegmentCount);
                 return VirtualFileSource.FromZip(
                     relativePath,
                     $"{ArchivePath}!/{entry.EntryName.Replace('\\', '/')}",
@@ -127,6 +134,21 @@ internal sealed class ZipArchiveIndex
                     entry.EntryName);
             });
         return VirtualFileLayer.FromEntries(provenance, sources, ignoreRulesets);
+    }
+
+    private static string RemovePrefixSegments(string path, int segmentCount)
+    {
+        var offset = 0;
+        for (var index = 0; index < segmentCount; ++index)
+        {
+            offset = path.IndexOf('/', offset);
+            if (offset < 0)
+            {
+                throw new InvalidDataException($"ZIP entry '{path}' does not contain its selected prefix.");
+            }
+            ++offset;
+        }
+        return path[offset..];
     }
 
     public bool ContainsPrefix(string prefix)
@@ -155,8 +177,15 @@ internal sealed class ZipArchiveIndex
             return false;
         }
 
-        canonicalPath = normalized.ToLowerInvariant();
-        return true;
+        try
+        {
+            canonicalPath = VirtualPath.NormalizeFile(normalized);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 }
 

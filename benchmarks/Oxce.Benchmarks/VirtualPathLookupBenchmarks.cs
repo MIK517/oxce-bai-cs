@@ -11,6 +11,7 @@ public class VirtualPathLookupBenchmarks
 {
     private const int Operations = 1_024;
     private string[] _pathsToNormalize = null!;
+    private string[] _unicodePathsToNormalize = null!;
     private string[] _pathsToFind = null!;
     private VirtualFileLayer[] _layers = null!;
     private VirtualFileCatalog _catalog = null!;
@@ -20,6 +21,19 @@ public class VirtualPathLookupBenchmarks
     {
         _pathsToNormalize = Enumerable.Range(0, Operations)
             .Select(index => $"Ruleset\\Group-{index % 32:D2}\\Resource-{index:D4}.DAT")
+            .ToArray();
+        var unicodePaths = new[]
+        {
+            "ÜBER\\CAFÉ.DAT",
+            "ΣΧΗΜΑ\\ΔΕΛΤΑ.DAT",
+            "MUSIK\\ẞ.DAT",
+            "TEMP\\KELVIN.DAT",
+            "TÜRKİYE\\İ.DAT",
+            "NORM\\CAFE\u0301.DAT",
+            "SCRIPT\\𐐀.DAT",
+        };
+        _unicodePathsToNormalize = Enumerable.Range(0, Operations)
+            .Select(index => unicodePaths[index % unicodePaths.Length])
             .ToArray();
         _pathsToFind = Enumerable.Range(0, Operations)
             .Select(index => index % 4 == 0
@@ -42,6 +56,19 @@ public class VirtualPathLookupBenchmarks
     {
         var length = 0;
         foreach (var path in _pathsToNormalize)
+        {
+            length += VirtualPath.NormalizeFile(path).Length;
+        }
+
+        return length;
+    }
+
+    [Benchmark(OperationsPerInvoke = Operations)]
+    [BenchmarkCategory("UnicodePath")]
+    public int NormalizeUnicodePaths()
+    {
+        var length = 0;
+        foreach (var path in _unicodePathsToNormalize)
         {
             length += VirtualPath.NormalizeFile(path).Length;
         }
