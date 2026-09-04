@@ -39,7 +39,7 @@ internal static class CampaignSdlCommand
         var result = host.Run();
         if (destination != "-")
         {
-            OxceSaveAdapter.WriteAtomic(Path.GetFullPath(destination), campaign.Capture());
+            OxceSaveAdapter.WriteNewCampaignAtomic(Path.GetFullPath(destination), campaign.Capture());
             Console.WriteLine($"Campaign saved to {Path.GetFullPath(destination)}");
         }
         foreach (var diagnostic in extensionDiagnostics.Snapshot()

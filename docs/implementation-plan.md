@@ -318,9 +318,16 @@ their owning gameplay slices. See
 
 ## Immediate next tasks
 
-1. Complete the managed-extension foundation that the campaign contracts can exercise;
-   defer tactical AI and live extension-state saves to their owning slices.
-2. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
+1. Close compatibility-preservation guardrails: distinguish new saves from loaded
+   rewrites, require the opaque source for rewrites, and use stable ruleset document
+   identity for file-local script visibility.
+2. Reduce script-compilation allocation by checking scope revisions before catalog
+   materialization and indexing parser-group bindings; retain the change only with
+   controlled stage/allocation measurements.
+3. Add a versioned, atomically published compiled-content cache whose invalidation key
+   includes ordered mods, strong input identities, compatibility/API revisions, and
+   compiler limits. Keep fresh-build audit comparison available.
+4. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
    persisted strategic slice, including their owning script providers and UI actions.
-3. Continue adding focused executable C++ probes, compatibility matrix entries, and
+5. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

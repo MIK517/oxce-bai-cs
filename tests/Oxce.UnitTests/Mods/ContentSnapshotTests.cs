@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
@@ -5,6 +6,7 @@ using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.Scripting.Diagnostics;
 using Oxce.Scripting.Runtime;
 using Xunit;
 
@@ -157,6 +159,33 @@ public sealed class ContentSnapshotTests
     }
 
     [Fact]
+    public void ScriptScopesUseDocumentIdentityWhenArchivePathsDifferOnlyByCase()
+    {
+        using var fixture = new TemporaryArchiveMod(
+            """
+            items:
+              - type: EARLY
+                scripts:
+                  selectItemSprite: add sprite_index Tag.LATE; return sprite_index;
+            """,
+            """
+            extended:
+              tags:
+                RuleItem:
+                  LATE: int
+            """);
+
+        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
+
+        Assert.Equal(2, snapshot.Content.ParsedFileCount);
+        Assert.Equal(2, snapshot.SourceScopeCount);
+        Assert.False(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled));
+        Assert.Contains(snapshot.Diagnostics, static diagnostic =>
+            diagnostic.Code == ScriptDiagnosticCodes.UnknownSymbol &&
+            diagnostic.Message.Contains("Tag.LATE", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ReleasedAuditGraphsAreNotReachableFromRuntimeContent()
     {
         using var fixture = new TemporaryMod("items: [{type: ITEM, customPayload: {value: 1}}]");
@@ -237,5 +266,29 @@ public sealed class ContentSnapshotTests
         public string Root { get; }
 
         public void Dispose() => Directory.Delete(Root, recursive: true);
+    }
+
+    private sealed class TemporaryArchiveMod : IDisposable
+    {
+        public TemporaryArchiveMod(string firstRules, string secondRules)
+        {
+            Root = Path.Combine(Path.GetTempPath(), "oxce-content-archive-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Root);
+            using var archive = ZipFile.Open(Path.Combine(Root, "fixture.zip"), ZipArchiveMode.Create);
+            Write(archive, "metadata.yml", "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\n");
+            Write(archive, "Ruleset/a.rul", firstRules);
+            Write(archive, "Ruleset/A.rul", secondRules);
+        }
+
+        public string Root { get; }
+
+        public void Dispose() => Directory.Delete(Root, recursive: true);
+
+        private static void Write(ZipArchive archive, string path, string content)
+        {
+            var entry = archive.CreateEntry(path);
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
+        }
     }
 }
