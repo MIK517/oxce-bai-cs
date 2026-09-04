@@ -1,0 +1,9 @@
+ascii	GEOGRAPH/WORLD.DAT
+latin	ÜBER/CAFÉ.DAT
+greek	ΣΧΗΜΑ/ΔΕΛΤΑ.DAT
+sharp-s	MUSIK/ẞ.DAT
+kelvin	TEMP/KELVIN.DAT
+turkish-dotted-i	TÜRKİYE/İ.DAT
+composed	NORM/CAFÉ.DAT
+decomposed	NORM/CAFÉ.DAT
+deseret	SCRIPT/𐐀.DAT

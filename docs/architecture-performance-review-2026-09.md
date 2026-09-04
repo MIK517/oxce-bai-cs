@@ -91,6 +91,12 @@ target-platform-specific or follows one portable definition.
 
 Reference files: `src/Engine/FileMap.cpp` and `src/Engine/Unicode.cpp`.
 
+Resolved on 2026-09-04: a pinned Windows reference fixture now covers representative
+Unicode mappings and normalization forms. The port uses one culture-independent,
+non-normalizing scalar mapping, preserves original entry spelling, applies the same key
+to directory and ZIP layers, and versions the policy in compiled-cache identity. See
+[ADR 0024](decisions/0024-portable-virtual-path-canonicalization.md).
+
 ### Defer resource-cache concurrency changes until streaming needs them
 
 The decoded-resource cache locks on every hit and can perform duplicate concurrent decodes.

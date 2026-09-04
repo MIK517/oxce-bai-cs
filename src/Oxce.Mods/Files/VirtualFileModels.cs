@@ -41,8 +41,11 @@ public class VirtualFileSource
 
     internal virtual Stream OpenRead() => OpenFile(SourcePath);
 
-    internal virtual VirtualFileEntry CreateEntry(string canonicalPath, VirtualFileProvenance provenance) =>
-        new(canonicalPath, SourcePath, provenance);
+    internal virtual VirtualFileEntry CreateEntry(
+        string originalPath,
+        string canonicalPath,
+        VirtualFileProvenance provenance) =>
+        new(originalPath, canonicalPath, SourcePath, provenance);
 
     internal static VirtualFileSource FromZip(
         string relativePath,
@@ -161,8 +164,10 @@ public class VirtualFileSource
         internal override Stream OpenRead() => OpenZipEntry(_archivePath, _entryIndex, _entryName);
 
         internal override VirtualFileEntry CreateEntry(
+            string originalPath,
             string canonicalPath,
             VirtualFileProvenance provenance) => new ZipVirtualFileEntry(
+                originalPath,
                 canonicalPath,
                 SourcePath,
                 provenance,
@@ -175,14 +180,18 @@ public class VirtualFileSource
 public class VirtualFileEntry
 {
     internal VirtualFileEntry(
+        string originalPath,
         string canonicalPath,
         string sourcePath,
         VirtualFileProvenance provenance)
     {
+        OriginalPath = originalPath;
         CanonicalPath = canonicalPath;
         SourcePath = sourcePath;
         Provenance = provenance;
     }
+
+    public string OriginalPath { get; }
 
     public string CanonicalPath { get; }
 
@@ -200,13 +209,14 @@ internal sealed class ZipVirtualFileEntry : VirtualFileEntry
     private readonly string _entryName;
 
     public ZipVirtualFileEntry(
+        string originalPath,
         string canonicalPath,
         string sourcePath,
         VirtualFileProvenance provenance,
         string archivePath,
         int entryIndex,
         string entryName)
-        : base(canonicalPath, sourcePath, provenance)
+        : base(originalPath, canonicalPath, sourcePath, provenance)
     {
         _archivePath = archivePath;
         _entryIndex = entryIndex;

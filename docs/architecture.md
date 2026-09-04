@@ -97,6 +97,12 @@ must use that service rather than opening descriptor source paths. Shared `commo
 assets are mapped below game-specific external data and mod layers so normal OXCE
 installation precedence is preserved.
 
+VFS entries retain their separator-normalized original relative spelling separately
+from a deterministic culture-independent lookup key. Unicode composition forms are not
+merged, matching reference behavior; directory and ZIP layers use the same versioned
+canonicalization contract. See
+[ADR 0024](decisions/0024-portable-virtual-path-canonicalization.md).
+
 Runtime rule linking is also owned by `Oxce.Mods`. A successful content generation
 publishes dense immutable projections for the first strategic families, with typed
 generation-scoped handles for eager links and optional resolved handles alongside IDs
