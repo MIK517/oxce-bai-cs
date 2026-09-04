@@ -133,7 +133,8 @@ public sealed class ContentSnapshot
         ContentBuildMeasurements measurements,
         ContentAuditArtifact? auditArtifact,
         int sourceScopeCount,
-        int apiScopeCount)
+        int apiScopeCount,
+        int tagCatalogBuildCount)
     {
         Content = content;
         Diagnostics = Array.AsReadOnly(diagnostics.ToArray());
@@ -144,6 +145,7 @@ public sealed class ContentSnapshot
         AuditArtifact = auditArtifact;
         SourceScopeCount = sourceScopeCount;
         ApiScopeCount = apiScopeCount;
+        TagCatalogBuildCount = tagCatalogBuildCount;
     }
 
     public RuntimeContent Content { get; }
@@ -160,6 +162,7 @@ public sealed class ContentSnapshot
     public ContentAuditArtifact? AuditArtifact { get; }
     public int SourceScopeCount { get; }
     public int ApiScopeCount { get; }
+    public int TagCatalogBuildCount { get; }
 }
 
 public static class ContentSnapshotBuilder
@@ -276,7 +279,8 @@ public static class ContentSnapshotBuilder
                 .WithRuntimeRuleLinking(runtimeLinkMeasurement),
             options.RetainAuditArtifact ? new ContentAuditArtifact(session) : null,
             compiler.SourceScopeCount,
-            compiler.ApiScopeCount);
+            compiler.ApiScopeCount,
+            compiler.TagCatalogBuildCount);
     }
 
     private sealed class ForwardingDiagnosticSink(IDiagnosticSink destination, IDiagnosticSink collector)
@@ -376,15 +380,17 @@ internal sealed class ContentScriptCompiler
     private readonly ContentSnapshotOptions _options;
     private readonly ScriptApiCatalog _baseApi = ReferenceScriptApiCatalog.Instance;
     private readonly ScriptTagCatalogBuilder _tagBuilder = new();
+    private readonly Dictionary<string, ScriptTagTypeId> _tagTypesByOwner = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ScriptTagDefinition> _tagsByName = new(StringComparer.Ordinal);
     private readonly Dictionary<int, ScriptApiCatalog> _apiByDocument = [];
-    private readonly Dictionary<(int TagCount, string ModId), ScriptApiCatalog> _apiScopes = [];
+    private readonly Dictionary<(int TagCatalogRevision, string ModId), ScriptApiCatalog> _apiScopes = [];
     private readonly Dictionary<string, List<ScriptEventMutation>> _eventMutations = new(StringComparer.Ordinal);
     private readonly Dictionary<(string Section, string Id, string Parser), ContentScriptArtifact> _ruleScripts = [];
     private readonly List<ContentScriptArtifact> _otherScripts = [];
     private readonly List<ContentScriptEventPlan> _eventPlans = [];
     private readonly List<ContentInitialScriptValue> _initialValues = [];
     private int _compiledScriptCount;
+    private int _tagCatalogBuildCount;
 
     public ContentScriptCompiler(
         ModLoadPlan plan,
@@ -412,14 +418,15 @@ internal sealed class ContentScriptCompiler
     public int CompiledScriptCount => _compiledScriptCount;
     public int SourceScopeCount => _apiByDocument.Count;
     public int ApiScopeCount => _apiScopes.Count;
+    public int TagCatalogBuildCount => _tagCatalogBuildCount;
 
     public void Compile()
     {
         _options.CancellationToken.ThrowIfCancellationRequested();
         CompileDocuments();
         _options.CancellationToken.ThrowIfCancellationRequested();
-        Tags = _tagBuilder.Build();
-        var finalApi = CreateApi(Tags, _plan.Groups[^1].Mod.Metadata.Id);
+        Tags = BuildTagCatalog();
+        var finalApi = GetOrCreateApi(_plan.Groups[^1].Mod.Metadata.Id, Tags);
         CompileDefaults(finalApi);
         _options.CancellationToken.ThrowIfCancellationRequested();
         CompileRules(finalApi);
@@ -435,6 +442,7 @@ internal sealed class ContentScriptCompiler
                 new ScriptTagTypeId(type.Id.Value),
                 type.Name[..^".Tag".Length],
                 ushort.MaxValue));
+            _tagTypesByOwner.Add(type.Name[..^".Tag".Length], new ScriptTagTypeId(type.Id.Value));
         }
         _tagBuilder.AddValueType("RuleList");
     }
@@ -460,7 +468,7 @@ internal sealed class ContentScriptCompiler
                 {
                     LoadTags(tags!, document.File.SourcePath);
                 }
-                var api = CreateApi(_tagBuilder.Build(), document.Mod.Metadata.Id);
+                var api = GetOrCreateApi(document.Mod.Metadata.Id);
                 _apiByDocument[document.DocumentId] = api;
                 if (extended.TryGet("globals", out var globals))
                 {
@@ -473,7 +481,7 @@ internal sealed class ContentScriptCompiler
             }
             _apiByDocument.TryAdd(
                 document.DocumentId,
-                CreateApi(_tagBuilder.Build(), document.Mod.Metadata.Id));
+                GetOrCreateApi(document.Mod.Metadata.Id));
         }
     }
 
@@ -563,13 +571,17 @@ internal sealed class ContentScriptCompiler
         }
     }
 
-    private ScriptApiCatalog CreateApi(ScriptTagCatalog tags, string currentModId)
+    private ScriptApiCatalog GetOrCreateApi(string currentModId) =>
+        GetOrCreateApi(currentModId, tags: null);
+
+    private ScriptApiCatalog GetOrCreateApi(string currentModId, ScriptTagCatalog? tags)
     {
-        var key = (tags.Tags.Count, currentModId);
+        var key = (_tagBuilder.Revision, currentModId);
         if (_apiScopes.TryGetValue(key, out var existing))
         {
             return existing;
         }
+        tags ??= BuildTagCatalog();
         var parserNames = _baseApi.Parsers.Select(static parser => parser.Name).ToArray();
         var constants = new List<ScriptConstantDeclaration>();
         var names = _baseApi.Constants.Select(static constant => constant.Name).ToHashSet(StringComparer.Ordinal);
@@ -608,6 +620,12 @@ internal sealed class ContentScriptCompiler
         var scope = _baseApi.CreateScope(constants);
         _apiScopes.Add(key, scope);
         return scope;
+    }
+
+    private ScriptTagCatalog BuildTagCatalog()
+    {
+        _tagCatalogBuildCount = checked(_tagCatalogBuildCount + 1);
+        return _tagBuilder.Build();
     }
 
     private void CompileGlobalScripts(YamlNode node, ScriptApiCatalog api, string sourcePath)
@@ -919,20 +937,19 @@ internal sealed class ContentScriptCompiler
         string sourcePath)
     {
         if (!RuleTagOwners.TryGetValue(section, out var owner) || node is not YamlMappingNode values ||
-            !TagsFor(api).TryGetValue(owner, out var ownerType))
+            !_tagTypesByOwner.TryGetValue(owner, out var ownerType))
         {
             Invalid($"Rule '{section}/{ruleId}' has tag values outside a registered script-value owner.",
                 node, sourcePath, section, ruleId);
             return;
         }
-        var tags = _tagBuilder.Build();
         foreach (var entry in values.Entries)
         {
             var name = entry.ScalarKey;
             var qualifiedName = "Tag." + name;
             if (name is null ||
                 !api.Constants.Any(constant => string.Equals(constant.Name, qualifiedName, StringComparison.Ordinal)) ||
-                !tags.TryGetTag(ownerType, qualifiedName, out var tag))
+                !_tagBuilder.TryGetTag(ownerType, qualifiedName, out var tag))
             {
                 Invalid($"Rule '{section}/{ruleId}' references unknown script tag '{name}'.",
                     entry.Value, sourcePath, section, ruleId);
@@ -951,13 +968,6 @@ internal sealed class ContentScriptCompiler
                 sourcePath, entry.Value.Span.Start.Line));
         }
     }
-
-    private static Dictionary<string, ScriptTagTypeId> TagsFor(ScriptApiCatalog api) => api.Types
-        .Where(static type => type.Name.EndsWith(".Tag", StringComparison.Ordinal))
-        .ToDictionary(
-            static type => type.Name[..^".Tag".Length],
-            static type => new ScriptTagTypeId(type.Id.Value),
-            StringComparer.Ordinal);
 
     private static int ResolveRuleList(string name, ScriptApiCatalog api)
     {
