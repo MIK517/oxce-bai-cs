@@ -11,6 +11,55 @@ namespace Oxce.UnitTests.Savegames;
 public sealed class OxceSaveAdapterTests
 {
     [Theory]
+    [InlineData("mods")]
+    [InlineData("countries")]
+    [InlineData("regions")]
+    [InlineData("bases")]
+    [InlineData("facilities")]
+    [InlineData("crafts")]
+    [InlineData("soldiers")]
+    public void PresentSaveCollectionsRejectNonSequences(string field)
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(content, CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
+        var pattern = new Regex($@"(?m)^(?<indent> *){field}:[^\r\n]*(?:\r?\n\k<indent> +[^\r\n]*)*");
+        Assert.Single(pattern.Matches(yaml));
+        foreach (var invalid in new[] { "malformed", "{}", "null" })
+        {
+            var modified = pattern.Replace(yaml, match => $"{match.Groups["indent"].Value}{field}: {invalid}");
+            var random = new SplitMix64RandomSource(99);
+            var previous = random.State;
+            var error = Assert.Throws<InvalidDataException>(() =>
+                OxceSaveAdapter.Load(modified, "malformed.sav", content, random, Options()));
+            Assert.Equal($"OXCE save '{field}' must be a sequence.", error.Message);
+            Assert.Equal(previous, random.State);
+        }
+    }
+
+    [Theory]
+    [InlineData("countries")]
+    [InlineData("regions")]
+    [InlineData("facilities")]
+    [InlineData("crafts")]
+    [InlineData("soldiers")]
+    public void MissingOptionalCollectionsMatchExplicitEmptySequences(string field)
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(content, CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
+        var pattern = new Regex($@"(?m)^(?<indent> *){field}:[^\r\n]*(?:\r?\n\k<indent> +[^\r\n]*)*");
+        Assert.Single(pattern.Matches(yaml));
+        var missing = pattern.Replace(yaml, string.Empty);
+        var empty = pattern.Replace(yaml, match => $"{match.Groups["indent"].Value}{field}: []");
+        var first = OxceSaveAdapter.Load(missing, "optional.sav", content, new SplitMix64RandomSource(0), Options());
+        var second = OxceSaveAdapter.Load(empty, "optional.sav", content, new SplitMix64RandomSource(0), Options());
+        Assert.Equivalent(first.Campaign.Capture(), second.Campaign.Capture(), strict: true);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void SoldierOpaqueFieldsFollowIdsWithExplicitOrLegacyTypes(bool omitType)

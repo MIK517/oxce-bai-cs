@@ -513,8 +513,13 @@ public static class OxceSaveAdapter
             ? Array.AsReadOnly(YamlValueReader.ReadSequence(node!, YamlValueReader.ReadInt64))
             : Array.AsReadOnly(fallback);
 
-    private static IEnumerable<YamlNode> Sequence(YamlMappingNode owner, string key) =>
-        owner.TryGet(key, out var node) && node is YamlSequenceNode sequence ? sequence.Items : [];
+    private static IEnumerable<YamlNode> Sequence(YamlMappingNode owner, string key)
+    {
+        if (!owner.TryGet(key, out var node)) return [];
+        return node is YamlSequenceNode sequence
+            ? sequence.Items
+            : throw new InvalidDataException($"OXCE save '{key}' must be a sequence.");
+    }
 
     private static IEnumerable<YamlMappingNode> Maps(YamlMappingNode? owner, string key) => owner is null
         ? []

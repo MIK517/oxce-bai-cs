@@ -12,6 +12,18 @@ namespace Oxce.CompatibilityTests;
 public sealed class CampaignSaveRegressionFixtureTests
 {
     [Fact]
+    public void MalformedCountryCollectionFailsBeforeCampaignPublication()
+    {
+        var yaml = ReadFixture();
+        var start = yaml.IndexOf("countries:", StringComparison.Ordinal);
+        var end = yaml.IndexOf("regions:", start, StringComparison.Ordinal);
+        yaml = yaml[..start] + "countries: malformed\n" + yaml[end..];
+        var error = Assert.Throws<InvalidDataException>(() => OxceSaveAdapter.Load(
+            yaml, "malformed.sav", LoadContent(), new SplitMix64RandomSource(0), Options()));
+        Assert.Equal("OXCE save 'countries' must be a sequence.", error.Message);
+    }
+
+    [Fact]
     public void MonthBoundaryDayCountSurvivesSaveReload()
     {
         var content = LoadContent();
