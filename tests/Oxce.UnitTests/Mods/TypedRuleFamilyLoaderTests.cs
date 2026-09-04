@@ -127,6 +127,18 @@ public sealed class TypedRuleFamilyLoaderTests
         Assert.Throws<ArgumentException>(() => new ProbeLoader().Load(Assert.Single(unresolved.Sections)));
     }
 
+    [Fact]
+    public void UnresolvedRuleConstructionReceivesCompositionMetadata()
+    {
+        const string yaml = "probeRules: [{type: RULE_A}, {type: RULE_B}]";
+        using var fixture = new TemporaryRulesetMod(yaml);
+        var unresolved = Compose(fixture.Root, ProbeSection);
+
+        var typed = new OrdinalProbeLoader().Load(Assert.Single(unresolved.Sections));
+
+        Assert.Equal([0, 1], typed.Rules.Select(static rule => rule.Value.Value));
+    }
+
     private static TypedRuleSection<ProbeRule> Load(
         string yaml,
         IDiagnosticSink? diagnostics = null,
@@ -152,7 +164,7 @@ public sealed class TypedRuleFamilyLoaderTests
         return RulesetComposer.Compose(plan, [section], diagnostics);
     }
 
-    private sealed class ProbeLoader : TypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
+    private sealed class ProbeLoader : IdOnlyTypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
     {
         public ProbeLoader() : base(ProbeSection)
         {
@@ -212,12 +224,22 @@ public sealed class TypedRuleFamilyLoaderTests
         IReadOnlyList<int> Values,
         int NestedValue);
 
-    private sealed class DynamicProbeLoader : TypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
+    private sealed class DynamicProbeLoader : IdOnlyTypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
     {
         public DynamicProbeLoader() : base(ProbeSection) { }
         protected override ProbeBuilder Create(string id) => new(id);
         protected override void Apply(ProbeBuilder builder, RulePropertyReader reader) =>
             reader.DeferRemaining("dynamic script values require Phase 4 registration");
+        protected override ProbeRule Freeze(ProbeBuilder builder) =>
+            new(builder.Id, builder.Label, builder.Value, builder.Enabled, builder.Values, builder.NestedValue);
+    }
+
+    private sealed class OrdinalProbeLoader : TypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
+    {
+        public OrdinalProbeLoader() : base(ProbeSection) { }
+        protected override ProbeBuilder Create(UnresolvedRule rule) =>
+            new(rule.Id) { Value = rule.CreationOrdinal };
+        protected override void Apply(ProbeBuilder builder, RulePropertyReader reader) { }
         protected override ProbeRule Freeze(ProbeBuilder builder) =>
             new(builder.Id, builder.Label, builder.Value, builder.Enabled, builder.Values, builder.NestedValue);
     }

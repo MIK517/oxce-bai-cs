@@ -74,7 +74,7 @@ public sealed class TypedRuleReplayFixtureTests
         return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
     }
 
-    private sealed class ProbeLoader : TypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
+    private sealed class ProbeLoader : IdOnlyTypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
     {
         public ProbeLoader() : base(ProbeSection)
         {

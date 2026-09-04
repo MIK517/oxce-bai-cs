@@ -3,7 +3,7 @@ using Oxce.Formats.Yaml;
 
 namespace Oxce.Mods.Rulesets.MissionEvents;
 
-internal sealed class UfoTrajectoryRuleLoader : TypedRuleFamilyLoader<TrajectoryBuilder, UfoTrajectoryRule>
+internal sealed class UfoTrajectoryRuleLoader : IdOnlyTypedRuleFamilyLoader<TrajectoryBuilder, UfoTrajectoryRule>
 {
     public UfoTrajectoryRuleLoader() : base(MissionEventYaml.Section("ufoTrajectories")) { }
     protected override TrajectoryBuilder Create(string id) => new();
@@ -23,7 +23,7 @@ internal sealed class UfoTrajectoryRuleLoader : TypedRuleFamilyLoader<Trajectory
     protected override UfoTrajectoryRule Freeze(TrajectoryBuilder builder) => new(builder.GroundTimer, builder.Waypoints.AsReadOnly());
 }
 
-internal sealed class AlienMissionRuleLoader : TypedRuleFamilyLoader<AlienMissionBuilder, AlienMissionRule>
+internal sealed class AlienMissionRuleLoader : IdOnlyTypedRuleFamilyLoader<AlienMissionBuilder, AlienMissionRule>
 {
     public AlienMissionRuleLoader() : base(MissionEventYaml.Section("alienMissions")) { }
     protected override AlienMissionBuilder Create(string id) => new();
@@ -85,7 +85,7 @@ internal sealed class AlienMissionRuleLoader : TypedRuleFamilyLoader<AlienMissio
 
 internal enum StrategicScriptKind { Arc, Event, Mission }
 
-internal sealed class StrategicScriptRuleLoader : TypedRuleFamilyLoader<StrategicScriptBuilder, StrategicScriptRule>
+internal sealed class StrategicScriptRuleLoader : IdOnlyTypedRuleFamilyLoader<StrategicScriptBuilder, StrategicScriptRule>
 {
     private readonly StrategicScriptKind _kind;
     public StrategicScriptRuleLoader(string section, StrategicScriptKind kind) : base(MissionEventYaml.Section(section)) { _kind = kind; }
@@ -169,7 +169,7 @@ internal sealed class StrategicScriptRuleLoader : TypedRuleFamilyLoader<Strategi
     { if (reader.TryGet(key, out var node)) set(MissionEventYaml.Timeline(node!, key)); }
 }
 
-internal sealed class EventRuleLoader : TypedRuleFamilyLoader<EventBuilder, EventRule>
+internal sealed class EventRuleLoader : IdOnlyTypedRuleFamilyLoader<EventBuilder, EventRule>
 {
     public EventRuleLoader() : base(MissionEventYaml.Section("events")) { }
     protected override EventBuilder Create(string id) => new();
