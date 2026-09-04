@@ -15,9 +15,7 @@ public abstract class TypedRuleFamilyLoader<TBuilder, TRule>
 
     public RuleSectionDefinition Section { get; }
 
-    protected abstract TBuilder Create(string id);
-
-    protected virtual TBuilder Create(UnresolvedRule rule) => Create(rule.Id);
+    protected abstract TBuilder Create(UnresolvedRule rule);
 
     protected abstract void Apply(TBuilder builder, RulePropertyReader reader);
 
@@ -74,6 +72,21 @@ public abstract class TypedRuleFamilyLoader<TBuilder, TRule>
 
         return new TypedRuleSection<TRule>(Section, rules);
     }
+}
+
+public abstract class IdOnlyTypedRuleFamilyLoader<TBuilder, TRule> :
+    TypedRuleFamilyLoader<TBuilder, TRule>
+    where TBuilder : notnull
+    where TRule : notnull
+{
+    protected IdOnlyTypedRuleFamilyLoader(RuleSectionDefinition section)
+        : base(section)
+    {
+    }
+
+    protected sealed override TBuilder Create(UnresolvedRule rule) => Create(rule.Id);
+
+    protected abstract TBuilder Create(string id);
 }
 
 public sealed class RuleCompatibilityData

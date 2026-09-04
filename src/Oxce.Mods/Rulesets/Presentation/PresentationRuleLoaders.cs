@@ -3,7 +3,7 @@ using Oxce.Formats.Yaml;
 
 namespace Oxce.Mods.Rulesets.Presentation;
 
-internal sealed class InterfaceRuleLoader : TypedRuleFamilyLoader<InterfaceRuleBuilder, InterfaceRule>
+internal sealed class InterfaceRuleLoader : IdOnlyTypedRuleFamilyLoader<InterfaceRuleBuilder, InterfaceRule>
 {
     public InterfaceRuleLoader() : base(GetSection("interfaces")) { }
 
@@ -88,7 +88,7 @@ internal sealed class InterfaceRuleLoader : TypedRuleFamilyLoader<InterfaceRuleB
         RuleSectionRegistry.TryGetNamed(name, out var section) ? section! : throw new InvalidOperationException();
 }
 
-internal sealed class MusicRuleLoader : TypedRuleFamilyLoader<MusicRuleBuilder, MusicRule>
+internal sealed class MusicRuleLoader : IdOnlyTypedRuleFamilyLoader<MusicRuleBuilder, MusicRule>
 {
     public MusicRuleLoader() : base(GetSection()) { }
     protected override MusicRuleBuilder Create(string id) => new(id);
@@ -104,7 +104,7 @@ internal sealed class MusicRuleLoader : TypedRuleFamilyLoader<MusicRuleBuilder, 
         ? section! : throw new InvalidOperationException();
 }
 
-internal sealed class SoundDefinitionRuleLoader : TypedRuleFamilyLoader<SoundDefinitionRuleBuilder, SoundDefinitionRule>
+internal sealed class SoundDefinitionRuleLoader : IdOnlyTypedRuleFamilyLoader<SoundDefinitionRuleBuilder, SoundDefinitionRule>
 {
     public SoundDefinitionRuleLoader() : base(GetSection()) { }
     protected override SoundDefinitionRuleBuilder Create(string id) => new(id);
@@ -126,7 +126,7 @@ internal sealed class SoundDefinitionRuleLoader : TypedRuleFamilyLoader<SoundDef
         ? section! : throw new InvalidOperationException();
 }
 
-internal sealed class CustomPaletteRuleLoader : TypedRuleFamilyLoader<CustomPaletteRuleBuilder, CustomPaletteRule>
+internal sealed class CustomPaletteRuleLoader : IdOnlyTypedRuleFamilyLoader<CustomPaletteRuleBuilder, CustomPaletteRule>
 {
     public CustomPaletteRuleLoader() : base(GetSection()) { }
     protected override CustomPaletteRuleBuilder Create(string id) => new(id);
@@ -153,7 +153,7 @@ internal sealed class CustomPaletteRuleLoader : TypedRuleFamilyLoader<CustomPale
         ? section! : throw new InvalidOperationException();
 }
 
-internal sealed class VideoRuleLoader : TypedRuleFamilyLoader<VideoRuleBuilder, VideoRule>
+internal sealed class VideoRuleLoader : IdOnlyTypedRuleFamilyLoader<VideoRuleBuilder, VideoRule>
 {
     public VideoRuleLoader() : base(GetSection()) { }
     protected override VideoRuleBuilder Create(string id) => new(id);

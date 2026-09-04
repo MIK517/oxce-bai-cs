@@ -70,6 +70,12 @@ backend. Every platform must present at least one indexed frame, suppress unchan
 frame uploads, and complete the dummy-audio callback smoke. A macOS dummy-video
 fallback is diagnostic only and deliberately leaves the job failed.
 
+`tools/measure-windows-publish-size.ps1` recreates the Release `win-x64`
+framework-dependent and self-contained outputs, stages the checksum-pinned SDL3 library into a
+copy of the self-contained output, and reports raw directory and optimal-ZIP sizes. It leaves
+trimming, single-file publication, and Native AOT disabled. Results are local release-planning
+evidence rather than CI gates; generated publications remain ignored under `artifacts/`.
+
 ### Robustness and performance
 
 Fuzz or property-test binary readers, YAML adapters, script parsing, and save loading.
