@@ -5,7 +5,8 @@ namespace Oxce.Mods.Rulesets.Items;
 
 public sealed class ItemRuleCatalog
 {
-    private ItemRuleCatalog(TypedRuleSection<ItemRule> items)
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal ItemRuleCatalog(TypedRuleSection<ItemRule> items)
     {
         Items = items;
         Capabilities = ContentLoadCapabilities.Composed.AdvanceTo(ContentLoadStage.Typed);

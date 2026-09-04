@@ -318,17 +318,15 @@ their owning gameplay slices. See
 
 ## Immediate next tasks
 
-The September compatibility-guardrail and script-allocation slices are complete. New
-and loaded saves have distinct write paths, source visibility uses stable document
-identity, and the measured compiler changes reduce large-corpus script allocation while
-retaining the semantic manifest.
+The September compatibility-guardrail, script-allocation, and compiled-content-cache
+slices are complete. New and loaded saves have distinct write paths, source visibility
+uses stable document identity, and warm production loading can reconstruct immutable
+content from a bounded, strongly invalidated cache while fresh audits retain the same
+semantic manifest.
 
-1. Add a versioned, atomically published compiled-content cache whose invalidation key
-   includes ordered mods, strong input identities, compatibility/API revisions, and
-   compiler limits. Keep fresh-build audit comparison available.
-2. Separate hot runtime projections from cold compatibility/provenance storage and
+1. Separate hot runtime projections from cold compatibility/provenance storage and
    introduce versioned campaign/extension capabilities before the strategic API grows.
-3. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
+2. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
    persisted strategic slice, including their owning script providers and UI actions.
-4. Continue adding focused executable C++ probes, compatibility matrix entries, and
+3. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

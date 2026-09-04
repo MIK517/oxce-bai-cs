@@ -6,7 +6,8 @@ namespace Oxce.Mods.Rulesets.Presentation;
 
 public sealed class PresentationRuleCatalog
 {
-    private PresentationRuleCatalog(
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal PresentationRuleCatalog(
         TypedRuleSection<InterfaceRule> interfaces,
         TypedRuleSection<MusicRule> music,
         TypedRuleSection<SoundDefinitionRule> soundDefinitions,

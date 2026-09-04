@@ -38,6 +38,19 @@ public sealed class PresentationSpecialRules
         Sounds = Array.AsReadOnly(sounds.ToArray());
     }
 
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal PresentationSpecialRules(
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> strings,
+        IReadOnlyDictionary<string, IReadOnlyList<ExtraSpriteDeclaration>> sprites,
+        IReadOnlyList<ExtraSoundDeclaration> sounds)
+    {
+        Strings = new ReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>(
+            new Dictionary<string, IReadOnlyDictionary<string, string>>(strings, StringComparer.Ordinal));
+        Sprites = new ReadOnlyDictionary<string, IReadOnlyList<ExtraSpriteDeclaration>>(
+            new Dictionary<string, IReadOnlyList<ExtraSpriteDeclaration>>(sprites, StringComparer.Ordinal));
+        Sounds = Array.AsReadOnly(sounds.ToArray());
+    }
+
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Strings { get; }
 
     public IReadOnlyDictionary<string, IReadOnlyList<ExtraSpriteDeclaration>> Sprites { get; }
