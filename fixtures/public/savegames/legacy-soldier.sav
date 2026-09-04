@@ -1,0 +1,17 @@
+name: Legacy soldier preservation
+mods: [runtime-master, runtime-addon]
+time: {weekday: 1, day: 31, month: 1, year: 1999, hour: 23, minute: 59, second: 55}
+---
+daysPassed: 30
+countries:
+  - type: COUNTRY
+    funding: [6000000]
+regions:
+  - type: REGION
+bases:
+  - name: Alpha
+    soldiers:
+      - id: 1
+        name: Legacy Soldier
+        initialStats: {tu: 60}
+        equipmentLayout: [{itemType: ITEM, slot: STR_RIGHT_HAND}]
