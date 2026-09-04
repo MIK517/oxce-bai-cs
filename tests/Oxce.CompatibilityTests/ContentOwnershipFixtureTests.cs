@@ -55,7 +55,7 @@ public sealed class ContentOwnershipFixtureTests
             Assert.True(result.Succeeded);
             Assert.Equal(property.Value.GetInt32(), result.Outputs["sprite_index"]);
         }
-        Assert.True(snapshot.Content.Catalog.Items.Items.TryGet("SHARED_ITEM", out var shared));
+        Assert.True(snapshot.CompatibilityData.Catalog.Items.Items.TryGet("SHARED_ITEM", out var shared));
         Assert.Equal(
             expected.GetProperty("sharedItemDeferredProperties").GetInt32(),
             shared!.CompatibilityData.DeferredProperties.Count);

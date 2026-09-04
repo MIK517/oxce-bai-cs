@@ -38,6 +38,7 @@ public sealed class ManagedExtensionHostTests
         Assert.True(extension.IsEnabled);
         var record = Assert.Single(decoded.Records);
         Assert.Equal(1L, record.Data.Properties!["events"].Scalar);
+        Assert.Equal(1L, record.Data.Properties["attached"].Scalar);
         Assert.Equal(1L, record.Data.Properties["initialized"].Scalar);
         Assert.Contains(diagnostics.Snapshot(), diagnostic => diagnostic.Code == "TESTEXT001");
     }
@@ -70,6 +71,7 @@ public sealed class ManagedExtensionHostTests
     {
         using var installation = new ExtensionInstallation();
         installation.Add("example.future", typeof(ProbeExtension), minimumApi: "1.0", maximumApi: "2.0");
+        installation.Add("example.legacy", typeof(ProbeExtension), minimumApi: "0.1", maximumApi: "0.2");
         var malformed = Directory.CreateDirectory(Path.Combine(installation.Root, "malformed"));
         File.WriteAllText(Path.Combine(malformed.FullName, "extension.json"), "{}", Encoding.UTF8);
         var diagnostics = new DiagnosticCollector();
@@ -78,7 +80,7 @@ public sealed class ManagedExtensionHostTests
             installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(host.Extensions);
-        Assert.Equal(2, diagnostics.Snapshot().Count(diagnostic => diagnostic.Code == "EXT1001"));
+        Assert.Equal(3, diagnostics.Snapshot().Count(diagnostic => diagnostic.Code == "EXT1001"));
     }
 
     [Fact]
@@ -154,8 +156,8 @@ public sealed class ManagedExtensionHostTests
         public void Add(
             string id,
             Type entryType,
-            string minimumApi = "0.1",
-            string maximumApi = "0.2",
+            string minimumApi = "0.2",
+            string maximumApi = "0.3",
             string? directoryName = null)
         {
             var directory = Directory.CreateDirectory(Path.Combine(Root, directoryName ?? id));

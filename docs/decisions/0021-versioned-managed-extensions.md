@@ -3,6 +3,10 @@
 - Status: accepted
 - Date: 2026-09-03
 
+The initial `0.1` combined campaign-access shape below was superseded by the versioned
+capability bundle in [ADR 0023](0023-hot-runtime-content-and-versioned-capabilities.md).
+The trust, loading, failure-containment, state, and deferral policies remain in force.
+
 ## Context
 
 The first persisted campaign slice has exercised gameplay-owned identities, read-only

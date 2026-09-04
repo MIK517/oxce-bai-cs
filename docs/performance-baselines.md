@@ -458,6 +458,28 @@ publication run is accepted because caching is optional, atomic, and amortized
 over later launches; a no-compression experiment produced a 231 MiB image and was
 rejected. Wall-clock values remain local observations rather than CI gates.
 
+### Hot runtime-content retention result
+
+The hot/cold content-partitioning slice was measured on 2026-09-04 on the same Ryzen 9
+7940HS host, .NET SDK 10.0.302, and .NET runtime 10.0.10. Three separate
+`measure-content-install` processes loaded staged 40k/Rosigma content and returned only
+`RuntimeContent` across a non-inlined boundary. The retained-byte results were
+31,676,376, 31,676,376, and 31,707,096; the 31,676,376-byte median is 30.2 MiB after
+full collection:
+
+| Retained content | Before | After | Change |
+|---|---:|---:|---:|
+| Production `RuntimeContent` | 168.6 MiB | 30.2 MiB | -138.4 MiB; -82.1% |
+
+The hot root still contains 12,542 runtime rules/scripts, 24,623 resource descriptors,
+3,536 compiled script artifacts, 580 tags, and 13,651 initial values. The complete typed
+catalog, 3,387 deferred compatibility entries, YAML nodes, and rule provenance are now
+owned by `ContentCompatibilityData` and are collectible after publication. Median build
+time was 7.036 s and build allocation remained about 1.81 GiB; this slice targets
+steady-state size rather than construction work. The fresh semantic manifest remained
+9,591,410 bytes with SHA-256
+`C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
+
 ## Dependency review
 
 BenchmarkDotNet 0.15.8 is pinned centrally. It is the current stable release at the time

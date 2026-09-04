@@ -104,7 +104,7 @@ internal static class FixtureTool
             parsedFileCount = result.Content!.ParsedFileCount,
             scripts = result.Content.Scripts.Count,
             resources = result.Content.Resources.Descriptors.Count,
-            compatibilityEntries = result.Content.RuntimeRules.Compatibility.Entries.Count,
+            runtimeRules = RuntimeRuleCount(result.Content.RuntimeRules),
             cacheBytes = cacheFile is not null && File.Exists(cacheFile) ? new FileInfo(cacheFile).Length : 0,
         }));
         return 0;
@@ -312,7 +312,7 @@ internal static class FixtureTool
             stage = measurement.Content.Capabilities.Has(ContentLoadStage.RuntimeLinked)
                 ? "runtime-linked"
                 : measurement.Content.Capabilities.Has(ContentLoadStage.ScriptsCompiled) ? "scripts-compiled"
-                : measurement.Content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
+                : measurement.CompatibilityCapabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
             parsedFiles = measurement.Content.ParsedFileCount,
             attemptedScripts = measurement.CompiledScriptCount,
             scriptArtifacts = measurement.Content.Scripts.Count,
@@ -444,7 +444,8 @@ internal static class FixtureTool
             snapshot.Diagnostics.Count(static item => item.Severity >= DiagnosticSeverity.Error),
             snapshot.SourceScopeCount,
             snapshot.ApiScopeCount,
-            snapshot.TagCatalogBuildCount);
+            snapshot.TagCatalogBuildCount,
+            snapshot.CompatibilityData.Catalog.Capabilities);
     }
 
     private sealed record RuntimeMeasurement(
@@ -455,7 +456,8 @@ internal static class FixtureTool
         int ErrorCount,
         int SourceScopeCount,
         int ApiScopeCount,
-        int TagCatalogBuildCount);
+        int TagCatalogBuildCount,
+        ContentLoadCapabilities CompatibilityCapabilities);
 
     private static int WriteContentAudit(
         ModLoadPlan plan,
@@ -489,14 +491,26 @@ internal static class FixtureTool
             throw new InvalidOperationException("Content audit did not retain its requested audit artifact.");
         var normalizationTimer = Stopwatch.StartNew();
         var normalized = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
-            content,
+            snapshot,
             auditArtifact,
             new RulesetCatalogNormalizationOptions
             {
                 NormalizeSourceName = source => Path.GetRelativePath(normalizationRoot, source).Replace('\\', '/'),
             });
         normalizationTimer.Stop();
+        var contentCapabilities = snapshot.Capabilities;
+        var compatibilityCapabilities = snapshot.CompatibilityData.Catalog.Capabilities;
+        var compiledScriptCount = snapshot.CompiledScriptCount;
+        var scriptArtifactCount = snapshot.Scripts.Count;
+        var eventPlanCount = snapshot.EventPlans.Count;
+        var tagCount = snapshot.Tags.Tags.Count;
+        var initialValueCount = snapshot.InitialValues.Count;
+        var measurements = snapshot.Measurements;
+        var sourceScopeCount = snapshot.SourceScopeCount;
+        var apiScopeCount = snapshot.ApiScopeCount;
+        var tagCatalogBuildCount = snapshot.TagCatalogBuildCount;
         auditArtifact.Dispose();
+        snapshot = null!;
         var managedBytesAfterAuditRelease = GC.GetTotalMemory(forceFullCollection: true);
         var destinationPath = Path.GetFullPath(destination);
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
@@ -506,38 +520,38 @@ internal static class FixtureTool
         process.Refresh();
         output.WriteLine(JsonSerializer.Serialize(new
         {
-            stage = snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked)
+            stage = contentCapabilities.Has(ContentLoadStage.RuntimeLinked)
                 ? "runtime-linked"
-                : snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled) ? "scripts-compiled"
-                : content.Catalog.Capabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
+                : contentCapabilities.Has(ContentLoadStage.ScriptsCompiled) ? "scripts-compiled"
+                : compatibilityCapabilities.Has(ContentLoadStage.Linked) ? "linked" : "typed",
             parsedFiles = content.ParsedFileCount,
-            attemptedScripts = snapshot.CompiledScriptCount,
-            scriptArtifacts = snapshot.Scripts.Count,
-            eventPlans = snapshot.EventPlans.Count,
-            tags = snapshot.Tags.Tags.Count,
-            initialValues = snapshot.InitialValues.Count,
-            resourceDescriptors = snapshot.Content.Resources.Descriptors.Count,
-            runtimeRuleCount = RuntimeRuleCount(snapshot.Content.RuntimeRules),
+            attemptedScripts = compiledScriptCount,
+            scriptArtifacts = scriptArtifactCount,
+            eventPlans = eventPlanCount,
+            tags = tagCount,
+            initialValues = initialValueCount,
+            resourceDescriptors = content.Resources.Descriptors.Count,
+            runtimeRuleCount = RuntimeRuleCount(content.RuntimeRules),
             diagnostics = reportedDiagnostics,
             errors,
             warnings,
             droppedDiagnostics,
             manifestBytes = normalized.Length,
-            parseElapsedMilliseconds = snapshot.Measurements.Parse.ElapsedMilliseconds,
-            parseAllocatedBytes = snapshot.Measurements.Parse.AllocatedBytes,
-            composeElapsedMilliseconds = snapshot.Measurements.Compose.ElapsedMilliseconds,
-            composeAllocatedBytes = snapshot.Measurements.Compose.AllocatedBytes,
-            typeAndLinkElapsedMilliseconds = snapshot.Measurements.TypeAndLink.ElapsedMilliseconds,
-            typeAndLinkAllocatedBytes = snapshot.Measurements.TypeAndLink.AllocatedBytes,
-            resourceResolutionElapsedMilliseconds = snapshot.Measurements.ResourceResolution.ElapsedMilliseconds,
-            resourceResolutionAllocatedBytes = snapshot.Measurements.ResourceResolution.AllocatedBytes,
-            scriptCompilationElapsedMilliseconds = snapshot.Measurements.ScriptCompilation.ElapsedMilliseconds,
-            scriptCompilationAllocatedBytes = snapshot.Measurements.ScriptCompilation.AllocatedBytes,
-            runtimeRuleLinkingElapsedMilliseconds = snapshot.Measurements.RuntimeRuleLinking.ElapsedMilliseconds,
-            runtimeRuleLinkingAllocatedBytes = snapshot.Measurements.RuntimeRuleLinking.AllocatedBytes,
-            sourceScopeCount = snapshot.SourceScopeCount,
-            apiScopeCount = snapshot.ApiScopeCount,
-            tagCatalogBuildCount = snapshot.TagCatalogBuildCount,
+            parseElapsedMilliseconds = measurements.Parse.ElapsedMilliseconds,
+            parseAllocatedBytes = measurements.Parse.AllocatedBytes,
+            composeElapsedMilliseconds = measurements.Compose.ElapsedMilliseconds,
+            composeAllocatedBytes = measurements.Compose.AllocatedBytes,
+            typeAndLinkElapsedMilliseconds = measurements.TypeAndLink.ElapsedMilliseconds,
+            typeAndLinkAllocatedBytes = measurements.TypeAndLink.AllocatedBytes,
+            resourceResolutionElapsedMilliseconds = measurements.ResourceResolution.ElapsedMilliseconds,
+            resourceResolutionAllocatedBytes = measurements.ResourceResolution.AllocatedBytes,
+            scriptCompilationElapsedMilliseconds = measurements.ScriptCompilation.ElapsedMilliseconds,
+            scriptCompilationAllocatedBytes = measurements.ScriptCompilation.AllocatedBytes,
+            runtimeRuleLinkingElapsedMilliseconds = measurements.RuntimeRuleLinking.ElapsedMilliseconds,
+            runtimeRuleLinkingAllocatedBytes = measurements.RuntimeRuleLinking.AllocatedBytes,
+            sourceScopeCount,
+            apiScopeCount,
+            tagCatalogBuildCount,
             buildElapsedMilliseconds = buildTimer.Elapsed.TotalMilliseconds,
             normalizationElapsedMilliseconds = normalizationTimer.Elapsed.TotalMilliseconds,
             allocatedBytesDuringBuild,

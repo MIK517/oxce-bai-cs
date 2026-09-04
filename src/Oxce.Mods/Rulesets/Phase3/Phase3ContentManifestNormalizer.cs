@@ -37,15 +37,15 @@ public static class Phase3ContentManifestNormalizer
     }
 
     public static byte[] NormalizeToUtf8Json(
-        RuntimeContent content,
+        ContentSnapshot snapshot,
         ContentAuditArtifact auditArtifact,
         RulesetCatalogNormalizationOptions? options = null)
     {
-        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(auditArtifact);
         options ??= new RulesetCatalogNormalizationOptions();
         options.Validate();
-        return NormalizeToUtf8Json(content.Catalog, auditArtifact.ComposedRules, options);
+        return NormalizeToUtf8Json(snapshot.CompatibilityData.Catalog, auditArtifact.ComposedRules, options);
     }
 
     public static byte[] NormalizeToUtf8Json(

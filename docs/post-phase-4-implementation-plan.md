@@ -323,7 +323,7 @@ gates rather than being represented by placeholders.
 
 ### Exit gate
 
-- A manually installed extension can load, negotiate version `0.1`, observe/query the
+- A manually installed extension can load, negotiate version `0.2`, observe/query the
   campaign, submit a validated command, and shut down without referencing implementation
   assemblies.
 - Malformed, duplicate, incompatible, and throwing extensions fail deterministically

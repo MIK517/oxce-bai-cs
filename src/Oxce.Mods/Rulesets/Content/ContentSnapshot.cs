@@ -66,7 +66,6 @@ public sealed record ContentInitialScriptValue(
 public sealed class RuntimeContent
 {
     internal RuntimeContent(
-        Phase3ContentCatalog catalog,
         ContentLoadCapabilities capabilities,
         int parsedFileCount,
         ScriptTagCatalog tags,
@@ -76,7 +75,6 @@ public sealed class RuntimeContent
         ResolvedResourceCatalog resources,
         RuntimeRuleCatalog runtimeRules)
     {
-        Catalog = catalog;
         Capabilities = capabilities;
         ParsedFileCount = parsedFileCount;
         Tags = tags;
@@ -87,7 +85,6 @@ public sealed class RuntimeContent
         RuntimeRules = runtimeRules;
     }
 
-    public Phase3ContentCatalog Catalog { get; }
     public ContentLoadCapabilities Capabilities { get; }
     public int ParsedFileCount { get; }
     public ScriptTagCatalog Tags { get; }
@@ -96,6 +93,20 @@ public sealed class RuntimeContent
     public IReadOnlyList<ContentInitialScriptValue> InitialValues { get; }
     public ResolvedResourceCatalog Resources { get; }
     public RuntimeRuleCatalog RuntimeRules { get; }
+}
+
+public sealed class ContentCompatibilityData
+{
+    internal ContentCompatibilityData(
+        Phase3ContentCatalog catalog,
+        RuntimeRuleCompatibilitySidecar runtimeRules)
+    {
+        Catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+        RuntimeRules = runtimeRules ?? throw new ArgumentNullException(nameof(runtimeRules));
+    }
+
+    public Phase3ContentCatalog Catalog { get; }
+    public RuntimeRuleCompatibilitySidecar RuntimeRules { get; }
 }
 
 public sealed class ContentAuditArtifact : IDisposable
@@ -126,6 +137,7 @@ public sealed class ContentSnapshot
 {
     internal ContentSnapshot(
         RuntimeContent content,
+        ContentCompatibilityData compatibilityData,
         IEnumerable<DiagnosticEvent> diagnostics,
         int reportedDiagnosticCount,
         int droppedDiagnosticCount,
@@ -137,6 +149,7 @@ public sealed class ContentSnapshot
         int tagCatalogBuildCount)
     {
         Content = content;
+        CompatibilityData = compatibilityData;
         Diagnostics = Array.AsReadOnly(diagnostics.ToArray());
         ReportedDiagnosticCount = reportedDiagnosticCount;
         DroppedDiagnosticCount = droppedDiagnosticCount;
@@ -149,6 +162,7 @@ public sealed class ContentSnapshot
     }
 
     public RuntimeContent Content { get; }
+    public ContentCompatibilityData CompatibilityData { get; }
     public ContentLoadCapabilities Capabilities => Content.Capabilities;
     public ScriptTagCatalog Tags => Content.Tags;
     public IReadOnlyList<ContentScriptArtifact> Scripts => Content.Scripts;
@@ -258,7 +272,6 @@ public static class ContentSnapshotBuilder
             capabilities = capabilities.AdvanceTo(ContentLoadStage.RuntimeLinked);
         }
         var runtime = new RuntimeContent(
-            session.Catalog,
             capabilities,
             session.ParsedFileCount,
             compiler.Tags,
@@ -271,6 +284,7 @@ public static class ContentSnapshotBuilder
         options.Progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.Completed));
         return new ContentSnapshot(
             runtime,
+            new ContentCompatibilityData(session.Catalog, runtimeLink.Compatibility),
             collector.Snapshot(),
             collector.ReportedCount,
             collector.DroppedCount,

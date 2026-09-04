@@ -127,7 +127,9 @@ their assets.
 `measure-content-install` uses the same discovery and activation path but publishes
 only `RuntimeContent` across an isolated build boundary. Its retained-memory result
 therefore excludes diagnostics, parsed documents, composed operation history, audit
-normalization, and manifest buffers. Use the audit and measurement commands together;
+normalization, manifest buffers, and the explicit cold compatibility sidecar. A GC
+regression test verifies that compatibility, parsed, and composed graphs are not
+reachable from the hot root. Use the audit and measurement commands together;
 the former is the compatibility oracle and the latter is the runtime ownership probe.
 
 `measure-cached-content-install` exercises the production loader and reports cache
