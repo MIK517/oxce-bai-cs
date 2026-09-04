@@ -38,6 +38,11 @@ used.
 type-checked, bound against the declared catalog, and lowered to immutable executable
 IR. It does not mean every gameplay provider or event source is installed.
 
+Each parsed ruleset document has a stable ordered identity that is carried into rule
+operation provenance. File-local API visibility is indexed by that identity, not by a
+case-folded physical source path. Paths remain diagnostic metadata and may differ only
+by case in a ZIP or on a case-sensitive filesystem.
+
 Script-value schemas and type semantics live in scripting. Mutable instances and their
 lifecycle belong to gameplay. Savegames maps those gameplay-owned capture/restoration
 contracts to external names, versions, migrations, and unknown-field sidecars.

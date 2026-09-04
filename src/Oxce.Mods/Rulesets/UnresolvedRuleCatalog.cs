@@ -12,7 +12,12 @@ public enum RuleOperationKind
     Update,
 }
 
-public sealed record RuleOperationSource(string LayerId, string ModId, string SourcePath, SourceSpan Span);
+public sealed record RuleOperationSource(
+    string LayerId,
+    string ModId,
+    string SourcePath,
+    SourceSpan Span,
+    int? DocumentId = null);
 
 public sealed record UnresolvedRuleOperation(
     RuleOperationKind Kind,

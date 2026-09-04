@@ -45,14 +45,14 @@ public class CampaignSaveBenchmarks
         _campaign = loaded.Campaign;
         _source = loaded.Source;
         _snapshot = _campaign.Capture();
-        _yaml = OxceSaveAdapter.Emit(_snapshot, _source);
+        _yaml = OxceSaveAdapter.EmitLoadedCampaign(_snapshot, _source);
     }
 
     [Benchmark]
     public CampaignSnapshot Capture() => _campaign.Capture();
 
     [Benchmark]
-    public string Emit() => OxceSaveAdapter.Emit(_snapshot, _source);
+    public string Emit() => OxceSaveAdapter.EmitLoadedCampaign(_snapshot, _source);
 
     [Benchmark]
     public CampaignState ParseAndRestore() => OxceSaveAdapter.Load(

@@ -50,7 +50,7 @@ public sealed class PrivateCampaignSaveTests
             var original = File.ReadAllText(path);
             var loaded = OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(1), options);
             var before = loaded.Campaign.Capture();
-            var emitted = OxceSaveAdapter.Emit(before, loaded.Source);
+            var emitted = OxceSaveAdapter.EmitLoadedCampaign(before, loaded.Source);
             Assert.Contains("---", emitted, StringComparison.Ordinal);
             if (original.Contains("geoscapeDebugLog:", StringComparison.Ordinal))
                 Assert.Contains("geoscapeDebugLog:", emitted, StringComparison.Ordinal);

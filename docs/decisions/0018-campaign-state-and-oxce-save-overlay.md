@@ -25,6 +25,9 @@ is an opaque persistence sidecar. On write, known fields and implemented nested
 entities are overlaid onto that document while unknown fields and unimplemented
 collections remain intact. New saves use deterministic field order. File publication
 uses a flushed same-directory temporary file followed by replacement with a backup.
+The public adapter distinguishes new-campaign emission from loaded-campaign rewriting.
+Loaded rewrites require the opaque source document; preservation is not controlled by
+an optional argument that a caller can omit accidentally.
 
 Opaque nested fields are associated by semantic identity, never sequence position.
 Countries and regions use external rule ID; crafts and soldiers use type plus persistent
