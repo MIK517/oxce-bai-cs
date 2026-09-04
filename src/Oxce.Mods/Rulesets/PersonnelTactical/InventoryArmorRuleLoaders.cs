@@ -7,7 +7,6 @@ namespace Oxce.Mods.Rulesets.PersonnelTactical;
 internal sealed class InventoryRuleLoader : TypedRuleFamilyLoader<InventoryBuilder, InventoryRule>
 {
     public InventoryRuleLoader() : base(PersonnelTacticalYaml.Section("invs")) { }
-    protected override InventoryBuilder Create(string id) => throw new NotSupportedException();
     protected override InventoryBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 10));
     protected override void Apply(InventoryBuilder builder, RulePropertyReader reader)
@@ -55,7 +54,6 @@ internal sealed class ArmorRuleLoader : TypedRuleFamilyLoader<ArmorBuilder, Armo
     ];
 
     public ArmorRuleLoader() : base(PersonnelTacticalYaml.Section("armors")) { }
-    protected override ArmorBuilder Create(string id) => throw new NotSupportedException();
     protected override ArmorBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
 

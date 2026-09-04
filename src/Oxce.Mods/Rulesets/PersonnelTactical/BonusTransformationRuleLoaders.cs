@@ -6,7 +6,6 @@ namespace Oxce.Mods.Rulesets.PersonnelTactical;
 internal sealed class SoldierBonusRuleLoader : TypedRuleFamilyLoader<SoldierBonusBuilder, SoldierBonusRule>
 {
     public SoldierBonusRuleLoader() : base(PersonnelTacticalYaml.Section("soldierBonuses")) { }
-    protected override SoldierBonusBuilder Create(string id) => throw new NotSupportedException();
     protected override SoldierBonusBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
     protected override void Apply(SoldierBonusBuilder builder, RulePropertyReader reader)
@@ -30,7 +29,6 @@ internal sealed class SoldierTransformationRuleLoader :
     TypedRuleFamilyLoader<TransformationBuilder, SoldierTransformationRule>
 {
     public SoldierTransformationRuleLoader() : base(PersonnelTacticalYaml.Section("soldierTransformation")) { }
-    protected override TransformationBuilder Create(string id) => throw new NotSupportedException();
     protected override TransformationBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
     protected override void Apply(TransformationBuilder builder, RulePropertyReader reader)
@@ -80,7 +78,7 @@ internal sealed class SoldierTransformationRuleLoader :
         new ReadOnlyDictionary<string, ulong>(builder.Events));
 }
 
-internal sealed class CommendationRuleLoader : TypedRuleFamilyLoader<CommendationBuilder, CommendationRule>
+internal sealed class CommendationRuleLoader : IdOnlyTypedRuleFamilyLoader<CommendationBuilder, CommendationRule>
 {
     public CommendationRuleLoader() : base(PersonnelTacticalYaml.Section("commendations")) { }
     protected override CommendationBuilder Create(string id) => new(id);

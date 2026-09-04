@@ -8,7 +8,6 @@ namespace Oxce.Mods.Rulesets.EquipmentProduction;
 internal sealed class ItemCategoryRuleLoader : TypedRuleFamilyLoader<ItemCategoryBuilder, ItemCategoryRule>
 {
     public ItemCategoryRuleLoader() : base(EquipmentYaml.Section("itemCategories")) { }
-    protected override ItemCategoryBuilder Create(string id) => throw new NotSupportedException();
     protected override ItemCategoryBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
     protected override void Apply(ItemCategoryBuilder builder, RulePropertyReader reader)
@@ -23,7 +22,7 @@ internal sealed class ItemCategoryRuleLoader : TypedRuleFamilyLoader<ItemCategor
         new(builder.ReplaceBy, builder.Hidden, builder.ListOrder, builder.InventoryOrder.AsReadOnly());
 }
 
-internal sealed class WeaponSetRuleLoader : TypedRuleFamilyLoader<WeaponSetBuilder, WeaponSetRule>
+internal sealed class WeaponSetRuleLoader : IdOnlyTypedRuleFamilyLoader<WeaponSetBuilder, WeaponSetRule>
 {
     public WeaponSetRuleLoader() : base(EquipmentYaml.Section("weaponSets")) { }
     protected override WeaponSetBuilder Create(string id) => new(id);
@@ -35,7 +34,7 @@ internal sealed class WeaponSetRuleLoader : TypedRuleFamilyLoader<WeaponSetBuild
     protected override WeaponSetRule Freeze(WeaponSetBuilder builder) => new(builder.Weapons.AsReadOnly());
 }
 
-internal sealed class CraftWeaponRuleLoader : TypedRuleFamilyLoader<CraftWeaponBuilder, CraftWeaponRule>
+internal sealed class CraftWeaponRuleLoader : IdOnlyTypedRuleFamilyLoader<CraftWeaponBuilder, CraftWeaponRule>
 {
     public CraftWeaponRuleLoader() : base(EquipmentYaml.Section("craftWeapons")) { }
     protected override CraftWeaponBuilder Create(string id) => new(id);
@@ -71,7 +70,6 @@ internal sealed class CraftWeaponRuleLoader : TypedRuleFamilyLoader<CraftWeaponB
 internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, CraftRule>
 {
     public CraftRuleLoader() : base(EquipmentYaml.Section("crafts")) { }
-    protected override CraftBuilder Create(string id) => throw new NotSupportedException();
     protected override CraftBuilder Create(UnresolvedRule rule) =>
         new(rule.Id, checked((rule.CreationOrdinal + 1) * 100));
     protected override void Apply(CraftBuilder builder, RulePropertyReader reader)
@@ -173,7 +171,7 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
     }
 }
 
-internal sealed class UfoRuleLoader : TypedRuleFamilyLoader<UfoBuilder, UfoRule>
+internal sealed class UfoRuleLoader : IdOnlyTypedRuleFamilyLoader<UfoBuilder, UfoRule>
 {
     public UfoRuleLoader() : base(EquipmentYaml.Section("ufos")) { }
     protected override UfoBuilder Create(string id) => new(id);

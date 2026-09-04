@@ -4,7 +4,7 @@ using Oxce.Mods.Rulesets.Presentation;
 
 namespace Oxce.Mods.Rulesets.PersonnelTactical;
 
-internal sealed class SkillRuleLoader : TypedRuleFamilyLoader<SkillBuilder, SkillRule>
+internal sealed class SkillRuleLoader : IdOnlyTypedRuleFamilyLoader<SkillBuilder, SkillRule>
 {
     public SkillRuleLoader() : base(PersonnelTacticalYaml.Section("skills")) { }
     protected override SkillBuilder Create(string id) => new(id);
@@ -39,7 +39,6 @@ internal sealed class SkillRuleLoader : TypedRuleFamilyLoader<SkillBuilder, Skil
 internal sealed class SoldierRuleLoader : TypedRuleFamilyLoader<SoldierBuilder, SoldierRule>
 {
     public SoldierRuleLoader() : base(PersonnelTacticalYaml.Section("soldiers")) { }
-    protected override SoldierBuilder Create(string id) => throw new NotSupportedException();
     protected override SoldierBuilder Create(UnresolvedRule rule) => new(rule.Id, rule.CreationOrdinal + 1);
     protected override void Apply(SoldierBuilder builder, RulePropertyReader reader)
     {
@@ -128,7 +127,7 @@ internal sealed class SoldierRuleLoader : TypedRuleFamilyLoader<SoldierBuilder, 
     }
 }
 
-internal sealed class UnitRuleLoader : TypedRuleFamilyLoader<UnitBuilder, UnitRule>
+internal sealed class UnitRuleLoader : IdOnlyTypedRuleFamilyLoader<UnitBuilder, UnitRule>
 {
     public UnitRuleLoader() : base(PersonnelTacticalYaml.Section("units")) { }
     protected override UnitBuilder Create(string id) => new(id);
