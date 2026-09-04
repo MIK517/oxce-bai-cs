@@ -14,6 +14,9 @@ Controlled optimization measurement is defined in
 the BenchmarkDotNet project.
 Post-Phase-4 engineering budgets and dependency-selection policy are defined in
 [`performance-targets.md`](performance-targets.md).
+The current Windows x64 framework-dependent, self-contained, and SDL3-staged distribution
+sizes are recorded in [`performance-baselines.md`](performance-baselines.md); release packaging
+changes must be compared with the matching profile rather than a cross-profile total.
 
 ## Objective and delivery strategy
 
