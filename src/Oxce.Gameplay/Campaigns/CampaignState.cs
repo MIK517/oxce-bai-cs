@@ -220,7 +220,8 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
                 case CampaignTimeTrigger.ThirtyMinutes: thirtyMinutes++; break;
                 case CampaignTimeTrigger.OneHour: oneHour++; break;
                 case CampaignTimeTrigger.OneDay: oneDay++; DaysPassed++; break;
-                case CampaignTimeTrigger.OneMonth: oneMonth++; MonthsPassed++; break;
+                // GeoscapeState's monthly trigger falls through to daily processing.
+                case CampaignTimeTrigger.OneMonth: oneMonth++; MonthsPassed++; DaysPassed++; break;
                 default: throw new InvalidOperationException($"Unknown campaign time trigger '{trigger}'.");
             }
         }
