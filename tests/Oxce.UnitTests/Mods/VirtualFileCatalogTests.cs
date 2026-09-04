@@ -57,6 +57,33 @@ public sealed class VirtualFileCatalogTests
     }
 
     [Fact]
+    public void UnicodeLookupPreservesSpellingAndDoesNotMergeNormalizationForms()
+    {
+        const string decomposed = "NORM/CAFE\u0301.DAT";
+        var layer = Layer(
+            "unicode",
+            "unicode-mod",
+            ("ÜBER/CAFÉ.DAT", "latin"),
+            ("NORM/CAFÉ.DAT", "composed"),
+            (decomposed, "decomposed"),
+            ("MUSIK/ẞ.DAT", "capital-sharp-s"),
+            ("musik/ß.dat", "small-sharp-s"),
+            ("TEMP/KELVIN.DAT", "kelvin-sign"),
+            ("temp/kelvin.dat", "ascii-k"));
+
+        var latin = layer.TryGet("über/café.dat", out var foundLatin) ? foundLatin! : null;
+        Assert.NotNull(latin);
+        Assert.Equal("ÜBER/CAFÉ.DAT", latin.OriginalPath);
+        Assert.Equal("über/café.dat", latin.CanonicalPath);
+        Assert.Equal("composed", AssertEntry(layer, "norm/café.dat").SourcePath);
+        Assert.Equal("decomposed", AssertEntry(layer, "norm/cafe\u0301.dat").SourcePath);
+        Assert.Equal("capital-sharp-s", AssertEntry(layer, "musik/ẞ.dat").SourcePath);
+        Assert.Equal("small-sharp-s", AssertEntry(layer, "musik/ß.dat").SourcePath);
+        Assert.Equal("kelvin-sign", AssertEntry(layer, "temp/Kelvin.dat").SourcePath);
+        Assert.Equal("ascii-k", AssertEntry(layer, "temp/kelvin.dat").SourcePath);
+    }
+
+    [Fact]
     public void DirectoryScanIsDeterministicBoundedAndReadable()
     {
         using var temporary = new TemporaryDirectory();
@@ -70,6 +97,7 @@ public sealed class VirtualFileCatalogTests
         var catalog = new VirtualFileCatalog([layer]);
 
         Assert.Equal(["a.yml", "z.yml"], catalog.List("language"));
+        Assert.Equal("Language/A.yml", catalog.GetRequired("LANGUAGE/A.YML").OriginalPath);
         Assert.Single(catalog.Rulesets);
         using var reader = new StreamReader(catalog.GetRequired("ROOT.DAT").OpenRead(), Encoding.UTF8);
         Assert.Equal("root", reader.ReadToEnd());
@@ -106,6 +134,18 @@ public sealed class VirtualFileCatalogTests
         Assert.Equal(string.Empty, VirtualPath.NormalizeDirectory(string.Empty));
         Assert.Equal("language", VirtualPath.NormalizeDirectory("LANGUAGE/"));
         Assert.Throws<ArgumentException>(() => VirtualPath.NormalizeDirectory("/"));
+    }
+
+    [Fact]
+    public void PathNormalizationRejectsUnpairedSurrogates()
+    {
+        Assert.Throws<ArgumentException>(() => VirtualPath.NormalizeFile("invalid/\uD800.dat"));
+    }
+
+    private static VirtualFileEntry AssertEntry(VirtualFileLayer layer, string path)
+    {
+        Assert.True(layer.TryGet(path, out var entry));
+        return entry!;
     }
 
     private static VirtualFileLayer Layer(

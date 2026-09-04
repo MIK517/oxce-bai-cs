@@ -1,0 +1,49 @@
+{
+  "paths": [
+    {
+      "canonical": "geograph/world.dat",
+      "id": "ascii",
+      "original": "GEOGRAPH/WORLD.DAT"
+    },
+    {
+      "canonical": "\u00FCber/caf\u00E9.dat",
+      "id": "latin",
+      "original": "\u00DCBER/CAF\u00C9.DAT"
+    },
+    {
+      "canonical": "\u03C3\u03C7\u03B7\u03BC\u03B1/\u03B4\u03B5\u03BB\u03C4\u03B1.dat",
+      "id": "greek",
+      "original": "\u03A3\u03A7\u0397\u039C\u0391/\u0394\u0395\u039B\u03A4\u0391.DAT"
+    },
+    {
+      "canonical": "musik/\u1E9E.dat",
+      "id": "sharp-s",
+      "original": "MUSIK/\u1E9E.DAT"
+    },
+    {
+      "canonical": "temp/\u212Aelvin.dat",
+      "id": "kelvin",
+      "original": "TEMP/\u212AELVIN.DAT"
+    },
+    {
+      "canonical": "t\u00FCrk\u0130ye/\u0130.dat",
+      "id": "turkish-dotted-i",
+      "original": "T\u00DCRK\u0130YE/\u0130.DAT"
+    },
+    {
+      "canonical": "norm/caf\u00E9.dat",
+      "id": "composed",
+      "original": "NORM/CAF\u00C9.DAT"
+    },
+    {
+      "canonical": "norm/cafe\u0301.dat",
+      "id": "decomposed",
+      "original": "NORM/CAFE\u0301.DAT"
+    },
+    {
+      "canonical": "script/\uD801\uDC28.dat",
+      "id": "deseret",
+      "original": "SCRIPT/\uD801\uDC00.DAT"
+    }
+  ]
+}

@@ -36,6 +36,40 @@ public sealed class OxceSaveAdapterTests
     }
 
     [Fact]
+    public void UnicodeSaveDirectoryAndFilenameRoundTrip()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content,
+            CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42),
+            new CampaignFoundationTests.FixedClock());
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "oxce-save-MÖD-Δ-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var path = Path.Combine(directory, "Кампания-CAFÉ.sav");
+            OxceSaveAdapter.WriteNewCampaignAtomic(
+                path,
+                campaign.Capture(),
+                cancellationToken: TestContext.Current.CancellationToken);
+            var loaded = OxceSaveAdapter.LoadFile(
+                path,
+                content,
+                new SplitMix64RandomSource(0),
+                Options());
+
+            Assert.Equivalent(campaign.Capture(), loaded.Campaign.Capture(), strict: true);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void EligibleUnknownFieldsSurviveKnownFieldOverlay()
     {
         var content = CampaignFoundationTests.LoadFixture();

@@ -38,8 +38,9 @@ public sealed class VirtualFileLayer
         foreach (var source in sources)
         {
             ArgumentNullException.ThrowIfNull(source);
-            var canonicalPath = VirtualPath.NormalizeFile(source.RelativePath);
-            var entry = source.CreateEntry(canonicalPath, provenance);
+            var originalPath = VirtualPath.NormalizeFileSpelling(source.RelativePath);
+            var canonicalPath = VirtualPath.NormalizeFile(originalPath);
+            var entry = source.CreateEntry(originalPath, canonicalPath, provenance);
             if (IsRuleset(canonicalPath))
             {
                 if (!ignoreRulesets)

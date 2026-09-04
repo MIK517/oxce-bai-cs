@@ -40,6 +40,23 @@ public sealed class ModDiscoveryTests
     }
 
     [Fact]
+    public void UnicodeDirectoryAndArchiveNamesAreDiscovered()
+    {
+        using var fixture = new TemporaryModDirectory();
+        fixture.Add("MÖD-Δ", "id: unicode-directory\nisMaster: true\n");
+        fixture.AddArchive(
+            "ÀRCHIVE-Ж.zip",
+            ("metadata.yml", "id: unicode-archive\nisMaster: true\n"),
+            ("marker.dat", "archive"));
+
+        var result = ModDiscovery.ScanDirectory(fixture.Path);
+
+        Assert.Equal(2, result.Mods.Count);
+        Assert.Contains(result.Mods, candidate => candidate.Metadata.Id == "unicode-directory");
+        Assert.Contains(result.Mods, candidate => candidate.Metadata.Id == "unicode-archive");
+    }
+
+    [Fact]
     public void DiscoversSingleAndMultiModArchivesAndOpensEntriesLazily()
     {
         using var fixture = new TemporaryModDirectory();
@@ -119,6 +136,55 @@ public sealed class ModDiscoveryTests
         var result = ModDiscovery.ScanDirectory(fixture.Path);
 
         Assert.Equal("CaseMod", Assert.Single(result.Mods).Metadata.Id);
+    }
+
+    [Fact]
+    public void UnicodeArchivePrefixAndCollisionPreserveWinningSpelling()
+    {
+        using var fixture = new TemporaryModDirectory();
+        fixture.AddArchive(
+            "unicode.zip",
+            ("MÖD/", string.Empty),
+            ("MÖD/metadata.yml", "id: unicode-archive\nisMaster: true\n"),
+            ("MÖD/ÜBER/CAFÉ.DAT", "first"),
+            ("MÖD/über/café.dat", "last"));
+
+        var result = ModDiscovery.ScanDirectory(fixture.Path);
+
+        var candidate = Assert.Single(result.Mods);
+        Assert.True(candidate.Layer.TryGet("ÜBER/CAFÉ.DAT", out var entry));
+        entry = Assert.IsAssignableFrom<VirtualFileEntry>(entry);
+        Assert.Equal("last", ReadText(entry));
+        Assert.Equal("über/café.dat", entry.OriginalPath);
+        Assert.Equal("über/café.dat", entry.CanonicalPath);
+    }
+
+    [Fact]
+    public void UnicodeLooseResourceOverridesArchiveThroughTheSameCanonicalKey()
+    {
+        using var fixture = new TemporaryModDirectory();
+        using var resources = new TemporaryModDirectory();
+        fixture.Add("master", "id: master\nisMaster: true\nloadResources: [UFO]\n");
+        resources.AddResourceDirectory(
+            "UFO",
+            ("ÜBER/CAFÉ.DAT", "loose"),
+            ("marker.dat", "loose-marker"));
+        resources.AddArchive(
+            "UFO.zip",
+            ("UFO/über/café.dat", "archive"),
+            ("UFO/marker.dat", "archive-marker"));
+        var options = new ModDiscoveryOptions { ExternalResourceRoots = [resources.Path] };
+
+        var result = ModDiscovery.ScanDirectory(fixture.Path, options: options);
+
+        var candidate = Assert.Single(result.Mods);
+        var catalog = new VirtualFileCatalog(candidate.Layers);
+        var winner = catalog.GetRequired("ÜBER/CAFÉ.DAT");
+        Assert.Equal("loose", ReadText(winner));
+        Assert.Equal("ÜBER/CAFÉ.DAT", winner.OriginalPath);
+        Assert.Contains(
+            catalog.GetSlice("über/café.dat"),
+            entry => entry is not null && entry.OriginalPath == "über/café.dat");
     }
 
     [Fact]
