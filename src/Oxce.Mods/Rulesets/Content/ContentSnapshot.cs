@@ -377,7 +377,7 @@ internal sealed class ContentScriptCompiler
     private readonly ScriptApiCatalog _baseApi = ReferenceScriptApiCatalog.Instance;
     private readonly ScriptTagCatalogBuilder _tagBuilder = new();
     private readonly Dictionary<string, ScriptTagDefinition> _tagsByName = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, ScriptApiCatalog> _apiBySource = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, ScriptApiCatalog> _apiByDocument = [];
     private readonly Dictionary<(int TagCount, string ModId), ScriptApiCatalog> _apiScopes = [];
     private readonly Dictionary<string, List<ScriptEventMutation>> _eventMutations = new(StringComparer.Ordinal);
     private readonly Dictionary<(string Section, string Id, string Parser), ContentScriptArtifact> _ruleScripts = [];
@@ -410,7 +410,7 @@ internal sealed class ContentScriptCompiler
     public IReadOnlyList<ContentScriptEventPlan> EventPlans => _eventPlans;
     public IReadOnlyList<ContentInitialScriptValue> InitialValues => _initialValues;
     public int CompiledScriptCount => _compiledScriptCount;
-    public int SourceScopeCount => _apiBySource.Count;
+    public int SourceScopeCount => _apiByDocument.Count;
     public int ApiScopeCount => _apiScopes.Count;
 
     public void Compile()
@@ -461,7 +461,7 @@ internal sealed class ContentScriptCompiler
                     LoadTags(tags!, document.File.SourcePath);
                 }
                 var api = CreateApi(_tagBuilder.Build(), document.Mod.Metadata.Id);
-                _apiBySource[document.File.SourcePath] = api;
+                _apiByDocument[document.DocumentId] = api;
                 if (extended.TryGet("globals", out var globals))
                 {
                     CompileInitialValues("extended", "globals", globals!, api, document.File.SourcePath);
@@ -471,8 +471,8 @@ internal sealed class ContentScriptCompiler
                     CompileGlobalScripts(scripts!, api, document.File.SourcePath);
                 }
             }
-            _apiBySource.TryAdd(
-                document.File.SourcePath,
+            _apiByDocument.TryAdd(
+                document.DocumentId,
                 CreateApi(_tagBuilder.Build(), document.Mod.Metadata.Id));
         }
     }
@@ -713,7 +713,10 @@ internal sealed class ContentScriptCompiler
                 foreach (var operation in rule.Operations)
                 {
                     _options.CancellationToken.ThrowIfCancellationRequested();
-                    var api = _apiBySource.GetValueOrDefault(operation.Source.SourcePath, finalApi);
+                    var api = operation.Source.DocumentId is { } documentId &&
+                        _apiByDocument.TryGetValue(documentId, out var documentApi)
+                        ? documentApi
+                        : finalApi;
                     CompileRuleMapping(section.Definition.Name, rule.Id, operation.Node, api, operation.Source.SourcePath);
                 }
             }

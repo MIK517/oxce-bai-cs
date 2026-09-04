@@ -50,10 +50,23 @@ public static class OxceSaveAdapter
         return Load(yaml, sourceName, Encoding.UTF8.GetBytes(yaml), content, random, options);
     }
 
-    public static string Emit(
+    public static string EmitNewCampaign(
         CampaignSnapshot snapshot,
-        OxceSaveDocument? source = null,
+        OxceSaveWriteOptions? options = null) => Emit(snapshot, null, options);
+
+    public static string EmitLoadedCampaign(
+        CampaignSnapshot snapshot,
+        OxceSaveDocument source,
         OxceSaveWriteOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return Emit(snapshot, source, options);
+    }
+
+    private static string Emit(
+        CampaignSnapshot snapshot,
+        OxceSaveDocument? source,
+        OxceSaveWriteOptions? options)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         options ??= new OxceSaveWriteOptions();
@@ -65,12 +78,30 @@ public static class OxceSaveAdapter
             options.Yaml);
     }
 
-    public static void WriteAtomic(
+    public static void WriteNewCampaignAtomic(
         string path,
         CampaignSnapshot snapshot,
-        OxceSaveDocument? source = null,
+        OxceSaveWriteOptions? options = null,
+        CancellationToken cancellationToken = default) =>
+        WriteAtomic(path, snapshot, null, options, cancellationToken);
+
+    public static void RewriteLoadedCampaignAtomic(
+        string path,
+        CampaignSnapshot snapshot,
+        OxceSaveDocument source,
         OxceSaveWriteOptions? options = null,
         CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        WriteAtomic(path, snapshot, source, options, cancellationToken);
+    }
+
+    private static void WriteAtomic(
+        string path,
+        CampaignSnapshot snapshot,
+        OxceSaveDocument? source,
+        OxceSaveWriteOptions? options,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var output = Emit(snapshot, source, options);

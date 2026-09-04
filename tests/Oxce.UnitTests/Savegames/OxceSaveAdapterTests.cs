@@ -22,7 +22,7 @@ public sealed class OxceSaveAdapterTests
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 1.25, -0.5));
         var before = campaign.Capture();
 
-        var yaml = OxceSaveAdapter.Emit(before);
+        var yaml = OxceSaveAdapter.EmitNewCampaign(before);
         var loaded = OxceSaveAdapter.Load(
             yaml,
             "campaign.sav",
@@ -32,7 +32,7 @@ public sealed class OxceSaveAdapterTests
 
         Assert.Contains("\n---\n", yaml, StringComparison.Ordinal);
         Assert.Equivalent(before, loaded.Campaign.Capture(), strict: true);
-        Assert.Equal(yaml, OxceSaveAdapter.Emit(loaded.Campaign.Capture()));
+        Assert.Equal(yaml, OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source));
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class OxceSaveAdapterTests
             CampaignFoundationTests.Request(),
             new SplitMix64RandomSource(42),
             new CampaignFoundationTests.FixedClock());
-        var yaml = OxceSaveAdapter.Emit(campaign.Capture())
+        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture())
             .Replace("name: Campaign", "futureHeader: retained\nname: Campaign", StringComparison.Ordinal)
             .Replace("difficulty: 0", "futureBody: {answer: 42}\ndifficulty: 0", StringComparison.Ordinal)
             .Replace("type: COUNTRY", "type: COUNTRY\n    futureCountry: yes", StringComparison.Ordinal);
@@ -52,11 +52,45 @@ public sealed class OxceSaveAdapterTests
         var loaded = OxceSaveAdapter.Load(
             yaml, "future.sav", content, new SplitMix64RandomSource(0), Options());
         loaded.Campaign.Execute(new AdvanceCampaignTime(1));
-        var emitted = OxceSaveAdapter.Emit(loaded.Campaign.Capture(), loaded.Source);
+        var emitted = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
 
         Assert.Contains("futureHeader: retained", emitted, StringComparison.Ordinal);
         Assert.Contains("futureBody:", emitted, StringComparison.Ordinal);
         Assert.Contains("futureCountry: yes", emitted, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadedAtomicRewriteRequiresAndPreservesSourceDocument()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFactory.Create(
+            content,
+            CampaignFoundationTests.Request(),
+            new SplitMix64RandomSource(42),
+            new CampaignFoundationTests.FixedClock());
+        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture())
+            .Replace("name: Campaign", "futureHeader: retained\nname: Campaign", StringComparison.Ordinal);
+        var loaded = OxceSaveAdapter.Load(
+            yaml, "rewrite.sav", content, new SplitMix64RandomSource(0), Options());
+        var directory = Path.Combine(Path.GetTempPath(), "oxce-save-rewrite-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var path = Path.Combine(directory, "campaign.sav");
+            OxceSaveAdapter.RewriteLoadedCampaignAtomic(
+                path,
+                loaded.Campaign.Capture(),
+                loaded.Source,
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.Contains("futureHeader: retained", File.ReadAllText(path), StringComparison.Ordinal);
+            Assert.Throws<ArgumentNullException>(() =>
+                OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), null!));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]
@@ -92,7 +126,7 @@ public sealed class OxceSaveAdapterTests
             0,
             0);
         var initial = snapshot with { Bases = Array.AsReadOnly([alpha, beta]) };
-        var yaml = OxceSaveAdapter.Emit(initial)
+        var yaml = OxceSaveAdapter.EmitNewCampaign(initial)
             .Replace("name: Alpha", "name: Alpha\n    opaqueBase: alpha", StringComparison.Ordinal)
             .Replace("name: Beta", "name: Beta\n    opaqueBase: beta", StringComparison.Ordinal)
             .Replace(
@@ -124,7 +158,7 @@ public sealed class OxceSaveAdapterTests
         var gamma = beta with { Id = 20, Name = "Gamma", Facilities = Array.AsReadOnly(Array.Empty<FacilitySnapshot>()) };
         var changed = loadedSnapshot with { Bases = Array.AsReadOnly([loadedBeta, gamma, changedAlpha]) };
 
-        var emitted = OxceSaveAdapter.Emit(changed, loaded.Source);
+        var emitted = OxceSaveAdapter.EmitLoadedCampaign(changed, loaded.Source);
         var emittedBases = ReadMaps(ReadBody(emitted), "bases").ToDictionary(ReadId);
         var emittedBeta = emittedBases[12];
         var emittedGamma = emittedBases[20];
@@ -138,7 +172,7 @@ public sealed class OxceSaveAdapterTests
         Assert.False(alphaFacilities[(templateFacility.RuleId, 3, 0)].TryGet("opaqueFacility", out _));
         Assert.DoesNotContain("alpha-zero", emitted, StringComparison.Ordinal);
 
-        var afterRemoval = OxceSaveAdapter.Emit(
+        var afterRemoval = OxceSaveAdapter.EmitLoadedCampaign(
             loadedSnapshot with { Bases = Array.AsReadOnly([loadedAlpha]) }, loaded.Source);
         Assert.DoesNotContain("opaqueBase: beta", afterRemoval, StringComparison.Ordinal);
     }
@@ -164,7 +198,7 @@ public sealed class OxceSaveAdapterTests
             Items = new Dictionary<string, int>(StringComparer.Ordinal),
         };
         var yaml = Regex.Replace(
-            OxceSaveAdapter.Emit(snapshot with { Bases = Array.AsReadOnly([original, second]) }),
+            OxceSaveAdapter.EmitNewCampaign(snapshot with { Bases = Array.AsReadOnly([original, second]) }),
             "^    id: [01]\\r?$",
             string.Empty,
             RegexOptions.Multiline | RegexOptions.CultureInvariant);
@@ -172,7 +206,7 @@ public sealed class OxceSaveAdapterTests
         var loaded = OxceSaveAdapter.Load(
             yaml, "legacy-bases.sav", content, new SplitMix64RandomSource(0), Options());
         var ids = loaded.Campaign.Capture().Bases.Select(static item => item.Id).ToArray();
-        var emitted = OxceSaveAdapter.Emit(loaded.Campaign.Capture(), loaded.Source);
+        var emitted = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
 
         Assert.Equal([0, 1], ids);
         Assert.Contains("    id: 0", emitted, StringComparison.Ordinal);
@@ -195,7 +229,7 @@ public sealed class OxceSaveAdapterTests
             CampaignFoundationTests.Request(),
             new SplitMix64RandomSource(42),
             new CampaignFoundationTests.FixedClock());
-        var yaml = OxceSaveAdapter.Emit(campaign.Capture());
+        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
         var missing = new OxceSaveLoadOptions(
             "runtime-master", new HashSet<string>(["runtime-master"], StringComparer.Ordinal));
         Assert.Throws<InvalidDataException>(() =>
@@ -229,7 +263,7 @@ public sealed class OxceSaveAdapterTests
         {
             var path = Path.Combine(directory, "campaign.sav");
             File.WriteAllText(path, "original");
-            Assert.Throws<OperationCanceledException>(() => OxceSaveAdapter.WriteAtomic(
+            Assert.Throws<OperationCanceledException>(() => OxceSaveAdapter.WriteNewCampaignAtomic(
                 path, campaign.Capture(), cancellationToken: new CancellationToken(canceled: true)));
             Assert.Equal("original", File.ReadAllText(path));
             Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
@@ -275,7 +309,7 @@ public sealed class OxceSaveAdapterTests
 
         for (var index = 0; index < 100; index++)
         {
-            var yaml = OxceSaveAdapter.Emit(campaign.Capture());
+            var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
             stable ??= yaml;
             Assert.Equal(stable, yaml);
             campaign = OxceSaveAdapter.Load(

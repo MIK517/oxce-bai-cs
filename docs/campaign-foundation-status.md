@@ -20,6 +20,9 @@ reordering, adding, or removing either entity cannot transfer unknown fields by 
 position. Reference saves without base IDs receive deterministic IDs on import.
 Writes use a flushed temporary file, atomic replacement, and a recoverable `.bak` when
 replacing an existing save.
+New-campaign writes and loaded-campaign rewrites use distinct public adapter methods;
+the rewrite methods require the opaque source document so an omitted optional argument
+cannot silently discard forward-compatible state.
 
 No command in this foundation invokes an executable gameplay script event yet, so the
 slice adds no speculative provider ABI. It does restore the `GeoscapeGame` and
