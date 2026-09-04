@@ -14,7 +14,8 @@ namespace Oxce.Mods.Rulesets.Phase3;
 
 public sealed class Phase3ContentCatalog
 {
-    private Phase3ContentCatalog(
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal Phase3ContentCatalog(
         PresentationRuleCatalog presentation,
         CampaignStartRuleCatalog campaignStart,
         ItemRuleCatalog items,

@@ -12,9 +12,21 @@ public sealed class TerrainDeploymentRuleCatalog
         TypedRuleSection<AlienRaceRule> races, TypedRuleSection<EnviroEffectsRule> effects,
         TypedRuleSection<StartingConditionRule> conditions, TypedRuleSection<AlienDeploymentRule> deployments,
         TerrainSpecialRules special)
+        : this(terrains, special.MapScripts, special.McdPatches, races, effects, conditions, deployments)
     {
-        Terrains = terrains; AlienRaces = races; EnviroEffects = effects; StartingConditions = conditions;
-        AlienDeployments = deployments; MapScripts = special.MapScripts; McdPatches = special.McdPatches;
+    }
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal TerrainDeploymentRuleCatalog(TypedRuleSection<TerrainRule> terrains,
+        IReadOnlyDictionary<string, MapScriptRule> mapScripts,
+        IReadOnlyDictionary<string, McdPatchRule> mcdPatches,
+        TypedRuleSection<AlienRaceRule> alienRaces,
+        TypedRuleSection<EnviroEffectsRule> enviroEffects,
+        TypedRuleSection<StartingConditionRule> startingConditions,
+        TypedRuleSection<AlienDeploymentRule> alienDeployments)
+    {
+        Terrains = terrains; AlienRaces = alienRaces; EnviroEffects = enviroEffects; StartingConditions = startingConditions;
+        AlienDeployments = alienDeployments; MapScripts = mapScripts; McdPatches = mcdPatches;
         Capabilities = ContentLoadCapabilities.Composed.AdvanceTo(ContentLoadStage.Typed);
     }
     public TypedRuleSection<TerrainRule> Terrains { get; }

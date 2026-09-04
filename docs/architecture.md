@@ -116,6 +116,14 @@ application entry points receive only `RuntimeContent`; audit and measurement to
 reuse planning while retaining explicit control of build-only lifetimes. See
 [ADR 0020](decisions/0020-installation-bootstrap.md).
 
+The production bootstrap may restore a versioned compiled-content reconstruction image
+after planning. Its key binds the ordered ruleset contents, resource identities, mod
+metadata, compatibility/compiler revisions, and current limits. A hit still creates a
+fresh generation and reruns runtime rule linking; failures fall back to the normal build.
+Audit tools bypass this optimization so compatibility evidence always exercises source
+parsing and composition. See
+[ADR 0022](decisions/0022-versioned-compiled-content-cache.md).
+
 ## Data modeling
 
 - Use explicit stable string IDs for rules and resources.

@@ -10,11 +10,14 @@ namespace Oxce.Mods.Rulesets.MissionEvents;
 
 public sealed class MissionEventRuleCatalog
 {
-    private MissionEventRuleCatalog(TypedRuleSection<UfoTrajectoryRule> trajectories, TypedRuleSection<AlienMissionRule> missions,
-        TypedRuleSection<StrategicScriptRule> arcs, TypedRuleSection<StrategicScriptRule> eventScripts,
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal MissionEventRuleCatalog(TypedRuleSection<UfoTrajectoryRule> ufoTrajectories,
+        TypedRuleSection<AlienMissionRule> alienMissions,
+        TypedRuleSection<StrategicScriptRule> arcScripts, TypedRuleSection<StrategicScriptRule> eventScripts,
         TypedRuleSection<EventRule> events, TypedRuleSection<StrategicScriptRule> missionScripts,
-        TypedRuleSection<StrategicScriptRule> adhocScripts, IReadOnlyDictionary<string, UfopaediaArticleRule> articles)
-    { UfoTrajectories = trajectories; AlienMissions = missions; ArcScripts = arcs; EventScripts = eventScripts; Events = events; MissionScripts = missionScripts; AdhocScripts = adhocScripts; Ufopaedia = articles; Capabilities = ContentLoadCapabilities.Composed.AdvanceTo(ContentLoadStage.Typed); }
+        TypedRuleSection<StrategicScriptRule> adhocScripts,
+        IReadOnlyDictionary<string, UfopaediaArticleRule> ufopaedia)
+    { UfoTrajectories = ufoTrajectories; AlienMissions = alienMissions; ArcScripts = arcScripts; EventScripts = eventScripts; Events = events; MissionScripts = missionScripts; AdhocScripts = adhocScripts; Ufopaedia = ufopaedia; Capabilities = ContentLoadCapabilities.Composed.AdvanceTo(ContentLoadStage.Typed); }
     public TypedRuleSection<UfoTrajectoryRule> UfoTrajectories { get; }
     public TypedRuleSection<AlienMissionRule> AlienMissions { get; }
     public TypedRuleSection<StrategicScriptRule> ArcScripts { get; }

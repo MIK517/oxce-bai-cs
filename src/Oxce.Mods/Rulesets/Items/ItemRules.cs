@@ -15,6 +15,22 @@ public sealed class ItemScalarValues
         Booleans = ReadOnly(builder.Booleans);
     }
 
+    [System.Text.Json.Serialization.JsonConstructor]
+    internal ItemScalarValues(
+        IReadOnlyDictionary<string, string> strings,
+        IReadOnlyDictionary<string, string?> nullableNames,
+        IReadOnlyDictionary<string, int> integers,
+        IReadOnlyDictionary<string, double> reals,
+        IReadOnlyDictionary<string, bool> booleans)
+    {
+        Strings = ReadOnly(strings);
+        NullableNames = new ReadOnlyDictionary<string, string?>(
+            new Dictionary<string, string?>(nullableNames, StringComparer.Ordinal));
+        Integers = ReadOnly(integers);
+        Reals = ReadOnly(reals);
+        Booleans = ReadOnly(booleans);
+    }
+
     public IReadOnlyDictionary<string, string> Strings { get; }
     public IReadOnlyDictionary<string, string?> NullableNames { get; }
     public IReadOnlyDictionary<string, int> Integers { get; }
@@ -29,6 +45,9 @@ public sealed class ItemScalarValues
 
     private static ReadOnlyDictionary<string, T> ReadOnly<T>(Dictionary<string, T> values) =>
         new ReadOnlyDictionary<string, T>(new Dictionary<string, T>(values, StringComparer.Ordinal));
+
+    private static ReadOnlyDictionary<string, T> ReadOnly<T>(IReadOnlyDictionary<string, T> values) =>
+        new(new Dictionary<string, T>(values, StringComparer.Ordinal));
 }
 
 public sealed record ItemUseValues<T>(T Time, T Energy, T Morale, T Health, T Stun, T Mana);

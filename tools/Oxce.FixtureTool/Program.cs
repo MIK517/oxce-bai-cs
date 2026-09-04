@@ -43,6 +43,8 @@ internal static class FixtureTool
                     AuditContentInstall(installationRoot, masterId, addOnId, destination, output),
                 ["measure-content-install", var installationRoot, var masterId, var addOnId] =>
                     MeasureContentInstall(installationRoot, masterId, addOnId, output),
+                ["measure-cached-content-install", var installationRoot, var masterId, var addOnId, var cacheRoot] =>
+                    MeasureCachedContentInstall(installationRoot, masterId, addOnId, cacheRoot, output),
                 ["campaign-scenario", var installationRoot, var masterId, var addOnId, var destination] =>
                     CampaignScenario(installationRoot, masterId, addOnId, destination, output),
                 ["compare", var expected, var actual] => Compare(expected, actual, output),
@@ -60,6 +62,51 @@ internal static class FixtureTool
     {
         var digest = FileDigest.Calculate(path);
         output.WriteLine(JsonSerializer.Serialize(new { path, size = digest.Size, sha256 = digest.Sha256 }));
+        return 0;
+    }
+
+    private static int MeasureCachedContentInstall(
+        string installationRoot,
+        string masterId,
+        string addOnId,
+        string cacheRoot,
+        TextWriter output)
+    {
+        var request = InstallationLoadRequest.ForMasterAndAddOn(
+            installationRoot,
+            masterId,
+            addOnId,
+            new ModEngineIdentity("Extended", "8.6.1.0"));
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var timer = Stopwatch.StartNew();
+        var result = InstallationContentLoader.Load(
+            request,
+            new InstallationContentLoadOptions
+            {
+                Cache = cacheRoot == "-"
+                    ? new CompiledContentCacheOptions { Enabled = false }
+                    : new CompiledContentCacheOptions { DirectoryPath = cacheRoot },
+            });
+        timer.Stop();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        if (!result.IsSuccess)
+        {
+            throw new InvalidDataException(result.DescribeFailure());
+        }
+        var cacheFile = cacheRoot == "-" ? null :
+            Path.Combine(Path.GetFullPath(cacheRoot), "content-v1.json.gz");
+        output.WriteLine(JsonSerializer.Serialize(new
+        {
+            cacheStatus = result.CacheStatus.ToString(),
+            result.CacheRejectionReason,
+            elapsedMilliseconds = timer.Elapsed.TotalMilliseconds,
+            allocatedBytes = allocated,
+            parsedFileCount = result.Content!.ParsedFileCount,
+            scripts = result.Content.Scripts.Count,
+            resources = result.Content.Resources.Descriptors.Count,
+            compatibilityEntries = result.Content.RuntimeRules.Compatibility.Entries.Count,
+            cacheBytes = cacheFile is not null && File.Exists(cacheFile) ? new FileInfo(cacheFile).Length : 0,
+        }));
         return 0;
     }
 
