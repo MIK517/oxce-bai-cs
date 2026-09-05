@@ -12,6 +12,26 @@ namespace Oxce.UnitTests.Mods;
 public sealed class InstallationContentLoaderTests
 {
     [Fact]
+    public void AssetOnlySharedCountChangeRejectsCachedContent()
+    {
+        using var installation = new TemporaryInstallation();
+        var path = Path.Combine(installation.Root, "standard", "runtime-master", "GEOGRAPH", "BASEBITS.TAB");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, []);
+        var request = installation.Request(addOnId: "runtime-addon");
+        var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.Equal(1000, Assert.Single(first.Content!.Resources.Indexes).RuntimeIndex);
+
+        File.WriteAllBytes(path, new byte[4]);
+        var changed = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(changed.IsSuccess, changed.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Rejected, changed.CacheStatus);
+        Assert.Equal(0, Assert.Single(changed.Content!.Resources.Indexes).RuntimeIndex);
+        Assert.Equal(CompiledContentCacheStatus.Hit, InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken).CacheStatus);
+    }
+
+    [Fact]
     public void RuntimeLoadPublishesContentAndStableProgressStages()
     {
         using var installation = new TemporaryInstallation();
