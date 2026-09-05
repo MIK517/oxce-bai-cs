@@ -84,6 +84,12 @@ round trips from both freshly built and restored content.
   an explicit one-time tradeoff.
 - Cached and fresh content share the same public `RuntimeContent` contract. Cache hits
   report empty build-stage measurements because the skipped stages were not executed.
+  Installation results additionally expose `StartupMeasurements`: non-overlapping
+  elapsed-time and calling-thread allocation samples for discovery/planning, key
+  construction, cache read/deserialization, resource restoration, rule relinking,
+  runtime publication, fresh build, and cache write as applicable. Failed attempts
+  retain completed/failed stage samples; an absent stage was not attempted, rather
+  than measured at zero. Total includes orchestration and measurement overhead.
 - Compatibility audits continue to call `ContentSnapshotBuilder` directly and therefore
   bypass the cache. The semantic manifest remains the fresh-build oracle.
 - Format evolution requires an explicit revision change or a participating assembly
@@ -93,3 +99,9 @@ round trips from both freshly built and restored content.
   cannot reuse an image built with older resource identities.
 - The cache currently keeps one image per configured directory. Switching active mod
   sets replaces it rather than allowing unbounded per-profile cache growth.
+
+The startup-efficiency follow-up uses reverse layer lookups for the bounded shared
+resource dependency inventory. This preserves `VirtualFileCatalog` last-layer-wins
+semantics without constructing its complete resource/directory indexes solely for
+metadata fingerprints. It changes neither cache input identity nor persistence format;
+the loose/ZIP precedence and cached/fresh regression scenarios remain the acceptance gate.

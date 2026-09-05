@@ -226,8 +226,11 @@ compiled-cache resource dependencies: shared TAB/CAT headers and lengths now par
 in cache identity, with public loose/ZIP, malformed-input, precedence, override, and
 cached/fresh regression scenarios. The second repair now projects starting scientists
 and engineers, preserves difficulty/overlay defaults, and verifies fresh/cached campaign
-creation through atomic save/reload. Startup measurement and CI efficiency remain the
-next planned engineering branch.
+creation through atomic save/reload. The startup measurement and CI efficiency branch
+is also implemented; see [startup/CI status](startup-ci-efficiency-status.md).
+It adds stage attribution, reduces metadata-key allocation, and cancels superseded PR
+validation. Cache deserialization remains the primary warm-start bottleneck; the
+5-second target and native artifact caching are not claimed complete.
 
 Suggested order:
 
