@@ -95,6 +95,13 @@ matrix and cache schema/revision as appropriate for the changed projection.
 
 ## Sequential branches
 
+Implementation follow-up: branch 1 now includes the shared TAB/CAT metadata in cache
+identity, uses the live ZIP entry length for archived resources, and invalidates older
+keys with compiler revision 2. The original unit reproduction fails before the repair;
+the completed Release suite passes 553 tests, including 18 generated resource dependency
+scenarios. See ADR 0022 for the bounded metadata fingerprint and sound-config policy.
+The starting personnel finding remains open for branch 2.
+
 Only one branch/PR is active at a time. Each starts from updated `main` after the previous
 PR has passed and been merged using **Rebase and merge**. Do not stack unfinished PRs.
 

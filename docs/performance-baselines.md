@@ -466,6 +466,24 @@ publication run is accepted because caching is optional, atomic, and amortized
 over later launches; a no-compression experiment produced a 231 MiB image and was
 rejected. Wall-clock values remain local observations rather than CI gates.
 
+### Resource dependency correction validation (2026-09-05)
+
+After adding bounded TAB/CAT metadata fingerprints, four separate Release
+`measure-cached-content-install` processes exercised the staged 40k/Rosigma installation
+with an isolated cache. The publication run took 13,867.3 ms; subsequent hits took
+7,585.6, 7,267.9, and 7,333.6 ms (median 7,333.6 ms). Median current-thread allocation
+was 961.7 MiB. Each load published 512 parsed files, 3,536 scripts, 24,623 descriptors,
+and 12,542 runtime rules/scripts. The cache image was 19,037,799 bytes.
+
+These are current integration observations, not a controlled before/after benchmark:
+the earlier September baseline was collected in a different session. They establish
+successful cache publication/restoration on the representative installation, not a
+performance improvement. Warm startup remains above the 5-second target and belongs
+to the planned startup-measurement follow-up. The new dependency probes read at most
+four logical bytes plus length metadata per selected shared-count input; VFS construction
+and archive opening still have costs. Raw outputs remain under ignored
+`artifacts/cache-resource-dependency-20260905/run-*.json`.
+
 ### Hot runtime-content retention result
 
 The hot/cold content-partitioning slice was measured on 2026-09-04 on the same Ryzen 9

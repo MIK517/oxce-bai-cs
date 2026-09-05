@@ -80,6 +80,7 @@ public sealed class ModDiscoveryTests
         Assert.True(single.Layer.TryGet("resources/marker.txt", out var entry));
         Assert.Contains("!", entry!.SourcePath, StringComparison.Ordinal);
         using var reader = new StreamReader(entry.OpenRead());
+        Assert.Equal(14, reader.BaseStream.Length);
         Assert.Equal("single-content", reader.ReadToEnd());
         var addon = Assert.Single(result.Mods, candidate => candidate.Metadata.Id == "multi-addon");
         Assert.Equal("addon-content", ReadText(addon.Layer, "resources/marker.txt"));
