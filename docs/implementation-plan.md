@@ -224,8 +224,10 @@ SDL view now creates and operates this slice without coupling gameplay to SDL.
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
 in cache identity, with public loose/ZIP, malformed-input, precedence, override, and
-cached/fresh regression scenarios. Starting personnel initialization remains the next
-separate repair before broader strategic work.
+cached/fresh regression scenarios. The second repair now projects starting scientists
+and engineers, preserves difficulty/overlay defaults, and verifies fresh/cached campaign
+creation through atomic save/reload. Startup measurement and CI efficiency remain the
+next planned engineering branch.
 
 Suggested order:
 
