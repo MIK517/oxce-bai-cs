@@ -484,6 +484,36 @@ four logical bytes plus length metadata per selected shared-count input; VFS con
 and archive opening still have costs. Raw outputs remain under ignored
 `artifacts/cache-resource-dependency-20260905/run-*.json`.
 
+### Startup stage attribution and metadata lookup (2026-09-05)
+
+The startup/CI branch measured the same staged 40k/Rosigma install on the existing
+Windows host with SDK 10.0.302. The instrumented baseline and candidate each used
+one excluded publication/rebuild process and three separate warm-hit processes. No
+build or test run overlapped these measurements. Raw JSON is retained under ignored
+`artifacts/startup-stages-20260905/{baseline,candidate}-*.json`.
+
+| Stage | Baseline median | Candidate median | Baseline allocation | Candidate allocation |
+|---|---:|---:|---:|---:|
+| Discovery and planning | 773.1 ms | 680.2 ms | 50,108,232 B | 50,108,232 B |
+| Cache key | 182.5 ms | 116.9 ms | 16,511,536 B | 7,847,720 B |
+| Cache read, decompress, deserialize | 6,204.1 ms | 5,834.6 ms | 915,615,120 B | 914,915,032 B |
+| Resource restoration | 70.8 ms | 57.2 ms | 9,611,888 B | 9,611,888 B |
+| Runtime rule linking | 173.3 ms | 144.8 ms | 13,427,952 B | 13,427,952 B |
+| Runtime publication | 19.3 ms | 17.4 ms | 418,000 B | 418,000 B |
+
+The change replaces full VFS catalog construction during key hashing with reverse
+layer lookups for the bounded metadata inventory. It removes 8,663,816 B (52.5%) of
+median key-stage allocation. Overall observed warm median changed from 7,435.4 ms
+to 6,874.3 ms, but this is a short sequential sample without confidence intervals:
+unchanged stages also ran faster, so the whole timing difference cannot be attributed
+to this change. The allocation reduction is the primary acceptance evidence.
+
+All runs published 512 input files, 3,536 scripts, 24,623 resource descriptors, and
+12,542 runtime rules/scripts. Cache read/deserialization is about 85% of candidate
+startup; the 5-second target remains open. Further work should profile converters and
+the cold reconstruction graph before considering parallel loading or a new cache format.
+See [startup/CI status](startup-ci-efficiency-status.md) for scope and CI deferrals.
+
 ### Hot runtime-content retention result
 
 The hot/cold content-partitioning slice was measured on 2026-09-04 on the same Ryzen 9

@@ -162,19 +162,17 @@ internal static class CompiledContentCache
         // A conservative pre-composition inventory: configured soundDefs can suppress
         // CAT reads, but cannot introduce other asset inputs. Payload bytes beyond the
         // header are decoded lazily and do not affect the compiled graph.
-        var files = plan.CreateVirtualFileCatalog();
         try
         {
             foreach (var (setId, path) in SharedResourceInputs.Sprites)
             {
                 if (contentOptions.ResourceResolution.SharedSpriteCounts.ContainsKey(setId)) continue;
-                files.TryGet(path, out var entry);
-                ResourceInput(setId, entry);
+                ResourceInput(setId, FindResource(path));
             }
             foreach (var (setId, preferred, fallback) in SharedResourceInputs.Sounds)
             {
                 if (contentOptions.ResourceResolution.SharedSoundCounts.ContainsKey(setId)) continue;
-                ResourceInput(setId, SharedResourceInputs.FindSound(files, preferred, fallback));
+                ResourceInput(setId, FindResource(preferred) ?? FindResource(fallback));
             }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -185,6 +183,19 @@ internal static class CompiledContentCache
             return null;
         }
         return Convert.ToHexString(hash.GetHashAndReset());
+
+        VirtualFileEntry? FindResource(string path)
+        {
+            // VirtualFileCatalog's last-layer-wins rule, without allocating its full
+            // resource and directory indexes for at most nine metadata dependencies.
+            for (var group = plan.Groups.Count - 1; group >= 0; group--)
+            {
+                var layers = plan.Groups[group].Mod.Layers;
+                for (var layer = layers.Count - 1; layer >= 0; layer--)
+                    if (layers[layer].TryGet(path, out var entry)) return entry;
+            }
+            return null;
+        }
 
         void ResourceInput(string setId, VirtualFileEntry? entry)
         {
@@ -205,6 +216,7 @@ internal static class CompiledContentCache
         string key,
         CompiledContentCacheOptions options,
         ContentSnapshotOptions contentOptions,
+        StartupMeasurementCollector measurements,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -216,6 +228,7 @@ internal static class CompiledContentCache
         }
         try
         {
+            using var reading = measurements.Measure(InstallationStartupStage.CacheRead);
             cancellationToken.ThrowIfCancellationRequested();
             var path = Path.Combine(Path.GetFullPath(options.DirectoryPath), FileName);
             var info = new FileInfo(path);
@@ -247,7 +260,8 @@ internal static class CompiledContentCache
             {
                 return CompiledContentCacheReadResult.Rejected("Cache contains build-error diagnostics.");
             }
-            var restored = envelope.Content.Restore(contentOptions, cancellationToken);
+            reading.Dispose();
+            var restored = envelope.Content.Restore(contentOptions, measurements, cancellationToken);
             return new CompiledContentCacheReadResult(
                 restored.Content,
                 restored.CompatibilityData,
@@ -560,8 +574,10 @@ internal sealed record CachedRuntimeContent(
 
     public CachedRuntimeContentRestore Restore(
         ContentSnapshotOptions options,
+        StartupMeasurementCollector measurements,
         CancellationToken cancellationToken)
     {
+        using var resourceMeasurement = measurements.Measure(InstallationStartupStage.ResourceRestoration);
         ArgumentNullException.ThrowIfNull(options);
         cancellationToken.ThrowIfCancellationRequested();
         if (Scripts.Count > options.MaximumScripts)
@@ -607,6 +623,8 @@ internal sealed record CachedRuntimeContent(
                 descriptors[index.DescriptorIndex].Handle);
         }).ToArray();
         var resources = new ResolvedResourceCatalog(generation, descriptors, indexes);
+        resourceMeasurement.Dispose();
+        using var linkingMeasurement = measurements.Measure(InstallationStartupStage.RuntimeRuleLinking);
         var runtimeRules = RuntimeRuleLinker.Link(
             Catalog,
             resources,
@@ -616,6 +634,8 @@ internal sealed record CachedRuntimeContent(
         {
             throw new InvalidDataException("Compiled content cache failed runtime-rule relinking.");
         }
+        linkingMeasurement.Dispose();
+        using var publicationMeasurement = measurements.Measure(InstallationStartupStage.RuntimePublication);
         return new CachedRuntimeContentRestore(
             new RuntimeContent(
                 Capabilities,
