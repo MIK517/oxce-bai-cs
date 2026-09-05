@@ -30,13 +30,31 @@ The invalidation key covers:
 - the participating assembly module identities and runtime architecture;
 - engine identity, ordered active mods, content limits, and resource index settings;
 - content-relevant mod metadata and ordered layer/resource identities; and
-- the identity and SHA-256 content digest of every ordered ruleset input.
+- the identity and SHA-256 content digest of every ordered ruleset input; and
+- the effective VFS identities, uncompressed lengths, and first four bytes (or the
+  complete shorter prefix) of TAB/CAT inputs used to derive shared resource counts.
 
-Resource payload bytes are deliberately excluded. The cached graph contains resource
-identities and declarations, not decoded pixels or audio; the resource runtime still
-opens and decodes the current winning VFS entry. Changes to resource membership or
-ordering invalidate the graph, while replacement bytes at the same logical identity are
-observed without recompiling rules and scripts.
+The resource dependency correction on 2026-09-05 increments the compiler revision to
+`2`, invalidating older keys without changing the reconstruction format. Resolution
+and key construction share one inventory and metadata reader. SHA-256 covers every
+metadata byte consumed by shared-count resolution; it does not hash entire media
+payloads. A same-size TAB width or CAT directory-offset change therefore invalidates
+the compiled indexes. ZIP inputs report uncompressed length from the live archive
+entry, since the decompression stream itself does not support `Length`.
+
+Explicit shared-count options suppress their asset dependency. Sound candidates use
+the same preferred/fallback selection as resolution. Before composition, the key
+conservatively includes those selected CAT headers even when configured `soundDefs`
+later suppress them. This can cause a harmless extra miss. An I/O failure while probing
+optional metadata bypasses caching for that load; fresh resolution decides whether the
+input is actually required and must fail. Missing entries and changes in VFS membership
+or ordering also affect identity. Resource inputs must remain stable during a load,
+as with the existing ruleset hash/parse boundary; live installation updates are unsupported.
+
+Pixel/audio payload bytes beyond this metadata remain excluded: they are not part of
+the compiled graph, and the resource runtime opens the current winning VFS entry when
+decoding. Tests prove that irrelevant payload and shadowed/fallback byte changes do not
+force recompilation while shared-count changes match a fresh build.
 
 The stored image has a fixed identity header followed by a source-generated JSON
 reconstruction contract compressed with gzip. The header rejects stale keys before

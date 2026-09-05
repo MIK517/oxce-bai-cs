@@ -221,6 +221,12 @@ SDL view now creates and operates this slice without coupling gameplay to SDL.
 
 ## Phase 6 — Playable strategic vertical slice
 
+The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
+compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
+in cache identity, with public loose/ZIP, malformed-input, precedence, override, and
+cached/fresh regression scenarios. Starting personnel initialization remains the next
+separate repair before broader strategic work.
+
 Suggested order:
 
 1. New campaign and starting base.

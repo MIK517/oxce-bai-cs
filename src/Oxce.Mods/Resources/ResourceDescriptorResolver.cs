@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods.Files;
 using Oxce.Mods.Loading;
@@ -432,20 +431,11 @@ public static class ResourceDescriptorResolver
         Dictionary<string, int> sprites,
         Dictionary<string, int> sounds)
     {
-        foreach (var pair in new Dictionary<string, string>(StringComparer.Ordinal)
+        foreach (var (setId, path) in SharedResourceInputs.Sprites)
         {
-            ["BIGOBS.PCK"] = "UNITS/BIGOBS.TAB",
-            ["FLOOROB.PCK"] = "UNITS/FLOOROB.TAB",
-            ["HANDOB.PCK"] = "UNITS/HANDOB.TAB",
-            ["SMOKE.PCK"] = "UFOGRAPH/SMOKE.TAB",
-            ["HIT.PCK"] = "UFOGRAPH/HIT.TAB",
-            ["BASEBITS.PCK"] = "GEOGRAPH/BASEBITS.TAB",
-            ["INTICON.PCK"] = "GEOGRAPH/INTICON.TAB",
-        })
-        {
-            if (!sprites.ContainsKey(pair.Key) && files.TryGet(pair.Value, out var entry))
+            if (!sprites.ContainsKey(setId) && files.TryGet(path, out var entry))
             {
-                sprites[pair.Key] = ReadTabCount(entry!);
+                sprites[setId] = ReadTabCount(entry!);
             }
         }
         sprites.TryAdd("CustomArmorPreviews", 0);
@@ -465,43 +455,32 @@ public static class ResourceDescriptorResolver
         }
         if (presentation.ResourceConfigSoundDefinitions.Rules.Count == 0)
         {
-            AddSound("GEO.CAT", ["SOUND/SAMPLE.CAT", "SOUND/SOUND2.CAT"]);
-            AddSound("BATTLE.CAT", ["SOUND/SAMPLE2.CAT", "SOUND/SOUND1.CAT"]);
+            foreach (var (setId, preferred, fallback) in SharedResourceInputs.Sounds)
+            {
+                if (sounds.ContainsKey(setId)) continue;
+                var entry = SharedResourceInputs.FindSound(files, preferred, fallback);
+                sounds[setId] = entry is null ? 0 : ReadCatCount(entry);
+            }
         }
         if (sounds.TryGetValue("BATTLE.CAT", out var battle)) sounds.TryAdd("BATTLE2.CAT", battle);
-
-        void AddSound(string name, IReadOnlyList<string> paths)
-        {
-            if (sounds.ContainsKey(name)) return;
-            foreach (var path in paths)
-            {
-                if (!files.TryGet(path, out var entry)) continue;
-                sounds[name] = ReadCatCount(entry!);
-                return;
-            }
-            sounds[name] = 0;
-        }
     }
 
     private static int ReadTabCount(VirtualFileEntry entry)
     {
-        using var stream = entry.OpenRead();
-        if (stream.Length == 0) return 0;
-        if (stream.Length < sizeof(uint)) return checked((int)(stream.Length / sizeof(ushort)));
-        Span<byte> first = stackalloc byte[sizeof(uint)];
-        stream.ReadExactly(first);
-        var width = BinaryPrimitives.ReadUInt32LittleEndian(first) == 0 ? sizeof(uint) : sizeof(ushort);
-        if (stream.Length % width != 0) throw new InvalidDataException($"TAB resource '{entry.SourcePath}' is malformed.");
-        return checked((int)(stream.Length / width));
+        var header = SharedResourceInputs.ReadHeader(entry);
+        if (header.Length == 0) return 0;
+        if (header.Length < sizeof(uint)) return checked((int)(header.Length / sizeof(ushort)));
+        var width = header.FirstWord == 0 ? sizeof(uint) : sizeof(ushort);
+        if (header.Length % width != 0) throw new InvalidDataException($"TAB resource '{entry.SourcePath}' is malformed.");
+        return checked((int)(header.Length / width));
     }
 
     private static int ReadCatCount(VirtualFileEntry entry)
     {
-        using var stream = entry.OpenRead();
-        Span<byte> first = stackalloc byte[sizeof(uint)];
-        stream.ReadExactly(first);
-        var offset = BinaryPrimitives.ReadUInt32LittleEndian(first);
-        if (offset % 8 != 0 || offset > stream.Length) throw new InvalidDataException($"CAT resource '{entry.SourcePath}' is malformed.");
+        var header = SharedResourceInputs.ReadHeader(entry);
+        if (header.Length < sizeof(uint)) throw new EndOfStreamException();
+        var offset = header.FirstWord;
+        if (offset % 8 != 0 || offset > header.Length) throw new InvalidDataException($"CAT resource '{entry.SourcePath}' is malformed.");
         return checked((int)(offset / 8));
     }
 

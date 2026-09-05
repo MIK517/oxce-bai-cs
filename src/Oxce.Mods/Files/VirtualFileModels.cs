@@ -80,7 +80,8 @@ public class VirtualFileSource
                 throw new InvalidDataException($"ZIP entry '{entryName}' is no longer present in '{archivePath}'.");
             }
 
-            return new OwnedArchiveEntryStream(archive.Entries[entryIndex].Open(), archive);
+            var entry = archive.Entries[entryIndex];
+            return new OwnedArchiveEntryStream(entry.Open(), archive, entry.Length);
         }
         catch
         {
@@ -94,7 +95,7 @@ public class VirtualFileSource
         }
     }
 
-    internal sealed class OwnedArchiveEntryStream(Stream content, ZipArchive archive) : Stream
+    internal sealed class OwnedArchiveEntryStream(Stream content, ZipArchive archive, long length) : Stream
     {
         public override bool CanRead => content.CanRead;
 
@@ -102,7 +103,9 @@ public class VirtualFileSource
 
         public override bool CanWrite => false;
 
-        public override long Length => content.Length;
+        // DeflateStream is not seekable and does not expose Length. The live archive
+        // entry provides its uncompressed size without expanding the payload.
+        public override long Length => length;
 
         public override long Position
         {

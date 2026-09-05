@@ -153,6 +153,14 @@ visibility, and retained deferred YAML. Corrupt or mismatched images must rebuil
 than weakening startup. `audit-content-install` deliberately bypasses the cache and
 remains the semantic compatibility oracle.
 
+`CompiledResourceDependencyTests` builds tiny redistributable TAB/CAT inputs alongside
+the public runtime-rule fixture. The expected shared-index/offset boundary follows
+`Mod.cpp`, `ExtraSprites::getFrame`, and `ExtraSounds::loadSound` at pinned commit
+`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Tests replace same-size headers and lengths
+in loose files and whole ZIP mods, compare cached/fresh descriptors and indexes, and
+reject malformed/truncated replacements. They also cover VFS winners, preferred CAT
+fallbacks, explicit count overrides, and payload-only updates that should retain a hit.
+
 `campaign-scenario` is the headless acceptance path for the first persisted strategic
 slice. It uses the same structured, cancellable installation bootstrap as the
 application, creates a deterministic campaign, places the starting base, advances time,
