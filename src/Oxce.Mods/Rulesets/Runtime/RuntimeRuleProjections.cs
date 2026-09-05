@@ -148,7 +148,9 @@ public sealed record RuntimeStartingBaseTemplate(
     IReadOnlyList<RuntimeStartingSoldier> Soldiers,
     IReadOnlyList<RuntimeStartingItem> Items,
     int RandomSoldierCount,
-    IReadOnlyList<RuntimeStartingSoldierBatch> RandomSoldiers);
+    IReadOnlyList<RuntimeStartingSoldierBatch> RandomSoldiers,
+    int Scientists,
+    int Engineers);
 
 public sealed record RuntimeCampaignSettings(
     CampaignStartTime StartingTime,

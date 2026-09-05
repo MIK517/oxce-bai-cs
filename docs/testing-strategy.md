@@ -161,6 +161,12 @@ in loose files and whole ZIP mods, compare cached/fresh descriptors and indexes,
 reject malformed/truncated replacements. They also cover VFS winners, preferred CAT
 fallbacks, explicit count overrides, and payload-only updates that should retain a hit.
 
+`StartingPersonnelFixtureTests` applies the synthetic `starting-personnel.rul` fixture
+to the public runtime-rule installation. Reference inspection of `Mod.cpp` and `Base.cpp`
+at `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15` establishes template selection, overlay,
+and zero defaults. The tests assert counts before saving, then verify fresh/cached
+creation, queries, atomic save/reload, malformed inputs, and negative-count rejection.
+
 `campaign-scenario` is the headless acceptance path for the first persisted strategic
 slice. It uses the same structured, cancellable installation bootstrap as the
 application, creates a deterministic campaign, places the starting base, advances time,
