@@ -13,6 +13,8 @@ public sealed record PlaceStartingBase(int BaseIndex, string Name, double Longit
 
 public interface ICampaignEvent;
 
+public sealed record CampaignActionBlocked(string Reason) : ICampaignEvent;
+
 public readonly record struct CampaignTimeTriggerSummary(
     int TickCount,
     int FiveSeconds,
