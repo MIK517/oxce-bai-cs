@@ -1,5 +1,12 @@
 # Gameplay compatibility
 
+Phase 6 prerequisite update: ordered in-simulation dispatch is covered by the extracted
+`strategic-time` fixture. Campaign advancement now stops before unsupported midnight
+processing and known unsupported live state. Earlier calendar-only foundation claims
+below describe calendar arithmetic, not permission to skip missing gameplay effects.
+See [the ownership ledger](../phase-6-ownership.md) and
+[ADR 0025](../decisions/0025-strategic-time-and-mobile-save-ownership.md).
+
 | Subsystem or scenario | Status | Reference source | Fixture | Notes |
 |---|---|---|---|---|
 | Battlescape coordinate storage and basic conversions | partial | `src/Battlescape/Position.h` | `core-position` | Signed 16-bit storage, tile/voxel conversion, remainder, and distance rounding are covered. |

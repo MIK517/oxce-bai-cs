@@ -99,6 +99,17 @@ public static class CampaignFactory
                     eligible[random.NextExclusive(eligible.Length)], NextId(ids, "STR_SOLDIER")));
         }
 
+        for (var index = 0; index < crafts.Length; index++)
+            crafts[index] = crafts[index] with
+            {
+                PreservationKey = FormattableString.Invariant($"created:{request.Id}:craft:{rules.Crafts.GetExternalId(crafts[index].Rule)}:{crafts[index].Id}"),
+            };
+        for (var index = 0; index < soldiers.Count; index++)
+            soldiers[index] = soldiers[index] with
+            {
+                PreservationKey = FormattableString.Invariant($"created:{request.Id}:soldier:{soldiers[index].Id}"),
+            };
+
         var items = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
         foreach (var item in template.Items)
         {

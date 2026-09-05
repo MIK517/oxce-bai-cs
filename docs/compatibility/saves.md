@@ -1,5 +1,12 @@
 # Save compatibility
 
+Phase 6 prerequisite update: transfer payload snapshots and campaign-wide soldier/craft
+sidecar matching now cover base/transit ownership changes, repeated rewrites and
+deletion/recreation. Transfer action/arrival behavior is still pending. The older
+foundation-only rows below remain historical evidence for their original scope.
+See [the ownership ledger](../phase-6-ownership.md) and
+[ADR 0025](../decisions/0025-strategic-time-and-mobile-save-ownership.md).
+
 The normative implementation target is the pinned secondary C++ checkout at commit
 `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Ignored private fixtures currently cover
 early geoscape and active-battlescape saves for vanilla UFO, vanilla TFTD, and Rosigma;

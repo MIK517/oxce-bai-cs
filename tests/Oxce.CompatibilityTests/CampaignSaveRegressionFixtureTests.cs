@@ -24,18 +24,75 @@ public sealed class CampaignSaveRegressionFixtureTests
     }
 
     [Fact]
-    public void MonthBoundaryDayCountSurvivesSaveReload()
+    public void UnsupportedMonthBoundaryStopsWithoutChangingCalendarAndSurvivesReload()
     {
         var content = LoadContent();
         var loaded = OxceSaveAdapter.Load(ReadFixture(), "legacy-soldier.sav", content,
             new SplitMix64RandomSource(0), Options());
-        loaded.Campaign.Execute(new AdvanceCampaignTime(1));
+        var result = loaded.Campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Single(result.Events.OfType<CampaignActionBlocked>());
         var yaml = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
         var restored = OxceSaveAdapter.Load(yaml, "advanced.sav", content,
             new SplitMix64RandomSource(0), Options()).Campaign.Capture();
-        Assert.Equal(31, restored.DaysPassed);
-        Assert.Equal(0, restored.MonthsPassed);
-        Assert.Equal(new CampaignTime(2, 1, 2, 1999, 0, 0, 0), restored.Time);
+        Assert.Equal(30, restored.DaysPassed);
+        Assert.Equal(-1, restored.MonthsPassed);
+        Assert.Equal(new CampaignTime(1, 31, 1, 1999, 23, 59, 55), restored.Time);
+    }
+
+    [Fact]
+    public void SoldierSidecarFollowsTransitReorderAndArrivalAcrossRepeatedRewrites()
+    {
+        var content = LoadContent();
+        var loaded = OxceSaveAdapter.Load(ReadFixture(), "mobile.sav", content, new SplitMix64RandomSource(0), Options());
+        var snapshot = loaded.Campaign.Capture();
+        var first = snapshot.Bases[0];
+        var soldier = Assert.Single(first.Soldiers);
+        var second = first with { Id = 2, Name = "Beta", Soldiers = [], Transfers = [new(1, 6, CampaignTransferKind.Soldier, soldier.RuleId, 1, soldier)] };
+        snapshot = snapshot with { Bases = [second, first with { Soldiers = [] }] };
+        var yaml = OxceSaveAdapter.EmitLoadedCampaign(snapshot, loaded.Source);
+        Assert.Contains("name: Legacy Soldier", yaml, StringComparison.Ordinal);
+        loaded = OxceSaveAdapter.Load(yaml, "transit.sav", content, new SplitMix64RandomSource(0), Options());
+        var transit = loaded.Campaign.Capture();
+        var incoming = Assert.Single(transit.Bases[0].Transfers);
+        Assert.Equal(soldier, incoming.Soldier);
+        snapshot = transit with { Bases = [transit.Bases[1], transit.Bases[0] with { Soldiers = [incoming.Soldier!], Transfers = [] }] };
+        for (var cycle = 0; cycle < 3; cycle++)
+        {
+            yaml = OxceSaveAdapter.EmitLoadedCampaign(snapshot, loaded.Source);
+            loaded = OxceSaveAdapter.Load(yaml, "arrived.sav", content, new SplitMix64RandomSource(0), Options());
+            snapshot = loaded.Campaign.Capture();
+            Assert.Contains("name: Legacy Soldier", yaml, StringComparison.Ordinal);
+            Assert.Contains("slot: STR_RIGHT_HAND", yaml, StringComparison.Ordinal);
+            Assert.Empty(snapshot.Bases.SelectMany(b => b.Transfers));
+            Assert.Single(snapshot.Bases.SelectMany(b => b.Soldiers));
+        }
+    }
+
+    [Fact]
+    public void RecreatedSoldierCannotInheritDeletedSoldiersOpaqueFields()
+    {
+        var content = LoadContent();
+        var loaded = OxceSaveAdapter.Load(ReadFixture(), "recreated.sav", content, new SplitMix64RandomSource(0), Options());
+        var snapshot = loaded.Campaign.Capture();
+        var original = snapshot.Bases[0];
+        var oldSoldier = Assert.Single(original.Soldiers);
+        snapshot = snapshot with { Bases = [original with { Soldiers = [new(oldSoldier.RuleId, oldSoldier.Id)] }] };
+        var yaml = OxceSaveAdapter.EmitLoadedCampaign(snapshot, loaded.Source);
+        Assert.DoesNotContain("Legacy Soldier", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("equipmentLayout", yaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DuplicateOwnershipAcrossBaseAndTransitFailsBeforePublication()
+    {
+        var content = LoadContent();
+        var loaded = OxceSaveAdapter.Load(ReadFixture(), "duplicate.sav", content, new SplitMix64RandomSource(0), Options());
+        var snapshot = loaded.Campaign.Capture();
+        var first = snapshot.Bases[0];
+        var soldier = Assert.Single(first.Soldiers);
+        var invalid = snapshot with { Bases = [first with { Transfers = [new(1, 6, CampaignTransferKind.Soldier, soldier.RuleId, 1, soldier)] }] };
+        Assert.Throws<InvalidDataException>(() => CampaignState.Restore(invalid, content, new SplitMix64RandomSource(0)));
+        Assert.Throws<InvalidDataException>(() => OxceSaveAdapter.EmitLoadedCampaign(invalid, loaded.Source));
     }
 
     [Fact]

@@ -19,6 +19,7 @@ namespace Oxce.Savegames.Oxce;
 /// </summary>
 public static class OxceSaveAdapter
 {
+    private static readonly string[] TransferPayloadKeys = ["soldier", "craft", "itemId", "scientists", "engineers"];
     private static readonly SourceSpan GeneratedSpan = new(
         "(generated OXCE save)", new SourcePosition(1, 1, 0), new SourcePosition(1, 1, 0));
 
@@ -202,11 +203,41 @@ public static class OxceSaveAdapter
             ReadCountries(body, content),
             ReadRegions(body),
             ReadBases(body, content),
-            ReadScriptValues(body, content, "GeoscapeGame"));
+            ReadScriptValues(body, content, "GeoscapeGame"))
+        {
+            Restrictions = ReadRestrictions(body),
+        };
         var campaign = CampaignState.Restore(snapshot, content, random);
         return new LoadedOxceCampaign(campaign,
             new OxceSaveDocument(header, body, Array.AsReadOnly(modLabels)));
     }
+
+    private static ReadOnlyCollection<CampaignRestriction> ReadRestrictions(YamlMappingNode body)
+    {
+        var result = new List<CampaignRestriction>();
+        if (body.TryGet("battleGame", out var battle) && battle is not YamlScalarNode)
+            result.Add(new("Active tactical battle is preserved; tactical continuation is unavailable.", null, true, true));
+        string[] worldKeys = ["ufos", "alienMissions", "missionSites", "alienBases", "geoscapeEvents"];
+        foreach (var key in worldKeys)
+            if (HasContents(body, key)) result.Add(new($"Live {key} requires world simulation.", null, false, true));
+        foreach (var identified in IdentifyBases(body))
+        {
+            var map = identified.Value;
+            if (HasContents(map, "research") || HasContents(map, "productions"))
+                result.Add(new("Active research/production needs staff and capacity accounting.", identified.Id, true, true));
+            foreach (var craft in Maps(map, "crafts"))
+                if (String(craft, "status", "STR_READY") != "STR_READY")
+                    result.Add(new("Craft movement or servicing is not implemented yet.", identified.Id, false, true));
+        }
+        return Array.AsReadOnly(result.ToArray());
+    }
+
+    private static bool HasContents(YamlMappingNode map, string key) => map.TryGet(key, out var node) && node switch
+    {
+        YamlSequenceNode sequence => sequence.Items.Count != 0,
+        YamlMappingNode mapping => mapping.Entries.Count != 0,
+        _ => false,
+    };
 
     private static ReadOnlyCollection<CountrySnapshot> ReadCountries(YamlMappingNode body, RuntimeContent content) =>
         Array.AsReadOnly(Sequence(body, "countries").Select(node =>
@@ -235,6 +266,7 @@ public static class OxceSaveAdapter
 
     private static ReadOnlyCollection<BaseSnapshot> ReadBases(YamlMappingNode body, RuntimeContent content)
     {
+        var entityIndex = IndexEntities(body);
         var defaultSoldier = content.RuntimeRules.Soldiers.Rules.Count == 0
             ? string.Empty
             : content.RuntimeRules.Soldiers.Rules[0].Id;
@@ -253,18 +285,22 @@ public static class OxceSaveAdapter
             var crafts = Sequence(map, "crafts").Select(item =>
             {
                 var craft = RequireMap(item, "craft");
-                return new CraftSnapshot(RequiredString(craft, "type"), Integer(craft, "id", 0));
+                return ReadCraft(craft);
             }).ToArray();
             var soldiers = Sequence(map, "soldiers").Select(item =>
             {
                 var soldier = RequireMap(item, "soldier");
-                return new SoldierSnapshot(String(soldier, "type", defaultSoldier), Integer(soldier, "id", 0));
+                return ReadSoldier(soldier, defaultSoldier);
             }).ToArray();
             var items = ReadIntMap(map, "items");
             return new BaseSnapshot(
                 identified.Id, String(map, "name", string.Empty), Double(map, "lon", 0),
                 Double(map, "lat", 0), Array.AsReadOnly(facilities), Array.AsReadOnly(crafts),
-                Array.AsReadOnly(soldiers), items, Integer(map, "scientists", 0), Integer(map, "engineers", 0));
+                Array.AsReadOnly(soldiers), items, Integer(map, "scientists", 0), Integer(map, "engineers", 0))
+            {
+                Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
+                    ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier)).ToArray()),
+            };
         }).ToArray());
     }
 
@@ -319,12 +355,18 @@ public static class OxceSaveAdapter
             map => String(map, "type", string.Empty), StringComparer.Ordinal);
         EnsureUnique(snapshot.Bases.Select(static item => item.Id), "base ID");
         var originalBases = IdentifyBases(source?.Body).ToDictionary(static item => item.Id, static item => item.Value);
+        var entityIndex = IndexEntities(source?.Body);
+        EnsureUnique(snapshot.Bases.SelectMany(b => b.Soldiers.Select(s => s.Id).Concat(
+            b.Transfers.Where(t => !t.Delivered && t.Soldier is not null).Select(t => t.Soldier!.Id))), "soldier ID");
+        EnsureUnique(snapshot.Bases.SelectMany(b => b.Crafts.Select(EntityIdentity).Concat(
+            b.Transfers.Where(t => !t.Delivered && t.Craft is not null).Select(t => EntityIdentity(t.Craft!)))), "craft identity");
+        EnsureUnique(snapshot.Bases.SelectMany(b => b.Transfers.Select(t => t.Id)), "transfer ID");
         var countries = snapshot.Countries.Select(country => BuildCountry(
             country, originalCountries.GetValueOrDefault(country.RuleId))).ToArray();
         var regions = snapshot.Regions.Select(region => BuildRegion(
             region, originalRegions.GetValueOrDefault(region.RuleId))).ToArray();
         var bases = snapshot.Bases.Select(item => BuildBase(
-            item, originalBases.GetValueOrDefault(item.Id))).ToArray();
+            item, originalBases.GetValueOrDefault(item.Id), entityIndex)).ToArray();
         return Overlay(source?.Body,
         [
             Pair("difficulty", Integer((int)snapshot.Difficulty)),
@@ -364,13 +406,10 @@ public static class OxceSaveAdapter
         Pair("activityAlien", Sequence(region.ActivityAlien.Select(Integer))),
     ]);
 
-    private static YamlMappingNode BuildBase(BaseSnapshot value, YamlMappingNode? source)
+    private static YamlMappingNode BuildBase(BaseSnapshot value, YamlMappingNode? source, SaveEntityIndex entityIndex)
     {
         EnsureUnique(value.Facilities.Select(FacilityIdentity), "facility identity");
         var oldFacilities = Maps(source, "facilities").ToDictionary(FacilityIdentity);
-        var oldCrafts = Maps(source, "crafts").ToDictionary(EntityIdentity, StringComparer.Ordinal);
-        // Soldier IDs are global; legacy saves may omit the type that ReadBases defaults.
-        var oldSoldiers = Maps(source, "soldiers").ToDictionary(map => Integer(map, "id", 0));
         var facilities = value.Facilities.Select(facility => Overlay(
             oldFacilities.GetValueOrDefault(FacilityIdentity(facility)),
             [
@@ -381,10 +420,8 @@ public static class OxceSaveAdapter
                 Pair("disabled", facility.Disabled ? Boolean(true) : null),
                 Pair("hadPreviousFacility", facility.HadPreviousFacility ? Boolean(true) : null),
             ])).ToArray();
-        var crafts = value.Crafts.Select(craft => Overlay(oldCrafts.GetValueOrDefault(EntityIdentity(craft)),
-            [Pair("type", Scalar(craft.RuleId)), Pair("id", Integer(craft.Id))])).ToArray();
-        var soldiers = value.Soldiers.Select(soldier => Overlay(oldSoldiers.GetValueOrDefault(soldier.Id),
-            [Pair("type", Scalar(soldier.RuleId)), Pair("id", Integer(soldier.Id))])).ToArray();
+        var crafts = value.Crafts.Select(craft => BuildCraft(craft, entityIndex)).ToArray();
+        var soldiers = value.Soldiers.Select(soldier => BuildSoldier(soldier, entityIndex)).ToArray();
         return Overlay(source,
         [
             Pair("lon", Real(value.Longitude)), Pair("lat", Real(value.Latitude)),
@@ -394,7 +431,135 @@ public static class OxceSaveAdapter
             Pair("crafts", Sequence(crafts)),
             Pair("items", Mapping(value.Items.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
             Pair("scientists", Integer(value.Scientists)), Pair("engineers", Integer(value.Engineers)),
+            Pair("transfers", value.Transfers.Count == 0 ? null : Sequence(value.Transfers.Select(t => BuildTransfer(t, entityIndex)))),
         ]);
+    }
+
+    private static YamlMappingNode BuildSoldier(SoldierSnapshot value, SaveEntityIndex index) =>
+        Overlay(MatchingSource(index.Soldiers.GetValueOrDefault(value.Id), value.PreservationKey, $"soldier:{value.Id}"),
+            [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey))]);
+
+    private static YamlMappingNode BuildCraft(CraftSnapshot value, SaveEntityIndex index) =>
+        Overlay(MatchingSource(index.Crafts.GetValueOrDefault(EntityIdentity(value)), value.PreservationKey, $"craft:{value.RuleId}:{value.Id}"),
+            [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey))]);
+
+    private static YamlMappingNode BuildTransfer(TransferSnapshot value, SaveEntityIndex index) =>
+        Overlay(MatchingSource(index.Transfers.GetValueOrDefault(value.Id), value.PreservationKey, $"transfer:{value.Id}"),
+        [
+            Pair("oxcePortTransferId", Integer(value.Id)), Pair("hours", Integer(value.Hours)),
+            Pair("oxcePortEntityKey", Scalar(value.PreservationKey)),
+            Pair("delivered", value.Delivered ? Boolean(true) : null),
+            Pair("soldier", value.Soldier is { } soldier ? BuildSoldier(soldier, index) : null),
+            Pair("craft", value.Craft is { } craft ? BuildCraft(craft, index) : null),
+            Pair("itemId", value.Kind == CampaignTransferKind.Item ? Scalar(value.RuleId) : null),
+            Pair("itemQty", value.Kind == CampaignTransferKind.Item ? Integer(value.Quantity) : null),
+            Pair("scientists", value.Kind == CampaignTransferKind.Scientist ? Integer(value.Quantity) : null),
+            Pair("engineers", value.Kind == CampaignTransferKind.Engineer ? Integer(value.Quantity) : null),
+        ]);
+
+    private static YamlMappingNode? MatchingSource(YamlMappingNode? source, string key, string legacyKey) =>
+        source is not null && key.Length != 0 && String(source, "oxcePortEntityKey", legacyKey) == key ? source : null;
+
+    private static SoldierSnapshot ReadSoldier(YamlMappingNode map, string defaultSoldier) =>
+        new(String(map, "type", defaultSoldier), Integer(map, "id", 0))
+        {
+            PreservationKey = String(map, "oxcePortEntityKey", $"soldier:{Integer(map, "id", 0)}"),
+        };
+
+    private static CraftSnapshot ReadCraft(YamlMappingNode map) =>
+        new(RequiredString(map, "type"), Integer(map, "id", 0))
+        {
+            PreservationKey = String(map, "oxcePortEntityKey", $"craft:{RequiredString(map, "type")}:{Integer(map, "id", 0)}"),
+        };
+
+    private static TransferSnapshot ReadTransfer(YamlMappingNode map, int id, string defaultSoldier)
+    {
+        RejectDuplicateKnownKeys(map, ["hours", "soldier", "craft", "itemId", "itemQty", "scientists", "engineers", "delivered", "oxcePortTransferId"]);
+        var payloads = TransferPayloadKeys.Count(key => map.TryGet(key, out _));
+        if (payloads != 1) throw new InvalidDataException("A transfer must contain exactly one payload.");
+        var hours = Integer(map, "hours", 0);
+        var delivered = Boolean(map, "delivered", false);
+        if (map.TryGet("soldier", out var soldierNode))
+        {
+            var soldier = RequireMap(soldierNode!, "transfer soldier");
+            var value = ReadSoldier(soldier, defaultSoldier);
+            return Preserve(new(id, hours, CampaignTransferKind.Soldier, value.RuleId, 1, value, Delivered: delivered));
+        }
+        if (map.TryGet("craft", out var craftNode))
+        {
+            var craft = RequireMap(craftNode!, "transfer craft");
+            var value = ReadCraft(craft);
+            return Preserve(new(id, hours, CampaignTransferKind.Craft, value.RuleId, 1, Craft: value, Delivered: delivered));
+        }
+        if (map.TryGet("itemId", out _))
+            return Preserve(new(id, hours, CampaignTransferKind.Item, RequiredString(map, "itemId"), Integer(map, "itemQty", 0), Delivered: delivered));
+        var scientist = map.TryGet("scientists", out _);
+        return Preserve(new(id, hours, scientist ? CampaignTransferKind.Scientist : CampaignTransferKind.Engineer,
+            string.Empty, Integer(map, scientist ? "scientists" : "engineers", 0), Delivered: delivered));
+
+        TransferSnapshot Preserve(TransferSnapshot value) => value with
+        {
+            PreservationKey = String(map, "oxcePortEntityKey", $"transfer:{id}"),
+        };
+    }
+
+    private static SaveEntityIndex IndexEntities(YamlMappingNode? body)
+    {
+        var index = new SaveEntityIndex();
+        var bases = Maps(body, "bases").ToArray();
+        var transfers = bases.SelectMany(b => Maps(b, "transfers")).ToArray();
+        var used = new HashSet<int>();
+        foreach (var transfer in transfers)
+        {
+            if (!transfer.TryGet("oxcePortTransferId", out var node)) continue;
+            var id = YamlValueReader.ReadInt32(node!);
+            if (id <= 0 || !used.Add(id)) throw new InvalidDataException("Invalid or duplicate transfer ID.");
+        }
+        var nextId = 1;
+        foreach (var transfer in transfers)
+        {
+            int id;
+            if (transfer.TryGet("oxcePortTransferId", out var node)) id = YamlValueReader.ReadInt32(node!);
+            else
+            {
+                while (used.Contains(nextId)) nextId = checked(nextId + 1);
+                id = nextId;
+                used.Add(id);
+            }
+            index.TransferIds.Add(transfer, id);
+            index.Transfers.Add(id, transfer);
+        }
+        foreach (var baseMap in bases)
+        {
+            foreach (var soldier in Maps(baseMap, "soldiers")) AddSoldier(soldier);
+            foreach (var craft in Maps(baseMap, "crafts")) AddCraft(craft);
+        }
+        foreach (var transfer in transfers)
+        {
+            if (Boolean(transfer, "delivered", false)) continue;
+            if (transfer.TryGet("soldier", out var soldier)) AddSoldier(RequireMap(soldier!, "transfer soldier"));
+            if (transfer.TryGet("craft", out var craft)) AddCraft(RequireMap(craft!, "transfer craft"));
+        }
+        return index;
+
+        void AddSoldier(YamlMappingNode soldier)
+        {
+            if (!index.Soldiers.TryAdd(Integer(soldier, "id", 0), soldier))
+                throw new InvalidDataException("Duplicate soldier ownership across bases/transfers.");
+        }
+        void AddCraft(YamlMappingNode craft)
+        {
+            if (!index.Crafts.TryAdd(EntityIdentity(craft), craft))
+                throw new InvalidDataException("Duplicate craft ownership across bases/transfers.");
+        }
+    }
+
+    private sealed class SaveEntityIndex
+    {
+        public Dictionary<int, YamlMappingNode> Soldiers { get; } = [];
+        public Dictionary<string, YamlMappingNode> Crafts { get; } = new(StringComparer.Ordinal);
+        public Dictionary<int, YamlMappingNode> Transfers { get; } = [];
+        public Dictionary<YamlMappingNode, int> TransferIds { get; } = [];
     }
 
     private static string EntityIdentity(YamlMappingNode value) =>

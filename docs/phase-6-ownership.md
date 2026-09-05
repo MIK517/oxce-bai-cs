@@ -24,3 +24,15 @@ Per-property defaults, widths, options, script dependencies and malformed-input 
 are added with each owning fixture. Unknown fields alone do not imply an unsafe action;
 fields required by the action or its next tick do. Positive executable, blocked, and
 inspect/preserve corpus results must be reported separately.
+
+## Implemented prerequisites
+
+`StrategicTimeFixtureTests` matches all 18 extracted-loop traces. Dispatcher unit tests
+cover pause fallthrough, preflight without partial mutation, batching equivalence and
+the empty million-tick allocation bound. `CampaignSaveRegressionFixtureTests` covers
+soldier A -> transit -> B, reordered bases, repeated rewrites, deletion/recreation,
+duplicate ownership and the guarded month boundary. Save-adapter/foundation unit tests
+also cover legacy types and preservation after new-campaign emission.
+
+Transfer commands and arrival effects are still pending at this prerequisite milestone.
+See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).
