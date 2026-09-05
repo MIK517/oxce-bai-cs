@@ -105,7 +105,15 @@ creation. Its public fixture covers all five difficulties, default fallback, ord
 mod overlays, absent/zero counts, malformed values, cached content, and atomic save/reload.
 The existing 32-bit conversion and negative-count campaign invariant remain intact.
 Compiler revision 3 invalidates older cache keys without changing the save/cache payload
-format. The two confirmed correctness findings are addressed; branch 3 remains planned.
+format. The two confirmed correctness findings are addressed.
+
+Branch 3 adds non-overlapping installation startup measurements and exposes them in the
+fixture tool, removes full VFS construction for the bounded metadata-key lookups, and
+cancels superseded validation only for the same PR/workflow. It preserves every main and
+manual run and all platform/coverage/native checks. The key stage allocates 52.5% less
+on the staged corpus; warm startup still exceeds the target because deserialization
+dominates. Native artifact caching is explicitly deferred pending runner evidence.
+See [startup/CI status](startup-ci-efficiency-status.md) for measurements and limitations.
 
 Only one branch/PR is active at a time. Each starts from updated `main` after the previous
 PR has passed and been merged using **Rebase and merge**. Do not stack unfinished PRs.

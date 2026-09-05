@@ -121,6 +121,8 @@ public sealed record InstallationContentLoadResult(
     CompiledContentCacheStatus CacheStatus = CompiledContentCacheStatus.Disabled,
     string? CacheRejectionReason = null)
 {
+    public InstallationStartupMeasurements StartupMeasurements { get; init; } = InstallationStartupMeasurements.Empty;
+
     public bool IsSuccess => Content is not null && Failure is null;
 
     public string DescribeFailure(int maximumDiagnostics = 25) =>
@@ -227,15 +229,16 @@ public static class InstallationContentLoader
         ArgumentNullException.ThrowIfNull(request);
         options ??= new InstallationContentLoadOptions();
         options.Validate();
+        var measurements = new StartupMeasurementCollector();
         var collector = new DiagnosticCollector(options.MaximumDiagnostics);
         var stage = InstallationLoadStage.Discovery;
         var relay = new ContentProgressRelay(progress, value => stage = value);
-        var plan = InstallationPlanBuilder.Create(
-            request,
-            collector,
-            options.MaximumDiagnostics,
-            relay,
-            cancellationToken);
+        InstallationPlanResult plan;
+        using (measurements.Measure(InstallationStartupStage.DiscoveryAndPlanning))
+        {
+            plan = InstallationPlanBuilder.Create(
+                request, collector, options.MaximumDiagnostics, relay, cancellationToken);
+        }
         if (!plan.IsSuccess)
             return Failure(plan.Failure!);
 
@@ -251,13 +254,16 @@ public static class InstallationContentLoader
                 Progress = relay,
             };
             var cacheOptions = options.Cache.Resolve(request.ValidateAndGetRoot());
-            var cacheKey = cacheOptions.DirectoryPath is null
-                ? null
-                : CompiledContentCache.ComputeKey(request, plan.Plan!, contentOptions, cancellationToken);
+            string? cacheKey = null;
+            if (cacheOptions.DirectoryPath is not null)
+            {
+                using (measurements.Measure(InstallationStartupStage.CacheKey))
+                    cacheKey = CompiledContentCache.ComputeKey(request, plan.Plan!, contentOptions, cancellationToken);
+            }
             var cached = cacheKey is null
                 ? CompiledContentCacheReadResult.Miss(CompiledContentCacheStatus.Disabled)
                 : CompiledContentCache.TryRead(
-                    cacheKey, cacheOptions, contentOptions, cancellationToken);
+                    cacheKey, cacheOptions, contentOptions, measurements, cancellationToken);
             if (cached.Content is not null)
             {
                 foreach (var diagnostic in cached.Diagnostics)
@@ -275,9 +281,12 @@ public static class InstallationContentLoader
                     collector.DroppedCount,
                     null,
                     cached.Status,
-                    cached.RejectionReason);
+                    cached.RejectionReason)
+                { StartupMeasurements = measurements.Snapshot() };
             }
-            var snapshot = ContentSnapshotBuilder.Build(plan.Plan!, collector, options: contentOptions);
+            ContentSnapshot snapshot;
+            using (measurements.Measure(InstallationStartupStage.FreshBuild))
+                snapshot = ContentSnapshotBuilder.Build(plan.Plan!, collector, options: contentOptions);
             if (!snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked) ||
                 collector.HasSeverityAtLeast(DiagnosticSeverity.Error))
             {
@@ -293,12 +302,14 @@ public static class InstallationContentLoader
                         stage,
                         "Installation content did not reach the runtime-linked stage."),
                     cached.Status,
-                    cached.RejectionReason);
+                    cached.RejectionReason)
+                { StartupMeasurements = measurements.Snapshot() };
             }
 
             if (cacheKey is not null)
             {
-                CompiledContentCache.TryWrite(cacheKey, snapshot, cacheOptions, cancellationToken);
+                using (measurements.Measure(InstallationStartupStage.CacheWrite))
+                    CompiledContentCache.TryWrite(cacheKey, snapshot, cacheOptions, cancellationToken);
             }
             stage = InstallationLoadStage.Completed;
             progress?.Report(new InstallationLoadProgress(stage));
@@ -311,7 +322,8 @@ public static class InstallationContentLoader
                 collector.DroppedCount,
                 null,
                 cached.Status,
-                cached.RejectionReason);
+                cached.RejectionReason)
+            { StartupMeasurements = measurements.Snapshot() };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -334,7 +346,8 @@ public static class InstallationContentLoader
             collector.ReportedCount,
             collector.DroppedCount,
             failure,
-            CompiledContentCacheStatus.Disabled);
+            CompiledContentCacheStatus.Disabled)
+        { StartupMeasurements = measurements.Snapshot() };
     }
 
     private sealed class ContentProgressRelay(

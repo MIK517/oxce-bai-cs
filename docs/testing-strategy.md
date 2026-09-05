@@ -153,6 +153,20 @@ visibility, and retained deferred YAML. Corrupt or mismatched images must rebuil
 than weakening startup. `audit-content-install` deliberately bypasses the cache and
 remains the semantic compatibility oracle.
 
+The command also emits `startupStages` and `startupTotal`. Samples distinguish
+discovery/planning, key hashing, compressed cache read plus JSON deserialization,
+resource restoration, rule linking, and runtime publication on hits, or fresh build
+and optional cache write on misses. Stages do not overlap; totals include unassigned
+orchestration and sampling overhead. Allocations cover the calling thread only and
+timings exclude process launch. Existing content build measurements remain separate,
+so a cache hit does not claim to have parsed or compiled source. Tests cover stage
+presence on fresh/hit/disabled/rejected paths and bounded nonnegative measurements.
+
+Both CI workflows cancel superseded runs only within the same workflow and PR.
+Non-PR groups use unique run IDs, preserving all main and manual runs (including pending
+runs). OS matrices, coverage, SDL paths, native builds, and smoke requirements remain
+unchanged. See the [startup/CI follow-up](startup-ci-efficiency-status.md).
+
 `CompiledResourceDependencyTests` builds tiny redistributable TAB/CAT inputs alongside
 the public runtime-rule fixture. The expected shared-index/offset boundary follows
 `Mod.cpp`, `ExtraSprites::getFrame`, and `ExtraSounds::loadSound` at pinned commit
