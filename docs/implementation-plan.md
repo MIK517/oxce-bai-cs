@@ -221,6 +221,12 @@ SDL view now creates and operates this slice without coupling gameplay to SDL.
 
 ## Phase 6 — Playable strategic vertical slice
 
+The detailed [Phase 6 delivery plan](phase-6-plan.md) defines six sequential feature
+branches, their general commit purposes, prerequisites, reference entry points and
+acceptance gates. Prerequisite time-dispatch and mobile save-ownership work belongs in
+the first logistics branch. The strategic deployment request closes this phase's side
+of mission launch; playable tactical generation and consumption remain Phase 7.
+
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
 in cache identity, with public loose/ZIP, malformed-input, precedence, override, and
@@ -239,15 +245,18 @@ Suggested order:
 3. Personnel, inventory, craft, transfers, facilities, and finance.
 4. Research and manufacture.
 5. Alien missions, UFO movement/detection, interception, and sites.
-6. Monthly processing, events, campaign success/failure, statistics/diaries.
+6. Monthly processing, events, strategic endings and underlying statistics/diary data;
+   full presentation remains Phase 8 and battle-derived outcomes remain Phase 7.
 
 Build a functional UI, but optimize for complete actions and information rather than
 copying every legacy state. Every slice includes save fields, rules, and script bindings.
 
 Exit gate:
 
-- A modded campaign can be played from creation through launching a tactical mission,
-  with strategic save/reload at each major transition.
+- A modded campaign can be operated from creation through a validated, persisted
+  strategic deployment request, with strategic save/reload at each major transition.
+  Phase 7's first battle generator must consume that request to close the broader
+  playable mission-launch gate; a request alone does not constitute a playable battle.
 
 ## Phase 7 — Playable battlescape vertical slice
 
@@ -338,7 +347,8 @@ content root no longer retains typed compatibility/provenance graphs, virtual re
 identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
-1. Deliver personnel, inventory, craft, transfers, facilities, and finance as the next
-   persisted strategic slice, including their owning script providers and UI actions.
+1. Follow the [Phase 6 delivery plan](phase-6-plan.md), beginning with logistics and
+   its ordered time-dispatch, mobile save-ownership and playable-state prerequisites.
+   Keep each branch integrated across commands, script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.
