@@ -75,14 +75,14 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 1;
+    internal const int CompilerRevision = 2;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
 
     private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
-    public static string ComputeKey(
+    public static string? ComputeKey(
         InstallationLoadRequest request,
         ModLoadPlan plan,
         ContentSnapshotOptions contentOptions,
@@ -159,7 +159,46 @@ internal static class CompiledContentCache
                 }
             }
         }
+        // A conservative pre-composition inventory: configured soundDefs can suppress
+        // CAT reads, but cannot introduce other asset inputs. Payload bytes beyond the
+        // header are decoded lazily and do not affect the compiled graph.
+        var files = plan.CreateVirtualFileCatalog();
+        try
+        {
+            foreach (var (setId, path) in SharedResourceInputs.Sprites)
+            {
+                if (contentOptions.ResourceResolution.SharedSpriteCounts.ContainsKey(setId)) continue;
+                files.TryGet(path, out var entry);
+                ResourceInput(setId, entry);
+            }
+            foreach (var (setId, preferred, fallback) in SharedResourceInputs.Sounds)
+            {
+                if (contentOptions.ResourceResolution.SharedSoundCounts.ContainsKey(setId)) continue;
+                ResourceInput(setId, SharedResourceInputs.FindSound(files, preferred, fallback));
+            }
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            // Do not let an optional cache probe reject an otherwise valid build (for
+            // example a CAT ignored by resource-config soundDefs). Fresh resolution
+            // remains authoritative and rejects unreadable inputs when actually used.
+            return null;
+        }
         return Convert.ToHexString(hash.GetHashAndReset());
+
+        void ResourceInput(string setId, VirtualFileEntry? entry)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            writer.String(setId);
+            writer.Int32(entry is null ? 0 : 1);
+            if (entry is null) return;
+            writer.String(entry.CanonicalPath);
+            writer.String(entry.SourcePath);
+            writer.String(entry.Provenance.LayerId);
+            var header = SharedResourceInputs.ReadHeader(entry);
+            writer.Int64(header.Length);
+            writer.Int32(unchecked((int)header.FirstWord));
+        }
     }
 
     public static CompiledContentCacheReadResult TryRead(
@@ -357,6 +396,12 @@ internal static class CompiledContentCache
         {
             BitConverter.TryWriteBytes(_integer, value);
             hash.AppendData(_integer, 0, sizeof(int));
+        }
+
+        public void Int64(long value)
+        {
+            BitConverter.TryWriteBytes(_integer, value);
+            hash.AppendData(_integer);
         }
 
         public void String(string value)
