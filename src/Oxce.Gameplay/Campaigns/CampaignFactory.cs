@@ -106,7 +106,7 @@ public static class CampaignFactory
             items.Add(item.Rule, item.Quantity);
         }
         var startingBase = new CampaignState.BaseState(
-            0, string.Empty, 0, 0, facilities, crafts, soldiers, items, 0, 0);
+            0, string.Empty, 0, 0, facilities, crafts, soldiers, items, template.Scientists, template.Engineers);
         var start = rules.Campaign.StartingTime;
         var identity = new CampaignIdentity(
             request.Id,

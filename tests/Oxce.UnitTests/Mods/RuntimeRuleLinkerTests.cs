@@ -11,6 +11,21 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class RuntimeRuleLinkerTests
 {
+    [Theory]
+    [InlineData("startingBase: {}", 0, 0)]
+    [InlineData("startingBase: {scientists: 10, engineers: 20}", 10, 20)]
+    [InlineData("startingBase: {scientists: 2147483647, engineers: 2147483647}", int.MaxValue, int.MaxValue)]
+    [InlineData("startingBase: {scientists: 4294967296, engineers: 2147483648}", 0, int.MinValue)]
+    public void StartingPersonnelProjectionPreservesIntCountsAndZeroDefaults(string yaml, int scientists, int engineers)
+    {
+        using var fixture = new TemporaryMod(yaml);
+        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root, "fixture", ["fixture"]));
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var template = Assert.Single(snapshot.Content.RuntimeRules.Campaign.StartingBases);
+        Assert.Equal(scientists, template.Scientists);
+        Assert.Equal(engineers, template.Engineers);
+    }
+
     [Fact]
     public void StrategicRulesUseDenseGenerationScopedHandlesAndLinkedRelationships()
     {

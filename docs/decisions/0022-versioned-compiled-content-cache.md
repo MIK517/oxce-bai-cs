@@ -72,6 +72,13 @@ failure cannot turn a successful fresh content build into a startup failure.
 
 ## Consequences
 
+The starting-personnel correction increments the compiler revision again to `3`.
+Scientists and engineers are now projected from the selected starting-base YAML into
+runtime content. The persisted cold catalog already contains these fields, so no payload
+format change is required; older keys rebuild, and cache hits rerun the same updated
+projection as fresh builds. `StartingPersonnelFixtureTests` verifies creation and save
+round trips from both freshly built and restored content.
+
 - Warm staged 40k/Rosigma startup is about 31.3% faster and allocates about 50.1% less
   than a fresh production load; publishing the first compressed image is slower and is
   an explicit one-time tradeoff.

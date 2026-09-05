@@ -1,0 +1,15 @@
+# Synthetic starting templates. Mod.cpp selects one whole difficulty template;
+# Base.cpp defaults absent scientist/engineer counts to zero.
+startingBase:
+  scientists: 10
+  engineers: 20
+startingBaseBeginner:
+  scientists: 30
+startingBaseExperienced:
+  engineers: 40
+startingBaseVeteran:
+  scientists: 50
+  engineers: 60
+startingBaseGenius:
+  scientists: 0
+  engineers: 0
