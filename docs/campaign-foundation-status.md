@@ -47,6 +47,15 @@ dotnet run --project src/Oxce.App --configuration Release -- --campaign-sdl arti
 
 ## Compatibility evidence
 
+The 2026-09-05 starting-personnel correction closes an omission in creation: scientists
+and engineers now flow from the selected runtime template to the base, queries, and
+saves. `starting-personnel.rul` and `StartingPersonnelFixtureTests` cover all five
+difficulties, fallback to the default template, absent fields, explicit zeros, ordered
+mod overlays, cache restoration, and atomic save/reload. Counts retain the existing
+32-bit YAML conversion semantics, including wrapping; negative resulting counts fail
+the existing gameplay invariant before a campaign is returned. Non-integer scalars and
+collections fail intentionally during linking. Hiring and personnel actions remain deferred.
+
 The public campaign fixture pins country funding adjustment, area-filtered world
 creation, starting-base content, external IDs, calendar trigger precedence, commands,
 and events against OXCE commit `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.

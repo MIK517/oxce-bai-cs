@@ -275,7 +275,9 @@ public static class RuntimeRuleLinker
                 Array.AsReadOnly(soldiers),
                 Array.AsReadOnly(items),
                 randomCount,
-                Array.AsReadOnly(random));
+                Array.AsReadOnly(random),
+                Integer(node, "scientists"),
+                Integer(node, "engineers"));
         }
 
         RuleHandle<TFamily> RequiredRule<TFamily, TRule>(

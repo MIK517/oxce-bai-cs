@@ -100,7 +100,12 @@ identity, uses the live ZIP entry length for archived resources, and invalidates
 keys with compiler revision 2. The original unit reproduction fails before the repair;
 the completed Release suite passes 553 tests, including 18 generated resource dependency
 scenarios. See ADR 0022 for the bounded metadata fingerprint and sound-config policy.
-The starting personnel finding remains open for branch 2.
+Branch 2 now projects scientist/engineer counts into starting templates and campaign
+creation. Its public fixture covers all five difficulties, default fallback, ordered
+mod overlays, absent/zero counts, malformed values, cached content, and atomic save/reload.
+The existing 32-bit conversion and negative-count campaign invariant remain intact.
+Compiler revision 3 invalidates older cache keys without changing the save/cache payload
+format. The two confirmed correctness findings are addressed; branch 3 remains planned.
 
 Only one branch/PR is active at a time. Each starts from updated `main` after the previous
 PR has passed and been merged using **Rebase and merge**. Do not stack unfinished PRs.
