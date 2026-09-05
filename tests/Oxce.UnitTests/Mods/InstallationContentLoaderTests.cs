@@ -11,6 +11,50 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class InstallationContentLoaderTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void StartupMeasurementsDistinguishCacheRestorationFromFreshBuild(bool enabled)
+    {
+        using var installation = new TemporaryInstallation();
+        var request = installation.Request(addOnId: "runtime-addon");
+        var options = new InstallationContentLoadOptions { Cache = new CompiledContentCacheOptions { Enabled = enabled } };
+        var first = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
+        var second = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.True(second.IsSuccess, second.DescribeFailure());
+        Assert.Contains(first.StartupMeasurements.Stages, stage => stage.Stage == InstallationStartupStage.FreshBuild);
+        var stages = second.StartupMeasurements.Stages.Select(stage => stage.Stage).ToArray();
+        Assert.Contains(InstallationStartupStage.DiscoveryAndPlanning, stages);
+        if (enabled)
+        {
+            Assert.Equal(CompiledContentCacheStatus.Hit, second.CacheStatus);
+            Assert.Equal(ContentBuildMeasurements.Empty, second.Measurements);
+            Assert.DoesNotContain(InstallationStartupStage.FreshBuild, stages);
+            Assert.DoesNotContain(InstallationStartupStage.CacheWrite, stages);
+            Assert.Contains(InstallationStartupStage.CacheRead, stages);
+            Assert.Contains(InstallationStartupStage.ResourceRestoration, stages);
+            Assert.Contains(InstallationStartupStage.RuntimeRuleLinking, stages);
+            Assert.Contains(InstallationStartupStage.RuntimePublication, stages);
+        }
+        else
+        {
+            Assert.Equal([InstallationStartupStage.DiscoveryAndPlanning, InstallationStartupStage.FreshBuild], stages);
+        }
+        foreach (var result in new[] { first, second })
+        {
+            var measured = result.StartupMeasurements;
+            Assert.All(measured.Stages, stage =>
+            {
+                Assert.True(double.IsFinite(stage.Measurement.ElapsedMilliseconds));
+                Assert.True(stage.Measurement.ElapsedMilliseconds >= 0);
+                Assert.True(stage.Measurement.AllocatedBytes >= 0);
+            });
+            Assert.True(measured.Total.ElapsedMilliseconds >= measured.Stages.Sum(stage => stage.Measurement.ElapsedMilliseconds));
+            Assert.True(measured.Total.AllocatedBytes >= measured.Stages.Sum(stage => stage.Measurement.AllocatedBytes));
+        }
+    }
+
     [Fact]
     public void AssetOnlySharedCountChangeRejectsCachedContent()
     {
@@ -136,6 +180,9 @@ public sealed class InstallationContentLoaderTests
 
         Assert.True(corrupt.IsSuccess, corrupt.DescribeFailure());
         Assert.Equal(CompiledContentCacheStatus.Rejected, corrupt.CacheStatus);
+        Assert.Contains(corrupt.StartupMeasurements.Stages, stage => stage.Stage == InstallationStartupStage.CacheRead);
+        Assert.Contains(corrupt.StartupMeasurements.Stages, stage => stage.Stage == InstallationStartupStage.FreshBuild);
+        Assert.DoesNotContain(corrupt.StartupMeasurements.Stages, stage => stage.Stage == InstallationStartupStage.ResourceRestoration);
     }
 
     [Fact]

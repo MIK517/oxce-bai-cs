@@ -99,6 +99,13 @@ internal static class FixtureTool
         {
             cacheStatus = result.CacheStatus.ToString(),
             result.CacheRejectionReason,
+            startupStages = result.StartupMeasurements.Stages.Select(static stage => new
+            {
+                stage = stage.Stage.ToString(),
+                stage.Measurement.ElapsedMilliseconds,
+                stage.Measurement.AllocatedBytes,
+            }),
+            startupTotal = result.StartupMeasurements.Total,
             elapsedMilliseconds = timer.Elapsed.TotalMilliseconds,
             allocatedBytes = allocated,
             parsedFileCount = result.Content!.ParsedFileCount,
