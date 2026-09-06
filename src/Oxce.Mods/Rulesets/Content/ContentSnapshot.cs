@@ -261,7 +261,11 @@ public static class ContentSnapshotBuilder
             resourceResolution.Catalog,
             compiler.Scripts,
             sink,
-            new RuntimeRuleLinkOptions { CancellationToken = options.CancellationToken });
+            new RuntimeRuleLinkOptions
+            {
+                CancellationToken = options.CancellationToken,
+                SoldierNamePools = RuntimeSoldierNamePoolLoader.Load(session.Catalog.PersonnelTactical.Soldiers, plan.CreateVirtualFileCatalog()),
+            });
         runtimeLinkTimer.Stop();
         var runtimeLinkMeasurement = new ContentBuildStageMeasurement(
             runtimeLinkTimer.Elapsed.TotalMilliseconds,

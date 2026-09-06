@@ -1,10 +1,15 @@
 using Oxce.Mods.Resources;
+using System.Collections.ObjectModel;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Content;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
 public sealed record RuntimeIdentityRule(string Id);
+
+public sealed record RuntimePurchaseRequirements(
+    int MonthlyLimit, string MonthlyLimitMessage, string AlliedCountry,
+    IReadOnlyList<string> BaseFunctions, IReadOnlyList<string> BuyResearch);
 
 public sealed record RuntimeCountryRule(
     int FundingBase,
@@ -72,7 +77,12 @@ public sealed record RuntimeFacilityRule(
     RuntimeIndexedResourceReference SpriteFacility,
     RuntimeIndexedResourceReference FireSound,
     RuntimeIndexedResourceReference HitSound,
-    RuntimeIndexedResourceReference PlaceSound);
+    RuntimeIndexedResourceReference PlaceSound)
+{
+    public int PrisonType { get; init; }
+    public int HangarType { get; init; }
+    public IReadOnlyList<string> ProvidedBaseFunctions { get; init; } = [];
+}
 
 public sealed record RuntimeCraftRule(
     int ListOrder,
@@ -91,7 +101,11 @@ public sealed record RuntimeCraftRule(
     RuntimeRuleReferenceList<ResearchRuleFamily> Requirements,
     RuleHandle<ItemRuleFamily>? RefuelItem,
     RuleHandleList<CraftWeaponRuleFamily> FixedWeapons,
-    RuleHandleList<RuntimeScriptFamily> Scripts);
+    RuleHandleList<RuntimeScriptFamily> Scripts)
+{
+    public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
+    public int HangarType { get; init; }
+}
 
 public sealed record RuntimeItemRule(
     string Name,
@@ -105,7 +119,12 @@ public sealed record RuntimeItemRule(
     int ClipSize,
     RuleHandleList<ResearchRuleFamily> Requirements,
     IReadOnlyList<RuleHandleList<ItemRuleFamily>> CompatibleAmmo,
-    RuleHandleList<RuntimeScriptFamily> Scripts);
+    RuleHandleList<RuntimeScriptFamily> Scripts)
+{
+    public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
+    public bool IsAlien { get; init; }
+    public int PrisonType { get; init; }
+}
 
 public sealed record RuntimeArmorRule(
     int ListOrder,
@@ -125,7 +144,15 @@ public sealed record RuntimeSoldierRule(
     RuleHandle<ArmorRuleFamily> Armor,
     RuntimeRuleReferenceList<ResearchRuleFamily> Requirements,
     RuleHandleList<SkillRuleFamily> Skills,
-    RuleHandleList<RuntimeScriptFamily> Scripts);
+    RuleHandleList<RuntimeScriptFamily> Scripts)
+{
+    public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
+    public IReadOnlyDictionary<string, short> MinimumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    public IReadOnlyDictionary<string, short> MaximumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    public int FemaleFrequency { get; init; } = 50;
+    public IReadOnlyList<RuntimeSoldierNamePool> NamePools { get; init; } = [];
+    public bool HasSpawnedTemplate { get; init; }
+}
 
 public sealed record RuntimeStartingFacility(
     RuleHandle<FacilityRuleFamily> Rule,
@@ -171,6 +198,12 @@ public sealed record RuntimeCampaignSettings(
     RuleHandle<FacilityRuleFamily>? DestroyedFacility,
     IReadOnlyList<RuntimeStartingBaseTemplate> StartingBases)
 {
+    public IReadOnlyList<int> BuyPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
+    public IReadOnlyList<int> SellPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
+    public IReadOnlyList<string> HireScientistsBaseFunctions { get; init; } = [];
+    public IReadOnlyList<string> HireEngineersBaseFunctions { get; init; } = [];
+    public int HireByCountryOdds { get; init; }
+    public int HireByRegionOdds { get; init; }
     public RuntimeStartingBaseTemplate? GetStartingBase(StartingBaseVariant variant) =>
         StartingBases.FirstOrDefault(template => template.Variant == variant) ??
         StartingBases.FirstOrDefault(static template => template.Variant == StartingBaseVariant.Default);

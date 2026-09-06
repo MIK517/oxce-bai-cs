@@ -184,7 +184,8 @@ public static class ScriptEventRunner
         ScriptExecutionFrame frame,
         ScriptExecutionOptions? executionOptions = null,
         ScriptHostBindings? hostBindings = null,
-        int maximumEventExecutions = ScriptLimits.DefaultMaximumEventExecutions)
+        int maximumEventExecutions = ScriptLimits.DefaultMaximumEventExecutions,
+        ReadOnlySpan<ScriptRuntimeValue> inputs = default)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(current);
@@ -222,9 +223,10 @@ public static class ScriptEventRunner
         var steps = 0;
         for (var index = 0; index < plan.Before.Count; index++)
         {
-            var outcome = ScriptVm.Execute(
+            var outcome = ScriptVm.ExecuteWithInputs(
                 plan.Before[index].Program,
                 values,
+                inputs,
                 values,
                 frame,
                 executionOptions,
@@ -238,7 +240,7 @@ public static class ScriptEventRunner
                     outcome.Status, executions, steps, outcome.DiagnosticCode, outcome.FailureMessage);
             }
         }
-        var currentOutcome = ScriptVm.Execute(current, values, values, frame, executionOptions, hostBindings);
+        var currentOutcome = ScriptVm.ExecuteWithInputs(current, values, inputs, values, frame, executionOptions, hostBindings);
         steps += currentOutcome.Steps;
         executions++;
         if (!currentOutcome.Succeeded)
@@ -253,9 +255,10 @@ public static class ScriptEventRunner
         }
         for (var index = 0; index < plan.After.Count; index++)
         {
-            var outcome = ScriptVm.Execute(
+            var outcome = ScriptVm.ExecuteWithInputs(
                 plan.After[index].Program,
                 values,
+                inputs,
                 values,
                 frame,
                 executionOptions,

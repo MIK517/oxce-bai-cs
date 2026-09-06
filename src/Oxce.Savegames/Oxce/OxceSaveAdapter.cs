@@ -206,6 +206,9 @@ public static class OxceSaveAdapter
             ReadScriptValues(body, content, "GeoscapeGame"))
         {
             Restrictions = ReadRestrictions(body),
+            CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString).Order(StringComparer.Ordinal).ToArray()),
+            MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
+            DebugMode = Boolean(body, "debug", false),
         };
         var campaign = CampaignState.Restore(snapshot, content, random);
         return new LoadedOxceCampaign(campaign,
@@ -384,6 +387,9 @@ public static class OxceSaveAdapter
             Pair("regions", Sequence(regions)),
             Pair("bases", Sequence(bases)),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
+            Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
+            Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : Mapping(snapshot.MonthlyPurchaseLog.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("debug", snapshot.DebugMode ? Boolean(true) : null),
         ]);
     }
 
@@ -435,9 +441,27 @@ public static class OxceSaveAdapter
         ]);
     }
 
-    private static YamlMappingNode BuildSoldier(SoldierSnapshot value, SaveEntityIndex index) =>
-        Overlay(MatchingSource(index.Soldiers.GetValueOrDefault(value.Id), value.PreservationKey, $"soldier:{value.Id}"),
+    private static YamlMappingNode BuildSoldier(SoldierSnapshot value, SaveEntityIndex index)
+    {
+        var source = MatchingSource(index.Soldiers.GetValueOrDefault(value.Id), value.PreservationKey, $"soldier:{value.Id}");
+        var identity = Overlay(source,
             [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey))]);
+        if (value.Personal is not { } personal) return identity;
+        return Overlay(identity,
+        [
+            Pair("name", Scalar(personal.Name)), Pair("callsign", personal.Callsign.Length == 0 ? null : Scalar(personal.Callsign)),
+            Pair("nationality", Integer(personal.Nationality)), Pair("gender", Integer(personal.Gender)),
+            Pair("look", Integer(personal.Look)), Pair("lookVariant", Integer(personal.LookVariant)),
+            Pair("rank", Integer(personal.Rank)), Pair("armor", Scalar(personal.Armor)),
+            Pair("initialStats", Mapping(personal.InitialStats.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("currentStats", Mapping(personal.CurrentStats.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("psiTraining", personal.PsiTraining ? Boolean(true) : null),
+            Pair("training", personal.Training ? Boolean(true) : null),
+            Pair("returnToTrainingWhenHealed", personal.ReturnToTrainingWhenHealed ? Boolean(true) : null),
+            Pair("craft", personal.CraftType.Length == 0 ? null : Mapping(
+                [Pair("type", Scalar(personal.CraftType)), Pair("id", Integer(personal.CraftId))])),
+        ]);
+    }
 
     private static YamlMappingNode BuildCraft(CraftSnapshot value, SaveEntityIndex index) =>
         Overlay(MatchingSource(index.Crafts.GetValueOrDefault(EntityIdentity(value)), value.PreservationKey, $"craft:{value.RuleId}:{value.Id}"),
@@ -464,7 +488,28 @@ public static class OxceSaveAdapter
         new(String(map, "type", defaultSoldier), Integer(map, "id", 0))
         {
             PreservationKey = String(map, "oxcePortEntityKey", $"soldier:{Integer(map, "id", 0)}"),
+            Personal = ReadSoldierPersonal(map),
         };
+
+    private static SoldierPersonalState? ReadSoldierPersonal(YamlMappingNode map)
+    {
+        if (!map.TryGet("initialStats", out _)) return null;
+        var craft = map.TryGet("craft", out var node) ? RequireMap(node!, "soldier craft") : null;
+        return new(String(map, "name", ""), String(map, "callsign", ""), Integer(map, "nationality", 0),
+            Integer(map, "gender", 0), Integer(map, "look", 0), Integer(map, "lookVariant", 0), String(map, "armor", ""),
+            Stats("initialStats"), Stats("currentStats"))
+        {
+            Rank = Integer(map, "rank", 0),
+            PsiTraining = Boolean(map, "psiTraining", false),
+            Training = Boolean(map, "training", false),
+            ReturnToTrainingWhenHealed = Boolean(map, "returnToTrainingWhenHealed", false),
+            CraftType = craft is null ? "" : RequiredString(craft, "type"),
+            CraftId = craft is null ? 0 : Integer(craft, "id", 0),
+        };
+
+        ReadOnlyDictionary<string, short> Stats(string key) => new(ReadIntMap(map, key).ToDictionary(
+            p => p.Key, p => checked((short)p.Value), StringComparer.Ordinal));
+    }
 
     private static CraftSnapshot ReadCraft(YamlMappingNode map) =>
         new(RequiredString(map, "type"), Integer(map, "id", 0))

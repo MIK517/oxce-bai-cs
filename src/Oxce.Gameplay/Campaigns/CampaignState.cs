@@ -26,6 +26,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private readonly object _transactionGate = new();
     private ScriptValueState? _scriptValues;
     private IReadOnlyList<CampaignRestriction> _restrictions = [];
+    private HashSet<string> _completedResearch = new(StringComparer.Ordinal);
+    private Dictionary<string, int> _monthlyPurchaseLog = new(StringComparer.Ordinal);
+    private bool _debugMode;
 
     internal CampaignState(
         RuntimeContent content,
@@ -87,6 +90,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             {
                 AdvanceCampaignTime advance => Advance(advance),
                 PlaceStartingBase place => Place(place),
+                PrepareLogisticsQuote quote => QuoteLogistics(quote),
+                SubmitLogisticsOrder order => SubmitLogistics(order),
                 _ => throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
                     nameof(command)),
             };
@@ -134,6 +139,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             CampaignSnapshot.ReadOnly(_scriptValues?.Capture() ?? []))
     {
         Restrictions = CampaignSnapshot.ReadOnly(_restrictions),
+        CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
+        MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog),
+        DebugMode = _debugMode,
     };
 
     public static CampaignState Restore(
@@ -169,6 +177,13 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         EnsureSoldierIds(snapshot.Bases.SelectMany(static item => item.Soldiers.Concat(
             item.Transfers.Where(t => !t.Delivered && t.Soldier is not null).Select(t => t.Soldier!))));
         EnsureUnique(snapshot.Bases.SelectMany(static item => item.Transfers.Select(t => t.Id)), "transfer IDs");
+        EnsureUnique(snapshot.CompletedResearch, "completed research IDs");
+        foreach (var research in snapshot.CompletedResearch) ArgumentException.ThrowIfNullOrWhiteSpace(research);
+        foreach (var purchase in snapshot.MonthlyPurchaseLog)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(purchase.Key);
+            if (purchase.Value < 0) throw new InvalidDataException("Monthly purchase counts cannot be negative.");
+        }
 
         var previousRandomState = random.State;
         try
@@ -195,6 +210,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 RestoreScriptValues(content, "GeoscapeGame", snapshot.ScriptValues))
             {
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
+                _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal),
+                _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal),
+                _debugMode = snapshot.DebugMode,
             };
         }
         catch
@@ -217,29 +235,45 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(command.FiveSecondTicks);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(command.FiveSecondTicks, MaximumCommandTicks);
         var previous = Time;
-        var result = CampaignTimeDispatcher.Advance(Time, command.FiveSecondTicks, new TimeEffects(this));
+        _logisticsQuote = null;
+        var effects = new TimeEffects(this);
+        var result = CampaignTimeDispatcher.Advance(Time, command.FiveSecondTicks, effects);
         var advanced = new CampaignTimeAdvanced(previous, Time, result.Summary);
+        if (effects.Events is { } notifications)
+        {
+            notifications.Insert(0, advanced);
+            if (result.BlockedReason is { } blocked) notifications.Add(new CampaignActionBlocked(blocked));
+            return new CampaignCommandResult(CampaignSnapshot.ReadOnly(notifications));
+        }
         return new CampaignCommandResult(result.BlockedReason is { } reason
             ? [advanced, new CampaignActionBlocked(reason)] : [advanced]);
     }
 
     private sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
     {
+        public List<ICampaignEvent>? Events { get; private set; }
+        public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
+
         public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger)
         {
             foreach (var restriction in campaign._restrictions)
                 if (restriction.BlocksTime) return restriction.Feature;
             if (highestTrigger >= CampaignTimeTrigger.OneDay)
                 return "Daily and monthly campaign simulation is not implemented yet; time stopped before midnight.";
-            return null;
+            return highestTrigger >= CampaignTimeTrigger.OneHour ? campaign.PreflightTransfers() : null;
         }
 
         public bool Apply(CampaignTime current, CampaignTimeTrigger trigger)
         {
             campaign.Time = current;
-            if (trigger == CampaignTimeTrigger.OneMonth) campaign.MonthsPassed++;
+            if (trigger == CampaignTimeTrigger.OneMonth)
+            {
+                campaign.MonthsPassed++;
+                campaign._monthlyPurchaseLog.Clear();
+            }
             if (trigger == CampaignTimeTrigger.OneDay) campaign.DaysPassed++;
-            return false;
+            if (trigger == CampaignTimeTrigger.OneHour) campaign.AdvanceTransfers(this);
+            return Events is not null;
         }
     }
 
@@ -257,6 +291,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         target.Name = command.Name;
         target.Longitude = command.Longitude;
         target.Latitude = command.Latitude;
+        _logisticsQuote = null;
         return new CampaignCommandResult(
             [new StartingBasePlaced(command.BaseIndex, command.Name, command.Longitude, command.Latitude)]);
     }
@@ -319,7 +354,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         CampaignSnapshot.ReadOnly(state.Crafts.Select(craft =>
             new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id) { PreservationKey = craft.PreservationKey })),
         CampaignSnapshot.ReadOnly(state.Soldiers.Select(soldier =>
-            new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), soldier.Id) { PreservationKey = soldier.PreservationKey })),
+            new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), soldier.Id) { PreservationKey = soldier.PreservationKey, Personal = soldier.Personal })),
         new ReadOnlyDictionary<string, int>(state.Items.ToDictionary(
             item => _content.RuntimeRules.Items.GetExternalId(item.Key), static item => item.Value,
             StringComparer.Ordinal)),
@@ -357,7 +392,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         var crafts = source.Crafts.Select(craft => new CraftState(
             rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft")) { PreservationKey = craft.PreservationKey }).ToArray();
         var soldiers = source.Soldiers.Select(soldier => new SoldierState(
-            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier")) { PreservationKey = soldier.PreservationKey }).ToArray();
+            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier")) { PreservationKey = soldier.PreservationKey, Personal = soldier.Personal }).ToArray();
         var items = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
         foreach (var pair in source.Items)
         {
@@ -565,5 +600,6 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     internal sealed record SoldierState(RuleHandle<SoldierRuleFamily> Rule, int Id)
     {
         public string PreservationKey { get; init; } = string.Empty;
+        public SoldierPersonalState? Personal { get; init; }
     }
 }

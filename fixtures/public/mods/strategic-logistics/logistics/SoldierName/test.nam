@@ -1,0 +1,7 @@
+maleFirst: [Alex]
+maleLast: [Example]
+maleCallsign: [Comet]
+femaleFrequency: 100
+globalWeight: 0
+lookWeights: [0, 0, 5, 0]
+country: COUNTRY

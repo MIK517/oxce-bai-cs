@@ -34,5 +34,20 @@ soldier A -> transit -> B, reordered bases, repeated rewrites, deletion/recreati
 duplicate ownership and the guarded month boundary. Save-adapter/foundation unit tests
 also cover legacy types and preservation after new-campaign emission.
 
-Transfer commands and arrival effects are still pending at this prerequisite milestone.
+Item/staff quote, order, transfer and arrival commands are implemented in the working
+branch. `CampaignLogisticsTests` covers atomic rejection, incoming capacity reservation,
+minimum transfer cost, purchase-log persistence, and save/reload before and after arrival.
+`StrategicLogisticsFixtureTests` checks extracted `RuleItem` price, `Base::storesOverfull`,
+and `TransferItemsState::getDistance` arithmetic. The corresponding probe deliberately
+stubs the script hook; actual VM input/event plumbing is covered separately by
+`ScriptRuntimeFrameTests`. These results do not establish complete branch acceptance.
+
+Soldier name-pool loading and constructor generation are being integrated. Reference
+sources inspected: `Mod/RuleSoldier.cpp`, `Mod/SoldierNamePool.cpp`,
+`Savegame/Soldier.cpp`, `Mod/Mod.cpp::genSoldier`, and
+`SavedGame::selectSoldierNationalityByLocation`. The public logistics fixture checks
+fixed initial stats, bravery truncation, initial psi skill, female-name/callsign fallback,
+look weights and ten-attempt duplicate handling. Recruitment/template commands, craft
+lifecycle, UI, and final corpus closure remain outstanding.
+
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).

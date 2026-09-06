@@ -1,0 +1,5 @@
+id: logistics
+name: Strategic logistics fixture
+version: 1.0
+isMaster: true
+reservedSpace: 1

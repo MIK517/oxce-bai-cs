@@ -11,6 +11,26 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class InstallationContentLoaderTests
 {
+    [Fact]
+    public void NamePoolsSurviveCacheAndContentChangesInvalidateIt()
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        var request = installation.Request("logistics", "-");
+        var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.True(cached.IsSuccess, cached.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+        Assert.Equivalent(first.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools,
+            cached.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools, strict: true);
+        var path = Path.Combine(installation.Root, "standard", "logistics", "SoldierName", "test.nam");
+        File.WriteAllText(path, File.ReadAllText(path).Replace("Alex", "Blair", StringComparison.Ordinal));
+        var changed = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(changed.IsSuccess, changed.DescribeFailure());
+        Assert.NotEqual(CompiledContentCacheStatus.Hit, changed.CacheStatus);
+        Assert.Equal("Blair", changed.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools[0].MaleFirst[0]);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

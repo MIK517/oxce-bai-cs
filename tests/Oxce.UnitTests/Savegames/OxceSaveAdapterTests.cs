@@ -74,7 +74,7 @@ public sealed class OxceSaveAdapterTests
             var identity = $"type: {soldier.RuleId}\n        id: {soldier.Id}";
             yaml = yaml.Replace(identity,
                 (omitType ? string.Empty : $"type: {soldier.RuleId}\n        ") +
-                $"id: {soldier.Id}\n        name: Soldier {soldier.Id}\n        initialStats: {{tu: 60}}",
+                $"id: {soldier.Id}\n        name: Soldier {soldier.Id}\n        initialStats: {{tu: 60}}\n        futureSoldierField: retained",
                 StringComparison.Ordinal);
         }
         var loaded = OxceSaveAdapter.Load(yaml, "soldiers.sav", content, new SplitMix64RandomSource(0), Options());
@@ -92,9 +92,12 @@ public sealed class OxceSaveAdapterTests
         {
             var node = Assert.Single(soldiers, node => ReadId(node) == survivor.Id);
             Assert.Equal($"Soldier {survivor.Id}", ReadString(node, "name"));
+            Assert.Equal("retained", ReadString(node, "futureSoldierField"));
             Assert.Equal(60, YamlValueReader.ReadInt32(Required(Assert.IsType<YamlMappingNode>(Required(node, "initialStats")), "tu")));
         }
-        Assert.False(Assert.Single(soldiers, node => ReadId(node) == 99).TryGet("name", out _));
+        var addedNode = Assert.Single(soldiers, node => ReadId(node) == 99);
+        Assert.Equal(added.Personal!.Name, ReadString(addedNode, "name"));
+        Assert.False(addedNode.TryGet("futureSoldierField", out _));
         Assert.DoesNotContain(soldiers, node => ReadId(node) == originalBase.Soldiers[0].Id);
     }
 
