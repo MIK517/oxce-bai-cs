@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 3;
+    internal const int CompilerRevision = 5;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -156,6 +156,11 @@ internal static class CompiledContentCache
                     cancellationToken.ThrowIfCancellationRequested();
                     writer.String(entry.CanonicalPath);
                     writer.String(entry.SourcePath);
+                    if (entry.CanonicalPath.EndsWith(".nam", StringComparison.OrdinalIgnoreCase))
+                    {
+                        using var nameInput = entry.OpenRead();
+                        writer.Stream(nameInput, cancellationToken);
+                    }
                 }
             }
         }
@@ -542,7 +547,8 @@ internal sealed record CachedRuntimeContent(
     IReadOnlyList<CachedScriptEventPlan> EventPlans,
     IReadOnlyList<ContentInitialScriptValue> InitialValues,
     IReadOnlyList<CachedResourceDescriptor> Resources,
-    IReadOnlyList<CachedResourceIndex> ResourceIndexes)
+    IReadOnlyList<CachedResourceIndex> ResourceIndexes,
+    IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools)
 {
     public static CachedRuntimeContent Capture(ContentSnapshot snapshot) => new(
         snapshot.CompatibilityData.Catalog,
@@ -570,7 +576,8 @@ internal sealed record CachedRuntimeContent(
             index.ModId,
             index.DeclaredIndex,
             index.RuntimeIndex,
-            index.Handle.Index)).ToArray());
+            index.Handle.Index)).ToArray(),
+        snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal));
 
     public CachedRuntimeContentRestore Restore(
         ContentSnapshotOptions options,
@@ -629,7 +636,7 @@ internal sealed record CachedRuntimeContent(
             Catalog,
             resources,
             Scripts,
-            options: new RuntimeRuleLinkOptions { CancellationToken = cancellationToken });
+            options: new RuntimeRuleLinkOptions { CancellationToken = cancellationToken, SoldierNamePools = SoldierNamePools });
         if (!runtimeRules.IsValid)
         {
             throw new InvalidDataException("Compiled content cache failed runtime-rule relinking.");

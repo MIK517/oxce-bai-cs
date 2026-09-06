@@ -16,6 +16,8 @@ namespace Oxce.Mods.Rulesets.Runtime;
 public sealed record RuntimeRuleLinkOptions
 {
     public CancellationToken CancellationToken { get; init; }
+    public IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools { get; init; } =
+        new ReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>>(new Dictionary<string, IReadOnlyList<RuntimeSoldierNamePool>>());
 }
 
 /// <summary>
@@ -123,7 +125,12 @@ public static class RuntimeRuleLinker
                 Resource(rule.Value.SpriteFacility, "BASEBITS.PCK", ResourceKind.Sprite, resources),
                 Resource(rule.Value.FireSound, "GEO.CAT", ResourceKind.Sound, resources),
                 Resource(rule.Value.HitSound, "GEO.CAT", ResourceKind.Sound, resources),
-                Resource(rule.Value.PlaceSound, "GEO.CAT", ResourceKind.Sound, resources)));
+                Resource(rule.Value.PlaceSound, "GEO.CAT", ResourceKind.Sound, resources))
+            {
+                PrisonType = rule.Value.PrisonType,
+                HangarType = rule.Value.HangarType,
+                ProvidedBaseFunctions = rule.Value.ProvidedBaseFunctions,
+            });
 
         cancellationToken.ThrowIfCancellationRequested();
         var crafts = BuildFamily<CraftRuleFamily, CraftRule, RuntimeCraftRule>(
@@ -145,7 +152,12 @@ public static class RuntimeRuleLinker
                 OptionalRequired(itemHandles, rule.Value.Strings["refuelItem"], "crafts", rule, "refuelItem"),
                 RequiredMany(craftWeaponHandles, rule.Value.FixedWeapons.Where(static id => id.Length != 0),
                     "crafts", rule, "fixedWeapons"),
-                ScriptsFor(scriptBuild.ByOwner, "crafts", rule.Id)));
+                ScriptsFor(scriptBuild.ByOwner, "crafts", rule.Id))
+            {
+                Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
+                    rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
+                HangarType = rule.Value.Integers["hangarType"],
+            });
 
         cancellationToken.ThrowIfCancellationRequested();
         var items = BuildFamily<ItemRuleFamily, ItemRule, RuntimeItemRule>(
@@ -163,7 +175,13 @@ public static class RuntimeRuleLinker
                 Array.AsReadOnly(rule.Value.CompatibleAmmo
                     .Select(group => RequiredMany(itemHandles, group, "items", rule, "compatibleAmmo"))
                     .ToArray()),
-                ScriptsFor(scriptBuild.ByOwner, "items", rule.Id)));
+                ScriptsFor(scriptBuild.ByOwner, "items", rule.Id))
+            {
+                Purchase = new(rule.Value.Values.GetInteger("monthlyBuyLimit"), rule.Value.Values.GetString("monthlyBuyLimitMessage"),
+                    rule.Value.Values.GetString("requiresBuyCountry"), rule.Value.RequiredBuyBaseFunctions, rule.Value.BuyRequirements),
+                IsAlien = rule.Value.Values.Boolean("liveAlien"),
+                PrisonType = rule.Value.Values.GetInteger("prisonType"),
+            });
 
         cancellationToken.ThrowIfCancellationRequested();
         var armors = BuildFamily<ArmorRuleFamily, ArmorRule, RuntimeArmorRule>(
@@ -187,7 +205,16 @@ public static class RuntimeRuleLinker
                 RequiredRule(armorHandles, rule.Value.Strings["armor"], "soldiers", rule, "armor"),
                 References(researchHandles, rule.Value.Requirements),
                 RequiredMany(skillHandles, rule.Value.Skills, "soldiers", rule, "skills"),
-                ScriptsFor(scriptBuild.ByOwner, "soldiers", rule.Id)));
+                ScriptsFor(scriptBuild.ByOwner, "soldiers", rule.Id))
+            {
+                Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
+                    rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
+                MinimumStats = rule.Value.MinimumStats.Values,
+                MaximumStats = rule.Value.MaximumStats.Values,
+                FemaleFrequency = rule.Value.Integers["femaleFrequency"],
+                NamePools = options.SoldierNamePools.GetValueOrDefault(rule.Id) ?? [],
+                HasSpawnedTemplate = rule.Value.SpawnedSoldierTemplate is not null,
+            });
 
         cancellationToken.ThrowIfCancellationRequested();
         var settings = BuildCampaignSettings(content.CampaignStart.Settings);
@@ -233,7 +260,15 @@ public static class RuntimeRuleLinker
                 OptionalRuntime(researchHandles, source.HireScientistsUnlockResearch),
                 OptionalRuntime(researchHandles, source.HireEngineersUnlockResearch),
                 OptionalRuntime(facilityHandles, source.DestroyedFacility),
-                Array.AsReadOnly(templates));
+                Array.AsReadOnly(templates))
+            {
+                BuyPriceCoefficients = source.BuyPriceCoefficients,
+                SellPriceCoefficients = source.SellPriceCoefficients,
+                HireScientistsBaseFunctions = source.HireScientistsRequiredBaseFunctions,
+                HireEngineersBaseFunctions = source.HireEngineersRequiredBaseFunctions,
+                HireByCountryOdds = source.HireByCountryOdds,
+                HireByRegionOdds = source.HireByRegionOdds,
+            };
         }
 
         RuntimeStartingBaseTemplate StartingBase(StartingBaseVariant variant, YamlMappingNode node)

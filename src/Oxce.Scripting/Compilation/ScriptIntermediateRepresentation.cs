@@ -87,6 +87,7 @@ public sealed class ScriptProgram
     private readonly SourceSpan[] _sourceMap;
     private readonly ScriptBindingDeclaration[] _bindingSlots;
     private readonly ScriptRegisterDefinition[] _outputRegisters;
+    private readonly ScriptRegisterDefinition[] _inputRegisters;
 
     public ScriptProgram(
         string parserName,
@@ -105,6 +106,7 @@ public sealed class ScriptProgram
         Outputs = Array.AsReadOnly(outputs.ToArray());
         Registers = Array.AsReadOnly((registers ?? []).ToArray());
         _outputRegisters = Registers.Where(static register => register.IsOutput).ToArray();
+        _inputRegisters = Registers.Where(static register => register.IsInput).ToArray();
         _bindingSlots = (bindings ?? []).ToArray();
         Bindings = Array.AsReadOnly(_bindingSlots);
         RegisterBytes = registerBytes;
@@ -181,6 +183,8 @@ public sealed class ScriptProgram
     internal ScriptBindingDeclaration GetBindingSlot(int slot) => _bindingSlots[slot];
 
     internal ReadOnlySpan<ScriptRegisterDefinition> OutputRegisters => _outputRegisters;
+    internal ReadOnlySpan<ScriptRegisterDefinition> InputRegisters => _inputRegisters;
+    public int InputCount => _inputRegisters.Length;
 
     public int RegisterSlotCount => checked((RegisterBytes + sizeof(int) - 1) / sizeof(int));
 
@@ -227,6 +231,8 @@ public sealed record ScriptRegisterDefinition(
     int Offset,
     bool IsOutput)
 {
+    public bool IsInput { get; init; }
+
     public ScriptRegisterDefinition Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Name);

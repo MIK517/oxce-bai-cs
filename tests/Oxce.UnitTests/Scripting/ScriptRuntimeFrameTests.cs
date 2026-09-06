@@ -13,6 +13,39 @@ namespace Oxce.UnitTests.Scripting;
 public sealed class ScriptRuntimeFrameTests
 {
     [Fact]
+    public void PriceParserReceivesInputsAndPreparedEventsReuseThemWithoutAllocation()
+    {
+        var definition = ScriptParserDefinition.FromCatalog("buyCostItem");
+        var before = Compile("add cost_current cost_base; return cost_current;", definition);
+        var current = Compile("add cost_current difficulty_coefficient; return cost_current;", definition);
+        var after = Compile("add cost_current cost_base; return cost_current;", definition);
+        var composed = ScriptEventComposer.Compose(
+        [
+            new(ScriptEventMutationKind.Append, "", -100, before, "price", 1),
+            new(ScriptEventMutationKind.Append, "", 100, after, "price", 2),
+        ]);
+        var frame = new ScriptExecutionFrame();
+        frame.Prepare(before);
+        frame.Prepare(current);
+        frame.Prepare(after);
+        ScriptRuntimeValue[] initial = [ScriptRuntimeValue.FromScalar(149)];
+        ScriptRuntimeValue[] inputs = [ScriptRuntimeValue.FromScalar(199), ScriptRuntimeValue.FromScalar(75),
+            ScriptRuntimeValue.FromReference(null), ScriptRuntimeValue.FromReference(null), ScriptRuntimeValue.FromReference(null)];
+        ScriptRuntimeValue[] outputs = new ScriptRuntimeValue[1];
+        Assert.Equal(5, current.InputCount);
+        Assert.True(ScriptEventRunner.Execute(composed.Plan!, current, initial, outputs, frame, inputs: inputs).Succeeded);
+        Assert.Equal(622, outputs[0].Scalar);
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var succeeded = true;
+        for (var i = 0; i < 100; i++)
+            succeeded &= ScriptEventRunner.Execute(composed.Plan!, current, initial, outputs, frame, inputs: inputs).Succeeded;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        Assert.True(succeeded);
+        Assert.Equal(0, allocated);
+        Assert.Throws<ArgumentException>(() => ScriptVm.ExecuteWithInputs(current, initial, inputs.AsSpan(1), outputs, frame));
+    }
+
+    [Fact]
     public void PackedProgramDoesNotRetainInstructionObjectsOrOperandCollections()
     {
         var (program, instruction, operands) = CreatePackedProgramProbe();

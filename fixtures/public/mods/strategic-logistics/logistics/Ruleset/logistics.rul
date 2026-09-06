@@ -1,0 +1,56 @@
+countries:
+  - type: COUNTRY
+    fundingBase: 100
+    fundingCap: 400
+    areas: [[0, 30, -20, 20]]
+regions:
+  - type: REGION
+    areas: [[0, 30, -20, 20]]
+research:
+  - name: UNLOCK
+items:
+  - type: CORPSE
+    battleType: 11
+  - type: SUPPLY
+    costBuy: 199
+    costSell: 100
+    size: 1
+    transferTime: 1
+    monthlyBuyLimit: 10
+  - type: LOCKED
+    costBuy: 50
+    requires: [UNLOCK]
+    transferTime: 1
+  - type: BULKY
+    costBuy: 20
+    size: 2
+    transferTime: 1
+armors:
+  - type: ARMOR
+    corpseBattle: [CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [0]
+soldiers:
+  - type: RECRUIT
+    armor: ARMOR
+    costBuy: 500
+    transferTime: 1
+    soldierNames: [SoldierName/test.nam]
+    minStats: {tu: 50, stamina: 60, health: 30, mana: 20, bravery: 25, reactions: 40, firing: 55, throwing: 45, strength: 25, psiStrength: 35, melee: 30, psiSkill: 0}
+    maxStats: {tu: 50, stamina: 60, health: 30, mana: 20, bravery: 25, reactions: 40, firing: 55, throwing: 45, strength: 25, psiStrength: 35, melee: 30, psiSkill: 50}
+facilities:
+  - type: STORES
+    mapName: LOGISTICS
+    storage: 10
+    personnel: 10
+startingBase:
+  facilities: [{type: STORES, x: 0, y: 0}]
+  items: {SUPPLY: 2}
+  scientists: 1
+  engineers: 1
+startingTime: {weekday: 1, day: 1, month: 1, year: 1999, hour: 0, minute: 59, second: 55}
+initialFunding: 100
+costHireScientist: 1000
+costHireEngineer: 500
+timePersonnel: 1
+buyPriceCoefficient: [75, 100, 100, 100, 100]

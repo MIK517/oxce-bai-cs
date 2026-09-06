@@ -51,6 +51,8 @@ public sealed class CampaignStartSettings
         BaseNamesLast = builder.BaseNamesLast.AsReadOnly();
         OperationNamesFirst = builder.OperationNamesFirst.AsReadOnly();
         OperationNamesLast = builder.OperationNamesLast.AsReadOnly();
+        BuyPriceCoefficients = Array.AsReadOnly((int[])builder.BuyPriceCoefficients.Clone());
+        SellPriceCoefficients = Array.AsReadOnly((int[])builder.SellPriceCoefficients.Clone());
     }
 
     [System.Text.Json.Serialization.JsonConstructor]
@@ -83,7 +85,9 @@ public sealed class CampaignStartSettings
         IReadOnlyList<string> baseNamesMiddle,
         IReadOnlyList<string> baseNamesLast,
         IReadOnlyList<string> operationNamesFirst,
-        IReadOnlyList<string> operationNamesLast)
+        IReadOnlyList<string> operationNamesLast,
+        IReadOnlyList<int> buyPriceCoefficients,
+        IReadOnlyList<int> sellPriceCoefficients)
     {
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(startingBases));
@@ -115,6 +119,8 @@ public sealed class CampaignStartSettings
         BaseNamesLast = Array.AsReadOnly(baseNamesLast.ToArray());
         OperationNamesFirst = Array.AsReadOnly(operationNamesFirst.ToArray());
         OperationNamesLast = Array.AsReadOnly(operationNamesLast.ToArray());
+        BuyPriceCoefficients = Array.AsReadOnly(buyPriceCoefficients.ToArray());
+        SellPriceCoefficients = Array.AsReadOnly(sellPriceCoefficients.ToArray());
     }
 
     public IReadOnlyDictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; }
@@ -128,6 +134,8 @@ public sealed class CampaignStartSettings
     public int HireByCountryOdds { get; }
     public int HireByRegionOdds { get; }
     public int InitialFunding { get; }
+    public IReadOnlyList<int> BuyPriceCoefficients { get; }
+    public IReadOnlyList<int> SellPriceCoefficients { get; }
     public int GlobalTransferCostMultiplier { get; }
     public int GlobalTransferCostDivisor { get; }
     public string PsiUnlockResearch { get; }
@@ -155,6 +163,8 @@ public sealed class CampaignStartSettings
 
 internal sealed class CampaignStartSettingsBuilder
 {
+    public int[] BuyPriceCoefficients { get; } = [100, 100, 100, 100, 100];
+    public int[] SellPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public Dictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; } = [];
     public int Weekday { get; set; } = 6;
     public int Day { get; set; } = 1;

@@ -54,7 +54,7 @@ public sealed class CampaignSaveRegressionFixtureTests
         loaded = OxceSaveAdapter.Load(yaml, "transit.sav", content, new SplitMix64RandomSource(0), Options());
         var transit = loaded.Campaign.Capture();
         var incoming = Assert.Single(transit.Bases[0].Transfers);
-        Assert.Equal(soldier, incoming.Soldier);
+        Assert.Equivalent(soldier, incoming.Soldier, strict: true);
         snapshot = transit with { Bases = [transit.Bases[1], transit.Bases[0] with { Soldiers = [incoming.Soldier!], Transfers = [] }] };
         for (var cycle = 0; cycle < 3; cycle++)
         {

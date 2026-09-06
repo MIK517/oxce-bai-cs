@@ -8,6 +8,26 @@ namespace Oxce.Scripting.Runtime;
 
 public static partial class ScriptVm
 {
+    public static ScriptExecutionOutcome ExecuteWithInputs(
+        ScriptProgram program,
+        ReadOnlySpan<ScriptRuntimeValue> initialOutputs,
+        ReadOnlySpan<ScriptRuntimeValue> inputs,
+        Span<ScriptRuntimeValue> outputs,
+        ScriptExecutionFrame frame,
+        ScriptExecutionOptions? options = null,
+        ScriptHostBindings? hostBindings = null,
+        IScriptTraceSink? traceSink = null)
+    {
+        ArgumentNullException.ThrowIfNull(program);
+        ArgumentNullException.ThrowIfNull(frame);
+        if (inputs.Length != program.InputCount)
+            throw new ArgumentException("Input count must match the declared parser inputs.", nameof(inputs));
+        options ??= ScriptExecutionOptions.Default;
+        options.Validate();
+        return ExecuteCore(program, initialOutputs, outputs, frame, options,
+            hostBindings ?? ScriptHostBindings.Empty, traceSink, commitOnFailure: false, inputs);
+    }
+
     public static ScriptExecutionOutcome Execute(
         ScriptProgram program,
         ReadOnlySpan<ScriptRuntimeValue> initialOutputs,
@@ -81,7 +101,8 @@ public static partial class ScriptVm
         ScriptExecutionOptions options,
         ScriptHostBindings hostBindings,
         IScriptTraceSink? traceSink,
-        bool commitOnFailure)
+        bool commitOnFailure,
+        ReadOnlySpan<ScriptRuntimeValue> inputs = default)
     {
         var outputDefinitions = program.OutputRegisters;
         if (initialOutputs.Length != 0 && initialOutputs.Length != outputDefinitions.Length)
@@ -104,6 +125,8 @@ public static partial class ScriptVm
 
         try
         {
+            for (var index = 0; index < inputs.Length; index++)
+                registers[RegisterIndex(program, program.InputRegisters[index].Offset)] = inputs[index];
             for (var index = 0; index < initialOutputs.Length; index++)
             {
                 registers[RegisterIndex(program, outputDefinitions[index].Offset)] = initialOutputs[index];

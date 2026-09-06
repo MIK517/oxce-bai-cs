@@ -66,6 +66,7 @@ public sealed record CraftSnapshot(string RuleId, int Id)
 public sealed record SoldierSnapshot(string RuleId, int Id)
 {
     public string PreservationKey { get; init; } = string.Empty;
+    public SoldierPersonalState? Personal { get; init; }
 }
 
 public enum CampaignTransferKind { Item, Scientist, Engineer, Soldier, Craft }
@@ -114,6 +115,9 @@ public sealed record CampaignSnapshot(
     IReadOnlyList<ScriptValueEntry> ScriptValues)
 {
     public IReadOnlyList<CampaignRestriction> Restrictions { get; init; } = [];
+    public IReadOnlyList<string> CompletedResearch { get; init; } = [];
+    public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+    public bool DebugMode { get; init; }
 
     internal static IReadOnlyList<T> ReadOnly<T>(IEnumerable<T> values) => Array.AsReadOnly(values.ToArray());
 
