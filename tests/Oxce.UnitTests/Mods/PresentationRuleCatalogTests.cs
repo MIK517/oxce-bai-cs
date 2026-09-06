@@ -14,6 +14,7 @@ public sealed class PresentationRuleCatalogTests
     public void ReplaysNamedAndSpecialPresentationRulesWithReferenceMergeSemantics()
     {
         const string yaml = """
+            fontName: InterfaceFonts.dat
             interfaces:
               - type: IFACE
                 refNode:
@@ -74,6 +75,7 @@ public sealed class PresentationRuleCatalogTests
         var diagnostics = new DiagnosticCollector();
 
         var content = PresentationRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        Assert.Equal("InterfaceFonts.dat", content.Special.FontName);
 
         var interfaceRule = Assert.Single(content.Interfaces.Rules).Value;
         Assert.Equal("PAL_NEW", interfaceRule.Palette);

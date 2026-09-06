@@ -11,7 +11,11 @@ public sealed record LogisticsRow(int Id, CampaignTransferKind Kind, string Rule
     string Label, int Owned, int UnitCost, int MaximumQuantity, int Hours, string? UnavailableReason);
 public sealed record LogisticsQuote(long Id, int BaseId, LogisticsOperation Operation, int? DestinationBaseId,
     long Funds, double UsedStores, int AvailableStores, int UsedQuarters, int AvailableQuarters,
-    IReadOnlyList<LogisticsRow> Rows);
+    IReadOnlyList<LogisticsRow> Rows)
+{
+    public int TransferCostMultiplier { get; init; } = 1;
+    public int TransferCostDivisor { get; init; } = 1;
+}
 public sealed record LogisticsQuoted(LogisticsQuote Quote) : ICampaignEvent;
 public sealed record LogisticsOrderCompleted(int BaseId, LogisticsOperation Operation, long Cost) : ICampaignEvent;
 public sealed record SuppliesArrived(int BaseId, IReadOnlyList<int> TransferIds) : ICampaignEvent;
