@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 6;
+    internal const int CompilerRevision = 7;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -664,7 +664,8 @@ internal sealed record CachedRuntimeContent(
                 EventPlans.Select(static plan => plan.Restore()).ToArray(),
                 InitialValues,
                 resources,
-                runtimeRules.Catalog),
+                runtimeRules.Catalog,
+                new RuntimePresentationContent(Catalog.Presentation.Special)),
             new ContentCompatibilityData(Catalog, runtimeRules.Compatibility));
     }
 }

@@ -81,7 +81,11 @@ public sealed partial class CampaignState
         if (rows.Count > MaximumLogisticsLines) return Blocked("The logistics catalog exceeds the bounded row limit.");
         var quote = new LogisticsQuote(checked(++_nextQuoteId), origin.Id, command.Operation,
             command.Operation == LogisticsOperation.Transfer ? destination.Id : null, _funds[^1], UsedStores(destination),
-            AvailableStores(destination), UsedQuarters(destination), AvailableQuarters(destination), CampaignSnapshot.ReadOnly(rows));
+            AvailableStores(destination), UsedQuarters(destination), AvailableQuarters(destination), CampaignSnapshot.ReadOnly(rows))
+        {
+            TransferCostMultiplier = _content.RuntimeRules.Campaign.GlobalTransferCostMultiplier,
+            TransferCostDivisor = _content.RuntimeRules.Campaign.GlobalTransferCostDivisor,
+        };
         _logisticsQuote = quote;
         return new CampaignCommandResult([new LogisticsQuoted(quote)]);
 
@@ -399,7 +403,11 @@ public sealed partial class CampaignState
     }
 
     private string? LogisticsRestriction(BaseState state) =>
-        _restrictions.FirstOrDefault(r => r.BlocksLogistics && (r.BaseId is null || r.BaseId == state.Id))?.Feature;
+        _restrictions.FirstOrDefault(r => r.BlocksLogistics && (r.BaseId is null || r.BaseId == state.Id))?.Feature ?? MissingCraftInventory(state);
+
+    private static string? MissingCraftInventory(BaseState state) =>
+        state.Crafts.Any(c => c.Logistics is null) || state.Transfers.Any(t => t.Craft is { Logistics: null })
+            ? "Craft inventory must be resolved before capacity-dependent logistics actions." : null;
 
     private string? PurchaseRestriction(BaseState state, RuntimePurchaseRequirements rule)
     {

@@ -120,6 +120,30 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         }
     }
 
+    public CampaignStores QueryStores(int baseId)
+    {
+        lock (_transactionGate)
+        {
+            var state = FindBase(baseId);
+            var incoming = state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item)
+                .GroupBy(t => t.RuleId, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Sum(t => t.Quantity), StringComparer.Ordinal);
+            var items = _content.RuntimeRules.Items.Rules.Select(r => new CampaignStoreItem(r.Id,
+                r.Value.Name.Length == 0 ? r.Id : r.Value.Name,
+                state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(r.Id)),
+                incoming.GetValueOrDefault(r.Id), r.Value.Size)).Where(i => i.Stored != 0 || i.Incoming != 0);
+            var transfers = state.Transfers.Where(t => !t.Delivered).Select(t => new CampaignIncomingTransfer(
+                t.Id, t.Kind, t.Soldier?.Personal?.Name ?? (t.Kind switch
+                {
+                    CampaignTransferKind.Scientist => "STR_SCIENTIST",
+                    CampaignTransferKind.Engineer => "STR_ENGINEER",
+                    _ => t.RuleId,
+                }), t.Quantity, t.Hours));
+            return new(baseId, UsedStores(state), AvailableStores(state), UsedQuarters(state), AvailableQuarters(state),
+                CampaignSnapshot.ReadOnly(items), CampaignSnapshot.ReadOnly(transfers))
+            { CapacityLimitation = MissingCraftInventory(state) };
+        }
+    }
+
     private CampaignSnapshot CaptureCore() => new(
             Identity with { ActiveMods = CampaignSnapshot.ReadOnly(Identity.ActiveMods) },
             Difficulty,

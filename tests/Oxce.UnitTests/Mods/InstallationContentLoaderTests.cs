@@ -12,6 +12,21 @@ namespace Oxce.UnitTests.Mods;
 public sealed class InstallationContentLoaderTests
 {
     [Fact]
+    public void FontMetadataOverrideSurvivesCompiledCache()
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        File.AppendAllText(installation.FirstRuleset, "\nfontName: InterfaceFonts.dat\n");
+        var request = installation.Request("logistics", "-");
+        var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.True(cached.IsSuccess, cached.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+        Assert.Equal("InterfaceFonts.dat", first.Content!.Presentation.FontName);
+        Assert.Equal("InterfaceFonts.dat", cached.Content!.Presentation.FontName);
+    }
+
+    [Fact]
     public void NamePoolsSurviveCacheAndContentChangesInvalidateIt()
     {
         using var installation = new TemporaryInstallation("strategic-logistics");

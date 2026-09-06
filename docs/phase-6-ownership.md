@@ -72,7 +72,40 @@ Source: `Engine/Options.cpp`, `PurchaseState::increaseByValue`,
 
 Runtime name-pool projections retain content hashes. Cache restoration checks referenced
 pool bytes, including custom file extensions; the custom-extension mutation regression
-passes. Further action/provider coverage, overfull-sale cleanup, UI, and final cached/fresh
+passes. Further action/provider coverage, overfull-sale cleanup and final cached/fresh
 corpus closure remain outstanding.
+
+## Logistics interface integration
+
+`--campaign-sdl` now runs a 640x400 indexed logistics client. `I` inspects stored and
+incoming inventory; `B`/`S` open a stable purchase/sale quote; `T` selects a destination
+before opening a transfer quote. Up/down selects rows, +/- changes quantities (Shift
+changes ten), Enter requests confirmation, and Y submits once. Tab changes the selected
+base. Escape cancels confirmation, closes the current screen, then exits from the main
+view. Space advances one minute; Shift+Space requests one hour, subject to simulation
+guards and arrival interruptions. F5 saves and F9 requests confirmation before loading
+the supplied save path. A `-` destination disables save/load. There is no automatic
+background time advance while an order is being edited.
+
+The read-only stores query does not execute price hooks or capture the save graph.
+Missing craft inventory is reported as an unavailable capacity calculation and blocks
+dependent actions; unknown soldier assignment state prevents craft sale/transfer.
+`CampaignLogisticsClientTests` exercises keyboard purchase confirmation/cancellation,
+save/load in transit, exactly-once delivery, and mutation-free stores inspection.
+
+The App resolves English labels from common/layered language files and composed
+`extraStrings`; the font loader supports the installation's indexed `FONT_SMALL` images
+and uses the asset-independent interface font when no font definition exists. Source
+inspection: `Engine/Font.cpp::load`, `Language.cpp::loadFile/loadRule`. The staged 40k
+font (8x9) and scientist label (`Adept`) have been rendered and visually inspected using
+the public logistics scenario. This is not yet the full cached/fresh playable-corpus
+acceptance gate. Main navigation/help text is currently English; broader language
+selection and richer layout/notification review remain open integration work.
+
+UI checkpoint validation: 605 solution tests passed with zero skips, including the
+available private corpus. The older personnel-rule fixture now supplies the synthetic
+`second.nam` file that its name-list replacement test retained. `fontName` and composed
+extra strings are immutable runtime projections, independent of optional diagnostic
+compatibility data, and the font override survives a compiled-cache hit (revision 7).
 
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).
