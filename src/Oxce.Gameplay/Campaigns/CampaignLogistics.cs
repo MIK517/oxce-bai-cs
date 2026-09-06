@@ -27,7 +27,16 @@ public sealed partial class CampaignState
         var rows = new List<LogisticsRow>();
         var distance = StrategicLogisticsMath.TransferDistance(origin.Longitude, origin.Latitude, destination.Longitude, destination.Latitude);
         var hours = StrategicLogisticsMath.TransferHours(distance);
-        if (command.Operation == LogisticsOperation.Purchase) AddRecruitRows(origin, rows);
+        if (command.Operation == LogisticsOperation.Purchase)
+        {
+            AddRecruitRows(origin, rows);
+            AddCraftPurchaseRows(origin, rows);
+        }
+        else
+        {
+            AddSoldierRows(origin, destination, rows, command.Operation, distance, hours);
+            AddCraftRows(origin, destination, rows, command.Operation, distance, hours);
+        }
         AddStaff(CampaignTransferKind.Scientist, "STR_SCIENTIST", origin.Scientists,
             _content.RuntimeRules.Campaign.CostHireScientist, _content.RuntimeRules.Campaign.HireScientistsUnlockResearch,
             _content.RuntimeRules.Campaign.HireScientistsBaseFunctions);
@@ -38,6 +47,7 @@ public sealed partial class CampaignState
         {
             var handle = _content.RuntimeRules.Items.GetRequired(entry.Id);
             var rule = entry.Value;
+            if (command.Operation == LogisticsOperation.Sell && rule.IsAlien && !Options.CanSellLiveAliens) continue;
             var owned = origin.Items.GetValueOrDefault(handle);
             if (command.Operation != LogisticsOperation.Purchase && owned == 0) continue;
             string? unavailable = null;
@@ -60,7 +70,7 @@ public sealed partial class CampaignState
                 if (command.Operation == LogisticsOperation.Purchase && cost > 0) max = (int)Math.Min(max, Math.Max(0, _funds[^1] / cost));
                 if (command.Operation == LogisticsOperation.Purchase && rule.Purchase.MonthlyLimit > 0)
                     max = Math.Min(max, Math.Max(0, rule.Purchase.MonthlyLimit - _monthlyPurchaseLog.GetValueOrDefault(entry.Id)));
-                max = StorageLimit(destination, rule, max);
+                max = StorageLimit(destination, rule, max, command.Operation);
             }
             if (max <= 0) unavailable ??= "Funds, capacity or purchase limit leaves no available quantity.";
             if (unavailable is not null) max = 0;
@@ -112,14 +122,17 @@ public sealed partial class CampaignState
         if (quote is null || quote.Id != command.QuoteId) return Blocked("This quote has expired; reopen the logistics screen.");
         if (command.Lines.Count == 0 || command.Lines.Count > MaximumLogisticsLines)
             return Blocked("An order must contain a bounded non-empty selection.");
+        var selections = command.Lines.OrderBy(s => s.RowId).ToArray();
         var origin = FindBase(quote.BaseId);
         var destination = FindBase(quote.DestinationBaseId ?? quote.BaseId);
         var seen = new HashSet<int>();
         long subtotal = 0;
         var storageAdded = 0.0;
+        var hasStoredItem = false;
         long peopleAdded = 0;
         var prisoners = new Dictionary<int, long>();
-        foreach (var selection in command.Lines)
+        var hangars = new Dictionary<int, long>();
+        foreach (var selection in selections)
         {
             if (!seen.Add(selection.RowId) || (uint)selection.RowId >= (uint)quote.Rows.Count)
                 return Blocked("Order contains a duplicate or invalid row.");
@@ -131,19 +144,36 @@ public sealed partial class CampaignState
             {
                 var rule = _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(row.RuleId)].Value;
                 storageAdded += rule.Size * selection.Quantity;
+                hasStoredItem |= rule.Size > 0;
                 if (rule.IsAlien) prisoners[rule.PrisonType] = prisoners.GetValueOrDefault(rule.PrisonType) + selection.Quantity;
+            }
+            else if (row.Kind == CampaignTransferKind.Craft)
+            {
+                var type = _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(row.RuleId)].Value.HangarType;
+                hangars[type] = hangars.GetValueOrDefault(type) + selection.Quantity;
+                if (quote.Operation == LogisticsOperation.Transfer)
+                {
+                    storageAdded += CraftStorage(FindCraft(origin, row).Logistics!);
+                    peopleAdded += Crew(origin, row.RuleId, row.EntityId).Count();
+                }
             }
             else peopleAdded += selection.Quantity;
         }
         if (quote.Operation != LogisticsOperation.Sell)
         {
             if (subtotal is < int.MinValue or > int.MaxValue) return Blocked("Order exceeds the reference 32-bit transaction range.");
-            if (storageAdded > 0 && StrategicLogisticsMath.StoresOverfull(AvailableStores(destination), UsedStores(destination), storageAdded))
+            if ((quote.Operation == LogisticsOperation.Purchase || Options.StorageLimitsEnforced || hasStoredItem) &&
+                storageAdded > 0 && StrategicLogisticsMath.StoresOverfull(AvailableStores(destination), UsedStores(destination), storageAdded))
                 return Blocked("STR_NOT_ENOUGH_STORE_SPACE");
             if (peopleAdded > 0 && peopleAdded > AvailableQuarters(destination) - (long)UsedQuarters(destination)) return Blocked("STR_NOT_ENOUGH_LIVING_SPACE");
             foreach (var pair in prisoners)
-                if (pair.Value > AvailableContainment(destination, pair.Key) - (long)UsedContainment(destination, pair.Key))
+                if (quote.Operation == LogisticsOperation.Transfer && !Options.StorageLimitsEnforced
+                    ? AvailableContainment(destination, pair.Key) < 1
+                    : pair.Value > AvailableContainment(destination, pair.Key) - (long)UsedContainment(destination, pair.Key))
                     return Blocked("STR_NOT_ENOUGH_PRISON_SPACE");
+            foreach (var pair in hangars)
+                if (pair.Value > AvailableHangars(destination, pair.Key) - (long)UsedHangars(destination, pair.Key))
+                    return Blocked("STR_NO_FREE_HANGARS_FOR_PURCHASE");
             if (quote.Operation == LogisticsOperation.Transfer)
                 subtotal = StrategicLogisticsMath.TransferTotal((int)subtotal, _content.RuntimeRules.Campaign.GlobalTransferCostMultiplier,
                     _content.RuntimeRules.Campaign.GlobalTransferCostDivisor);
@@ -152,33 +182,134 @@ public sealed partial class CampaignState
         var delta = quote.Operation == LogisticsOperation.Sell ? subtotal : -subtotal;
         var funds = checked(_funds[^1] + delta);
         var accounting = delta > 0 ? checked(_incomes[^1] + delta) : checked(_expenditures[^1] - delta);
+        if (quote.Operation == LogisticsOperation.Sell)
+        {
+            var refunds = new Dictionary<RuleHandle<ItemRuleFamily>, long>();
+            foreach (var selection in selections)
+            {
+                var row = quote.Rows[selection.RowId];
+                if (row.Kind == CampaignTransferKind.Craft)
+                {
+                    foreach (var pair in UnloadedCraftItems(FindCraft(origin, row).Logistics!))
+                    {
+                        var handle = _content.RuntimeRules.Items.GetRequired(pair.Key);
+                        refunds[handle] = refunds.GetValueOrDefault(handle, origin.Items.GetValueOrDefault(handle)) + pair.Value;
+                        if (refunds[handle] > int.MaxValue) return Blocked("Unloaded craft inventory exceeds the item quantity range.");
+                    }
+                    continue;
+                }
+                if (row.Kind != CampaignTransferKind.Soldier) continue;
+                var personal = origin.Soldiers.Single(s => s.Id == row.EntityId).Personal!;
+                var armor = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(personal.Armor)].Value;
+                if (armor.StoreItem is not { } item) continue;
+                refunds[item] = refunds.GetValueOrDefault(item, origin.Items.GetValueOrDefault(item)) + 1;
+                if (refunds[item] > int.MaxValue) return Blocked("Returned armor exceeds the item quantity range.");
+            }
+        }
         // All eligibility/capacity/cost checks precede stock and fund mutation.
         var transfers = new List<TransferSnapshot>();
         var nextTransferId = NextTransferId();
-        var transferCount = quote.Operation == LogisticsOperation.Sell ? 0L : command.Lines.Sum(s =>
-            quote.Rows[s.RowId].Kind == CampaignTransferKind.Soldier ? (long)s.Quantity : 1);
+        var transferCount = quote.Operation == LogisticsOperation.Sell ? 0L : selections.Sum(s =>
+            quote.Rows[s.RowId].Kind is CampaignTransferKind.Soldier or CampaignTransferKind.Craft ? (long)s.Quantity : 1);
+        if (quote.Operation == LogisticsOperation.Transfer)
+            transferCount += selections.Where(s => quote.Rows[s.RowId].Kind == CampaignTransferKind.Craft)
+                .Sum(s => (long)Crew(origin, quote.Rows[s.RowId].RuleId, quote.Rows[s.RowId].EntityId).Count());
         if (transferCount > MaximumLogisticsLines) return Blocked("Order exceeds the bounded transfer count.");
         if (transferCount > int.MaxValue - nextTransferId)
             return Blocked("Transfer identity range is exhausted.");
-        var recruitCount = quote.Operation == LogisticsOperation.Purchase ? command.Lines.Where(s =>
+        var recruitCount = quote.Operation == LogisticsOperation.Purchase ? selections.Where(s =>
             quote.Rows[s.RowId].Kind == CampaignTransferKind.Soldier).Sum(s => s.Quantity) : 0;
         var nextSoldierId = NextSoldierId();
         if (recruitCount > int.MaxValue - nextSoldierId) return Blocked("Soldier identity range is exhausted.");
+        var craftIds = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var selection in selections)
+        {
+            var row = quote.Rows[selection.RowId];
+            if (row.Kind != CampaignTransferKind.Craft || quote.Operation != LogisticsOperation.Purchase) continue;
+            var next = NextCraftId(row.RuleId);
+            if (selection.Quantity > int.MaxValue - next) return Blocked("Craft identity range is exhausted.");
+            craftIds.Add(row.RuleId, next);
+        }
         var names = _bases.SelectMany(b => b.Soldiers.Select(s => s.Personal?.Name).Concat(
             b.Transfers.Select(t => t.Soldier?.Personal?.Name))).OfType<string>().ToHashSet(StringComparer.Ordinal);
-        foreach (var selection in command.Lines)
+        foreach (var selection in selections)
         {
             var row = quote.Rows[selection.RowId];
             if (quote.Operation != LogisticsOperation.Sell)
             {
+                if (row.Kind == CampaignTransferKind.Craft)
+                {
+                    if (quote.Operation == LogisticsOperation.Transfer)
+                    {
+                        var original = FindCraft(origin, row);
+                        foreach (var member in Crew(origin, row.RuleId, row.EntityId))
+                        {
+                            var personal = member.Personal!;
+                            var soldier = new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(member.Rule), member.Id)
+                            {
+                                PreservationKey = member.PreservationKey,
+                                Personal = personal with { PsiTraining = false, Training = false,
+                                    ReturnToTrainingWhenHealed = personal.Training || personal.ReturnToTrainingWhenHealed },
+                            };
+                            var crewTransferId = nextTransferId++;
+                            transfers.Add(new(crewTransferId, row.Hours, CampaignTransferKind.Soldier, soldier.RuleId, 1, soldier)
+                            { PreservationKey = $"{Identity.Id}:transfer:{crewTransferId}" });
+                        }
+                        var moved = new CraftSnapshot(row.RuleId, original.Id) { Logistics = original.Logistics, PreservationKey = original.PreservationKey };
+                        var transferId = nextTransferId++;
+                        transfers.Add(new(transferId, row.Hours, row.Kind, row.RuleId, 1, Craft: moved)
+                        { PreservationKey = $"{Identity.Id}:transfer:{transferId}" });
+                        continue;
+                    }
+                    var rule = _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(row.RuleId)].Value;
+                    for (var i = 0; i < selection.Quantity; i++)
+                    {
+                        var craftId = craftIds[row.RuleId]++;
+                        var craft = new CraftSnapshot(row.RuleId, craftId)
+                        {
+                            Logistics = CraftLogistics.Purchase(rule, _content.RuntimeRules, origin.Longitude, origin.Latitude),
+                            PreservationKey = $"{Identity.Id}:craft:{row.RuleId}:{craftId}",
+                        };
+                        var transferId = nextTransferId++;
+                        transfers.Add(new(transferId, row.Hours, row.Kind, row.RuleId, 1, Craft: craft)
+                        {
+                            PreservationKey = $"{Identity.Id}:transfer:{transferId}",
+                        });
+                    }
+                    continue;
+                }
                 if (row.Kind == CampaignTransferKind.Soldier)
                 {
+                    if (quote.Operation == LogisticsOperation.Transfer)
+                    {
+                        var original = origin.Soldiers.Single(s => s.Id == row.EntityId);
+                        var personal = original.Personal!;
+                        var soldier = new SoldierSnapshot(row.RuleId, original.Id)
+                        {
+                            PreservationKey = original.PreservationKey,
+                            Personal = personal with
+                            {
+                                PsiTraining = false, Training = false,
+                                ReturnToTrainingWhenHealed = personal.Training || personal.ReturnToTrainingWhenHealed,
+                            },
+                        };
+                        var transferId = nextTransferId++;
+                        transfers.Add(new(transferId, row.Hours, row.Kind, row.RuleId, 1, soldier)
+                        { PreservationKey = $"{Identity.Id}:transfer:{transferId}" });
+                        continue;
+                    }
                     var rule = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(row.RuleId)].Value;
                     for (var i = 0; i < selection.Quantity; i++)
                     {
                         var soldierId = nextSoldierId++;
                         var personal = SoldierGeneration.Generate(rule, _content.RuntimeRules.Armors.GetExternalId(rule.Armor),
-                            SelectNationality(rule, origin), names, _random);
+                            SelectNationality(rule, origin), names, _random) with { AllowAutoCombat = Options.AutoCombatDefaultSoldier };
+                        if (rule.SpawnedTemplate is { } template)
+                        {
+                            var nationality = personal.Nationality;
+                            personal = SoldierGeneration.ApplyTemplate(personal, template, rule, _content.RuntimeRules, _random);
+                            if (personal.Nationality != nationality) personal = SoldierGeneration.RegenerateName(personal, rule, _random);
+                        }
                         names.Add(personal.Name);
                         var soldier = new SoldierSnapshot(row.RuleId, soldierId)
                         {
@@ -199,10 +330,35 @@ public sealed partial class CampaignState
                 });
             }
         }
-        foreach (var selection in command.Lines)
+        foreach (var selection in selections)
         {
             var row = quote.Rows[selection.RowId];
-            if (quote.Operation != LogisticsOperation.Purchase) RemoveStock(origin, row, selection.Quantity);
+            if (quote.Operation != LogisticsOperation.Purchase)
+            {
+                if (quote.Operation == LogisticsOperation.Sell && row.Kind == CampaignTransferKind.Soldier)
+                {
+                    var personal = origin.Soldiers.Single(s => s.Id == row.EntityId).Personal!;
+                    var armor = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(personal.Armor)].Value;
+                    if (armor.StoreItem is { } item) origin.Items[item] = checked(origin.Items.GetValueOrDefault(item) + 1);
+                }
+                if (row.Kind == CampaignTransferKind.Craft)
+                {
+                    if (quote.Operation == LogisticsOperation.Transfer)
+                        origin.Soldiers.RemoveAll(s => s.Personal is { } p && p.CraftType == row.RuleId && p.CraftId == row.EntityId);
+                    else
+                    {
+                        foreach (var pair in UnloadedCraftItems(FindCraft(origin, row).Logistics!))
+                        {
+                            var handle = _content.RuntimeRules.Items.GetRequired(pair.Key);
+                            origin.Items[handle] = checked(origin.Items.GetValueOrDefault(handle) + pair.Value);
+                        }
+                        for (var i = 0; i < origin.Soldiers.Count; i++)
+                            if (origin.Soldiers[i].Personal is { } p && p.CraftType == row.RuleId && p.CraftId == row.EntityId)
+                                origin.Soldiers[i] = origin.Soldiers[i] with { Personal = p with { CraftType = "", CraftId = 0 } };
+                    }
+                }
+                RemoveStock(origin, row, selection.Quantity);
+            }
             if (quote.Operation == LogisticsOperation.Purchase && MonthlyLimit(row) > 0)
                 _monthlyPurchaseLog[row.RuleId] = checked(_monthlyPurchaseLog.GetValueOrDefault(row.RuleId) + selection.Quantity);
         }
@@ -210,6 +366,7 @@ public sealed partial class CampaignState
         _funds[^1] = funds;
         if (transfers.Count != 0) _nextIds["oxcePortTransfer"] = nextTransferId;
         if (recruitCount != 0) _nextIds["STR_SOLDIER"] = nextSoldierId;
+        foreach (var pair in craftIds) _nextIds[pair.Key] = pair.Value;
         if (delta > 0) _incomes[^1] = accounting; else _expenditures[^1] = accounting;
         _logisticsQuote = null;
         return new CampaignCommandResult([new LogisticsOrderCompleted(origin.Id, quote.Operation, subtotal)]);
@@ -228,6 +385,10 @@ public sealed partial class CampaignState
         {
             case CampaignTransferKind.Scientist: origin.Scientists -= count; break;
             case CampaignTransferKind.Engineer: origin.Engineers -= count; break;
+            case CampaignTransferKind.Soldier: origin.Soldiers.RemoveAll(s => s.Id == row.EntityId); break;
+            case CampaignTransferKind.Craft:
+                origin.Crafts.Remove(FindCraft(origin, row));
+                break;
             case CampaignTransferKind.Item:
                 var handle = _content.RuntimeRules.Items.GetRequired(row.RuleId);
                 var remainder = origin.Items[handle] - count;
@@ -275,14 +436,20 @@ public sealed partial class CampaignState
     private int AvailableQuarters(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Personnel);
     private static int UsedQuarters(BaseState state) => checked(state.Soldiers.Count + state.Scientists + state.Engineers + state.Transfers.Where(t => !t.Delivered && t.Kind is CampaignTransferKind.Soldier or CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => t.Quantity));
     private double UsedStores(BaseState state) => state.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value) +
-        state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item).Sum(t => _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(t.RuleId)].Value.Size * t.Quantity);
+        state.Crafts.Sum(c => c.Logistics is { } logistics ? CraftStorage(logistics) : 0) +
+        state.Transfers.Where(t => !t.Delivered).Sum(t => t.Kind == CampaignTransferKind.Item
+            ? _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(t.RuleId)].Value.Size * t.Quantity
+            : t.Craft?.Logistics is { } craft ? CraftStorage(craft) : 0);
     private int AvailableContainment(BaseState state, int prisonType) => state.Facilities.Where(f => f.BuildTime == 0).Select(f => _content.RuntimeRules.Facilities[f.Rule].Value).Where(f => f.PrisonType == prisonType).Sum(f => f.Aliens);
     private int UsedContainment(BaseState state, int prisonType) => state.Items.Where(p => _content.RuntimeRules.Items[p.Key].Value is { IsAlien: true } rule && rule.PrisonType == prisonType).Sum(p => p.Value) +
         state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item && _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(t.RuleId)].Value is { IsAlien: true } rule && rule.PrisonType == prisonType).Sum(t => t.Quantity);
 
-    private int StorageLimit(BaseState state, RuntimeItemRule rule, int maximum)
+    private int StorageLimit(BaseState state, RuntimeItemRule rule, int maximum, LogisticsOperation operation)
     {
-        if (rule.IsAlien) maximum = Math.Min(maximum, Math.Max(0, AvailableContainment(state, rule.PrisonType) - UsedContainment(state, rule.PrisonType)));
+        if (rule.IsAlien)
+            maximum = operation == LogisticsOperation.Transfer && !Options.StorageLimitsEnforced
+                ? AvailableContainment(state, rule.PrisonType) < 1 ? 0 : maximum
+                : Math.Min(maximum, Math.Max(0, AvailableContainment(state, rule.PrisonType) - UsedContainment(state, rule.PrisonType)));
         if (rule.Size > 0.000001)
         {
             var limit = (AvailableStores(state) - UsedStores(state) + 0.05) / rule.Size;
@@ -316,10 +483,30 @@ public sealed partial class CampaignState
                     case CampaignTransferKind.Soldier:
                         if (transfer.Soldier?.Personal is null) return "Soldier arrival requires complete personal state.";
                         break;
-                    default: return "Craft arrival requires its entity lifecycle provider.";
+                    case CampaignTransferKind.Craft:
+                        if (transfer.Craft?.Logistics is null) return "Craft arrival requires complete logistics state.";
+                        if (transfer.Craft.Logistics.IsAutoPatrolling) return "Craft auto-patrol requires world simulation.";
+                        break;
                 }
             }
             if (scientists > int.MaxValue || engineers > int.MaxValue) return "Arrival exceeds the personnel quantity range.";
+            // Pure arithmetic preflight includes the half-hour handler after all hourly deliveries.
+            foreach (var transfer in state.Transfers)
+            {
+                if (transfer.Delivered || transfer.Hours > 1 || transfer.Craft is not { } craft) continue;
+                var rule = _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(craft.RuleId)].Value;
+                var arrived = CraftLogistics.Arrive(craft.Logistics!, rule, _content.RuntimeRules, state.Longitude, state.Latitude);
+                if (arrived.Status != "STR_REFUELLING") continue;
+                var item = rule.RefuelItem;
+                var id = item is { } handle ? _content.RuntimeRules.Items.GetExternalId(handle) : "";
+                var quantity = item is { } fuelItem ? incoming.GetValueOrDefault(id, state.Items.GetValueOrDefault(fuelItem)) : 0;
+                var refuel = CraftLogistics.Refuel(arrived, rule, _content.RuntimeRules, checked((int)quantity));
+                if (item is not null)
+                {
+                    incoming[id] = quantity + refuel.FuelItemChange;
+                    if (incoming[id] is < 0 or > int.MaxValue) return "Arrival refuelling exceeds the item quantity range.";
+                }
+            }
         }
         return null;
     }
@@ -346,6 +533,17 @@ public sealed partial class CampaignState
                             {
                                 Personal = soldier.Personal, PreservationKey = soldier.PreservationKey,
                             });
+                            break;
+                        case CampaignTransferKind.Craft:
+                            var craft = transfer.Craft!;
+                            var craftRule = _content.RuntimeRules.Crafts.GetRequired(craft.RuleId);
+                            state.Crafts.Add(new(craftRule, craft.Id)
+                            {
+                                Logistics = CraftLogistics.Arrive(craft.Logistics!, _content.RuntimeRules.Crafts[craftRule].Value,
+                                    _content.RuntimeRules, state.Longitude, state.Latitude),
+                                PreservationKey = craft.PreservationKey,
+                            });
+                            (effects.ArrivingCrafts ??= []).Add((state.Id, craft.RuleId, craft.Id));
                             break;
                         case CampaignTransferKind.Item:
                             var handle = _content.RuntimeRules.Items.GetRequired(transfer.RuleId);

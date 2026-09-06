@@ -209,6 +209,8 @@ public static class OxceSaveAdapter
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString).Order(StringComparer.Ordinal).ToArray()),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
+            Options = body.TryGet("oxcePortOptions", out var optionsNode)
+                ? ReadOptions(RequireMap(optionsNode!, "oxcePortOptions")) : new(),
         };
         var campaign = CampaignState.Restore(snapshot, content, random);
         return new LoadedOxceCampaign(campaign,
@@ -228,9 +230,6 @@ public static class OxceSaveAdapter
             var map = identified.Value;
             if (HasContents(map, "research") || HasContents(map, "productions"))
                 result.Add(new("Active research/production needs staff and capacity accounting.", identified.Id, true, true));
-            foreach (var craft in Maps(map, "crafts"))
-                if (String(craft, "status", "STR_READY") != "STR_READY")
-                    result.Add(new("Craft movement or servicing is not implemented yet.", identified.Id, false, true));
         }
         return Array.AsReadOnly(result.ToArray());
     }
@@ -390,6 +389,10 @@ public static class OxceSaveAdapter
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : Mapping(snapshot.MonthlyPurchaseLog.Select(p => Pair(p.Key, Integer(p.Value))))),
             Pair("debug", snapshot.DebugMode ? Boolean(true) : null),
+            Pair("oxcePortOptions", Mapping([
+                Pair("storageLimitsEnforced", Boolean(snapshot.Options.StorageLimitsEnforced)),
+                Pair("canSellLiveAliens", Boolean(snapshot.Options.CanSellLiveAliens)),
+                Pair("autoCombatDefaultSoldier", Boolean(snapshot.Options.AutoCombatDefaultSoldier))])),
         ]);
     }
 
@@ -453,8 +456,22 @@ public static class OxceSaveAdapter
             Pair("nationality", Integer(personal.Nationality)), Pair("gender", Integer(personal.Gender)),
             Pair("look", Integer(personal.Look)), Pair("lookVariant", Integer(personal.LookVariant)),
             Pair("rank", Integer(personal.Rank)), Pair("armor", Scalar(personal.Armor)),
-            Pair("initialStats", Mapping(personal.InitialStats.Select(p => Pair(p.Key, Integer(p.Value))))),
-            Pair("currentStats", Mapping(personal.CurrentStats.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("missions", Integer(personal.Missions)),
+            Pair("kills", Integer(personal.Kills)),
+            Pair("stuns", Integer(personal.Stuns)),
+            Pair("manaMissing", Integer(personal.ManaMissing)),
+            Pair("healthMissing", Integer(personal.HealthMissing)),
+            Pair("improvement", Integer(personal.Improvement)),
+            Pair("psiStrImprovement", Integer(personal.PsiStrImprovement)),
+            Pair("allowAutoCombat", Boolean(personal.AllowAutoCombat)),
+            Pair("isLeeroyJenkins", Boolean(personal.IsLeeroyJenkins)),
+            Pair("corpseRecovered", Boolean(personal.CorpseRecovered)),
+            Pair("replacedArmor", personal.ReplacedArmor.Length == 0 ? null : Scalar(personal.ReplacedArmor)),
+            Pair("transformedArmor", personal.TransformedArmor.Length == 0 ? null : Scalar(personal.TransformedArmor)),
+            Pair("personalEquipmentArmor", personal.PersonalEquipmentArmor.Length == 0 ? null : Scalar(personal.PersonalEquipmentArmor)),
+            Pair("recovery", Scalar(personal.Recovery.ToString("R", CultureInfo.InvariantCulture))),
+            Pair("initialStats", Mapping(personal.InitialStats.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("currentStats", Mapping(personal.CurrentStats.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => Pair(p.Key, Integer(p.Value))))),
             Pair("psiTraining", personal.PsiTraining ? Boolean(true) : null),
             Pair("training", personal.Training ? Boolean(true) : null),
             Pair("returnToTrainingWhenHealed", personal.ReturnToTrainingWhenHealed ? Boolean(true) : null),
@@ -463,9 +480,32 @@ public static class OxceSaveAdapter
         ]);
     }
 
-    private static YamlMappingNode BuildCraft(CraftSnapshot value, SaveEntityIndex index) =>
-        Overlay(MatchingSource(index.Crafts.GetValueOrDefault(EntityIdentity(value)), value.PreservationKey, $"craft:{value.RuleId}:{value.Id}"),
+    private static YamlMappingNode BuildCraft(CraftSnapshot value, SaveEntityIndex index)
+    {
+        var source = MatchingSource(index.Crafts.GetValueOrDefault(EntityIdentity(value)), value.PreservationKey, $"craft:{value.RuleId}:{value.Id}");
+        var identity = Overlay(source,
             [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey))]);
+        if (value.Logistics is not { } state) return identity;
+        var originalWeapons = Maps(source, "weapons").ToArray();
+        var originalVehicles = Maps(source, "vehicles").ToArray();
+        return Overlay(identity,
+        [
+            Pair("fuel", Integer(state.Fuel)), Pair("damage", Integer(state.Damage)), Pair("status", Scalar(state.Status)),
+            Pair("name", state.Name.Length == 0 ? null : Scalar(state.Name)),
+            Pair("excessFuel", Integer(state.ExcessFuel)), Pair("lowFuel", state.LowFuel ? Boolean(true) : null),
+            Pair("isAutoPatrolling", state.IsAutoPatrolling ? Boolean(true) : null),
+            Pair("lon", Scalar(state.Longitude.ToString("R", CultureInfo.InvariantCulture))),
+            Pair("lat", Scalar(state.Latitude.ToString("R", CultureInfo.InvariantCulture))),
+            Pair("items", Mapping(state.Items.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("weapons", Sequence(state.Weapons.Select((weapon, slot) => weapon is null ? Mapping([Pair("type", Scalar("0"))]) :
+                Overlay(slot < originalWeapons.Length && String(originalWeapons[slot], "type", "") == weapon.RuleId ? originalWeapons[slot] : null,
+                    [Pair("type", Scalar(weapon.RuleId)), Pair("ammo", Integer(weapon.Ammo)),
+                        Pair("rearming", weapon.Rearming ? Boolean(true) : null), Pair("disabled", weapon.Disabled ? Boolean(true) : null)])))),
+            Pair("vehicles", Sequence(state.Vehicles.Select((vehicle, slot) => Overlay(
+                slot < originalVehicles.Length && String(originalVehicles[slot], "type", "") == vehicle.RuleId ? originalVehicles[slot] : null,
+                [Pair("type", Scalar(vehicle.RuleId)), Pair("ammo", Integer(vehicle.Ammo))])))),
+        ]);
+    }
 
     private static YamlMappingNode BuildTransfer(TransferSnapshot value, SaveEntityIndex index) =>
         Overlay(MatchingSource(index.Transfers.GetValueOrDefault(value.Id), value.PreservationKey, $"transfer:{value.Id}"),
@@ -500,6 +540,20 @@ public static class OxceSaveAdapter
             Stats("initialStats"), Stats("currentStats"))
         {
             Rank = Integer(map, "rank", 0),
+            Missions = Integer(map, "missions", 0),
+            Kills = Integer(map, "kills", 0),
+            Stuns = Integer(map, "stuns", 0),
+            ManaMissing = Integer(map, "manaMissing", 0),
+            HealthMissing = Integer(map, "healthMissing", 0),
+            Improvement = Integer(map, "improvement", 0),
+            PsiStrImprovement = Integer(map, "psiStrImprovement", 0),
+            AllowAutoCombat = Boolean(map, "allowAutoCombat", true),
+            IsLeeroyJenkins = Boolean(map, "isLeeroyJenkins", true),
+            CorpseRecovered = Boolean(map, "corpseRecovered", false),
+            ReplacedArmor = String(map, "replacedArmor", ""),
+            TransformedArmor = String(map, "transformedArmor", ""),
+            PersonalEquipmentArmor = String(map, "personalEquipmentArmor", ""),
+            Recovery = (float)Double(map, "recovery", 0),
             PsiTraining = Boolean(map, "psiTraining", false),
             Training = Boolean(map, "training", false),
             ReturnToTrainingWhenHealed = Boolean(map, "returnToTrainingWhenHealed", false),
@@ -515,7 +569,33 @@ public static class OxceSaveAdapter
         new(RequiredString(map, "type"), Integer(map, "id", 0))
         {
             PreservationKey = String(map, "oxcePortEntityKey", $"craft:{RequiredString(map, "type")}:{Integer(map, "id", 0)}"),
+            Logistics = ReadCraftLogistics(map),
         };
+
+    private static CampaignOptions ReadOptions(YamlMappingNode map)
+    {
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier"]);
+        return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
+            Boolean(map, "autoCombatDefaultSoldier", true));
+    }
+
+    private static CraftLogisticsState? ReadCraftLogistics(YamlMappingNode map)
+    {
+        if (!map.TryGet("status", out _) && !map.TryGet("weapons", out _) && !map.TryGet("items", out _)) return null;
+        return new(Integer(map, "fuel", 0), Integer(map, "damage", 0), String(map, "status", "STR_READY"),
+            Array.AsReadOnly(Maps(map, "weapons").Select(w => String(w, "type", "0") == "0" ? null :
+                new CraftWeaponSnapshot(RequiredString(w, "type"), Integer(w, "ammo", 0), Boolean(w, "rearming", false), Boolean(w, "disabled", false))).ToArray()),
+            ReadIntMap(map, "items"), Array.AsReadOnly(Maps(map, "vehicles").Select(v =>
+                new CraftVehicleSnapshot(RequiredString(v, "type"), Integer(v, "ammo", 0))).ToArray()))
+        {
+            Longitude = Double(map, "lon", 0),
+            Latitude = Double(map, "lat", 0),
+            Name = String(map, "name", ""),
+            ExcessFuel = Integer(map, "excessFuel", 0),
+            LowFuel = Boolean(map, "lowFuel", false),
+            IsAutoPatrolling = Boolean(map, "isAutoPatrolling", false),
+        };
+    }
 
     private static TransferSnapshot ReadTransfer(YamlMappingNode map, int id, string defaultSoldier)
     {

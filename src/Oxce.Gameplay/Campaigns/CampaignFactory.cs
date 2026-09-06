@@ -13,7 +13,10 @@ public sealed record NewCampaignRequest(
     string MasterId,
     IReadOnlyList<string> ActiveMods,
     CampaignDifficulty Difficulty,
-    bool Ironman = false);
+    bool Ironman = false)
+{
+    public CampaignOptions Options { get; init; } = new();
+}
 
 public static class CampaignFactory
 {
@@ -25,6 +28,7 @@ public static class CampaignFactory
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Options);
         ArgumentNullException.ThrowIfNull(random);
         ArgumentNullException.ThrowIfNull(clock);
         if (!content.Capabilities.Has(ContentLoadStage.RuntimeLinked))
@@ -72,19 +76,25 @@ public static class CampaignFactory
         {
             var type = rules.Crafts.GetExternalId(craft.Rule);
             var allocated = NextId(ids, type);
-            return new CampaignState.CraftState(craft.Rule, craft.Id > 0 ? craft.Id : allocated);
+            return new CampaignState.CraftState(craft.Rule, craft.Id > 0 ? craft.Id : allocated)
+            { Logistics = CraftLogistics.LoadStarting(rules.Crafts[craft.Rule].Value, craft.Template) };
         }).ToArray();
         var soldiers = new List<CampaignState.SoldierState>();
         foreach (var soldier in template.Soldiers)
         {
             var allocated = NextId(ids, "STR_SOLDIER");
-            soldiers.Add(new CampaignState.SoldierState(soldier.Rule, soldier.Id > 0 ? soldier.Id : allocated));
+            var personal = SoldierGeneration.LoadStarting(rules.Soldiers[soldier.Rule].Value, soldier.Template, rules, random,
+                request.Options.AutoCombatDefaultSoldier);
+            if (crafts.Any(c => c.Id == soldier.CraftId && rules.Crafts.GetExternalId(c.Rule) == soldier.CraftType))
+                personal = personal with { CraftType = soldier.CraftType, CraftId = soldier.CraftId };
+            soldiers.Add(new CampaignState.SoldierState(soldier.Rule, soldier.Id > 0 ? soldier.Id : allocated) { Personal = personal });
         }
+        var randomTypes = new List<RuleHandle<SoldierRuleFamily>>();
         foreach (var batch in template.RandomSoldiers)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(batch.Quantity);
             for (var index = 0; index < batch.Quantity; index++)
-                soldiers.Add(new CampaignState.SoldierState(batch.Rule, NextId(ids, "STR_SOLDIER")));
+                randomTypes.Add(batch.Rule);
         }
         if (template.RandomSoldierCount > 0)
         {
@@ -95,8 +105,16 @@ public static class CampaignFactory
             if (eligible.Length == 0)
                 throw new InvalidDataException("Random starting soldiers were requested but no soldier type is eligible.");
             for (var index = 0; index < template.RandomSoldierCount; index++)
-                soldiers.Add(new CampaignState.SoldierState(
-                    eligible[random.NextExclusive(eligible.Length)], NextId(ids, "STR_SOLDIER")));
+                randomTypes.Add(eligible[random.NextExclusive(eligible.Length)]);
+        }
+        var names = soldiers.Select(s => s.Personal!.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (var type in randomTypes)
+        {
+            var rule = rules.Soldiers[type].Value;
+            var personal = SoldierGeneration.Generate(rule, rules.Armors.GetExternalId(rule.Armor), -1, names, random)
+                with { AllowAutoCombat = request.Options.AutoCombatDefaultSoldier };
+            soldiers.Add(new CampaignState.SoldierState(type, NextId(ids, "STR_SOLDIER")) { Personal = personal });
+            names.Add(personal.Name);
         }
 
         for (var index = 0; index < crafts.Length; index++)
@@ -145,7 +163,7 @@ public static class CampaignFactory
             countries,
             regions,
             [startingBase],
-            EmptyScriptValues(content, "GeoscapeGame"));
+            EmptyScriptValues(content, "GeoscapeGame")) { Options = request.Options };
     }
 
     private static int NextId(SortedDictionary<string, int> ids, string name)

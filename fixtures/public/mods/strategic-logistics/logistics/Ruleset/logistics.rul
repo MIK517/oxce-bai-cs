@@ -27,6 +27,7 @@ items:
     transferTime: 1
 armors:
   - type: ARMOR
+    storeItem: SUPPLY
     corpseBattle: [CORPSE]
     corpseGeo: CORPSE
     loftempsSet: [0]
@@ -38,11 +39,45 @@ soldiers:
     soldierNames: [SoldierName/test.nam]
     minStats: {tu: 50, stamina: 60, health: 30, mana: 20, bravery: 25, reactions: 40, firing: 55, throwing: 45, strength: 25, psiStrength: 35, melee: 30, psiSkill: 0}
     maxStats: {tu: 50, stamina: 60, health: 30, mana: 20, bravery: 25, reactions: 40, firing: 55, throwing: 45, strength: 25, psiStrength: 35, melee: 30, psiSkill: 50}
+  - type: TEMPLATE_RECRUIT
+    refNode: &recruitTemplate
+      armor: ARMOR
+      costBuy: 750
+      transferTime: 1
+      soldierNames: [SoldierName/test.nam]
+      minStats: {tu: 50, health: 30, mana: 20}
+      maxStats: {tu: 50, health: 30, mana: 20}
+    spawnedSoldier:
+      id: 999
+      name: Template name
+      nationality: 8
+      initialStats: {tu: 70, health: -1}
+      currentStats: {tu: 0, mana: -1}
+      rank: 2
+      missions: 3
+      kills: 4
+      recovery: 1.5
+      training: true
+      armor: ARMOR
+craftWeapons:
+  - type: FIXED
+    ammoMax: 10
+    launcher: SUPPLY
+    clip: BULKY
+crafts:
+  - type: SHIP
+    costBuy: 1000
+    costSell: 500
+    transferTime: 1
+    fuelMax: 100
+    weapons: 2
+    fixedWeapons: [FIXED]
 facilities:
   - type: STORES
     mapName: LOGISTICS
     storage: 10
     personnel: 10
+    crafts: 2
 startingBase:
   facilities: [{type: STORES, x: 0, y: 0}]
   items: {SUPPLY: 2}

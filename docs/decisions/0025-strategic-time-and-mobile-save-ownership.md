@@ -33,6 +33,18 @@ or the source document. Duplicate ownership is rejected before publication/emiss
 
 ## Consequences
 
+The port captures its explicit logistics option values in `oxcePortOptions` so headless
+and UI save/reload preserve the active command semantics. Imports without this metadata
+use reference defaults. This does not claim to import the C++ user's external options
+file; callers supply options when creating a campaign. These values include storage
+enforcement, live-alien sale eligibility and the auto-combat default for new soldiers.
+Reference save readers ignore the port metadata. Soldier-level template overrides remain
+owned by the soldier and are applied after the configured default.
+
+Craft arrivals execute checkup and the current tick's thirty-minute refuel fallthrough
+before honoring the arrival pause. The next servicing boundary is guarded while branch 2
+is absent; a popup cannot be used to skip an already committed tick's refuel operation.
+
 Calendar-only advances that previously skipped missing gameplay now stop explicitly.
 Save inspection and unknown-field conservation remain available. Transfer snapshots
 model ownership and delivery fields; this prerequisite does not by itself implement

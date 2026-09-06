@@ -157,6 +157,10 @@ public static class RuntimeRuleLinker
                 Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
                     rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
                 HangarType = rule.Value.Integers["hangarType"],
+                WeaponSlots = rule.Value.Integers["weapons"],
+                RefuelRate = rule.Value.Integers["refuelRate"],
+                NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
+                FixedWeaponSlots = rule.Value.FixedWeapons,
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -180,6 +184,7 @@ public static class RuntimeRuleLinker
                 Purchase = new(rule.Value.Values.GetInteger("monthlyBuyLimit"), rule.Value.Values.GetString("monthlyBuyLimitMessage"),
                     rule.Value.Values.GetString("requiresBuyCountry"), rule.Value.RequiredBuyBaseFunctions, rule.Value.BuyRequirements),
                 IsAlien = rule.Value.Values.Boolean("liveAlien"),
+                VehicleFixedAmmoSlot = rule.Value.Values.GetInteger("vehicleFixedAmmoSlot"),
                 PrisonType = rule.Value.Values.GetInteger("prisonType"),
             });
 
@@ -213,7 +218,7 @@ public static class RuntimeRuleLinker
                 MaximumStats = rule.Value.MaximumStats.Values,
                 FemaleFrequency = rule.Value.Integers["femaleFrequency"],
                 NamePools = options.SoldierNamePools.GetValueOrDefault(rule.Id) ?? [],
-                HasSpawnedTemplate = rule.Value.SpawnedSoldierTemplate is not null,
+                SpawnedTemplate = RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -225,7 +230,9 @@ public static class RuntimeRuleLinker
             regions,
             facilities,
             crafts,
-            IdentityFamily<CraftWeaponRuleFamily, CraftWeaponRule>(generation, content.EquipmentProduction.CraftWeapons),
+            BuildFamily<CraftWeaponRuleFamily, CraftWeaponRule, RuntimeCraftWeaponRule>(generation,
+                content.EquipmentProduction.CraftWeapons, rule => new RuntimeCraftWeaponRule(rule.Value.Integers["ammoMax"],
+                    rule.Value.Integers["rearmRate"], rule.Value.Launcher, rule.Value.Clip, rule.Value.Stats.Integers)),
             items,
             soldiers,
             armors,
@@ -280,10 +287,15 @@ public static class RuntimeRuleLinker
                 Integer(entry, "x"), Integer(entry, "y"), Integer(entry, "buildTime"))).ToArray();
             var crafts = Sequence(node, "crafts").Select(entry => new RuntimeStartingCraft(
                 RequiredId(craftHandles, Type(entry), "startingBase", variant.ToString(), "crafts"),
-                Integer(entry, "id"))).ToArray();
+                Integer(entry, "id")) { Template = RuntimeCraftTemplateLoader.Read(entry as YamlMappingNode) }).ToArray();
             var soldiers = Sequence(node, "soldiers").Select(entry => new RuntimeStartingSoldier(
                 RequiredId(soldierHandles, Type(entry, defaultSoldier), "startingBase", variant.ToString(),
-                    "soldiers"), Integer(entry, "id"))).ToArray();
+                    "soldiers"), Integer(entry, "id"))
+            {
+                Template = RuntimeSoldierTemplateLoader.Read(entry as YamlMappingNode),
+                CraftType = entry is YamlMappingNode soldierMap && soldierMap.TryGet("craft", out var craftNode) ? Type(craftNode!) : "",
+                CraftId = entry is YamlMappingNode soldierMap2 && soldierMap2.TryGet("craft", out var craftNode2) ? Integer(craftNode2!, "id") : 0,
+            }).ToArray();
             var items = Mapping(node, "items").Select(entry => new RuntimeStartingItem(
                 RequiredId(itemHandles, entry.ScalarKey ?? string.Empty, "startingBase", variant.ToString(), "items"),
                 ScalarInteger(entry.Value))).ToArray();
@@ -293,7 +305,7 @@ public static class RuntimeRuleLinker
             {
                 if (randomNode is YamlMappingNode randomMap)
                 {
-                    random = randomMap.Entries.Select(entry => new RuntimeStartingSoldierBatch(
+                    random = randomMap.Entries.OrderBy(entry => entry.ScalarKey, StringComparer.Ordinal).Select(entry => new RuntimeStartingSoldierBatch(
                         RequiredId(soldierHandles, entry.ScalarKey ?? string.Empty, "startingBase", variant.ToString(),
                             "randomSoldiers"), ScalarInteger(entry.Value))).ToArray();
                 }

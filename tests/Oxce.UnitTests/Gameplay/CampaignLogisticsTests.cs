@@ -11,18 +11,208 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class CampaignLogisticsTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void StorageOptionControlsCraftTransferButPurchasesAlwaysCheckCapacity(bool enforce)
+    {
+        var content = LoadFixture();
+        var initial = Create(content).Capture();
+        var rules = content.RuntimeRules;
+        var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0)
+            with { Status = "STR_READY", Weapons = [null, null], Items = new Dictionary<string, int> { ["SUPPLY"] = 1 } };
+        var first = initial.Bases[0] with { Crafts = [new("SHIP", 1) { Logistics = ship }] };
+        var second = first with { Id = 2, Name = "Beta", Crafts = [], Items = new Dictionary<string, int> { ["SUPPLY"] = 10 } };
+        var campaign = CampaignState.Restore(initial with
+        {
+            Options = new(enforce, true, false), Bases = [first, second],
+        }, content, new SplitMix64RandomSource(0));
+        var purchase = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(new PrepareLogisticsQuote(2, LogisticsOperation.Purchase)).Events)).Quote;
+        Assert.Equal(0, purchase.Rows.Single(r => r.RuleId == "SUPPLY").MaximumQuantity);
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(new PrepareLogisticsQuote(0, LogisticsOperation.Transfer, 2)).Events)).Quote;
+        var craft = quote.Rows.Single(r => r.Kind == CampaignTransferKind.Craft);
+        Assert.Equal(enforce ? 0 : 1, craft.MaximumQuantity);
+        var result = campaign.Execute(new SubmitLogisticsOrder(quote.Id, [new(craft.Id, 1)]));
+        Assert.Equal(enforce, result.Events.Single() is CampaignActionBlocked);
+        var recruitQuote = Quote(campaign);
+        var recruit = recruitQuote.Rows.Single(r => r.RuleId == "RECRUIT");
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(new SubmitLogisticsOrder(recruitQuote.Id, [new(recruit.Id, 1)])).Events));
+        var snapshot = campaign.Capture();
+        Assert.False(snapshot.Bases[0].Transfers.Single(t => t.Kind == CampaignTransferKind.Soldier).Soldier!.Personal!.AllowAutoCombat);
+        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(snapshot), "options.sav", content,
+            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Equal(snapshot.Options, loaded.Campaign.Options);
+        Assert.Equivalent(snapshot, loaded.Campaign.Capture(), strict: true);
+    }
+
     [Fact]
-    public void RecruitsAreGeneratedBeforeTransitAndReloadDoesNotReroll()
+    public void CraftTransferKeepsCrewAndCargoAndSaleUnloadsWithoutDeletingCrew()
+    {
+        var content = LoadFixture();
+        var initial = Create(content).Capture();
+        var rules = content.RuntimeRules;
+        var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        {
+            Status = "STR_READY", Fuel = 100, Items = new Dictionary<string, int> { ["SUPPLY"] = 2 },
+            Weapons = [new("FIXED", 1), null],
+        };
+        var soldierRule = rules.Soldiers[rules.Soldiers.GetRequired("RECRUIT")].Value;
+        var personal = SoldierGeneration.Generate(soldierRule, "ARMOR", 0, new HashSet<string>(StringComparer.Ordinal), new SplitMix64RandomSource(7))
+            with { CraftType = "SHIP", CraftId = 4, Training = true };
+        var first = initial.Bases[0] with
+        {
+            Name = "Alpha", Crafts = [new("SHIP", 4) { Logistics = ship, PreservationKey = "craft-transfer-test" }],
+            Soldiers = [new("RECRUIT", 9) { Personal = personal, PreservationKey = "crew-transfer-test" }],
+        };
+        var second = first with { Name = "Beta", Id = 2, Crafts = [], Soldiers = [] };
+        var campaign = CampaignState.Restore(initial with { Bases = [first, second] }, content, new SplitMix64RandomSource(0));
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(new PrepareLogisticsQuote(0, LogisticsOperation.Transfer, 2)).Events)).Quote;
+        Assert.DoesNotContain(quote.Rows, r => r.Kind == CampaignTransferKind.Soldier);
+        var row = quote.Rows.Single(r => r.Kind == CampaignTransferKind.Craft);
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(new SubmitLogisticsOrder(quote.Id, [new(row.Id, 1)])).Events));
+        var transit = campaign.Capture();
+        Assert.Empty(transit.Bases[0].Crafts);
+        Assert.Empty(transit.Bases[0].Soldiers);
+        Assert.Equal(CampaignTransferKind.Soldier, transit.Bases[1].Transfers[0].Kind);
+        Assert.Equal(CampaignTransferKind.Craft, transit.Bases[1].Transfers[1].Kind);
+        Assert.Equivalent(ship, transit.Bases[1].Transfers[1].Craft!.Logistics, strict: true);
+        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "crew.sav", content,
+            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Single(loaded.Campaign.Execute(new AdvanceCampaignTime(5 * 720 + 1)).Events.OfType<SuppliesArrived>());
+        var arrived = loaded.Campaign.Capture();
+        Assert.Equal(4, Assert.Single(arrived.Bases[1].Soldiers).Personal!.CraftId);
+        quote = Assert.IsType<LogisticsQuoted>(Assert.Single(loaded.Campaign.Execute(new PrepareLogisticsQuote(2, LogisticsOperation.Sell)).Events)).Quote;
+        Assert.Equal(7, quote.UsedStores);
+        row = quote.Rows.Single(r => r.Kind == CampaignTransferKind.Craft);
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(loaded.Campaign.Execute(new SubmitLogisticsOrder(quote.Id, [new(row.Id, 1)])).Events));
+        var sold = loaded.Campaign.Capture();
+        Assert.Empty(sold.Bases[1].Crafts);
+        Assert.Equal("", Assert.Single(sold.Bases[1].Soldiers).Personal!.CraftType);
+        Assert.Equal(5, sold.Bases[1].Items["SUPPLY"]);
+        Assert.Equal(1, sold.Bases[1].Items["BULKY"]);
+        Assert.Equal(arrived.Funds[0] + 500, sold.Funds[0]);
+        var reloaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitLoadedCampaign(sold, loaded.Source), "unloaded.sav", content,
+            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Equivalent(sold, reloaded.Campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void SoldierTransfersKeepIdentityAndDismissalReturnsArmor()
+    {
+        var content = LoadFixture();
+        var initial = Create(content).Capture();
+        var rule = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
+        var personal = SoldierGeneration.Generate(rule, "ARMOR", 0, new HashSet<string>(StringComparer.Ordinal), new SplitMix64RandomSource(7))
+            with { Training = true, PsiTraining = true };
+        var soldier = new SoldierSnapshot("RECRUIT", 9) { Personal = personal, PreservationKey = "created:transfer-test" };
+        var first = initial.Bases[0] with { Name = "Alpha", Soldiers = [soldier] };
+        var second = first with { Name = "Beta", Id = 2, Soldiers = [] };
+        var campaign = CampaignState.Restore(initial with { Bases = [first, second] }, content, new SplitMix64RandomSource(0));
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(new PrepareLogisticsQuote(0, LogisticsOperation.Transfer, 2)).Events)).Quote;
+        var row = quote.Rows.Single(r => r.Kind == CampaignTransferKind.Soldier);
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(new SubmitLogisticsOrder(quote.Id, [new(row.Id, 1)])).Events));
+        var transit = campaign.Capture();
+        Assert.Empty(transit.Bases[0].Soldiers);
+        var incoming = Assert.Single(transit.Bases[1].Transfers).Soldier!;
+        Assert.Equal(9, incoming.Id);
+        Assert.Equal(soldier.PreservationKey, incoming.PreservationKey);
+        Assert.False(incoming.Personal!.Training);
+        Assert.False(incoming.Personal.PsiTraining);
+        Assert.True(incoming.Personal.ReturnToTrainingWhenHealed);
+        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "soldier-transit.sav", content,
+            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Single(loaded.Campaign.Execute(new AdvanceCampaignTime(5 * 720 + 1)).Events.OfType<SuppliesArrived>());
+        Assert.Equivalent(incoming, Assert.Single(loaded.Campaign.Capture().Bases[1].Soldiers), strict: true);
+        quote = Assert.IsType<LogisticsQuoted>(Assert.Single(loaded.Campaign.Execute(new PrepareLogisticsQuote(2, LogisticsOperation.Sell)).Events)).Quote;
+        row = quote.Rows.Single(r => r.Kind == CampaignTransferKind.Soldier);
+        var before = loaded.Campaign.Capture();
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(loaded.Campaign.Execute(new SubmitLogisticsOrder(quote.Id, [new(row.Id, 1)])).Events));
+        var dismissed = loaded.Campaign.Capture();
+        Assert.Empty(dismissed.Bases[1].Soldiers);
+        Assert.Equal(before.Bases[1].Items["SUPPLY"] + 1, dismissed.Bases[1].Items["SUPPLY"]);
+        Assert.Equal(before.Funds, dismissed.Funds);
+    }
+
+    [Fact]
+    public void CraftPurchaseReservesHangarsAndPreservesWeaponsBeforeArrival()
     {
         var content = LoadFixture();
         var campaign = Create(content);
         var quote = Quote(campaign);
-        var recruit = quote.Rows.Single(r => r.Kind == CampaignTransferKind.Soldier);
+        var ship = quote.Rows.Single(r => r.RuleId == "SHIP");
+        Assert.Equal(2, ship.MaximumQuantity);
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(new SubmitLogisticsOrder(
+            quote.Id, [new(ship.Id, 2)])).Events));
+        Assert.Equal(0, Quote(campaign).Rows.Single(r => r.RuleId == "SHIP").MaximumQuantity);
+        var transit = campaign.Capture();
+        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "craft-order.sav", content,
+            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Equivalent(transit, loaded.Campaign.Capture(), strict: true);
+        var events = loaded.Campaign.Execute(new AdvanceCampaignTime(10));
+        Assert.Single(events.Events.OfType<SuppliesArrived>());
+        var arrived = loaded.Campaign.Capture();
+        Assert.Empty(arrived.Bases[0].Transfers);
+        Assert.Equal(2, arrived.Bases[0].Crafts.Count);
+        Assert.All(arrived.Bases[0].Crafts, c =>
+        {
+            Assert.Equal("STR_REARMING", c.Logistics!.Status);
+            Assert.Equal("FIXED", c.Logistics.Weapons[0]!.RuleId);
+            Assert.True(c.Logistics.Weapons[0]!.Rearming);
+            Assert.Null(c.Logistics.Weapons[1]);
+        });
+        Assert.Single(loaded.Campaign.Execute(new AdvanceCampaignTime(1000)).Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(29, loaded.Campaign.Time.Minute);
+        Assert.Equal(55, loaded.Campaign.Time.Second);
+    }
+
+    [Fact]
+    public void UnarmedCraftGetsImmediateRefuellingDuringArrivalFallthrough()
+    {
+        var content = LoadFixture();
+        var initial = Create(content).Capture();
+        var rules = content.RuntimeRules;
+        var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with { Weapons = [null, null] };
+        var campaign = CampaignState.Restore(initial with
+        {
+            Bases = [initial.Bases[0] with { Transfers = [new(1, 1, CampaignTransferKind.Craft, "SHIP", 1,
+                Craft: new("SHIP", 1) { Logistics = ship })] }],
+        }, content, new SplitMix64RandomSource(0));
+        var result = campaign.Execute(new AdvanceCampaignTime(2));
+        Assert.Equal(1, Assert.Single(result.Events.OfType<CampaignTimeAdvanced>()).Summary.TickCount);
+        var arrived = Assert.Single(campaign.Capture().Bases[0].Crafts).Logistics!;
+        Assert.Equal(1, arrived.Fuel);
+        Assert.Equal("STR_REFUELLING", arrived.Status);
+    }
+
+    [Theory]
+    [InlineData("RECRUIT")]
+    [InlineData("TEMPLATE_RECRUIT")]
+    public void RecruitsAreGeneratedBeforeTransitAndReloadDoesNotReroll(string type)
+    {
+        var content = LoadFixture();
+        var campaign = Create(content);
+        var quote = Quote(campaign);
+        var recruit = quote.Rows.Single(r => r.RuleId == type);
         Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(new SubmitLogisticsOrder(
             quote.Id, [new(recruit.Id, 2)])).Events));
         var transit = campaign.Capture();
         Assert.Equal(2, transit.Bases[0].Transfers.Count);
         Assert.All(transit.Bases[0].Transfers, t => Assert.Equal("Alex Example", t.Soldier!.Personal!.Name));
+        if (type == "TEMPLATE_RECRUIT")
+        {
+            var personal = transit.Bases[0].Transfers[0].Soldier!.Personal!;
+            Assert.Equal(70, personal.InitialStats["tu"]);
+            Assert.Equal(50, personal.CurrentStats["tu"]);
+            Assert.Equal(0, personal.InitialStats["health"]);
+            Assert.Equal(20, personal.CurrentStats["mana"]);
+            Assert.Equal(20, personal.InitialStats["mana"]);
+            Assert.Equal(2, personal.Rank);
+            Assert.Equal(3, personal.Missions);
+            Assert.Equal(4, personal.Kills);
+            Assert.Equal(1.5f, personal.Recovery);
+            Assert.True(personal.Training);
+            Assert.NotEqual(999, transit.Bases[0].Transfers[0].Soldier!.Id);
+        }
         Assert.NotEqual(transit.Bases[0].Transfers[0].Soldier!.Id, transit.Bases[0].Transfers[1].Soldier!.Id);
         var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "recruits.sav", content,
             new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));

@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 5;
+    internal const int CompilerRevision = 6;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -219,6 +219,7 @@ internal static class CompiledContentCache
 
     public static CompiledContentCacheReadResult TryRead(
         string key,
+        ModLoadPlan plan,
         CompiledContentCacheOptions options,
         ContentSnapshotOptions contentOptions,
         StartupMeasurementCollector measurements,
@@ -266,6 +267,17 @@ internal static class CompiledContentCache
                 return CompiledContentCacheReadResult.Rejected("Cache contains build-error diagnostics.");
             }
             reading.Dispose();
+            var namePools = envelope.Content.SoldierNamePools.Values.SelectMany(p => p).DistinctBy(p => p.Source).ToArray();
+            if (namePools.Length != 0)
+            {
+                var files = plan.CreateVirtualFileCatalog();
+                foreach (var pool in namePools)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!files.TryGet(pool.Source, out var file) || RuntimeSoldierNamePoolLoader.ComputeHash(file!) != pool.ContentHash)
+                        return CompiledContentCacheReadResult.Rejected("Soldier name pool content changed.");
+                }
+            }
             var restored = envelope.Content.Restore(contentOptions, measurements, cancellationToken);
             return new CompiledContentCacheReadResult(
                 restored.Content,

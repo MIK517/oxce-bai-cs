@@ -15,6 +15,9 @@ public sealed class InstallationContentLoaderTests
     public void NamePoolsSurviveCacheAndContentChangesInvalidateIt()
     {
         using var installation = new TemporaryInstallation("strategic-logistics");
+        var nameDirectory = Path.Combine(installation.Root, "standard", "logistics", "SoldierName");
+        File.Move(Path.Combine(nameDirectory, "test.nam"), Path.Combine(nameDirectory, "test.pool"));
+        File.WriteAllText(installation.FirstRuleset, File.ReadAllText(installation.FirstRuleset).Replace("test.nam", "test.pool", StringComparison.Ordinal));
         var request = installation.Request("logistics", "-");
         var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
         var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
@@ -23,7 +26,7 @@ public sealed class InstallationContentLoaderTests
         Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
         Assert.Equivalent(first.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools,
             cached.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools, strict: true);
-        var path = Path.Combine(installation.Root, "standard", "logistics", "SoldierName", "test.nam");
+        var path = Path.Combine(nameDirectory, "test.pool");
         File.WriteAllText(path, File.ReadAllText(path).Replace("Alex", "Blair", StringComparison.Ordinal));
         var changed = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(changed.IsSuccess, changed.DescribeFailure());

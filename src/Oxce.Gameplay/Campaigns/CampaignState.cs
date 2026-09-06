@@ -72,6 +72,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     }
 
     public CampaignIdentity Identity { get; private set; }
+    public CampaignOptions Options { get; internal init; } = new();
     public CampaignDifficulty Difficulty { get; }
     public CampaignTime Time { get; private set; }
     public int Ending { get; }
@@ -142,6 +143,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
         MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog),
         DebugMode = _debugMode,
+        Options = Options,
     };
 
     public static CampaignState Restore(
@@ -150,6 +152,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         IStatefulRandomSource random)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(snapshot.Options);
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(random);
         if (!content.Capabilities.Has(ContentLoadStage.RuntimeLinked))
@@ -170,6 +173,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             RequiredHistory(region.ActivityXcom, "region XCOM activity"),
             RequiredHistory(region.ActivityAlien, "region alien activity"))).ToArray();
         var bases = snapshot.Bases.Select(source => RestoreBase(source, rules)).ToArray();
+        foreach (var owner in bases) ValidateAssignments(owner, rules);
         EnsureUnique(snapshot.Countries.Select(static country => country.RuleId), "country rule IDs");
         EnsureUnique(snapshot.Regions.Select(static region => region.RuleId), "region rule IDs");
         EnsureCraftIds(snapshot.Bases.SelectMany(static item => item.Crafts.Concat(
@@ -213,6 +217,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal),
                 _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal),
                 _debugMode = snapshot.DebugMode,
+                Options = snapshot.Options,
             };
         }
         catch
@@ -252,14 +257,20 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
     {
         public List<ICampaignEvent>? Events { get; private set; }
+        public List<(int BaseId, string Type, int Id)>? ArrivingCrafts { get; set; }
         public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
 
         public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger)
         {
             foreach (var restriction in campaign._restrictions)
                 if (restriction.BlocksTime) return restriction.Feature;
+            if (campaign._bases.Any(b => b.Crafts.Any(c => c.Logistics is { Status: "STR_OUT" })))
+                return "Craft movement requires world simulation.";
             if (highestTrigger >= CampaignTimeTrigger.OneDay)
                 return "Daily and monthly campaign simulation is not implemented yet; time stopped before midnight.";
+            if (highestTrigger >= CampaignTimeTrigger.ThirtyMinutes && campaign._bases.Any(b =>
+                b.Crafts.Any(c => c.Logistics is { Status: not "STR_READY" })))
+                return "Craft servicing is not implemented yet; time stopped before the service tick.";
             return highestTrigger >= CampaignTimeTrigger.OneHour ? campaign.PreflightTransfers() : null;
         }
 
@@ -273,6 +284,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             }
             if (trigger == CampaignTimeTrigger.OneDay) campaign.DaysPassed++;
             if (trigger == CampaignTimeTrigger.OneHour) campaign.AdvanceTransfers(this);
+            if (trigger == CampaignTimeTrigger.ThirtyMinutes) campaign.RefuelArrivingCrafts(this);
             return Events is not null;
         }
     }
@@ -291,6 +303,10 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         target.Name = command.Name;
         target.Longitude = command.Longitude;
         target.Latitude = command.Latitude;
+        for (var index = 0; index < target.Crafts.Count; index++)
+            if (target.Crafts[index].Logistics is { } state)
+                target.Crafts[index] = target.Crafts[index] with
+                { Logistics = state with { Longitude = command.Longitude, Latitude = command.Latitude } };
         _logisticsQuote = null;
         return new CampaignCommandResult(
             [new StartingBasePlaced(command.BaseIndex, command.Name, command.Longitude, command.Latitude)]);
@@ -352,7 +368,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             facility.BuildTime, facility.Ammo, facility.AmmoMissingReported, facility.Disabled,
             facility.HadPreviousFacility))),
         CampaignSnapshot.ReadOnly(state.Crafts.Select(craft =>
-            new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id) { PreservationKey = craft.PreservationKey })),
+            new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id) { PreservationKey = craft.PreservationKey, Logistics = craft.Logistics })),
         CampaignSnapshot.ReadOnly(state.Soldiers.Select(soldier =>
             new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), soldier.Id) { PreservationKey = soldier.PreservationKey, Personal = soldier.Personal })),
         new ReadOnlyDictionary<string, int>(state.Items.ToDictionary(
@@ -390,9 +406,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             rules.Facilities.GetRequired(facility.RuleId), facility.X, facility.Y, facility.BuildTime,
             facility.Ammo, facility.AmmoMissingReported, facility.Disabled, facility.HadPreviousFacility)).ToArray();
         var crafts = source.Crafts.Select(craft => new CraftState(
-            rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft")) { PreservationKey = craft.PreservationKey }).ToArray();
+            rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft")) { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules) }).ToArray();
         var soldiers = source.Soldiers.Select(soldier => new SoldierState(
-            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier")) { PreservationKey = soldier.PreservationKey, Personal = soldier.Personal }).ToArray();
+            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier")) { PreservationKey = soldier.PreservationKey, Personal = RestorePersonal(soldier.Personal, rules) }).ToArray();
         var items = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
         foreach (var pair in source.Items)
         {
@@ -404,7 +420,11 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         foreach (var transfer in source.Transfers)
         {
             ValidateTransfer(transfer, rules);
-            result.Transfers.Add(transfer);
+            result.Transfers.Add(transfer with
+            {
+                Soldier = transfer.Soldier is { } soldier ? soldier with { Personal = RestorePersonal(soldier.Personal, rules) } : null,
+                Craft = transfer.Craft is { } craft ? craft with { Logistics = RestoreCraftLogistics(craft.Logistics, rules) } : null,
+            });
         }
         return result;
     }
@@ -595,6 +615,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     internal sealed record CraftState(RuleHandle<CraftRuleFamily> Rule, int Id)
     {
         public string PreservationKey { get; init; } = string.Empty;
+        public CraftLogisticsState? Logistics { get; init; }
     }
 
     internal sealed record SoldierState(RuleHandle<SoldierRuleFamily> Rule, int Id)

@@ -42,12 +42,37 @@ and `TransferItemsState::getDistance` arithmetic. The corresponding probe delibe
 stubs the script hook; actual VM input/event plumbing is covered separately by
 `ScriptRuntimeFrameTests`. These results do not establish complete branch acceptance.
 
-Soldier name-pool loading and constructor generation are being integrated. Reference
+Soldier name-pool loading and constructor generation are implemented. Reference
 sources inspected: `Mod/RuleSoldier.cpp`, `Mod/SoldierNamePool.cpp`,
 `Savegame/Soldier.cpp`, `Mod/Mod.cpp::genSoldier`, and
 `SavedGame::selectSoldierNationalityByLocation`. The public logistics fixture checks
 fixed initial stats, bravery truncation, initial psi skill, female-name/callsign fallback,
-look weights and ten-attempt duplicate handling. Recruitment/template commands, craft
-lifecycle, UI, and final corpus closure remain outstanding.
+look weights and ten-attempt duplicate handling. Scalar recruit templates apply after
+generation, including stat merge sentinels, mana reroll, and nationality/name refresh.
+Starting soldiers load literal stats instead; random starting soldiers select all types
+before generation and do not apply the recruit template. Starting craft load their
+supplied weapons/cargo instead of initializing purchased fixed weapons. Complex soldier
+template payloads, initial automatic crew assignment/commendations and negative-capacity
+starting weapon removal remain unfinished; these results do not establish new-campaign
+creation parity for every mod.
+
+Craft purchase/transfer/sale and soldier transfer/dismissal now own cargo refunds,
+crew movement and assignment removal. Arrival runs `Craft::checkup` priorities and the
+same tick's first refuel operation, including item-fuel consumption/refunds. Subsequent
+service progression remains guarded until branch 2. Graph restoration validates crew
+references across simultaneous incoming craft/soldier transfers.
+
+Explicit campaign options retain the reference defaults (`storageLimitsEnforced=false`,
+`canSellLiveAliens=false`, `autoCombatDefaultSoldier=true`). Unit scenarios check that
+purchase storage limits remain active with enforcement disabled, craft transfer capacity
+checks depend on the option, and recruit defaults precede template overrides. Transfer
+alien containment requires a matching facility even when its occupancy limit is disabled.
+Source: `Engine/Options.cpp`, `PurchaseState::increaseByValue`,
+`TransferItemsState::increaseByValue`, `SellState` catalog construction and `Soldier`.
+
+Runtime name-pool projections retain content hashes. Cache restoration checks referenced
+pool bytes, including custom file extensions; the custom-extension mutation regression
+passes. Further action/provider coverage, overfull-sale cleanup, UI, and final cached/fresh
+corpus closure remain outstanding.
 
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).
