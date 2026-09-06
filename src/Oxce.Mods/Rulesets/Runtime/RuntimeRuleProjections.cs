@@ -105,7 +105,14 @@ public sealed record RuntimeCraftRule(
 {
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public int HangarType { get; init; }
+    public int WeaponSlots { get; init; }
+    public int RefuelRate { get; init; }
+    public bool NotifyWhenRefueled { get; init; }
+    public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
 }
+
+public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, string Launcher, string Clip,
+    IReadOnlyDictionary<string, int> BonusStats);
 
 public sealed record RuntimeItemRule(
     string Name,
@@ -123,6 +130,7 @@ public sealed record RuntimeItemRule(
 {
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public bool IsAlien { get; init; }
+    public int VehicleFixedAmmoSlot { get; init; }
     public int PrisonType { get; init; }
 }
 
@@ -151,7 +159,7 @@ public sealed record RuntimeSoldierRule(
     public IReadOnlyDictionary<string, short> MaximumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public int FemaleFrequency { get; init; } = 50;
     public IReadOnlyList<RuntimeSoldierNamePool> NamePools { get; init; } = [];
-    public bool HasSpawnedTemplate { get; init; }
+    public RuntimeSoldierTemplate? SpawnedTemplate { get; init; }
 }
 
 public sealed record RuntimeStartingFacility(
@@ -160,9 +168,17 @@ public sealed record RuntimeStartingFacility(
     int Y,
     int BuildTime);
 
-public sealed record RuntimeStartingCraft(RuleHandle<CraftRuleFamily> Rule, int Id);
+public sealed record RuntimeStartingCraft(RuleHandle<CraftRuleFamily> Rule, int Id)
+{
+    public RuntimeCraftTemplate? Template { get; init; }
+}
 
-public sealed record RuntimeStartingSoldier(RuleHandle<SoldierRuleFamily> Rule, int Id);
+public sealed record RuntimeStartingSoldier(RuleHandle<SoldierRuleFamily> Rule, int Id)
+{
+    public RuntimeSoldierTemplate? Template { get; init; }
+    public string CraftType { get; init; } = string.Empty;
+    public int CraftId { get; init; }
+}
 
 public sealed record RuntimeStartingItem(RuleHandle<ItemRuleFamily> Rule, int Quantity);
 

@@ -10,7 +10,7 @@ public sealed class SoldierGenerationTests
     public void FixedStatAndNameFixtureMatchesReferenceConstructorRules()
     {
         var content = CampaignLogisticsTests.LoadFixture();
-        var rule = Assert.Single(content.RuntimeRules.Soldiers.Rules).Value;
+        var rule = Assert.Single(content.RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
         var pool = Assert.Single(rule.NamePools);
         Assert.Equal(100, pool.GlobalWeight);
         Assert.Equal(pool.MaleFirst, pool.FemaleFirst);
@@ -31,7 +31,7 @@ public sealed class SoldierGenerationTests
     [Fact]
     public void DuplicateNameRetriesExactlyTenConstructors()
     {
-        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules).Value;
+        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
         var first = new CountingRandom();
         SoldierGeneration.Generate(rule, "ARMOR", -1, new HashSet<string>(StringComparer.Ordinal), first);
         var duplicate = new CountingRandom();
@@ -42,9 +42,33 @@ public sealed class SoldierGenerationTests
     }
 
     [Fact]
+    public void StartingSoldierLoadsLiteralStatsWithoutGeneratingOrApplyingRecruitTemplate()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var rule = Assert.Single(rules.Soldiers.Rules, r => r.Id == "TEMPLATE_RECRUIT").Value;
+        var random = new CountingRandom();
+        var loaded = SoldierGeneration.LoadStarting(rule, rule.SpawnedTemplate, rules, random);
+        Assert.Equal("Template name", loaded.Name);
+        Assert.Equal(8, loaded.Nationality);
+        Assert.Equal(-1, loaded.InitialStats["health"]);
+        Assert.Equal(-1, loaded.CurrentStats["mana"]);
+        Assert.Equal(0, loaded.CurrentStats["tu"]);
+        Assert.Equal(70, loaded.InitialStats["tu"]);
+        Assert.Equal(1, random.Calls); // Only the constructor's look variant; no mana reroll for -1.
+        random = new CountingRandom();
+        var empty = SoldierGeneration.LoadStarting(rule, null, rules, random);
+        Assert.Equal("", empty.Name);
+        Assert.Equal("ARMOR", empty.Armor);
+        Assert.Equal(0, empty.Rank);
+        Assert.Equal(0, empty.InitialStats["tu"]);
+        Assert.Equal(20, empty.CurrentStats["mana"]);
+        Assert.Equal(2, random.Calls); // Look variant and save-upgrade mana reroll.
+    }
+
+    [Fact]
     public void RegeneratingWithoutNamePoolsKeepsExistingIdentity()
     {
-        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules).Value;
+        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
         var personal = SoldierGeneration.Generate(rule, "ARMOR", 0, new HashSet<string>(StringComparer.Ordinal), new SplitMix64RandomSource(7));
         var random = new CountingRandom();
         var regenerated = SoldierGeneration.RegenerateName(personal with { Nationality = 5 }, rule with { NamePools = [] }, random);

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Security.Cryptography;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Files;
 using Oxce.Mods.Rulesets.PersonnelTactical;
@@ -11,10 +12,30 @@ public sealed record RuntimeSoldierNamePool(
     IReadOnlyList<string> MaleLast, IReadOnlyList<string> FemaleLast,
     IReadOnlyList<string> MaleCallsign, IReadOnlyList<string> FemaleCallsign,
     IReadOnlyList<int> LookWeights, int FemaleFrequency, int GlobalWeight,
-    string Country, string Region);
+    string Country, string Region)
+{
+    public string ContentHash { get; init; } = string.Empty;
+}
 
 internal static class RuntimeSoldierNamePoolLoader
 {
+    internal static string ComputeHash(VirtualFileEntry file) => Convert.ToHexString(SHA256.HashData(ReadBytes(file)));
+
+    private static byte[] ReadBytes(VirtualFileEntry file)
+    {
+        const int maximumBytes = 16 * 1024 * 1024;
+        using var input = file.OpenRead();
+        using var output = new MemoryStream();
+        Span<byte> buffer = stackalloc byte[8192];
+        int count;
+        while ((count = input.Read(buffer)) != 0)
+        {
+            if (output.Length + count > maximumBytes) throw new InvalidDataException("Soldier name pool exceeds the 16 MiB limit.");
+            output.Write(buffer[..count]);
+        }
+        return output.ToArray();
+    }
+
     public static IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> Load(
         TypedRuleSection<SoldierRule> soldiers, VirtualFileCatalog files)
     {
@@ -35,11 +56,12 @@ internal static class RuntimeSoldierNamePoolLoader
                     var file = files.GetRequired(path);
                     if (!loaded.TryGetValue(file.CanonicalPath, out var pool))
                     {
-                        using var input = file.OpenRead();
+                        var bytes = ReadBytes(file);
+                        using var input = new MemoryStream(bytes, writable: false);
                         var yaml = YamlCompatibilityReader.Parse(input, file.SourcePath);
                         if (yaml.Documents.Count != 1 || yaml.Documents[0].Root is not YamlMappingNode node)
                             throw new InvalidDataException($"Name pool '{path}' requires one YAML mapping.");
-                        pool = Read(file.CanonicalPath, node);
+                        pool = Read(file.CanonicalPath, node) with { ContentHash = Convert.ToHexString(SHA256.HashData(bytes)) };
                         loaded.Add(file.CanonicalPath, pool);
                     }
                     pools.Add(pool);

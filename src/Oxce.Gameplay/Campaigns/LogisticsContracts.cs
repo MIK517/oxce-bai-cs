@@ -1,5 +1,7 @@
 namespace Oxce.Gameplay.Campaigns;
 
+public sealed record CraftArrivalServiceMessage(int BaseId, string CraftType, int CraftId, string Message) : ICampaignEvent;
+
 public enum LogisticsOperation { Purchase, Sell, Transfer }
 
 public sealed record PrepareLogisticsQuote(int BaseId, LogisticsOperation Operation, int? DestinationBaseId = null) : ICampaignCommand;

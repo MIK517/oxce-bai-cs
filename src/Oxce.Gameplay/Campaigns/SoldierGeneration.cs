@@ -14,6 +14,20 @@ public sealed record SoldierPersonalState(
     public bool ReturnToTrainingWhenHealed { get; init; }
     public string CraftType { get; init; } = string.Empty;
     public int CraftId { get; init; }
+    public int Missions { get; init; }
+    public int Kills { get; init; }
+    public int Stuns { get; init; }
+    public int ManaMissing { get; init; }
+    public int HealthMissing { get; init; }
+    public int Improvement { get; init; }
+    public int PsiStrImprovement { get; init; }
+    public bool AllowAutoCombat { get; init; } = true;
+    public bool IsLeeroyJenkins { get; init; } = true;
+    public bool CorpseRecovered { get; init; }
+    public string ReplacedArmor { get; init; } = string.Empty;
+    public string TransformedArmor { get; init; } = string.Empty;
+    public string PersonalEquipmentArmor { get; init; } = string.Empty;
+    public float Recovery { get; init; }
 }
 
 /// <summary>Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.</summary>
@@ -21,6 +35,18 @@ public static class SoldierGeneration
 {
     private static readonly string[] GeneratedStats = ["tu", "stamina", "health", "mana", "bravery", "reactions",
         "firing", "throwing", "strength", "psiStrength", "melee"];
+
+    public static SoldierPersonalState LoadStarting(RuntimeSoldierRule rule, RuntimeSoldierTemplate? template,
+        RuntimeRuleCatalog rules, IRandomSource random, bool autoCombatDefault = true)
+    {
+        var zero = new ReadOnlyDictionary<string, short>(GeneratedStats.Append("psiSkill")
+            .ToDictionary(key => key, _ => (short)0, StringComparer.Ordinal));
+        var state = new SoldierPersonalState("", "", 0, 0, 0, random.NextExclusive(64), "", zero, zero)
+        { AllowAutoCombat = autoCombatDefault };
+        template ??= new RuntimeSoldierTemplate(new Dictionary<string, int>(), new Dictionary<string, bool>(),
+            new Dictionary<string, string>(), zero, zero, null, []);
+        return ApplyTemplate(state, template, rule, rules, random, mergeStats: false);
+    }
 
     public static SoldierPersonalState Generate(RuntimeSoldierRule rule, string armor, int nationality,
         IReadOnlySet<string> existingNames, IRandomSource random)
@@ -55,6 +81,62 @@ public static class SoldierGeneration
         var nationality = (uint)state.Nationality >= (uint)rule.NamePools.Count ? random.NextExclusive(rule.NamePools.Count) : state.Nationality;
         var name = GenerateName(rule, nationality, random);
         return state with { Name = name.Name, Callsign = name.Callsign, Nationality = name.Nationality, Gender = name.Gender, Look = name.Look };
+    }
+
+    public static SoldierPersonalState ApplyTemplate(SoldierPersonalState state, RuntimeSoldierTemplate template,
+        RuntimeSoldierRule rule, RuntimeRuleCatalog rules, IRandomSource random, bool mergeStats = true)
+    {
+        ArgumentNullException.ThrowIfNull(template);
+        if (template.UnsupportedFields.Count != 0) throw new InvalidOperationException("Soldier template was not preflighted.");
+        var updated = state with
+        {
+            Nationality = template.Integers.GetValueOrDefault("nationality", state.Nationality),
+            Rank = template.Integers.GetValueOrDefault("rank", state.Rank),
+            Gender = template.Integers.GetValueOrDefault("gender", state.Gender),
+            Look = template.Integers.GetValueOrDefault("look", state.Look),
+            LookVariant = template.Integers.GetValueOrDefault("lookVariant", state.LookVariant),
+            Missions = template.Integers.GetValueOrDefault("missions", state.Missions),
+            Kills = template.Integers.GetValueOrDefault("kills", state.Kills),
+            Stuns = template.Integers.GetValueOrDefault("stuns", state.Stuns),
+            ManaMissing = template.Integers.GetValueOrDefault("manaMissing", state.ManaMissing),
+            HealthMissing = template.Integers.GetValueOrDefault("healthMissing", state.HealthMissing),
+            Improvement = template.Integers.GetValueOrDefault("improvement", state.Improvement),
+            PsiStrImprovement = template.Integers.GetValueOrDefault("psiStrImprovement", state.PsiStrImprovement),
+            PsiTraining = template.Booleans.GetValueOrDefault("psiTraining", state.PsiTraining),
+            Training = template.Booleans.GetValueOrDefault("training", state.Training),
+            ReturnToTrainingWhenHealed = template.Booleans.GetValueOrDefault("returnToTrainingWhenHealed", state.ReturnToTrainingWhenHealed),
+            AllowAutoCombat = template.Booleans.GetValueOrDefault("allowAutoCombat", state.AllowAutoCombat),
+            IsLeeroyJenkins = template.Booleans.GetValueOrDefault("isLeeroyJenkins", state.IsLeeroyJenkins),
+            CorpseRecovered = template.Booleans.GetValueOrDefault("corpseRecovered", state.CorpseRecovered),
+            Name = template.Strings.GetValueOrDefault("name", state.Name),
+            Callsign = template.Strings.GetValueOrDefault("callsign", state.Callsign),
+            Armor = template.Strings.GetValueOrDefault("armor", state.Armor),
+            ReplacedArmor = template.Strings.GetValueOrDefault("replacedArmor", state.ReplacedArmor),
+            TransformedArmor = template.Strings.GetValueOrDefault("transformedArmor", state.TransformedArmor),
+            PersonalEquipmentArmor = template.Strings.GetValueOrDefault("personalEquipmentArmor", state.PersonalEquipmentArmor),
+            Recovery = template.Recovery ?? state.Recovery,
+            InitialStats = Merge(state.InitialStats, template.InitialStats),
+            CurrentStats = Merge(state.CurrentStats, template.CurrentStats),
+        };
+        if (!rules.Armors.TryGet(updated.Armor, out _))
+            updated = updated with { Armor = rules.Armors.GetExternalId(rules.Soldiers.Rules[0].Value.Armor) };
+        if (updated.CurrentStats.GetValueOrDefault("mana") == 0 && rule.MaximumStats.GetValueOrDefault("mana") > 0)
+        {
+            var mana = checked((short)random.NextInclusive(rule.MinimumStats.GetValueOrDefault("mana"), rule.MaximumStats.GetValueOrDefault("mana")));
+            var initial = new Dictionary<string, short>(updated.InitialStats, StringComparer.Ordinal) { ["mana"] = mana };
+            var current = new Dictionary<string, short>(updated.CurrentStats, StringComparer.Ordinal) { ["mana"] = mana };
+            updated = updated with { InitialStats = new ReadOnlyDictionary<string, short>(initial), CurrentStats = new ReadOnlyDictionary<string, short>(current) };
+        }
+        return updated;
+
+        ReadOnlyDictionary<string, short> Merge(IReadOnlyDictionary<string, short> original, IReadOnlyDictionary<string, short> overlay)
+        {
+            var merged = new Dictionary<string, short>(original, StringComparer.Ordinal);
+            foreach (var key in original.Keys)
+                if (overlay.TryGetValue(key, out var value) && (!mergeStats || value != 0))
+                    merged[key] = mergeStats && value == -1 ? (short)0 : value;
+            return new(merged);
+        }
     }
 
     private static (string Name, string Callsign, int Nationality, int Gender, int Look) GenerateName(

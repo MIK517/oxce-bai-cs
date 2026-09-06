@@ -12,6 +12,9 @@ public enum CampaignDifficulty
     Superhuman,
 }
 
+public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
+    bool AutoCombatDefaultSoldier = true);
+
 public readonly record struct CampaignId
 {
     public CampaignId(Guid value)
@@ -61,6 +64,7 @@ public sealed record FacilitySnapshot(
 public sealed record CraftSnapshot(string RuleId, int Id)
 {
     public string PreservationKey { get; init; } = string.Empty;
+    public CraftLogisticsState? Logistics { get; init; }
 }
 
 public sealed record SoldierSnapshot(string RuleId, int Id)
@@ -118,6 +122,7 @@ public sealed record CampaignSnapshot(
     public IReadOnlyList<string> CompletedResearch { get; init; } = [];
     public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public bool DebugMode { get; init; }
+    public CampaignOptions Options { get; init; } = new();
 
     internal static IReadOnlyList<T> ReadOnly<T>(IEnumerable<T> values) => Array.AsReadOnly(values.ToArray());
 

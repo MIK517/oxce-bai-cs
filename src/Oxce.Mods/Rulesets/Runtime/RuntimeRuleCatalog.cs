@@ -24,7 +24,7 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<RegionRuleFamily, RuntimeRegionRule> regions,
         RuntimeRuleFamily<FacilityRuleFamily, RuntimeFacilityRule> facilities,
         RuntimeRuleFamily<CraftRuleFamily, RuntimeCraftRule> crafts,
-        RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeIdentityRule> craftWeapons,
+        RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeCraftWeaponRule> craftWeapons,
         RuntimeRuleFamily<ItemRuleFamily, RuntimeItemRule> items,
         RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> soldiers,
         RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> armors,
@@ -55,7 +55,7 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<RegionRuleFamily, RuntimeRegionRule> Regions { get; }
     public RuntimeRuleFamily<FacilityRuleFamily, RuntimeFacilityRule> Facilities { get; }
     public RuntimeRuleFamily<CraftRuleFamily, RuntimeCraftRule> Crafts { get; }
-    public RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeIdentityRule> CraftWeapons { get; }
+    public RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeCraftWeaponRule> CraftWeapons { get; }
     public RuntimeRuleFamily<ItemRuleFamily, RuntimeItemRule> Items { get; }
     public RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> Soldiers { get; }
     public RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> Armors { get; }
