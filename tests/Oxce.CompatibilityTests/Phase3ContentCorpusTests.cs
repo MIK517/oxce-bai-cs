@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Oxce.Core.Diagnostics;
+using Oxce.Formats.Yaml;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
@@ -45,7 +46,12 @@ public sealed class Phase3ContentCorpusTests
             Directory.CreateDirectory(master);
             File.WriteAllText(Path.Combine(master, "metadata.yml"),
                 "id: xcom1\nname: Synthetic corpus master\nversion: 1.0\nisMaster: true\n");
-            Assert.True(LoadCorpusRoot(mods, resourceRoot, synthetic) > 0);
+            Assert.True(LoadCorpusRoot(mods, resourceRoot, synthetic,
+                expectedMasterFailures: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["xcom1"] = "Ufopaedia article 'STR_FIRESTORM' is missing type_id.",
+                }) >= 2,
+                "The private corpus must exercise both the synthetic xcom1 master and its native master.");
         }
         finally
         {
@@ -56,7 +62,8 @@ public sealed class Phase3ContentCorpusTests
     private static int LoadCorpusRoot(
         string modsRoot,
         string? externalResourceRoot,
-        string? supplementalModsRoot = null)
+        string? supplementalModsRoot = null,
+        IReadOnlyDictionary<string, string>? expectedMasterFailures = null)
     {
         var discoveryOptions = externalResourceRoot is null
             ? null
@@ -69,7 +76,8 @@ public sealed class Phase3ContentCorpusTests
         }
 
         var modCatalog = ModCatalog.Create(candidates);
-        var masters = discovery.Mods.Where(mod => mod.Metadata.IsMaster).ToArray();
+        var masters = modCatalog.Mods.Values.Where(mod => mod.Metadata.IsMaster).ToArray();
+        var observedFailures = new HashSet<string>(StringComparer.Ordinal);
         foreach (var master in masters)
         {
             var activations = modCatalog.Mods.Values
@@ -85,9 +93,19 @@ public sealed class Phase3ContentCorpusTests
                 master.Metadata.Id,
                 new ModEngineIdentity("Extended", "8.6.1.0"));
             Assert.True(plan.IsValid);
-            var snapshot = ContentSnapshotBuilder.Build(
-                plan,
-                options: new ContentSnapshotOptions { RetainAuditArtifact = true });
+            ContentSnapshot snapshot;
+            try
+            {
+                snapshot = ContentSnapshotBuilder.Build(
+                    plan,
+                    options: new ContentSnapshotOptions { RetainAuditArtifact = true });
+            }
+            catch (YamlFormatException exception) when (expectedMasterFailures?.TryGetValue(master.Metadata.Id, out var expected) == true)
+            {
+                Assert.Contains(expected, exception.Message, StringComparison.Ordinal);
+                Assert.True(observedFailures.Add(master.Metadata.Id));
+                continue;
+            }
             using var auditArtifact = Assert.IsType<ContentAuditArtifact>(snapshot.AuditArtifact);
             var content = snapshot.Content;
             var catalog = snapshot.CompatibilityData.Catalog;
@@ -117,6 +135,9 @@ public sealed class Phase3ContentCorpusTests
             Assert.Equal(Phase3ContentManifestNormalizer.SchemaVersion,
                 document.RootElement.GetProperty("schemaVersion").GetInt32());
         }
+
+        Assert.Equal(expectedMasterFailures?.Keys.Order(StringComparer.Ordinal).ToArray() ?? [],
+            observedFailures.Order(StringComparer.Ordinal));
 
         return masters.Length;
     }
