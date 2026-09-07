@@ -48,7 +48,8 @@ public sealed partial class CampaignState
         }
         return state with
         {
-            Weapons = CampaignSnapshot.ReadOnly(state.Weapons), Vehicles = CampaignSnapshot.ReadOnly(state.Vehicles),
+            Weapons = CampaignSnapshot.ReadOnly(state.Weapons),
+            Vehicles = CampaignSnapshot.ReadOnly(state.Vehicles),
             Items = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.Items, StringComparer.Ordinal)),
         };
     }

@@ -38,6 +38,24 @@ public sealed record SoldierPersonalState(
 /// <summary>Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.</summary>
 public static class SoldierGeneration
 {
+    public static string? GenerationRestriction(RuntimeSoldierRule rule)
+    {
+        if (rule.MinimumStats.Any(p => p.Key != "psiSkill" && (p.Key == "bravery"
+            ? p.Value / 10 > rule.MaximumStats.GetValueOrDefault(p.Key) / 10
+            : p.Value > rule.MaximumStats.GetValueOrDefault(p.Key)))) return "Soldier generation has inverted stat bounds.";
+        if (rule.NamePools.Sum(p => (long)p.GlobalWeight) > int.MaxValue)
+            return "Soldier nationality weights exceed the random range.";
+        var malePossible = rule.NamePools.Any(p => (p.FemaleFrequency > -1 ? p.FemaleFrequency : rule.FemaleFrequency) < 100);
+        foreach (var pool in rule.NamePools)
+        {
+            if (pool.LookWeights.Take(4).Sum(w => (long)w) + Math.Max(0, 4 - pool.LookWeights.Count) * 2L > int.MaxValue)
+                return "Soldier look weights exceed the random range.";
+            if (malePossible && pool.FemaleCallsign.Count != 0 && pool.MaleCallsign.Count == 0)
+                return "A possible male recruit has no enabled callsign pool.";
+        }
+        return null;
+    }
+
     private static readonly string[] GeneratedStats = ["tu", "stamina", "health", "mana", "bravery", "reactions",
         "firing", "throwing", "strength", "psiStrength", "melee"];
 
@@ -59,6 +77,7 @@ public static class SoldierGeneration
         ArgumentNullException.ThrowIfNull(rule);
         ArgumentNullException.ThrowIfNull(existingNames);
         ArgumentNullException.ThrowIfNull(random);
+        if (GenerationRestriction(rule) is { } restriction) throw new InvalidDataException(restriction);
         SoldierPersonalState result;
         var tries = 0;
         do

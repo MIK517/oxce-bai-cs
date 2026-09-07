@@ -126,6 +126,11 @@ public sealed partial class CampaignState
             var reason = PurchaseRestriction(state, rule.Purchase);
             if (!_debugMode && rule.Requirements.Any(r => !_completedResearch.Contains(r.Id))) reason ??= "Required research is not complete.";
             if (rule.WeaponSlots is < 0 or > 4) reason ??= "Craft weapon slot count is outside the reference range.";
+            if (reason is null)
+            {
+                try { _ = CraftLogistics.Purchase(rule, _content.RuntimeRules, state.Longitude, state.Latitude); }
+                catch (OverflowException) { reason = "Craft weapon bonuses exceed the capacity range."; }
+            }
             var maximum = Math.Min(MaximumLogisticsLines, Math.Max(0, AvailableHangars(state, rule.HangarType) - UsedHangars(state, rule.HangarType)));
             if (rule.CostBuy > 0) maximum = (int)Math.Min(maximum, Math.Max(0, _funds[^1] / rule.CostBuy));
             if (rule.Purchase.MonthlyLimit > 0) maximum = Math.Min(maximum, Math.Max(0, rule.Purchase.MonthlyLimit - _monthlyPurchaseLog.GetValueOrDefault(entry.Id)));

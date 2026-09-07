@@ -20,12 +20,14 @@ public sealed class CampaignLogisticsTests
         var initial = Create(content).Capture();
         var rules = content.RuntimeRules;
         var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0)
-            with { Status = "STR_READY", Weapons = [null, null], Items = new Dictionary<string, int> { ["SUPPLY"] = 1 } };
+            with
+        { Status = "STR_READY", Weapons = [null, null], Items = new Dictionary<string, int> { ["SUPPLY"] = 1 } };
         var first = initial.Bases[0] with { Crafts = [new("SHIP", 1) { Logistics = ship }] };
         var second = first with { Id = 2, Name = "Beta", Crafts = [], Items = new Dictionary<string, int> { ["SUPPLY"] = 10 } };
         var campaign = CampaignState.Restore(initial with
         {
-            Options = new(enforce, true, false), Bases = [first, second],
+            Options = new(enforce, true, false),
+            Bases = [first, second],
         }, content, new SplitMix64RandomSource(0));
         var purchase = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(new PrepareLogisticsQuote(2, LogisticsOperation.Purchase)).Events)).Quote;
         Assert.Equal(0, purchase.Rows.Single(r => r.RuleId == "SUPPLY").MaximumQuantity);
@@ -53,15 +55,19 @@ public sealed class CampaignLogisticsTests
         var rules = content.RuntimeRules;
         var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
         {
-            Status = "STR_READY", Fuel = 100, Items = new Dictionary<string, int> { ["SUPPLY"] = 2 },
+            Status = "STR_READY",
+            Fuel = 100,
+            Items = new Dictionary<string, int> { ["SUPPLY"] = 2 },
             Weapons = [new("FIXED", 1), null],
         };
         var soldierRule = rules.Soldiers[rules.Soldiers.GetRequired("RECRUIT")].Value;
         var personal = SoldierGeneration.Generate(soldierRule, "ARMOR", 0, new HashSet<string>(StringComparer.Ordinal), new SplitMix64RandomSource(7))
-            with { CraftType = "SHIP", CraftId = 4, Training = true };
+            with
+        { CraftType = "SHIP", CraftId = 4, Training = true };
         var first = initial.Bases[0] with
         {
-            Name = "Alpha", Crafts = [new("SHIP", 4) { Logistics = ship, PreservationKey = "craft-transfer-test" }],
+            Name = "Alpha",
+            Crafts = [new("SHIP", 4) { Logistics = ship, PreservationKey = "craft-transfer-test" }],
             Soldiers = [new("RECRUIT", 9) { Personal = personal, PreservationKey = "crew-transfer-test" }],
         };
         var second = first with { Name = "Beta", Id = 2, Crafts = [], Soldiers = [] };
@@ -103,7 +109,8 @@ public sealed class CampaignLogisticsTests
         var initial = Create(content).Capture();
         var rule = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
         var personal = SoldierGeneration.Generate(rule, "ARMOR", 0, new HashSet<string>(StringComparer.Ordinal), new SplitMix64RandomSource(7))
-            with { Training = true, PsiTraining = true };
+            with
+        { Training = true, PsiTraining = true };
         var soldier = new SoldierSnapshot("RECRUIT", 9) { Personal = personal, PreservationKey = "created:transfer-test" };
         var first = initial.Bases[0] with { Name = "Alpha", Soldiers = [soldier] };
         var second = first with { Name = "Beta", Id = 2, Soldiers = [] };

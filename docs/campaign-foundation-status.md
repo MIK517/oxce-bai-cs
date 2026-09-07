@@ -2,6 +2,10 @@
 
 Review date: 2026-09-03.
 
+This records the Phase 5 baseline. The subsequent
+[strategic logistics status](strategic-logistics-status.md) supersedes its personnel,
+inventory, transfer, UI and time-eligibility boundaries.
+
 ## Outcome
 
 The first persisted strategic foundation is implemented. `Oxce.Gameplay` now owns

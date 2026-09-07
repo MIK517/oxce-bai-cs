@@ -101,11 +101,17 @@ public sealed partial class CampaignState
                 args[1] = ScriptRuntimeValue.FromScalar(args[0].Reference is null ? 0 : name switch
                 {
                     "GeoscapeGame.difficultyLevel" => (int)Difficulty,
-                    "GeoscapeGame.getDaysPassed" => DaysPassed, "GeoscapeGame.getMonthsPassed" => MonthsPassed,
+                    "GeoscapeGame.getDaysPassed" => DaysPassed,
+                    "GeoscapeGame.getMonthsPassed" => MonthsPassed,
                     "GeoscapeGame.isResearched" => args[2].Reference is string research && _completedResearch.Contains(research) ? 1 : 0,
-                    "RuleItem.getWeight" => item?.Rule.Weight ?? 0, "RuleItem.getBattleType" => item?.Rule.BattleType ?? 0,
-                    "Time.getDay" => time.Day, "Time.getMonth" => time.Month, "Time.getYear" => time.Year,
-                    "Time.getHour" => time.Hour, "Time.getMinute" => time.Minute, "Time.getSecond" => time.Second,
+                    "RuleItem.getWeight" => item?.Rule.Weight ?? 0,
+                    "RuleItem.getBattleType" => item?.Rule.BattleType ?? 0,
+                    "Time.getDay" => time.Day,
+                    "Time.getMonth" => time.Month,
+                    "Time.getYear" => time.Year,
+                    "Time.getHour" => time.Hour,
+                    "Time.getMinute" => time.Minute,
+                    "Time.getSecond" => time.Second,
                     "Time.getSecondsPastMidnight" => time.Hour * 3600 + time.Minute * 60 + time.Second,
                     _ => throw new InvalidOperationException("Price provider was not preflighted."),
                 });

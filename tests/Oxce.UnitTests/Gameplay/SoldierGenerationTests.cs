@@ -6,6 +6,30 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class SoldierGenerationTests
 {
+    [Theory]
+    [InlineData("nationality")]
+    [InlineData("looks")]
+    [InlineData("callsigns")]
+    public void InvalidGenerationOutcomesFailBeforeRandomConsumption(string problem)
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var rule = rules.Soldiers[rules.Soldiers.GetRequired("RECRUIT")].Value;
+        var pool = rule.NamePools[0];
+        rule = rule with
+        {
+            NamePools = problem switch
+            {
+                "nationality" => [pool with { GlobalWeight = int.MaxValue }, pool],
+                "looks" => [pool with { LookWeights = [int.MaxValue, 1] }],
+                _ => [pool with { MaleCallsign = [], FemaleFrequency = 50 }],
+            }
+        };
+        var random = new SplitMix64RandomSource(42);
+        var before = random.State;
+        Assert.Throws<InvalidDataException>(() => SoldierGeneration.Generate(rule, "ARMOR", -1, new HashSet<string>(StringComparer.Ordinal), random));
+        Assert.Equal(before, random.State);
+    }
+
     [Fact]
     public void FixedStatAndNameFixtureMatchesReferenceConstructorRules()
     {

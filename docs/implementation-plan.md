@@ -227,6 +227,10 @@ acceptance gates. Prerequisite time-dispatch and mobile save-ownership work belo
 the first logistics branch. The strategic deployment request closes this phase's side
 of mission launch; playable tactical generation and consumption remain Phase 7.
 
+Branch 1 now satisfies its [bounded logistics acceptance](strategic-logistics-status.md),
+including fresh/cache corpus classification, indexed UI, mobile saves and preflight guards.
+Branch 2 is the next implementation branch after this logistics branch is merged.
+
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
 in cache identity, with public loose/ZIP, malformed-input, precedence, override, and
@@ -347,8 +351,8 @@ content root no longer retains typed compatibility/provenance graphs, virtual re
 identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
-1. Follow the [Phase 6 delivery plan](phase-6-plan.md), beginning with logistics and
-   its ordered time-dispatch, mobile save-ownership and playable-state prerequisites.
+1. Continue the [Phase 6 delivery plan](phase-6-plan.md) with base readiness after
+   the completed logistics branch is merged; retain its time and ownership guards.
    Keep each branch integrated across commands, script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

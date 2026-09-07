@@ -73,9 +73,10 @@ callback lifecycle check:
 
 ## Campaign foundation view
 
-The first strategic slice can be created and operated through a minimal indexed SDL
-view using a self-contained installation. Click the globe to place the starting base,
-press Space to advance one minute, and press Escape to save and quit:
+The strategic logistics slice runs through an indexed SDL view using a self-contained
+installation. Use I for stores, B for purchases/hiring, S for sales/dismissal, and T for
+transfers. Enter reviews an order and Y confirms it. Space advances one minute, F5 saves,
+and F9 requests load confirmation. Escape cancels/closes a screen, then saves and quits:
 
 ```powershell
 dotnet run --project src\Oxce.App --configuration Release -- `
@@ -83,7 +84,7 @@ dotnet run --project src\Oxce.App --configuration Release -- `
 ```
 
 Replace `xcom1` and `-` with a master and add-on ID for a modded campaign. Pass `-` as
-the final argument to run without saving.
+the final argument to run without saving. See [logistics controls and current boundaries](docs/strategic-logistics-status.md).
 
 ## Resource browser
 

@@ -47,5 +47,11 @@ is absent; a popup cannot be used to skip an already committed tick's refuel ope
 
 Calendar-only advances that previously skipped missing gameplay now stop explicitly.
 Save inspection and unknown-field conservation remain available. Transfer snapshots
-model ownership and delivery fields; this prerequisite does not by itself implement
-purchase, recruitment, servicing, or a complete transfer command lifecycle.
+model ownership and delivery fields. Branch 1 subsequently installs purchase,
+recruitment and transfer providers; the [logistics status](../strategic-logistics-status.md)
+records their acceptance and remaining readiness/time boundaries.
+
+Name-pool directory ordering uses `Unicode::naturalCompare`'s portable lexical fallback
+instead of adding Windows collation calls to the platform-independent mod library.
+Windows reference builds may use `StrCmpLogicalW`; cross-platform RNG/name-stream parity
+is not claimed. Explicit list ordering and persisted nationality indices remain intact.
