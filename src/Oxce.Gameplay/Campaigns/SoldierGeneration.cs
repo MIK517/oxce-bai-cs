@@ -28,6 +28,8 @@ public sealed record SoldierPersonalState(
     public string TransformedArmor { get; init; } = string.Empty;
     public string PersonalEquipmentArmor { get; init; } = string.Empty;
     public float Recovery { get; init; }
+    public IReadOnlyDictionary<string, int> PreviousTransformations { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+    public IReadOnlyDictionary<string, int> TransformationBonuses { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
 }
 
 /// <summary>Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.</summary>
@@ -117,6 +119,8 @@ public static class SoldierGeneration
             Recovery = template.Recovery ?? state.Recovery,
             InitialStats = Merge(state.InitialStats, template.InitialStats),
             CurrentStats = Merge(state.CurrentStats, template.CurrentStats),
+            PreviousTransformations = template.PreviousTransformations ?? state.PreviousTransformations,
+            TransformationBonuses = template.TransformationBonuses ?? state.TransformationBonuses,
         };
         if (!rules.Armors.TryGet(updated.Armor, out _))
             updated = updated with { Armor = rules.Armors.GetExternalId(rules.Soldiers.Rules[0].Value.Armor) };
@@ -126,6 +130,25 @@ public static class SoldierGeneration
             var initial = new Dictionary<string, short>(updated.InitialStats, StringComparer.Ordinal) { ["mana"] = mana };
             var current = new Dictionary<string, short>(updated.CurrentStats, StringComparer.Ordinal) { ["mana"] = mana };
             updated = updated with { InitialStats = new ReadOnlyDictionary<string, short>(initial), CurrentStats = new ReadOnlyDictionary<string, short>(current) };
+        }
+        if (template.RandomTransformationBonuses is { Count: > 0 } weights && template.TransformationBonusesCount > 0)
+        {
+            var choices = new SortedDictionary<string, int>(weights.Where(p => p.Value > 0).ToDictionary(), StringComparer.Ordinal);
+            var bonuses = new Dictionary<string, int>(updated.TransformationBonuses, StringComparer.Ordinal);
+            for (var i = 0; i < template.TransformationBonusesCount && choices.Count > 0; i++)
+            {
+                var choice = random.NextInclusive(1, choices.Values.Sum());
+                string? selected = null;
+                foreach (var pair in choices)
+                {
+                    if (choice <= pair.Value) { selected = pair.Key; break; }
+                    choice -= pair.Value;
+                }
+                if (selected is null) throw new InvalidOperationException("Random source returned an invalid weighted choice.");
+                choices.Remove(selected);
+                if (selected.Length != 0 && selected != "\0") bonuses[selected] = checked(bonuses.GetValueOrDefault(selected) + 1);
+            }
+            updated = updated with { TransformationBonuses = new ReadOnlyDictionary<string, int>(bonuses) };
         }
         return updated;
 

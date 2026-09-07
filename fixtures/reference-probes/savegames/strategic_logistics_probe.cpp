@@ -5,6 +5,40 @@
 #include <cmath>
 #include <cstdint>
 #include <algorithm>
+#include <map>
+#include <string>
+struct BonusReader {
+    int count;
+    std::map<std::string, size_t> weights{{"BONUS_B", 1}, {"", 1}, {"BONUS_A", 1}, {"DISABLED_BONUS", 0}};
+    const BonusReader& operator[](const char*) const { return *this; }
+    explicit operator bool() const { return true; }
+    int readVal(int) const { return count; }
+};
+namespace RNG {
+    inline int calls;
+    int generate(int minimum, int maximum) { ++calls; return minimum; }
+}
+struct Mod {
+    static bool isEmptyRuleName(const std::string& name) { return name.empty() || name == std::string(1, '\0'); }
+};
+class WeightedOptions {
+    std::map<std::string, size_t> _choices;
+    size_t _totalWeight = 0;
+public:
+    std::string choose() const;
+    void set(const std::string&, size_t);
+    bool empty() const { return _totalWeight == 0; }
+    // YAML parsing is not part of this probe; the caller supplies an already parsed map.
+    void load(const BonusReader& reader) { for (const auto& p : reader.weights) set(p.first, p.second); }
+};
+// WEIGHTED_CHOOSE
+// WEIGHTED_SET
+struct Soldier {
+    std::map<std::string, int> _transformationBonuses{{"BONUS_A", 3}};
+    void apply(const BonusReader& reader) {
+        // SOLDIER_BONUS_BLOCK
+    }
+};
 struct Base {
     int capacity; double used, lon, lat;
     int getAvailableStores() const { return capacity; }
@@ -69,6 +103,14 @@ int main() {
         if (!first) std::cout << ','; first = false;
         std::cout << '[' << longitude << ',' << distance << ',' << (int)floor(6 + distance / 10)
             << ',' << (int)distance << ',' << (int)(5 * distance) << ',' << (int)(25 * distance) << ']';
+    }
+    std::cout << "],\"bonuses\":["; first = true;
+    for (int count : {-1, 0, 1, 2, 5}) {
+        Soldier soldier; RNG::calls = 0;
+        soldier.apply(BonusReader{count});
+        if (!first) std::cout << ','; first = false;
+        std::cout << '[' << count << ',' << RNG::calls << ',' << soldier._transformationBonuses["BONUS_A"]
+            << ',' << (soldier._transformationBonuses.count("BONUS_B") ? soldier._transformationBonuses["BONUS_B"] : 0) << ']';
     }
     std::cout << "]}\n";
 }

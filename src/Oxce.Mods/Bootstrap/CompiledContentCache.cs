@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 7;
+    internal const int CompilerRevision = 8;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;

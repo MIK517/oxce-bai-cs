@@ -466,6 +466,10 @@ public static class OxceSaveAdapter
             Pair("allowAutoCombat", Boolean(personal.AllowAutoCombat)),
             Pair("isLeeroyJenkins", Boolean(personal.IsLeeroyJenkins)),
             Pair("corpseRecovered", Boolean(personal.CorpseRecovered)),
+            Pair("previousTransformations", personal.PreviousTransformations.Count == 0 ? null :
+                Mapping(personal.PreviousTransformations.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("transformationBonuses", personal.TransformationBonuses.Count == 0 ? null :
+                Mapping(personal.TransformationBonuses.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => Pair(p.Key, Integer(p.Value))))),
             Pair("replacedArmor", personal.ReplacedArmor.Length == 0 ? null : Scalar(personal.ReplacedArmor)),
             Pair("transformedArmor", personal.TransformedArmor.Length == 0 ? null : Scalar(personal.TransformedArmor)),
             Pair("personalEquipmentArmor", personal.PersonalEquipmentArmor.Length == 0 ? null : Scalar(personal.PersonalEquipmentArmor)),
@@ -550,6 +554,8 @@ public static class OxceSaveAdapter
             AllowAutoCombat = Boolean(map, "allowAutoCombat", true),
             IsLeeroyJenkins = Boolean(map, "isLeeroyJenkins", true),
             CorpseRecovered = Boolean(map, "corpseRecovered", false),
+            PreviousTransformations = ReadIntMap(map, "previousTransformations"),
+            TransformationBonuses = ReadIntMap(map, "transformationBonuses"),
             ReplacedArmor = String(map, "replacedArmor", ""),
             TransformedArmor = String(map, "transformedArmor", ""),
             PersonalEquipmentArmor = String(map, "personalEquipmentArmor", ""),

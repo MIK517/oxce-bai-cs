@@ -59,6 +59,10 @@ soldiers:
       recovery: 1.5
       training: true
       armor: ARMOR
+      previousTransformations: {PREVIOUS: 2}
+      transformationBonuses: {BONUS_A: 3}
+      randomTransformationBonuses: {BONUS_B: 1, "": 1, BONUS_A: 1, DISABLED_BONUS: 0}
+      transformationBonusesCount: 5
 craftWeapons:
   - type: FIXED
     ammoMax: 10
