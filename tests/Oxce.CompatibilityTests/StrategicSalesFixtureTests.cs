@@ -37,6 +37,7 @@ public sealed class StrategicSalesFixtureTests
             Options = new(StorageLimitsEnforced: true),
             Bases = [initial.Bases[0] with
             {
+                Name = "Alpha",
                 Crafts = incomingCraft ? [] : [new("SHIP", 1) { Logistics = craft }],
                 Transfers = incomingCraft ?
                 [

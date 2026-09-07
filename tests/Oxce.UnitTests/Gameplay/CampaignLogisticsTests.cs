@@ -11,6 +11,25 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class CampaignLogisticsTests
 {
+    [Fact]
+    public void LogisticsAreBlockedUntilTheStartingBaseIsPlaced()
+    {
+        var content = LoadFixture();
+        var campaign = CampaignFactory.Create(content,
+            CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
+            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var before = campaign.Capture();
+
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(0, LogisticsOperation.Purchase)).Events));
+
+        Assert.Contains("Place the starting base", blocked.Reason, StringComparison.Ordinal);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0)).Events));
+        Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(0, LogisticsOperation.Purchase)).Events));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -340,9 +359,14 @@ public sealed class CampaignLogisticsTests
         Assert.Equivalent(arrived, reloaded.Campaign.Capture(), strict: true);
     }
 
-    private static CampaignState Create(RuntimeContent content) => CampaignFactory.Create(content,
-        CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
-        new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+    private static CampaignState Create(RuntimeContent content)
+    {
+        var campaign = CampaignFactory.Create(content,
+            CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
+            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0)).Events));
+        return campaign;
+    }
 
     internal static RuntimeContent LoadFixture()
     {

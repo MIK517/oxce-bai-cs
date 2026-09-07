@@ -24,6 +24,7 @@ public sealed class CampaignLogisticsClientTests
                     new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" })).Campaign;
                 return new(campaign, campaign);
             });
+        Key('p');
         Key('b');
         var quote = client.Screen!.Quote!;
         var supply = quote.Rows.Single(r => r.RuleId == "SUPPLY");
@@ -67,7 +68,7 @@ public sealed class CampaignLogisticsClientTests
         var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "UI", "logistics", ["logistics"],
             CampaignDifficulty.Beginner), new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
         var snapshot = campaign.Capture();
-        campaign = CampaignState.Restore(snapshot with { Bases = [snapshot.Bases[0] with { Crafts = [new("SHIP", 1)] }] },
+        campaign = CampaignState.Restore(snapshot with { Bases = [snapshot.Bases[0] with { Name = "Alpha", Crafts = [new("SHIP", 1)] }] },
             content, new SplitMix64RandomSource(0));
         var screen = new CampaignLogisticsScreen(campaign, campaign, 0);
         Assert.NotNull(screen.Stores.CapacityLimitation);
