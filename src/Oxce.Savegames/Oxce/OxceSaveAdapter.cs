@@ -506,11 +506,17 @@ public static class OxceSaveAdapter
                 Overlay(slot < originalWeapons.Length && String(originalWeapons[slot], "type", "") == weapon.RuleId ? originalWeapons[slot] : null,
                     [Pair("type", Scalar(weapon.RuleId)), Pair("ammo", Integer(weapon.Ammo)),
                         Pair("rearming", weapon.Rearming ? Boolean(true) : null), Pair("disabled", weapon.Disabled ? Boolean(true) : null)])))),
-            Pair("vehicles", Sequence(state.Vehicles.Select((vehicle, slot) => Overlay(
-                slot < originalVehicles.Length && String(originalVehicles[slot], "type", "") == vehicle.RuleId ? originalVehicles[slot] : null,
-                [Pair("type", Scalar(vehicle.RuleId)), Pair("ammo", Integer(vehicle.Ammo)),
+            Pair("vehicles", Sequence(state.Vehicles.Select((vehicle, slot) =>
+            {
+                var key = vehicle.PreservationKey.Length == 0 ? $"{value.PreservationKey}:vehicle:{slot}" : vehicle.PreservationKey;
+                var original = originalVehicles.Select((candidate, originalSlot) => (candidate, originalSlot)).FirstOrDefault(pair =>
+                    String(pair.candidate, "type", "") == vehicle.RuleId &&
+                    String(pair.candidate, "oxcePortEntityKey", $"{value.PreservationKey}:vehicle:{pair.originalSlot}") == key).candidate;
+                return Overlay(original,
+                [Pair("type", Scalar(vehicle.RuleId)), Pair("ammo", Integer(vehicle.Ammo)), Pair("oxcePortEntityKey", Scalar(key)),
                     Pair("size", vehicle.Size is { } size ? Integer(size) : null),
-                    Pair("spaceOccupied", vehicle.SpaceOccupied is { } space ? Integer(space) : null)])))),
+                    Pair("spaceOccupied", vehicle.SpaceOccupied is { } space ? Integer(space) : null)]);
+            }))),
         ]);
     }
 
@@ -597,12 +603,17 @@ public static class OxceSaveAdapter
             p => p.Key, p => checked((short)p.Value), StringComparer.Ordinal));
     }
 
-    private static CraftSnapshot ReadCraft(YamlMappingNode map) =>
-        new(RequiredString(map, "type"), Integer(map, "id", 0))
+    private static CraftSnapshot ReadCraft(YamlMappingNode map)
+    {
+        var type = RequiredString(map, "type");
+        var id = Integer(map, "id", 0);
+        var preservationKey = String(map, "oxcePortEntityKey", $"craft:{type}:{id}");
+        return new(type, id)
         {
-            PreservationKey = String(map, "oxcePortEntityKey", $"craft:{RequiredString(map, "type")}:{Integer(map, "id", 0)}"),
-            Logistics = ReadCraftLogistics(map),
+            PreservationKey = preservationKey,
+            Logistics = ReadCraftLogistics(map, preservationKey),
         };
+    }
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
@@ -611,17 +622,18 @@ public static class OxceSaveAdapter
             Boolean(map, "autoCombatDefaultSoldier", true));
     }
 
-    private static CraftLogisticsState? ReadCraftLogistics(YamlMappingNode map)
+    private static CraftLogisticsState? ReadCraftLogistics(YamlMappingNode map, string craftPreservationKey)
     {
         if (!map.TryGet("status", out _) && !map.TryGet("weapons", out _) && !map.TryGet("items", out _)) return null;
         return new(Integer(map, "fuel", 0), Integer(map, "damage", 0), String(map, "status", "STR_READY"),
             Array.AsReadOnly(Maps(map, "weapons").Select(w => String(w, "type", "0") == "0" ? null :
                 new CraftWeaponSnapshot(RequiredString(w, "type"), Integer(w, "ammo", 0), Boolean(w, "rearming", false), Boolean(w, "disabled", false))).ToArray()),
-            ReadIntMap(map, "items"), Array.AsReadOnly(Maps(map, "vehicles").Select(v =>
+            ReadIntMap(map, "items"), Array.AsReadOnly(Maps(map, "vehicles").Select((v, slot) =>
                 new CraftVehicleSnapshot(RequiredString(v, "type"), Integer(v, "ammo", 0))
                 {
                     Size = v.TryGet("size", out _) ? Integer(v, "size", 0) : null,
                     SpaceOccupied = v.TryGet("spaceOccupied", out _) ? Integer(v, "spaceOccupied", 0) : null,
+                    PreservationKey = String(v, "oxcePortEntityKey", $"{craftPreservationKey}:vehicle:{slot}"),
                 }).ToArray()))
         {
             Longitude = Double(map, "lon", 0),

@@ -8,6 +8,7 @@ public sealed record CraftVehicleSnapshot(string RuleId, int Ammo)
 {
     public int? Size { get; init; }
     public int? SpaceOccupied { get; init; }
+    public string PreservationKey { get; init; } = string.Empty;
 }
 public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     IReadOnlyList<CraftWeaponSnapshot?> Weapons, IReadOnlyDictionary<string, int> Items,

@@ -30,6 +30,10 @@ public sealed partial class CampaignState
         if (!double.IsFinite(state.Longitude) || !double.IsFinite(state.Latitude)) throw new InvalidDataException("Craft coordinates must be finite.");
         if (state.Fuel < 0 || state.Damage < 0 || state.Weapons.Count > 4 || state.Vehicles.Count > MaximumLogisticsLines)
             throw new InvalidDataException("Craft logistics values exceed their supported range.");
+        if (state.Vehicles.Where(vehicle => vehicle.PreservationKey.Length != 0)
+            .Select(vehicle => vehicle.PreservationKey).Distinct(StringComparer.Ordinal).Count() !=
+            state.Vehicles.Count(vehicle => vehicle.PreservationKey.Length != 0))
+            throw new InvalidDataException("Craft vehicle preservation identities must be unique.");
         foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
         {
             rules.CraftWeapons.GetRequired(weapon.RuleId);
