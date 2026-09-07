@@ -43,12 +43,16 @@ public sealed partial class CampaignState
         AddStaff(CampaignTransferKind.Engineer, "STR_ENGINEER", origin.Engineers,
             _content.RuntimeRules.Campaign.CostHireEngineer, _content.RuntimeRules.Campaign.HireEngineersUnlockResearch,
             _content.RuntimeRules.Campaign.HireEngineersBaseFunctions);
+        var criticalSale = command.Operation == LogisticsOperation.Sell && Options.StorageLimitsEnforced &&
+            StrategicLogisticsMath.StoresOverfull(AvailableStores(origin), UsedStores(origin) -
+                origin.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value));
         foreach (var entry in _content.RuntimeRules.Items.Rules)
         {
             var handle = _content.RuntimeRules.Items.GetRequired(entry.Id);
             var rule = entry.Value;
             if (command.Operation == LogisticsOperation.Sell && rule.IsAlien && !Options.CanSellLiveAliens) continue;
             var owned = origin.Items.GetValueOrDefault(handle);
+            if (criticalSale) owned = SaleItemCount(origin, entry.Id);
             if (command.Operation != LogisticsOperation.Purchase && owned == 0) continue;
             string? unavailable = null;
             var cost = command.Operation switch
@@ -187,29 +191,7 @@ public sealed partial class CampaignState
         var funds = checked(_funds[^1] + delta);
         var accounting = delta > 0 ? checked(_incomes[^1] + delta) : checked(_expenditures[^1] - delta);
         if (quote.Operation == LogisticsOperation.Sell)
-        {
-            var refunds = new Dictionary<RuleHandle<ItemRuleFamily>, long>();
-            foreach (var selection in selections)
-            {
-                var row = quote.Rows[selection.RowId];
-                if (row.Kind == CampaignTransferKind.Craft)
-                {
-                    foreach (var pair in UnloadedCraftItems(FindCraft(origin, row).Logistics!))
-                    {
-                        var handle = _content.RuntimeRules.Items.GetRequired(pair.Key);
-                        refunds[handle] = refunds.GetValueOrDefault(handle, origin.Items.GetValueOrDefault(handle)) + pair.Value;
-                        if (refunds[handle] > int.MaxValue) return Blocked("Unloaded craft inventory exceeds the item quantity range.");
-                    }
-                    continue;
-                }
-                if (row.Kind != CampaignTransferKind.Soldier) continue;
-                var personal = origin.Soldiers.Single(s => s.Id == row.EntityId).Personal!;
-                var armor = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(personal.Armor)].Value;
-                if (armor.StoreItem is not { } item) continue;
-                refunds[item] = refunds.GetValueOrDefault(item, origin.Items.GetValueOrDefault(item)) + 1;
-                if (refunds[item] > int.MaxValue) return Blocked("Returned armor exceeds the item quantity range.");
-            }
-        }
+            return CompleteSale(origin, quote, selections, subtotal, funds, accounting);
         // All eligibility/capacity/cost checks precede stock and fund mutation.
         var transfers = new List<TransferSnapshot>();
         var nextTransferId = NextTransferId();
@@ -263,8 +245,12 @@ public sealed partial class CampaignState
                             var soldier = new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(member.Rule), member.Id)
                             {
                                 PreservationKey = member.PreservationKey,
-                                Personal = personal with { PsiTraining = false, Training = false,
-                                    ReturnToTrainingWhenHealed = personal.Training || personal.ReturnToTrainingWhenHealed },
+                                Personal = personal with
+                                {
+                                    PsiTraining = false,
+                                    Training = false,
+                                    ReturnToTrainingWhenHealed = personal.Training || personal.ReturnToTrainingWhenHealed
+                                },
                             };
                             var crewTransferId = nextTransferId++;
                             transfers.Add(new(crewTransferId, row.Hours, CampaignTransferKind.Soldier, soldier.RuleId, 1, soldier)
@@ -304,7 +290,8 @@ public sealed partial class CampaignState
                             PreservationKey = original.PreservationKey,
                             Personal = personal with
                             {
-                                PsiTraining = false, Training = false,
+                                PsiTraining = false,
+                                Training = false,
                                 ReturnToTrainingWhenHealed = personal.Training || personal.ReturnToTrainingWhenHealed,
                             },
                         };
@@ -318,7 +305,8 @@ public sealed partial class CampaignState
                     {
                         var soldierId = nextSoldierId++;
                         var personal = SoldierGeneration.Generate(rule, _content.RuntimeRules.Armors.GetExternalId(rule.Armor),
-                            SelectNationality(rule, origin), names, _random) with { AllowAutoCombat = Options.AutoCombatDefaultSoldier };
+                            SelectNationality(rule, origin), names, _random) with
+                        { AllowAutoCombat = Options.AutoCombatDefaultSoldier };
                         if (rule.SpawnedTemplate is { } template)
                         {
                             var nationality = personal.Nationality;
@@ -328,7 +316,8 @@ public sealed partial class CampaignState
                         names.Add(personal.Name);
                         var soldier = new SoldierSnapshot(row.RuleId, soldierId)
                         {
-                            Personal = personal, PreservationKey = $"{Identity.Id}:soldier:{soldierId}",
+                            Personal = personal,
+                            PreservationKey = $"{Identity.Id}:soldier:{soldierId}",
                         };
                         var transferId = nextTransferId++;
                         transfers.Add(new(transferId, row.Hours, row.Kind, row.RuleId, 1, soldier)
@@ -350,28 +339,8 @@ public sealed partial class CampaignState
             var row = quote.Rows[selection.RowId];
             if (quote.Operation != LogisticsOperation.Purchase)
             {
-                if (quote.Operation == LogisticsOperation.Sell && row.Kind == CampaignTransferKind.Soldier)
-                {
-                    var personal = origin.Soldiers.Single(s => s.Id == row.EntityId).Personal!;
-                    var armor = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(personal.Armor)].Value;
-                    if (armor.StoreItem is { } item) origin.Items[item] = checked(origin.Items.GetValueOrDefault(item) + 1);
-                }
                 if (row.Kind == CampaignTransferKind.Craft)
-                {
-                    if (quote.Operation == LogisticsOperation.Transfer)
-                        origin.Soldiers.RemoveAll(s => s.Personal is { } p && p.CraftType == row.RuleId && p.CraftId == row.EntityId);
-                    else
-                    {
-                        foreach (var pair in UnloadedCraftItems(FindCraft(origin, row).Logistics!))
-                        {
-                            var handle = _content.RuntimeRules.Items.GetRequired(pair.Key);
-                            origin.Items[handle] = checked(origin.Items.GetValueOrDefault(handle) + pair.Value);
-                        }
-                        for (var i = 0; i < origin.Soldiers.Count; i++)
-                            if (origin.Soldiers[i].Personal is { } p && p.CraftType == row.RuleId && p.CraftId == row.EntityId)
-                                origin.Soldiers[i] = origin.Soldiers[i] with { Personal = p with { CraftType = "", CraftId = 0 } };
-                    }
-                }
+                    origin.Soldiers.RemoveAll(s => s.Personal is { } p && p.CraftType == row.RuleId && p.CraftId == row.EntityId);
                 RemoveStock(origin, row, selection.Quantity);
             }
             if (quote.Operation == LogisticsOperation.Purchase && MonthlyLimit(row) > 0)
@@ -550,7 +519,8 @@ public sealed partial class CampaignState
                             var soldier = transfer.Soldier!;
                             state.Soldiers.Add(new(_content.RuntimeRules.Soldiers.GetRequired(soldier.RuleId), soldier.Id)
                             {
-                                Personal = soldier.Personal, PreservationKey = soldier.PreservationKey,
+                                Personal = soldier.Personal,
+                                PreservationKey = soldier.PreservationKey,
                             });
                             break;
                         case CampaignTransferKind.Craft:
