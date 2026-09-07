@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -84,7 +85,7 @@ public sealed class MissionEventRuleCatalogTests
                 type_id: 8
               - delete: DELETED
             """;
-        using var fixture = new TemporaryMissionMod(("20-base.rul", first), ("10-patch.rul", patch));
+        using var fixture = new TemporaryModFixture(("20-base.rul", first), ("10-patch.rul", patch));
         var diagnostics = new DiagnosticCollector();
 
         var catalog = MissionEventRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -116,7 +117,7 @@ public sealed class MissionEventRuleCatalogTests
     [InlineData("ufopaedia: [{id: A, type_id: 99}]")]
     [InlineData("ufopaedia: [{id: A, type_id: 8, pages: PAGE}]")]
     public void RejectsMalformedMissionEventProperties(string yaml)
-    { using var fixture = new TemporaryMissionMod(("fixture.rul", yaml)); Assert.Throws<YamlFormatException>(() => MissionEventRuleCatalog.Load(CreatePlan(fixture.Root))); }
+    { using var fixture = new TemporaryModFixture(("fixture.rul", yaml)); Assert.Throws<YamlFormatException>(() => MissionEventRuleCatalog.Load(CreatePlan(fixture.Root))); }
 
     [Fact]
     public void SkipsNewUfopaediaArticleWithoutTypeAndContinuesLoading()
@@ -129,7 +130,7 @@ public sealed class MissionEventRuleCatalogTests
                 type_id: 8
                 text: LOADED
             """;
-        using var fixture = new TemporaryMissionMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
         var catalog = MissionEventRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -162,7 +163,7 @@ public sealed class MissionEventRuleCatalogTests
               - id: MISSING_ARTICLE_ITEM
                 type_id: 4
             """;
-        using var fixture = new TemporaryMissionMod(("fixture.rul", yaml)); var plan = CreatePlan(fixture.Root);
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml)); var plan = CreatePlan(fixture.Root);
         var catalog = MissionEventRuleCatalog.Load(plan); var diagnostics = new DiagnosticCollector();
 
         var validation = catalog.ValidateRelationships(CampaignStartRuleCatalog.Load(plan), ItemRuleCatalog.Load(plan),
@@ -204,7 +205,7 @@ public sealed class MissionEventRuleCatalogTests
               - id: MISSING_TFTD_USO
                 type_id: 17
             """;
-        using var fixture = new TemporaryMissionMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var plan = CreatePlan(fixture.Root);
         var catalog = MissionEventRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
@@ -230,11 +231,4 @@ public sealed class MissionEventRuleCatalogTests
 
     private static ModLoadPlan CreatePlan(string root)
     { var discovery = ModDiscovery.ScanDirectory(root); return ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods), [new ModActivation("fixture", true)], "fixture", new ModEngineIdentity("Extended", "8.6.1.0")); }
-    private sealed class TemporaryMissionMod : IDisposable
-    {
-        public TemporaryMissionMod(params (string Name, string Yaml)[] rulesets)
-        { Root = Path.Combine(Path.GetTempPath(), $"oxce-mission-test-{Guid.NewGuid():N}"); var mod = Path.Combine(Root, "fixture"); var rules = Path.Combine(mod, "Ruleset"); Directory.CreateDirectory(rules); File.WriteAllText(Path.Combine(mod, "metadata.yml"), "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 1000\n"); foreach (var item in rulesets) File.WriteAllText(Path.Combine(rules, item.Name), item.Yaml); }
-        public string Root { get; }
-        public void Dispose() => Directory.Delete(Root, true);
-    }
 }

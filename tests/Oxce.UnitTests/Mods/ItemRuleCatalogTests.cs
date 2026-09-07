@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
@@ -50,7 +51,7 @@ public sealed class ItemRuleCatalogTests
               - type: PSI
                 battleType: 9
             """;
-        using var fixture = new TemporaryItemMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
         var catalog = ItemRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -110,7 +111,7 @@ public sealed class ItemRuleCatalogTests
                 ammo:
                   1: {compatibleAmmo: [MISSING_AMMO]}
             """;
-        using var fixture = new TemporaryItemMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var content = ItemRuleCatalog.Load(CreatePlan(fixture.Root));
         var diagnostics = new DiagnosticCollector();
 
@@ -135,21 +136,4 @@ public sealed class ItemRuleCatalogTests
             new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
-    private sealed class TemporaryItemMod : IDisposable
-    {
-        public TemporaryItemMod(params (string Name, string Yaml)[] rulesets)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-item-test-{Guid.NewGuid():N}");
-            var mod = Path.Combine(Root, "fixture");
-            var rulesetDirectory = Path.Combine(mod, "Ruleset");
-            Directory.CreateDirectory(rulesetDirectory);
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 1000\n");
-            foreach (var ruleset in rulesets)
-                File.WriteAllText(Path.Combine(rulesetDirectory, ruleset.Name), ruleset.Yaml);
-        }
-
-        public string Root { get; }
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

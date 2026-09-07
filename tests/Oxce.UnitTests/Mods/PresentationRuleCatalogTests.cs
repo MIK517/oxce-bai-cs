@@ -1,4 +1,6 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
+using Oxce.Formats.Yaml;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
@@ -71,7 +73,7 @@ public sealed class PresentationRuleCatalogTests
               - type: GEO.CAT
                 files: {150: Resources/c.wav}
             """;
-        using var fixture = new TemporaryPresentationMod(yaml);
+        using var fixture = new TemporaryModFixture(yaml);
         var diagnostics = new DiagnosticCollector();
 
         var content = PresentationRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -129,7 +131,7 @@ public sealed class PresentationRuleCatalogTests
               - type: GEO.CAT
                 file: SAMPLE.CAT
             """;
-        using var fixture = new TemporaryPresentationMod(yaml);
+        using var fixture = new TemporaryModFixture(yaml);
         fixture.WriteResource("Resources/images/frame.png", "image");
         fixture.WriteResource("SOUND/SAMPLE.CAT", "cat");
         var plan = CreatePlan(fixture.Root);
@@ -148,15 +150,17 @@ public sealed class PresentationRuleCatalogTests
     [Fact]
     public void RejectsMalformedSpecialSections()
     {
-        using var fixture = new TemporaryPresentationMod("extraStrings: {type: en-US}");
+        using var fixture = new TemporaryModFixture("extraStrings: {type: en-US}");
 
-        Assert.ThrowsAny<Exception>(() => PresentationRuleCatalog.Load(CreatePlan(fixture.Root)));
+        var exception = Assert.Throws<YamlFormatException>(
+            () => PresentationRuleCatalog.Load(CreatePlan(fixture.Root)));
+        Assert.Contains("extraStrings", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void SeparatelyPublishesResourceConfigSoundDefinitions()
     {
-        using var fixture = new TemporaryPresentationMod("soundDefs: [{type: REGULAR, file: regular.cat}]");
+        using var fixture = new TemporaryModFixture("soundDefs: [{type: REGULAR, file: regular.cat}]");
         fixture.SetResourceConfig("preload.rul", "soundDefs: [{type: PRELOAD, file: preload.cat}]");
 
         var content = PresentationRuleCatalog.Load(CreatePlan(fixture.Root));
@@ -176,37 +180,4 @@ public sealed class PresentationRuleCatalogTests
             new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
-    private sealed class TemporaryPresentationMod : IDisposable
-    {
-        private readonly string _mod;
-
-        public TemporaryPresentationMod(string yaml)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-presentation-test-{Guid.NewGuid():N}");
-            _mod = Path.Combine(Root, "fixture");
-            var ruleset = Path.Combine(_mod, "Ruleset");
-            Directory.CreateDirectory(ruleset);
-            File.WriteAllText(
-                Path.Combine(_mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 1000\n");
-            File.WriteAllText(Path.Combine(ruleset, "fixture.rul"), yaml);
-        }
-
-        public string Root { get; }
-
-        public void WriteResource(string relativePath, string contents)
-        {
-            var path = Path.Combine(_mod, relativePath.Replace('/', Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, contents);
-        }
-
-        public void SetResourceConfig(string relativePath, string yaml)
-        {
-            File.AppendAllText(Path.Combine(_mod, "metadata.yml"), $"resourceConfig: {relativePath}\n");
-            File.WriteAllText(Path.Combine(_mod, relativePath), yaml);
-        }
-
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

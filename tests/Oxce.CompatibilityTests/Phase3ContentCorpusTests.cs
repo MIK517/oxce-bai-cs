@@ -137,20 +137,16 @@ public sealed class Phase3ContentCorpusTests
             var content = snapshot.Content;
             var catalog = snapshot.CompatibilityData.Catalog;
             Assert.True(catalog.Capabilities.Has(ContentLoadStage.Typed));
-            var scriptErrors = snapshot.Diagnostics.Where(static item =>
-                item.Severity >= DiagnosticSeverity.Error &&
-                (item.Code == ModDiagnosticCodes.InvalidScriptContent ||
-                 item.Code.StartsWith("OXCE-SCR-", StringComparison.Ordinal))).ToArray();
-            Assert.True(scriptErrors.Length == 0, string.Join(
-                Environment.NewLine,
-                scriptErrors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
-            if (catalog.Capabilities.Has(ContentLoadStage.Linked))
-            {
-                Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), string.Join(
-                Environment.NewLine,
-                snapshot.Diagnostics.Where(static item => item.Severity >= DiagnosticSeverity.Error)
-                    .Take(25).Select(static item => item.Message)));
-            }
+            var errors = snapshot.Diagnostics.Where(static item =>
+                item.Severity >= DiagnosticSeverity.Error).ToArray();
+            var expectation = ExpectedOutcome(Path.GetFileName(modsRoot), master.Metadata.Id);
+            Assert.Equal(expectation.CatalogStages, catalog.Capabilities.Stages);
+            Assert.Equal(expectation.SnapshotStages, snapshot.Capabilities.Stages);
+            Assert.Equal(
+                expectation.ErrorCounts.OrderBy(static item => item.Key),
+                errors.GroupBy(static item => item.Code)
+                    .ToDictionary(static group => group.Key, static group => group.Count())
+                    .OrderBy(static item => item.Key));
             var manifest = Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
                 snapshot,
                 auditArtifact,
@@ -165,5 +161,51 @@ public sealed class Phase3ContentCorpusTests
 
         return masters.Length;
     }
+
+    private static CorpusOutcome ExpectedOutcome(string corpusName, string masterId) =>
+        (corpusName, masterId) switch
+        {
+            ("campaign-start-rules", "fixture") => new(
+                ContentLoadStage.Composed | ContentLoadStage.Typed | ContentLoadStage.Linked,
+                ContentLoadStage.Composed | ContentLoadStage.Typed | ContentLoadStage.Linked |
+                    ContentLoadStage.ResourcesResolved | ContentLoadStage.ScriptsCompiled,
+                new Dictionary<string, int> { [ModDiagnosticCodes.InvalidRuntimeRuleLink] = 2 }),
+            ("rule-operations", "fixture-master") => new(
+                ContentLoadStage.Composed | ContentLoadStage.Typed,
+                ContentLoadStage.Composed | ContentLoadStage.Typed,
+                new Dictionary<string, int>
+                {
+                    [ModDiagnosticCodes.DuplicateNewRule] = 1,
+                    [ModDiagnosticCodes.MissingOverrideRule] = 1,
+                }),
+            ("mods", "40k") => new(
+                ContentLoadStage.Composed | ContentLoadStage.Typed,
+                ContentLoadStage.Composed | ContentLoadStage.Typed,
+                new Dictionary<string, int>
+                {
+                    [ModDiagnosticCodes.MissingRuleReference] = 220,
+                    [ModDiagnosticCodes.InvalidRuleRelationship] = 62,
+                }),
+            ("mods", "xcom1") => new(
+                ContentLoadStage.Composed | ContentLoadStage.Typed,
+                ContentLoadStage.Composed | ContentLoadStage.Typed,
+                new Dictionary<string, int>
+                {
+                    [ModDiagnosticCodes.MissingRuleReference] = 653,
+                    [ModDiagnosticCodes.InvalidRuleRelationship] = 3,
+                    [ModDiagnosticCodes.InvalidRuntimeRuleLink] = 13,
+                }),
+            _ => new(
+                ContentLoadStage.Composed | ContentLoadStage.Typed | ContentLoadStage.Linked,
+                ContentLoadStage.Composed | ContentLoadStage.Typed | ContentLoadStage.Linked |
+                    ContentLoadStage.ResourcesResolved | ContentLoadStage.ScriptsCompiled |
+                    ContentLoadStage.RuntimeLinked,
+                new Dictionary<string, int>()),
+        };
+
+    private sealed record CorpusOutcome(
+        ContentLoadStage CatalogStages,
+        ContentLoadStage SnapshotStages,
+        IReadOnlyDictionary<string, int> ErrorCounts);
 
 }

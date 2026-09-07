@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -91,7 +92,7 @@ public sealed class EquipmentProductionRuleCatalogTests
                 startFrom: PRODUCT
                 breakDownItems: [PRODUCT]
             """;
-        using var fixture = new TemporaryEquipmentMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
         var content = EquipmentProductionRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -166,7 +167,7 @@ public sealed class EquipmentProductionRuleCatalogTests
                 producedItems: !remove [PRODUCT]
                 transferTimes: [12, 24]
             """;
-        using var fixture = new TemporaryEquipmentMod(("20-base.rul", first), ("10-patch.rul", second));
+        using var fixture = new TemporaryModFixture(("20-base.rul", first), ("10-patch.rul", second));
 
         var manufacture = Assert.Single(EquipmentProductionRuleCatalog.Load(CreatePlan(fixture.Root)).Manufacture.Rules).Value;
 
@@ -210,7 +211,7 @@ public sealed class EquipmentProductionRuleCatalogTests
               - name: SHORTCUT
                 startFrom: MISSING_MANUFACTURE
             """;
-        using var fixture = new TemporaryEquipmentMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var plan = CreatePlan(fixture.Root);
         var content = EquipmentProductionRuleCatalog.Load(plan);
         var items = ItemRuleCatalog.Load(plan);
@@ -237,7 +238,7 @@ public sealed class EquipmentProductionRuleCatalogTests
     [InlineData("manufacture: [{name: PRODUCT, spawnedSoldier: SOLDIER}]")]
     public void RejectsMalformedEquipmentAndProductionProperties(string yaml)
     {
-        using var fixture = new TemporaryEquipmentMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
 
         Assert.Throws<YamlFormatException>(() => EquipmentProductionRuleCatalog.Load(CreatePlan(fixture.Root)));
     }
@@ -250,21 +251,4 @@ public sealed class EquipmentProductionRuleCatalogTests
             new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
-    private sealed class TemporaryEquipmentMod : IDisposable
-    {
-        public TemporaryEquipmentMod(params (string Name, string Yaml)[] rulesets)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-equipment-test-{Guid.NewGuid():N}");
-            var mod = Path.Combine(Root, "fixture");
-            var rulesetDirectory = Path.Combine(mod, "Ruleset");
-            Directory.CreateDirectory(rulesetDirectory);
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 1000\n");
-            foreach (var ruleset in rulesets)
-                File.WriteAllText(Path.Combine(rulesetDirectory, ruleset.Name), ruleset.Yaml);
-        }
-
-        public string Root { get; }
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

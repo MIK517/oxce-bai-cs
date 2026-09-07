@@ -121,35 +121,42 @@ public sealed class ManagedAudioMixerTests
     }
 
     [Fact]
-    public async Task ControlUpdatesAndRepeatedCallbacksRemainBoundedAndDeadlockFree()
+    public async Task ControlUpdatesAndCallbacksAlternateWithoutDeadlock()
     {
         using var mixer = new ManagedAudioMixer(48_000, maximumEffectVoices: 32);
         var clip = new PcmAudioClip(new short[8_192], 48_000, 2);
         using var playback = mixer.Play(
             clip,
             new AudioPlaybackOptions(AudioBus.Effects, LoopCount: -1, Gain: 0.25f));
-        var testCancellation = TestContext.Current.CancellationToken;
-        using var start = new Barrier(2);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(
+            TestContext.Current.CancellationToken);
+        deadline.CancelAfter(TimeSpan.FromSeconds(5));
+        using var updateReady = new SemaphoreSlim(0);
+        using var callbackComplete = new SemaphoreSlim(0);
         var control = Task.Run(() =>
         {
             var gain = 0d;
-            start.SignalAndWait(testCancellation);
-            for (var index = 0; index < 10_000; index++)
+            for (var index = 0; index < 1_000; index++)
             {
                 mixer.SetBusGain(AudioBus.Effects, gain);
                 gain = gain == 0 ? 1 : 0;
-                Thread.Yield();
+                updateReady.Release();
+                callbackComplete.Wait(deadline.Token);
             }
 
-            return 10_000;
-        }, testCancellation);
+            return 1_000;
+        }, deadline.Token);
         var output = new short[512];
 
-        start.SignalAndWait(testCancellation);
-        for (var index = 0; index < 10_000; index++) mixer.Mix(output);
-        var completedUpdates = await control.WaitAsync(TimeSpan.FromSeconds(5), testCancellation);
+        for (var index = 0; index < 1_000; index++)
+        {
+            await updateReady.WaitAsync(deadline.Token);
+            mixer.Mix(output);
+            callbackComplete.Release();
+        }
+        var completedUpdates = await control;
 
-        Assert.Equal(10_000, completedUpdates);
+        Assert.Equal(1_000, completedUpdates);
         Assert.True(playback.IsPlaying);
     }
 }

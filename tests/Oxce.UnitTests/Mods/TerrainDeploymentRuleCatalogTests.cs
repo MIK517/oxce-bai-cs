@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -74,7 +75,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
                 mapBlocks: [{name: EXTRA}]
                 civilianTypes: !remove [FEMALE_CIVILIAN]
             """;
-        using var fixture = new TemporaryTerrainMod(("20-base.rul", baseYaml), ("10-patch.rul", patchYaml));
+        using var fixture = new TemporaryModFixture(("20-base.rul", baseYaml), ("10-patch.rul", patchYaml));
         var diagnostics = new DiagnosticCollector();
 
         var catalog = TerrainDeploymentRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -107,7 +108,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
     [InlineData("MCDPatches: [{type: PATCH, data: [{}]}]")]
     public void RejectsMalformedTerrainProperties(string yaml)
     {
-        using var fixture = new TemporaryTerrainMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         Assert.Throws<YamlFormatException>(() => TerrainDeploymentRuleCatalog.Load(CreatePlan(fixture.Root)));
     }
 
@@ -135,7 +136,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
                 race: MISSING_RACE
                 startingCondition: MISSING_START
             """;
-        using var fixture = new TemporaryTerrainMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var plan = CreatePlan(fixture.Root);
         var catalog = TerrainDeploymentRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
@@ -162,18 +163,4 @@ public sealed class TerrainDeploymentRuleCatalogTests
             new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
-    private sealed class TemporaryTerrainMod : IDisposable
-    {
-        public TemporaryTerrainMod(params (string Name, string Yaml)[] rulesets)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-terrain-test-{Guid.NewGuid():N}");
-            var mod = Path.Combine(Root, "fixture"); var rules = Path.Combine(mod, "Ruleset");
-            Directory.CreateDirectory(rules);
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 1000\n");
-            foreach (var item in rulesets) File.WriteAllText(Path.Combine(rules, item.Name), item.Yaml);
-        }
-        public string Root { get; }
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

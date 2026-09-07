@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -131,7 +132,7 @@ public sealed class PersonnelTacticalRuleCatalogTests
                 requires: [RES]
                 units: [SOLDIER]
             """;
-        using var fixture = new TemporaryPersonnelMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
         var plan = CreatePlan(fixture.Root);
 
@@ -218,7 +219,7 @@ public sealed class PersonnelTacticalRuleCatalogTests
               - type: MEDAL
                 soldierBonusTypes: [MISSING_BONUS]
             """;
-        using var fixture = new TemporaryPersonnelMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var plan = CreatePlan(fixture.Root);
         var content = PersonnelTacticalRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
@@ -243,7 +244,7 @@ public sealed class PersonnelTacticalRuleCatalogTests
     [InlineData("commendations: [{type: MEDAL, killCriteria: {kills: 1}}]")]
     public void RejectsMalformedPersonnelProperties(string yaml)
     {
-        using var fixture = new TemporaryPersonnelMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
 
         Assert.Throws<YamlFormatException>(() => PersonnelTacticalRuleCatalog.Load(CreatePlan(fixture.Root)));
     }
@@ -256,21 +257,4 @@ public sealed class PersonnelTacticalRuleCatalogTests
             new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
-    private sealed class TemporaryPersonnelMod : IDisposable
-    {
-        public TemporaryPersonnelMod(params (string Name, string Yaml)[] rulesets)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-personnel-test-{Guid.NewGuid():N}");
-            var mod = Path.Combine(Root, "fixture");
-            var rulesetDirectory = Path.Combine(mod, "Ruleset");
-            Directory.CreateDirectory(rulesetDirectory);
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 1000\n");
-            foreach (var ruleset in rulesets)
-                File.WriteAllText(Path.Combine(rulesetDirectory, ruleset.Name), ruleset.Yaml);
-        }
-
-        public string Root { get; }
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }
