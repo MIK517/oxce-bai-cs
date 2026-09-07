@@ -13,7 +13,7 @@ public sealed class CampaignFoundationFixtureTests
     [Fact]
     public void NewCampaignAndStartingBaseMatchPinnedReferenceScenario()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             root, "fixtures", "expected", "savegames", "campaign-foundation.expected.json")));
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
@@ -58,13 +58,6 @@ public sealed class CampaignFoundationFixtureTests
         Assert.Equal(expectedRoot.GetProperty("events")[1].GetString(), Assert.Single(advanced.Events).GetType().Name);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private sealed class FixedClock : ICampaignClock
     {

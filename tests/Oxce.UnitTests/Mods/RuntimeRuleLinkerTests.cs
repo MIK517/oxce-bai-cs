@@ -141,7 +141,7 @@ public sealed class RuntimeRuleLinkerTests
 
     private static ModLoadPlan CreateFixturePlan()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         return CreatePlan(
             Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking"),
             "runtime-master",
@@ -162,13 +162,6 @@ public sealed class RuntimeRuleLinkerTests
         Environment.NewLine,
         snapshot.Diagnostics.Select(static diagnostic => diagnostic.Message));
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private sealed class TemporaryMod : IDisposable
     {

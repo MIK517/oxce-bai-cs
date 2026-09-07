@@ -15,7 +15,7 @@ public sealed class PersonnelTacticalRulesFixtureTests
     [Fact]
     public void PersonnelTacticalRulesMatchPinnedReferenceFixture()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "personnel-tactical-rules");
         var expectedPath = Path.Combine(
             root, "fixtures", "expected", "mods", "personnel-tactical-rules.expected.json");
@@ -90,11 +90,4 @@ public sealed class PersonnelTacticalRulesFixtureTests
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

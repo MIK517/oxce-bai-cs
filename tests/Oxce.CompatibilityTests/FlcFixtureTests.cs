@@ -11,7 +11,7 @@ public sealed class FlcFixtureTests
     [Fact]
     public void IndexedFramesMatchCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifest = FixtureManifestLoader.Load(Path.Combine(root, "fixtures", "manifests", "flc-indexed.json"));
         FixtureManifestVerifier.VerifyFiles(manifest, root);
         var encoded = string.Concat(File.ReadAllText(Path.GetFullPath(manifest.Inputs[0].Path, root))
@@ -33,16 +33,6 @@ public sealed class FlcFixtureTests
         Assert.Equal(377, summary.BytesRead);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private sealed class CaptureSink : IFlcFrameSink
     {

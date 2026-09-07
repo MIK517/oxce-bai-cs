@@ -15,7 +15,7 @@ public sealed class Phase3ContentCorpusTests
     [Fact]
     public void EveryPublicModFixtureLoadsThroughAggregateCatalogAndProducesManifest()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixtures = Path.Combine(root, "fixtures", "public", "mods");
         var loaded = 0;
 
@@ -32,7 +32,7 @@ public sealed class Phase3ContentCorpusTests
     [Fact]
     public void AvailablePrivateModCorpusLoadsThroughAggregateCatalogAndProducesManifest()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var mods = Path.Combine(root, "fixtures", "private", "mods");
         Assert.SkipUnless(Directory.Exists(mods), "Private mod corpus is not available in this checkout.");
         var resourceRoot = Directory.GetParent(mods)?.FullName
@@ -121,14 +121,4 @@ public sealed class Phase3ContentCorpusTests
         return masters.Length;
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

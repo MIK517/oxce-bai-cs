@@ -418,7 +418,7 @@ public sealed class InstallationContentLoaderTests
             Directory.CreateDirectory(standard);
             Directory.CreateDirectory(Path.Combine(Root, "user", "mods"));
             CopyDirectory(
-                Path.Combine(FindRepositoryRoot(), "fixtures", "public", "mods", fixtureName),
+                Path.Combine(Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(), "fixtures", "public", "mods", fixtureName),
                 standard);
         }
 
@@ -452,12 +452,5 @@ public sealed class InstallationContentLoaderTests
             }
         }
 
-        private static string FindRepositoryRoot()
-        {
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-                directory = directory.Parent;
-            return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate repository root.");
-        }
     }
 }

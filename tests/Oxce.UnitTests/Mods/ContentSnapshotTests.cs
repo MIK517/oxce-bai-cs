@@ -119,7 +119,7 @@ public sealed class ContentSnapshotTests
     [Fact]
     public void MultiModScopesPreserveFileVisibilityAndAuditOwnershipIsExplicit()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "content-ownership");
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
@@ -237,16 +237,6 @@ public sealed class ContentSnapshotTests
         return (snapshot.Content, compatibility, documents, composed);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private static ModLoadPlan CreatePlan(string root)
     {

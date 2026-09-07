@@ -10,7 +10,7 @@ public sealed class PrivateCatSoundCorpusTests
     [Fact]
     public void OwnedUfoAndTftdCatSoundsDecodeWithinBounds()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var ufoSound = Path.Combine(root, "data", "UFO", "SOUND");
         var tftdSound = Path.Combine(root, "data", "TFTD", "SOUND");
         Assert.SkipUnless(
@@ -58,14 +58,4 @@ public sealed class PrivateCatSoundCorpusTests
         return entry.Length - 1 - entry[0];
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

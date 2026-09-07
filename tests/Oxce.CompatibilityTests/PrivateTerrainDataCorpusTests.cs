@@ -9,7 +9,7 @@ public sealed class PrivateTerrainDataCorpusTests
     [Fact]
     public void OwnedGameAndModMcdAndLoftempsFilesParseWithinBounds()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var privateMods = Path.Combine(root, "fixtures", "private", "mods");
         var data = Path.Combine(root, "data");
         Assert.SkipUnless(
@@ -41,14 +41,4 @@ public sealed class PrivateTerrainDataCorpusTests
         }
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

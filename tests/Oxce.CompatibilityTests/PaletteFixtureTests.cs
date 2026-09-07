@@ -12,7 +12,7 @@ public sealed class PaletteFixtureTests
     [Fact]
     public void OriginalPaletteRulesMatchCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "xcom-palettes.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -55,14 +55,4 @@ public sealed class PaletteFixtureTests
             color.Alpha,
         }).ToArray();
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }
