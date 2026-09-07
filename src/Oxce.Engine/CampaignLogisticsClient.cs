@@ -95,6 +95,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             {
                 _baseIndex = (_baseIndex + 1) % overview.Bases.Count;
                 _screen = null;
+                _chooseDestination = false;
             }
             else if (_chooseDestination)
             {

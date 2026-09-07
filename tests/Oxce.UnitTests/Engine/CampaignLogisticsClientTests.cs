@@ -91,4 +91,22 @@ public sealed class CampaignLogisticsClientTests
         Assert.False(screen.Confirm());
         Assert.False(screen.RequestConfirmation());
     }
+
+    [Fact]
+    public void ChangingBaseWhileChoosingTransferDestinationCancelsTheTransferScreen()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "UI", "logistics", ["logistics"],
+            CampaignDifficulty.Beginner), new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var client = new CampaignLogisticsClient(new(campaign, campaign));
+
+        Key('t');
+        Key(9);
+        Key(13);
+
+        Assert.Null(client.Screen);
+
+        void Key(uint code) => client.HandleInput(GameInputEvent.Key(
+            GameInputEventKind.KeyPressed, 0, 0, 0, code, InputKeyModifiers.None));
+    }
 }
