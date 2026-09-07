@@ -4,7 +4,11 @@ using Oxce.Formats.Yaml;
 namespace Oxce.Mods.Rulesets.Runtime;
 
 public sealed record RuntimeCraftTemplateWeapon(string RuleId, int Ammo, bool Rearming, bool Disabled);
-public sealed record RuntimeCraftTemplateVehicle(string RuleId, int Ammo);
+public sealed record RuntimeCraftTemplateVehicle(string RuleId, int Ammo)
+{
+    public int? Size { get; init; }
+    public int? SpaceOccupied { get; init; }
+}
 public sealed record RuntimeCraftTemplate(string Name, int Fuel, int Damage, string Status, int ExcessFuel, bool LowFuel,
     IReadOnlyList<RuntimeCraftTemplateWeapon?> Weapons, IReadOnlyDictionary<string, int> Items,
     IReadOnlyList<RuntimeCraftTemplateVehicle> Vehicles);
@@ -23,7 +27,11 @@ internal static class RuntimeCraftTemplateLoader
             Array.AsReadOnly(Maps("weapons").Select(w => String(w, "type", "0") == "0" ? null :
                 new RuntimeCraftTemplateWeapon(String(w, "type", ""), Integer(w, "ammo"), Boolean(w, "rearming"), Boolean(w, "disabled"))).ToArray()),
             new ReadOnlyDictionary<string, int>(items), Array.AsReadOnly(Maps("vehicles").Select(v =>
-                new RuntimeCraftTemplateVehicle(String(v, "type", ""), Integer(v, "ammo"))).ToArray()));
+                new RuntimeCraftTemplateVehicle(String(v, "type", ""), Integer(v, "ammo"))
+                {
+                    Size = v.TryGet("size", out _) ? Integer(v, "size") : null,
+                    SpaceOccupied = v.TryGet("spaceOccupied", out _) ? Integer(v, "spaceOccupied") : null,
+                }).ToArray()));
 
         IEnumerable<YamlMappingNode> Maps(string key) => map.TryGet(key, out var value) && value is YamlSequenceNode sequence
             ? sequence.Items.Select(v => v as YamlMappingNode ?? throw new InvalidDataException($"Starting craft {key} requires mappings.")) : [];

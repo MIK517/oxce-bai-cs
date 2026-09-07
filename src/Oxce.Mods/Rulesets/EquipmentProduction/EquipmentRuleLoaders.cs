@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Presentation;
+using Oxce.Mods.Rulesets.PersonnelTactical;
 
 namespace Oxce.Mods.Rulesets.EquipmentProduction;
 
@@ -111,7 +112,8 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
             builder.RequiredPilotBonuses = EquipmentYaml.StringList(pilotBonuses!);
         reader.Defer("battlescapeTerrainData", "inline craft terrain loading belongs to the terrain slice");
         reader.Defer("deployment", "craft deployment loading belongs to the deployment slice");
-        reader.Defer("pilotMinStatsRequired", "pilot stat linking belongs to the personnel slice");
+        if (reader.TryGet("pilotMinStatsRequired", out var pilotStats))
+            PersonnelTacticalYaml.ApplyStats(builder.PilotMinimumStats, pilotStats!, nonZeroMerge: false);
         reader.DeferRemaining("dynamic craft script values require Phase 4 registration");
     }
     protected override CraftRule Freeze(CraftBuilder builder) => new(
@@ -134,7 +136,7 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
         Array.AsReadOnly(builder.WeaponTypes.Select(row => (IReadOnlyList<int>)row.AsReadOnly()).ToArray()),
         Array.AsReadOnly((string[])builder.WeaponStrings.Clone()),
         Array.AsReadOnly((string[])builder.FixedWeapons.Clone()),
-        builder.RequiredPilotBonuses.AsReadOnly());
+        builder.RequiredPilotBonuses.AsReadOnly()) { PilotMinimumStats = PersonnelTacticalYaml.FreezeStats(builder.PilotMinimumStats).Values };
 
     private static void ApplyWeaponTypes(CraftBuilder builder, RulePropertyReader reader)
     {

@@ -39,18 +39,7 @@ public sealed partial class CampaignState
     {
         var rules = _content.RuntimeRules;
         var items = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
-        {
-            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-            Add(rule.Launcher, 1);
-            if (rule.Clip.Length != 0)
-            {
-                var clip = rules.Items[rules.Items.GetRequired(rule.Clip)].Value;
-                var divisor = clip.ClipSize > 0 ? clip.ClipSize : rule.RearmRate;
-                if (divisor <= 0) throw new InvalidDataException("Craft weapon clip divisor must be positive.");
-                Add(rule.Clip, checked((int)Math.Floor((double)weapon.Ammo / divisor)));
-            }
-        }
+        foreach (var pair in CraftLogistics.UnloadedWeaponItems(state, rules)) Add(pair.Key, pair.Value);
         foreach (var pair in state.Items) Add(pair.Key, pair.Value);
         foreach (var vehicle in state.Vehicles)
         {

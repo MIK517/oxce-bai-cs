@@ -4,6 +4,8 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Campaigns;
 
+public sealed record SoldierCommendation(string RuleId, string Noun, int DecorationLevel);
+
 public sealed record SoldierPersonalState(
     string Name, string Callsign, int Nationality, int Gender, int Look, int LookVariant,
     string Armor, IReadOnlyDictionary<string, short> InitialStats, IReadOnlyDictionary<string, short> CurrentStats)
@@ -30,6 +32,7 @@ public sealed record SoldierPersonalState(
     public float Recovery { get; init; }
     public IReadOnlyDictionary<string, int> PreviousTransformations { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> TransformationBonuses { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+    public IReadOnlyList<SoldierCommendation> Commendations { get; init; } = [];
 }
 
 /// <summary>Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.</summary>

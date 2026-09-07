@@ -10,6 +10,8 @@ public sealed partial class CampaignState
         if (state is null) return null;
         if (!float.IsFinite(state.Recovery)) throw new InvalidDataException("Soldier recovery must be finite.");
         if (state.Armor.Length != 0) rules.Armors.GetRequired(state.Armor);
+        if (state.Commendations.Count > MaximumLogisticsLines || state.Commendations.Any(c => c.DecorationLevel < 0))
+            throw new InvalidDataException("Soldier commendations exceed the supported range.");
         if (state.PreviousTransformations.Count > MaximumLogisticsLines || state.TransformationBonuses.Count > MaximumLogisticsLines)
             throw new InvalidDataException("Soldier transformation history exceeds the entry limit.");
         return state with
@@ -18,6 +20,7 @@ public sealed partial class CampaignState
             CurrentStats = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>(state.CurrentStats, StringComparer.Ordinal)),
             PreviousTransformations = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.PreviousTransformations, StringComparer.Ordinal)),
             TransformationBonuses = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.TransformationBonuses, StringComparer.Ordinal)),
+            Commendations = Array.AsReadOnly(state.Commendations.ToArray()),
         };
     }
 
@@ -32,7 +35,12 @@ public sealed partial class CampaignState
             rules.CraftWeapons.GetRequired(weapon.RuleId);
             if (weapon.Ammo < 0) throw new InvalidDataException("Craft weapon ammunition cannot be negative.");
         }
-        foreach (var vehicle in state.Vehicles) rules.Items.GetRequired(vehicle.RuleId);
+        foreach (var vehicle in state.Vehicles)
+        {
+            rules.Items.GetRequired(vehicle.RuleId);
+            if (vehicle.Size is <= 0 || vehicle.SpaceOccupied is < 0)
+                throw new InvalidDataException("Vehicle dimensions exceed their supported range.");
+        }
         foreach (var pair in state.Items)
         {
             rules.Items.GetRequired(pair.Key);
