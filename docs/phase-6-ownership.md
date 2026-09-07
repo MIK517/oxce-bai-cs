@@ -71,8 +71,7 @@ Source: `Engine/Options.cpp`, `PurchaseState::increaseByValue`,
 
 Runtime name-pool projections retain content hashes. Cache restoration checks referenced
 pool bytes, including custom file extensions; the custom-extension mutation regression
-passes. Further action/provider coverage, overfull-sale cleanup and final cached/fresh
-corpus closure remain outstanding.
+passes. Further action/provider coverage and final cached/fresh corpus closure remain outstanding.
 
 ## Logistics interface integration
 
@@ -154,5 +153,24 @@ The public Veteran logistics fixture checks launcher/clip refunds, interceptor-f
 assignment, transport capacity, awards and repeated save rewriting. Unit tests check
 bonus deduplication/count semantics and short overflow before clamping. The 612-test
 solution checkpoint passes, including private saves; final branch acceptance remains open.
+
+## Critical storage sales
+
+With storage enforcement enabled, critical overflow exposes incoming items and craft
+cargo/equipment as sale stock. Sales consume base stock, stationed craft cargo/equipment,
+then transfers in their existing order. Removing a launcher or loaded clip removes the
+whole mounted component and returns unsold parts to base stores. Partial transfer removal
+retains identity and hours; exhausted item transfers disappear. Sales must resolve storage
+overflow before confirmation can complete. The planned inventory changes are checked on
+an isolated state copy before publishing, including refund overflow and capacity checks.
+
+References: `Base::getUsedStores/storesOverfullCritical`, `Craft::getTotalItemCount`,
+and `SellState` catalog construction and `btnOkClick` cleanup lambdas. Public compatibility
+scenarios cover stationed and incoming craft, clip refunds, partial transfer reduction,
+save/reload and exactly-once arrival. Normal-sale regressions pass in the unit suite.
+One explicit readiness boundary remains: removing mounted weapons with nonzero bonus
+stats is blocked. The reference cleanup retains the craft's cached stats until reload;
+branch 1 must not replace this with an immediate derived-stat recalculation. No stock,
+funds or transfer changes are committed when that boundary is reached.
 
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).
