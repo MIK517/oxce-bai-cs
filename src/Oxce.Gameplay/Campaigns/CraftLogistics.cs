@@ -31,11 +31,7 @@ public static class CraftLogistics
         {
             var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
             Add(rule.Launcher, 1);
-            if (rule.Clip.Length == 0) continue;
-            var clip = rules.Items[rules.Items.GetRequired(rule.Clip)].Value;
-            var divisor = clip.ClipSize > 0 ? clip.ClipSize : rule.RearmRate;
-            if (divisor <= 0) throw new InvalidDataException("Craft weapon clip divisor must be positive.");
-            Add(rule.Clip, checked((int)Math.Floor((double)weapon.Ammo / divisor)));
+            Add(rule.Clip, WeaponClipCount(weapon, rules));
         }
         return new ReadOnlyDictionary<string, int>(items);
 
@@ -43,6 +39,68 @@ public static class CraftLogistics
         {
             if (count > 0 && id.Length != 0) items[id] = checked(items.GetValueOrDefault(id) + count);
         }
+    }
+
+    public static IReadOnlyDictionary<string, int> UnloadedItems(CraftLogisticsState state, RuntimeRuleCatalog rules)
+    {
+        var items = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var pair in UnloadedWeaponItems(state, rules)) Add(pair.Key, pair.Value);
+        foreach (var pair in state.Items) Add(pair.Key, pair.Value);
+        foreach (var vehicle in state.Vehicles)
+        {
+            Add(vehicle.RuleId, 1);
+            var ammunition = VehicleAmmunition(vehicle, rules);
+            Add(ammunition.Id, ammunition.Count);
+        }
+        return new ReadOnlyDictionary<string, int>(items);
+
+        void Add(string id, int count)
+        {
+            if (count > 0 && id.Length != 0) items[id] = checked(items.GetValueOrDefault(id) + count);
+        }
+    }
+
+    public static double StoredSize(CraftLogisticsState state, RuntimeRuleCatalog rules)
+    {
+        var size = state.Items.Sum(pair => rules.Items[rules.Items.GetRequired(pair.Key)].Value.Size * pair.Value);
+        foreach (var vehicle in state.Vehicles)
+        {
+            size += rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value.Size;
+            var ammunition = VehicleAmmunition(vehicle, rules);
+            if (ammunition.Id.Length != 0)
+                size += rules.Items[rules.Items.GetRequired(ammunition.Id)].Value.Size * ammunition.Count;
+        }
+        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
+        {
+            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            size += rules.Items[rules.Items.GetRequired(rule.Launcher)].Value.Size;
+            if (rule.Clip.Length != 0)
+                size += rules.Items[rules.Items.GetRequired(rule.Clip)].Value.Size * WeaponClipCount(weapon, rules);
+        }
+        return size;
+    }
+
+    internal static int WeaponClipCount(CraftWeaponSnapshot weapon, RuntimeRuleCatalog rules)
+    {
+        var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+        if (rule.Clip.Length == 0) return 0;
+        var clip = rules.Items[rules.Items.GetRequired(rule.Clip)].Value;
+        var divisor = clip.ClipSize > 0 ? clip.ClipSize : rule.RearmRate;
+        if (divisor <= 0) throw new InvalidDataException("Craft weapon clip divisor must be positive.");
+        return checked((int)Math.Floor((double)weapon.Ammo / divisor));
+    }
+
+    internal static (string Id, int Count) VehicleAmmunition(CraftVehicleSnapshot vehicle, RuntimeRuleCatalog rules)
+    {
+        var rule = rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value;
+        if (rule.VehicleFixedAmmoSlot < 0) return ("", 0);
+        if (rule.VehicleFixedAmmoSlot >= rule.CompatibleAmmo.Count)
+            throw new InvalidDataException("Vehicle ammunition slot is outside the reference range.");
+        var ammunition = rule.CompatibleAmmo[rule.VehicleFixedAmmoSlot];
+        if (ammunition.Count == 0) return ("", 0);
+        var ammo = rules.Items[ammunition[0]].Value;
+        return (rules.Items.GetExternalId(ammunition[0]),
+            rule.ClipSize > 0 && ammo.ClipSize > 0 ? rule.ClipSize / ammo.ClipSize : ammo.ClipSize);
     }
 
     public static bool HasNegativeCapacity(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules)

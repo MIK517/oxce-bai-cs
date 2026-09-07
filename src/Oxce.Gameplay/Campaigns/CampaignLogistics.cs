@@ -161,7 +161,7 @@ public sealed partial class CampaignState
                 hangars[type] = hangars.GetValueOrDefault(type) + selection.Quantity;
                 if (quote.Operation == LogisticsOperation.Transfer)
                 {
-                    storageAdded += CraftStorage(FindCraft(origin, row).Logistics!);
+                    storageAdded += CraftLogistics.StoredSize(FindCraft(origin, row).Logistics!, _content.RuntimeRules);
                     peopleAdded += Crew(origin, row.RuleId, row.EntityId).Count();
                 }
             }
@@ -424,10 +424,10 @@ public sealed partial class CampaignState
     private int AvailableQuarters(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Personnel);
     private static int UsedQuarters(BaseState state) => checked(state.Soldiers.Count + state.Scientists + state.Engineers + state.Transfers.Where(t => !t.Delivered && t.Kind is CampaignTransferKind.Soldier or CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => t.Quantity));
     private double UsedStores(BaseState state) => state.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value) +
-        state.Crafts.Sum(c => c.Logistics is { } logistics ? CraftStorage(logistics) : 0) +
+        state.Crafts.Sum(c => c.Logistics is { } logistics ? CraftLogistics.StoredSize(logistics, _content.RuntimeRules) : 0) +
         state.Transfers.Where(t => !t.Delivered).Sum(t => t.Kind == CampaignTransferKind.Item
             ? _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(t.RuleId)].Value.Size * t.Quantity
-            : t.Craft?.Logistics is { } craft ? CraftStorage(craft) : 0);
+            : t.Craft?.Logistics is { } craft ? CraftLogistics.StoredSize(craft, _content.RuntimeRules) : 0);
     private int AvailableContainment(BaseState state, int prisonType) => state.Facilities.Where(f => f.BuildTime == 0).Select(f => _content.RuntimeRules.Facilities[f.Rule].Value).Where(f => f.PrisonType == prisonType).Sum(f => f.Aliens);
     private int UsedContainment(BaseState state, int prisonType) => state.Items.Where(p => _content.RuntimeRules.Items[p.Key].Value is { IsAlien: true } rule && rule.PrisonType == prisonType).Sum(p => p.Value) +
         state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item && _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(t.RuleId)].Value is { IsAlien: true } rule && rule.PrisonType == prisonType).Sum(t => t.Quantity);

@@ -20,11 +20,11 @@ public sealed partial class CampaignState
             foreach (var weapon in craft.Weapons.OfType<CraftWeaponSnapshot>())
             {
                 var rule = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-                count = checked(count + (rule.Launcher == id ? 1 : rule.Clip == id ? WeaponClips(weapon) : 0));
+                count = checked(count + (rule.Launcher == id ? 1 : rule.Clip == id ? CraftLogistics.WeaponClipCount(weapon, _content.RuntimeRules) : 0));
             }
             foreach (var vehicle in craft.Vehicles)
             {
-                var ammo = VehicleClips(vehicle);
+                var ammo = CraftLogistics.VehicleAmmunition(vehicle, _content.RuntimeRules);
                 count = checked(count + (vehicle.RuleId == id ? 1 : ammo.Id == id ? ammo.Count : 0));
             }
             return count;
@@ -55,7 +55,7 @@ public sealed partial class CampaignState
                 }
                 if (row.Kind == CampaignTransferKind.Craft)
                 {
-                    foreach (var pair in UnloadedCraftItems(FindCraft(planned, row).Logistics!)) Store(planned, pair.Key, pair.Value);
+                    foreach (var pair in CraftLogistics.UnloadedItems(FindCraft(planned, row).Logistics!, _content.RuntimeRules)) Store(planned, pair.Key, pair.Value);
                     for (var i = 0; i < planned.Soldiers.Count; i++)
                         if (planned.Soldiers[i].Personal is { } p && p.CraftType == row.RuleId && p.CraftId == row.EntityId)
                             planned.Soldiers[i] = planned.Soldiers[i] with { Personal = p with { CraftType = "", CraftId = 0 } };
@@ -118,7 +118,7 @@ public sealed partial class CampaignState
                 if (weapons[slot] is not { } weapon) continue;
                 var rule = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
                 var launcher = Take(rule.Launcher, 1);
-                var clips = Take(rule.Clip, WeaponClips(weapon));
+                var clips = Take(rule.Clip, CraftLogistics.WeaponClipCount(weapon, _content.RuntimeRules));
                 if (!launcher.Changed && !clips.Changed) continue;
                 // SellState deletes these weapons without refreshing the craft's cached stats.
                 // Readiness owns that mutable cache; do not silently substitute recalculated stats.
@@ -131,7 +131,7 @@ public sealed partial class CampaignState
             var vehicles = new List<CraftVehicleSnapshot>();
             foreach (var vehicle in craft.Vehicles)
             {
-                var ammunition = VehicleClips(vehicle);
+                var ammunition = CraftLogistics.VehicleAmmunition(vehicle, _content.RuntimeRules);
                 var launcher = Take(vehicle.RuleId, 1);
                 var clips = Take(ammunition.Id, ammunition.Count);
                 if (!launcher.Changed && !clips.Changed) { vehicles.Add(vehicle); continue; }
@@ -155,28 +155,6 @@ public sealed partial class CampaignState
         if (id.Length == 0 || count <= 0) return;
         var handle = _content.RuntimeRules.Items.GetRequired(id);
         state.Items[handle] = checked(state.Items.GetValueOrDefault(handle) + count);
-    }
-
-    private int WeaponClips(CraftWeaponSnapshot weapon)
-    {
-        var rule = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-        if (rule.Clip.Length == 0) return 0;
-        var clip = _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(rule.Clip)].Value;
-        var divisor = clip.ClipSize > 0 ? clip.ClipSize : rule.RearmRate;
-        if (divisor <= 0) throw new InvalidDataException("Craft weapon clip divisor must be positive.");
-        return checked((int)Math.Floor((double)weapon.Ammo / divisor));
-    }
-
-    private (string Id, int Count) VehicleClips(CraftVehicleSnapshot vehicle)
-    {
-        var rules = _content.RuntimeRules;
-        var rule = rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value;
-        if (rule.VehicleFixedAmmoSlot < 0) return ("", 0);
-        if (rule.VehicleFixedAmmoSlot >= rule.CompatibleAmmo.Count) throw new InvalidDataException("Vehicle ammunition slot is outside the reference range.");
-        var ammunition = rule.CompatibleAmmo[rule.VehicleFixedAmmoSlot];
-        if (ammunition.Count == 0) return ("", 0);
-        var ammo = rules.Items[ammunition[0]].Value;
-        return (rules.Items.GetExternalId(ammunition[0]), rule.ClipSize > 0 && ammo.ClipSize > 0 ? rule.ClipSize / ammo.ClipSize : ammo.ClipSize);
     }
 
     private sealed class SaleCapabilityException(string message) : Exception(message);
