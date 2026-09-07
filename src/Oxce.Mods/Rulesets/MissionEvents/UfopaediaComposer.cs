@@ -7,10 +7,16 @@ namespace Oxce.Mods.Rulesets.MissionEvents;
 
 internal static class UfopaediaComposer
 {
-    public static IReadOnlyDictionary<string, UfopaediaArticleRule> Compose(ModLoadPlan plan, RulesetCompositionOptions options)
-        => Compose(RulesetDocumentCatalog.Parse(plan, options), options);
+    public static IReadOnlyDictionary<string, UfopaediaArticleRule> Compose(
+        ModLoadPlan plan,
+        RulesetCompositionOptions options,
+        IDiagnosticSink? diagnostics = null)
+        => Compose(RulesetDocumentCatalog.Parse(plan, options), options, diagnostics ?? NullDiagnosticSink.Instance);
 
-    public static IReadOnlyDictionary<string, UfopaediaArticleRule> Compose(RulesetDocumentCatalog documents, RulesetCompositionOptions options)
+    public static IReadOnlyDictionary<string, UfopaediaArticleRule> Compose(
+        RulesetDocumentCatalog documents,
+        RulesetCompositionOptions options,
+        IDiagnosticSink diagnostics)
     {
         var articles = new Dictionary<string, ArticleBuilder>(StringComparer.Ordinal); var listOrder = 0; var operations = 0;
         foreach (var document in documents.Documents)
@@ -24,14 +30,24 @@ internal static class UfopaediaComposer
                 if (item is not YamlMappingNode map) throw Error(item.Span, "Ufopaedia entries must be mappings.");
                 if (map.TryGet("delete", out var deleted)) { articles.Remove(YamlValueReader.ReadString(deleted!)); continue; }
                 if (!map.TryGet("id", out var idNode)) throw Error(item.Span, "Ufopaedia entry requires id or delete.");
-                var id = YamlValueReader.ReadString(idNode!); listOrder = checked(listOrder + 100);
+                var id = YamlValueReader.ReadString(idNode!);
                 if (!articles.TryGetValue(id, out var article))
                 {
-                    if (!map.TryGet("type_id", out var typeNode)) throw Error(item.Span, $"Ufopaedia article '{id}' is missing type_id.");
+                    if (!map.TryGet("type_id", out var typeNode))
+                    {
+                        diagnostics.Report(new DiagnosticEvent(
+                            ModDiagnosticCodes.SkippedUfopaediaArticle,
+                            DiagnosticSeverity.Warning,
+                            $"Ufopaedia article '{id}' has no type_id and was ignored.",
+                            item.Span,
+                            new(document.File.Provenance.LayerId, document.Mod.Metadata.Id, "ufopaedia", id)));
+                        continue;
+                    }
                     var type = YamlValueReader.ReadInt32(typeNode!);
                     if (type is < 1 or > 19) throw Error(typeNode!.Span, $"Unsupported ufopaedia type_id {type}.");
                     articles[id] = article = new(id, type);
                 }
+                listOrder = checked(listOrder + 100);
                 Apply(article, map, listOrder);
                 article.Source = new(document.File.Provenance.LayerId, document.Mod.Metadata.Id,
                     document.File.SourcePath, item.Span);

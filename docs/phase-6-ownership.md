@@ -179,7 +179,7 @@ funds or transfer changes are committed when that boundary is reached.
 
 Fresh/cache action and eligibility checks pass for all three staged content families.
 Three of 19 private saves can purchase and reload; eight active battles and eight active
-research/production states are explicitly blocked. The full solution has 626 passing
+research/production states are explicitly blocked. The full solution has 627 passing
 tests and no skips. Generation preflight now rejects overflowing name/look weights and
 possible empty callsign outcomes before consuming RNG while allowing gender-specific
 pools that cannot reach the missing gender. Restored logistics aggregates are bounded

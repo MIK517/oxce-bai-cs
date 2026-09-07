@@ -113,11 +113,34 @@ public sealed class MissionEventRuleCatalogTests
     [InlineData("ufoTrajectories: [{id: T, waypoints: [[1, 2]]}]")]
     [InlineData("missionScripts: [{type: S, maxRuns: 1}]")]
     [InlineData("events: [{name: E, spawnedSoldier: NAME}]")]
-    [InlineData("ufopaedia: [{id: A}]")]
     [InlineData("ufopaedia: [{id: A, type_id: 99}]")]
     [InlineData("ufopaedia: [{id: A, type_id: 8, pages: PAGE}]")]
     public void RejectsMalformedMissionEventProperties(string yaml)
     { using var fixture = new TemporaryMissionMod(("fixture.rul", yaml)); Assert.Throws<YamlFormatException>(() => MissionEventRuleCatalog.Load(CreatePlan(fixture.Root))); }
+
+    [Fact]
+    public void SkipsNewUfopaediaArticleWithoutTypeAndContinuesLoading()
+    {
+        const string yaml = """
+            ufopaedia:
+              - id: MISSING_TYPE
+                text: IGNORED
+              - id: VALID
+                type_id: 8
+                text: LOADED
+            """;
+        using var fixture = new TemporaryMissionMod(("fixture.rul", yaml));
+        var diagnostics = new DiagnosticCollector();
+
+        var catalog = MissionEventRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+
+        var article = Assert.Single(catalog.Ufopaedia);
+        Assert.Equal("VALID", article.Key);
+        Assert.Equal(100, article.Value.ListOrder);
+        var diagnostic = Assert.Single(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.SkippedUfopaediaArticle);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Equal("MISSING_TYPE", diagnostic.Context.RuleId);
+    }
 
     [Fact]
     public void ReportsMissingRuntimeStrategicReferencesAsWarnings()

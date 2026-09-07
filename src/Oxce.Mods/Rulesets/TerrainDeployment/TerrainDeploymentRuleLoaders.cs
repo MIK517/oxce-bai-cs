@@ -84,6 +84,8 @@ internal sealed class AlienRaceRuleLoader : TypedRuleFamilyLoader<AlienRaceBuild
             if (random is not YamlSequenceNode rows) throw new YamlFormatException("membersRandom must be a sequence.", random!.Span);
             builder.RandomMembers = rows.Items.Select(row => TerrainDeploymentYaml.Strings(row, "membersRandom")).ToList();
         }
+        // The reference engine removed this boolean in 2017 and ignores it in older mods.
+        reader.TryGet("retaliation", out _);
         builder.RetaliationAggression = reader.ReadInt32("retaliationAggression", builder.RetaliationAggression);
         if (reader.TryGet("retaliationMissionWeights", out var weights))
             builder.RetaliationWeights.AddRange(TerrainDeploymentYaml.ReadWeightTimeline(weights!, "retaliationMissionWeights"));

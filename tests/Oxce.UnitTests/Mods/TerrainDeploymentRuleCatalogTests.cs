@@ -40,6 +40,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
             alienRaces:
               - id: RACE
                 members: [UNIT]
+                retaliation: false
                 retaliationMissionWeights: {0: {MISSION: 2}}
             enviroEffects:
               - type: ENV
