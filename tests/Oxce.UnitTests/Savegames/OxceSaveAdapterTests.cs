@@ -455,6 +455,40 @@ public sealed class OxceSaveAdapterTests
         }
     }
 
+    [Fact]
+    public void VehicleOpaqueFieldsFollowStableIdentityAfterRemoval()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = CampaignFactory.Create(content,
+            CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
+            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var snapshot = campaign.Capture();
+        var baseState = Assert.Single(snapshot.Bases);
+        var craft = new CraftSnapshot("SHIP", 1)
+        {
+            PreservationKey = "review-craft",
+            Logistics = new(100, 0, "STR_READY", [], new Dictionary<string, int>(),
+                [new("SUPPLY", 11), new("SUPPLY", 22)]),
+        };
+        snapshot = snapshot with { Bases = [baseState with { Crafts = [craft], Soldiers = [] }] };
+        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot)
+            .Replace("ammo: 11", "ammo: 11\n            futureVehicleField: first", StringComparison.Ordinal)
+            .Replace("ammo: 22", "ammo: 22\n            futureVehicleField: second", StringComparison.Ordinal);
+        var options = new OxceSaveLoadOptions("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" });
+        var loaded = OxceSaveAdapter.Load(yaml, "vehicles.sav", content, new SplitMix64RandomSource(0), options);
+        snapshot = loaded.Campaign.Capture();
+        baseState = snapshot.Bases[0];
+        craft = baseState.Crafts[0];
+        craft = craft with { Logistics = craft.Logistics! with { Vehicles = [craft.Logistics.Vehicles[1]] } };
+        snapshot = snapshot with { Bases = [baseState with { Crafts = [craft] }] };
+
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(snapshot, loaded.Source);
+
+        Assert.Contains("ammo: 22", rewritten, StringComparison.Ordinal);
+        Assert.Contains("futureVehicleField: second", rewritten, StringComparison.Ordinal);
+        Assert.DoesNotContain("futureVehicleField: first", rewritten, StringComparison.Ordinal);
+    }
+
     private static OxceSaveLoadOptions Options() => new(
         "runtime-master",
         new HashSet<string>(["runtime-master", "runtime-addon"], StringComparer.Ordinal));

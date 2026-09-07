@@ -121,10 +121,22 @@ public static class CampaignFactory
         }
 
         for (var index = 0; index < crafts.Length; index++)
+        {
+            var preservationKey = FormattableString.Invariant(
+                $"created:{request.Id}:craft:{rules.Crafts.GetExternalId(crafts[index].Rule)}:{crafts[index].Id}");
+            var logistics = crafts[index].Logistics!;
             crafts[index] = crafts[index] with
             {
-                PreservationKey = FormattableString.Invariant($"created:{request.Id}:craft:{rules.Crafts.GetExternalId(crafts[index].Rule)}:{crafts[index].Id}"),
+                PreservationKey = preservationKey,
+                Logistics = logistics with
+                {
+                    Vehicles = Array.AsReadOnly(logistics.Vehicles.Select((vehicle, slot) => vehicle with
+                    {
+                        PreservationKey = $"{preservationKey}:vehicle:{slot}",
+                    }).ToArray()),
+                },
             };
+        }
         for (var index = 0; index < soldiers.Count; index++)
             soldiers[index] = soldiers[index] with
             {
