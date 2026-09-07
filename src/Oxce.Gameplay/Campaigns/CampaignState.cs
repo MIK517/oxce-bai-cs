@@ -126,7 +126,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         {
             var state = FindBase(baseId);
             var incoming = state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item)
-                .GroupBy(t => t.RuleId, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Sum(t => t.Quantity), StringComparer.Ordinal);
+                .GroupBy(t => t.RuleId, StringComparer.Ordinal).ToDictionary(g => g.Key,
+                    g => checked((int)g.Sum(t => (long)t.Quantity)), StringComparer.Ordinal);
             var items = _content.RuntimeRules.Items.Rules.Select(r => new CampaignStoreItem(r.Id,
                 r.Value.Name.Length == 0 ? r.Id : r.Value.Name,
                 state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(r.Id)),
@@ -485,6 +486,31 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     {
         if (state.Scientists < 0 || state.Engineers < 0)
             throw new InvalidDataException("Base personnel counts cannot be negative.");
+        var usedQuarters = state.Soldiers.Count + (long)state.Scientists + state.Engineers;
+        var incomingItems = new Dictionary<RuleHandle<ItemRuleFamily>, long>();
+        foreach (var transfer in state.Transfers.Where(transfer => !transfer.Delivered))
+        {
+            if (transfer.Kind is CampaignTransferKind.Soldier or CampaignTransferKind.Scientist or CampaignTransferKind.Engineer)
+                usedQuarters += transfer.Quantity;
+            if (transfer.Kind == CampaignTransferKind.Item)
+            {
+                var item = rules.Items.GetRequired(transfer.RuleId);
+                incomingItems[item] = incomingItems.GetValueOrDefault(item) + transfer.Quantity;
+                if (incomingItems[item] > int.MaxValue)
+                    throw new InvalidDataException($"Incoming quantity for item '{transfer.RuleId}' exceeds the supported range.");
+            }
+        }
+        if (usedQuarters > int.MaxValue)
+            throw new InvalidDataException("Base personnel including incoming transfers exceed the supported range.");
+        foreach (var prisonType in rules.Items.Rules.Where(entry => entry.Value.IsAlien).Select(entry => entry.Value.PrisonType).Distinct())
+        {
+            var contained = state.Items.Where(pair => rules.Items[pair.Key].Value is { IsAlien: true } rule && rule.PrisonType == prisonType)
+                .Sum(pair => (long)pair.Value);
+            contained += incomingItems.Where(pair => rules.Items[pair.Key].Value is { IsAlien: true } rule && rule.PrisonType == prisonType)
+                .Sum(pair => pair.Value);
+            if (contained > int.MaxValue)
+                throw new InvalidDataException($"Alien containment usage for prison type {prisonType} exceeds the supported range.");
+        }
         if (!double.IsFinite(state.Longitude) || state.Longitude < 0 || state.Longitude >= 2 * Math.PI)
             throw new InvalidDataException("Base longitude must be in [0, 2π).");
         if (!double.IsFinite(state.Latitude) || state.Latitude < -Math.PI / 2 || state.Latitude > Math.PI / 2)
