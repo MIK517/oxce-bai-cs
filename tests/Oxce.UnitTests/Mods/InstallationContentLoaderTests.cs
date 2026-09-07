@@ -11,6 +11,21 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class InstallationContentLoaderTests
 {
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("2147483648")]
+    [InlineData("2147483647")]
+    public void SoldierBonusWeightsRejectNegativeAndOverflowingRandomRanges(string weight)
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        File.WriteAllText(installation.FirstRuleset, File.ReadAllText(installation.FirstRuleset)
+            .Replace("BONUS_B: 1", "BONUS_B: " + weight, StringComparison.Ordinal));
+        var result = InstallationContentLoader.Load(installation.Request("logistics", "-"),
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.Failure);
+    }
+
     [Fact]
     public void FontMetadataOverrideSurvivesCompiledCache()
     {
@@ -41,6 +56,10 @@ public sealed class InstallationContentLoaderTests
         Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
         Assert.Equivalent(first.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools,
             cached.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools, strict: true);
+        var template = cached.Content.RuntimeRules.Soldiers.Rules.Single(r => r.Id == "TEMPLATE_RECRUIT").Value.SpawnedTemplate!;
+        Assert.Equal(3, template.TransformationBonuses!["BONUS_A"]);
+        Assert.Equal(5, template.TransformationBonusesCount);
+        Assert.Equal(4, template.RandomTransformationBonuses!.Count);
         var path = Path.Combine(nameDirectory, "test.pool");
         File.WriteAllText(path, File.ReadAllText(path).Replace("Alex", "Blair", StringComparison.Ordinal));
         var changed = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);

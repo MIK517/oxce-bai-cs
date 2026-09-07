@@ -236,6 +236,17 @@ public sealed partial class CampaignState
         }
         var names = _bases.SelectMany(b => b.Soldiers.Select(s => s.Personal?.Name).Concat(
             b.Transfers.Select(t => t.Soldier?.Personal?.Name))).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        long bonusWork = 0;
+        if (quote.Operation == LogisticsOperation.Purchase)
+            foreach (var selection in selections)
+            {
+                var row = quote.Rows[selection.RowId];
+                if (row.Kind != CampaignTransferKind.Soldier) continue;
+                var template = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(row.RuleId)].Value.SpawnedTemplate;
+                var count = template?.RandomTransformationBonuses?.Count ?? 0;
+                bonusWork += (long)selection.Quantity * count * Math.Clamp(template?.TransformationBonusesCount ?? 0, 0, count);
+                if (bonusWork > MaximumCommandTicks) return Blocked("Soldier bonus generation exceeds the bounded command workload.");
+            }
         foreach (var selection in selections)
         {
             var row = quote.Rows[selection.RowId];

@@ -33,6 +33,9 @@ public sealed partial class CampaignState
             if (!_debugMode && rule.Requirements.Any(r => !_completedResearch.Contains(r.Id))) reason ??= "Required research is not complete.";
             if (rule.SpawnedTemplate is { UnsupportedFields.Count: > 0 } template)
                 reason ??= $"Soldier template requires state for {string.Join(", ", template.UnsupportedFields)}.";
+            if (rule.SpawnedTemplate is { TransformationBonusesCount: > 0, RandomTransformationBonuses: { } weights } spawn &&
+                weights.Any(p => p.Value > 0 && p.Key.Length != 0 && p.Key != "\0" && spawn.TransformationBonuses?.GetValueOrDefault(p.Key) == int.MaxValue))
+                reason ??= "A possible soldier template bonus exceeds the counter range.";
             if (rule.MinimumStats.Any(p => p.Value > rule.MaximumStats.GetValueOrDefault(p.Key))) reason ??= "Soldier generation has inverted stat bounds.";
             var max = Math.Min(MaximumLogisticsLines, Math.Max(0, AvailableQuarters(state) - UsedQuarters(state)));
             if (rule.CostBuy > 0) max = (int)Math.Min(max, Math.Max(0, _funds[^1] / rule.CostBuy));

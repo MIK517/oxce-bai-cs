@@ -211,6 +211,10 @@ public sealed class CampaignLogisticsTests
             Assert.Equal(4, personal.Kills);
             Assert.Equal(1.5f, personal.Recovery);
             Assert.True(personal.Training);
+            Assert.Equal(2, personal.PreviousTransformations["PREVIOUS"]);
+            Assert.Equal(4, personal.TransformationBonuses["BONUS_A"]);
+            Assert.Equal(1, personal.TransformationBonuses["BONUS_B"]);
+            Assert.Equal(2, personal.TransformationBonuses.Count);
             Assert.NotEqual(999, transit.Bases[0].Transfers[0].Soldier!.Id);
         }
         Assert.NotEqual(transit.Bases[0].Transfers[0].Soldier!.Id, transit.Bases[0].Transfers[1].Soldier!.Id);

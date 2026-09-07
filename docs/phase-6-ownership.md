@@ -108,4 +108,23 @@ available private corpus. The older personnel-rule fixture now supplies the synt
 extra strings are immutable runtime projections, independent of optional diagnostic
 compatibility data, and the font override survives a compiled-cache hit (revision 7).
 
+## Randomized recruit-template bonuses
+
+Templates now own `previousTransformations`, fixed `transformationBonuses`, and weighted
+`randomTransformationBonuses`/`transformationBonusesCount`. Choices are removed after
+selection; empty or NUL rule names consume a choice without awarding a bonus. Existing
+counts increment, zero weights do not draw, and the loop stops when options are exhausted.
+Only the awarded counts are emitted, so a recruit cannot reroll on transit reload.
+These payloads cover the previously guarded randomized templates used by 40 soldier
+types in the staged 40k/Rosigma content. Other complex template payloads remain guarded.
+
+`capture-strategic-logistics-reference.ps1` now inserts `WeightedOptions::choose/set` and
+the `Soldier::load` random-bonus block verbatim into the probe. Parsed map input and an
+injected minimum-choice RNG are collaborators; YAML parsing and RNG stream parity are
+not claimed by this probe. Five captured count/draw/result traces match the C# path.
+Purchase/save/arrival tests preserve both fixed and randomized results. Negative weights
+and totals outside the C++ integer RNG call's valid range fail intentionally; possible
+counter overflow and excessive generation work block orders before recruitment.
+The runtime cache revision is now 8.
+
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).

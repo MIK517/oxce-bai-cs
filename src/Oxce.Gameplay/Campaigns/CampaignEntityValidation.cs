@@ -10,10 +10,14 @@ public sealed partial class CampaignState
         if (state is null) return null;
         if (!float.IsFinite(state.Recovery)) throw new InvalidDataException("Soldier recovery must be finite.");
         if (state.Armor.Length != 0) rules.Armors.GetRequired(state.Armor);
+        if (state.PreviousTransformations.Count > MaximumLogisticsLines || state.TransformationBonuses.Count > MaximumLogisticsLines)
+            throw new InvalidDataException("Soldier transformation history exceeds the entry limit.");
         return state with
         {
             InitialStats = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>(state.InitialStats, StringComparer.Ordinal)),
             CurrentStats = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>(state.CurrentStats, StringComparer.Ordinal)),
+            PreviousTransformations = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.PreviousTransformations, StringComparer.Ordinal)),
+            TransformationBonuses = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(state.TransformationBonuses, StringComparer.Ordinal)),
         };
     }
 

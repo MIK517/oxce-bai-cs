@@ -54,7 +54,7 @@ public sealed class SoldierGenerationTests
         Assert.Equal(-1, loaded.CurrentStats["mana"]);
         Assert.Equal(0, loaded.CurrentStats["tu"]);
         Assert.Equal(70, loaded.InitialStats["tu"]);
-        Assert.Equal(1, random.Calls); // Only the constructor's look variant; no mana reroll for -1.
+        Assert.Equal(4, random.Calls); // Look variant and three distinct bonus choices; no mana reroll for -1.
         random = new CountingRandom();
         var empty = SoldierGeneration.LoadStarting(rule, null, rules, random);
         Assert.Equal("", empty.Name);

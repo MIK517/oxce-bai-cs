@@ -21,6 +21,9 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
     return $source.Substring($start, $end - $start)
 }
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures\reference-probes\savegames\strategic_logistics_probe.cpp'))
+$template = $template.Replace('// WEIGHTED_CHOOSE', (Read-ReferenceMethod 'src\Savegame\WeightedOptions.cpp' 'std::string WeightedOptions::choose()'))
+$template = $template.Replace('// WEIGHTED_SET', (Read-ReferenceMethod 'src\Savegame\WeightedOptions.cpp' 'void WeightedOptions::set('))
+$template = $template.Replace('// SOLDIER_BONUS_BLOCK', (Read-ReferenceMethod 'src\Savegame\Soldier.cpp' 'if (const auto& spawnInfo = reader["randomTransformationBonuses"])'))
 $template = $template.Replace('// BUY_COST', (Read-ReferenceMethod 'src\Mod\RuleItem.cpp' 'int RuleItem::getBuyCostAdjusted('))
 $template = $template.Replace('// SELL_COST', (Read-ReferenceMethod 'src\Mod\RuleItem.cpp' 'int RuleItem::getSellCostAdjusted('))
 $template = $template.Replace('// STORES_OVERFULL', (Read-ReferenceMethod 'src\Savegame\Base.cpp' 'bool Base::storesOverfull('))
