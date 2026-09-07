@@ -136,7 +136,8 @@ internal sealed class CraftRuleLoader : TypedRuleFamilyLoader<CraftBuilder, Craf
         Array.AsReadOnly(builder.WeaponTypes.Select(row => (IReadOnlyList<int>)row.AsReadOnly()).ToArray()),
         Array.AsReadOnly((string[])builder.WeaponStrings.Clone()),
         Array.AsReadOnly((string[])builder.FixedWeapons.Clone()),
-        builder.RequiredPilotBonuses.AsReadOnly()) { PilotMinimumStats = PersonnelTacticalYaml.FreezeStats(builder.PilotMinimumStats).Values };
+        builder.RequiredPilotBonuses.AsReadOnly())
+    { PilotMinimumStats = PersonnelTacticalYaml.FreezeStats(builder.PilotMinimumStats).Values };
 
     private static void ApplyWeaponTypes(CraftBuilder builder, RulePropertyReader reader)
     {

@@ -11,6 +11,28 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class InstallationContentLoaderTests
 {
+    [Fact]
+    public void OverflowingCraftInitializationIsUnavailableBeforeRecruitmentDraws()
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        File.WriteAllText(installation.FirstRuleset, File.ReadAllText(installation.FirstRuleset)
+            .Replace("fixedWeapons: [FIXED]", "fixedWeapons: [FIXED, FIXED]", StringComparison.Ordinal)
+            .Replace("  - type: FIXED", "  - type: FIXED\n    stats: {soldiers: 2147483647}", StringComparison.Ordinal));
+        var content = InstallationContentLoader.Load(installation.Request("logistics", "-"), cancellationToken: TestContext.Current.CancellationToken).Content!;
+        var campaign = Oxce.Gameplay.Campaigns.CampaignFactory.Create(content,
+            new(new(Guid.NewGuid()), "Overflow", "logistics", ["logistics"], Oxce.Gameplay.Campaigns.CampaignDifficulty.Beginner),
+            new Oxce.Core.Random.SplitMix64RandomSource(42), Oxce.Gameplay.Campaigns.SystemCampaignClock.Instance);
+        var before = campaign.Capture();
+        var quote = Assert.IsType<Oxce.Gameplay.Campaigns.LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new Oxce.Gameplay.Campaigns.PrepareLogisticsQuote(0, Oxce.Gameplay.Campaigns.LogisticsOperation.Purchase)).Events)).Quote;
+        var craft = quote.Rows.Single(r => r.RuleId == "SHIP");
+        Assert.Equal(0, craft.MaximumQuantity);
+        var recruit = quote.Rows.Single(r => r.RuleId == "RECRUIT");
+        Assert.IsType<Oxce.Gameplay.Campaigns.CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new Oxce.Gameplay.Campaigns.SubmitLogisticsOrder(quote.Id, [new(recruit.Id, 1), new(craft.Id, 1)])).Events));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
     [Theory]
     [InlineData("-1")]
     [InlineData("2147483648")]

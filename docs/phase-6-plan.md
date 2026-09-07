@@ -1,7 +1,9 @@
 # Phase 6 — Playable strategic campaign implementation plan
 
 Plan date: 2026-09-05. Baseline: `752e976` on `main`.
-Status: proposed implementation sequence; no Phase 6 completion claim.
+Status: branch 1 implemented with bounded acceptance documented in
+[strategic logistics status](strategic-logistics-status.md); branches 2–6 remain planned.
+This is not a Phase 6 completion claim.
 
 ## Goal and scope
 

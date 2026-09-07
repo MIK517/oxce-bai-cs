@@ -430,9 +430,11 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             rules.Facilities.GetRequired(facility.RuleId), facility.X, facility.Y, facility.BuildTime,
             facility.Ammo, facility.AmmoMissingReported, facility.Disabled, facility.HadPreviousFacility)).ToArray();
         var crafts = source.Crafts.Select(craft => new CraftState(
-            rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft")) { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules) }).ToArray();
+            rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft"))
+        { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules) }).ToArray();
         var soldiers = source.Soldiers.Select(soldier => new SoldierState(
-            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier")) { PreservationKey = soldier.PreservationKey, Personal = RestorePersonal(soldier.Personal, rules) }).ToArray();
+            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier"))
+        { PreservationKey = soldier.PreservationKey, Personal = RestorePersonal(soldier.Personal, rules) }).ToArray();
         var items = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
         foreach (var pair in source.Items)
         {

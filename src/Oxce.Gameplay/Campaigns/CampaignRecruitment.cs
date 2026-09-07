@@ -36,7 +36,7 @@ public sealed partial class CampaignState
             if (rule.SpawnedTemplate is { TransformationBonusesCount: > 0, RandomTransformationBonuses: { } weights } spawn &&
                 weights.Any(p => p.Value > 0 && p.Key.Length != 0 && p.Key != "\0" && spawn.TransformationBonuses?.GetValueOrDefault(p.Key) == int.MaxValue))
                 reason ??= "A possible soldier template bonus exceeds the counter range.";
-            if (rule.MinimumStats.Any(p => p.Value > rule.MaximumStats.GetValueOrDefault(p.Key))) reason ??= "Soldier generation has inverted stat bounds.";
+            reason ??= SoldierGeneration.GenerationRestriction(rule);
             var max = Math.Min(MaximumLogisticsLines, Math.Max(0, AvailableQuarters(state) - UsedQuarters(state)));
             if (rule.CostBuy > 0) max = (int)Math.Min(max, Math.Max(0, _funds[^1] / rule.CostBuy));
             if (rule.Purchase.MonthlyLimit > 0) max = Math.Min(max, Math.Max(0, rule.Purchase.MonthlyLimit - _monthlyPurchaseLog.GetValueOrDefault(entry.Id)));

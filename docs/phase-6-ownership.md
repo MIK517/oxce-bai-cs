@@ -1,17 +1,19 @@
 # Phase 6 ownership and fixture ledger
 
 Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Implementation
-branch: `codex/strategic-base-logistics`. This is a work ledger, not a completion claim.
+branch: `codex/strategic-base-logistics`. This is an implementation/evidence ledger;
+the final bounded acceptance is in [strategic logistics status](strategic-logistics-status.md).
+Checkpoint notes below retain the scope and outstanding work at each implementation milestone.
 
 | Behavior/state | Owner | Reference | Evidence/status |
 |---|---|---|---|
 | Ordered tick fallthrough and popup pause | Branch 1 | `GeoscapeState::timeAdvance` | `strategic-time` extracted-loop probe; handler internals excluded |
 | Highest-trigger summary | Branch 1 | Existing C# event contract | Retain exclusive counts; execute effects before event publication |
 | Tick eligibility and unsupported live state | Branch 1, broadened in each branch | Timed handlers, `SavedGame::load` | Port safety boundary; preserve-only imports remain readable |
-| Inventory, money, research eligibility, capacities, purchase limits | Branch 1 | `PurchaseState`, `SellState`, `Base`, `SavedGame::addMonth` | Capture pending |
-| Soldier identity, initial stats/name/armor, templates | Branch 1 | `Mod::genSoldier`, `Soldier`, `PurchaseState` | Capture pending; no delayed generation |
-| Craft initialization, cargo/assignment effects, arrival checkup | Branch 1 | `Craft`, `Transfer`, purchase/sale/transfer states | Capture pending |
-| Transfer quantities, cost/distance, time and mobile save fields | Branch 1 | `TransferItemsState`, `TransferConfirmState`, `Transfer` | Capture pending; ownership crosses base/transit containers |
+| Inventory, money, research eligibility, capacities, purchase limits | Branch 1 | `PurchaseState`, `SellState`, `Base`, `SavedGame::addMonth` | Logistics/critical-sale fixtures; monthly reset in isolated handler |
+| Soldier identity, initial stats/name/armor, templates | Branch 1 | `Mod::genSoldier`, `Soldier`, `PurchaseState` | Generation/piloting/template fixtures; no delayed generation |
+| Craft initialization, cargo/assignment effects, arrival checkup | Branch 1 | `Craft`, `Transfer`, purchase/sale/transfer states | Starting/purchase/arrival and save-cycle fixtures |
+| Transfer quantities, cost/distance, time and mobile save fields | Branch 1 | `TransferItemsState`, `TransferConfirmState`, `Transfer` | Extracted arithmetic and two-base fixtures; mobile ownership |
 | Facility editing, training, recovery, transformations, servicing | Branch 2 | Base/personnel/craft states, timed handlers | Deferred; action dependencies must be promoted before use |
 | Research and production progression | Branch 3 | `ResearchProject`, `Production`, timed handlers | Deferred; completed research eligibility belongs in branch 1 |
 | World entities, mission/arc/event scheduling and movement | Branch 4 | `GeoscapeState`, mission/target classes | Deferred; do not advance opaque entities |
@@ -172,5 +174,16 @@ One explicit readiness boundary remains: removing mounted weapons with nonzero b
 stats is blocked. The reference cleanup retains the craft's cached stats until reload;
 branch 1 must not replace this with an immediate derived-stat recalculation. No stock,
 funds or transfer changes are committed when that boundary is reached.
+
+## Final branch validation
+
+Fresh/cache action and eligibility checks pass for all three staged content families.
+Three of 19 private saves can purchase and reload; eight active battles and eight active
+research/production states are explicitly blocked. The full solution has 620 passing
+tests and no skips. Generation preflight now rejects overflowing name/look weights and
+possible empty callsign outcomes before consuming RNG. Craft bonus overflow disables
+the purchase row before a mixed recruit/craft order can draw recruits. Bravery bounds
+are checked after the reference integer division; initial psi skill does not draw a range.
+The status document records measured allocations, UI controls and remaining guards.
 
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).
