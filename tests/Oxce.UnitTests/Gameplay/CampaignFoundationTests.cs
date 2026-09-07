@@ -187,7 +187,7 @@ public sealed class CampaignFoundationTests
 
     internal static RuntimeContent LoadFixture()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
@@ -205,13 +205,6 @@ public sealed class CampaignFoundationTests
         ["runtime-master", "runtime-addon"],
         CampaignDifficulty.Beginner);
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate repository root.");
-    }
 
     internal sealed class FixedClock : ICampaignClock
     {

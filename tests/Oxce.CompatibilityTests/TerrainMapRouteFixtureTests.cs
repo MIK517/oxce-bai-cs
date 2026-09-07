@@ -12,7 +12,7 @@ public sealed class TerrainMapRouteFixtureTests
     [Fact]
     public void MapAndRouteSemanticsMatchCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "terrain-map-route.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -70,14 +70,4 @@ public sealed class TerrainMapRouteFixtureTests
     private static BinaryDataReader ReadHex(string root, string relativePath) =>
         new(Convert.FromHexString(File.ReadAllText(Path.GetFullPath(relativePath, root)).Trim()));
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

@@ -10,7 +10,7 @@ public sealed class VirtualFileCatalogFixtureTests
     [Fact]
     public void UnicodeCanonicalizationMatchesCapturedWindowsCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "vfs-unicode-canonicalization.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -42,7 +42,7 @@ public sealed class VirtualFileCatalogFixtureTests
     [Fact]
     public void LayeredCatalogMatchesCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "vfs-layered-catalog.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -90,16 +90,6 @@ public sealed class VirtualFileCatalogFixtureTests
         return new FixtureRow(values[0], values[1], values[2], values[3]);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private sealed record FixtureRow(string LayerId, string ModId, string RelativePath, string SourcePath);
 }

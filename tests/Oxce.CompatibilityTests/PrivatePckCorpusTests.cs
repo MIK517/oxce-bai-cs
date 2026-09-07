@@ -9,7 +9,7 @@ public sealed class PrivatePckCorpusTests
     [Fact]
     public void OwnedUfoAndTftdSpriteSetsDecode()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var ufoRoot = Path.Combine(root, "data", "UFO", "UFOGRAPH");
         var tftdRoot = Path.Combine(root, "data", "TFTD", "UFOGRAPH");
         Assert.SkipUnless(
@@ -28,7 +28,7 @@ public sealed class PrivatePckCorpusTests
     [Fact]
     public void TwoByteRosigmaTabDecodesOneFrame()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var terrainRoot = Path.Combine(root, "fixtures", "private", "mods", "rosigma", "TERRAIN");
         var pckPath = Path.Combine(terrainRoot, "GUARD_GRAV_DROP.PCK");
         var tabPath = Path.Combine(terrainRoot, "GUARD_GRAV_DROP.TAB");
@@ -53,14 +53,4 @@ public sealed class PrivatePckCorpusTests
             width,
             height);
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

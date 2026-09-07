@@ -66,7 +66,7 @@ public sealed class ProjectDependencyTests
     [Fact]
     public void TestManagedExtensionReferencesOnlyPublicAbstractions()
     {
-        var project = Path.Combine(FindRepositoryRoot(), "tests", "Oxce.TestExtension", "Oxce.TestExtension.csproj");
+        var project = Path.Combine(Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(), "tests", "Oxce.TestExtension", "Oxce.TestExtension.csproj");
 
         Assert.Equal(Set("Oxce.Extensions.Abstractions"), ReadReferences(project));
     }
@@ -104,7 +104,7 @@ public sealed class ProjectDependencyTests
 
     private static Dictionary<string, HashSet<string>> ReadProductionGraph()
     {
-        var sourceDirectory = Path.Combine(FindRepositoryRoot(), "src");
+        var sourceDirectory = Path.Combine(Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(), "src");
         return Directory.GetFiles(sourceDirectory, "*.csproj", SearchOption.AllDirectories)
             .ToDictionary(
                 projectPath => Path.GetFileNameWithoutExtension(projectPath)
@@ -127,17 +127,6 @@ public sealed class ProjectDependencyTests
             .ToHashSet(StringComparer.Ordinal);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private static HashSet<string> Set(params string[] values) =>
         new HashSet<string>(values, StringComparer.Ordinal);

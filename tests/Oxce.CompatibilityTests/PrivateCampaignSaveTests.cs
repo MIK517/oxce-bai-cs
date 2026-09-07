@@ -15,7 +15,7 @@ public sealed class PrivateCampaignSaveTests
     [Fact]
     public void RepresentativeOwnedSavesLoadAndPreserveTheirStrategicSubset()
     {
-        var repository = FindRepositoryRoot();
+        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var installation = Path.Combine(repository, "artifacts", "private-install");
         var saves = Path.Combine(repository, "fixtures", "private", "saves");
         Assert.SkipUnless(
@@ -84,11 +84,4 @@ public sealed class PrivateCampaignSaveTests
         return snapshot.Content;
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

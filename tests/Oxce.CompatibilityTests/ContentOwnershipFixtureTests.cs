@@ -13,7 +13,7 @@ public sealed class ContentOwnershipFixtureTests
     [Fact]
     public void MultiModFileScopesMatchPinnedBehavior()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifest = FixtureManifestLoader.Load(
             Path.Combine(root, "fixtures", "manifests", "content-ownership.json"));
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -61,14 +61,4 @@ public sealed class ContentOwnershipFixtureTests
             shared!.CompatibilityData.DeferredProperties.Count);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

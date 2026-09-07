@@ -13,7 +13,7 @@ public sealed class ScriptCoreFixtureTests
     [Fact]
     public void CapturedReferenceCasesProvideCompilerAndExecutionOracle()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifest = FixtureManifestLoader.Load(
             Path.Combine(root, "fixtures", "manifests", "script-core.json"));
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -118,7 +118,7 @@ public sealed class ScriptCoreFixtureTests
 
     private static JsonElement[] ReadCases()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var path = Path.Combine(root, "fixtures", "expected", "scripting", "script-core.expected.json");
         using var document = JsonDocument.Parse(File.ReadAllBytes(path));
         return document.RootElement.GetProperty("cases").EnumerateArray().Select(item => item.Clone()).ToArray();
@@ -156,12 +156,4 @@ public sealed class ScriptCoreFixtureTests
             value => value.GetString()!.Contains("Invalid script operation", StringComparison.Ordinal));
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ??
-            throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

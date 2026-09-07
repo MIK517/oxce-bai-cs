@@ -9,7 +9,7 @@ public sealed class PrivateIndexedPngCorpusTests
     [Fact]
     public void OwnedModIndexedPngFilesDecodeWithinBounds()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var privateMods = Path.Combine(root, "fixtures", "private", "mods");
         Assert.SkipUnless(
             Directory.Exists(privateMods),
@@ -35,14 +35,4 @@ public sealed class PrivateIndexedPngCorpusTests
         Assert.True(decodedCount > 14_000, $"Expected the supplied indexed PNG corpus; decoded {decodedCount} files.");
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }
