@@ -22,6 +22,8 @@ public sealed class InstallationContentLoaderTests
         var campaign = Oxce.Gameplay.Campaigns.CampaignFactory.Create(content,
             new(new(Guid.NewGuid()), "Overflow", "logistics", ["logistics"], Oxce.Gameplay.Campaigns.CampaignDifficulty.Beginner),
             new Oxce.Core.Random.SplitMix64RandomSource(42), Oxce.Gameplay.Campaigns.SystemCampaignClock.Instance);
+        Assert.IsType<Oxce.Gameplay.Campaigns.StartingBasePlaced>(Assert.Single(campaign.Execute(
+            new Oxce.Gameplay.Campaigns.PlaceStartingBase(0, "Alpha", 0, 0)).Events));
         var before = campaign.Capture();
         var quote = Assert.IsType<Oxce.Gameplay.Campaigns.LogisticsQuoted>(Assert.Single(campaign.Execute(
             new Oxce.Gameplay.Campaigns.PrepareLogisticsQuote(0, Oxce.Gameplay.Campaigns.LogisticsOperation.Purchase)).Events)).Quote;

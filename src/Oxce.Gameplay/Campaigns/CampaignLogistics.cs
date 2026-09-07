@@ -20,6 +20,8 @@ public sealed partial class CampaignState
         var destination = command.Operation == LogisticsOperation.Transfer
             ? FindBase(command.DestinationBaseId ?? throw new ArgumentException("Transfer destination is required.", nameof(command)))
             : origin;
+        if (!origin.IsPlaced || !destination.IsPlaced)
+            return Blocked("Place the starting base before using logistics.");
         if (command.Operation == LogisticsOperation.Transfer && origin == destination)
             return Blocked("A transfer needs two different bases.");
         var restriction = LogisticsRestriction(origin) ?? LogisticsRestriction(destination);

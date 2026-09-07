@@ -54,6 +54,7 @@ public sealed class PrivateStrategicLogisticsTests
         var campaign = CampaignFactory.Create(content,
             new(new(Guid.Parse("9929e1b4-b21e-46f0-8c43-0d8c08f0bb21")), "Logistics corpus", request.MasterId, request.ActiveMods, CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(42), new FixedClock());
+        Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0)).Events));
         var initial = campaign.Capture();
         var quoteResult = campaign.Execute(new PrepareLogisticsQuote(initial.Bases[0].Id, LogisticsOperation.Purchase));
         var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(quoteResult.Events)).Quote;
