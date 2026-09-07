@@ -129,23 +129,27 @@ public sealed class ManagedAudioMixerTests
             clip,
             new AudioPlaybackOptions(AudioBus.Effects, LoopCount: -1, Gain: 0.25f));
         var testCancellation = TestContext.Current.CancellationToken;
-        using var stop = new CancellationTokenSource();
+        using var start = new Barrier(2);
         var control = Task.Run(() =>
         {
             var gain = 0d;
-            while (!stop.IsCancellationRequested)
+            start.SignalAndWait(testCancellation);
+            for (var index = 0; index < 10_000; index++)
             {
                 mixer.SetBusGain(AudioBus.Effects, gain);
                 gain = gain == 0 ? 1 : 0;
                 Thread.Yield();
             }
+
+            return 10_000;
         }, testCancellation);
         var output = new short[512];
 
+        start.SignalAndWait(testCancellation);
         for (var index = 0; index < 10_000; index++) mixer.Mix(output);
-        stop.Cancel();
-        await control.WaitAsync(TimeSpan.FromSeconds(5), testCancellation);
+        var completedUpdates = await control.WaitAsync(TimeSpan.FromSeconds(5), testCancellation);
 
+        Assert.Equal(10_000, completedUpdates);
         Assert.True(playback.IsPlaying);
     }
 }
