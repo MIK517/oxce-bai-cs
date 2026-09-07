@@ -27,7 +27,7 @@ for dispatch/persistence boundaries. Runtime compiler/cache revision is 9.
 ## Validation
 
 - Release solution build: zero warnings and errors.
-- Full solution tests: **620 passed, zero failures, zero skips** on this checkout.
+- Full solution tests: **625 passed, zero failures, zero skips** on this checkout.
 - Public fixtures cover prices, distance/travel costs, time fallthrough, templates,
   initial crew, critical sales, transfer capacity/arrival, malformed inputs and overflow.
 - UI tests cover stable quotes, explicit confirmation, cancellation, transit save/load,

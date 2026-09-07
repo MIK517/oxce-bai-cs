@@ -179,9 +179,11 @@ funds or transfer changes are committed when that boundary is reached.
 
 Fresh/cache action and eligibility checks pass for all three staged content families.
 Three of 19 private saves can purchase and reload; eight active battles and eight active
-research/production states are explicitly blocked. The full solution has 620 passing
+research/production states are explicitly blocked. The full solution has 625 passing
 tests and no skips. Generation preflight now rejects overflowing name/look weights and
-possible empty callsign outcomes before consuming RNG. Craft bonus overflow disables
+possible empty callsign outcomes before consuming RNG while allowing gender-specific
+pools that cannot reach the missing gender. Restored logistics aggregates are bounded
+before publication, and unplaced bases cannot open logistics. Craft bonus overflow disables
 the purchase row before a mixed recruit/craft order can draw recruits. Bravery bounds
 are checked after the reference integer division; initial psi skill does not draw a range.
 The status document records measured allocations, UI controls and remaining guards.
