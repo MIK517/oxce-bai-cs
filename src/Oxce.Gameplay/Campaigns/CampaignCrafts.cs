@@ -26,68 +26,13 @@ public sealed partial class CampaignState
                 if (state is { IsAutoPatrolling: true }) reason ??= "Craft auto-patrol requires world simulation.";
                 if (UsedHangars(destination, rule.HangarType) >= AvailableHangars(destination, rule.HangarType)) reason ??= "No compatible destination hangar.";
                 if (Crew(origin, type, craft.Id).Count() > AvailableQuarters(destination) - UsedQuarters(destination)) reason ??= "No living space for the crew.";
-                if (Options.StorageLimitsEnforced && state is not null && StrategicLogisticsMath.StoresOverfull(AvailableStores(destination), UsedStores(destination), CraftStorage(state)))
+                if (Options.StorageLimitsEnforced && state is not null && StrategicLogisticsMath.StoresOverfull(AvailableStores(destination), UsedStores(destination), CraftLogistics.StoredSize(state, _content.RuntimeRules)))
                     reason ??= "No storage space for craft cargo.";
             }
             rows.Add(new(rows.Count, CampaignTransferKind.Craft, type, craft.Id, type, 1,
                 operation == LogisticsOperation.Transfer ? StrategicLogisticsMath.TransferUnitCost(distance, CampaignTransferKind.Craft) : rule.CostSell,
                 reason is null ? 1 : 0, hours, reason));
         }
-    }
-
-    private Dictionary<string, int> UnloadedCraftItems(CraftLogisticsState state)
-    {
-        var rules = _content.RuntimeRules;
-        var items = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var pair in CraftLogistics.UnloadedWeaponItems(state, rules)) Add(pair.Key, pair.Value);
-        foreach (var pair in state.Items) Add(pair.Key, pair.Value);
-        foreach (var vehicle in state.Vehicles)
-        {
-            Add(vehicle.RuleId, 1);
-            var rule = rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value;
-            if (rule.VehicleFixedAmmoSlot < 0) continue;
-            if (rule.VehicleFixedAmmoSlot >= rule.CompatibleAmmo.Count) throw new InvalidDataException("Vehicle ammunition slot is outside the reference range.");
-            var ammunition = rule.CompatibleAmmo[rule.VehicleFixedAmmoSlot];
-            if (ammunition.Count == 0) continue;
-            var ammo = rules.Items[ammunition[0]].Value;
-            Add(rules.Items.GetExternalId(ammunition[0]), rule.ClipSize > 0 && ammo.ClipSize > 0 ? rule.ClipSize / ammo.ClipSize : ammo.ClipSize);
-        }
-        return items;
-
-        void Add(string id, int count)
-        {
-            if (count <= 0 || id.Length == 0) return;
-            items[id] = checked(items.GetValueOrDefault(id) + count);
-        }
-    }
-
-    private double CraftStorage(CraftLogisticsState state)
-    {
-        var rules = _content.RuntimeRules;
-        var size = state.Items.Sum(p => rules.Items[rules.Items.GetRequired(p.Key)].Value.Size * p.Value);
-        foreach (var vehicle in state.Vehicles)
-        {
-            var rule = rules.Items[rules.Items.GetRequired(vehicle.RuleId)].Value;
-            size += rule.Size;
-            if (rule.VehicleFixedAmmoSlot < 0) continue;
-            if (rule.VehicleFixedAmmoSlot >= rule.CompatibleAmmo.Count) throw new InvalidDataException("Vehicle ammunition slot is outside the reference range.");
-            var ammunition = rule.CompatibleAmmo[rule.VehicleFixedAmmoSlot];
-            if (ammunition.Count == 0) continue;
-            var ammo = rules.Items[ammunition[0]].Value;
-            var clips = rule.ClipSize > 0 && ammo.ClipSize > 0 ? rule.ClipSize / ammo.ClipSize : ammo.ClipSize;
-            size += ammo.Size * clips;
-        }
-        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
-        {
-            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-            size += rules.Items[rules.Items.GetRequired(rule.Launcher)].Value.Size;
-            if (rule.Clip.Length == 0) continue;
-            var clip = rules.Items[rules.Items.GetRequired(rule.Clip)].Value;
-            var divisor = clip.ClipSize > 0 ? clip.ClipSize : rule.RearmRate;
-            if (divisor <= 0) throw new InvalidDataException("Craft weapon clip divisor must be positive.");
-            size += clip.Size * Math.Floor((double)weapon.Ammo / divisor);
-        }
-        return size;
     }
 
     private void RefuelArrivingCrafts(TimeEffects effects)
