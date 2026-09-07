@@ -53,6 +53,35 @@ public sealed class SoldierGenerationTests
     }
 
     [Fact]
+    public void CallsignValidationUsesEachPoolsReachableGenderAndReferenceFallback()
+    {
+        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
+        var fallback = Assert.Single(rule.NamePools);
+        var femaleOnly = fallback with
+        {
+            FemaleFrequency = 100,
+            MaleCallsign = [],
+            FemaleCallsign = ["Valkyrie"],
+        };
+        var maleWithoutCallsigns = fallback with
+        {
+            FemaleFrequency = 0,
+            MaleCallsign = [],
+            FemaleCallsign = [],
+        };
+        rule = rule with { NamePools = [fallback, femaleOnly, maleWithoutCallsigns] };
+
+        Assert.Null(SoldierGeneration.GenerationRestriction(rule));
+        var female = SoldierGeneration.Generate(rule, "ARMOR", 1, new HashSet<string>(StringComparer.Ordinal), new CountingRandom());
+        var male = SoldierGeneration.Generate(rule, "ARMOR", 2, new HashSet<string>(StringComparer.Ordinal), new CountingRandom());
+
+        Assert.Equal(1, female.Gender);
+        Assert.Equal("Valkyrie", female.Callsign);
+        Assert.Equal(0, male.Gender);
+        Assert.Equal("Comet", male.Callsign);
+    }
+
+    [Fact]
     public void DuplicateNameRetriesExactlyTenConstructors()
     {
         var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;

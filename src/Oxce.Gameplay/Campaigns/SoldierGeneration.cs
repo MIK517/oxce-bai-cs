@@ -45,12 +45,13 @@ public static class SoldierGeneration
             : p.Value > rule.MaximumStats.GetValueOrDefault(p.Key)))) return "Soldier generation has inverted stat bounds.";
         if (rule.NamePools.Sum(p => (long)p.GlobalWeight) > int.MaxValue)
             return "Soldier nationality weights exceed the random range.";
-        var malePossible = rule.NamePools.Any(p => (p.FemaleFrequency > -1 ? p.FemaleFrequency : rule.FemaleFrequency) < 100);
         foreach (var pool in rule.NamePools)
         {
             if (pool.LookWeights.Take(4).Sum(w => (long)w) + Math.Max(0, 4 - pool.LookWeights.Count) * 2L > int.MaxValue)
                 return "Soldier look weights exceed the random range.";
-            if (malePossible && pool.FemaleCallsign.Count != 0 && pool.MaleCallsign.Count == 0)
+            var malePossible = (pool.FemaleFrequency > -1 ? pool.FemaleFrequency : rule.FemaleFrequency) < 100;
+            var callsignPool = pool.FemaleCallsign.Count == 0 ? rule.NamePools[0] : pool;
+            if (malePossible && callsignPool.FemaleCallsign.Count != 0 && callsignPool.MaleCallsign.Count == 0)
                 return "A possible male recruit has no enabled callsign pool.";
         }
         return null;
