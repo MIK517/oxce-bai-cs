@@ -52,9 +52,8 @@ generation, including stat merge sentinels, mana reroll, and nationality/name re
 Starting soldiers load literal stats instead; random starting soldiers select all types
 before generation and do not apply the recruit template. Starting craft load their
 supplied weapons/cargo instead of initializing purchased fixed weapons. Complex soldier
-template payloads, initial automatic crew assignment/commendations and negative-capacity
-starting weapon removal remain unfinished; these results do not establish new-campaign
-creation parity for every mod.
+template payloads remain guarded where unsupported. Initial crew assignment, commendations,
+and negative-capacity starting weapon removal are covered by the initialization checkpoint below.
 
 Craft purchase/transfer/sale and soldier transfer/dismissal now own cargo refunds,
 crew movement and assignment removal. Arrival runs `Craft::checkup` priorities and the
@@ -126,5 +125,34 @@ Purchase/save/arrival tests preserve both fixed and randomized results. Negative
 and totals outside the C++ integer RNG call's valid range fail intentionally; possible
 counter overflow and excessive generation work block orders before recruitment.
 The runtime cache revision is now 8.
+
+## Starting crew and commendations
+
+Starting craft whose combined raw capacities are negative return every mounted launcher
+and loaded clip to stores, retaining physical cargo. Automatic assignment runs when the
+`randomSoldiers` key exists, even for zero recruits. It considers all small soldiers in
+base order, retains the first legal transport as fallback, and prefers an eligible
+interceptor with an unfilled pilot requirement. Capacity includes weapon bonuses,
+existing soldiers and vehicles; soldier/armor groups and per-group limits are respected.
+Large soldiers keep their existing assignment, matching the reference caller.
+
+Random starting recruits receive `STR_MEDAL_ORIGINAL8_NAME` when defined. Commendation
+name/noun/level now have gameplay ownership and survive save/reload; other diary fields
+remain in the mobile source overlay. Pilot eligibility includes transformation and
+commendation bonuses, armor stats, short-width addition and fixed stat minimums.
+Vehicle size/space overrides are retained; missing dimensions use the vehicle-unit armor.
+Runtime craft constraints, pilot minimum stats, armor stats, soldier bonuses and
+commendations are immutable projections; compiler/cache revision is 9.
+
+References inspected: `Mod::newSave`, `Craft::validateAddingSoldier`, capacity/space
+and soldier/vehicle count helpers, `CraftWeapon::getClipsLoaded`, `Craft::load`,
+`Vehicle::load/save`, `Armor::getTotalSize/getSpaceOccupied`,
+`Soldier::getBonuses/prepareStatsWithBonuses/hasAllPilotingRequirements`,
+`SoldierDiary::awardOriginalEightCommendation`, `SoldierCommendations::load/save`,
+`RuleCommendations::getSoldierBonus`, and `UnitStats::obeyFixedMinimum`.
+The public Veteran logistics fixture checks launcher/clip refunds, interceptor-first
+assignment, transport capacity, awards and repeated save rewriting. Unit tests check
+bonus deduplication/count semantics and short overflow before clamping. The 612-test
+solution checkpoint passes, including private saves; final branch acceptance remains open.
 
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).

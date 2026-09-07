@@ -161,6 +161,16 @@ public static class RuntimeRuleLinker
                 RefuelRate = rule.Value.Integers["refuelRate"],
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
+                Pilots = rule.Value.Integers["pilots"],
+                MaximumSoldiers = rule.Value.Integers["maxSoldiers"],
+                MaximumSmallSoldiers = rule.Value.Integers["maxSmallSoldiers"],
+                MaximumSmallUnits = rule.Value.Integers["maxSmallUnits"],
+                OnlyOneSoldierGroupAllowed = rule.Value.Booleans["onlyOneSoldierGroupAllowed"],
+                AllowedSoldierGroups = rule.Value.AllowedSoldierGroups,
+                AllowedArmorGroups = rule.Value.AllowedArmorGroups,
+                ArmorGroupLimits = rule.Value.ArmorGroupLimits,
+                PilotMinimumStats = rule.Value.PilotMinimumStats,
+                RequiredPilotBonuses = rule.Value.RequiredPilotBonuses,
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -185,6 +195,8 @@ public static class RuntimeRuleLinker
                     rule.Value.Values.GetString("requiresBuyCountry"), rule.Value.RequiredBuyBaseFunctions, rule.Value.BuyRequirements),
                 IsAlien = rule.Value.Values.Boolean("liveAlien"),
                 VehicleFixedAmmoSlot = rule.Value.Values.GetInteger("vehicleFixedAmmoSlot"),
+                VehicleArmor = rule.Value.Values.Boolean("fixedWeapon") && content.PersonnelTactical.Units.TryGet(rule.Id, out var vehicleUnit)
+                    ? OptionalRuntime(armorHandles, vehicleUnit!.Value.Strings["armor"]) : null,
                 PrisonType = rule.Value.Values.GetInteger("prisonType"),
             });
 
@@ -195,7 +207,8 @@ public static class RuntimeRuleLinker
                 rule.Value.Integers["size"],
                 rule.Value.EffectiveSpaceOccupied,
                 rule.Value.Strings["storeItem"],
-                OptionalItem(itemHandles, rule.Value.Strings["storeItem"])));
+                OptionalItem(itemHandles, rule.Value.Strings["storeItem"]))
+            { Group = rule.Value.Integers["group"], Stats = rule.Value.Stats.Values });
 
         cancellationToken.ThrowIfCancellationRequested();
         var soldiers = BuildFamily<SoldierRuleFamily, SoldierRule, RuntimeSoldierRule>(
@@ -236,6 +249,10 @@ public static class RuntimeRuleLinker
             items,
             soldiers,
             armors,
+            BuildFamily<SoldierBonusRuleFamily, SoldierBonusRule, RuntimeSoldierBonusRule>(generation,
+                content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)),
+            BuildFamily<CommendationRuleFamily, CommendationRule, RuntimeCommendationRule>(generation,
+                content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)),
             IdentityFamily<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills),
             IdentityFamily<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research),
             IdentityFamily<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events),
@@ -287,7 +304,8 @@ public static class RuntimeRuleLinker
                 Integer(entry, "x"), Integer(entry, "y"), Integer(entry, "buildTime"))).ToArray();
             var crafts = Sequence(node, "crafts").Select(entry => new RuntimeStartingCraft(
                 RequiredId(craftHandles, Type(entry), "startingBase", variant.ToString(), "crafts"),
-                Integer(entry, "id")) { Template = RuntimeCraftTemplateLoader.Read(entry as YamlMappingNode) }).ToArray();
+                Integer(entry, "id"))
+            { Template = RuntimeCraftTemplateLoader.Read(entry as YamlMappingNode) }).ToArray();
             var soldiers = Sequence(node, "soldiers").Select(entry => new RuntimeStartingSoldier(
                 RequiredId(soldierHandles, Type(entry, defaultSoldier), "startingBase", variant.ToString(),
                     "soldiers"), Integer(entry, "id"))
@@ -324,7 +342,8 @@ public static class RuntimeRuleLinker
                 randomCount,
                 Array.AsReadOnly(random),
                 Integer(node, "scientists"),
-                Integer(node, "engineers"));
+                Integer(node, "engineers"))
+            { AssignRandomSoldiers = node.TryGet("randomSoldiers", out _) };
         }
 
         RuleHandle<TFamily> RequiredRule<TFamily, TRule>(

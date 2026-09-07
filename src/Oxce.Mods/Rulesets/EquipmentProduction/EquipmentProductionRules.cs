@@ -48,6 +48,7 @@ public sealed record CraftRule(
     IReadOnlyList<string> FixedWeapons,
     IReadOnlyList<string> RequiredPilotBonuses)
 {
+    public IReadOnlyDictionary<string, short> PilotMinimumStats { get; init; } = new System.Collections.ObjectModel.ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
     public int EffectiveMaximumUnits => Integers["maxUnitsLimit"] < 0
         ? Stats.Get("soldiers")
         : Integers["maxUnitsLimit"];
@@ -301,6 +302,7 @@ internal sealed class CraftBuilder
     public string[] WeaponStrings { get; } = ["STR_WEAPON_ONE", "STR_WEAPON_TWO", "", ""];
     public string[] FixedWeapons { get; } = ["", "", "", ""];
     public List<string> RequiredPilotBonuses { get; set; } = [];
+    public Oxce.Mods.Rulesets.PersonnelTactical.UnitStatsBuilder PilotMinimumStats { get; } = new();
 }
 
 internal sealed class UfoBuilder(string id)

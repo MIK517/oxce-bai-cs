@@ -8,6 +8,13 @@ regions:
     areas: [[0, 30, -20, 20]]
 research:
   - name: UNLOCK
+commendations:
+  - type: STR_MEDAL_ORIGINAL8_NAME
+    description: Original recruit
+    soldierBonusTypes: [PILOT_BONUS]
+soldierBonuses:
+  - name: PILOT_BONUS
+    stats: {tu: 10}
 items:
   - type: CORPSE
     battleType: 11
@@ -64,11 +71,25 @@ soldiers:
       randomTransformationBonuses: {BONUS_B: 1, "": 1, BONUS_A: 1, DISABLED_BONUS: 0}
       transformationBonusesCount: 5
 craftWeapons:
+  - type: NEGATIVE_CAPACITY
+    ammoMax: 10
+    rearmRate: 3
+    launcher: SUPPLY
+    clip: BULKY
+    stats: {soldiers: -1}
   - type: FIXED
     ammoMax: 10
     launcher: SUPPLY
     clip: BULKY
 crafts:
+  - type: CARRIER
+    soldiers: 2
+  - type: INTERCEPTOR
+    soldiers: 1
+    pilots: 1
+    allowLanding: false
+    pilotMinStatsRequired: {tu: 60}
+    pilotSoldierBonusesRequired: [PILOT_BONUS]
   - type: SHIP
     costBuy: 1000
     costSell: 500
@@ -88,6 +109,17 @@ startingBase:
   scientists: 1
   engineers: 1
 startingTime: {weekday: 1, day: 1, month: 1, year: 1999, hour: 0, minute: 59, second: 55}
+startingBaseVeteran:
+  randomSoldiers: {RECRUIT: 4}
+  facilities: [{type: STORES, x: 0, y: 0}]
+  items: {SUPPLY: 2}
+  crafts:
+    - {type: CARRIER, id: 1}
+    - {type: INTERCEPTOR, id: 1}
+    - type: SHIP
+      id: 1
+      weapons: [{type: NEGATIVE_CAPACITY, ammo: 8}, {type: FIXED, ammo: 0}]
+      items: {SUPPLY: 4}
 initialFunding: 100
 costHireScientist: 1000
 costHireEngineer: 500

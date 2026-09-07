@@ -459,6 +459,7 @@ public static class OxceSaveAdapter
             Pair("missions", Integer(personal.Missions)),
             Pair("kills", Integer(personal.Kills)),
             Pair("stuns", Integer(personal.Stuns)),
+            Pair("diary", BuildSoldierDiary(source, personal)),
             Pair("manaMissing", Integer(personal.ManaMissing)),
             Pair("healthMissing", Integer(personal.HealthMissing)),
             Pair("improvement", Integer(personal.Improvement)),
@@ -507,7 +508,9 @@ public static class OxceSaveAdapter
                         Pair("rearming", weapon.Rearming ? Boolean(true) : null), Pair("disabled", weapon.Disabled ? Boolean(true) : null)])))),
             Pair("vehicles", Sequence(state.Vehicles.Select((vehicle, slot) => Overlay(
                 slot < originalVehicles.Length && String(originalVehicles[slot], "type", "") == vehicle.RuleId ? originalVehicles[slot] : null,
-                [Pair("type", Scalar(vehicle.RuleId)), Pair("ammo", Integer(vehicle.Ammo))])))),
+                [Pair("type", Scalar(vehicle.RuleId)), Pair("ammo", Integer(vehicle.Ammo)),
+                    Pair("size", vehicle.Size is { } size ? Integer(size) : null),
+                    Pair("spaceOccupied", vehicle.SpaceOccupied is { } space ? Integer(space) : null)])))),
         ]);
     }
 
@@ -528,6 +531,26 @@ public static class OxceSaveAdapter
     private static YamlMappingNode? MatchingSource(YamlMappingNode? source, string key, string legacyKey) =>
         source is not null && key.Length != 0 && String(source, "oxcePortEntityKey", legacyKey) == key ? source : null;
 
+    private static YamlMappingNode? BuildSoldierDiary(YamlMappingNode? source, SoldierPersonalState personal)
+    {
+        var diary = source is not null && source.TryGet("diary", out var node) ? RequireMap(node!, "soldier diary") : null;
+        if (diary is null && personal.Commendations.Count == 0) return null;
+        var previous = Maps(diary, "commendations").ToArray();
+        var commendations = personal.Commendations.Select((commendation, index) =>
+        {
+            var old = index < previous.Length && String(previous[index], "commendationName", "") == commendation.RuleId &&
+                String(previous[index], "noun", "noNoun") == commendation.Noun ? previous[index] : null;
+            return Overlay(old,
+            [
+                Pair("commendationName", Scalar(commendation.RuleId)),
+                Pair("noun", commendation.Noun == "noNoun" ? null : Scalar(commendation.Noun)),
+                Pair("decorationLevel", Integer(commendation.DecorationLevel)),
+            ]);
+        });
+        var result = Overlay(diary, [Pair("commendations", Sequence(commendations))]);
+        return diary is null ? Overlay(result, [Pair("killList", Sequence([]))]) : result;
+    }
+
     private static SoldierSnapshot ReadSoldier(YamlMappingNode map, string defaultSoldier) =>
         new(String(map, "type", defaultSoldier), Integer(map, "id", 0))
         {
@@ -539,6 +562,7 @@ public static class OxceSaveAdapter
     {
         if (!map.TryGet("initialStats", out _)) return null;
         var craft = map.TryGet("craft", out var node) ? RequireMap(node!, "soldier craft") : null;
+        var diary = map.TryGet("diary", out var diaryNode) ? RequireMap(diaryNode!, "soldier diary") : null;
         return new(String(map, "name", ""), String(map, "callsign", ""), Integer(map, "nationality", 0),
             Integer(map, "gender", 0), Integer(map, "look", 0), Integer(map, "lookVariant", 0), String(map, "armor", ""),
             Stats("initialStats"), Stats("currentStats"))
@@ -556,6 +580,8 @@ public static class OxceSaveAdapter
             CorpseRecovered = Boolean(map, "corpseRecovered", false),
             PreviousTransformations = ReadIntMap(map, "previousTransformations"),
             TransformationBonuses = ReadIntMap(map, "transformationBonuses"),
+            Commendations = Array.AsReadOnly(Maps(diary, "commendations").Select(c => new SoldierCommendation(
+                RequiredString(c, "commendationName"), String(c, "noun", "noNoun"), Integer(c, "decorationLevel", 0))).ToArray()),
             ReplacedArmor = String(map, "replacedArmor", ""),
             TransformedArmor = String(map, "transformedArmor", ""),
             PersonalEquipmentArmor = String(map, "personalEquipmentArmor", ""),
@@ -592,7 +618,11 @@ public static class OxceSaveAdapter
             Array.AsReadOnly(Maps(map, "weapons").Select(w => String(w, "type", "0") == "0" ? null :
                 new CraftWeaponSnapshot(RequiredString(w, "type"), Integer(w, "ammo", 0), Boolean(w, "rearming", false), Boolean(w, "disabled", false))).ToArray()),
             ReadIntMap(map, "items"), Array.AsReadOnly(Maps(map, "vehicles").Select(v =>
-                new CraftVehicleSnapshot(RequiredString(v, "type"), Integer(v, "ammo", 0))).ToArray()))
+                new CraftVehicleSnapshot(RequiredString(v, "type"), Integer(v, "ammo", 0))
+                {
+                    Size = v.TryGet("size", out _) ? Integer(v, "size", 0) : null,
+                    SpaceOccupied = v.TryGet("spaceOccupied", out _) ? Integer(v, "spaceOccupied", 0) : null,
+                }).ToArray()))
         {
             Longitude = Double(map, "lon", 0),
             Latitude = Double(map, "lat", 0),

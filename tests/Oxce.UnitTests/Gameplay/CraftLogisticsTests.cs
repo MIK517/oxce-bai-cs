@@ -1,4 +1,6 @@
 using Oxce.Gameplay.Campaigns;
+using Oxce.Core.Random;
+using Oxce.Savegames.Oxce;
 using Xunit;
 
 namespace Oxce.UnitTests.Gameplay;
@@ -6,10 +8,33 @@ namespace Oxce.UnitTests.Gameplay;
 public sealed class CraftLogisticsTests
 {
     [Fact]
+    public void StartingNegativeCapacityReturnsEveryWeaponAndLoadedClipsOnce()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = CampaignFactory.Create(content,
+            CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"], Difficulty = CampaignDifficulty.Veteran },
+            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var snapshot = campaign.Capture();
+        var baseState = Assert.Single(snapshot.Bases);
+        var craft = baseState.Crafts.Single(c => c.RuleId == "SHIP").Logistics!;
+        Assert.All(craft.Weapons, Assert.Null);
+        Assert.Equal(4, baseState.Items["SUPPLY"]);
+        Assert.Equal(2, baseState.Items["BULKY"]); // floor(8 / rearmRate 3), clip size is unspecified.
+        Assert.Equal(4, craft.Items["SUPPLY"]);
+        Assert.Equal(4, baseState.Soldiers.Count);
+        Assert.Equal<string>(["INTERCEPTOR", "CARRIER", "CARRIER", ""], baseState.Soldiers.Select(s => s.Personal!.CraftType));
+        Assert.All(baseState.Soldiers, soldier => Assert.Equal(
+            new SoldierCommendation("STR_MEDAL_ORIGINAL8_NAME", "NoNoun", 0), Assert.Single(soldier.Personal!.Commendations)));
+        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(snapshot), "starting.sav", content,
+            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Equivalent(snapshot, loaded.Campaign.Capture(), strict: true);
+    }
+
+    [Fact]
     public void StartingCraftLoadsSuppliedStateWithoutInitializingFixedWeapons()
     {
         var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
-        var rule = Assert.Single(rules.Crafts.Rules).Value;
+        var rule = rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value;
         var empty = CraftLogistics.LoadStarting(rule, null);
         Assert.All(empty.Weapons, Assert.Null);
         Assert.Equal("STR_READY", empty.Status);
@@ -31,7 +56,7 @@ public sealed class CraftLogisticsTests
     public void PurchasedCraftKeepsEmptySlotsAndArrivalChecksDamageWeaponsThenFuel()
     {
         var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
-        var rule = Assert.Single(rules.Crafts.Rules).Value;
+        var rule = rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value;
         var purchased = CraftLogistics.Purchase(rule, rules, 1, 0.5);
         Assert.Equal("STR_REFUELLING", purchased.Status);
         Assert.Equal(2, purchased.Weapons.Count);

@@ -4,7 +4,11 @@ using Oxce.Mods.Rulesets.Runtime;
 namespace Oxce.Gameplay.Campaigns;
 
 public sealed record CraftWeaponSnapshot(string RuleId, int Ammo, bool Rearming = false, bool Disabled = false);
-public sealed record CraftVehicleSnapshot(string RuleId, int Ammo);
+public sealed record CraftVehicleSnapshot(string RuleId, int Ammo)
+{
+    public int? Size { get; init; }
+    public int? SpaceOccupied { get; init; }
+}
 public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     IReadOnlyList<CraftWeaponSnapshot?> Weapons, IReadOnlyDictionary<string, int> Items,
     IReadOnlyList<CraftVehicleSnapshot> Vehicles)
@@ -19,6 +23,40 @@ public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
 
 public static class CraftLogistics
 {
+    public static IReadOnlyDictionary<string, int> UnloadedWeaponItems(CraftLogisticsState state, RuntimeRuleCatalog rules)
+    {
+        var items = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
+        {
+            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            Add(rule.Launcher, 1);
+            if (rule.Clip.Length == 0) continue;
+            var clip = rules.Items[rules.Items.GetRequired(rule.Clip)].Value;
+            var divisor = clip.ClipSize > 0 ? clip.ClipSize : rule.RearmRate;
+            if (divisor <= 0) throw new InvalidDataException("Craft weapon clip divisor must be positive.");
+            Add(rule.Clip, checked((int)Math.Floor((double)weapon.Ammo / divisor)));
+        }
+        return new ReadOnlyDictionary<string, int>(items);
+
+        void Add(string id, int count)
+        {
+            if (count > 0 && id.Length != 0) items[id] = checked(items.GetValueOrDefault(id) + count);
+        }
+    }
+
+    public static bool HasNegativeCapacity(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules)
+    {
+        var soldiers = rule.SoldierCapacity;
+        var vehicles = rule.VehicleCapacity;
+        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
+        {
+            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            soldiers = checked(soldiers + bonus.GetValueOrDefault("soldiers"));
+            vehicles = checked(vehicles + bonus.GetValueOrDefault("vehicles"));
+        }
+        return soldiers < 0 || vehicles < 0;
+    }
+
     public static CraftLogisticsState LoadStarting(RuntimeCraftRule rule, RuntimeCraftTemplate? template)
     {
         if (rule.WeaponSlots is < 0 or > 4) throw new InvalidDataException("Craft weapon slot count is outside the reference range.");
@@ -29,7 +67,8 @@ public static class CraftLogistics
         return new(template?.Fuel ?? 0, template?.Damage ?? 0, template?.Status ?? "STR_READY",
             Array.AsReadOnly(weapons), new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(
                 template?.Items ?? new Dictionary<string, int>(), StringComparer.Ordinal)),
-            Array.AsReadOnly(template?.Vehicles.Select(v => new CraftVehicleSnapshot(v.RuleId, v.Ammo)).ToArray() ?? []))
+            Array.AsReadOnly(template?.Vehicles.Select(v => new CraftVehicleSnapshot(v.RuleId, v.Ammo)
+            { Size = v.Size, SpaceOccupied = v.SpaceOccupied }).ToArray() ?? []))
         { Name = template?.Name ?? string.Empty, ExcessFuel = template?.ExcessFuel ?? 0, LowFuel = template?.LowFuel ?? false };
     }
 
@@ -108,7 +147,9 @@ public static class CraftLogistics
         }
         return state with
         {
-            Longitude = longitude, Latitude = latitude, Weapons = Array.AsReadOnly(weapons),
+            Longitude = longitude,
+            Latitude = latitude,
+            Weapons = Array.AsReadOnly(weapons),
             Status = state.Damage > 0 ? "STR_REPAIRS" : !allFull ? "STR_REARMING" : state.Fuel < fuelMaximum ? "STR_REFUELLING" : "STR_READY",
         };
     }

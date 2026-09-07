@@ -49,7 +49,19 @@ public sealed class OxceSaveAdapterTests
         var content = CampaignFoundationTests.LoadFixture();
         var campaign = CampaignFactory.Create(content, CampaignFoundationTests.Request(),
             new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
-        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
+        var snapshot = campaign.Capture();
+        // Removing craft must not turn this collection-default test into a dangling-crew test.
+        if (field == "crafts") snapshot = snapshot with
+        {
+            Bases = snapshot.Bases.Select(b => b with
+            {
+                Soldiers = b.Soldiers.Select(s => s with
+                {
+                    Personal = s.Personal is { } p ? p with { CraftType = "", CraftId = 0 } : null,
+                }).ToArray(),
+            }).ToArray(),
+        };
+        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot);
         var pattern = new Regex($@"(?m)^(?<indent> *){field}:[^\r\n]*(?:\r?\n\k<indent> +[^\r\n]*)*");
         Assert.Single(pattern.Matches(yaml));
         var missing = pattern.Replace(yaml, string.Empty);

@@ -112,7 +112,10 @@ public static class CampaignFactory
         {
             var rule = rules.Soldiers[type].Value;
             var personal = SoldierGeneration.Generate(rule, rules.Armors.GetExternalId(rule.Armor), -1, names, random)
-                with { AllowAutoCombat = request.Options.AutoCombatDefaultSoldier };
+                with
+            { AllowAutoCombat = request.Options.AutoCombatDefaultSoldier };
+            if (rules.Commendations.TryGet("STR_MEDAL_ORIGINAL8_NAME", out _))
+                personal = personal with { Commendations = Array.AsReadOnly(new[] { new SoldierCommendation("STR_MEDAL_ORIGINAL8_NAME", "NoNoun", 0) }) };
             soldiers.Add(new CampaignState.SoldierState(type, NextId(ids, "STR_SOLDIER")) { Personal = personal });
             names.Add(personal.Name);
         }
@@ -134,6 +137,23 @@ public static class CampaignFactory
             if (item.Quantity <= 0) throw new InvalidDataException("Starting item quantities must be positive.");
             items.Add(item.Rule, item.Quantity);
         }
+        // Mod::newSave unloads every weapon when the combined raw capacity is negative.
+        for (var index = 0; index < crafts.Length; index++)
+        {
+            var craft = crafts[index];
+            var state = craft.Logistics!;
+            if (!CraftLogistics.HasNegativeCapacity(state, rules.Crafts[craft.Rule].Value, rules)) continue;
+            foreach (var item in CraftLogistics.UnloadedWeaponItems(state, rules))
+            {
+                var handle = rules.Items.GetRequired(item.Key);
+                items[handle] = checked(items.GetValueOrDefault(handle) + item.Value);
+            }
+            crafts[index] = craft with
+            {
+                Logistics = state with { Weapons = Array.AsReadOnly(new CraftWeaponSnapshot?[state.Weapons.Count]) },
+            };
+        }
+        if (template.AssignRandomSoldiers) StartingCrewAssignment.Assign(crafts, soldiers, rules);
         var startingBase = new CampaignState.BaseState(
             0, string.Empty, 0, 0, facilities, crafts, soldiers, items, template.Scientists, template.Engineers);
         var start = rules.Campaign.StartingTime;
@@ -163,7 +183,8 @@ public static class CampaignFactory
             countries,
             regions,
             [startingBase],
-            EmptyScriptValues(content, "GeoscapeGame")) { Options = request.Options };
+            EmptyScriptValues(content, "GeoscapeGame"))
+        { Options = request.Options };
     }
 
     private static int NextId(SortedDictionary<string, int> ids, string name)

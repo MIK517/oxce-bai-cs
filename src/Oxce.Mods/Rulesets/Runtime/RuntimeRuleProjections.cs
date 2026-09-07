@@ -109,6 +109,16 @@ public sealed record RuntimeCraftRule(
     public int RefuelRate { get; init; }
     public bool NotifyWhenRefueled { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
+    public int Pilots { get; init; }
+    public int MaximumSoldiers { get; init; } = -1;
+    public int MaximumSmallSoldiers { get; init; } = -1;
+    public int MaximumSmallUnits { get; init; } = -1;
+    public bool OnlyOneSoldierGroupAllowed { get; init; }
+    public IReadOnlyList<int> AllowedSoldierGroups { get; init; } = [];
+    public IReadOnlyList<int> AllowedArmorGroups { get; init; } = [];
+    public IReadOnlyDictionary<int, int> ArmorGroupLimits { get; init; } = new ReadOnlyDictionary<int, int>(new Dictionary<int, int>());
+    public IReadOnlyDictionary<string, short> PilotMinimumStats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    public IReadOnlyList<string> RequiredPilotBonuses { get; init; } = [];
 }
 
 public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, string Launcher, string Clip,
@@ -131,6 +141,7 @@ public sealed record RuntimeItemRule(
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public bool IsAlien { get; init; }
     public int VehicleFixedAmmoSlot { get; init; }
+    public RuleHandle<ArmorRuleFamily>? VehicleArmor { get; init; }
     public int PrisonType { get; init; }
 }
 
@@ -139,7 +150,11 @@ public sealed record RuntimeArmorRule(
     int Size,
     int SpaceOccupied,
     string StoreItemId,
-    RuleHandle<ItemRuleFamily>? StoreItem);
+    RuleHandle<ItemRuleFamily>? StoreItem)
+{
+    public int Group { get; init; }
+    public IReadOnlyDictionary<string, short> Stats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+}
 
 public sealed record RuntimeSoldierRule(
     int ListOrder,
@@ -161,6 +176,9 @@ public sealed record RuntimeSoldierRule(
     public IReadOnlyList<RuntimeSoldierNamePool> NamePools { get; init; } = [];
     public RuntimeSoldierTemplate? SpawnedTemplate { get; init; }
 }
+
+public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<string, short> Stats);
+public sealed record RuntimeCommendationRule(IReadOnlyList<string> SoldierBonusTypes);
 
 public sealed record RuntimeStartingFacility(
     RuleHandle<FacilityRuleFamily> Rule,
@@ -193,7 +211,10 @@ public sealed record RuntimeStartingBaseTemplate(
     int RandomSoldierCount,
     IReadOnlyList<RuntimeStartingSoldierBatch> RandomSoldiers,
     int Scientists,
-    int Engineers);
+    int Engineers)
+{
+    public bool AssignRandomSoldiers { get; init; }
+}
 
 public sealed record RuntimeCampaignSettings(
     CampaignStartTime StartingTime,

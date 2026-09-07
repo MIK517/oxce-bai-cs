@@ -200,6 +200,8 @@ public readonly struct CraftWeaponRuleFamily;
 public readonly struct ItemRuleFamily;
 public readonly struct SoldierRuleFamily;
 public readonly struct ArmorRuleFamily;
+public readonly struct SoldierBonusRuleFamily;
+public readonly struct CommendationRuleFamily;
 public readonly struct SkillRuleFamily;
 public readonly struct ResearchRuleFamily;
 public readonly struct EventRuleFamily;

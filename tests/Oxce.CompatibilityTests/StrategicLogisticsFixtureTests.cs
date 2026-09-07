@@ -4,12 +4,40 @@ using Oxce.Core.Random;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.Savegames.Oxce;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicLogisticsFixtureTests
 {
+    [Fact]
+    public void StartingCampaignMatchesReferenceCrewAwardAndWeaponRemovalOrder()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Oxce.slnx"))) root = root.Parent;
+        Assert.NotNull(root);
+        var discovery = ModDiscovery.ScanDirectory(Path.Combine(root.FullName, "fixtures/public/mods/strategic-logistics"));
+        var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods), [new("logistics", true)], "logistics", new("Extended", "8.6.1.0"));
+        var content = ContentSnapshotBuilder.Build(plan).Content;
+        var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "Starting fixture", "logistics", ["logistics"], CampaignDifficulty.Veteran),
+            new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var snapshot = campaign.Capture();
+        // Mod::newSave returns both launchers and floor(8/3) clips before assigning crew.
+        Assert.Equal(4, snapshot.Bases[0].Items["SUPPLY"]);
+        Assert.Equal(2, snapshot.Bases[0].Items["BULKY"]);
+        Assert.Equal<string>(["INTERCEPTOR", "CARRIER", "CARRIER", ""], snapshot.Bases[0].Soldiers.Select(s => s.Personal!.CraftType));
+        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot);
+        Assert.Contains("noun: NoNoun", yaml, StringComparison.Ordinal);
+        var loaded = OxceSaveAdapter.Load(yaml, "starting.sav", content, new SplitMix64RandomSource(1),
+            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var first = loaded.Campaign.Capture();
+        Assert.Equivalent(snapshot, first, strict: true);
+        var second = OxceSaveAdapter.Load(OxceSaveAdapter.EmitLoadedCampaign(first, loaded.Source), "starting.sav", content,
+            new SplitMix64RandomSource(2), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Equivalent(first, second.Campaign.Capture(), strict: true);
+    }
+
     [Fact]
     public void LogisticsArithmeticMatchesExtractedReferenceMethods()
     {
