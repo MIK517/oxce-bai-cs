@@ -51,13 +51,9 @@ implemented strategic save subset. These are eligibility classifications, not bl
 claims that imported campaigns can progress. Public two-base fixtures exercise delivery
 and entity movement; new vanilla deliveries beyond midnight remain queued at the guard.
 
-The populated advancement measurement (owned craft/personnel and incoming orders,
-stopping before midnight) allocated 2,744 bytes for UFO/TFTD and 1,952 for Rosigma;
-wall times were approximately 1.9–7.3 ms during the full suite. These are observations,
-not performance thresholds. The existing empty-workload allocation gate still passes.
-Fresh/cache startup remained roughly 1.7–9.1 s / 1.7–6.2 s under concurrent suite load;
-startup deserialization remains a separate backlog item. Detailed local results are
-generated under ignored `artifacts/phase6-corpus/logistics-report.json`.
+The existing empty-workload allocation gate still passes. Fresh and cached content
+loads must produce equivalent logistics outcomes for the owned corpus; startup
+deserialization performance remains a separate backlog item.
 
 ## Deliberate guards and next work
 
