@@ -30,6 +30,26 @@ public sealed class CampaignLogisticsTests
             new PrepareLogisticsQuote(0, LogisticsOperation.Purchase)).Events));
     }
 
+    [Fact]
+    public void RestoreRejectsIncomingItemTotalsThatExceedQueryRange()
+    {
+        var content = LoadFixture();
+        var snapshot = Create(content).Capture();
+        var invalidBase = snapshot.Bases[0] with
+        {
+            Transfers =
+            [
+                new(1, 1, CampaignTransferKind.Item, "SUPPLY", int.MaxValue),
+                new(2, 1, CampaignTransferKind.Item, "SUPPLY", 1),
+            ],
+        };
+        var random = new SplitMix64RandomSource(7);
+        var before = random.State;
+
+        Assert.Throws<InvalidDataException>(() => CampaignState.Restore(snapshot with { Bases = [invalidBase] }, content, random));
+        Assert.Equal(before, random.State);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
