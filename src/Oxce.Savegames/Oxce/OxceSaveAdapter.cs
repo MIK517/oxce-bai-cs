@@ -492,7 +492,12 @@ public static class OxceSaveAdapter
             [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey))]);
         if (value.Logistics is not { } state) return identity;
         var originalWeapons = Maps(source, "weapons").ToArray();
-        var originalVehicles = Maps(source, "vehicles").ToArray();
+        var originalVehicles = Maps(source, "vehicles").Select((node, slot) => new
+        {
+            Identity = (Type: String(node, "type", ""),
+                PreservationKey: String(node, "oxcePortEntityKey", $"{value.PreservationKey}:vehicle:{slot}")),
+            Node = node,
+        }).ToDictionary(entry => entry.Identity, entry => entry.Node);
         return Overlay(identity,
         [
             Pair("fuel", Integer(state.Fuel)), Pair("damage", Integer(state.Damage)), Pair("status", Scalar(state.Status)),
@@ -509,9 +514,7 @@ public static class OxceSaveAdapter
             Pair("vehicles", Sequence(state.Vehicles.Select((vehicle, slot) =>
             {
                 var key = vehicle.PreservationKey.Length == 0 ? $"{value.PreservationKey}:vehicle:{slot}" : vehicle.PreservationKey;
-                var original = originalVehicles.Select((candidate, originalSlot) => (candidate, originalSlot)).FirstOrDefault(pair =>
-                    String(pair.candidate, "type", "") == vehicle.RuleId &&
-                    String(pair.candidate, "oxcePortEntityKey", $"{value.PreservationKey}:vehicle:{pair.originalSlot}") == key).candidate;
+                originalVehicles.TryGetValue((vehicle.RuleId, key), out var original);
                 return Overlay(original,
                 [Pair("type", Scalar(vehicle.RuleId)), Pair("ammo", Integer(vehicle.Ammo)), Pair("oxcePortEntityKey", Scalar(key)),
                     Pair("size", vehicle.Size is { } size ? Integer(size) : null),
