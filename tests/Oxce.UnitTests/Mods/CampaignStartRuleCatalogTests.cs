@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -56,7 +57,7 @@ public sealed class CampaignStartRuleCatalogTests
               - type: FACILITY_C
                 mapName: MAP_C
             """;
-        using var fixture = new TemporaryCampaignMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
         var content = CampaignStartRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -120,7 +121,7 @@ public sealed class CampaignStartRuleCatalogTests
             baseNamesFirst: !add [Beta]
             facilities: [{type: B, mapName: MAP_B}]
             """;
-        using var fixture = new TemporaryCampaignMod(("20-base.rul", baseRules), ("10-patch.rul", patchRules));
+        using var fixture = new TemporaryModFixture(("20-base.rul", baseRules), ("10-patch.rul", patchRules));
 
         var settings = CampaignStartRuleCatalog.Load(CreatePlan(fixture.Root)).Settings;
 
@@ -151,7 +152,7 @@ public sealed class CampaignStartRuleCatalogTests
               - type: SMALL
                 mapName: MAP_SMALL
             """;
-        using var fixture = new TemporaryCampaignMod(("fixture.rul", yaml));
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var content = CampaignStartRuleCatalog.Load(CreatePlan(fixture.Root));
         var diagnostics = new DiagnosticCollector();
 
@@ -172,20 +173,4 @@ public sealed class CampaignStartRuleCatalogTests
             new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
-    private sealed class TemporaryCampaignMod : IDisposable
-    {
-        public TemporaryCampaignMod(params (string Name, string Yaml)[] rulesets)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-campaign-start-test-{Guid.NewGuid():N}");
-            var mod = Path.Combine(Root, "fixture");
-            var rulesetDirectory = Path.Combine(mod, "Ruleset");
-            Directory.CreateDirectory(rulesetDirectory);
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 1000\n");
-            foreach (var ruleset in rulesets)
-                File.WriteAllText(Path.Combine(rulesetDirectory, ruleset.Name), ruleset.Yaml);
-        }
-        public string Root { get; }
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

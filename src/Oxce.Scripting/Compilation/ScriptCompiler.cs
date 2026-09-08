@@ -119,7 +119,7 @@ public sealed class ScriptCompiler
         {
             throw new InvalidOperationException($"Duplicate validated parser parameter name '{value.Name}'.");
         }
-        _registers.Add(new ScriptRegisterDefinition(value.Name, type, offset, isOutput));
+        _registers.Add(new ScriptRegisterDefinition(value.Name, type, offset, isOutput) { IsInput = !isOutput });
     }
 
     private ScriptTypeDefinition ResolveType(ScriptTypeId id)

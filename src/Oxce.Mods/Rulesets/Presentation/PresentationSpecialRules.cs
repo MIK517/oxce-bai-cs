@@ -20,6 +20,8 @@ public sealed record ExtraSoundDeclaration(
 
 public sealed class PresentationSpecialRules
 {
+    public string FontName { get; init; } = "Font.dat";
+
     internal PresentationSpecialRules(
         IDictionary<string, SortedDictionary<string, string>> strings,
         IDictionary<string, List<ExtraSpriteDeclaration>> sprites,

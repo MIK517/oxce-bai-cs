@@ -24,10 +24,12 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<RegionRuleFamily, RuntimeRegionRule> regions,
         RuntimeRuleFamily<FacilityRuleFamily, RuntimeFacilityRule> facilities,
         RuntimeRuleFamily<CraftRuleFamily, RuntimeCraftRule> crafts,
-        RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeIdentityRule> craftWeapons,
+        RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeCraftWeaponRule> craftWeapons,
         RuntimeRuleFamily<ItemRuleFamily, RuntimeItemRule> items,
         RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> soldiers,
         RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> armors,
+        RuntimeRuleFamily<SoldierBonusRuleFamily, RuntimeSoldierBonusRule> soldierBonuses,
+        RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> commendations,
         RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> skills,
         RuntimeRuleFamily<ResearchRuleFamily, RuntimeIdentityRule> research,
         RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> events,
@@ -43,6 +45,8 @@ public sealed class RuntimeRuleCatalog
         Items = items;
         Soldiers = soldiers;
         Armors = armors;
+        SoldierBonuses = soldierBonuses;
+        Commendations = commendations;
         Skills = skills;
         Research = research;
         Events = events;
@@ -55,10 +59,12 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<RegionRuleFamily, RuntimeRegionRule> Regions { get; }
     public RuntimeRuleFamily<FacilityRuleFamily, RuntimeFacilityRule> Facilities { get; }
     public RuntimeRuleFamily<CraftRuleFamily, RuntimeCraftRule> Crafts { get; }
-    public RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeIdentityRule> CraftWeapons { get; }
+    public RuntimeRuleFamily<CraftWeaponRuleFamily, RuntimeCraftWeaponRule> CraftWeapons { get; }
     public RuntimeRuleFamily<ItemRuleFamily, RuntimeItemRule> Items { get; }
     public RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> Soldiers { get; }
     public RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> Armors { get; }
+    public RuntimeRuleFamily<SoldierBonusRuleFamily, RuntimeSoldierBonusRule> SoldierBonuses { get; }
+    public RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> Commendations { get; }
     public RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> Skills { get; }
     public RuntimeRuleFamily<ResearchRuleFamily, RuntimeIdentityRule> Research { get; }
     public RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> Events { get; }

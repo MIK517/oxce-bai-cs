@@ -1,0 +1,139 @@
+using Oxce.Core.Random;
+using Oxce.Gameplay.Campaigns;
+using Xunit;
+
+namespace Oxce.UnitTests.Gameplay;
+
+public sealed class SoldierGenerationTests
+{
+    [Theory]
+    [InlineData("nationality")]
+    [InlineData("looks")]
+    [InlineData("callsigns")]
+    public void InvalidGenerationOutcomesFailBeforeRandomConsumption(string problem)
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var rule = rules.Soldiers[rules.Soldiers.GetRequired("RECRUIT")].Value;
+        var pool = rule.NamePools[0];
+        rule = rule with
+        {
+            NamePools = problem switch
+            {
+                "nationality" => [pool with { GlobalWeight = int.MaxValue }, pool],
+                "looks" => [pool with { LookWeights = [int.MaxValue, 1] }],
+                _ => [pool with { MaleCallsign = [], FemaleFrequency = 50 }],
+            }
+        };
+        var random = new SplitMix64RandomSource(42);
+        var before = random.State;
+        Assert.Throws<InvalidDataException>(() => SoldierGeneration.Generate(rule, "ARMOR", -1, new HashSet<string>(StringComparer.Ordinal), random));
+        Assert.Equal(before, random.State);
+    }
+
+    [Fact]
+    public void FixedStatAndNameFixtureMatchesReferenceConstructorRules()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var rule = Assert.Single(content.RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
+        var pool = Assert.Single(rule.NamePools);
+        Assert.Equal(100, pool.GlobalWeight);
+        Assert.Equal(pool.MaleFirst, pool.FemaleFirst);
+        var generated = SoldierGeneration.Generate(rule, "ARMOR", -1,
+            new HashSet<string>(StringComparer.Ordinal), new SplitMix64RandomSource(42));
+        Assert.Equal("Alex Example", generated.Name);
+        Assert.Equal("Comet", generated.Callsign);
+        Assert.Equal(1, generated.Gender);
+        Assert.Equal(2, generated.Look);
+        Assert.InRange(generated.LookVariant, 0, 63);
+        Assert.Equal(20, generated.InitialStats["bravery"]); // Integer division precedes the random draw.
+        Assert.Equal(0, generated.InitialStats["psiSkill"]); // Always starts at the minimum.
+        Assert.Equal(20, generated.InitialStats["mana"]);
+        Assert.Equal(generated.InitialStats, generated.CurrentStats);
+        Assert.Equal("ARMOR", generated.Armor);
+    }
+
+    [Fact]
+    public void CallsignValidationUsesEachPoolsReachableGenderAndReferenceFallback()
+    {
+        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
+        var fallback = Assert.Single(rule.NamePools);
+        var femaleOnly = fallback with
+        {
+            FemaleFrequency = 100,
+            MaleCallsign = [],
+            FemaleCallsign = ["Valkyrie"],
+        };
+        var maleWithoutCallsigns = fallback with
+        {
+            FemaleFrequency = 0,
+            MaleCallsign = [],
+            FemaleCallsign = [],
+        };
+        rule = rule with { NamePools = [fallback, femaleOnly, maleWithoutCallsigns] };
+
+        Assert.Null(SoldierGeneration.GenerationRestriction(rule));
+        var female = SoldierGeneration.Generate(rule, "ARMOR", 1, new HashSet<string>(StringComparer.Ordinal), new CountingRandom());
+        var male = SoldierGeneration.Generate(rule, "ARMOR", 2, new HashSet<string>(StringComparer.Ordinal), new CountingRandom());
+
+        Assert.Equal(1, female.Gender);
+        Assert.Equal("Valkyrie", female.Callsign);
+        Assert.Equal(0, male.Gender);
+        Assert.Equal("Comet", male.Callsign);
+    }
+
+    [Fact]
+    public void DuplicateNameRetriesExactlyTenConstructors()
+    {
+        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
+        var first = new CountingRandom();
+        SoldierGeneration.Generate(rule, "ARMOR", -1, new HashSet<string>(StringComparer.Ordinal), first);
+        var duplicate = new CountingRandom();
+        var generated = SoldierGeneration.Generate(rule, "ARMOR", -1,
+            new HashSet<string>(StringComparer.Ordinal) { "Alex Example" }, duplicate);
+        Assert.Equal("Alex Example", generated.Name);
+        Assert.Equal(first.Calls * 10, duplicate.Calls);
+    }
+
+    [Fact]
+    public void StartingSoldierLoadsLiteralStatsWithoutGeneratingOrApplyingRecruitTemplate()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var rule = Assert.Single(rules.Soldiers.Rules, r => r.Id == "TEMPLATE_RECRUIT").Value;
+        var random = new CountingRandom();
+        var loaded = SoldierGeneration.LoadStarting(rule, rule.SpawnedTemplate, rules, random);
+        Assert.Equal("Template name", loaded.Name);
+        Assert.Equal(8, loaded.Nationality);
+        Assert.Equal(-1, loaded.InitialStats["health"]);
+        Assert.Equal(-1, loaded.CurrentStats["mana"]);
+        Assert.Equal(0, loaded.CurrentStats["tu"]);
+        Assert.Equal(70, loaded.InitialStats["tu"]);
+        Assert.Equal(4, random.Calls); // Look variant and three distinct bonus choices; no mana reroll for -1.
+        random = new CountingRandom();
+        var empty = SoldierGeneration.LoadStarting(rule, null, rules, random);
+        Assert.Equal("", empty.Name);
+        Assert.Equal("ARMOR", empty.Armor);
+        Assert.Equal(0, empty.Rank);
+        Assert.Equal(0, empty.InitialStats["tu"]);
+        Assert.Equal(20, empty.CurrentStats["mana"]);
+        Assert.Equal(2, random.Calls); // Look variant and save-upgrade mana reroll.
+    }
+
+    [Fact]
+    public void RegeneratingWithoutNamePoolsKeepsExistingIdentity()
+    {
+        var rule = Assert.Single(CampaignLogisticsTests.LoadFixture().RuntimeRules.Soldiers.Rules, r => r.Id == "RECRUIT").Value;
+        var personal = SoldierGeneration.Generate(rule, "ARMOR", 0, new HashSet<string>(StringComparer.Ordinal), new SplitMix64RandomSource(7));
+        var random = new CountingRandom();
+        var regenerated = SoldierGeneration.RegenerateName(personal with { Nationality = 5 }, rule with { NamePools = [] }, random);
+        Assert.Equal(personal with { Nationality = 0 }, regenerated);
+        Assert.Equal(0, random.Calls);
+    }
+
+    private sealed class CountingRandom : IRandomSource
+    {
+        public int Calls { get; private set; }
+        public int NextExclusive(int exclusiveMaximum) { Calls++; return 0; }
+        public int NextInclusive(int minimum, int maximum) { Calls++; return minimum; }
+        public double NextUnit() { Calls++; return 0; }
+    }
+}

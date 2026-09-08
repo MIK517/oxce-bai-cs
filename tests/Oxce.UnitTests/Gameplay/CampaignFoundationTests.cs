@@ -17,7 +17,7 @@ public sealed class CampaignFoundationTests
     [InlineData(1999, 1, 31, true)]
     [InlineData(2000, 2, 29, true)]
     [InlineData(1999, 12, 31, true)]
-    public void MidnightCountsEveryDayIncludingMonthBoundaries(int year, int month, int day, bool monthly)
+    public void MissingDailySimulationBlocksBeforeMidnight(int year, int month, int day, bool monthly)
     {
         var content = LoadFixture();
         var original = CampaignFactory.Create(content, Request(), new SplitMix64RandomSource(42), new FixedClock());
@@ -29,16 +29,15 @@ public sealed class CampaignFoundationTests
         };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(0));
         var result = campaign.Execute(new AdvanceCampaignTime(2));
-        Assert.Equal(31, campaign.DaysPassed);
-        Assert.Equal(monthly ? 3 : 2, campaign.MonthsPassed);
-        var advanced = Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events));
-        Assert.Equal(monthly ? 1 : 0, advanced.Summary.OneMonth);
-        Assert.Equal(monthly ? 0 : 1, advanced.Summary.OneDay);
+        Assert.Equal(30, campaign.DaysPassed);
+        Assert.Equal(2, campaign.MonthsPassed);
+        var advanced = Assert.Single(result.Events.OfType<CampaignTimeAdvanced>());
+        Assert.Single(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(0, advanced.Summary.OneMonth);
+        Assert.Equal(0, advanced.Summary.OneDay);
+        snapshot.Time.Advance(out var expectedBoundary);
+        Assert.Equal(monthly ? CampaignTimeTrigger.OneMonth : CampaignTimeTrigger.OneDay, expectedBoundary);
         var replay = advanced.Triggers.GetEnumerator();
-        Assert.True(replay.MoveNext());
-        Assert.Equal(monthly ? CampaignTimeTrigger.OneMonth : CampaignTimeTrigger.OneDay, replay.Current);
-        Assert.True(replay.MoveNext());
-        Assert.Equal(CampaignTimeTrigger.FiveSeconds, replay.Current);
         Assert.False(replay.MoveNext());
     }
 
@@ -132,7 +131,8 @@ public sealed class CampaignFoundationTests
         second.Execute(new AdvanceCampaignTime(200_000));
 
         Assert.Equivalent(first.Capture(), second.Capture(), strict: true);
-        Assert.True(first.Capture().DaysPassed > 0);
+        Assert.Equal(0, first.Capture().DaysPassed);
+        Assert.Equal(23, first.Time.Hour);
     }
 
     [Fact]
@@ -146,9 +146,10 @@ public sealed class CampaignFoundationTests
         var result = campaign.Execute(new AdvanceCampaignTime(CampaignState.MaximumCommandTicks));
 
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
-        var advanced = Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events));
+        var advanced = Assert.Single(result.Events.OfType<CampaignTimeAdvanced>());
+        Assert.Single(result.Events.OfType<CampaignActionBlocked>());
         Assert.InRange(allocated, 0, 16_384);
-        Assert.Equal(CampaignState.MaximumCommandTicks, advanced.Summary.TickCount);
+        Assert.InRange(advanced.Summary.TickCount, 1, CampaignState.MaximumCommandTicks - 1);
         var replayed = new int[Enum.GetValues<CampaignTimeTrigger>().Length];
         foreach (var trigger in advanced.Triggers) replayed[(int)trigger]++;
         foreach (var trigger in Enum.GetValues<CampaignTimeTrigger>())
@@ -186,7 +187,7 @@ public sealed class CampaignFoundationTests
 
     internal static RuntimeContent LoadFixture()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
@@ -204,13 +205,6 @@ public sealed class CampaignFoundationTests
         ["runtime-master", "runtime-addon"],
         CampaignDifficulty.Beginner);
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate repository root.");
-    }
 
     internal sealed class FixedClock : ICampaignClock
     {

@@ -10,7 +10,7 @@ public sealed class PrivateGmCatCorpusTests
     [Fact]
     public void OwnedUfoGmCatEntriesConvertToBoundedMidiFiles()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var path = Path.Combine(root, "data", "UFO", "SOUND", "GM.CAT");
         Assert.SkipUnless(File.Exists(path), "Owned UFO GM.CAT is not available in this checkout.");
         var archive = CatArchive.Parse(BinaryDataReader.FromFile(path));
@@ -24,14 +24,4 @@ public sealed class PrivateGmCatCorpusTests
         }
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

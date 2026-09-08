@@ -12,7 +12,7 @@ public sealed class ScriptApiCatalogFixtureTests
     [Fact]
     public void RuntimeCatalogMatchesPinnedTemplateResolvedMetadata()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifest = FixtureManifestLoader.Load(
             Path.Combine(root, "fixtures", "manifests", "script-api-catalog.json"));
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -164,14 +164,4 @@ public sealed class ScriptApiCatalogFixtureTests
         Assert.Equal("RuleMod.getMaxViewDistance", binding.Name);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-        return directory?.FullName ??
-            throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

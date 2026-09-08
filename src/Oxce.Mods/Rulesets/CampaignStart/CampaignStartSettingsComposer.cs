@@ -62,6 +62,8 @@ internal static class CampaignStartSettingsComposer
         b.HireByCountryOdds = Read(root, "hireByCountryOdds", b.HireByCountryOdds);
         b.HireByRegionOdds = Read(root, "hireByRegionOdds", b.HireByRegionOdds);
         b.InitialFunding = Read(root, "initialFunding", b.InitialFunding);
+        ApplyCoefficients(root, "buyPriceCoefficient", b.BuyPriceCoefficients);
+        ApplyCoefficients(root, "sellPriceCoefficient", b.SellPriceCoefficients);
         if (root.TryGet("transferCosts", out var transfer))
         {
             if (transfer is not YamlMappingNode mapping)
@@ -93,6 +95,16 @@ internal static class CampaignStartSettingsComposer
         foreach (var entry in defaults.Entries)
             if (entry.ScalarKey is null || !current.TryGet(entry.ScalarKey, out _)) entries.Add(entry);
         return new YamlMappingNode(current.Span, entries, current.Tag, current.Anchor);
+    }
+
+    private static void ApplyCoefficients(YamlMappingNode root, string key, int[] destination)
+    {
+        if (!root.TryGet(key, out var node)) return;
+        if (node is not YamlSequenceNode sequence)
+            throw new YamlFormatException($"Global rule '{key}' must be a sequence.", node!.Span);
+        // Mod::loadAll indexes exactly five slots; absent tail values retain earlier layers.
+        for (var index = 0; index < Math.Min(destination.Length, sequence.Items.Count); index++)
+            destination[index] = YamlValueReader.ReadInt32(sequence.Items[index]);
     }
 
     private static void ApplyNames(YamlMappingNode root, string key, List<string> destination, bool unique)

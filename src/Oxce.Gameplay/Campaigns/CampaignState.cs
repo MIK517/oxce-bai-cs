@@ -7,7 +7,7 @@ using Oxce.Scripting.Globals;
 
 namespace Oxce.Gameplay.Campaigns;
 
-public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
+public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQuery
 {
     public const int BaseGridSize = 6;
     public const int MaximumCommandTicks = 1_000_000;
@@ -25,6 +25,10 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
     private readonly List<int> _researchScores;
     private readonly object _transactionGate = new();
     private ScriptValueState? _scriptValues;
+    private IReadOnlyList<CampaignRestriction> _restrictions = [];
+    private HashSet<string> _completedResearch = new(StringComparer.Ordinal);
+    private Dictionary<string, int> _monthlyPurchaseLog = new(StringComparer.Ordinal);
+    private bool _debugMode;
 
     internal CampaignState(
         RuntimeContent content,
@@ -68,6 +72,7 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
     }
 
     public CampaignIdentity Identity { get; private set; }
+    public CampaignOptions Options { get; internal init; } = new();
     public CampaignDifficulty Difficulty { get; }
     public CampaignTime Time { get; private set; }
     public int Ending { get; }
@@ -79,10 +84,15 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         ArgumentNullException.ThrowIfNull(command);
         lock (_transactionGate)
         {
+            var restriction = _restrictions.FirstOrDefault(r => r.BaseId is null && r.BlocksLogistics && r.BlocksTime);
+            if (restriction is not null) return new CampaignCommandResult([new CampaignActionBlocked(restriction.Feature)]);
+            if (Ending != 0) return new CampaignCommandResult([new CampaignActionBlocked("This campaign has ended.")]);
             return command switch
             {
                 AdvanceCampaignTime advance => Advance(advance),
                 PlaceStartingBase place => Place(place),
+                PrepareLogisticsQuote quote => QuoteLogistics(quote),
+                SubmitLogisticsOrder order => SubmitLogistics(order),
                 _ => throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
                     nameof(command)),
             };
@@ -110,6 +120,31 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         }
     }
 
+    public CampaignStores QueryStores(int baseId)
+    {
+        lock (_transactionGate)
+        {
+            var state = FindBase(baseId);
+            var incoming = state.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Item)
+                .GroupBy(t => t.RuleId, StringComparer.Ordinal).ToDictionary(g => g.Key,
+                    g => checked((int)g.Sum(t => (long)t.Quantity)), StringComparer.Ordinal);
+            var items = _content.RuntimeRules.Items.Rules.Select(r => new CampaignStoreItem(r.Id,
+                r.Value.Name.Length == 0 ? r.Id : r.Value.Name,
+                state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(r.Id)),
+                incoming.GetValueOrDefault(r.Id), r.Value.Size)).Where(i => i.Stored != 0 || i.Incoming != 0);
+            var transfers = state.Transfers.Where(t => !t.Delivered).Select(t => new CampaignIncomingTransfer(
+                t.Id, t.Kind, t.Soldier?.Personal?.Name ?? (t.Kind switch
+                {
+                    CampaignTransferKind.Scientist => "STR_SCIENTIST",
+                    CampaignTransferKind.Engineer => "STR_ENGINEER",
+                    _ => t.RuleId,
+                }), t.Quantity, t.Hours));
+            return new(baseId, UsedStores(state), AvailableStores(state), UsedQuarters(state), AvailableQuarters(state),
+                CampaignSnapshot.ReadOnly(items), CampaignSnapshot.ReadOnly(transfers))
+            { CapacityLimitation = MissingCraftInventory(state) };
+        }
+    }
+
     private CampaignSnapshot CaptureCore() => new(
             Identity with { ActiveMods = CampaignSnapshot.ReadOnly(Identity.ActiveMods) },
             Difficulty,
@@ -127,7 +162,14 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
             CampaignSnapshot.ReadOnly(_countries.Select(CaptureCountry)),
             CampaignSnapshot.ReadOnly(_regions.Select(CaptureRegion)),
             CampaignSnapshot.ReadOnly(_bases.Select(CaptureBase)),
-            CampaignSnapshot.ReadOnly(_scriptValues?.Capture() ?? []));
+            CampaignSnapshot.ReadOnly(_scriptValues?.Capture() ?? []))
+    {
+        Restrictions = CampaignSnapshot.ReadOnly(_restrictions),
+        CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
+        MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog),
+        DebugMode = _debugMode,
+        Options = Options,
+    };
 
     public static CampaignState Restore(
         CampaignSnapshot snapshot,
@@ -135,6 +177,7 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         IStatefulRandomSource random)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(snapshot.Options);
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(random);
         if (!content.Capabilities.Has(ContentLoadStage.RuntimeLinked))
@@ -155,10 +198,21 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
             RequiredHistory(region.ActivityXcom, "region XCOM activity"),
             RequiredHistory(region.ActivityAlien, "region alien activity"))).ToArray();
         var bases = snapshot.Bases.Select(source => RestoreBase(source, rules)).ToArray();
+        foreach (var owner in bases) ValidateAssignments(owner, rules);
         EnsureUnique(snapshot.Countries.Select(static country => country.RuleId), "country rule IDs");
         EnsureUnique(snapshot.Regions.Select(static region => region.RuleId), "region rule IDs");
-        EnsureCraftIds(snapshot.Bases.SelectMany(static item => item.Crafts));
-        EnsureSoldierIds(snapshot.Bases.SelectMany(static item => item.Soldiers));
+        EnsureCraftIds(snapshot.Bases.SelectMany(static item => item.Crafts.Concat(
+            item.Transfers.Where(t => !t.Delivered && t.Craft is not null).Select(t => t.Craft!))));
+        EnsureSoldierIds(snapshot.Bases.SelectMany(static item => item.Soldiers.Concat(
+            item.Transfers.Where(t => !t.Delivered && t.Soldier is not null).Select(t => t.Soldier!))));
+        EnsureUnique(snapshot.Bases.SelectMany(static item => item.Transfers.Select(t => t.Id)), "transfer IDs");
+        EnsureUnique(snapshot.CompletedResearch, "completed research IDs");
+        foreach (var research in snapshot.CompletedResearch) ArgumentException.ThrowIfNullOrWhiteSpace(research);
+        foreach (var purchase in snapshot.MonthlyPurchaseLog)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(purchase.Key);
+            if (purchase.Value < 0) throw new InvalidDataException("Monthly purchase counts cannot be negative.");
+        }
 
         var previousRandomState = random.State;
         try
@@ -182,7 +236,14 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
                 countries,
                 regions,
                 bases,
-                RestoreScriptValues(content, "GeoscapeGame", snapshot.ScriptValues));
+                RestoreScriptValues(content, "GeoscapeGame", snapshot.ScriptValues))
+            {
+                _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
+                _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal),
+                _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal),
+                _debugMode = snapshot.DebugMode,
+                Options = snapshot.Options,
+            };
         }
         catch
         {
@@ -204,30 +265,53 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(command.FiveSecondTicks);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(command.FiveSecondTicks, MaximumCommandTicks);
         var previous = Time;
-        var fiveSeconds = 0;
-        var tenMinutes = 0;
-        var thirtyMinutes = 0;
-        var oneHour = 0;
-        var oneDay = 0;
-        var oneMonth = 0;
-        for (var index = 0; index < command.FiveSecondTicks; index++)
+        _logisticsQuote = null;
+        var effects = new TimeEffects(this);
+        var result = CampaignTimeDispatcher.Advance(Time, command.FiveSecondTicks, effects);
+        var advanced = new CampaignTimeAdvanced(previous, Time, result.Summary);
+        if (effects.Events is { } notifications)
         {
-            Time = Time.Advance(out var trigger);
-            switch (trigger)
-            {
-                case CampaignTimeTrigger.FiveSeconds: fiveSeconds++; break;
-                case CampaignTimeTrigger.TenMinutes: tenMinutes++; break;
-                case CampaignTimeTrigger.ThirtyMinutes: thirtyMinutes++; break;
-                case CampaignTimeTrigger.OneHour: oneHour++; break;
-                case CampaignTimeTrigger.OneDay: oneDay++; DaysPassed++; break;
-                // GeoscapeState's monthly trigger falls through to daily processing.
-                case CampaignTimeTrigger.OneMonth: oneMonth++; MonthsPassed++; DaysPassed++; break;
-                default: throw new InvalidOperationException($"Unknown campaign time trigger '{trigger}'.");
-            }
+            notifications.Insert(0, advanced);
+            if (result.BlockedReason is { } blocked) notifications.Add(new CampaignActionBlocked(blocked));
+            return new CampaignCommandResult(CampaignSnapshot.ReadOnly(notifications));
         }
-        var summary = new CampaignTimeTriggerSummary(
-            command.FiveSecondTicks, fiveSeconds, tenMinutes, thirtyMinutes, oneHour, oneDay, oneMonth);
-        return new CampaignCommandResult([new CampaignTimeAdvanced(previous, Time, summary)]);
+        return new CampaignCommandResult(result.BlockedReason is { } reason
+            ? [advanced, new CampaignActionBlocked(reason)] : [advanced]);
+    }
+
+    private sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
+    {
+        public List<ICampaignEvent>? Events { get; private set; }
+        public List<(int BaseId, string Type, int Id)>? ArrivingCrafts { get; set; }
+        public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
+
+        public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger)
+        {
+            foreach (var restriction in campaign._restrictions)
+                if (restriction.BlocksTime) return restriction.Feature;
+            if (campaign._bases.Any(b => b.Crafts.Any(c => c.Logistics is { Status: "STR_OUT" })))
+                return "Craft movement requires world simulation.";
+            if (highestTrigger >= CampaignTimeTrigger.OneDay)
+                return "Daily and monthly campaign simulation is not implemented yet; time stopped before midnight.";
+            if (highestTrigger >= CampaignTimeTrigger.ThirtyMinutes && campaign._bases.Any(b =>
+                b.Crafts.Any(c => c.Logistics is { Status: not "STR_READY" })))
+                return "Craft servicing is not implemented yet; time stopped before the service tick.";
+            return highestTrigger >= CampaignTimeTrigger.OneHour ? campaign.PreflightTransfers() : null;
+        }
+
+        public bool Apply(CampaignTime current, CampaignTimeTrigger trigger)
+        {
+            campaign.Time = current;
+            if (trigger == CampaignTimeTrigger.OneMonth)
+            {
+                campaign.MonthsPassed++;
+                campaign._monthlyPurchaseLog.Clear();
+            }
+            if (trigger == CampaignTimeTrigger.OneDay) campaign.DaysPassed++;
+            if (trigger == CampaignTimeTrigger.OneHour) campaign.AdvanceTransfers(this);
+            if (trigger == CampaignTimeTrigger.ThirtyMinutes) campaign.RefuelArrivingCrafts(this);
+            return Events is not null;
+        }
     }
 
     private CampaignCommandResult Place(PlaceStartingBase command)
@@ -244,6 +328,11 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         target.Name = command.Name;
         target.Longitude = command.Longitude;
         target.Latitude = command.Latitude;
+        for (var index = 0; index < target.Crafts.Count; index++)
+            if (target.Crafts[index].Logistics is { } state)
+                target.Crafts[index] = target.Crafts[index] with
+                { Logistics = state with { Longitude = command.Longitude, Latitude = command.Latitude } };
+        _logisticsQuote = null;
         return new CampaignCommandResult(
             [new StartingBasePlaced(command.BaseIndex, command.Name, command.Longitude, command.Latitude)]);
     }
@@ -304,14 +393,17 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
             facility.BuildTime, facility.Ammo, facility.AmmoMissingReported, facility.Disabled,
             facility.HadPreviousFacility))),
         CampaignSnapshot.ReadOnly(state.Crafts.Select(craft =>
-            new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id))),
+            new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id) { PreservationKey = craft.PreservationKey, Logistics = craft.Logistics })),
         CampaignSnapshot.ReadOnly(state.Soldiers.Select(soldier =>
-            new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), soldier.Id))),
+            new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), soldier.Id) { PreservationKey = soldier.PreservationKey, Personal = soldier.Personal })),
         new ReadOnlyDictionary<string, int>(state.Items.ToDictionary(
             item => _content.RuntimeRules.Items.GetExternalId(item.Key), static item => item.Value,
             StringComparer.Ordinal)),
         state.Scientists,
-        state.Engineers);
+        state.Engineers)
+    {
+        Transfers = CampaignSnapshot.ReadOnly(state.Transfers),
+    };
 
     private CampaignBaseOverview QueryBase(BaseState state) => new(
         state.Id,
@@ -339,23 +431,86 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
             rules.Facilities.GetRequired(facility.RuleId), facility.X, facility.Y, facility.BuildTime,
             facility.Ammo, facility.AmmoMissingReported, facility.Disabled, facility.HadPreviousFacility)).ToArray();
         var crafts = source.Crafts.Select(craft => new CraftState(
-            rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft"))).ToArray();
+            rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft"))
+        { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules) }).ToArray();
         var soldiers = source.Soldiers.Select(soldier => new SoldierState(
-            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier"))).ToArray();
+            rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier"))
+        { PreservationKey = soldier.PreservationKey, Personal = RestorePersonal(soldier.Personal, rules) }).ToArray();
         var items = new Dictionary<RuleHandle<ItemRuleFamily>, int>();
         foreach (var pair in source.Items)
         {
             if (pair.Value <= 0) throw new InvalidDataException($"Item '{pair.Key}' has a non-positive quantity.");
             items.Add(rules.Items.GetRequired(pair.Key), pair.Value);
         }
-        return new BaseState(source.Id, source.Name, source.Longitude, source.Latitude, facilities, crafts,
+        var result = new BaseState(source.Id, source.Name, source.Longitude, source.Latitude, facilities, crafts,
             soldiers, items, source.Scientists, source.Engineers);
+        foreach (var transfer in source.Transfers)
+        {
+            ValidateTransfer(transfer, rules);
+            result.Transfers.Add(transfer with
+            {
+                Soldier = transfer.Soldier is { } soldier ? soldier with { Personal = RestorePersonal(soldier.Personal, rules) } : null,
+                Craft = transfer.Craft is { } craft ? craft with { Logistics = RestoreCraftLogistics(craft.Logistics, rules) } : null,
+            });
+        }
+        return result;
+    }
+
+    private static void ValidateTransfer(TransferSnapshot transfer, RuntimeRuleCatalog rules)
+    {
+        PositiveId(transfer.Id, "transfer");
+        if (!Enum.IsDefined(transfer.Kind) || transfer.Quantity <= 0)
+            throw new InvalidDataException("Transfer kind or quantity is invalid.");
+        if (transfer.Hours == int.MinValue) throw new InvalidDataException("Transfer hours would overflow.");
+        if ((transfer.Soldier is not null) != (transfer.Kind == CampaignTransferKind.Soldier) ||
+            (transfer.Craft is not null) != (transfer.Kind == CampaignTransferKind.Craft))
+            throw new InvalidDataException("Transfer payload does not match its kind.");
+        if (transfer.Soldier is { } soldier)
+        {
+            rules.Soldiers.GetRequired(soldier.RuleId);
+            PositiveId(soldier.Id, "soldier");
+            if (transfer.Quantity != 1 || transfer.RuleId != soldier.RuleId)
+                throw new InvalidDataException("Soldier transfer payload is inconsistent.");
+        }
+        if (transfer.Craft is { } craft)
+        {
+            rules.Crafts.GetRequired(craft.RuleId);
+            PositiveId(craft.Id, "craft");
+            if (transfer.Quantity != 1 || transfer.RuleId != craft.RuleId)
+                throw new InvalidDataException("Craft transfer payload is inconsistent.");
+        }
+        if (transfer.Kind == CampaignTransferKind.Item) rules.Items.GetRequired(transfer.RuleId);
     }
 
     private static void ValidateBase(BaseState state, RuntimeRuleCatalog rules)
     {
         if (state.Scientists < 0 || state.Engineers < 0)
             throw new InvalidDataException("Base personnel counts cannot be negative.");
+        var usedQuarters = state.Soldiers.Count + (long)state.Scientists + state.Engineers;
+        var incomingItems = new Dictionary<RuleHandle<ItemRuleFamily>, long>();
+        foreach (var transfer in state.Transfers.Where(transfer => !transfer.Delivered))
+        {
+            if (transfer.Kind is CampaignTransferKind.Soldier or CampaignTransferKind.Scientist or CampaignTransferKind.Engineer)
+                usedQuarters += transfer.Quantity;
+            if (transfer.Kind == CampaignTransferKind.Item)
+            {
+                var item = rules.Items.GetRequired(transfer.RuleId);
+                incomingItems[item] = incomingItems.GetValueOrDefault(item) + transfer.Quantity;
+                if (incomingItems[item] > int.MaxValue)
+                    throw new InvalidDataException($"Incoming quantity for item '{transfer.RuleId}' exceeds the supported range.");
+            }
+        }
+        if (usedQuarters > int.MaxValue)
+            throw new InvalidDataException("Base personnel including incoming transfers exceed the supported range.");
+        foreach (var prisonType in rules.Items.Rules.Where(entry => entry.Value.IsAlien).Select(entry => entry.Value.PrisonType).Distinct())
+        {
+            var contained = state.Items.Where(pair => rules.Items[pair.Key].Value is { IsAlien: true } rule && rule.PrisonType == prisonType)
+                .Sum(pair => (long)pair.Value);
+            contained += incomingItems.Where(pair => rules.Items[pair.Key].Value is { IsAlien: true } rule && rule.PrisonType == prisonType)
+                .Sum(pair => pair.Value);
+            if (contained > int.MaxValue)
+                throw new InvalidDataException($"Alien containment usage for prison type {prisonType} exceeds the supported range.");
+        }
         if (!double.IsFinite(state.Longitude) || state.Longitude < 0 || state.Longitude >= 2 * Math.PI)
             throw new InvalidDataException("Base longitude must be in [0, 2π).");
         if (!double.IsFinite(state.Latitude) || state.Latitude < -Math.PI / 2 || state.Latitude > Math.PI / 2)
@@ -493,8 +648,9 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         public List<CraftState> Crafts { get; } = crafts.ToList();
         public List<SoldierState> Soldiers { get; } = soldiers.ToList();
         public Dictionary<RuleHandle<ItemRuleFamily>, int> Items { get; } = items;
-        public int Scientists { get; } = scientists;
-        public int Engineers { get; } = engineers;
+        public int Scientists { get; set; } = scientists;
+        public int Engineers { get; set; } = engineers;
+        public List<TransferSnapshot> Transfers { get; } = [];
         public bool IsPlaced => Name.Length != 0;
     }
 
@@ -508,7 +664,15 @@ public sealed class CampaignState : ICampaignCommandTarget, ICampaignQuery
         bool Disabled,
         bool HadPreviousFacility);
 
-    internal sealed record CraftState(RuleHandle<CraftRuleFamily> Rule, int Id);
+    internal sealed record CraftState(RuleHandle<CraftRuleFamily> Rule, int Id)
+    {
+        public string PreservationKey { get; init; } = string.Empty;
+        public CraftLogisticsState? Logistics { get; init; }
+    }
 
-    internal sealed record SoldierState(RuleHandle<SoldierRuleFamily> Rule, int Id);
+    internal sealed record SoldierState(RuleHandle<SoldierRuleFamily> Rule, int Id)
+    {
+        public string PreservationKey { get; init; } = string.Empty;
+        public SoldierPersonalState? Personal { get; init; }
+    }
 }

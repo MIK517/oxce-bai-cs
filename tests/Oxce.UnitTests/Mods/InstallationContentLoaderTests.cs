@@ -11,6 +11,87 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class InstallationContentLoaderTests
 {
+    [Fact]
+    public void OverflowingCraftInitializationIsUnavailableBeforeRecruitmentDraws()
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        File.WriteAllText(installation.FirstRuleset, File.ReadAllText(installation.FirstRuleset)
+            .Replace("fixedWeapons: [FIXED]", "fixedWeapons: [FIXED, FIXED]", StringComparison.Ordinal)
+            .Replace("  - type: FIXED", "  - type: FIXED\n    stats: {soldiers: 2147483647}", StringComparison.Ordinal));
+        var content = InstallationContentLoader.Load(installation.Request("logistics", "-"), cancellationToken: TestContext.Current.CancellationToken).Content!;
+        var campaign = Oxce.Gameplay.Campaigns.CampaignFactory.Create(content,
+            new(new(Guid.NewGuid()), "Overflow", "logistics", ["logistics"], Oxce.Gameplay.Campaigns.CampaignDifficulty.Beginner),
+            new Oxce.Core.Random.SplitMix64RandomSource(42), Oxce.Gameplay.Campaigns.SystemCampaignClock.Instance);
+        Assert.IsType<Oxce.Gameplay.Campaigns.StartingBasePlaced>(Assert.Single(campaign.Execute(
+            new Oxce.Gameplay.Campaigns.PlaceStartingBase(0, "Alpha", 0, 0)).Events));
+        var before = campaign.Capture();
+        var quote = Assert.IsType<Oxce.Gameplay.Campaigns.LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new Oxce.Gameplay.Campaigns.PrepareLogisticsQuote(0, Oxce.Gameplay.Campaigns.LogisticsOperation.Purchase)).Events)).Quote;
+        var craft = quote.Rows.Single(r => r.RuleId == "SHIP");
+        Assert.Equal(0, craft.MaximumQuantity);
+        var recruit = quote.Rows.Single(r => r.RuleId == "RECRUIT");
+        Assert.IsType<Oxce.Gameplay.Campaigns.CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new Oxce.Gameplay.Campaigns.SubmitLogisticsOrder(quote.Id, [new(recruit.Id, 1), new(craft.Id, 1)])).Events));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("2147483648")]
+    [InlineData("2147483647")]
+    public void SoldierBonusWeightsRejectNegativeAndOverflowingRandomRanges(string weight)
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        File.WriteAllText(installation.FirstRuleset, File.ReadAllText(installation.FirstRuleset)
+            .Replace("BONUS_B: 1", "BONUS_B: " + weight, StringComparison.Ordinal));
+        var result = InstallationContentLoader.Load(installation.Request("logistics", "-"),
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.False(result.IsSuccess);
+        Assert.NotNull(result.Failure);
+    }
+
+    [Fact]
+    public void FontMetadataOverrideSurvivesCompiledCache()
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        File.AppendAllText(installation.FirstRuleset, "\nfontName: InterfaceFonts.dat\n");
+        var request = installation.Request("logistics", "-");
+        var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.True(cached.IsSuccess, cached.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+        Assert.Equal("InterfaceFonts.dat", first.Content!.Presentation.FontName);
+        Assert.Equal("InterfaceFonts.dat", cached.Content!.Presentation.FontName);
+    }
+
+    [Fact]
+    public void NamePoolsSurviveCacheAndContentChangesInvalidateIt()
+    {
+        using var installation = new TemporaryInstallation("strategic-logistics");
+        var nameDirectory = Path.Combine(installation.Root, "standard", "logistics", "SoldierName");
+        File.Move(Path.Combine(nameDirectory, "test.nam"), Path.Combine(nameDirectory, "test.pool"));
+        File.WriteAllText(installation.FirstRuleset, File.ReadAllText(installation.FirstRuleset).Replace("test.nam", "test.pool", StringComparison.Ordinal));
+        var request = installation.Request("logistics", "-");
+        var first = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(first.IsSuccess, first.DescribeFailure());
+        Assert.True(cached.IsSuccess, cached.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+        Assert.Equivalent(first.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools,
+            cached.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools, strict: true);
+        var template = cached.Content.RuntimeRules.Soldiers.Rules.Single(r => r.Id == "TEMPLATE_RECRUIT").Value.SpawnedTemplate!;
+        Assert.Equal(3, template.TransformationBonuses!["BONUS_A"]);
+        Assert.Equal(5, template.TransformationBonusesCount);
+        Assert.Equal(4, template.RandomTransformationBonuses!.Count);
+        var path = Path.Combine(nameDirectory, "test.pool");
+        File.WriteAllText(path, File.ReadAllText(path).Replace("Alex", "Blair", StringComparison.Ordinal));
+        var changed = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        Assert.True(changed.IsSuccess, changed.DescribeFailure());
+        Assert.NotEqual(CompiledContentCacheStatus.Hit, changed.CacheStatus);
+        Assert.Equal("Blair", changed.Content!.RuntimeRules.Soldiers.Rules[0].Value.NamePools[0].MaleFirst[0]);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -337,7 +418,7 @@ public sealed class InstallationContentLoaderTests
             Directory.CreateDirectory(standard);
             Directory.CreateDirectory(Path.Combine(Root, "user", "mods"));
             CopyDirectory(
-                Path.Combine(FindRepositoryRoot(), "fixtures", "public", "mods", fixtureName),
+                Path.Combine(Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(), "fixtures", "public", "mods", fixtureName),
                 standard);
         }
 
@@ -371,12 +452,5 @@ public sealed class InstallationContentLoaderTests
             }
         }
 
-        private static string FindRepositoryRoot()
-        {
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-                directory = directory.Parent;
-            return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate repository root.");
-        }
     }
 }

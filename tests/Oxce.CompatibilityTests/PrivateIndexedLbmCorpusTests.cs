@@ -9,7 +9,7 @@ public sealed class PrivateIndexedLbmCorpusTests
     [Fact]
     public void OwnedOriginalLbmFilesDecodeWithinBounds()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var data = Path.Combine(root, "data");
         Assert.SkipUnless(
             Directory.Exists(data),
@@ -25,14 +25,4 @@ public sealed class PrivateIndexedLbmCorpusTests
         }
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

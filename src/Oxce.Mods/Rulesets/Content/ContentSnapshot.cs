@@ -73,7 +73,8 @@ public sealed class RuntimeContent
         IEnumerable<ContentScriptEventPlan> eventPlans,
         IEnumerable<ContentInitialScriptValue> initialValues,
         ResolvedResourceCatalog resources,
-        RuntimeRuleCatalog runtimeRules)
+        RuntimeRuleCatalog runtimeRules,
+        RuntimePresentationContent presentation)
     {
         Capabilities = capabilities;
         ParsedFileCount = parsedFileCount;
@@ -83,6 +84,7 @@ public sealed class RuntimeContent
         InitialValues = Array.AsReadOnly(initialValues.ToArray());
         Resources = resources;
         RuntimeRules = runtimeRules;
+        Presentation = presentation;
     }
 
     public ContentLoadCapabilities Capabilities { get; }
@@ -93,6 +95,7 @@ public sealed class RuntimeContent
     public IReadOnlyList<ContentInitialScriptValue> InitialValues { get; }
     public ResolvedResourceCatalog Resources { get; }
     public RuntimeRuleCatalog RuntimeRules { get; }
+    public RuntimePresentationContent Presentation { get; }
 }
 
 public sealed class ContentCompatibilityData
@@ -261,7 +264,11 @@ public static class ContentSnapshotBuilder
             resourceResolution.Catalog,
             compiler.Scripts,
             sink,
-            new RuntimeRuleLinkOptions { CancellationToken = options.CancellationToken });
+            new RuntimeRuleLinkOptions
+            {
+                CancellationToken = options.CancellationToken,
+                SoldierNamePools = RuntimeSoldierNamePoolLoader.Load(session.Catalog.PersonnelTactical.Soldiers, plan.CreateVirtualFileCatalog()),
+            });
         runtimeLinkTimer.Stop();
         var runtimeLinkMeasurement = new ContentBuildStageMeasurement(
             runtimeLinkTimer.Elapsed.TotalMilliseconds,
@@ -279,7 +286,8 @@ public static class ContentSnapshotBuilder
             compiler.EventPlans,
             compiler.InitialValues,
             resourceResolution.Catalog,
-            runtimeLink.Catalog);
+            runtimeLink.Catalog,
+            new RuntimePresentationContent(session.Catalog.Presentation.Special));
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.Completed));
         return new ContentSnapshot(
