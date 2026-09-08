@@ -68,8 +68,23 @@ jobs:
       - name: Restore
         run: dotnet restore Oxce.slnx --locked-mode
 
+      - name: Build coverage binaries
+        run: dotnet build Oxce.slnx --configuration Release --no-restore
+
       - name: Collect coverage
-        run: dotnet test Oxce.slnx --no-restore --coverlet --coverlet-output-format cobertura --results-directory artifacts/coverage
+        shell: bash
+        run: |
+          mkdir -p artifacts/coverage
+          dotnet exec tests/Oxce.UnitTests/bin/Release/net10.0/Oxce.UnitTests.dll \
+            --coverlet \
+            --coverlet-file-prefix Oxce.UnitTests \
+            --coverlet-output-format cobertura \
+            --results-directory artifacts/coverage
+          dotnet exec tests/Oxce.CompatibilityTests/bin/Release/net10.0/Oxce.CompatibilityTests.dll \
+            --coverlet \
+            --coverlet-file-prefix Oxce.CompatibilityTests \
+            --coverlet-output-format cobertura \
+            --results-directory artifacts/coverage
 
       - name: Upload coverage
         uses: actions/upload-artifact@v7
