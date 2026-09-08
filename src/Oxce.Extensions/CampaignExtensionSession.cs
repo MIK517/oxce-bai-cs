@@ -55,6 +55,12 @@ public sealed class CampaignExtensionSession :
 
     ExtensionCampaignOverview IExtensionCampaignQueries.QueryOverview() => Map(QueryOverview());
 
+    public CampaignStores QueryStores(int baseId)
+    {
+        ThrowIfDisposed();
+        return _queries.QueryStores(baseId);
+    }
+
     public CampaignCommandResult Execute(ICampaignCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);

@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -109,7 +110,7 @@ public sealed class TypedRuleFamilyLoaderTests
     {
         const string yaml = "probeRules: [{type: RULE_A, dynamicScriptValue: 7}]";
         var diagnostics = new DiagnosticCollector();
-        using var fixture = new TemporaryRulesetMod(yaml);
+        using var fixture = new TemporaryModFixture(yaml);
         var unresolved = Compose(fixture.Root, ProbeSection, diagnostics);
 
         var typed = new DynamicProbeLoader().Load(Assert.Single(unresolved.Sections), diagnostics);
@@ -121,7 +122,7 @@ public sealed class TypedRuleFamilyLoaderTests
     [Fact]
     public void LoaderRejectsASectionWithDifferentIdentityContract()
     {
-        using var fixture = new TemporaryRulesetMod("wrong: [{id: A}]");
+        using var fixture = new TemporaryModFixture("wrong: [{id: A}]");
         var unresolved = Compose(fixture.Root, new RuleSectionDefinition("wrong", "id"));
 
         Assert.Throws<ArgumentException>(() => new ProbeLoader().Load(Assert.Single(unresolved.Sections)));
@@ -131,7 +132,7 @@ public sealed class TypedRuleFamilyLoaderTests
     public void UnresolvedRuleConstructionReceivesCompositionMetadata()
     {
         const string yaml = "probeRules: [{type: RULE_A}, {type: RULE_B}]";
-        using var fixture = new TemporaryRulesetMod(yaml);
+        using var fixture = new TemporaryModFixture(yaml);
         var unresolved = Compose(fixture.Root, ProbeSection);
 
         var typed = new OrdinalProbeLoader().Load(Assert.Single(unresolved.Sections));
@@ -144,7 +145,7 @@ public sealed class TypedRuleFamilyLoaderTests
         IDiagnosticSink? diagnostics = null,
         TypedRuleLoadOptions? options = null)
     {
-        using var fixture = new TemporaryRulesetMod(yaml);
+        using var fixture = new TemporaryModFixture(yaml);
         var unresolved = Compose(fixture.Root, ProbeSection, diagnostics);
         return new ProbeLoader().Load(Assert.Single(unresolved.Sections), diagnostics, options);
     }
@@ -244,22 +245,4 @@ public sealed class TypedRuleFamilyLoaderTests
             new(builder.Id, builder.Label, builder.Value, builder.Enabled, builder.Values, builder.NestedValue);
     }
 
-    private sealed class TemporaryRulesetMod : IDisposable
-    {
-        public TemporaryRulesetMod(string yaml)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-typed-rule-test-{Guid.NewGuid():N}");
-            var mod = Path.Combine(Root, "fixture");
-            var ruleset = Path.Combine(mod, "Ruleset");
-            Directory.CreateDirectory(ruleset);
-            File.WriteAllText(
-                Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 0\n");
-            File.WriteAllText(Path.Combine(ruleset, "fixture.rul"), yaml);
-        }
-
-        public string Root { get; }
-
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

@@ -263,7 +263,7 @@ public static class InstallationContentLoader
             var cached = cacheKey is null
                 ? CompiledContentCacheReadResult.Miss(CompiledContentCacheStatus.Disabled)
                 : CompiledContentCache.TryRead(
-                    cacheKey, cacheOptions, contentOptions, measurements, cancellationToken);
+                    cacheKey, plan.Plan!, cacheOptions, contentOptions, measurements, cancellationToken);
             if (cached.Content is not null)
             {
                 foreach (var diagnostic in cached.Diagnostics)

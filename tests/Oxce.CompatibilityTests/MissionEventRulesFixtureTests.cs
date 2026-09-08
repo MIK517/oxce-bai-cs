@@ -14,7 +14,7 @@ public sealed class MissionEventRulesFixtureTests
     [Fact]
     public void MissionEventRulesMatchPinnedReferenceFixture()
     {
-        var root = FindRepositoryRoot(); var fixture = Path.Combine(root, "fixtures", "public", "mods", "mission-event-rules");
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(); var fixture = Path.Combine(root, "fixtures", "public", "mods", "mission-event-rules");
         using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "fixtures", "expected", "mods", "mission-event-rules.expected.json")));
         var diagnostics = new DiagnosticCollector(); var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods, diagnostics), [new ModActivation("fixture", true)], "fixture", new ModEngineIdentity("Extended", "8.6.1.0"), diagnostics);
@@ -37,5 +37,5 @@ public sealed class MissionEventRulesFixtureTests
         Assert.Equal(articleExpected[3].GetString(), article.Pages[0].Title); Assert.Equal(articleExpected[4].GetString(), article.Pages[0].Text); Assert.Equal(articleExpected[5].GetString(), article.Pages[1].Text);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
-    private static string FindRepositoryRoot() { var directory = new DirectoryInfo(AppContext.BaseDirectory); while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx"))) directory = directory.Parent; return directory?.FullName ?? throw new DirectoryNotFoundException(); }
+
 }

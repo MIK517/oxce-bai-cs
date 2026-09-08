@@ -48,7 +48,7 @@ public sealed class MissionEventRuleCatalog
             new EventRuleLoader().Load(Required(unresolved, "events"), diagnostics, typedOptions),
             new StrategicScriptRuleLoader("missionScripts", StrategicScriptKind.Mission).Load(Required(unresolved, "missionScripts"), diagnostics, typedOptions),
             new StrategicScriptRuleLoader("adhocScripts", StrategicScriptKind.Mission).Load(Required(unresolved, "adhocScripts"), diagnostics, typedOptions),
-            UfopaediaComposer.Compose(documents, compositionOptions));
+            UfopaediaComposer.Compose(documents, compositionOptions, diagnostics));
     }
 
     public MissionEventValidation ValidateRelationships(CampaignStartRuleCatalog campaign, ItemRuleCatalog items,

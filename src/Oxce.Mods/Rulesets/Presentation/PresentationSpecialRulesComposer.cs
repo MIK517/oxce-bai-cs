@@ -15,10 +15,12 @@ internal static class PresentationSpecialRulesComposer
         var sprites = new Dictionary<string, List<ExtraSpriteDeclaration>>(StringComparer.Ordinal);
         var sounds = new List<ExtraSoundDeclaration>();
         var operations = 0;
+        var fontName = "Font.dat";
 
         foreach (var document in documents.Documents)
         {
             var root = document.Root;
+            if (root.TryGet("fontName", out var font)) fontName = YamlValueReader.ReadString(font!);
             ReadSequence(root, "extraStrings", item =>
             {
                 Count(item);
@@ -38,7 +40,7 @@ internal static class PresentationSpecialRulesComposer
             });
         }
 
-        return new PresentationSpecialRules(strings, sprites, sounds);
+        return new PresentationSpecialRules(strings, sprites, sounds) { FontName = fontName };
 
         void Count(YamlMappingNode item)
         {

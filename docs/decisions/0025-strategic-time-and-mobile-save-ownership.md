@@ -1,0 +1,57 @@
+# ADR 0025: Strategic time dispatch and mobile save ownership
+
+Status: accepted, 2026-09-05.
+
+## Decision
+
+Execute timed effects during advancement, under the campaign's single writer.
+`CampaignTimeDispatcher` performs preflight before committing a tick and dispatches
+highest trigger down to five seconds. Popup pauses finish this fallthrough and stop
+the next tick. The published summary remains exclusive highest-trigger counts, so
+existing consumers must not replay it as mutation. The extracted C++ loop fixture
+checks all trigger categories with hour/month pause requests. Empty-workload tests
+retain the one-million-tick 16 KiB allocation ceiling.
+
+Production campaigns stop before unsupported daily/monthly processing. Loaded active
+battles and known live systems produce save-neutral capability restrictions. These
+restrictions describe preserved state; raw YAML remains in Savegames. Broaden the
+guards only as the corresponding systems become executable. Isolated dispatcher tests
+can cross every boundary without claiming a complete campaign can do so.
+
+Soldier/craft sidecars are indexed campaign-wide across bases and transfer containers.
+Transfer IDs are assigned once at import, never rematched by mutable list position,
+and emitted as `oxcePortTransferId`. `oxcePortEntityKey` distinguishes a surviving
+entity from a newly constructed entity reusing its external ID. Legacy imports receive
+deterministic keys; new campaign entities receive campaign-scoped keys. Empty keys on
+explicitly reconstructed snapshots carry no right to an old entity's sidecar.
+
+These metadata fields are port-owned and ignored by the reference load methods. They
+do not replace OXCE soldier IDs, `(craft type, ID)`, or the reference transfer schema.
+Reading port output back through C++ may discard the metadata; subsequent import
+establishes a new preservation context. Emission does not mutate live campaign state
+or the source document. Duplicate ownership is rejected before publication/emission.
+
+## Consequences
+
+The port captures its explicit logistics option values in `oxcePortOptions` so headless
+and UI save/reload preserve the active command semantics. Imports without this metadata
+use reference defaults. This does not claim to import the C++ user's external options
+file; callers supply options when creating a campaign. These values include storage
+enforcement, live-alien sale eligibility and the auto-combat default for new soldiers.
+Reference save readers ignore the port metadata. Soldier-level template overrides remain
+owned by the soldier and are applied after the configured default.
+
+Craft arrivals execute checkup and the current tick's thirty-minute refuel fallthrough
+before honoring the arrival pause. The next servicing boundary is guarded while branch 2
+is absent; a popup cannot be used to skip an already committed tick's refuel operation.
+
+Calendar-only advances that previously skipped missing gameplay now stop explicitly.
+Save inspection and unknown-field conservation remain available. Transfer snapshots
+model ownership and delivery fields. Branch 1 subsequently installs purchase,
+recruitment and transfer providers; the [logistics status](../strategic-logistics-status.md)
+records their acceptance and remaining readiness/time boundaries.
+
+Name-pool directory ordering uses `Unicode::naturalCompare`'s portable lexical fallback
+instead of adding Windows collation calls to the platform-independent mod library.
+Windows reference builds may use `StrCmpLogicalW`; cross-platform RNG/name-stream parity
+is not claimed. Explicit list ordering and persisted nationality indices remain intact.

@@ -17,6 +17,10 @@ internal static class CampaignSdlCommand
         var loaded = InstallationContentLoader.Load(request);
         if (!loaded.IsSuccess) throw new InvalidDataException(loaded.DescribeFailure());
         var content = loaded.Content!;
+        var plan = InstallationPlanBuilder.Create(request);
+        if (!plan.IsSuccess) throw new InvalidDataException(plan.DescribeFailure());
+        var assets = CampaignUiAssets.Load(plan.Plan!.CreateVirtualFileCatalog(), installationRoot,
+            content.Presentation);
         loaded = null!;
         var activeMods = request.ActiveMods;
 
@@ -29,22 +33,44 @@ internal static class CampaignSdlCommand
         var extensionDiagnostics = new DiagnosticCollector();
         using var extensions = ManagedExtensionHost.LoadFromDirectory(
             Path.Combine(Path.GetFullPath(installationRoot), "extensions"), extensionDiagnostics);
-        using var extensionSession = extensions.AttachCampaign(campaign, campaign);
-        var client = new CampaignOverviewClient(extensionSession, extensionSession);
-        Console.WriteLine("Click the globe to place the starting base. Press Space to advance one minute; Escape quits.");
-        var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET campaign foundation")
+        var extensionSession = extensions.AttachCampaign(campaign, campaign);
+        OxceSaveDocument? source = null;
+        var savePath = destination == "-" ? null : Path.GetFullPath(destination);
+        var client = new CampaignLogisticsClient(new(extensionSession, extensionSession), assets.Font, assets.Localize,
+            savePath is null ? null : Save, savePath is null ? null : Load);
+        Console.WriteLine("I: stores; B/S/T: buy/sell/transfer; arrows and +/-: quantities; Enter then Y: confirm. F5/F9: save/load.");
+        var host = new SdlIndexedWindowHost(client, new SdlWindowOptions("OXCE .NET strategic logistics")
         {
-            Scale = 3,
+            Scale = 2,
+            ExitOnEscape = false,
         });
-        var result = host.Run();
-        if (destination != "-")
+        int result;
+        try
         {
-            OxceSaveAdapter.WriteNewCampaignAtomic(Path.GetFullPath(destination), campaign.Capture());
-            Console.WriteLine($"Campaign saved to {Path.GetFullPath(destination)}");
+            result = host.Run();
+            if (savePath is not null) Save();
         }
+        finally { extensionSession.Dispose(); }
         foreach (var diagnostic in extensionDiagnostics.Snapshot()
                      .Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning))
             Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
         return result;
+
+        void Save()
+        {
+            if (source is null) OxceSaveAdapter.WriteNewCampaignAtomic(savePath!, campaign.Capture());
+            else OxceSaveAdapter.RewriteLoadedCampaignAtomic(savePath!, campaign.Capture(), source);
+        }
+
+        CampaignUiSession Load()
+        {
+            var restored = OxceSaveAdapter.LoadFile(savePath!, content, new SplitMix64RandomSource(0),
+                new(masterId, activeMods.ToHashSet(StringComparer.Ordinal)));
+            extensionSession.Dispose();
+            campaign = restored.Campaign;
+            source = restored.Source;
+            extensionSession = extensions.AttachCampaign(campaign, campaign);
+            return new(extensionSession, extensionSession);
+        }
     }
 }

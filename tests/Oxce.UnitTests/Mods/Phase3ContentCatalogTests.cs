@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
@@ -13,7 +14,7 @@ public sealed class Phase3ContentCatalogTests
     [Fact]
     public void EmptyContentGraphAdvancesThroughLinkedStage()
     {
-        using var fixture = new TemporaryMod("{}");
+        using var fixture = new TemporaryModFixture("{}");
         var diagnostics = new DiagnosticCollector();
 
         var catalog = Phase3ContentCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -26,7 +27,7 @@ public sealed class Phase3ContentCatalogTests
     [Fact]
     public void MissingRuntimeReferenceAdvancesToLinkedStageWithWarning()
     {
-        using var fixture = new TemporaryMod("events: [{name: EVENT, everyItemList: [MISSING]}]");
+        using var fixture = new TemporaryModFixture("events: [{name: EVENT, everyItemList: [MISSING]}]");
         var diagnostics = new DiagnosticCollector();
 
         var catalog = Phase3ContentCatalog.Load(CreatePlan(fixture.Root), diagnostics);
@@ -41,7 +42,7 @@ public sealed class Phase3ContentCatalogTests
     [Fact]
     public void ClosurePassValidatesReferencesOwnedByLaterFamilies()
     {
-        using var fixture = new TemporaryMod("countries: [{type: COUNTRY, signedPactEvent: MISSING_EVENT}]");
+        using var fixture = new TemporaryModFixture("countries: [{type: COUNTRY, signedPactEvent: MISSING_EVENT}]");
 
         var catalog = Phase3ContentCatalog.Load(CreatePlan(fixture.Root));
 
@@ -54,7 +55,7 @@ public sealed class Phase3ContentCatalogTests
     [Fact]
     public void ManifestIsDeterministicSourceNormalizedAndBounded()
     {
-        using var fixture = new TemporaryMod("items: [{type: ITEM}]");
+        using var fixture = new TemporaryModFixture("items: [{type: ITEM}]");
         var plan = CreatePlan(fixture.Root);
         var build = Phase3ContentCatalog.Build(plan);
         var catalog = build.Catalog;
@@ -86,20 +87,4 @@ public sealed class Phase3ContentCatalogTests
             new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
-    private sealed class TemporaryMod : IDisposable
-    {
-        public TemporaryMod(string rules)
-        {
-            Root = Path.Combine(Path.GetTempPath(), "oxce-phase3-" + Guid.NewGuid().ToString("N"));
-            var mod = Path.Combine(Root, "fixture");
-            Directory.CreateDirectory(Path.Combine(mod, "Ruleset"));
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\n");
-            File.WriteAllText(Path.Combine(mod, "Ruleset", "fixture.rul"), rules);
-        }
-
-        public string Root { get; }
-
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

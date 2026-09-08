@@ -15,16 +15,19 @@ public sealed class PrivateCampaignSaveTests
     [Fact]
     public void RepresentativeOwnedSavesLoadAndPreserveTheirStrategicSubset()
     {
-        var repository = FindRepositoryRoot();
+        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var installation = Path.Combine(repository, "artifacts", "private-install");
         var saves = Path.Combine(repository, "fixtures", "private", "saves");
         Assert.SkipUnless(
             File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")) && Directory.Exists(saves),
             "The staged owned installation and private save corpus are not available in this checkout.");
 
-        VerifyFamily(installation, saves, "vanilla-ufo", "xcom1", ["xcom1"]);
-        VerifyFamily(installation, saves, "vanilla-tftd", "xcom2", ["xcom2"]);
-        VerifyFamily(installation, saves, "modded/rosigma", "40k", ["40k", "40k_ROSIGMA_edits"]);
+        VerifyFamily(installation, saves, "vanilla-ufo", "xcom1", ["xcom1"],
+            expectedFiles: 7, expectedBattleGames: 3, expectedDebugLogs: 6);
+        VerifyFamily(installation, saves, "vanilla-tftd", "xcom2", ["xcom2"],
+            expectedFiles: 5, expectedBattleGames: 2, expectedDebugLogs: 4);
+        VerifyFamily(installation, saves, "modded/rosigma", "40k", ["40k", "40k_ROSIGMA_edits"],
+            expectedFiles: 7, expectedBattleGames: 3, expectedDebugLogs: 7);
     }
 
     private static void VerifyFamily(
@@ -32,7 +35,10 @@ public sealed class PrivateCampaignSaveTests
         string saves,
         string family,
         string masterId,
-        string[] activeMods)
+        string[] activeMods,
+        int expectedFiles,
+        int expectedBattleGames,
+        int expectedDebugLogs)
     {
         var content = BuildContent(installation, masterId, activeMods);
         var options = new OxceSaveLoadOptions(masterId, activeMods.ToHashSet(StringComparer.Ordinal),
@@ -43,8 +49,10 @@ public sealed class PrivateCampaignSaveTests
                 path.EndsWith(".asav", StringComparison.OrdinalIgnoreCase))
             .Order(StringComparer.Ordinal)
             .ToArray();
-        Assert.NotEmpty(files);
+        Assert.Equal(expectedFiles, files.Length);
 
+        var battleGames = 0;
+        var debugLogs = 0;
         foreach (var path in files)
         {
             var original = File.ReadAllText(path);
@@ -53,13 +61,22 @@ public sealed class PrivateCampaignSaveTests
             var emitted = OxceSaveAdapter.EmitLoadedCampaign(before, loaded.Source);
             Assert.Contains("---", emitted, StringComparison.Ordinal);
             if (original.Contains("geoscapeDebugLog:", StringComparison.Ordinal))
+            {
+                debugLogs++;
                 Assert.Contains("geoscapeDebugLog:", emitted, StringComparison.Ordinal);
+            }
             if (original.Contains("battleGame:", StringComparison.Ordinal))
+            {
+                battleGames++;
                 Assert.Contains("battleGame:", emitted, StringComparison.Ordinal);
+            }
             var reloaded = OxceSaveAdapter.Load(
                 emitted, Path.GetFileName(path), content, new SplitMix64RandomSource(2), options);
             Assert.Equivalent(before, reloaded.Campaign.Capture(), strict: true);
         }
+
+        Assert.Equal(expectedBattleGames, battleGames);
+        Assert.Equal(expectedDebugLogs, debugLogs);
     }
 
     private static RuntimeContent BuildContent(string installation, string masterId, string[] activeMods)
@@ -84,11 +101,4 @@ public sealed class PrivateCampaignSaveTests
         return snapshot.Content;
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

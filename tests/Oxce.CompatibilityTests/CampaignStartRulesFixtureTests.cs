@@ -14,7 +14,7 @@ public sealed class CampaignStartRulesFixtureTests
     [Fact]
     public void CampaignStartRulesMatchPinnedReferenceFixture()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "campaign-start-rules");
         var expectedPath = Path.Combine(root, "fixtures", "expected", "mods", "campaign-start-rules.expected.json");
         var diagnostics = new DiagnosticCollector();
@@ -70,11 +70,4 @@ public sealed class CampaignStartRulesFixtureTests
         return YamlValueReader.ReadString(Assert.Single(Assert.IsType<YamlSequenceNode>(node).Items));
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

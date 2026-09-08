@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
@@ -18,7 +19,7 @@ public sealed class RuntimeRuleLinkerTests
     [InlineData("startingBase: {scientists: 4294967296, engineers: 2147483648}", 0, int.MinValue)]
     public void StartingPersonnelProjectionPreservesIntCountsAndZeroDefaults(string yaml, int scientists, int engineers)
     {
-        using var fixture = new TemporaryMod(yaml);
+        using var fixture = new TemporaryModFixture(yaml);
         var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root, "fixture", ["fixture"]));
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
         var template = Assert.Single(snapshot.Content.RuntimeRules.Campaign.StartingBases);
@@ -90,7 +91,7 @@ public sealed class RuntimeRuleLinkerTests
     [Fact]
     public void MissingRuntimeReferenceFailsWithProvenance()
     {
-        using var fixture = new TemporaryMod("crafts: [{type: CRAFT, refuelItem: MISSING}]");
+        using var fixture = new TemporaryModFixture("crafts: [{type: CRAFT, refuelItem: MISSING}]");
 
         var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root, "fixture", ["fixture"]));
 
@@ -104,7 +105,7 @@ public sealed class RuntimeRuleLinkerTests
     [Fact]
     public void EagerAndRuntimeResearchReferencesKeepReferenceTiming()
     {
-        using var runtimeFixture = new TemporaryMod("crafts: [{type: CRAFT, requires: [MISSING]}]");
+        using var runtimeFixture = new TemporaryModFixture("crafts: [{type: CRAFT, requires: [MISSING]}]");
         var runtime = ContentSnapshotBuilder.Build(CreatePlan(runtimeFixture.Root, "fixture", ["fixture"]));
 
         Assert.True(runtime.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(runtime));
@@ -113,7 +114,7 @@ public sealed class RuntimeRuleLinkerTests
         Assert.Equal("MISSING", requirement.Id);
         Assert.False(requirement.IsResolved);
 
-        using var eagerFixture = new TemporaryMod("items: [{type: ITEM, requires: [MISSING]}]");
+        using var eagerFixture = new TemporaryModFixture("items: [{type: ITEM, requires: [MISSING]}]");
         var eager = ContentSnapshotBuilder.Build(CreatePlan(eagerFixture.Root, "fixture", ["fixture"]));
 
         Assert.False(eager.Capabilities.Has(ContentLoadStage.RuntimeLinked));
@@ -141,7 +142,7 @@ public sealed class RuntimeRuleLinkerTests
 
     private static ModLoadPlan CreateFixturePlan()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         return CreatePlan(
             Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking"),
             "runtime-master",
@@ -162,28 +163,5 @@ public sealed class RuntimeRuleLinkerTests
         Environment.NewLine,
         snapshot.Diagnostics.Select(static diagnostic => diagnostic.Message));
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-            directory = directory.Parent;
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
-    private sealed class TemporaryMod : IDisposable
-    {
-        public TemporaryMod(string rules)
-        {
-            Root = Path.Combine(Path.GetTempPath(), "oxce-runtime-rule-linking-" + Guid.NewGuid().ToString("N"));
-            var mod = Path.Combine(Root, "fixture");
-            Directory.CreateDirectory(Path.Combine(mod, "Ruleset"));
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\n");
-            File.WriteAllText(Path.Combine(mod, "Ruleset", "fixture.rul"), rules);
-        }
-
-        public string Root { get; }
-
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

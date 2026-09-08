@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 3;
+    internal const int CompilerRevision = 9;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -156,6 +156,11 @@ internal static class CompiledContentCache
                     cancellationToken.ThrowIfCancellationRequested();
                     writer.String(entry.CanonicalPath);
                     writer.String(entry.SourcePath);
+                    if (entry.CanonicalPath.EndsWith(".nam", StringComparison.OrdinalIgnoreCase))
+                    {
+                        using var nameInput = entry.OpenRead();
+                        writer.Stream(nameInput, cancellationToken);
+                    }
                 }
             }
         }
@@ -214,6 +219,7 @@ internal static class CompiledContentCache
 
     public static CompiledContentCacheReadResult TryRead(
         string key,
+        ModLoadPlan plan,
         CompiledContentCacheOptions options,
         ContentSnapshotOptions contentOptions,
         StartupMeasurementCollector measurements,
@@ -261,6 +267,17 @@ internal static class CompiledContentCache
                 return CompiledContentCacheReadResult.Rejected("Cache contains build-error diagnostics.");
             }
             reading.Dispose();
+            var namePools = envelope.Content.SoldierNamePools.Values.SelectMany(p => p).DistinctBy(p => p.Source).ToArray();
+            if (namePools.Length != 0)
+            {
+                var files = plan.CreateVirtualFileCatalog();
+                foreach (var pool in namePools)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!files.TryGet(pool.Source, out var file) || RuntimeSoldierNamePoolLoader.ComputeHash(file!) != pool.ContentHash)
+                        return CompiledContentCacheReadResult.Rejected("Soldier name pool content changed.");
+                }
+            }
             var restored = envelope.Content.Restore(contentOptions, measurements, cancellationToken);
             return new CompiledContentCacheReadResult(
                 restored.Content,
@@ -542,7 +559,8 @@ internal sealed record CachedRuntimeContent(
     IReadOnlyList<CachedScriptEventPlan> EventPlans,
     IReadOnlyList<ContentInitialScriptValue> InitialValues,
     IReadOnlyList<CachedResourceDescriptor> Resources,
-    IReadOnlyList<CachedResourceIndex> ResourceIndexes)
+    IReadOnlyList<CachedResourceIndex> ResourceIndexes,
+    IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools)
 {
     public static CachedRuntimeContent Capture(ContentSnapshot snapshot) => new(
         snapshot.CompatibilityData.Catalog,
@@ -570,7 +588,8 @@ internal sealed record CachedRuntimeContent(
             index.ModId,
             index.DeclaredIndex,
             index.RuntimeIndex,
-            index.Handle.Index)).ToArray());
+            index.Handle.Index)).ToArray(),
+        snapshot.Content.RuntimeRules.Soldiers.Rules.ToDictionary(r => r.Id, r => r.Value.NamePools, StringComparer.Ordinal));
 
     public CachedRuntimeContentRestore Restore(
         ContentSnapshotOptions options,
@@ -629,7 +648,7 @@ internal sealed record CachedRuntimeContent(
             Catalog,
             resources,
             Scripts,
-            options: new RuntimeRuleLinkOptions { CancellationToken = cancellationToken });
+            options: new RuntimeRuleLinkOptions { CancellationToken = cancellationToken, SoldierNamePools = SoldierNamePools });
         if (!runtimeRules.IsValid)
         {
             throw new InvalidDataException("Compiled content cache failed runtime-rule relinking.");
@@ -645,7 +664,8 @@ internal sealed record CachedRuntimeContent(
                 EventPlans.Select(static plan => plan.Restore()).ToArray(),
                 InitialValues,
                 resources,
-                runtimeRules.Catalog),
+                runtimeRules.Catalog,
+                new RuntimePresentationContent(Catalog.Presentation.Special)),
             new ContentCompatibilityData(Catalog, runtimeRules.Compatibility));
     }
 }

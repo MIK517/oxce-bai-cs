@@ -1,3 +1,4 @@
+using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -121,7 +122,7 @@ public sealed class RulesetComposerTests
     [Fact]
     public void DefaultCompositionUsesTheCompleteNamedSectionRegistry()
     {
-        using var fixture = new TemporaryRulesetMod("items: [{type: ITEM_A}]\nmusics: [{type: MUSIC_A}]");
+        using var fixture = new TemporaryModFixture("items: [{type: ITEM_A}]\nmusics: [{type: MUSIC_A}]");
         var discovery = ModDiscovery.ScanDirectory(fixture.Root);
         var catalog = ModCatalog.Create(discovery.Mods);
         var plan = ModLoadPlanner.Create(
@@ -160,7 +161,7 @@ public sealed class RulesetComposerTests
         IDiagnosticSink? diagnostics = null,
         RulesetCompositionOptions? options = null)
     {
-        using var fixture = new TemporaryRulesetMod(yaml);
+        using var fixture = new TemporaryModFixture(yaml);
         var discovery = ModDiscovery.ScanDirectory(fixture.Root);
         var catalog = ModCatalog.Create(discovery.Mods);
         var plan = ModLoadPlanner.Create(
@@ -171,22 +172,4 @@ public sealed class RulesetComposerTests
         return RulesetComposer.Compose(plan, [Items], diagnostics, options);
     }
 
-    private sealed class TemporaryRulesetMod : IDisposable
-    {
-        public TemporaryRulesetMod(string yaml)
-        {
-            Root = Path.Combine(Path.GetTempPath(), $"oxce-ruleset-test-{Guid.NewGuid():N}");
-            var mod = Path.Combine(Root, "fixture");
-            var ruleset = Path.Combine(mod, "Ruleset");
-            Directory.CreateDirectory(ruleset);
-            File.WriteAllText(
-                Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\nreservedSpace: 0\n");
-            File.WriteAllText(Path.Combine(ruleset, "fixture.rul"), yaml);
-        }
-
-        public string Root { get; }
-
-        public void Dispose() => Directory.Delete(Root, recursive: true);
-    }
 }

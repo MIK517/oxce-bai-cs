@@ -11,7 +11,7 @@ public sealed class PrivateResourceBrowserTests
     [InlineData("TFTD")]
     public void OwnedInstallationsProduceGeoscapeAndBattlescapePreview(string game)
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var gameData = Path.Combine(root, "data", game);
         Assert.SkipUnless(
             Directory.Exists(gameData),
@@ -31,14 +31,4 @@ public sealed class PrivateResourceBrowserTests
         Assert.True(output.Length > preview.Surface.Pixels.Length * 3);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

@@ -9,7 +9,7 @@ public sealed class PrivateFlcCorpusTests
     [Fact]
     public void OwnedUfoTftdAndModVideosDecodeWithinBounds()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var paths = new[]
         {
             Path.Combine(root, "data", "UFO", "UFOINTRO", "UFOINT.FLI"),
@@ -34,16 +34,6 @@ public sealed class PrivateFlcCorpusTests
         }
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private sealed class CountingSink : IFlcFrameSink
     {

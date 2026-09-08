@@ -65,7 +65,7 @@ public sealed class ScriptEventFixtureTests
 
     private static JsonElement[] ReadCases()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifest = FixtureManifestLoader.Load(Path.Combine(root, "fixtures", "manifests", "script-events.json"));
         FixtureManifestVerifier.VerifyFiles(manifest, root);
         using var document = JsonDocument.Parse(File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root)));
@@ -86,13 +86,4 @@ public sealed class ScriptEventFixtureTests
         Assert.Single(cases, item => item.GetProperty("name").GetString() == name)
             .GetProperty("result").GetInt32();
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

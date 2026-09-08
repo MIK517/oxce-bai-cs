@@ -14,7 +14,7 @@ public sealed class ResourceResolutionFixtureTests
     [Fact]
     public void MultiModResourcesResolveToPinnedDescriptorsAndOffsets()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifest = FixtureManifestLoader.Load(
             Path.Combine(root, "fixtures", "manifests", "resource-resolution.json"));
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -58,14 +58,4 @@ public sealed class ResourceResolutionFixtureTests
         Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

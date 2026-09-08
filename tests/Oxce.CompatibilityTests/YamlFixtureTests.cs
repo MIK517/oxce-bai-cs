@@ -19,7 +19,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void YamlSemanticsMatchCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-reference-semantics.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -57,7 +57,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void MalformedFixtureReportsItsSourceLocation()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var path = Path.Combine(root, "fixtures", "public", "yaml", "malformed-location.yml");
 
         var exception = Assert.Throws<YamlFormatException>(() => YamlCompatibilityReader.ParseFile(path));
@@ -69,7 +69,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void ScalarConversionsMatchCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-scalar-conversions.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -110,7 +110,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void ContainerConversionsMatchCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-container-conversions.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -174,7 +174,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void RepresentativeStructuresNormalizeLikeCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-representative-normalization.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -190,7 +190,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void SpecialScalarConversionsMatchCapturedCppReference()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-special-scalar-conversions.json");
         var manifest = FixtureManifestLoader.Load(manifestPath);
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -311,16 +311,6 @@ public sealed class YamlFixtureTests
         return Assert.IsAssignableFrom<YamlNode>(value);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private enum ProbeEnum
     {

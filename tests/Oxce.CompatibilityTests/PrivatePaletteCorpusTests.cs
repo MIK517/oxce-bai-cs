@@ -9,7 +9,7 @@ public sealed class PrivatePaletteCorpusTests
     [Fact]
     public void OwnedUfoAndTftdPaletteFilesMatchExpectedBlockLayout()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var ufo = Path.Combine(root, "data", "UFO", "GEODATA");
         var tftd = Path.Combine(root, "data", "TFTD", "GEODATA");
         Assert.SkipUnless(
@@ -37,14 +37,4 @@ public sealed class PrivatePaletteCorpusTests
             XcomPaletteCodec.ColorsPerPalette,
             XcomPaletteCodec.GetPaletteOffset(paletteIndex));
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 }

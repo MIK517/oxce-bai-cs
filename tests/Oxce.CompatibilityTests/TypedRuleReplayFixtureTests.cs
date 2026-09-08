@@ -17,7 +17,7 @@ public sealed class TypedRuleReplayFixtureTests
     [Fact]
     public void TypedReplayMatchesPinnedReferenceFixture()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var manifest = FixtureManifestLoader.Load(
             Path.Combine(root, "fixtures", "manifests", "typed-rule-replay.json"));
         FixtureManifestVerifier.VerifyFiles(manifest, root);
@@ -63,16 +63,6 @@ public sealed class TypedRuleReplayFixtureTests
         Assert.Equal("return 1;", YamlValueReader.ReadString(deferred.Node));
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private sealed class ProbeLoader : IdOnlyTypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
     {

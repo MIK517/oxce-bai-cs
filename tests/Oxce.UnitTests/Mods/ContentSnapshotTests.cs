@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using Oxce.Core.Diagnostics;
+using Oxce.FixtureSupport;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
@@ -17,7 +18,7 @@ public sealed class ContentSnapshotTests
     [Fact]
     public void EmptyGraphCompilesReferenceDefaultsAndReachesScriptsCompiled()
     {
-        using var fixture = new TemporaryMod("{}");
+        using var fixture = new TemporaryModFixture("{}");
 
         var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
 
@@ -58,7 +59,7 @@ public sealed class ContentSnapshotTests
                   newTurnItem: return;
                   selectItemSprite: add sprite_index RuleList.current; return sprite_index;
             """;
-        using var fixture = new TemporaryMod(rules);
+        using var fixture = new TemporaryModFixture(rules);
 
         var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
 
@@ -91,7 +92,7 @@ public sealed class ContentSnapshotTests
               - type: SECOND
                 scripts: {newTurnItem: "also_missing; return;"}
             """;
-        using var fixture = new TemporaryMod(rules);
+        using var fixture = new TemporaryModFixture(rules);
 
         var snapshot = ContentSnapshotBuilder.Build(
             CreatePlan(fixture.Root),
@@ -106,7 +107,7 @@ public sealed class ContentSnapshotTests
     [Fact]
     public void MissingTagsFileFailsIntentionally()
     {
-        using var fixture = new TemporaryMod("extended: {tagsFile: Ruleset/missing.rul}");
+        using var fixture = new TemporaryModFixture("extended: {tagsFile: Ruleset/missing.rul}");
 
         var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
 
@@ -119,7 +120,7 @@ public sealed class ContentSnapshotTests
     [Fact]
     public void MultiModScopesPreserveFileVisibilityAndAuditOwnershipIsExplicit()
     {
-        var root = FindRepositoryRoot();
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "content-ownership");
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
@@ -189,7 +190,7 @@ public sealed class ContentSnapshotTests
     [Fact]
     public void ReleasedAuditGraphsAreNotReachableFromRuntimeContent()
     {
-        using var fixture = new TemporaryMod("items: [{type: ITEM, customPayload: {value: 1}}]");
+        using var fixture = new TemporaryModFixture("items: [{type: ITEM, customPayload: {value: 1}}]");
         var (runtime, compatibility, documents, composed) = BuildRuntimeAndReleaseAudit(CreatePlan(fixture.Root));
 
         GC.Collect();
@@ -237,16 +238,6 @@ public sealed class ContentSnapshotTests
         return (snapshot.Content, compatibility, documents, composed);
     }
 
-    private static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Oxce.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new DirectoryNotFoundException("Could not locate the repository root.");
-    }
 
     private static ModLoadPlan CreatePlan(string root)
     {
@@ -256,23 +247,6 @@ public sealed class ContentSnapshotTests
             [new ModActivation("fixture", true)],
             "fixture",
             new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
-    private sealed class TemporaryMod : IDisposable
-    {
-        public TemporaryMod(string rules)
-        {
-            Root = Path.Combine(Path.GetTempPath(), "oxce-content-snapshot-" + Guid.NewGuid().ToString("N"));
-            var mod = Path.Combine(Root, "fixture");
-            Directory.CreateDirectory(Path.Combine(mod, "Ruleset"));
-            File.WriteAllText(Path.Combine(mod, "metadata.yml"),
-                "id: fixture\nname: Fixture\nversion: 1.0\nisMaster: true\n");
-            File.WriteAllText(Path.Combine(mod, "Ruleset", "fixture.rul"), rules);
-        }
-
-        public string Root { get; }
-
-        public void Dispose() => Directory.Delete(Root, recursive: true);
     }
 
     private sealed class TemporaryArchiveMod : IDisposable

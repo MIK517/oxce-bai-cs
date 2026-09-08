@@ -6,6 +6,23 @@ namespace Oxce.UnitTests.Fixtures;
 public sealed class FixtureManifestTests
 {
     [Fact]
+    public void RepositoryRootWalksUpFromAnExplicitStartDirectory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oxce-fixture-root-{Guid.NewGuid():N}");
+        var nested = Path.Combine(root, "one", "two");
+        Directory.CreateDirectory(nested);
+        File.WriteAllText(Path.Combine(root, "Oxce.slnx"), "<Solution />");
+        try
+        {
+            Assert.Equal(root, FixturePaths.FindRepositoryRoot(nested));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void ValidateRejectsParentDirectoryTraversal()
     {
         var manifest = CreateManifest("../private/input.json");
