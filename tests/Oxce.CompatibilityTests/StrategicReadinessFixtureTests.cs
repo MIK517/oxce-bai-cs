@@ -264,6 +264,41 @@ public sealed class StrategicReadinessFixtureTests
                 Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
                     new TransformCampaignSoldier(beta.Id, 77, "ARMOR_RETURN_TRANSFORMATION")).Events));
                 Assert.Equivalent(beforeOverflow, campaign.Capture(), strict: true);
+
+                var combinationBase = postSoftState.Bases.Single(b => b.Id == beta.Id);
+                var combinationSoldier = combinationBase.Soldiers.Single();
+                var combinationPersonal = combinationSoldier.Personal! with
+                {
+                    Rank = 3,
+                    PreviousTransformations = new Dictionary<string, int>(StringComparer.Ordinal) { ["LEGACY"] = 2 },
+                    TransformationBonuses = new Dictionary<string, int>(StringComparer.Ordinal) { ["LEGACY_BONUS"] = 1 }
+                };
+                var combinationState = postSoftState with
+                {
+                    Bases = postSoftState.Bases.Select(b => b.Id == beta.Id ? b with
+                    { Soldiers = [combinationSoldier with { Personal = combinationPersonal }] } : b).ToArray()
+                };
+                var cloneCampaign = CampaignState.Restore(combinationState, content, new SplitMix64RandomSource(42));
+                var cloned = Assert.IsType<CampaignSoldierTransformed>(Assert.Single(cloneCampaign.Execute(
+                    new TransformCampaignSoldier(beta.Id, 77, "CLONE_RESET_TRANSFORMATION")).Events));
+                Assert.Equal(24, cloned.TransferHours);
+                var cloneBase = cloneCampaign.Capture().Bases.Single(b => b.Id == beta.Id);
+                var cloneSource = Assert.Single(cloneBase.Soldiers).Personal!;
+                Assert.Equal(2, cloneSource.PreviousTransformations["LEGACY"]);
+                Assert.Equal(1, cloneSource.PreviousTransformations["CLONE_RESET_TRANSFORMATION"]);
+                var clone = Assert.Single(cloneBase.Transfers).Soldier!.Personal!;
+                Assert.Equal(0, clone.Rank);
+                Assert.Empty(clone.PreviousTransformations);
+                Assert.Empty(clone.TransformationBonuses);
+                Assert.Equal(clone.InitialStats, clone.CurrentStats);
+
+                var resetCampaign = CampaignState.Restore(combinationState, content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignSoldierTransformed>(Assert.Single(resetCampaign.Execute(
+                    new TransformCampaignSoldier(beta.Id, 77, "RESET_TRANSFORMATION")).Events));
+                var resetPersonal = resetCampaign.Capture().Bases.Single(b => b.Id == beta.Id).Soldiers.Single().Personal!;
+                Assert.Equal(1, Assert.Single(resetPersonal.PreviousTransformations).Value);
+                Assert.True(resetPersonal.PreviousTransformations.ContainsKey("RESET_TRANSFORMATION"));
+                Assert.Empty(resetPersonal.TransformationBonuses);
                 campaign = CampaignState.Restore(postSoftState, content, new SplitMix64RandomSource(42));
 
                 var transformed = Assert.IsType<CampaignSoldierTransformed>(Assert.Single(campaign.Execute(
