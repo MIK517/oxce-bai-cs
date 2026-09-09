@@ -20,6 +20,7 @@ public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     public bool LowFuel { get; init; }
     public int ExcessFuel { get; init; }
     public bool IsAutoPatrolling { get; init; }
+    public int Shield { get; init; }
 }
 
 public static class CraftLogistics
@@ -128,7 +129,12 @@ public static class CraftLogistics
                 template?.Items ?? new Dictionary<string, int>(), StringComparer.Ordinal)),
             Array.AsReadOnly(template?.Vehicles.Select(v => new CraftVehicleSnapshot(v.RuleId, v.Ammo)
             { Size = v.Size, SpaceOccupied = v.SpaceOccupied }).ToArray() ?? []))
-        { Name = template?.Name ?? string.Empty, ExcessFuel = template?.ExcessFuel ?? 0, LowFuel = template?.LowFuel ?? false };
+        {
+            Name = template?.Name ?? string.Empty,
+            ExcessFuel = template?.ExcessFuel ?? 0,
+            LowFuel = template?.LowFuel ?? false,
+            Shield = template?.Shield ?? 0
+        };
     }
 
     public static (CraftLogisticsState State, int FuelItemChange, bool MissingFuel) Refuel(

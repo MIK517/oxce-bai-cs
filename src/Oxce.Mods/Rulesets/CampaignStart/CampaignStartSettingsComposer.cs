@@ -32,6 +32,14 @@ internal static class CampaignStartSettingsComposer
 
     private static void Apply(CampaignStartSettingsBuilder b, YamlMappingNode root)
     {
+        if (root.TryGet("globe", out var globe))
+            b.GlobeLayers.Add(globe as YamlMappingNode ?? throw new InvalidDataException("Globe rules require a mapping."));
+        b.BuildTimeReductionScaling = Read(root, "buildTimeReductionScaling", b.BuildTimeReductionScaling);
+        b.CustomTrainingFactor = Read(root, "customTrainingFactor", b.CustomTrainingFactor);
+        if (root.TryGet("mana", out var mana))
+            b.ManaWoundThreshold = Read(mana as YamlMappingNode ?? throw new InvalidDataException("Mana settings require a mapping."), "woundThreshold", b.ManaWoundThreshold);
+        if (root.TryGet("health", out var health))
+            b.HealthWoundThreshold = Read(health as YamlMappingNode ?? throw new InvalidDataException("Health settings require a mapping."), "woundThreshold", b.HealthWoundThreshold);
         foreach (var pair in BaseKeys)
         {
             if (!root.TryGet(pair.Key, out var node)) continue;

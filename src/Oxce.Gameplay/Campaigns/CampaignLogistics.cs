@@ -534,7 +534,6 @@ public sealed partial class CampaignState
                                     _content.RuntimeRules, state.Longitude, state.Latitude),
                                 PreservationKey = craft.PreservationKey,
                             });
-                            (effects.ArrivingCrafts ??= []).Add((state.Id, craft.RuleId, craft.Id));
                             break;
                         case CampaignTransferKind.Item:
                             var handle = _content.RuntimeRules.Items.GetRequired(transfer.RuleId);

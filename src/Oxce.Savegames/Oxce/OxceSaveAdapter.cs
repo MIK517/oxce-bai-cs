@@ -282,7 +282,8 @@ public static class OxceSaveAdapter
                     RequiredString(facility, "type"), Integer(facility, "x", -1), Integer(facility, "y", -1),
                     Integer(facility, "buildTime", 0), Integer(facility, "ammo", 0),
                     Boolean(facility, "ammoMissingReported", false), Boolean(facility, "disabled", false),
-                    Boolean(facility, "hadPreviousFacility", false));
+                    Boolean(facility, "hadPreviousFacility", false))
+                { PreservationKey = String(facility, "oxcePortEntityKey", string.Empty) };
             }).ToArray();
             var crafts = Sequence(map, "crafts").Select(item =>
             {
@@ -302,6 +303,7 @@ public static class OxceSaveAdapter
             {
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
                     ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier)).ToArray()),
+                FakeUnderwater = Boolean(map, "fakeUnderwater", false),
             };
         }).ToArray());
     }
@@ -392,7 +394,11 @@ public static class OxceSaveAdapter
             Pair("oxcePortOptions", Mapping([
                 Pair("storageLimitsEnforced", Boolean(snapshot.Options.StorageLimitsEnforced)),
                 Pair("canSellLiveAliens", Boolean(snapshot.Options.CanSellLiveAliens)),
-                Pair("autoCombatDefaultSoldier", Boolean(snapshot.Options.AutoCombatDefaultSoldier))])),
+                Pair("autoCombatDefaultSoldier", Boolean(snapshot.Options.AutoCombatDefaultSoldier)),
+                Pair("anytimePsiTraining", Boolean(snapshot.Options.AnytimePsiTraining)),
+                Pair("allowPsiStrengthImprovement", Boolean(snapshot.Options.AllowPsiStrengthImprovement)),
+                Pair("maximumBases", Integer(snapshot.Options.MaximumBases)),
+                Pair("allowBuildingQueue", Boolean(snapshot.Options.AllowBuildingQueue))])),
         ]);
     }
 
@@ -428,6 +434,7 @@ public static class OxceSaveAdapter
                 Pair("ammoMissingReported", facility.AmmoMissingReported ? Boolean(true) : null),
                 Pair("disabled", facility.Disabled ? Boolean(true) : null),
                 Pair("hadPreviousFacility", facility.HadPreviousFacility ? Boolean(true) : null),
+                Pair("oxcePortEntityKey", facility.PreservationKey.Length == 0 ? null : Scalar(facility.PreservationKey)),
             ])).ToArray();
         var crafts = value.Crafts.Select(craft => BuildCraft(craft, entityIndex)).ToArray();
         var soldiers = value.Soldiers.Select(soldier => BuildSoldier(soldier, entityIndex)).ToArray();
@@ -436,6 +443,7 @@ public static class OxceSaveAdapter
             Pair("lon", Real(value.Longitude)), Pair("lat", Real(value.Latitude)),
             Pair("id", Integer(value.Id)),
             Pair("name", value.Name.Length == 0 ? null : Scalar(value.Name)),
+            Pair("fakeUnderwater", value.FakeUnderwater ? Boolean(true) : null),
             Pair("facilities", Sequence(facilities)), Pair("soldiers", Sequence(soldiers)),
             Pair("crafts", Sequence(crafts)),
             Pair("items", Mapping(value.Items.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
@@ -504,6 +512,7 @@ public static class OxceSaveAdapter
             Pair("name", state.Name.Length == 0 ? null : Scalar(state.Name)),
             Pair("excessFuel", Integer(state.ExcessFuel)), Pair("lowFuel", state.LowFuel ? Boolean(true) : null),
             Pair("isAutoPatrolling", state.IsAutoPatrolling ? Boolean(true) : null),
+            Pair("shield", Integer(state.Shield)),
             Pair("lon", Scalar(state.Longitude.ToString("R", CultureInfo.InvariantCulture))),
             Pair("lat", Scalar(state.Latitude.ToString("R", CultureInfo.InvariantCulture))),
             Pair("items", Mapping(state.Items.Select(p => Pair(p.Key, Integer(p.Value))))),
@@ -620,9 +629,11 @@ public static class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
-            Boolean(map, "autoCombatDefaultSoldier", true));
+            Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
+            Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
+            Boolean(map, "allowBuildingQueue", false));
     }
 
     private static CraftLogisticsState? ReadCraftLogistics(YamlMappingNode map, string craftPreservationKey)
@@ -645,6 +656,7 @@ public static class OxceSaveAdapter
             ExcessFuel = Integer(map, "excessFuel", 0),
             LowFuel = Boolean(map, "lowFuel", false),
             IsAutoPatrolling = Boolean(map, "isAutoPatrolling", false),
+            Shield = Integer(map, "shield", 0),
         };
     }
 
@@ -744,10 +756,10 @@ public static class OxceSaveAdapter
     private static string EntityIdentity(CraftSnapshot value) => $"{value.RuleId}\0{value.Id}";
 
     private static BaseFacilityIdentity FacilityIdentity(YamlMappingNode value) => new(
-        String(value, "type", string.Empty), Integer(value, "x", -1), Integer(value, "y", -1));
+        String(value, "type", string.Empty), Integer(value, "x", -1), Integer(value, "y", -1), String(value, "oxcePortEntityKey", string.Empty));
 
     private static BaseFacilityIdentity FacilityIdentity(FacilitySnapshot value) => new(
-        value.RuleId, value.X, value.Y);
+        value.RuleId, value.X, value.Y, value.PreservationKey);
 
     private static List<IdentifiedBase> IdentifyBases(YamlMappingNode? body)
     {
@@ -792,7 +804,7 @@ public static class OxceSaveAdapter
 
     private readonly record struct IdentifiedBase(int Id, YamlMappingNode Value);
 
-    private readonly record struct BaseFacilityIdentity(string RuleId, int X, int Y);
+    private readonly record struct BaseFacilityIdentity(string RuleId, int X, int Y, string PreservationKey);
 
     private static YamlMappingNode? ScriptValues(IReadOnlyList<ScriptValueEntry> values) => values.Count == 0
         ? null

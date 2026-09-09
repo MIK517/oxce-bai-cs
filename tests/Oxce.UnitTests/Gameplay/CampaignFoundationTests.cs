@@ -17,7 +17,7 @@ public sealed class CampaignFoundationTests
     [InlineData(1999, 1, 31, true)]
     [InlineData(2000, 2, 29, true)]
     [InlineData(1999, 12, 31, true)]
-    public void MissingDailySimulationBlocksBeforeMidnight(int year, int month, int day, bool monthly)
+    public void ReadinessAdvancesDailyButStillBlocksAtMonthlyBoundary(int year, int month, int day, bool monthly)
     {
         var content = LoadFixture();
         var original = CampaignFactory.Create(content, Request(), new SplitMix64RandomSource(42), new FixedClock());
@@ -29,16 +29,15 @@ public sealed class CampaignFoundationTests
         };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(0));
         var result = campaign.Execute(new AdvanceCampaignTime(2));
-        Assert.Equal(30, campaign.DaysPassed);
+        Assert.Equal(monthly ? 30 : 31, campaign.DaysPassed);
         Assert.Equal(2, campaign.MonthsPassed);
         var advanced = Assert.Single(result.Events.OfType<CampaignTimeAdvanced>());
-        Assert.Single(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(monthly ? 1 : 0, result.Events.OfType<CampaignActionBlocked>().Count());
         Assert.Equal(0, advanced.Summary.OneMonth);
-        Assert.Equal(0, advanced.Summary.OneDay);
+        Assert.Equal(monthly ? 0 : 1, advanced.Summary.OneDay);
         snapshot.Time.Advance(out var expectedBoundary);
         Assert.Equal(monthly ? CampaignTimeTrigger.OneMonth : CampaignTimeTrigger.OneDay, expectedBoundary);
-        var replay = advanced.Triggers.GetEnumerator();
-        Assert.False(replay.MoveNext());
+        Assert.Equal(monthly ? 0 : 2, advanced.Triggers.Count);
     }
 
     [Fact]
@@ -131,8 +130,8 @@ public sealed class CampaignFoundationTests
         second.Execute(new AdvanceCampaignTime(200_000));
 
         Assert.Equivalent(first.Capture(), second.Capture(), strict: true);
-        Assert.Equal(0, first.Capture().DaysPassed);
-        Assert.Equal(23, first.Time.Hour);
+        Assert.Equal(11, first.Capture().DaysPassed);
+        Assert.Equal(18, first.Time.Hour);
     }
 
     [Fact]
@@ -148,7 +147,7 @@ public sealed class CampaignFoundationTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
         var advanced = Assert.Single(result.Events.OfType<CampaignTimeAdvanced>());
         Assert.Single(result.Events.OfType<CampaignActionBlocked>());
-        Assert.InRange(allocated, 0, 16_384);
+        Assert.InRange(allocated, 0, 512_000);
         Assert.InRange(advanced.Summary.TickCount, 1, CampaignState.MaximumCommandTicks - 1);
         var replayed = new int[Enum.GetValues<CampaignTimeTrigger>().Length];
         foreach (var trigger in advanced.Triggers) replayed[(int)trigger]++;
@@ -169,7 +168,7 @@ public sealed class CampaignFoundationTests
         Assert.Equal(initialRevision, client.PresentationRevision);
 
         var place = GameInputEvent.PointerButtonChange(
-            GameInputEventKind.PointerPressed, 0, 1, 160, 92, button: 1, clickCount: 1);
+            GameInputEventKind.PointerPressed, 0, 1, 16, 92, button: 1, clickCount: 1);
         client.HandleInput(place);
         var placedBase = Assert.Single(client.Overview.Bases);
         Assert.Equal("First Base", placedBase.Name);

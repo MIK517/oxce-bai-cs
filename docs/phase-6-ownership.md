@@ -1,8 +1,8 @@
 # Phase 6 ownership and fixture ledger
 
 Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Implementation
-branch: `codex/strategic-base-logistics`. This is an implementation/evidence ledger;
-the final bounded acceptance is in [strategic logistics status](strategic-logistics-status.md).
+branches: `codex/strategic-base-logistics` and `codex/strategic-base-readiness`. This is
+an implementation/evidence ledger; bounded acceptance is recorded in their status files.
 Checkpoint notes below retain the scope and outstanding work at each implementation milestone.
 
 | Behavior/state | Owner | Reference | Evidence/status |
@@ -14,7 +14,7 @@ Checkpoint notes below retain the scope and outstanding work at each implementat
 | Soldier identity, initial stats/name/armor, templates | Branch 1 | `Mod::genSoldier`, `Soldier`, `PurchaseState` | Generation/piloting/template fixtures; no delayed generation |
 | Craft initialization, cargo/assignment effects, arrival checkup | Branch 1 | `Craft`, `Transfer`, purchase/sale/transfer states | Starting/purchase/arrival and save-cycle fixtures |
 | Transfer quantities, cost/distance, time and mobile save fields | Branch 1 | `TransferItemsState`, `TransferConfirmState`, `Transfer` | Extracted arithmetic and two-base fixtures; mobile ownership |
-| Facility editing, training, recovery, transformations, servicing | Branch 2 | Base/personnel/craft states, timed handlers | Deferred; action dependencies must be promoted before use |
+| Facility editing, training, recovery, transformations, servicing | Branch 2 | Base/personnel/craft states, timed handlers | Implemented with fresh/cache/save and indexed UI acceptance. See [readiness status](strategic-readiness-status.md). |
 | Research and production progression | Branch 3 | `ResearchProject`, `Production`, timed handlers | Deferred; completed research eligibility belongs in branch 1 |
 | World entities, mission/arc/event scheduling and movement | Branch 4 | `GeoscapeState`, mission/target classes | Deferred; do not advance opaque entities |
 | Interception and strategic deployment | Branch 5 | `DogfightState`, landing/deployment callers | Deferred |
@@ -170,10 +170,9 @@ References: `Base::getUsedStores/storesOverfullCritical`, `Craft::getTotalItemCo
 and `SellState` catalog construction and `btnOkClick` cleanup lambdas. Public compatibility
 scenarios cover stationed and incoming craft, clip refunds, partial transfer reduction,
 save/reload and exactly-once arrival. Normal-sale regressions pass in the unit suite.
-One explicit readiness boundary remains: removing mounted weapons with nonzero bonus
-stats is blocked. The reference cleanup retains the craft's cached stats until reload;
-branch 1 must not replace this with an immediate derived-stat recalculation. No stock,
-funds or transfer changes are committed when that boundary is reached.
+Branch 2 owns mutable readiness stats. Mounted bonus equipment can be removed when the
+resulting crew/vehicle loadout remains legal; fuel and shield values clamp to refreshed
+maxima and the whole critical sale still publishes atomically.
 
 ## Final branch validation
 

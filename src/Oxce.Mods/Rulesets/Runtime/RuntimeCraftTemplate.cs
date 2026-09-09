@@ -11,7 +11,10 @@ public sealed record RuntimeCraftTemplateVehicle(string RuleId, int Ammo)
 }
 public sealed record RuntimeCraftTemplate(string Name, int Fuel, int Damage, string Status, int ExcessFuel, bool LowFuel,
     IReadOnlyList<RuntimeCraftTemplateWeapon?> Weapons, IReadOnlyDictionary<string, int> Items,
-    IReadOnlyList<RuntimeCraftTemplateVehicle> Vehicles);
+    IReadOnlyList<RuntimeCraftTemplateVehicle> Vehicles)
+{
+    public int Shield { get; init; }
+}
 
 internal static class RuntimeCraftTemplateLoader
 {
@@ -31,7 +34,8 @@ internal static class RuntimeCraftTemplateLoader
                 {
                     Size = v.TryGet("size", out _) ? Integer(v, "size") : null,
                     SpaceOccupied = v.TryGet("spaceOccupied", out _) ? Integer(v, "spaceOccupied") : null,
-                }).ToArray()));
+                }).ToArray()))
+        { Shield = Integer(map, "shield") };
 
         IEnumerable<YamlMappingNode> Maps(string key) => map.TryGet(key, out var value) && value is YamlSequenceNode sequence
             ? sequence.Items.Select(v => v as YamlMappingNode ?? throw new InvalidDataException($"Starting craft {key} requires mappings.")) : [];
