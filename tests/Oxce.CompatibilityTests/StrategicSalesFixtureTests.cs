@@ -72,6 +72,39 @@ public sealed class StrategicSalesFixtureTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
+    [Fact]
+    public void CriticalSaleQuoteBlocksAggregateInventoryOverflowAtomically()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var initial = CampaignFactory.Create(content,
+            new(new(Guid.NewGuid()), "Sale inventory overflow", "logistics", ["logistics"], CampaignDifficulty.Beginner),
+            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var rules = content.RuntimeRules;
+        var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        {
+            Status = "STR_READY",
+            Weapons = [new("OVERLAP_WEAPON", 0), null],
+            Items = new Dictionary<string, int> { ["BULKY"] = 6 },
+        };
+        var campaign = CampaignState.Restore(initial with
+        {
+            Options = new(StorageLimitsEnforced: true),
+            Bases = [initial.Bases[0] with
+            {
+                Name = "Alpha",
+                Crafts = [new("SHIP", 1) { Logistics = ship }],
+                Items = new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue },
+            }],
+        }, content, new SplitMix64RandomSource(0));
+        var before = campaign.Capture();
+
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(0, LogisticsOperation.Sell)).Events));
+
+        Assert.Equal("Sale inventory exceeds the supported quantity range.", blocked.Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]

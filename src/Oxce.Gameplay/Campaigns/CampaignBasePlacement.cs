@@ -78,10 +78,14 @@ public sealed partial class CampaignState
         if (!MeetsFacilityResearch(lift))
             return Blocked("Required research is not complete.");
         if (_funds[^1] < site.Cost) return Blocked("STR_NOT_ENOUGH_MONEY");
+        var candidateId = Math.Max((long)_nextIds.GetValueOrDefault("oxcePortBase", 1),
+            (long)_bases.Max(b => b.Id) + 1);
+        if (candidateId >= int.MaxValue) return Blocked("Base identity range is exhausted.");
+        var id = (int)candidateId;
+        var next = id + 1;
         long funds = _funds[^1], income = _incomes[^1], spending = _expenditures[^1];
-        Account(-(long)site.Cost, ref funds, ref income, ref spending);
-        var id = Math.Max(_nextIds.GetValueOrDefault("oxcePortBase", 1), checked(_bases.Max(b => b.Id) + 1));
-        var next = checked(id + 1);
+        try { Account(-(long)site.Cost, ref funds, ref income, ref spending); }
+        catch (OverflowException) { return Blocked("Base accounting exceeds the supported range."); }
         var state = new BaseState(id, command.Name, command.Longitude, command.Latitude,
             [new(handle, command.X, command.Y, 0, 0, false, false, false)], [], [], new(), 0, 0)
         { FakeUnderwater = site.FakeUnderwater };

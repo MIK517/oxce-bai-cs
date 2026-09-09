@@ -46,6 +46,24 @@ public sealed class StrategicReadinessRegressionTests
         Assert.Equal(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value.FuelMaximum, readiness.FuelMaximum);
     }
 
+    [Theory]
+    [InlineData("OVERFLOW_WEAPON", false)]
+    [InlineData("SHIELD_OVERFLOW_WEAPON", true)]
+    public void ReadinessReportsAndClampsServiceCapacityOverflow(string weaponId, bool shield)
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var rules = content.RuntimeRules;
+        var logistics = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        { Weapons = shield ? [new(weaponId, 0), new(weaponId, 0)] : [new(weaponId, 0), null] };
+        var campaign = CreateCampaign(content, Personal(), crafts: [new("SHIP", 1) { Logistics = logistics }]);
+
+        var readiness = campaign.QueryReadiness(0);
+
+        var craft = Assert.Single(readiness.Crafts);
+        Assert.Equal(int.MaxValue, shield ? craft.ShieldMaximum : craft.FuelMaximum);
+        Assert.Equal("Craft service capacity exceeds the supported range.", readiness.ServiceLimitation);
+    }
+
     [Fact]
     public void PersonnelAssignmentIgnoresUnrequestedFuelCapacityOverflow()
     {
@@ -222,6 +240,47 @@ public sealed class StrategicReadinessRegressionTests
 
         Assert.NotNull(facilities.Single(facility => facility.RuleId == "LIFT").UnavailableReason);
         Assert.Null(facilities.Single(facility => facility.RuleId == "UPGRADE_LIFT").UnavailableReason);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BaseCreationBlocksExhaustedIdentityRangeAtomically(bool maximumExistingId)
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var initial = CreateCampaign(content, Personal()).Capture();
+        var nextIds = new Dictionary<string, int>(initial.NextIds, StringComparer.Ordinal);
+        if (!maximumExistingId) nextIds["oxcePortBase"] = int.MaxValue;
+        var campaign = CampaignState.Restore(initial with
+        {
+            NextIds = nextIds,
+            Bases = maximumExistingId ? [initial.Bases[0] with { Id = int.MaxValue }] : initial.Bases,
+        }, content, new SplitMix64RandomSource(42));
+        var site = campaign.QueryBaseSites(false).First(candidate => !candidate.FakeUnderwater);
+        var before = campaign.Capture();
+
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new CreateCampaignBase("Beta", site.Longitude, site.Latitude, "LIFT", 2, 2)).Events));
+
+        Assert.Equal("Base identity range is exhausted.", blocked.Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void BaseCreationBlocksAccountingOverflowAtomically()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var initial = CreateCampaign(content, Personal()).Capture();
+        var campaign = CampaignState.Restore(initial with { Expenditures = [long.MaxValue] }, content,
+            new SplitMix64RandomSource(42));
+        var site = campaign.QueryBaseSites(false).First(candidate => !candidate.FakeUnderwater);
+        var before = campaign.Capture();
+
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new CreateCampaignBase("Beta", site.Longitude, site.Latitude, "LIFT", 2, 2)).Events));
+
+        Assert.Equal("Base accounting exceeds the supported range.", blocked.Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
     private static CampaignState CreateCampaign(RuntimeContent content, SoldierPersonalState personal,

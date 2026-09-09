@@ -36,6 +36,7 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
         lock (_transactionGate)
         {
             var owner = FindBase(baseId);
+            var serviceCapacitySupported = true;
             var crafts = owner.Crafts.Select(craft =>
             {
                 var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
@@ -46,7 +47,8 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
                     var definition = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
                     return new CampaignWeaponReadiness(weapon.RuleId, weapon.Ammo, definition.AmmoMaximum, weapon.Rearming, weapon.Disabled);
                 }).ToArray() ?? [];
-                var effective = CraftLogistics.EffectiveServiceCapacities(rule, state?.Weapons ?? [], _content.RuntimeRules);
+                serviceCapacitySupported &= CraftLogistics.TryEffectiveServiceCapacities(
+                    rule, state?.Weapons ?? [], _content.RuntimeRules, out var effective);
                 return new CampaignCraftReadiness(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
                     state?.Name ?? "", state?.Status ?? "Unresolved craft state", state?.Fuel ?? 0, effective.FuelMaximum,
                     state?.Damage ?? 0, state?.Shield ?? 0, effective.ShieldMaximum, Array.AsReadOnly(weapons),
@@ -55,8 +57,10 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
             var defenses = owner.Facilities.Select(f => new CampaignDefenseReadiness(
                 _content.RuntimeRules.Facilities.GetExternalId(f.Rule), f.X, f.Y, f.Ammo,
                 _content.RuntimeRules.Facilities[f.Rule].Value.AmmoMaximum, f.BuildTime, f.Disabled));
-            return new(CampaignSnapshot.ReadOnly(crafts), CampaignSnapshot.ReadOnly(defenses),
-                _restrictions.FirstOrDefault(r => r.BlocksTime)?.Feature ?? PreflightServicing());
+            var craftReadiness = CampaignSnapshot.ReadOnly(crafts);
+            var serviceLimitation = _restrictions.FirstOrDefault(r => r.BlocksTime)?.Feature ??
+                (!serviceCapacitySupported ? "Craft service capacity exceeds the supported range." : PreflightServicing());
+            return new(craftReadiness, CampaignSnapshot.ReadOnly(defenses), serviceLimitation);
         }
     }
 
