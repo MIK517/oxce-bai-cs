@@ -143,6 +143,40 @@ public sealed class StrategicReadinessFixtureTests
                 Assert.Equal(softStats["tu"] - 1,
                     campaign.Capture().Bases.Single(b => b.Id == beta.Id).Soldiers.Single().Personal!.CurrentStats["tu"]);
 
+                var postSoftState = campaign.Capture();
+                var rerollState = postSoftState;
+                var rerollBase = rerollState.Bases.Single(b => b.Id == beta.Id);
+                var rerollSoldier = rerollBase.Soldiers.Single();
+                var rerollStats = rerollSoldier.Personal!.CurrentStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+                rerollStats["tu"] = 99;
+                campaign = CampaignState.Restore(rerollState with
+                {
+                    Bases = rerollState.Bases.Select(b => b.Id == beta.Id ? b with
+                    {
+                        Soldiers = [rerollSoldier with { Personal = rerollSoldier.Personal with { CurrentStats = rerollStats } }]
+                    } : b).ToArray()
+                }, content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignSoldierTransformed>(Assert.Single(campaign.Execute(
+                    new TransformCampaignSoldier(beta.Id, 77, "REROLL_TRANSFORMATION")).Events));
+                Assert.Equal(50, campaign.Capture().Bases.Single(b => b.Id == beta.Id).Soldiers.Single().Personal!.CurrentStats["tu"]);
+
+                var overflowState = campaign.Capture();
+                var overflowBase = overflowState.Bases.Single(b => b.Id == beta.Id);
+                var overflowSoldier = overflowBase.Soldiers.Single();
+                campaign = CampaignState.Restore(overflowState with
+                {
+                    Bases = overflowState.Bases.Select(b => b.Id == beta.Id ? b with
+                    {
+                        Items = new Dictionary<string, int>(StringComparer.Ordinal) { ["SUPPLY"] = int.MaxValue },
+                        Soldiers = [overflowSoldier with { Personal = overflowSoldier.Personal! with { Armor = "LARGE_ARMOR" } }]
+                    } : b).ToArray()
+                }, content, new SplitMix64RandomSource(42));
+                var beforeOverflow = campaign.Capture();
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+                    new TransformCampaignSoldier(beta.Id, 77, "ARMOR_RETURN_TRANSFORMATION")).Events));
+                Assert.Equivalent(beforeOverflow, campaign.Capture(), strict: true);
+                campaign = CampaignState.Restore(postSoftState, content, new SplitMix64RandomSource(42));
+
                 var transformed = Assert.IsType<CampaignSoldierTransformed>(Assert.Single(campaign.Execute(
                     new TransformCampaignSoldier(beta.Id, 77, "READINESS_TRANSFORMATION")).Events));
                 Assert.Equal(2, transformed.TransferHours);

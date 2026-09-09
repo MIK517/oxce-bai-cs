@@ -67,12 +67,20 @@ public sealed partial class CampaignState
         var awardedBonus = transformation.Strings["soldierBonusType"];
         if (awardedBonus.Length != 0 && sourcePersonal.TransformationBonuses.GetValueOrDefault(awardedBonus) == int.MaxValue)
             return Blocked("Transformation bonuses exceed the supported range.");
+        RuleHandle<ItemRuleFamily>? returnedArmor = null;
+        if (!transformation.Booleans["keepSoldierArmor"] && !createsClone && sourcePersonal.Armor != destinationArmor)
+        {
+            returnedArmor = _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(sourcePersonal.Armor)].Value.StoreItem;
+            if (returnedArmor is { } item && owner.Items.GetValueOrDefault(item) == int.MaxValue)
+                return Blocked("Returned armor exceeds the supported stock range.");
+        }
 
         var nextTransferId = NextTransferId();
         var nextSoldierId = createsClone ? NextSoldierId() : command.SoldierId;
         if (nextTransferId == int.MaxValue || createsClone && nextSoldierId == int.MaxValue) return Blocked("Transformation identity range is exhausted.");
         var funds = _funds[^1]; var income = _incomes[^1]; var spending = _expenditures[^1];
         Account(-(long)transformation.Integers["cost"], ref funds, ref income, ref spending);
+        var stock = new Dictionary<RuleHandle<ItemRuleFamily>, int>(owner.Items);
         string? selectedEvent = null;
         if (eventWeight != 0)
         {
@@ -86,11 +94,11 @@ public sealed partial class CampaignState
             }
         }
         foreach (var item in transformation.RequiredItems)
-            ChangeStock(owner.Items, _content.RuntimeRules.Items.GetRequired(item.Key), -item.Value);
-        _funds[^1] = funds; _incomes[^1] = income; _expenditures[^1] = spending;
+            ChangeStock(stock, _content.RuntimeRules.Items.GetRequired(item.Key), -item.Value);
 
         if (producedItem.Length != 0)
         {
+            PublishTransformationResources();
             owner.Soldiers.RemoveAt(index);
             var hours = transferHours > 0 ? transferHours : 1;
             owner.Transfers.Add(new(nextTransferId, hours, CampaignTransferKind.Item, producedItem, 1)
@@ -99,12 +107,13 @@ public sealed partial class CampaignState
             return TransformationEvents(command.SoldierId, hours);
         }
 
-        var result = createsClone
+        var generated = createsClone || transformation.StatSets["rerollStats"].Any(pair => pair.Value != 0)
             ? SoldierGeneration.Generate(destinationRule, _content.RuntimeRules.Armors.GetExternalId(destinationRule.Armor), sourcePersonal.Nationality,
                 _bases.SelectMany(b => b.Soldiers).Select(s => s.Personal?.Name).OfType<string>().ToHashSet(StringComparer.Ordinal), _random)
-            : sourcePersonal;
+            : null;
+        var result = createsClone ? generated! : sourcePersonal;
         result = ApplyTransformationStats(result, sourcePersonal, transformation, destinationRule,
-            string.Equals(soldierType, destinationRuleId, StringComparison.Ordinal));
+            string.Equals(soldierType, destinationRuleId, StringComparison.Ordinal), generated?.CurrentStats ?? result.CurrentStats);
         if (createsClone) result = result with { InitialStats = result.CurrentStats };
         var history = transformation.Booleans["reset"] ? new Dictionary<string, int>(StringComparer.Ordinal) :
             new Dictionary<string, int>(result.PreviousTransformations, StringComparer.Ordinal);
@@ -127,8 +136,7 @@ public sealed partial class CampaignState
         var armor = destinationArmor;
         if (!transformation.Booleans["keepSoldierArmor"])
         {
-            if (!createsClone && sourcePersonal.Armor != armor && _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(sourcePersonal.Armor)].Value.StoreItem is { } oldArmor)
-                ChangeServiceStock(owner, oldArmor, 1);
+            if (returnedArmor is { } oldArmor) ChangeStock(stock, oldArmor, 1);
         }
         result = result with
         {
@@ -144,6 +152,7 @@ public sealed partial class CampaignState
         };
         var transformed = new SoldierState(destinationHandle, nextSoldierId)
         { Personal = result, PreservationKey = createsClone ? $"{Identity.Id}:soldier:{nextSoldierId}" : owner.Soldiers[index].PreservationKey };
+        PublishTransformationResources();
         if (createsClone)
         {
             var sourceHistory = new Dictionary<string, int>(sourcePersonal.PreviousTransformations, StringComparer.Ordinal)
@@ -176,6 +185,15 @@ public sealed partial class CampaignState
             { new CampaignSoldierTransformed(owner.Id, soldierId, command.TransformationRuleId, hours) };
             if (selectedEvent is not null) events.Add(new CampaignTransformationEventSelected(selectedEvent));
             return new(events.AsReadOnly());
+        }
+
+        void PublishTransformationResources()
+        {
+            owner.Items.Clear();
+            foreach (var pair in stock) owner.Items.Add(pair.Key, pair.Value);
+            _funds[^1] = funds;
+            _incomes[^1] = income;
+            _expenditures[^1] = spending;
         }
     }
 
@@ -214,7 +232,8 @@ public sealed partial class CampaignState
     }
 
     private SoldierPersonalState ApplyTransformationStats(SoldierPersonalState destination, SoldierPersonalState source,
-        RuntimeSoldierTransformationRule transformation, RuntimeSoldierRule destinationRule, bool isSameSoldierType)
+        RuntimeSoldierTransformationRule transformation, RuntimeSoldierRule destinationRule, bool isSameSoldierType,
+        IReadOnlyDictionary<string, short> rerolledStats)
     {
         var stats = new Dictionary<string, short>(destination.CurrentStats, StringComparer.Ordinal);
         foreach (var key in TransformationStats)
@@ -239,7 +258,7 @@ public sealed partial class CampaignState
                     : Math.Min(change, upper - current);
             }
             stats[key] = transformation.StatSets["rerollStats"].GetValueOrDefault(key) != 0
-                ? destination.CurrentStats.GetValueOrDefault(key) : unchecked((short)(current + change));
+                ? rerolledStats.GetValueOrDefault(key) : unchecked((short)(current + change));
         }
         return destination with { CurrentStats = new ReadOnlyDictionary<string, short>(stats) };
 
