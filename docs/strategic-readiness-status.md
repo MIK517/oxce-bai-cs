@@ -43,13 +43,15 @@ Normative revision: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 | Reference source | Covered behavior | Evidence |
 |---|---|---|
 | `Globe.cpp`, `BuildNewBaseState.cpp`, `ConfirmNewBaseState.cpp` | Polygon selection, land/base type and cost | `strategic-bases.rul`; fresh/cache scenario |
-| `BaseView.cpp`, facility states, `Base.cpp`, `BaseFacility.cpp` | Placement, queue/connectivity, upgrades, refunds, capacities, maintenance, construction | base construction/save scenario and campaign tests |
-| `Soldier.cpp`, training allocation and daily handlers | Wounds, recovery, training, transformation eligibility/stat changes | extracted recovery rows and deterministic tests |
+| `BaseView.cpp`, `PlaceFacilityState.cpp`, `Base.cpp`, `BaseFacility.cpp` | Placement, queue/connectivity, upgrades, refunds, capacities, maintenance, construction | source-anchored affordability rows plus base construction/save scenarios |
+| `Soldier.cpp`, `Unit.h`, training allocation and daily handlers | Wounds, recovery, training, transformation eligibility/stat changes | extracted recovery/training methods, transformation-mask rows and deterministic command tests |
 | `Craft.cpp`, `CraftWeapon.cpp`, `Vehicle.cpp`, equipment states | Equipment, capacities and service lifecycle | 108 extracted rearm rows and service/loadout/sale scenarios |
 
 `tools/capture-strategic-readiness-reference.ps1` verifies the pinned checkout, extracts
-the actual C++ weapon and recovery methods, and builds the arithmetic oracle. It writes
-only ignored project artifacts. The expected JSON contains no original game assets.
+the actual C++ weapon, recovery, physical-training completion and stat-combination
+methods, verifies the facility-affordability source expressions, and builds the arithmetic
+oracle. It writes only ignored project artifacts. The expected JSON contains no original
+game assets.
 
 ## Deliberate boundaries
 

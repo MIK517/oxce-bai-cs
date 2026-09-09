@@ -55,9 +55,11 @@ public sealed partial class CampaignState
         long funds = _funds[^1], income = _incomes[^1], spending = _expenditures[^1];
         double reduction = 0;
         var upgrading = false;
+        long eligibilityFunds = _funds[^1];
         foreach (var old in removed.Reverse())
         {
             var oldRule = FacilityRule(old);
+            eligibilityFunds = checked(_funds[^1] + (old.BuildTime > oldRule.BuildTime ? oldRule.BuildCost : oldRule.RefundValue));
             Refund(old, stock, ref funds, ref income, ref spending);
             if (old.BuildTime <= oldRule.BuildTime)
             {
@@ -65,7 +67,7 @@ public sealed partial class CampaignState
                 upgrading |= old.BuildTime == 0;
             }
         }
-        if (funds < rule.BuildCost) return Blocked("STR_NOT_ENOUGH_MONEY");
+        if (eligibilityFunds < rule.BuildCost) return Blocked("STR_NOT_ENOUGH_MONEY");
         if (rule.BuildTime < 0) return Blocked("Facility construction time cannot be negative.");
         foreach (var item in rule.BuildCostItems)
         {

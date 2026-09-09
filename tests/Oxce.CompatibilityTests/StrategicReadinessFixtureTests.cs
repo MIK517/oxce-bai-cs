@@ -70,9 +70,13 @@ public sealed class StrategicReadinessFixtureTests
                     Expenditures = [0],
                     Bases = facilityState.Bases.Select(b => b.Id == upgradeBase.Id ? upgradeBase : b).ToArray(),
                 }, content, new SplitMix64RandomSource(42));
-                Assert.IsType<CampaignFacilityChanged>(Assert.Single(upgradeCampaign.Execute(
+                using var readinessOracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
+                    "fixtures/expected/savegames/strategic-readiness.expected.json")));
+                Assert.Equal(0, readinessOracle.RootElement.GetProperty("facilityAffordability")[0][4].GetInt32());
+                var beforeUpgrade = upgradeCampaign.Capture();
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(upgradeCampaign.Execute(
                     new BuildCampaignFacility(upgradeBase.Id, "UPGRADE", 3, 2)).Events));
-                Assert.Equal(10, upgradeCampaign.Capture().Funds[^1]);
+                Assert.Equivalent(beforeUpgrade, upgradeCampaign.Capture(), strict: true);
 
                 var queueBase = facilityBase with
                 {
@@ -247,7 +251,8 @@ public sealed class StrategicReadinessFixtureTests
                 }, content, new SplitMix64RandomSource(42));
                 Assert.IsType<CampaignSoldierTransformed>(Assert.Single(campaign.Execute(
                     new TransformCampaignSoldier(beta.Id, 77, "REROLL_TRANSFORMATION")).Events));
-                Assert.Equal(50, campaign.Capture().Bases.Single(b => b.Id == beta.Id).Soldiers.Single().Personal!.CurrentStats["tu"]);
+                Assert.Equal(checked((short)readinessOracle.RootElement.GetProperty("transformationCombine")[1][3].GetInt32()),
+                    campaign.Capture().Bases.Single(b => b.Id == beta.Id).Soldiers.Single().Personal!.CurrentStats["tu"]);
 
                 var overflowState = campaign.Capture();
                 var overflowBase = overflowState.Bases.Single(b => b.Id == beta.Id);
@@ -413,6 +418,27 @@ public sealed class StrategicReadinessFixtureTests
             Assert.Equal(row[2].GetSingle(), actual.Recovery, 3);
             Assert.Equal(row[3].GetInt32(), actual.ManaMissing);
             Assert.Equal(row[4].GetInt32(), actual.HealthMissing);
+        }
+    }
+
+    [Fact]
+    public void PhysicalTrainingCompletionMatchesExtractedCppStatComparison()
+    {
+        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
+        using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
+            "fixtures/expected/savegames/strategic-readiness.expected.json")));
+        var discovery = Oxce.Mods.Discovery.ModDiscovery.ScanDirectory(Path.Combine(repository,
+            "fixtures/public/mods/strategic-logistics"));
+        var plan = Oxce.Mods.Loading.ModLoadPlanner.Create(Oxce.Mods.Loading.ModCatalog.Create(discovery.Mods),
+            [new("logistics", true)], "logistics", new("Extended", "8.6.1.0"));
+        var content = Oxce.Mods.Rulesets.Content.ContentSnapshotBuilder.Build(plan).Content;
+        var rule = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
+        foreach (var row in expected.RootElement.GetProperty("training").EnumerateArray())
+        {
+            var stats = rule.TrainingStatCaps.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            stats["firing"] = checked((short)(stats.GetValueOrDefault("firing") + row[0].GetInt32()));
+            var soldier = new SoldierPersonalState("Oracle", "", 0, 0, 0, 0, "ARMOR", stats, stats);
+            Assert.Equal(row[1].GetInt32() != 0, SoldierReadiness.IsFullyTrained(soldier, rule));
         }
     }
 

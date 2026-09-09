@@ -20,12 +20,20 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
     if ($depth -ne 0) { throw "Unbalanced method $Signature" }
     return $source.Substring($start, $end - $start)
 }
+function Assert-ReferenceContains([string]$RelativePath, [string]$Text) {
+    $source = [IO.File]::ReadAllText((Join-Path $reference $RelativePath))
+    if (-not $source.Contains($Text, [StringComparison]::Ordinal)) { throw "Missing reference fragment in $RelativePath" }
+}
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures\reference-probes\savegames\strategic_readiness_probe.cpp'))
+$template = $template.Replace('// UNIT_STATS_COMBINE', (Read-ReferenceMethod 'src\Mod\Unit.h' 'static UnitStats combine('))
 $template = $template.Replace('// WEAPON_REARM', (Read-ReferenceMethod 'src\Savegame\CraftWeapon.cpp' 'int CraftWeapon::rearm('))
 $template = $template.Replace('// HEAL_WOUND', (Read-ReferenceMethod 'src\Savegame\Soldier.cpp' 'void Soldier::healWound('))
 $template = $template.Replace('// REPLENISH_MANA', (Read-ReferenceMethod 'src\Savegame\Soldier.cpp' 'void Soldier::replenishMana('))
 $template = $template.Replace('// REPLENISH_HEALTH', (Read-ReferenceMethod 'src\Savegame\Soldier.cpp' 'void Soldier::replenishHealth('))
 $template = $template.Replace('// REPLENISH_STATS', (Read-ReferenceMethod 'src\Savegame\Soldier.cpp' 'void Soldier::replenishStats('))
+$template = $template.Replace('// IS_FULLY_TRAINED', (Read-ReferenceMethod 'src\Savegame\Soldier.cpp' 'bool Soldier::isFullyTrained() const'))
+Assert-ReferenceContains 'src\Basescape\PlaceFacilityState.cpp' 'refundValueTemp = checkFacilityTemp->getRules()->getRefundValue();'
+Assert-ReferenceContains 'src\Basescape\PlaceFacilityState.cpp' '_game->getSavedGame()->getFunds() < (_rule->getBuildCost() - refundValueTemp)'
 $work = Join-Path $repository 'artifacts\reference-strategic-readiness'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_readiness_probe.cpp'
