@@ -60,3 +60,8 @@ startingBase:
   randomSoldiers: {SOLDIER: 2}
 startingTime: {weekday: 2, day: 3, month: 4, year: 2001, hour: 5, minute: 6, second: 7}
 initialFunding: 6000
+
+globe:
+  polygons:
+    - [0, -15, -15, 15, -15, 15, 15, -15, 15]
+    - [0, 60, -40, 80, -40, 80, -20, 60, -20]

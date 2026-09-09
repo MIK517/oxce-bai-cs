@@ -80,6 +80,20 @@ public sealed record RuntimeFacilityRule(
     RuntimeIndexedResourceReference PlaceSound)
 {
     public int PrisonType { get; init; }
+    public int AmmoMaximum { get; init; }
+    public int RearmRate { get; init; }
+    public bool CanBeBuiltOver { get; init; }
+    public int FakeUnderwater { get; init; }
+    public bool UpgradeOnly { get; init; }
+    public int RemovalTime { get; init; }
+    public int MaximumAllowedPerBase { get; init; }
+    public int TrainingRooms { get; init; }
+    public int ManaRecoveryPerDay { get; init; }
+    public int HealthRecoveryPerDay { get; init; }
+    public float SickBayAbsoluteBonus { get; init; }
+    public float SickBayRelativeBonus { get; init; }
+    public IReadOnlyList<string> RequiredBaseFunctions { get; init; } = [];
+    public IReadOnlyList<string> ForbiddenBaseFunctions { get; init; } = [];
     public int HangarType { get; init; }
     public IReadOnlyList<string> ProvidedBaseFunctions { get; init; } = [];
 }
@@ -107,12 +121,20 @@ public sealed record RuntimeCraftRule(
     public int HangarType { get; init; }
     public int WeaponSlots { get; init; }
     public int RefuelRate { get; init; }
+    public int RepairRate { get; init; }
+    public int ShieldCapacity { get; init; }
+    public int ShieldRechargeAtBase { get; init; }
     public bool NotifyWhenRefueled { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
     public int Pilots { get; init; }
     public int MaximumSoldiers { get; init; } = -1;
+    public int MaximumVehicles { get; init; } = -1;
     public int MaximumSmallSoldiers { get; init; } = -1;
+    public int MaximumLargeSoldiers { get; init; } = -1;
+    public int MaximumSmallVehicles { get; init; } = -1;
+    public int MaximumLargeVehicles { get; init; } = -1;
     public int MaximumSmallUnits { get; init; } = -1;
+    public int MaximumLargeUnits { get; init; } = -1;
     public bool OnlyOneSoldierGroupAllowed { get; init; }
     public IReadOnlyList<int> AllowedSoldierGroups { get; init; } = [];
     public IReadOnlyList<int> AllowedArmorGroups { get; init; } = [];
@@ -122,7 +144,10 @@ public sealed record RuntimeCraftRule(
 }
 
 public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, string Launcher, string Clip,
-    IReadOnlyDictionary<string, int> BonusStats);
+    IReadOnlyDictionary<string, int> BonusStats)
+{
+    public bool StatisticalBulletSaving { get; init; }
+}
 
 public sealed record RuntimeItemRule(
     string Name,
@@ -143,6 +168,8 @@ public sealed record RuntimeItemRule(
     public int VehicleFixedAmmoSlot { get; init; }
     public RuleHandle<ArmorRuleFamily>? VehicleArmor { get; init; }
     public int PrisonType { get; init; }
+    public int MonthlyMaintenance { get; init; }
+    public int MonthlySalary { get; init; }
 }
 
 public sealed record RuntimeArmorRule(
@@ -175,16 +202,40 @@ public sealed record RuntimeSoldierRule(
     public int FemaleFrequency { get; init; } = 50;
     public IReadOnlyList<RuntimeSoldierNamePool> NamePools { get; init; } = [];
     public RuntimeSoldierTemplate? SpawnedTemplate { get; init; }
+    public IReadOnlyList<int> Salaries { get; init; } = [];
+    public int RankCount { get; init; }
+    public IReadOnlyDictionary<string, short> StatCaps { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    public IReadOnlyDictionary<string, short> TrainingStatCaps { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
 }
 
 public sealed record RuntimeSoldierBonusRule(int ListOrder, IReadOnlyDictionary<string, short> Stats);
+public sealed record RuntimeSoldierTransformationRule(
+    IReadOnlyDictionary<string, string> Strings,
+    IReadOnlyDictionary<string, int> Integers,
+    IReadOnlyDictionary<string, bool> Booleans,
+    IReadOnlyList<string> Requirements,
+    IReadOnlyList<string> RequiredBaseFunctions,
+    IReadOnlyList<string> AllowedSoldierTypes,
+    IReadOnlyList<string> RequiredPreviousTransformations,
+    IReadOnlyList<string> ForbiddenPreviousTransformations,
+    IReadOnlyList<string> RemovedTransformations,
+    IReadOnlyDictionary<string, int> RequiredItems,
+    IReadOnlyDictionary<string, int> RequiredCommendations,
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, short>> StatSets,
+    IReadOnlyDictionary<string, ulong> Events);
 public sealed record RuntimeCommendationRule(IReadOnlyList<string> SoldierBonusTypes);
 
 public sealed record RuntimeStartingFacility(
     RuleHandle<FacilityRuleFamily> Rule,
     int X,
     int Y,
-    int BuildTime);
+    int BuildTime)
+{
+    public int Ammo { get; init; }
+    public bool AmmoMissingReported { get; init; }
+    public bool Disabled { get; init; }
+    public bool HadPreviousFacility { get; init; }
+}
 
 public sealed record RuntimeStartingCraft(RuleHandle<CraftRuleFamily> Rule, int Id)
 {
@@ -235,6 +286,11 @@ public sealed record RuntimeCampaignSettings(
     RuleHandle<FacilityRuleFamily>? DestroyedFacility,
     IReadOnlyList<RuntimeStartingBaseTemplate> StartingBases)
 {
+    public RuntimeGlobe Globe { get; init; } = RuntimeGlobe.Empty;
+    public int BuildTimeReductionScaling { get; init; } = 100;
+    public int CustomTrainingFactor { get; init; } = 100;
+    public int ManaWoundThreshold { get; init; } = 200;
+    public int HealthWoundThreshold { get; init; } = 100;
     public IReadOnlyList<int> BuyPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<int> SellPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<string> HireScientistsBaseFunctions { get; init; } = [];

@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 9;
+    internal const int CompilerRevision = 13;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -278,7 +278,7 @@ internal static class CompiledContentCache
                         return CompiledContentCacheReadResult.Rejected("Soldier name pool content changed.");
                 }
             }
-            var restored = envelope.Content.Restore(contentOptions, measurements, cancellationToken);
+            var restored = envelope.Content.Restore(contentOptions, measurements, plan.CreateVirtualFileCatalog(), cancellationToken);
             return new CompiledContentCacheReadResult(
                 restored.Content,
                 restored.CompatibilityData,
@@ -594,6 +594,7 @@ internal sealed record CachedRuntimeContent(
     public CachedRuntimeContentRestore Restore(
         ContentSnapshotOptions options,
         StartupMeasurementCollector measurements,
+        Oxce.Mods.Files.VirtualFileCatalog files,
         CancellationToken cancellationToken)
     {
         using var resourceMeasurement = measurements.Measure(InstallationStartupStage.ResourceRestoration);
@@ -648,7 +649,7 @@ internal sealed record CachedRuntimeContent(
             Catalog,
             resources,
             Scripts,
-            options: new RuntimeRuleLinkOptions { CancellationToken = cancellationToken, SoldierNamePools = SoldierNamePools });
+            options: new RuntimeRuleLinkOptions { CancellationToken = cancellationToken, SoldierNamePools = SoldierNamePools, Files = files });
         if (!runtimeRules.IsValid)
         {
             throw new InvalidDataException("Compiled content cache failed runtime-rule relinking.");

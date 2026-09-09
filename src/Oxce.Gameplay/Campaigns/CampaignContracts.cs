@@ -13,7 +13,8 @@ public enum CampaignDifficulty
 }
 
 public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
-    bool AutoCombatDefaultSoldier = true);
+    bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
+    int MaximumBases = 8, bool AllowBuildingQueue = false);
 
 public readonly record struct CampaignId
 {
@@ -59,7 +60,10 @@ public sealed record FacilitySnapshot(
     int Ammo,
     bool AmmoMissingReported,
     bool Disabled,
-    bool HadPreviousFacility);
+    bool HadPreviousFacility)
+{
+    public string PreservationKey { get; init; } = string.Empty;
+}
 
 public sealed record CraftSnapshot(string RuleId, int Id)
 {
@@ -96,6 +100,7 @@ public sealed record BaseSnapshot(
     int Scientists,
     int Engineers)
 {
+    public bool FakeUnderwater { get; init; }
     public IReadOnlyList<TransferSnapshot> Transfers { get; init; } = [];
 }
 

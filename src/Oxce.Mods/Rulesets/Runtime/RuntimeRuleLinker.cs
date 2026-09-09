@@ -15,6 +15,7 @@ namespace Oxce.Mods.Rulesets.Runtime;
 
 public sealed record RuntimeRuleLinkOptions
 {
+    public Oxce.Mods.Files.VirtualFileCatalog? Files { get; init; }
     public CancellationToken CancellationToken { get; init; }
     public IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> SoldierNamePools { get; init; } =
         new ReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>>(new Dictionary<string, IReadOnlyList<RuntimeSoldierNamePool>>());
@@ -128,6 +129,20 @@ public static class RuntimeRuleLinker
                 Resource(rule.Value.PlaceSound, "GEO.CAT", ResourceKind.Sound, resources))
             {
                 PrisonType = rule.Value.PrisonType,
+                AmmoMaximum = rule.Value.AmmoMaximum,
+                RearmRate = rule.Value.RearmRate,
+                CanBeBuiltOver = rule.Value.CanBeBuiltOver,
+                FakeUnderwater = rule.Value.FakeUnderwater,
+                UpgradeOnly = rule.Value.UpgradeOnly,
+                RemovalTime = rule.Value.RemovalTime,
+                MaximumAllowedPerBase = rule.Value.MaximumAllowedPerBase,
+                TrainingRooms = rule.Value.TrainingRooms,
+                ManaRecoveryPerDay = rule.Value.ManaRecoveryPerDay,
+                HealthRecoveryPerDay = rule.Value.HealthRecoveryPerDay,
+                SickBayAbsoluteBonus = rule.Value.SickBayAbsoluteBonus,
+                SickBayRelativeBonus = rule.Value.SickBayRelativeBonus,
+                RequiredBaseFunctions = rule.Value.RequiredBaseFunctions,
+                ForbiddenBaseFunctions = rule.Value.ForbiddenBaseFunctions,
                 HangarType = rule.Value.HangarType,
                 ProvidedBaseFunctions = rule.Value.ProvidedBaseFunctions,
             });
@@ -159,12 +174,20 @@ public static class RuntimeRuleLinker
                 HangarType = rule.Value.Integers["hangarType"],
                 WeaponSlots = rule.Value.Integers["weapons"],
                 RefuelRate = rule.Value.Integers["refuelRate"],
+                RepairRate = rule.Value.Integers["repairRate"],
+                ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
+                ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
                 Pilots = rule.Value.Integers["pilots"],
                 MaximumSoldiers = rule.Value.Integers["maxSoldiers"],
+                MaximumVehicles = rule.Value.Integers["maxVehicles"],
                 MaximumSmallSoldiers = rule.Value.Integers["maxSmallSoldiers"],
+                MaximumLargeSoldiers = rule.Value.Integers["maxLargeSoldiers"],
+                MaximumSmallVehicles = rule.Value.Integers["maxSmallVehicles"],
+                MaximumLargeVehicles = rule.Value.Integers["maxLargeVehicles"],
                 MaximumSmallUnits = rule.Value.Integers["maxSmallUnits"],
+                MaximumLargeUnits = rule.Value.Integers["maxLargeUnits"],
                 OnlyOneSoldierGroupAllowed = rule.Value.Booleans["onlyOneSoldierGroupAllowed"],
                 AllowedSoldierGroups = rule.Value.AllowedSoldierGroups,
                 AllowedArmorGroups = rule.Value.AllowedArmorGroups,
@@ -198,6 +221,8 @@ public static class RuntimeRuleLinker
                 VehicleArmor = rule.Value.Values.Boolean("fixedWeapon") && content.PersonnelTactical.Units.TryGet(rule.Id, out var vehicleUnit)
                     ? OptionalRuntime(armorHandles, vehicleUnit!.Value.Strings["armor"]) : null,
                 PrisonType = rule.Value.Values.GetInteger("prisonType"),
+                MonthlyMaintenance = rule.Value.Values.GetInteger("monthlyMaintenance"),
+                MonthlySalary = rule.Value.Values.GetInteger("monthlySalary"),
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -229,13 +254,26 @@ public static class RuntimeRuleLinker
                     rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
                 MinimumStats = rule.Value.MinimumStats.Values,
                 MaximumStats = rule.Value.MaximumStats.Values,
+                StatCaps = rule.Value.StatCaps.Values,
+                TrainingStatCaps = rule.Value.TrainingStatCaps.Values,
                 FemaleFrequency = rule.Value.Integers["femaleFrequency"],
                 NamePools = options.SoldierNamePools.GetValueOrDefault(rule.Id) ?? [],
                 SpawnedTemplate = RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
+                RankCount = rule.Value.RankStrings.Count,
+                Salaries = Array.AsReadOnly(new[] { rule.Value.Integers["costSalary"], rule.Value.Integers["costSalarySquaddie"],
+                    rule.Value.Integers["costSalarySergeant"], rule.Value.Integers["costSalaryCaptain"],
+                    rule.Value.Integers["costSalaryColonel"], rule.Value.Integers["costSalaryCommander"] }),
             });
 
         cancellationToken.ThrowIfCancellationRequested();
-        var settings = BuildCampaignSettings(content.CampaignStart.Settings);
+        var settings = BuildCampaignSettings(content.CampaignStart.Settings) with
+        {
+            Globe = RuntimeGlobeLoader.Load(content.CampaignStart.Settings.GlobeLayers, options.Files),
+            BuildTimeReductionScaling = content.CampaignStart.Settings.BuildTimeReductionScaling,
+            CustomTrainingFactor = content.CampaignStart.Settings.CustomTrainingFactor,
+            ManaWoundThreshold = content.CampaignStart.Settings.ManaWoundThreshold,
+            HealthWoundThreshold = content.CampaignStart.Settings.HealthWoundThreshold,
+        };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
             generation,
@@ -245,12 +283,21 @@ public static class RuntimeRuleLinker
             crafts,
             BuildFamily<CraftWeaponRuleFamily, CraftWeaponRule, RuntimeCraftWeaponRule>(generation,
                 content.EquipmentProduction.CraftWeapons, rule => new RuntimeCraftWeaponRule(rule.Value.Integers["ammoMax"],
-                    rule.Value.Integers["rearmRate"], rule.Value.Launcher, rule.Value.Clip, rule.Value.Stats.Integers)),
+                    rule.Value.Integers["rearmRate"], rule.Value.Launcher, rule.Value.Clip, rule.Value.Stats.Integers)
+                { StatisticalBulletSaving = rule.Value.Booleans["bulletSaving"] }),
             items,
             soldiers,
             armors,
             BuildFamily<SoldierBonusRuleFamily, SoldierBonusRule, RuntimeSoldierBonusRule>(generation,
                 content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)),
+            BuildFamily<SoldierTransformationRuleFamily, SoldierTransformationRule, RuntimeSoldierTransformationRule>(generation,
+                content.PersonnelTactical.Transformations, rule => new(rule.Value.Strings, rule.Value.Integers,
+                    rule.Value.Booleans, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
+                    rule.Value.AllowedSoldierTypes, rule.Value.RequiredPreviousTransformations,
+                    rule.Value.ForbiddenPreviousTransformations, rule.Value.RemovedTransformations,
+                    rule.Value.RequiredItems, rule.Value.RequiredCommendations,
+                    new ReadOnlyDictionary<string, IReadOnlyDictionary<string, short>>(rule.Value.StatSets.ToDictionary(
+                        pair => pair.Key, pair => pair.Value.Values, StringComparer.Ordinal)), rule.Value.Events)),
             BuildFamily<CommendationRuleFamily, CommendationRule, RuntimeCommendationRule>(generation,
                 content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)),
             IdentityFamily<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills),
@@ -301,7 +348,13 @@ public static class RuntimeRuleLinker
             var defaultSoldier = soldierRules.Count == 0 ? string.Empty : soldierRules[0].Id;
             var facilities = Sequence(node, "facilities").Select(entry => new RuntimeStartingFacility(
                 RequiredId(facilityHandles, Type(entry), "startingBase", variant.ToString(), "facilities"),
-                Integer(entry, "x"), Integer(entry, "y"), Integer(entry, "buildTime"))).ToArray();
+                Integer(entry, "x"), Integer(entry, "y"), Integer(entry, "buildTime"))
+            {
+                Ammo = Integer(entry, "ammo"),
+                AmmoMissingReported = Flag(entry, "ammoMissingReported"),
+                Disabled = Flag(entry, "disabled"),
+                HadPreviousFacility = Flag(entry, "hadPreviousFacility"),
+            }).ToArray();
             var crafts = Sequence(node, "crafts").Select(entry => new RuntimeStartingCraft(
                 RequiredId(craftHandles, Type(entry), "startingBase", variant.ToString(), "crafts"),
                 Integer(entry, "id"))
@@ -504,6 +557,9 @@ public static class RuntimeRuleLinker
             return YamlValueReader.ReadString(type!);
         return node is YamlScalarNode ? YamlValueReader.ReadString(node) : defaultValue;
     }
+
+    private static bool Flag(YamlNode node, string key) => node is YamlMappingNode mapping &&
+        mapping.TryGet(key, out var value) && YamlValueReader.ReadBoolean(value!);
 
     private static int Integer(YamlNode node, string key) => node is YamlMappingNode mapping &&
         mapping.TryGet(key, out var value) ? YamlValueReader.ReadInt32(value!) : 0;

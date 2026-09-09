@@ -19,6 +19,11 @@ public sealed class CampaignStartSettings
 {
     internal CampaignStartSettings(CampaignStartSettingsBuilder builder)
     {
+        GlobeLayers = builder.GlobeLayers.AsReadOnly();
+        BuildTimeReductionScaling = builder.BuildTimeReductionScaling;
+        CustomTrainingFactor = builder.CustomTrainingFactor;
+        ManaWoundThreshold = builder.ManaWoundThreshold;
+        HealthWoundThreshold = builder.HealthWoundThreshold;
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(builder.StartingBases));
         StartingTime = new CampaignStartTime(
@@ -87,8 +92,15 @@ public sealed class CampaignStartSettings
         IReadOnlyList<string> operationNamesFirst,
         IReadOnlyList<string> operationNamesLast,
         IReadOnlyList<int> buyPriceCoefficients,
-        IReadOnlyList<int> sellPriceCoefficients)
+        IReadOnlyList<int> sellPriceCoefficients,
+        IReadOnlyList<YamlMappingNode> globeLayers,
+        int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold)
     {
+        BuildTimeReductionScaling = buildTimeReductionScaling;
+        CustomTrainingFactor = customTrainingFactor;
+        ManaWoundThreshold = manaWoundThreshold;
+        HealthWoundThreshold = healthWoundThreshold;
+        GlobeLayers = Array.AsReadOnly(globeLayers.ToArray());
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(startingBases));
         StartingTime = startingTime;
@@ -124,6 +136,11 @@ public sealed class CampaignStartSettings
     }
 
     public IReadOnlyDictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; }
+    public IReadOnlyList<YamlMappingNode> GlobeLayers { get; }
+    public int BuildTimeReductionScaling { get; }
+    public int CustomTrainingFactor { get; }
+    public int ManaWoundThreshold { get; }
+    public int HealthWoundThreshold { get; }
     public CampaignStartTime StartingTime { get; }
     public int StartingDifficulty { get; }
     public int CostHireEngineer { get; }
@@ -163,6 +180,11 @@ public sealed class CampaignStartSettings
 
 internal sealed class CampaignStartSettingsBuilder
 {
+    public List<YamlMappingNode> GlobeLayers { get; } = [];
+    public int BuildTimeReductionScaling { get; set; } = 100;
+    public int CustomTrainingFactor { get; set; } = 100;
+    public int ManaWoundThreshold { get; set; } = 200;
+    public int HealthWoundThreshold { get; set; } = 100;
     public int[] BuyPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public int[] SellPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public Dictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; } = [];

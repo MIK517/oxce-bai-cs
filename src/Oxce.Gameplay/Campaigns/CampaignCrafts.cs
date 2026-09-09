@@ -35,31 +35,30 @@ public sealed partial class CampaignState
         }
     }
 
-    private void RefuelArrivingCrafts(TimeEffects effects)
+    private void RefuelCrafts(TimeEffects effects)
     {
-        if (effects.ArrivingCrafts is null) return;
-        // The hourly arrival popup does not cancel the current tick's half-hour handler.
-        foreach (var arriving in effects.ArrivingCrafts)
-        {
-            var owner = FindBase(arriving.BaseId);
-            var index = owner.Crafts.FindIndex(c => c.Id == arriving.Id && _content.RuntimeRules.Crafts.GetExternalId(c.Rule) == arriving.Type);
-            var craft = owner.Crafts[index];
-            var state = craft.Logistics!;
-            if (state.Status != "STR_REFUELLING") continue;
-            var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
-            var result = CraftLogistics.Refuel(state, rule, _content.RuntimeRules,
-                rule.RefuelItem is { } fuelItem ? owner.Items.GetValueOrDefault(fuelItem) : 0);
-            state = result.State;
-            if (rule.RefuelItem is { } item && result.FuelItemChange != 0)
+        // The hourly service/arrival popup does not cancel the current tick's half-hour handler.
+        foreach (var owner in _bases)
+            for (var index = 0; index < owner.Crafts.Count; index++)
             {
-                var quantity = checked(owner.Items.GetValueOrDefault(item) + result.FuelItemChange);
-                if (quantity == 0) owner.Items.Remove(item); else owner.Items[item] = quantity;
+                var craft = owner.Crafts[index];
+                var type = _content.RuntimeRules.Crafts.GetExternalId(craft.Rule);
+                var state = craft.Logistics!;
+                if (state.Status != "STR_REFUELLING") continue;
+                var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
+                var result = CraftLogistics.Refuel(state, rule, _content.RuntimeRules,
+                    rule.RefuelItem is { } fuelItem ? owner.Items.GetValueOrDefault(fuelItem) : 0);
+                state = result.State;
+                if (rule.RefuelItem is { } item && result.FuelItemChange != 0)
+                {
+                    var quantity = checked(owner.Items.GetValueOrDefault(item) + result.FuelItemChange);
+                    if (quantity == 0) owner.Items.Remove(item); else owner.Items[item] = quantity;
+                }
+                owner.Crafts[index] = craft with { Logistics = state };
+                if (result.MissingFuel) effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"));
+                else if (state.Status == "STR_READY" && rule.NotifyWhenRefueled)
+                    effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_CRAFT_IS_READY"));
             }
-            owner.Crafts[index] = craft with { Logistics = state };
-            if (result.MissingFuel) effects.Notify(new CraftArrivalServiceMessage(owner.Id, arriving.Type, arriving.Id, "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"));
-            else if (state.Status == "STR_READY" && rule.NotifyWhenRefueled)
-                effects.Notify(new CraftArrivalServiceMessage(owner.Id, arriving.Type, arriving.Id, "STR_CRAFT_IS_READY"));
-        }
     }
 
     private void AddCraftPurchaseRows(BaseState state, List<LogisticsRow> rows)

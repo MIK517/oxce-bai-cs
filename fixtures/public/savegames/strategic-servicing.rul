@@ -1,0 +1,32 @@
+# Synthetic OXCE readiness variants layered on the public logistics master.
+items:
+  - type: SERVICE_AMMO
+    size: 0.1
+craftWeapons:
+  - type: FIXED
+    rearmRate: 4
+    bulletSaving: true
+    stats: {shieldCapacity: 5}
+crafts:
+  - type: SHIP
+    repairRate: 3
+    refuelRate: 10
+    shieldCapacity: 10
+    shieldRechargedAtBase: 4
+    notifyWhenRefueled: true
+facilities:
+  - type: STORES
+    ammoMax: 5
+    rearmRate: 2
+    ammoItem: SERVICE_AMMO
+startingBase:
+  facilities: [{type: STORES, x: 0, y: 0, disabled: true}]
+  items: {SERVICE_AMMO: 3, BULKY: 2}
+  crafts:
+    - type: SHIP
+      id: 1
+      damage: 4
+      shield: 2
+      fuel: 90
+      status: STR_REPAIRS
+      weapons: [{type: FIXED, ammo: 8, rearming: true}, {type: '0'}]

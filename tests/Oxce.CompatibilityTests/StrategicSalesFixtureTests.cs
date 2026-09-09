@@ -53,16 +53,10 @@ public sealed class StrategicSalesFixtureTests
         Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new SubmitLogisticsOrder(quote.Id, [new(supply.Id, 1)])).Events));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
         var result = Assert.Single(campaign.Execute(new SubmitLogisticsOrder(quote.Id, [new(supply.Id, 9)])).Events);
-        if (bonusWeapon)
-        {
-            Assert.IsType<CampaignActionBlocked>(result);
-            Assert.Equivalent(before, campaign.Capture(), strict: true);
-            return;
-        }
         Assert.IsType<LogisticsOrderCompleted>(result);
         var sold = campaign.Capture();
         Assert.False(sold.Bases[0].Items.ContainsKey("SUPPLY"));
-        Assert.Equal(3, sold.Bases[0].Items["BULKY"]);
+        Assert.Equal(bonusWeapon ? 1 : 3, sold.Bases[0].Items["BULKY"]);
         var remainingCraft = incomingCraft ? sold.Bases[0].Transfers.Single(t => t.Craft is not null).Craft! : sold.Bases[0].Crafts[0];
         Assert.All(remainingCraft.Logistics!.Weapons, Assert.Null);
         Assert.Empty(remainingCraft.Logistics.Items);

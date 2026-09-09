@@ -11,6 +11,37 @@ namespace Oxce.UnitTests.Engine;
 public sealed class CampaignLogisticsClientTests
 {
     [Fact]
+    public void ReadinessScreenShowsServiceStateWithoutCapturingOrMutatingCampaign()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var campaign = CampaignLogisticsTests.Create(content);
+        var initial = campaign.Capture();
+        var rules = content.RuntimeRules;
+        var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0)
+            with
+        { Damage = 2, Status = "STR_REPAIRS", Shield = 7 };
+        campaign = CampaignState.Restore(initial with { Bases = [initial.Bases[0] with { Crafts = [new("SHIP", 1) { Logistics = ship }] }] },
+            content, new SplitMix64RandomSource(0));
+        var before = campaign.Capture();
+        var labels = new List<string>();
+        var client = new CampaignLogisticsClient(new(campaign, campaign), localize: text => { labels.Add(text); return text; });
+        Key('r');
+        Assert.Contains(labels, text => text.Contains("STR_REPAIRS", StringComparison.Ordinal));
+        Assert.Contains(labels, text => text.Contains("Shield 7", StringComparison.Ordinal));
+        Assert.Contains(labels, text => text.Contains("Slot 1: FIXED", StringComparison.Ordinal));
+        Key(0x40000051);
+        Key(0x40000052);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Key(27);
+        Assert.False(client.ExitRequested);
+        Key(27);
+        Assert.True(client.ExitRequested);
+
+        void Key(uint code) => client.HandleInput(GameInputEvent.Key(
+            GameInputEventKind.KeyPressed, 0, 0, 0, code, InputKeyModifiers.None));
+    }
+
+    [Fact]
     public void KeyboardPurchaseConfirmsOnceAndCanSaveLoadDuringTransit()
     {
         var content = CampaignLogisticsTests.LoadFixture();

@@ -1,0 +1,59 @@
+globe:
+  polygons:
+    - [0, 0, -10, 20, -10, 20, 10, 0, 10]
+    - [1, 20, -10, 40, -10, 40, 10, 20, 10]
+    - [2, 40, -10, 60, -10, 60, 10, 40, 10]
+  textures:
+    - {id: 0}
+    - {id: 1, fakeUnderwater: true}
+    - {id: 2, isOcean: true}
+regions:
+  - type: REGION
+    cost: 5000
+armors:
+  - type: LARGE_ARMOR
+    size: 2
+    storeItem: SUPPLY
+    corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [0, 0, 0, 0]
+crafts:
+  - type: SHIP
+    soldiers: 4
+    vehicles: 4
+facilities:
+  - type: LIFT
+    lift: true
+    mapName: LOGISTICS
+  - type: ROOM
+    mapName: LOGISTICS
+    buildCost: 100
+    refundValue: 40
+    buildTime: 2
+    monthlyCost: 30
+    personnel: 10
+    trainingRooms: 2
+    psiLabs: 2
+    manaRecoveryPerDay: 6
+    healthRecoveryPerDay: 4
+    sickBayAbsoluteBonus: 0.5
+    sickBayRelativeBonus: 2.5
+  - type: STORES
+    lift: true
+soldierTransformation:
+  - name: READINESS_TRANSFORMATION
+    cost: 100
+    transferTime: 2
+    recoveryTime: 3
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    requiredItems: {SUPPLY: 1}
+    lowerBoundAtMinStats: false
+    flatOverallStatChange: {tu: 1}
+  - name: SOFT_LIMIT_TRANSFORMATION
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    lowerBoundAtMinStats: false
+    upperBoundAtMaxStats: true
+    upperBoundType: 1
+    flatOverallStatChange: {tu: -1}
