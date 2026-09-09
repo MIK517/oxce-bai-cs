@@ -71,10 +71,11 @@ public static class CraftLogistics
         => SupportedValue(RawEffectiveStats(rule, weapons, rules).Shield);
 
     public static bool TryEffectiveServiceCapacities(RuntimeCraftRule rule, IEnumerable<CraftWeaponSnapshot?> weapons,
-        RuntimeRuleCatalog rules, out CraftServiceCapacities? capacities)
+        RuntimeRuleCatalog rules, out CraftServiceCapacities capacities)
     {
-        try { capacities = EffectiveServiceCapacities(rule, weapons, rules); return true; }
-        catch (OverflowException) { capacities = null; return false; }
+        var raw = RawEffectiveStats(rule, weapons, rules);
+        capacities = new(ClampSupportedValue(raw.Fuel), ClampSupportedValue(raw.Shield));
+        return IsSupportedValue(raw.Fuel) && IsSupportedValue(raw.Shield);
     }
 
     public static bool TryEffectiveUnitCapacities(RuntimeCraftRule rule, IEnumerable<CraftWeaponSnapshot?> weapons,
@@ -291,10 +292,13 @@ public static class CraftLogistics
 
     private static int SupportedValue(long value)
     {
-        if (value is < int.MinValue or > int.MaxValue)
+        if (!IsSupportedValue(value))
             throw new OverflowException("Craft weapon bonuses exceed the supported capacity range.");
         return (int)value;
     }
+
+    private static bool IsSupportedValue(long value) => value is >= int.MinValue and <= int.MaxValue;
+    private static int ClampSupportedValue(long value) => (int)Math.Clamp(value, int.MinValue, int.MaxValue);
 
     private readonly record struct RawCraftEffectiveStats(long Soldiers, long Vehicles, long Fuel, long Shield);
 }

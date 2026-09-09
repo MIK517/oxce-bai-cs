@@ -58,6 +58,10 @@ craftWeapons:
     ammoMax: 10
     launcher: SUPPLY
     stats: {fuelMax: 2147483647}
+  - type: SHIELD_OVERFLOW_WEAPON
+    ammoMax: 10
+    launcher: SUPPLY
+    stats: {shieldCapacity: 2147483647}
   - type: SOLDIER_OVERFLOW_WEAPON
     ammoMax: 10
     launcher: SUPPLY

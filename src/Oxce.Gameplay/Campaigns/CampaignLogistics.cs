@@ -48,7 +48,12 @@ public sealed partial class CampaignState
         var criticalSale = command.Operation == LogisticsOperation.Sell && Options.StorageLimitsEnforced &&
             StrategicLogisticsMath.StoresOverfull(AvailableStores(origin), UsedStores(origin) -
                 origin.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value));
-        var saleInventory = criticalSale ? SaleInventory(origin) : null;
+        IReadOnlyDictionary<string, int>? saleInventory = null;
+        if (criticalSale)
+        {
+            try { saleInventory = SaleInventory(origin); }
+            catch (OverflowException) { return Blocked("Sale inventory exceeds the supported quantity range."); }
+        }
         foreach (var entry in _content.RuntimeRules.Items.Rules)
         {
             var handle = _content.RuntimeRules.Items.GetRequired(entry.Id);
