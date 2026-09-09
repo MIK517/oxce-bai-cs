@@ -61,6 +61,38 @@ public sealed class CraftServicingTests
     }
 
     [Fact]
+    public void ArrivingAmmunitionRestartsAWeaponStoppedByShortage()
+    {
+        var content = CampaignLogisticsTests.LoadFixture();
+        var snapshot = CampaignLogisticsTests.Create(content).Capture();
+        var ship = CraftLogistics.Purchase(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value,
+            content.RuntimeRules, 0, 0) with
+        {
+            Status = "STR_REFUELLING",
+            Weapons = [new("FIXED", 0, false), null]
+        };
+        var transfer = new TransferSnapshot(1, 1, CampaignTransferKind.Item, "BULKY", 1)
+        { PreservationKey = "arriving-ammunition" };
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Time = snapshot.Time with { Minute = 59, Second = 55 },
+            Bases = [snapshot.Bases[0] with
+            {
+                Crafts = [new("SHIP", 1) { Logistics = ship }],
+                Items = new Dictionary<string, int>(),
+                Transfers = [transfer]
+            }]
+        }, content, new SplitMix64RandomSource(0));
+
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        var arrived = campaign.Capture().Bases[0];
+        Assert.Equal(1, arrived.Items["BULKY"]);
+        Assert.Equal("STR_REARMING", arrived.Crafts[0].Logistics!.Status);
+        Assert.True(arrived.Crafts[0].Logistics!.Weapons[0]!.Rearming);
+    }
+
+    [Fact]
     public void InvalidServiceValuesStopBeforeTickAndStockMutation()
     {
         var content = CampaignLogisticsTests.LoadFixture();
