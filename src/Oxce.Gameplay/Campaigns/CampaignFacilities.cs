@@ -55,11 +55,9 @@ public sealed partial class CampaignState
         long funds = _funds[^1], income = _incomes[^1], spending = _expenditures[^1];
         double reduction = 0;
         var upgrading = false;
-        long eligibilityFunds = _funds[^1];
         foreach (var old in removed.Reverse())
         {
             var oldRule = FacilityRule(old);
-            eligibilityFunds = checked(_funds[^1] + (old.BuildTime > oldRule.BuildTime ? oldRule.BuildCost : oldRule.RefundValue));
             Refund(old, stock, ref funds, ref income, ref spending);
             if (old.BuildTime <= oldRule.BuildTime)
             {
@@ -67,7 +65,7 @@ public sealed partial class CampaignState
                 upgrading |= old.BuildTime == 0;
             }
         }
-        if (eligibilityFunds < rule.BuildCost) return Blocked("STR_NOT_ENOUGH_MONEY");
+        if (funds < rule.BuildCost) return Blocked("STR_NOT_ENOUGH_MONEY");
         if (rule.BuildTime < 0) return Blocked("Facility construction time cannot be negative.");
         foreach (var item in rule.BuildCostItems)
         {
@@ -217,7 +215,7 @@ public sealed partial class CampaignState
             {
                 var facility = facilities[index];
                 var ownTime = FacilityRule(facility).BuildTime;
-                foreach (var neighbor in facilities.Where((_, candidate) => candidate != index && Adjacent(facility, facilities[candidate])))
+                foreach (var neighbor in facilities.Where((_, candidate) => candidate != index && Adjacent(facility, facilities[candidate])).ToArray())
                 {
                     var adjusted = neighbor.HadPreviousFacility ? 0 : neighbor.BuildTime;
                     if (adjusted == int.MaxValue || (long)adjusted + ownTime >= facility.BuildTime) continue;
@@ -257,7 +255,7 @@ public sealed partial class CampaignState
     {
         var next = _nextIds.GetValueOrDefault("oxcePortFacility", 1);
         for (var i = 0; i < facilities.Count; i++)
-            if (!owner.Facilities.Any(previous => ReferenceEquals(previous, facilities[i])))
+            if (!owner.Facilities.Any(previous => SameFacilityEntity(previous, facilities[i])))
             {
                 var key = FormattableString.Invariant($"created:{Identity.Id}:facility:{next}");
                 next = checked(next + 1);
@@ -269,4 +267,10 @@ public sealed partial class CampaignState
         _funds[^1] = funds; _incomes[^1] = income; _expenditures[^1] = spending;
         _logisticsQuote = null;
     }
+
+    private static bool SameFacilityEntity(FacilityState previous, FacilityState current) =>
+        ReferenceEquals(previous, current) ||
+        previous.Rule == current.Rule && previous.X == current.X && previous.Y == current.Y &&
+        (previous.PreservationKey.Length == 0 ||
+         string.Equals(previous.PreservationKey, current.PreservationKey, StringComparison.Ordinal));
 }

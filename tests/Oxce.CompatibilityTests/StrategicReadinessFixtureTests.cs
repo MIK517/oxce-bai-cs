@@ -52,6 +52,56 @@ public sealed class StrategicReadinessFixtureTests
                 campaign.Execute(new AdvanceCampaignTime(1));
                 Assert.Equal(1, campaign.Capture().Bases.Single(b => b.Id == created.BaseId).Facilities.Single(f => f.RuleId == "ROOM").BuildTime);
 
+                var facilityState = campaign.Capture();
+                var facilityBase = facilityState.Bases.Single(b => b.Id == created.BaseId);
+                var upgradeBase = facilityBase with
+                {
+                    Facilities =
+                    [
+                        new("LIFT", 2, 2, 0, 0, false, false, false) { PreservationKey = "lift" },
+                        new("ROOM", 3, 2, 0, 0, false, false, false) { PreservationKey = "room-left" },
+                        new("ROOM", 4, 2, 0, 0, false, false, false) { PreservationKey = "room-right" },
+                    ]
+                };
+                var upgradeCampaign = CampaignState.Restore(facilityState with
+                {
+                    Funds = [0],
+                    Incomes = [0],
+                    Expenditures = [0],
+                    Bases = facilityState.Bases.Select(b => b.Id == upgradeBase.Id ? upgradeBase : b).ToArray(),
+                }, content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignFacilityChanged>(Assert.Single(upgradeCampaign.Execute(
+                    new BuildCampaignFacility(upgradeBase.Id, "UPGRADE", 3, 2)).Events));
+                Assert.Equal(10, upgradeCampaign.Capture().Funds[^1]);
+
+                var queueBase = facilityBase with
+                {
+                    Facilities =
+                    [
+                        new("LIFT", 2, 2, 0, 0, false, false, false) { PreservationKey = "lift" },
+                        new("ROOM", 3, 2, 1, 0, false, false, false) { PreservationKey = "queue-source" },
+                        new("ROOM", 4, 2, int.MaxValue, 0, false, false, false) { PreservationKey = "queue-middle" },
+                        new("ROOM", 5, 2, int.MaxValue, 0, false, false, false) { PreservationKey = "queue-tail" },
+                    ]
+                };
+                var queueSnapshot = facilityState with
+                {
+                    Options = facilityState.Options with { AllowBuildingQueue = true },
+                    Bases = facilityState.Bases.Select(b => b.Id == queueBase.Id ? queueBase : b).ToArray(),
+                };
+                var queueYaml = OxceSaveAdapter.EmitNewCampaign(queueSnapshot).Replace(
+                    "oxcePortEntityKey: queue-middle", "futureFacility: retained\n        oxcePortEntityKey: queue-middle", StringComparison.Ordinal);
+                Assert.Contains("futureFacility: retained", queueYaml, StringComparison.Ordinal);
+                var queueLoaded = OxceSaveAdapter.Load(queueYaml, "queue.sav", content, new SplitMix64RandomSource(42),
+                    new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+                Assert.IsType<CampaignFacilityChanged>(Assert.Single(queueLoaded.Campaign.Execute(
+                    new DismantleCampaignFacility(queueBase.Id, 5, 2)).Events));
+                var recalculated = queueLoaded.Campaign.Capture().Bases.Single(b => b.Id == queueBase.Id).Facilities.Single(f => f.X == 4);
+                Assert.Equal("queue-middle", recalculated.PreservationKey);
+                Assert.Equal(3, recalculated.BuildTime);
+                Assert.Contains("futureFacility: retained", OxceSaveAdapter.EmitLoadedCampaign(queueLoaded.Campaign.Capture(), queueLoaded.Source),
+                    StringComparison.Ordinal);
+
                 var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
                 var stats = recruit.MinimumStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
                 var soldier = new SoldierSnapshot("RECRUIT", 77)
