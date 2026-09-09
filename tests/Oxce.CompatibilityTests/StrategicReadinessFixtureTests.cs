@@ -155,12 +155,43 @@ public sealed class StrategicReadinessFixtureTests
                     Crafts = [new("CAPACITY_SHIP", 9) { Logistics = capacityCraft }]
                 };
                 var capacityCampaign = CampaignState.Restore(facilityState with
-                { Bases = facilityState.Bases.Select(b => b.Id == capacityBase.Id ? capacityBase : b).ToArray() },
+                {
+                    Options = facilityState.Options with { StorageLimitsEnforced = true },
+                    Bases = facilityState.Bases.Select(b => b.Id == capacityBase.Id ? capacityBase : b).ToArray()
+                },
                     content, new SplitMix64RandomSource(42));
                 var beforeWeaponRemoval = capacityCampaign.Capture();
                 Assert.IsType<CampaignActionBlocked>(Assert.Single(capacityCampaign.Execute(
                     new EquipCraftWeapon(capacityBase.Id, "CAPACITY_SHIP", 9, 0, "")).Events));
                 Assert.Equivalent(beforeWeaponRemoval, capacityCampaign.Capture(), strict: true);
+                var saleQuote = Assert.IsType<LogisticsQuoted>(Assert.Single(capacityCampaign.Execute(
+                    new PrepareLogisticsQuote(capacityBase.Id, LogisticsOperation.Sell)).Events)).Quote;
+                var launcher = saleQuote.Rows.Single(row => row.RuleId == "SUPPLY");
+                Assert.Equal(1, launcher.Owned);
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(capacityCampaign.Execute(
+                    new SubmitLogisticsOrder(saleQuote.Id, [new(launcher.Id, 1)])).Events));
+                Assert.Equivalent(beforeWeaponRemoval, capacityCampaign.Capture(), strict: true);
+
+                var vehicleShipRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
+                var vehicleCraft = CraftLogistics.Purchase(vehicleShipRule, content.RuntimeRules, 0, 0);
+                var vehicleBase = facilityBase with
+                {
+                    Crafts = [new("SHIP", 10) { Logistics = vehicleCraft }],
+                    Items = new Dictionary<string, int>(StringComparer.Ordinal) { ["VEHICLE"] = 1 }
+                };
+                var vehicleCampaign = CampaignState.Restore(facilityState with
+                { Bases = facilityState.Bases.Select(b => b.Id == vehicleBase.Id ? vehicleBase : b).ToArray() },
+                    content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignPersonnelChanged>(Assert.Single(vehicleCampaign.Execute(
+                    new ChangeCraftVehicle(vehicleBase.Id, "SHIP", 10, "VEHICLE", true)).Events));
+                var vehicleLoaded = vehicleCampaign.Capture().Bases.Single(b => b.Id == vehicleBase.Id);
+                Assert.False(vehicleLoaded.Items.ContainsKey("VEHICLE"));
+                Assert.Single(vehicleLoaded.Crafts[0].Logistics!.Vehicles);
+                Assert.IsType<CampaignPersonnelChanged>(Assert.Single(vehicleCampaign.Execute(
+                    new ChangeCraftVehicle(vehicleBase.Id, "SHIP", 10, "VEHICLE", false)).Events));
+                var vehicleRemoved = vehicleCampaign.Capture().Bases.Single(b => b.Id == vehicleBase.Id);
+                Assert.Equal(1, vehicleRemoved.Items["VEHICLE"]);
+                Assert.Empty(vehicleRemoved.Crafts[0].Logistics!.Vehicles);
 
                 var soldier = new SoldierSnapshot("RECRUIT", 77)
                 {
