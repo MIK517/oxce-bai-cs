@@ -64,3 +64,12 @@ soldierTransformation:
     upperBoundAtMaxStats: true
     upperBoundType: 1
     flatOverallStatChange: {tu: -1}
+  - name: REROLL_TRANSFORMATION
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    rerollStats: {tu: 1}
+  - name: ARMOR_RETURN_TRANSFORMATION
+    cost: 100
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    producedSoldierArmor: ARMOR
