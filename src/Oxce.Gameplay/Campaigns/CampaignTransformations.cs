@@ -62,10 +62,13 @@ public sealed partial class CampaignState
         var destinationArmor = transformation.Booleans["keepSoldierArmor"] ? sourcePersonal.Armor : transformation.Strings["producedSoldierArmor"];
         if (destinationArmor.Length == 0) destinationArmor = _content.RuntimeRules.Armors.GetExternalId(destinationRule.Armor);
         _content.RuntimeRules.Armors.GetRequired(destinationArmor);
-        if (sourcePersonal.PreviousTransformations.GetValueOrDefault(command.TransformationRuleId) == int.MaxValue)
+        var resets = transformation.Booleans["reset"];
+        if ((createsClone || !resets) &&
+            sourcePersonal.PreviousTransformations.GetValueOrDefault(command.TransformationRuleId) == int.MaxValue)
             return Blocked("Transformation history exceeds the supported range.");
         var awardedBonus = transformation.Strings["soldierBonusType"];
-        if (awardedBonus.Length != 0 && sourcePersonal.TransformationBonuses.GetValueOrDefault(awardedBonus) == int.MaxValue)
+        if (!createsClone && !resets && awardedBonus.Length != 0 &&
+            sourcePersonal.TransformationBonuses.GetValueOrDefault(awardedBonus) == int.MaxValue)
             return Blocked("Transformation bonuses exceed the supported range.");
         RuleHandle<ItemRuleFamily>? returnedArmor = null;
         if (!transformation.Booleans["keepSoldierArmor"] && !createsClone && sourcePersonal.Armor != destinationArmor)
@@ -114,6 +117,8 @@ public sealed partial class CampaignState
         var result = createsClone ? generated! : sourcePersonal;
         result = ApplyTransformationStats(result, sourcePersonal, transformation, destinationRule,
             string.Equals(soldierType, destinationRuleId, StringComparison.Ordinal), generated?.CurrentStats ?? result.CurrentStats);
+        if (!createsClone && !string.Equals(soldierType, destinationRuleId, StringComparison.Ordinal))
+            result = SoldierGeneration.NormalizeNationality(result, destinationRule, _random);
         if (createsClone) result = result with { InitialStats = result.CurrentStats };
         var history = transformation.Booleans["reset"] ? new Dictionary<string, int>(StringComparer.Ordinal) :
             new Dictionary<string, int>(result.PreviousTransformations, StringComparer.Ordinal);

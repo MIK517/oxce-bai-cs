@@ -10,6 +10,31 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicSalesFixtureTests
 {
+    [Fact]
+    public void CriticalSaleCountsLauncherAndClipsWhenTheyUseTheSameItem()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var initial = CampaignFactory.Create(content,
+            new(new(Guid.NewGuid()), "Overlapping sale inventory", "logistics", ["logistics"], CampaignDifficulty.Beginner),
+            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var rules = content.RuntimeRules;
+        var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        {
+            Status = "STR_READY",
+            Weapons = [new("OVERLAP_WEAPON", 12), null],
+        };
+        var campaign = CampaignState.Restore(initial with
+        {
+            Options = new(StorageLimitsEnforced: true),
+            Bases = [initial.Bases[0] with { Name = "Alpha", Crafts = [new("SHIP", 1) { Logistics = ship }], Items = new Dictionary<string, int>() }],
+        }, content, new SplitMix64RandomSource(0));
+
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(0, LogisticsOperation.Sell)).Events)).Quote;
+
+        Assert.Equal(13, quote.Rows.Single(row => row.RuleId == "SUPPLY").Owned);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -70,4 +95,5 @@ public sealed class StrategicSalesFixtureTests
         Assert.Equal(3, loaded.Campaign.Capture().Bases[0].Items["SUPPLY"]);
         Assert.Empty(loaded.Campaign.Capture().Bases[0].Transfers);
     }
+
 }

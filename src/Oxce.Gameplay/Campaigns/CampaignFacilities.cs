@@ -28,8 +28,8 @@ public sealed partial class CampaignState
         var handle = _content.RuntimeRules.Facilities.GetRequired(command.RuleId);
         var rule = _content.RuntimeRules.Facilities[handle].Value;
         if (!FacilityFits(rule, command.X, command.Y)) return Blocked("STR_CANNOT_BUILD_HERE");
-        if (rule.Lift && !rule.UpgradeOnly || !FacilityAllowed(rule, owner.FakeUnderwater)) return Blocked("Facility is not available for this base type.");
-        if (!_debugMode && rule.Requirements.Any(r => !_completedResearch.Contains(r.Id))) return Blocked("Required research is not complete.");
+        if (!IsAvailableForExistingBase(rule, owner.FakeUnderwater)) return Blocked("Facility is not available for this base type.");
+        if (!MeetsFacilityResearch(rule)) return Blocked("Required research is not complete.");
         if (!HasFunctions(owner, rule.RequiredBaseFunctions)) return Blocked("Required base functions are unavailable.");
         if (rule.MaximumAllowedPerBase > 0 && owner.Facilities.Count(f => f.Rule == handle) >= rule.MaximumAllowedPerBase)
             return Blocked("Maximum facility count reached.");

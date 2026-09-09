@@ -15,20 +15,19 @@ public sealed partial class CampaignState
                 var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
                 if (rule.RepairRate < 0 || rule.RefuelRate < 0 || (long)state.Fuel + rule.RefuelRate > int.MaxValue)
                     return "Craft service rate exceeds the supported range.";
-                long fuelMaximum = rule.FuelMaximum, shieldMaximum = rule.ShieldCapacity;
+                if (!CraftLogistics.TryEffectiveStats(rule, state.Weapons, _content.RuntimeRules, out var effective))
+                    return "Craft service capacity exceeds the supported range.";
                 foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
                 {
                     var weaponRule = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-                    fuelMaximum += weaponRule.BonusStats.GetValueOrDefault("fuelMax");
-                    shieldMaximum += weaponRule.BonusStats.GetValueOrDefault("shieldCapacity");
                     var clipSize = weaponRule.Clip.Length == 0 ? 0 : _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(weaponRule.Clip)].Value.ClipSize;
                     if (weaponRule.RearmRate < 0 || weaponRule.AmmoMaximum < 0 || weapon.Ammo > weaponRule.AmmoMaximum ||
                         (long)weapon.Ammo + weaponRule.RearmRate > int.MaxValue || (long)weaponRule.AmmoMaximum + Math.Max(0, clipSize - 1) > int.MaxValue)
                         return "Craft weapon service values exceed the supported range.";
                 }
-                if (fuelMaximum is < 0 or > int.MaxValue || shieldMaximum is < 0 or > int.MaxValue ||
+                if (effective!.FuelMaximum < 0 || effective.ShieldMaximum < 0 ||
                     (long)state.Shield + rule.ShieldRechargeAtBase is < int.MinValue or > int.MaxValue ||
-                    (long)state.Fuel + rule.RefuelRate - fuelMaximum + state.ExcessFuel > int.MaxValue)
+                    (long)state.Fuel + rule.RefuelRate - effective.FuelMaximum + state.ExcessFuel > int.MaxValue)
                     return "Craft service capacity exceeds the supported range.";
             }
             foreach (var facility in owner.Facilities)
@@ -57,8 +56,7 @@ public sealed partial class CampaignState
                     if (result.MissingAmmo) effects.Notify(new CraftArrivalServiceMessage(owner.Id,
                         _content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REARM_CRAFT_AT_BASE"));
                 }
-                var shieldMaximum = checked(rule.ShieldCapacity + state.Weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-                    _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("shieldCapacity")));
+                var shieldMaximum = CraftLogistics.EffectiveStats(rule, state.Weapons, _content.RuntimeRules).ShieldMaximum;
                 if (shieldMaximum > 0 && state.Status != "STR_OUT")
                     state = state with { Shield = Math.Clamp(checked(state.Shield + rule.ShieldRechargeAtBase), 0, shieldMaximum) };
                 owner.Crafts[index] = craft with { Logistics = state };

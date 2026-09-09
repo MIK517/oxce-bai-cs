@@ -40,19 +40,16 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
             {
                 var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
                 var state = craft.Logistics;
-                var fuelMaximum = rule.FuelMaximum;
-                var shieldMaximum = rule.ShieldCapacity;
                 var weapons = state?.Weapons.Select(weapon =>
                 {
                     if (weapon is null) return null;
                     var definition = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-                    fuelMaximum = checked(fuelMaximum + definition.BonusStats.GetValueOrDefault("fuelMax"));
-                    shieldMaximum = checked(shieldMaximum + definition.BonusStats.GetValueOrDefault("shieldCapacity"));
                     return new CampaignWeaponReadiness(weapon.RuleId, weapon.Ammo, definition.AmmoMaximum, weapon.Rearming, weapon.Disabled);
                 }).ToArray() ?? [];
+                var effective = CraftLogistics.EffectiveStats(rule, state?.Weapons ?? [], _content.RuntimeRules);
                 return new CampaignCraftReadiness(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
-                    state?.Name ?? "", state?.Status ?? "Unresolved craft state", state?.Fuel ?? 0, fuelMaximum,
-                    state?.Damage ?? 0, state?.Shield ?? 0, shieldMaximum, Array.AsReadOnly(weapons),
+                    state?.Name ?? "", state?.Status ?? "Unresolved craft state", state?.Fuel ?? 0, effective.FuelMaximum,
+                    state?.Damage ?? 0, state?.Shield ?? 0, effective.ShieldMaximum, Array.AsReadOnly(weapons),
                     CampaignSnapshot.ReadOnly(state?.Vehicles.Select(v => v.RuleId) ?? []));
             });
             var defenses = owner.Facilities.Select(f => new CampaignDefenseReadiness(
@@ -72,8 +69,9 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
             {
                 var rule = entry.Value;
                 string? reason = null;
-                if (!FacilityAllowed(rule, owner.FakeUnderwater)) reason = "Incompatible base type";
-                else if (!_debugMode && rule.Requirements.Any(r => !_completedResearch.Contains(r.Id))) reason = "Research required";
+                if (rule.Lift && !rule.UpgradeOnly) reason = "Access lift already exists";
+                else if (!IsAvailableForExistingBase(rule, owner.FakeUnderwater)) reason = "Incompatible base type";
+                else if (!MeetsFacilityResearch(rule)) reason = "Research required";
                 else if (!HasFunctions(owner, rule.RequiredBaseFunctions)) reason = "Base function required";
                 return new CampaignFacilityChoice(entry.Id, rule.SizeX, rule.SizeY, rule.BuildCost, rule.BuildTime, rule.Lift, reason);
             });
@@ -99,8 +97,8 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
                 {
                     var rule = entry.Value;
                     string? reason = null;
-                    if (!FacilityAllowed(rule, fakeUnderwater)) reason = "Incompatible base type";
-                    else if (!_debugMode && rule.Requirements.Any(r => !_completedResearch.Contains(r.Id))) reason = "Research required";
+                    if (!IsAvailableAccessLift(rule, fakeUnderwater)) reason = "Incompatible base type";
+                    else if (!MeetsFacilityResearch(rule)) reason = "Research required";
                     return new CampaignFacilityChoice(entry.Id, rule.SizeX, rule.SizeY, rule.BuildCost,
                         rule.BuildTime, rule.Lift, reason);
                 }));
