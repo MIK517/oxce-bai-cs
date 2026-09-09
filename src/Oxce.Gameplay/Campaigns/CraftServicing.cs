@@ -6,6 +6,31 @@ namespace Oxce.Gameplay.Campaigns;
 /// <summary>Hourly maintenance from Craft.cpp and CraftWeapon.cpp at reference 4df3a5e.</summary>
 public static class CraftServicing
 {
+    public static CraftLogisticsState ReuseItem(CraftLogisticsState state, RuntimeCraftRule craftRule,
+        RuntimeRuleCatalog rules, RuleHandle<ItemRuleFamily> item)
+    {
+        if (state.Status is not ("STR_READY" or "STR_REFUELLING")) return state;
+        var weapons = state.Weapons.ToArray();
+        var rearming = false;
+        for (var slot = 0; slot < weapons.Length; slot++)
+        {
+            if (weapons[slot] is not { } weapon || weapon.Disabled) continue;
+            var weaponRule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            if (weapon.Ammo >= weaponRule.AmmoMaximum || weaponRule.Clip.Length == 0 ||
+                rules.Items.GetRequired(weaponRule.Clip) != item) continue;
+            weapons[slot] = weapon with { Rearming = true };
+            rearming = true;
+        }
+        if (rearming) return state with { Status = "STR_REARMING", Weapons = Array.AsReadOnly(weapons) };
+        if (state.Status == "STR_READY" && craftRule.RefuelItem == item)
+        {
+            var fuelMaximum = (long)craftRule.FuelMaximum + state.Weapons.OfType<CraftWeaponSnapshot>().Sum(weapon =>
+                (long)rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault("fuelMax"));
+            if (state.Fuel < Math.Max(0L, fuelMaximum)) return state with { Status = "STR_REFUELLING" };
+        }
+        return state;
+    }
+
     public static CraftLogisticsState Repair(CraftLogisticsState state, RuntimeCraftRule rule)
     {
         var damage = Math.Max(0, checked(state.Damage - rule.RepairRate));

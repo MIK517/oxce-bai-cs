@@ -538,6 +538,17 @@ public sealed partial class CampaignState
                         case CampaignTransferKind.Item:
                             var handle = _content.RuntimeRules.Items.GetRequired(transfer.RuleId);
                             state.Items[handle] = state.Items.GetValueOrDefault(handle) + transfer.Quantity;
+                            if (_content.RuntimeRules.Items[handle].Value.BattleType == 0)
+                                for (var craftIndex = 0; craftIndex < state.Crafts.Count; craftIndex++)
+                                {
+                                    var servicedCraft = state.Crafts[craftIndex];
+                                    if (servicedCraft.Logistics is null) continue;
+                                    state.Crafts[craftIndex] = servicedCraft with
+                                    {
+                                        Logistics = CraftServicing.ReuseItem(servicedCraft.Logistics,
+                                            _content.RuntimeRules.Crafts[servicedCraft.Rule].Value, _content.RuntimeRules, handle)
+                                    };
+                                }
                             break;
                         default: throw new InvalidOperationException("Arrival provider was not preflighted.");
                     }
