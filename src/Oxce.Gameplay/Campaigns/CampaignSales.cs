@@ -148,13 +148,14 @@ public sealed partial class CampaignState
             }
             var soldierCapacity = Math.Min(Math.Max(0, checked(craftRule.SoldierCapacity + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
                 _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("soldiers")))), craftRule.EffectiveMaximumUnits);
-            var vehicleCapacity = Math.Max(0, checked(craftRule.VehicleCapacity + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-                _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("vehicles"))));
+            var vehicleCapacity = CraftVehicleCapacity(craftRule, weapons);
             var assigned = state.Soldiers.Where(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId)
                 .Sum(s => _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.SpaceOccupied);
             var vehicleSpace = vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
                 _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
-            if (assigned + vehicleSpace > soldierCapacity || vehicles.Count > vehicleCapacity)
+            var largeSoldiers = state.Soldiers.Count(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId &&
+                _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal.Armor)].Value.Size != 1);
+            if (assigned + vehicleSpace > soldierCapacity || vehicles.Count + largeSoldiers > vehicleCapacity)
                 throw new SaleCapabilityException("Selling mounted equipment would exceed craft capacity.");
             var fuelMaximum = checked(craftRule.FuelMaximum + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
                 _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("fuelMax")));

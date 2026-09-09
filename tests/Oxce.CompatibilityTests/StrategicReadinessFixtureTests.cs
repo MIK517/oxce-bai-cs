@@ -104,6 +104,64 @@ public sealed class StrategicReadinessFixtureTests
 
                 var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
                 var stats = recruit.MinimumStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+                var undertrainedStats = recruit.TrainingStatCaps.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+                foreach (var key in new[] { "firing", "health", "melee", "throwing", "strength", "tu", "stamina" })
+                    undertrainedStats[key] = unchecked((short)(undertrainedStats.GetValueOrDefault(key) - 1));
+                var trainee = new SoldierPersonalState("Trainee", "", 0, 0, 0, 0, "ARMOR", undertrainedStats, undertrainedStats);
+                var trainingBase = facilityBase with
+                {
+                    Facilities =
+                    [
+                        new("LIFT", 2, 2, 0, 0, false, false, false),
+                        new("ROOM", 3, 2, 0, 0, false, false, false),
+                    ],
+                    Soldiers =
+                    [
+                        new("RECRUIT", 1) { Personal = trainee with { Training = true } },
+                        new("RECRUIT", 2) { Personal = trainee with { Training = true } },
+                        new("RECRUIT", 3) { Personal = trainee with { Recovery = 1 } },
+                    ]
+                };
+                var trainingCampaign = CampaignState.Restore(facilityState with
+                {
+                    Bases = facilityState.Bases.Select(b => b.Id == trainingBase.Id ? trainingBase : b).ToArray()
+                }, content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignPersonnelChanged>(Assert.Single(trainingCampaign.Execute(
+                    new SetSoldierTraining(trainingBase.Id, 3, true, false)).Events));
+                var queuedTrainee = trainingCampaign.Capture().Bases.Single(b => b.Id == trainingBase.Id).Soldiers.Single(s => s.Id == 3).Personal!;
+                Assert.False(queuedTrainee.Training);
+                Assert.True(queuedTrainee.ReturnToTrainingWhenHealed);
+
+                var fullyTrained = trainee with { CurrentStats = recruit.TrainingStatCaps };
+                var completedState = trainingCampaign.Capture();
+                var completedBase = completedState.Bases.Single(b => b.Id == trainingBase.Id) with
+                { Soldiers = [new("RECRUIT", 4) { Personal = fullyTrained }] };
+                trainingCampaign = CampaignState.Restore(completedState with
+                { Bases = completedState.Bases.Select(b => b.Id == completedBase.Id ? completedBase : b).ToArray() },
+                    content, new SplitMix64RandomSource(42));
+                var beforeTraining = trainingCampaign.Capture();
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(trainingCampaign.Execute(
+                    new SetSoldierTraining(completedBase.Id, 4, true, false)).Events));
+                Assert.Equivalent(beforeTraining, trainingCampaign.Capture(), strict: true);
+
+                var capacityRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("CAPACITY_SHIP")].Value;
+                var capacityCraft = CraftLogistics.Purchase(capacityRule, content.RuntimeRules, 0, 0) with
+                { Weapons = [new("CAPACITY_WEAPON", 0)] };
+                var capacitySoldier = new SoldierSnapshot("RECRUIT", 5)
+                { Personal = trainee with { Armor = "LARGE_ARMOR", CraftType = "CAPACITY_SHIP", CraftId = 9 } };
+                var capacityBase = facilityBase with
+                {
+                    Soldiers = [capacitySoldier],
+                    Crafts = [new("CAPACITY_SHIP", 9) { Logistics = capacityCraft }]
+                };
+                var capacityCampaign = CampaignState.Restore(facilityState with
+                { Bases = facilityState.Bases.Select(b => b.Id == capacityBase.Id ? capacityBase : b).ToArray() },
+                    content, new SplitMix64RandomSource(42));
+                var beforeWeaponRemoval = capacityCampaign.Capture();
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(capacityCampaign.Execute(
+                    new EquipCraftWeapon(capacityBase.Id, "CAPACITY_SHIP", 9, 0, "")).Events));
+                Assert.Equivalent(beforeWeaponRemoval, capacityCampaign.Capture(), strict: true);
+
                 var soldier = new SoldierSnapshot("RECRUIT", 77)
                 {
                     PreservationKey = "fixture:soldier:77",

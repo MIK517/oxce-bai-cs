@@ -21,6 +21,17 @@ crafts:
   - type: SHIP
     soldiers: 4
     vehicles: 4
+  - type: CAPACITY_SHIP
+    soldiers: 4
+    vehicles: 0
+    maxHWPUnitsLimit: 1
+    weapons: 1
+craftWeapons:
+  - type: CAPACITY_WEAPON
+    ammoMax: 10
+    launcher: SUPPLY
+    clip: BULKY
+    stats: {vehicles: 1}
 facilities:
   - type: LIFT
     lift: true
