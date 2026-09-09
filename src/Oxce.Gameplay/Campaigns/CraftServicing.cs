@@ -24,7 +24,7 @@ public static class CraftServicing
         if (rearming) return state with { Status = "STR_REARMING", Weapons = Array.AsReadOnly(weapons) };
         if (state.Status == "STR_READY" && craftRule.RefuelItem == item)
         {
-            var fuelMaximum = CraftLogistics.EffectiveStats(craftRule, state.Weapons, rules).FuelMaximum;
+            var fuelMaximum = CraftLogistics.EffectiveFuelMaximum(craftRule, state.Weapons, rules);
             if (state.Fuel < Math.Max(0, fuelMaximum)) return state with { Status = "STR_REFUELLING" };
         }
         return state;
