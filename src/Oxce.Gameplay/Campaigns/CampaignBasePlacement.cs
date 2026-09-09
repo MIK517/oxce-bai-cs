@@ -73,8 +73,10 @@ public sealed partial class CampaignState
         if (site.UnavailableReason is { } reason) return Blocked(reason);
         var handle = _content.RuntimeRules.Facilities.GetRequired(command.LiftRuleId);
         var lift = _content.RuntimeRules.Facilities[handle].Value;
-        if (!lift.Lift || !FacilityFits(lift, command.X, command.Y) || !FacilityAllowed(lift, site.FakeUnderwater))
+        if (!lift.Lift || lift.UpgradeOnly || !FacilityFits(lift, command.X, command.Y) || !FacilityAllowed(lift, site.FakeUnderwater))
             return Blocked("Select a compatible access lift and a position inside the base.");
+        if (!_debugMode && lift.Requirements.Any(r => !_completedResearch.Contains(r.Id)))
+            return Blocked("Required research is not complete.");
         if (_funds[^1] < site.Cost) return Blocked("STR_NOT_ENOUGH_MONEY");
         long funds = _funds[^1], income = _incomes[^1], spending = _expenditures[^1];
         Account(-(long)site.Cost, ref funds, ref income, ref spending);

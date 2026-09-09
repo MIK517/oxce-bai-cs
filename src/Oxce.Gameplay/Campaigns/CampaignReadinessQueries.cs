@@ -7,6 +7,7 @@ public interface ICampaignReadinessQuery
     CampaignBaseReadiness QueryReadiness(int baseId);
     IReadOnlyList<CampaignBaseSite> QueryBaseSites(bool startingBase);
     CampaignBaseSite QueryBaseSite(double longitude, double latitude, bool startingBase = false);
+    IReadOnlyList<CampaignFacilityChoice> QueryAccessLifts(bool fakeUnderwater);
     CampaignBaseManagement QueryBaseManagement(int baseId);
 }
 
@@ -85,6 +86,24 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
                 CampaignSnapshot.ReadOnly(_content.RuntimeRules.CraftWeapons.Rules.Select(r => r.Id)),
                 CampaignSnapshot.ReadOnly(_content.RuntimeRules.Items.Rules.Where(r => r.Value.VehicleArmor is not null).Select(r => r.Id)),
                 CalculateMaintenance(owner));
+        }
+    }
+
+    public IReadOnlyList<CampaignFacilityChoice> QueryAccessLifts(bool fakeUnderwater)
+    {
+        lock (_transactionGate)
+        {
+            return CampaignSnapshot.ReadOnly(_content.RuntimeRules.Facilities.Rules
+                .Where(entry => entry.Value.Lift && !entry.Value.UpgradeOnly)
+                .Select(entry =>
+                {
+                    var rule = entry.Value;
+                    string? reason = null;
+                    if (!FacilityAllowed(rule, fakeUnderwater)) reason = "Incompatible base type";
+                    else if (!_debugMode && rule.Requirements.Any(r => !_completedResearch.Contains(r.Id))) reason = "Research required";
+                    return new CampaignFacilityChoice(entry.Id, rule.SizeX, rule.SizeY, rule.BuildCost,
+                        rule.BuildTime, rule.Lift, reason);
+                }));
         }
     }
 

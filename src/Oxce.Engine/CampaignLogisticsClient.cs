@@ -212,10 +212,12 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             else if (key == 'n' && _session.Queries is ICampaignReadinessQuery newBase)
             {
                 var sites = newBase.QueryBaseSites(false);
-                var lift = newBase.QueryBaseManagement(overview.Bases[_baseIndex].Id).Facilities.FirstOrDefault(f => f.Lift && f.UnavailableReason is null);
+                var site = sites.Count == 0 ? null : sites[0];
+                var lift = site is null ? null : newBase.QueryAccessLifts(site.FakeUnderwater)
+                    .FirstOrDefault(f => f.UnavailableReason is null);
                 if (sites.Count == 0 || lift is null) _message = "No legal site or access lift is available.";
                 else Feedback(_session.Commands.Execute(new CreateCampaignBase($"Base {overview.Bases.Count + 1}",
-                    sites[0].Longitude, sites[0].Latitude, lift.RuleId, 2, 2)));
+                    site!.Longitude, site.Latitude, lift.RuleId, 2, 2)));
             }
             else if (_readiness && key == 'e' && _session.Queries is ICampaignReadinessQuery equipment)
             {
