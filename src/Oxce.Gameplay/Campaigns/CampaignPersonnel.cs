@@ -20,15 +20,19 @@ public sealed partial class CampaignState
         if (index < 0) return Blocked("Soldier was not found.");
         var soldier = owner.Soldiers[index];
         if (soldier.Personal is not { } personal) return Blocked("Soldier state is unresolved.");
-        if (command.Physical && !personal.Training && owner.Soldiers.Count(s => s.Personal?.Training == true) >= AvailableTraining(owner))
+        var soldierRule = _content.RuntimeRules.Soldiers[soldier.Rule].Value;
+        if (command.Physical && !personal.Training && SoldierReadiness.IsFullyTrained(personal, soldierRule))
+            return Blocked("Soldier has completed physical training.");
+        var wounded = SoldierReadiness.IsWounded(personal, _content.RuntimeRules.Campaign.ManaWoundThreshold,
+            _content.RuntimeRules.Campaign.HealthWoundThreshold);
+        if (command.Physical && !wounded && !personal.Training &&
+            owner.Soldiers.Count(s => s.Personal?.Training == true) >= AvailableTraining(owner))
             return Blocked("STR_NOT_ENOUGH_GYM_SPACE");
         if (command.Psi && !personal.PsiTraining && owner.Soldiers.Count(s => s.Personal?.PsiTraining == true) >= AvailablePsi(owner))
             return Blocked("STR_NOT_ENOUGH_PSI_LAB_SPACE");
         if (command.Psi && !_debugMode && _content.RuntimeRules.Campaign.PsiUnlockResearch is { } research &&
             !_completedResearch.Contains(_content.RuntimeRules.Research.GetExternalId(research)))
             return Blocked("Required research is not complete.");
-        var wounded = SoldierReadiness.IsWounded(personal, _content.RuntimeRules.Campaign.ManaWoundThreshold,
-            _content.RuntimeRules.Campaign.HealthWoundThreshold);
         personal = personal with
         {
             Training = command.Physical && !wounded,
@@ -71,7 +75,7 @@ public sealed partial class CampaignState
             rule.MaximumLargeSoldiers >= 0 && large + (armor.Size == 1 ? 0 : 1) > rule.MaximumLargeSoldiers ||
             rule.MaximumSmallUnits >= 0 && small + smallVehicles + (armor.Size == 1 ? 1 : 0) > rule.MaximumSmallUnits ||
             rule.MaximumLargeUnits >= 0 && large + largeVehicles + (armor.Size == 1 ? 0 : 1) > rule.MaximumLargeUnits ||
-            armor.Size != 1 && large + largeVehicles >= rule.EffectiveMaximumVehiclesAndLargeSoldiers ||
+            armor.Size != 1 && large + largeVehicles >= CraftVehicleCapacity(rule, craft.Logistics.Weapons) ||
             rule.AllowedSoldierGroups.Count != 0 && !rule.AllowedSoldierGroups.Contains(soldierRule.Group) ||
             rule.OnlyOneSoldierGroupAllowed && crew.Length != 0 && _content.RuntimeRules.Soldiers[crew[0].Rule].Value.Group != soldierRule.Group ||
             rule.AllowedArmorGroups.Count != 0 && !rule.AllowedArmorGroups.Contains(armor.Group) ||
@@ -164,13 +168,14 @@ public sealed partial class CampaignState
         }
         var soldierCapacity = Math.Min(Math.Max(0, checked(craftRule.SoldierCapacity + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
             _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("soldiers")))), craftRule.EffectiveMaximumUnits);
-        var vehicleCapacity = Math.Max(0, checked(craftRule.VehicleCapacity + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-            _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("vehicles"))));
+        var vehicleCapacity = CraftVehicleCapacity(craftRule, weapons);
         var crewSpace = Crew(owner, command.CraftRuleId, command.CraftId).Sum(s =>
             _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.SpaceOccupied);
         var vehicleSpace = logistics.Vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
             _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
-        if (crewSpace + vehicleSpace > soldierCapacity || logistics.Vehicles.Count > vehicleCapacity)
+        var largeSoldiers = Crew(owner, command.CraftRuleId, command.CraftId).Count(s =>
+            _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.Size != 1);
+        if (crewSpace + vehicleSpace > soldierCapacity || logistics.Vehicles.Count + largeSoldiers > vehicleCapacity)
             return Blocked("Removing this weapon would exceed craft capacity.");
         owner.Items.Clear(); foreach (var pair in stock) owner.Items.Add(pair.Key, pair.Value);
         var fuelMaximum = checked(craftRule.FuelMaximum + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
@@ -204,8 +209,7 @@ public sealed partial class CampaignState
         if (command.Add)
         {
             var craft = _content.RuntimeRules.Crafts[owner.Crafts[index].Rule].Value;
-            var capacity = checked(craft.VehicleCapacity + logistics.Weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-                _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("vehicles")));
+            var capacity = CraftVehicleCapacity(craft, logistics.Weapons);
             var occupied = vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
                 _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
             var crew = Crew(owner, command.CraftRuleId, command.CraftId).ToArray();
@@ -219,8 +223,7 @@ public sealed partial class CampaignState
             var unitCapacity = Math.Min(Math.Max(0, checked(craft.SoldierCapacity + logistics.Weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
                 _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("soldiers")))),
                 craft.EffectiveMaximumUnits);
-            if (vehicles.Count >= Math.Max(0, capacity) || crewSpace + occupied + armor.SpaceOccupied > unitCapacity ||
-                crew.Length - smallSoldiers + vehicles.Count >= craft.EffectiveMaximumVehiclesAndLargeSoldiers && armor.Size != 1 ||
+            if (vehicles.Count + crew.Length - smallSoldiers >= capacity || crewSpace + occupied + armor.SpaceOccupied > unitCapacity ||
                 craft.MaximumVehicles >= 0 && vehicles.Count >= craft.MaximumVehicles ||
                 craft.MaximumSmallVehicles >= 0 && armor.Size == 1 && smallVehicles >= craft.MaximumSmallVehicles ||
                 craft.MaximumLargeVehicles >= 0 && armor.Size != 1 && largeVehicles >= craft.MaximumLargeVehicles ||
@@ -259,6 +262,10 @@ public sealed partial class CampaignState
 
     private int AvailableTraining(BaseState owner) => owner.Facilities.Where(f => f.BuildTime == 0).Sum(f => FacilityRule(f).TrainingRooms);
     private int AvailablePsi(BaseState owner) => owner.Facilities.Where(f => f.BuildTime == 0).Sum(f => FacilityRule(f).PsiLaboratories);
+    private int CraftVehicleCapacity(RuntimeCraftRule craft, IEnumerable<CraftWeaponSnapshot?> weapons) =>
+        Math.Min(Math.Max(0, checked(craft.VehicleCapacity + weapons.OfType<CraftWeaponSnapshot>().Sum(weapon =>
+            _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault("vehicles")))),
+            craft.EffectiveMaximumVehiclesAndLargeSoldiers);
 
     private void AdvanceReadinessDaily(TimeEffects effects)
     {
