@@ -96,3 +96,13 @@ soldierTransformation:
     allowsLiveSoldiers: true
     allowedSoldierTypes: [RECRUIT]
     producedSoldierArmor: ARMOR
+  - name: CLONE_RESET_TRANSFORMATION
+    createsClone: true
+    reset: true
+    resetRank: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+  - name: RESET_TRANSFORMATION
+    reset: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
