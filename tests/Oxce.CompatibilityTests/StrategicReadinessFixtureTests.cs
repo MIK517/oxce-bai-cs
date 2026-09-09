@@ -12,26 +12,13 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicReadinessFixtureTests
 {
-    [Fact]
-    public void BasePlacementFacilityConstructionAndSaveReloadFormACompleteSlice()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BasePlacementFacilityConstructionAndSaveReloadFormACompleteSlice(bool fromCache)
     {
         var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var root = Path.Combine(Path.GetTempPath(), $"oxce-bases-{Guid.NewGuid():N}");
-        try
-        {
-            CopyFixture(Path.Combine(repository, "fixtures/public/mods/strategic-logistics"), Path.Combine(root, "standard"));
-            Directory.CreateDirectory(Path.Combine(root, "user/mods"));
-            File.Copy(Path.Combine(repository, "fixtures/public/savegames/strategic-bases.rul"),
-                Path.Combine(root, "standard/logistics/Ruleset/aa-bases.rul"));
-            var request = InstallationLoadRequest.ForMasterAndAddOn(root, "logistics", "-", new("Extended", "8.6.1.0"));
-            foreach (var loadedContent in new[]
-            {
-                InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken),
-                InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken),
-            })
-            {
-                Assert.True(loadedContent.IsSuccess, loadedContent.DescribeFailure());
-                var content = loadedContent.Content!;
+        var content = StrategicReadinessTestContent.Load(fromCache: fromCache);
                 var original = CampaignFactory.Create(content,
                     new(new(Guid.NewGuid()), "Bases", "logistics", ["logistics"], CampaignDifficulty.Beginner),
                     new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
@@ -422,30 +409,14 @@ public sealed class StrategicReadinessFixtureTests
                 Assert.Equal(1, transformedPersonal.PreviousTransformations["READINESS_TRANSFORMATION"]);
                 campaign.Execute(new AdvanceCampaignTime(1_440));
                 Assert.Equal(77, Assert.Single(campaign.Capture().Bases.Single(b => b.Id == beta.Id).Soldiers).Id);
-            }
-        }
-        finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
     }
 
-    [Fact]
-    public void FreshAndCachedServicingPreserveShieldAndFacilityAmmunitionThroughSaveOverlays()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FreshAndCachedServicingPreserveShieldAndFacilityAmmunitionThroughSaveOverlays(bool fromCache)
     {
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var root = Path.Combine(Path.GetTempPath(), $"oxce-readiness-{Guid.NewGuid():N}");
-        try
-        {
-            CopyFixture(Path.Combine(repository, "fixtures/public/mods/strategic-logistics"), Path.Combine(root, "standard"));
-            Directory.CreateDirectory(Path.Combine(root, "user/mods"));
-            File.Copy(Path.Combine(repository, "fixtures/public/savegames/strategic-servicing.rul"),
-                Path.Combine(root, "standard/logistics/Ruleset/aa-servicing.rul"));
-            var request = InstallationLoadRequest.ForMasterAndAddOn(root, "logistics", "-", new("Extended", "8.6.1.0"));
-            var fresh = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
-            var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(fresh.IsSuccess, fresh.DescribeFailure());
-            Assert.True(cached.IsSuccess, cached.DescribeFailure());
-            Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
-            foreach (var content in new[] { fresh.Content!, cached.Content! })
-            {
+        var content = StrategicReadinessTestContent.Load("strategic-servicing.rul", fromCache);
                 var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "Service", "logistics", ["logistics"], CampaignDifficulty.Beginner),
                     new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
                 Assert.Equal(2, campaign.QueryReadiness(0).Crafts[0].Shield);
@@ -480,9 +451,6 @@ public sealed class StrategicReadinessFixtureTests
                 var reload = OxceSaveAdapter.Load(OxceSaveAdapter.EmitLoadedCampaign(final, loaded.Source), "readiness.sav", content,
                     new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
                 Assert.Equivalent(final, reload.Campaign.Capture(), strict: true);
-            }
-        }
-        finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
@@ -554,13 +522,4 @@ public sealed class StrategicReadinessFixtureTests
         public double NextUnit() => throw new InvalidOperationException();
     }
 
-    private static void CopyFixture(string source, string destination)
-    {
-        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
-        {
-            var target = Path.Combine(destination, Path.GetRelativePath(source, file));
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(file, target);
-        }
-    }
 }

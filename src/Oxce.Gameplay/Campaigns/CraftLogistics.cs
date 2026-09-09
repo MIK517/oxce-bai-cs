@@ -23,8 +23,44 @@ public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     public int Shield { get; init; }
 }
 
+public sealed record CraftEffectiveStats(int SoldierCapacity, int VehicleCapacity,
+    int FuelMaximum, int ShieldMaximum, bool HasNegativeUnitCapacity);
+
 public static class CraftLogistics
 {
+    public static CraftEffectiveStats EffectiveStats(RuntimeCraftRule rule,
+        IEnumerable<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
+    {
+        long soldiers = rule.SoldierCapacity;
+        long vehicles = rule.VehicleCapacity;
+        long fuel = rule.FuelMaximum;
+        long shield = rule.ShieldCapacity;
+        foreach (var weapon in weapons.OfType<CraftWeaponSnapshot>())
+        {
+            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            soldiers += bonus.GetValueOrDefault("soldiers");
+            vehicles += bonus.GetValueOrDefault("vehicles");
+            fuel += bonus.GetValueOrDefault("fuelMax");
+            shield += bonus.GetValueOrDefault("shieldCapacity");
+        }
+        if (soldiers is < int.MinValue or > int.MaxValue || vehicles is < int.MinValue or > int.MaxValue ||
+            fuel is < int.MinValue or > int.MaxValue || shield is < int.MinValue or > int.MaxValue)
+            throw new OverflowException("Craft weapon bonuses exceed the supported capacity range.");
+        return new(
+            Math.Min(Math.Max(0, (int)soldiers), rule.EffectiveMaximumUnits),
+            Math.Min(Math.Max(0, (int)vehicles), rule.EffectiveMaximumVehiclesAndLargeSoldiers),
+            (int)fuel,
+            (int)shield,
+            soldiers < 0 || vehicles < 0);
+    }
+
+    public static bool TryEffectiveStats(RuntimeCraftRule rule, IEnumerable<CraftWeaponSnapshot?> weapons,
+        RuntimeRuleCatalog rules, out CraftEffectiveStats? stats)
+    {
+        try { stats = EffectiveStats(rule, weapons, rules); return true; }
+        catch (OverflowException) { stats = null; return false; }
+    }
+
     public static IReadOnlyDictionary<string, int> UnloadedWeaponItems(CraftLogisticsState state, RuntimeRuleCatalog rules)
     {
         var items = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -105,17 +141,7 @@ public static class CraftLogistics
     }
 
     public static bool HasNegativeCapacity(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules)
-    {
-        var soldiers = rule.SoldierCapacity;
-        var vehicles = rule.VehicleCapacity;
-        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
-        {
-            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
-            soldiers = checked(soldiers + bonus.GetValueOrDefault("soldiers"));
-            vehicles = checked(vehicles + bonus.GetValueOrDefault("vehicles"));
-        }
-        return soldiers < 0 || vehicles < 0;
-    }
+        => EffectiveStats(rule, state.Weapons, rules).HasNegativeUnitCapacity;
 
     public static CraftLogisticsState LoadStarting(RuntimeCraftRule rule, RuntimeCraftTemplate? template)
     {
@@ -140,8 +166,7 @@ public static class CraftLogistics
     public static (CraftLogisticsState State, int FuelItemChange, bool MissingFuel) Refuel(
         CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules, int availableFuelItems)
     {
-        var maximum = checked(rule.FuelMaximum + state.Weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-            rules.CraftWeapons[rules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("fuelMax")));
+        var maximum = EffectiveStats(rule, state.Weapons, rules).FuelMaximum;
         if (maximum < 0) throw new InvalidDataException("Craft maximum fuel cannot be negative.");
         var itemChange = 0;
         var missing = false;
@@ -181,15 +206,7 @@ public static class CraftLogistics
         var weapons = new CraftWeaponSnapshot?[rule.WeaponSlots];
         for (var i = 0; i < weapons.Length && i < rule.FixedWeaponSlots.Count; i++)
             if (rule.FixedWeaponSlots[i].Length != 0) weapons[i] = new(rule.FixedWeaponSlots[i], 0);
-        var soldiers = rule.SoldierCapacity;
-        var vehicles = rule.VehicleCapacity;
-        foreach (var weapon in weapons.OfType<CraftWeaponSnapshot>())
-        {
-            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
-            soldiers = checked(soldiers + bonus.GetValueOrDefault("soldiers"));
-            vehicles = checked(vehicles + bonus.GetValueOrDefault("vehicles"));
-        }
-        if (soldiers < 0 || vehicles < 0) Array.Clear(weapons);
+        if (EffectiveStats(rule, weapons, rules).HasNegativeUnitCapacity) Array.Clear(weapons);
         return new(0, 0, "STR_REFUELLING", Array.AsReadOnly(weapons),
             new ReadOnlyDictionary<string, int>(new Dictionary<string, int>()), [])
         { Longitude = longitude, Latitude = latitude };
@@ -200,16 +217,15 @@ public static class CraftLogistics
     {
         var weapons = state.Weapons.ToArray();
         var allFull = true;
-        var fuelMaximum = rule.FuelMaximum;
         for (var i = 0; i < weapons.Length; i++)
         {
             if (weapons[i] is not { } weapon) continue;
             var weaponRule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-            fuelMaximum = checked(fuelMaximum + weaponRule.BonusStats.GetValueOrDefault("fuelMax"));
             if (weapon.Ammo >= weaponRule.AmmoMaximum || weapon.Disabled) continue;
             weapons[i] = weapon with { Rearming = true };
             allFull = false;
         }
+        var fuelMaximum = EffectiveStats(rule, weapons, rules).FuelMaximum;
         return state with
         {
             Longitude = longitude,

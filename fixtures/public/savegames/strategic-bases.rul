@@ -58,6 +58,11 @@ craftWeapons:
     ammoMax: 10
     launcher: SUPPLY
     stats: {fuelMax: 2147483647}
+  - type: OVERLAP_WEAPON
+    ammoMax: 20
+    rearmRate: 1
+    launcher: SUPPLY
+    clip: SUPPLY
 facilities:
   - type: LIFT
     lift: true
@@ -141,6 +146,16 @@ soldierTransformation:
     allowsLiveSoldiers: true
     allowedSoldierTypes: [RECRUIT]
     producedSoldierType: NO_PSI
+  - name: RESET_COUNTER_TRANSFORMATION
+    reset: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    soldierBonusType: PILOT_BONUS
+  - name: CLONE_BONUS_TRANSFORMATION
+    createsClone: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    soldierBonusType: PILOT_BONUS
 soldiers:
   - type: NO_PSI
     armor: ARMOR

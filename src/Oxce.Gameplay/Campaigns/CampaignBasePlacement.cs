@@ -73,9 +73,9 @@ public sealed partial class CampaignState
         if (site.UnavailableReason is { } reason) return Blocked(reason);
         var handle = _content.RuntimeRules.Facilities.GetRequired(command.LiftRuleId);
         var lift = _content.RuntimeRules.Facilities[handle].Value;
-        if (!lift.Lift || lift.UpgradeOnly || !FacilityFits(lift, command.X, command.Y) || !FacilityAllowed(lift, site.FakeUnderwater))
+        if (!IsAvailableAccessLift(lift, site.FakeUnderwater) || !FacilityFits(lift, command.X, command.Y))
             return Blocked("Select a compatible access lift and a position inside the base.");
-        if (!_debugMode && lift.Requirements.Any(r => !_completedResearch.Contains(r.Id)))
+        if (!MeetsFacilityResearch(lift))
             return Blocked("Required research is not complete.");
         if (_funds[^1] < site.Cost) return Blocked("STR_NOT_ENOUGH_MONEY");
         long funds = _funds[^1], income = _incomes[^1], spending = _expenditures[^1];
@@ -97,4 +97,10 @@ public sealed partial class CampaignState
     private static bool FacilityFits(RuntimeFacilityRule rule, int x, int y) =>
         x >= 0 && y >= 0 && rule.SizeX > 0 && rule.SizeY > 0 && (long)x + rule.SizeX <= BaseGridSize && (long)y + rule.SizeY <= BaseGridSize;
     private static bool FacilityAllowed(RuntimeFacilityRule rule, bool underwater) => rule.FakeUnderwater == -1 || rule.FakeUnderwater == (underwater ? 1 : 0);
+    private static bool IsAvailableAccessLift(RuntimeFacilityRule rule, bool underwater) =>
+        rule.Lift && !rule.UpgradeOnly && FacilityAllowed(rule, underwater);
+    private bool MeetsFacilityResearch(RuntimeFacilityRule rule) =>
+        _debugMode || rule.Requirements.All(r => _completedResearch.Contains(r.Id));
+    private static bool IsAvailableForExistingBase(RuntimeFacilityRule rule, bool underwater) =>
+        (!rule.Lift || rule.UpgradeOnly) && FacilityAllowed(rule, underwater);
 }

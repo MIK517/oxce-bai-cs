@@ -1,6 +1,6 @@
 # Strategic readiness status
 
-Branch: `codex/strategic-base-readiness`. Date: 2026-09-08.
+Branch: `codex/strategic-base-readiness`. Date: 2026-09-09.
 
 Phase 6 branch 2 implements the bounded base-and-force readiness slice. A campaign can
 select a legal starting site, create a region-priced second base, build or dismantle
@@ -32,6 +32,11 @@ commands and indexed UI actions and survive fresh/cache creation plus OXCE save 
   sales can remove bonus weapons when the resulting loadout remains legal. Hourly
   repair/rearm/shield and facility-ammunition service plus half-hour refuelling preserve
   progress, shortage flags and reference handler ordering.
+- Review fixes preserve zero-stock armor exchanges when both armors use the same item,
+  count overlapping launcher/clip item roles in critical sales, normalize nationality
+  after soldier-type changes, and apply reset/clone transformation counters to the
+  destination state. Facility queries now share construction availability rules, while
+  craft capacity, fuel and shield bonuses use one effective-stat calculation.
 - The indexed client provides legal site selection, second-base creation, layout and
   facility actions, personnel training/assignment/armor actions, craft weapon/vehicle
   actions, readiness state, maintenance, save/load and time controls.

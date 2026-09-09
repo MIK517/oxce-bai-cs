@@ -15,20 +15,7 @@ public sealed partial class CampaignState
         return total;
 
         int CountCraft(CraftLogisticsState craft)
-        {
-            var count = craft.Items.GetValueOrDefault(id);
-            foreach (var weapon in craft.Weapons.OfType<CraftWeaponSnapshot>())
-            {
-                var rule = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-                count = checked(count + (rule.Launcher == id ? 1 : rule.Clip == id ? CraftLogistics.WeaponClipCount(weapon, _content.RuntimeRules) : 0));
-            }
-            foreach (var vehicle in craft.Vehicles)
-            {
-                var ammo = CraftLogistics.VehicleAmmunition(vehicle, _content.RuntimeRules);
-                count = checked(count + (vehicle.RuleId == id ? 1 : ammo.Id == id ? ammo.Count : 0));
-            }
-            return count;
-        }
+            => CraftLogistics.UnloadedItems(craft, _content.RuntimeRules).GetValueOrDefault(id);
     }
 
     private CampaignCommandResult CompleteSale(BaseState origin, LogisticsQuote quote, LogisticsSelection[] selections,
@@ -146,28 +133,22 @@ public sealed partial class CampaignState
                 Store(state, vehicle.RuleId, launcher.Remaining);
                 Store(state, ammunition.Id, clips.Remaining);
             }
-            var soldierCapacity = Math.Min(Math.Max(0, checked(craftRule.SoldierCapacity + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-                _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("soldiers")))), craftRule.EffectiveMaximumUnits);
-            var vehicleCapacity = CraftVehicleCapacity(craftRule, weapons);
+            var effective = CraftLogistics.EffectiveStats(craftRule, weapons, _content.RuntimeRules);
             var assigned = state.Soldiers.Where(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId)
                 .Sum(s => _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.SpaceOccupied);
             var vehicleSpace = vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
                 _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
             var largeSoldiers = state.Soldiers.Count(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId &&
                 _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal.Armor)].Value.Size != 1);
-            if (assigned + vehicleSpace > soldierCapacity || vehicles.Count + largeSoldiers > vehicleCapacity)
+            if (assigned + vehicleSpace > effective.SoldierCapacity || vehicles.Count + largeSoldiers > effective.VehicleCapacity)
                 throw new SaleCapabilityException("Selling mounted equipment would exceed craft capacity.");
-            var fuelMaximum = checked(craftRule.FuelMaximum + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-                _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("fuelMax")));
-            var shieldMaximum = checked(craftRule.ShieldCapacity + weapons.OfType<CraftWeaponSnapshot>().Sum(w =>
-                _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(w.RuleId)].Value.BonusStats.GetValueOrDefault("shieldCapacity")));
             return craft with
             {
                 Items = new ReadOnlyDictionary<string, int>(items),
                 Weapons = Array.AsReadOnly(weapons),
                 Vehicles = vehicles.AsReadOnly(),
-                Fuel = Math.Clamp(craft.Fuel, 0, Math.Max(0, fuelMaximum)),
-                Shield = Math.Clamp(craft.Shield, 0, Math.Max(0, shieldMaximum))
+                Fuel = Math.Clamp(craft.Fuel, 0, Math.Max(0, effective.FuelMaximum)),
+                Shield = Math.Clamp(craft.Shield, 0, Math.Max(0, effective.ShieldMaximum))
             };
         }
 
