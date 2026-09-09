@@ -5,17 +5,27 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
-    private int SaleItemCount(BaseState state, string id)
+    private ReadOnlyDictionary<string, int> SaleInventory(BaseState state)
     {
-        var total = state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(id));
-        foreach (var craft in state.Crafts) total = checked(total + CountCraft(craft.Logistics!));
+        var items = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var pair in state.Items)
+            Add(_content.RuntimeRules.Items.GetExternalId(pair.Key), pair.Value);
+        foreach (var craft in state.Crafts)
+            if (craft.Logistics is { } logistics) AddCraft(logistics);
         foreach (var transfer in state.Transfers.Where(t => !t.Delivered))
-            total = checked(total + (transfer.Kind == CampaignTransferKind.Item && transfer.RuleId == id ? transfer.Quantity :
-                transfer.Craft?.Logistics is { } craft ? CountCraft(craft) : 0));
-        return total;
+            if (transfer.Kind == CampaignTransferKind.Item) Add(transfer.RuleId, transfer.Quantity);
+            else if (transfer.Craft?.Logistics is { } logistics) AddCraft(logistics);
+        return new ReadOnlyDictionary<string, int>(items);
 
-        int CountCraft(CraftLogisticsState craft)
-            => CraftLogistics.UnloadedItemCount(craft, id, _content.RuntimeRules);
+        void AddCraft(CraftLogisticsState logistics)
+        {
+            foreach (var pair in CraftLogistics.UnloadedItems(logistics, _content.RuntimeRules)) Add(pair.Key, pair.Value);
+        }
+
+        void Add(string id, int count)
+        {
+            if (count > 0) items[id] = checked(items.GetValueOrDefault(id) + count);
+        }
     }
 
     private CampaignCommandResult CompleteSale(BaseState origin, LogisticsQuote quote, LogisticsSelection[] selections,

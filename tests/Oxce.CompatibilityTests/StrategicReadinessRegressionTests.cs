@@ -60,6 +60,57 @@ public sealed class StrategicReadinessRegressionTests
     }
 
     [Fact]
+    public void PersonnelAssignmentBlocksRelevantCapacityOverflowAtomically()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var rules = content.RuntimeRules;
+        var logistics = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        { Weapons = [new("SOLDIER_OVERFLOW_WEAPON", 0), null] };
+        var campaign = CreateCampaign(content, Personal(), crafts: [new("SHIP", 1) { Logistics = logistics }]);
+        var before = campaign.Capture();
+
+        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new AssignSoldierToCraft(0, 1, "SHIP", 1)).Events));
+
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void AssignedArmorChangeBlocksRelevantCapacityOverflowAtomically()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var rules = content.RuntimeRules;
+        var logistics = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        { Weapons = [new("SOLDIER_OVERFLOW_WEAPON", 0), null] };
+        var personal = Personal() with { CraftType = "SHIP", CraftId = 1 };
+        var campaign = CreateCampaign(content, personal, new Dictionary<string, int> { ["SUPPLY"] = 1 },
+            [new("SHIP", 1) { Logistics = logistics }]);
+        var before = campaign.Capture();
+
+        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new EquipSoldierArmor(0, 1, "LARGE_ARMOR")).Events));
+
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void VehicleAdditionBlocksRelevantCapacityOverflowAtomically()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var rules = content.RuntimeRules;
+        var logistics = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        { Weapons = [new("SOLDIER_OVERFLOW_WEAPON", 0), null] };
+        var campaign = CreateCampaign(content, Personal(), new Dictionary<string, int> { ["VEHICLE"] = 1 },
+            [new("SHIP", 1) { Logistics = logistics }]);
+        var before = campaign.Capture();
+
+        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new ChangeCraftVehicle(0, "SHIP", 1, "VEHICLE", true)).Events));
+
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
     public void ResetTransformationClearsMaximumCountersBeforeAwardingNewValues()
     {
         var content = StrategicReadinessTestContent.Load();
@@ -141,6 +192,25 @@ public sealed class StrategicReadinessRegressionTests
             new TransformCampaignSoldier(0, 1, "IMMEDIATE_TYPE_TRANSFORMATION")).Events));
 
         Assert.Equal(0, Assert.Single(campaign.Capture().Bases[0].Soldiers).Personal!.Nationality);
+    }
+
+    [Fact]
+    public void ImmediateTransformationDoesNotConsumeATransferIdentity()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var initial = CreateCampaign(content, Personal()).Capture();
+        var nextIds = new Dictionary<string, int>(initial.NextIds, StringComparer.Ordinal)
+        {
+            ["oxcePortTransfer"] = int.MaxValue,
+        };
+        var campaign = CampaignState.Restore(initial with { NextIds = nextIds }, content, new SplitMix64RandomSource(42));
+
+        Assert.IsType<CampaignSoldierTransformed>(Assert.Single(campaign.Execute(
+            new TransformCampaignSoldier(0, 1, "IMMEDIATE_TYPE_TRANSFORMATION")).Events));
+
+        var state = campaign.Capture();
+        Assert.Empty(state.Bases[0].Transfers);
+        Assert.Equal(int.MaxValue, state.NextIds["oxcePortTransfer"]);
     }
 
     [Fact]

@@ -48,13 +48,14 @@ public sealed partial class CampaignState
         var criticalSale = command.Operation == LogisticsOperation.Sell && Options.StorageLimitsEnforced &&
             StrategicLogisticsMath.StoresOverfull(AvailableStores(origin), UsedStores(origin) -
                 origin.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value));
+        var saleInventory = criticalSale ? SaleInventory(origin) : null;
         foreach (var entry in _content.RuntimeRules.Items.Rules)
         {
             var handle = _content.RuntimeRules.Items.GetRequired(entry.Id);
             var rule = entry.Value;
             if (command.Operation == LogisticsOperation.Sell && rule.IsAlien && !Options.CanSellLiveAliens) continue;
             var owned = origin.Items.GetValueOrDefault(handle);
-            if (criticalSale) owned = SaleItemCount(origin, entry.Id);
+            if (saleInventory is not null) owned = saleInventory.GetValueOrDefault(entry.Id);
             if (command.Operation != LogisticsOperation.Purchase && owned == 0) continue;
             string? unavailable = null;
             var cost = command.Operation switch
@@ -190,8 +191,14 @@ public sealed partial class CampaignState
             if (subtotal > _funds[^1]) return Blocked("STR_NOT_ENOUGH_MONEY");
         }
         var delta = quote.Operation == LogisticsOperation.Sell ? subtotal : -subtotal;
-        var funds = checked(_funds[^1] + delta);
-        var accounting = delta > 0 ? checked(_incomes[^1] + delta) : checked(_expenditures[^1] - delta);
+        long funds;
+        long accounting;
+        try
+        {
+            funds = checked(_funds[^1] + delta);
+            accounting = delta > 0 ? checked(_incomes[^1] + delta) : checked(_expenditures[^1] - delta);
+        }
+        catch (OverflowException) { return Blocked("Order accounting exceeds the supported range."); }
         if (quote.Operation == LogisticsOperation.Sell)
             return CompleteSale(origin, quote, selections, subtotal, funds, accounting);
         // All eligibility/capacity/cost checks precede stock and fund mutation.

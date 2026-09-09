@@ -61,7 +61,8 @@ public sealed partial class CampaignState
         var occupied = crew.Sum(s => _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.SpaceOccupied);
         var vehicleSpace = craft.Logistics.Vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
             _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
-        var effective = CraftLogistics.EffectiveUnitCapacities(rule, craft.Logistics.Weapons, _content.RuntimeRules);
+        if (!CraftLogistics.TryEffectiveUnitCapacities(rule, craft.Logistics.Weapons, _content.RuntimeRules, out var effective))
+            return Blocked("Craft weapon bonuses exceed the supported capacity range.");
         var soldierRule = _content.RuntimeRules.Soldiers[owner.Soldiers[index].Rule].Value;
         var small = crew.Count(s => _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.Size == 1);
         var large = crew.Length - small;
@@ -125,7 +126,8 @@ public sealed partial class CampaignState
             _content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.SpaceOccupied);
         var vehicleSpace = craft.Logistics!.Vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
             _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
-        var effective = CraftLogistics.EffectiveUnitCapacities(rule, craft.Logistics.Weapons, _content.RuntimeRules);
+        if (!CraftLogistics.TryEffectiveUnitCapacities(rule, craft.Logistics.Weapons, _content.RuntimeRules, out var effective))
+            return false;
         if (previous.Size < next.Size && occupied + vehicleSpace + next.Size - previous.Size > effective.SoldierCapacity) return false;
         var smallSoldiers = otherCrew.Count(s => _content.RuntimeRules.Armors[
             _content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.Size == 1);
@@ -210,7 +212,8 @@ public sealed partial class CampaignState
         if (command.Add)
         {
             var craft = _content.RuntimeRules.Crafts[owner.Crafts[index].Rule].Value;
-            var effective = CraftLogistics.EffectiveUnitCapacities(craft, logistics.Weapons, _content.RuntimeRules);
+            if (!CraftLogistics.TryEffectiveUnitCapacities(craft, logistics.Weapons, _content.RuntimeRules, out var effective))
+                return Blocked("Craft weapon bonuses exceed the supported capacity range.");
             var occupied = vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
                 _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
             var crew = Crew(owner, command.CraftRuleId, command.CraftId).ToArray();
