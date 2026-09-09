@@ -150,6 +150,16 @@ public sealed partial class CampaignState
             PreviousTransformations = new ReadOnlyDictionary<string, int>(history),
             TransformationBonuses = new ReadOnlyDictionary<string, int>(bonuses),
         };
+        if (!createsClone && transferHours == 0)
+        {
+            if (!string.Equals(soldierType, destinationRuleId, StringComparison.Ordinal) &&
+                destinationRule.TrainingStatCaps.GetValueOrDefault("psiSkill") <= 0)
+                result = result with { PsiTraining = false };
+            var trainingState = sourcePersonal with { Recovery = result.Recovery };
+            if (result.Training && SoldierReadiness.IsWounded(trainingState,
+                _content.RuntimeRules.Campaign.ManaWoundThreshold, _content.RuntimeRules.Campaign.HealthWoundThreshold))
+                result = result with { Training = false, ReturnToTrainingWhenHealed = true };
+        }
         var transformed = new SoldierState(destinationHandle, nextSoldierId)
         { Personal = result, PreservationKey = createsClone ? $"{Identity.Id}:soldier:{nextSoldierId}" : owner.Soldiers[index].PreservationKey };
         PublishTransformationResources();
@@ -158,7 +168,14 @@ public sealed partial class CampaignState
             var sourceHistory = new Dictionary<string, int>(sourcePersonal.PreviousTransformations, StringComparer.Ordinal)
             { [command.TransformationRuleId] = sourcePersonal.PreviousTransformations.GetValueOrDefault(command.TransformationRuleId) + 1 };
             owner.Soldiers[index] = owner.Soldiers[index] with
-            { Personal = sourcePersonal with { PreviousTransformations = new ReadOnlyDictionary<string, int>(sourceHistory) } };
+            {
+                Personal = sourcePersonal with
+                {
+                    CraftType = "",
+                    CraftId = 0,
+                    PreviousTransformations = new ReadOnlyDictionary<string, int>(sourceHistory)
+                }
+            };
         }
         if (!createsClone) owner.Soldiers.RemoveAt(index);
         if (transferHours > 0 || createsClone)

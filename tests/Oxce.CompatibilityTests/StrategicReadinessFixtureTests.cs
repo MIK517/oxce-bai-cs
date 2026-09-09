@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Oxce.Core.Random;
+using Oxce.Engine;
+using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Mods.Bootstrap;
@@ -36,8 +38,26 @@ public sealed class StrategicReadinessFixtureTests
                 var funded = original.Capture() with { Funds = [20_000], Incomes = [0], Expenditures = [0] };
                 var campaign = CampaignState.Restore(funded, content, new SplitMix64RandomSource(42));
                 Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0)).Events));
-                var site = campaign.QueryBaseSites(false)[0];
+                var site = campaign.QueryBaseSites(false).First(candidate => !candidate.FakeUnderwater);
                 Assert.Equal(5_000, site.Cost);
+                var beforeInvalidLift = campaign.Capture();
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+                    new CreateCampaignBase("Locked", site.Longitude, site.Latitude, "LOCKED_LIFT", 2, 2)).Events));
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+                    new CreateCampaignBase("Upgrade", site.Longitude, site.Latitude, "UPGRADE_LIFT", 2, 2)).Events));
+                Assert.Equivalent(beforeInvalidLift, campaign.Capture(), strict: true);
+                Assert.Equal("WATER_LIFT", Assert.Single(campaign.QueryAccessLifts(true),
+                    lift => lift.UnavailableReason is null).RuleId);
+
+                var unlockedCampaign = CampaignState.Restore(funded with { CompletedResearch = ["UNLOCK"] }, content,
+                    new SplitMix64RandomSource(42));
+                unlockedCampaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
+                var client = new CampaignLogisticsClient(new(unlockedCampaign, unlockedCampaign));
+                client.HandleInput(GameInputEvent.Key(GameInputEventKind.KeyPressed, 0, 0, 0, 'n', InputKeyModifiers.None));
+                var underwaterBase = Assert.Single(unlockedCampaign.Capture().Bases, b => b.Id != 0);
+                Assert.True(underwaterBase.FakeUnderwater);
+                Assert.Equal("WATER_LIFT", Assert.Single(underwaterBase.Facilities).RuleId);
+
                 var created = Assert.IsType<CampaignBaseCreated>(Assert.Single(campaign.Execute(
                     new CreateCampaignBase("Beta", site.Longitude, site.Latitude, "LIFT", 2, 2)).Events));
                 Assert.Equal(5_000, created.Cost);
@@ -149,14 +169,31 @@ public sealed class StrategicReadinessFixtureTests
                 Assert.Equivalent(beforeTraining, trainingCampaign.Capture(), strict: true);
 
                 var capacityRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("CAPACITY_SHIP")].Value;
+                var noBonusCraft = CraftLogistics.Purchase(capacityRule, content.RuntimeRules, 0, 0);
+                var noBonusBase = facilityBase with
+                {
+                    Soldiers = [new("RECRUIT", 5) { Personal = trainee with
+                        { Armor = "ARMOR", CraftType = "CAPACITY_SHIP", CraftId = 9 } }],
+                    Crafts = [new("CAPACITY_SHIP", 9) { Logistics = noBonusCraft }],
+                    Items = new Dictionary<string, int>(StringComparer.Ordinal) { ["SUPPLY"] = 1 }
+                };
+                var noBonusCampaign = CampaignState.Restore(facilityState with
+                { Bases = facilityState.Bases.Select(b => b.Id == noBonusBase.Id ? noBonusBase : b).ToArray() },
+                    content, new SplitMix64RandomSource(42));
+                var beforeNoBonusArmor = noBonusCampaign.Capture();
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(noBonusCampaign.Execute(
+                    new EquipSoldierArmor(noBonusBase.Id, 5, "LARGE_ARMOR")).Events));
+                Assert.Equivalent(beforeNoBonusArmor, noBonusCampaign.Capture(), strict: true);
+
                 var capacityCraft = CraftLogistics.Purchase(capacityRule, content.RuntimeRules, 0, 0) with
                 { Weapons = [new("CAPACITY_WEAPON", 0)] };
                 var capacitySoldier = new SoldierSnapshot("RECRUIT", 5)
-                { Personal = trainee with { Armor = "LARGE_ARMOR", CraftType = "CAPACITY_SHIP", CraftId = 9 } };
+                { Personal = trainee with { Armor = "ARMOR", CraftType = "CAPACITY_SHIP", CraftId = 9 } };
                 var capacityBase = facilityBase with
                 {
                     Soldiers = [capacitySoldier],
-                    Crafts = [new("CAPACITY_SHIP", 9) { Logistics = capacityCraft }]
+                    Crafts = [new("CAPACITY_SHIP", 9) { Logistics = capacityCraft }],
+                    Items = new Dictionary<string, int>(StringComparer.Ordinal) { ["SUPPLY"] = 1 }
                 };
                 var capacityCampaign = CampaignState.Restore(facilityState with
                 {
@@ -164,19 +201,35 @@ public sealed class StrategicReadinessFixtureTests
                     Bases = facilityState.Bases.Select(b => b.Id == capacityBase.Id ? capacityBase : b).ToArray()
                 },
                     content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignPersonnelChanged>(Assert.Single(capacityCampaign.Execute(
+                    new EquipSoldierArmor(capacityBase.Id, 5, "LARGE_ARMOR")).Events));
                 var beforeWeaponRemoval = capacityCampaign.Capture();
                 Assert.IsType<CampaignActionBlocked>(Assert.Single(capacityCampaign.Execute(
                     new EquipCraftWeapon(capacityBase.Id, "CAPACITY_SHIP", 9, 0, "")).Events));
                 Assert.Equivalent(beforeWeaponRemoval, capacityCampaign.Capture(), strict: true);
+
+                var vehicleShipRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
+                var overflowWeaponState = facilityState;
+                var overflowBaseState = overflowWeaponState.Bases.Single(b => b.Id == facilityBase.Id) with
+                {
+                    Crafts = [new("SHIP", 12) { Logistics = CraftLogistics.Purchase(vehicleShipRule, content.RuntimeRules, 0, 0) }],
+                    Items = new Dictionary<string, int>(StringComparer.Ordinal) { ["SUPPLY"] = 1 }
+                };
+                var overflowWeaponCampaign = CampaignState.Restore(overflowWeaponState with
+                { Bases = overflowWeaponState.Bases.Select(b => b.Id == overflowBaseState.Id ? overflowBaseState : b).ToArray() },
+                    content, new SplitMix64RandomSource(42));
+                var beforeOverflowWeapon = overflowWeaponCampaign.Capture();
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(overflowWeaponCampaign.Execute(
+                    new EquipCraftWeapon(overflowBaseState.Id, "SHIP", 12, 1, "OVERFLOW_WEAPON")).Events));
+                Assert.Equivalent(beforeOverflowWeapon, overflowWeaponCampaign.Capture(), strict: true);
                 var saleQuote = Assert.IsType<LogisticsQuoted>(Assert.Single(capacityCampaign.Execute(
                     new PrepareLogisticsQuote(capacityBase.Id, LogisticsOperation.Sell)).Events)).Quote;
                 var launcher = saleQuote.Rows.Single(row => row.RuleId == "SUPPLY");
-                Assert.Equal(1, launcher.Owned);
+                Assert.Equal(2, launcher.Owned);
                 Assert.IsType<CampaignActionBlocked>(Assert.Single(capacityCampaign.Execute(
-                    new SubmitLogisticsOrder(saleQuote.Id, [new(launcher.Id, 1)])).Events));
+                    new SubmitLogisticsOrder(saleQuote.Id, [new(launcher.Id, 2)])).Events));
                 Assert.Equivalent(beforeWeaponRemoval, capacityCampaign.Capture(), strict: true);
 
-                var vehicleShipRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
                 var vehicleCraft = CraftLogistics.Purchase(vehicleShipRule, content.RuntimeRules, 0, 0);
                 var vehicleBase = facilityBase with
                 {
@@ -196,6 +249,38 @@ public sealed class StrategicReadinessFixtureTests
                 var vehicleRemoved = vehicleCampaign.Capture().Bases.Single(b => b.Id == vehicleBase.Id);
                 Assert.Equal(1, vehicleRemoved.Items["VEHICLE"]);
                 Assert.Empty(vehicleRemoved.Crafts[0].Logistics!.Vehicles);
+
+                var identityState = facilityState;
+                var identityPrefix = $"{identityState.Identity.Id}:vehicle:SHIP:11:";
+                var identityCraft = CraftLogistics.Purchase(vehicleShipRule, content.RuntimeRules, 0, 0) with
+                {
+                    Vehicles =
+                    [
+                        new("VEHICLE", 0) { Size = 1, SpaceOccupied = 0, PreservationKey = identityPrefix + "0" },
+                        new("VEHICLE", 0) { Size = 1, SpaceOccupied = 0, PreservationKey = identityPrefix + "1" },
+                        new("VEHICLE_B", 0) { Size = 1, SpaceOccupied = 0, PreservationKey = identityPrefix + "2" },
+                        new("VEHICLE_B", 0) { Size = 1, SpaceOccupied = 0, PreservationKey = identityPrefix + "3" },
+                    ]
+                };
+                var identityBase = identityState.Bases.Single(b => b.Id == facilityBase.Id) with
+                {
+                    Crafts = [new("SHIP", 11) { Logistics = identityCraft }],
+                    Items = new Dictionary<string, int>(StringComparer.Ordinal) { ["VEHICLE_B"] = 1 }
+                };
+                var identityCampaign = CampaignState.Restore(identityState with
+                { Bases = identityState.Bases.Select(b => b.Id == identityBase.Id ? identityBase : b).ToArray() },
+                    content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignPersonnelChanged>(Assert.Single(identityCampaign.Execute(
+                    new ChangeCraftVehicle(identityBase.Id, "SHIP", 11, "VEHICLE", false)).Events));
+                Assert.IsType<CampaignPersonnelChanged>(Assert.Single(identityCampaign.Execute(
+                    new ChangeCraftVehicle(identityBase.Id, "SHIP", 11, "VEHICLE_B", true)).Events));
+                var vehicleKeys = identityCampaign.Capture().Bases.Single(b => b.Id == identityBase.Id).Crafts[0].Logistics!.Vehicles
+                    .Select(vehicle => vehicle.PreservationKey).ToArray();
+                Assert.Equal(vehicleKeys.Length, vehicleKeys.Distinct(StringComparer.Ordinal).Count());
+                var identityYaml = OxceSaveAdapter.EmitNewCampaign(identityCampaign.Capture());
+                var identityLoaded = OxceSaveAdapter.Load(identityYaml, "vehicle-identities.sav", content,
+                    new SplitMix64RandomSource(42), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+                _ = OxceSaveAdapter.EmitLoadedCampaign(identityLoaded.Campaign.Capture(), identityLoaded.Source);
 
                 var soldier = new SoldierSnapshot("RECRUIT", 77)
                 {
@@ -275,6 +360,8 @@ public sealed class StrategicReadinessFixtureTests
                 var combinationPersonal = combinationSoldier.Personal! with
                 {
                     Rank = 3,
+                    CraftType = "SHIP",
+                    CraftId = 1,
                     PreviousTransformations = new Dictionary<string, int>(StringComparer.Ordinal) { ["LEGACY"] = 2 },
                     TransformationBonuses = new Dictionary<string, int>(StringComparer.Ordinal) { ["LEGACY_BONUS"] = 1 }
                 };
@@ -291,6 +378,8 @@ public sealed class StrategicReadinessFixtureTests
                 var cloneSource = Assert.Single(cloneBase.Soldiers).Personal!;
                 Assert.Equal(2, cloneSource.PreviousTransformations["LEGACY"]);
                 Assert.Equal(1, cloneSource.PreviousTransformations["CLONE_RESET_TRANSFORMATION"]);
+                Assert.Equal("", cloneSource.CraftType);
+                Assert.Equal(0, cloneSource.CraftId);
                 var clone = Assert.Single(cloneBase.Transfers).Soldier!.Personal!;
                 Assert.Equal(0, clone.Rank);
                 Assert.Empty(clone.PreviousTransformations);
@@ -304,6 +393,22 @@ public sealed class StrategicReadinessFixtureTests
                 Assert.Equal(1, Assert.Single(resetPersonal.PreviousTransformations).Value);
                 Assert.True(resetPersonal.PreviousTransformations.ContainsKey("RESET_TRANSFORMATION"));
                 Assert.Empty(resetPersonal.TransformationBonuses);
+
+                var immediateCampaign = CampaignState.Restore(postSoftState with
+                {
+                    Bases = postSoftState.Bases.Select(b => b.Id == beta.Id ? b with
+                    {
+                        Soldiers = [b.Soldiers.Single() with { Personal = b.Soldiers.Single().Personal! with
+                            { Training = true, PsiTraining = true } }]
+                    } : b).ToArray()
+                }, content, new SplitMix64RandomSource(42));
+                Assert.IsType<CampaignSoldierTransformed>(Assert.Single(immediateCampaign.Execute(
+                    new TransformCampaignSoldier(beta.Id, 77, "IMMEDIATE_TYPE_TRANSFORMATION")).Events));
+                var immediate = immediateCampaign.Capture().Bases.Single(b => b.Id == beta.Id).Soldiers.Single();
+                Assert.Equal("NO_PSI", immediate.RuleId);
+                Assert.False(immediate.Personal!.Training);
+                Assert.True(immediate.Personal.ReturnToTrainingWhenHealed);
+                Assert.False(immediate.Personal.PsiTraining);
                 campaign = CampaignState.Restore(postSoftState, content, new SplitMix64RandomSource(42));
 
                 var transformed = Assert.IsType<CampaignSoldierTransformed>(Assert.Single(campaign.Execute(
