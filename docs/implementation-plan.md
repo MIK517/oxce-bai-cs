@@ -229,7 +229,9 @@ of mission launch; playable tactical generation and consumption remain Phase 7.
 
 Branch 1 now satisfies its [bounded logistics acceptance](strategic-logistics-status.md),
 including fresh/cache corpus classification, indexed UI, mobile saves and preflight guards.
-Branch 2 is the next implementation branch after this logistics branch is merged.
+Branch 2 satisfies its [bounded strategic-readiness acceptance](strategic-readiness-status.md),
+including base/facility management, personnel development, transformations, craft loadout,
+servicing, save reload and indexed UI actions. Branch 3 is the next planned slice.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
@@ -351,8 +353,8 @@ content root no longer retains typed compatibility/provenance graphs, virtual re
 identity is deterministic across hosts, and managed-extension API `0.2` exposes
 separately versioned campaign query, command, and event capabilities.
 
-1. Continue the [Phase 6 delivery plan](phase-6-plan.md) with base readiness after
-   the completed logistics branch is merged; retain its time and ownership guards.
+1. Continue the [Phase 6 delivery plan](phase-6-plan.md) with research and production;
+   retain the logistics/readiness time and ownership guards.
    Keep each branch integrated across commands, script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.

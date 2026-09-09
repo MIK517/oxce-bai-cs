@@ -29,6 +29,7 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> soldiers,
         RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> armors,
         RuntimeRuleFamily<SoldierBonusRuleFamily, RuntimeSoldierBonusRule> soldierBonuses,
+        RuntimeRuleFamily<SoldierTransformationRuleFamily, RuntimeSoldierTransformationRule> soldierTransformations,
         RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> commendations,
         RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> skills,
         RuntimeRuleFamily<ResearchRuleFamily, RuntimeIdentityRule> research,
@@ -46,6 +47,7 @@ public sealed class RuntimeRuleCatalog
         Soldiers = soldiers;
         Armors = armors;
         SoldierBonuses = soldierBonuses;
+        SoldierTransformations = soldierTransformations;
         Commendations = commendations;
         Skills = skills;
         Research = research;
@@ -64,6 +66,7 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> Soldiers { get; }
     public RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> Armors { get; }
     public RuntimeRuleFamily<SoldierBonusRuleFamily, RuntimeSoldierBonusRule> SoldierBonuses { get; }
+    public RuntimeRuleFamily<SoldierTransformationRuleFamily, RuntimeSoldierTransformationRule> SoldierTransformations { get; }
     public RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> Commendations { get; }
     public RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> Skills { get; }
     public RuntimeRuleFamily<ResearchRuleFamily, RuntimeIdentityRule> Research { get; }

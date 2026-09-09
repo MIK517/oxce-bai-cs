@@ -91,6 +91,15 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             {
                 AdvanceCampaignTime advance => Advance(advance),
                 PlaceStartingBase place => Place(place),
+                CreateCampaignBase create => CreateBase(create),
+                BuildCampaignFacility build => BuildFacility(build),
+                DismantleCampaignFacility dismantle => DismantleFacility(dismantle),
+                SetSoldierTraining training => SetTraining(training),
+                AssignSoldierToCraft assignment => AssignSoldier(assignment),
+                EquipSoldierArmor armor => EquipArmor(armor),
+                EquipCraftWeapon weapon => EquipWeapon(weapon),
+                ChangeCraftVehicle vehicle => ChangeVehicle(vehicle),
+                TransformCampaignSoldier transformation => TransformSoldier(transformation),
                 PrepareLogisticsQuote quote => QuoteLogistics(quote),
                 SubmitLogisticsOrder order => SubmitLogistics(order),
                 _ => throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
@@ -178,6 +187,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(snapshot.Options);
+        if (snapshot.Options.MaximumBases <= 0) throw new InvalidDataException("Maximum base count must be positive.");
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(random);
         if (!content.Capabilities.Has(ContentLoadStage.RuntimeLinked))
@@ -282,7 +292,6 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
     {
         public List<ICampaignEvent>? Events { get; private set; }
-        public List<(int BaseId, string Type, int Id)>? ArrivingCrafts { get; set; }
         public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
 
         public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger)
@@ -291,11 +300,10 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 if (restriction.BlocksTime) return restriction.Feature;
             if (campaign._bases.Any(b => b.Crafts.Any(c => c.Logistics is { Status: "STR_OUT" })))
                 return "Craft movement requires world simulation.";
-            if (highestTrigger >= CampaignTimeTrigger.OneDay)
-                return "Daily and monthly campaign simulation is not implemented yet; time stopped before midnight.";
-            if (highestTrigger >= CampaignTimeTrigger.ThirtyMinutes && campaign._bases.Any(b =>
-                b.Crafts.Any(c => c.Logistics is { Status: not "STR_READY" })))
-                return "Craft servicing is not implemented yet; time stopped before the service tick.";
+            if (highestTrigger >= CampaignTimeTrigger.OneMonth)
+                return "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.";
+            if (highestTrigger >= CampaignTimeTrigger.ThirtyMinutes && campaign.PreflightServicing() is { } serviceReason)
+                return serviceReason;
             return highestTrigger >= CampaignTimeTrigger.OneHour ? campaign.PreflightTransfers() : null;
         }
 
@@ -307,9 +315,17 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 campaign.MonthsPassed++;
                 campaign._monthlyPurchaseLog.Clear();
             }
-            if (trigger == CampaignTimeTrigger.OneDay) campaign.DaysPassed++;
-            if (trigger == CampaignTimeTrigger.OneHour) campaign.AdvanceTransfers(this);
-            if (trigger == CampaignTimeTrigger.ThirtyMinutes) campaign.RefuelArrivingCrafts(this);
+            if (trigger == CampaignTimeTrigger.OneDay)
+            {
+                campaign.DaysPassed++;
+                campaign.AdvanceReadinessDaily(this);
+            }
+            if (trigger == CampaignTimeTrigger.OneHour)
+            {
+                campaign.ServiceCraftsHourly(this);
+                campaign.AdvanceTransfers(this);
+            }
+            if (trigger == CampaignTimeTrigger.ThirtyMinutes) campaign.RefuelCrafts(this);
             return Events is not null;
         }
     }
@@ -325,6 +341,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             throw new ArgumentOutOfRangeException(nameof(command), "Latitude must be in [-π/2, π/2].");
         var target = _bases[command.BaseIndex];
         if (target.IsPlaced) throw new InvalidOperationException("The starting base is already placed.");
+        if (BaseSiteRestriction(command.Longitude, command.Latitude, true) is { } siteReason) return Blocked(siteReason);
         target.Name = command.Name;
         target.Longitude = command.Longitude;
         target.Latitude = command.Latitude;
@@ -339,6 +356,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     private void ValidateState()
     {
+        if (Options.MaximumBases <= 0) throw new InvalidDataException("Maximum base count must be positive.");
         RequiredHistory(_funds, "funds");
         RequiredHistory(_maintenance, "maintenance");
         RequiredHistory(_incomes, "incomes");
@@ -391,7 +409,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         CampaignSnapshot.ReadOnly(state.Facilities.Select(facility => new FacilitySnapshot(
             _content.RuntimeRules.Facilities.GetExternalId(facility.Rule), facility.X, facility.Y,
             facility.BuildTime, facility.Ammo, facility.AmmoMissingReported, facility.Disabled,
-            facility.HadPreviousFacility))),
+            facility.HadPreviousFacility)
+        { PreservationKey = facility.PreservationKey })),
         CampaignSnapshot.ReadOnly(state.Crafts.Select(craft =>
             new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id) { PreservationKey = craft.PreservationKey, Logistics = craft.Logistics })),
         CampaignSnapshot.ReadOnly(state.Soldiers.Select(soldier =>
@@ -403,6 +422,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         state.Engineers)
     {
         Transfers = CampaignSnapshot.ReadOnly(state.Transfers),
+        FakeUnderwater = state.FakeUnderwater,
     };
 
     private CampaignBaseOverview QueryBase(BaseState state) => new(
@@ -429,7 +449,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             throw new InvalidDataException("Base coordinates must be finite.");
         var facilities = source.Facilities.Select(facility => new FacilityState(
             rules.Facilities.GetRequired(facility.RuleId), facility.X, facility.Y, facility.BuildTime,
-            facility.Ammo, facility.AmmoMissingReported, facility.Disabled, facility.HadPreviousFacility)).ToArray();
+            facility.Ammo, facility.AmmoMissingReported, facility.Disabled, facility.HadPreviousFacility)
+        { PreservationKey = facility.PreservationKey }).ToArray();
         var crafts = source.Crafts.Select(craft => new CraftState(
             rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft"))
         { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules) }).ToArray();
@@ -444,6 +465,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         }
         var result = new BaseState(source.Id, source.Name, source.Longitude, source.Latitude, facilities, crafts,
             soldiers, items, source.Scientists, source.Engineers);
+        result.FakeUnderwater = source.FakeUnderwater;
         foreach (var transfer in source.Transfers)
         {
             ValidateTransfer(transfer, rules);
@@ -652,6 +674,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public int Engineers { get; set; } = engineers;
         public List<TransferSnapshot> Transfers { get; } = [];
         public bool IsPlaced => Name.Length != 0;
+        public bool FakeUnderwater { get; set; }
     }
 
     internal sealed record FacilityState(
@@ -662,7 +685,10 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         int Ammo,
         bool AmmoMissingReported,
         bool Disabled,
-        bool HadPreviousFacility);
+        bool HadPreviousFacility)
+    {
+        public string PreservationKey { get; init; } = string.Empty;
+    }
 
     internal sealed record CraftState(RuleHandle<CraftRuleFamily> Rule, int Id)
     {

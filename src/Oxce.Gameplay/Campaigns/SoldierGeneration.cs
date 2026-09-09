@@ -108,6 +108,14 @@ public static class SoldierGeneration
         return state with { Name = name.Name, Callsign = name.Callsign, Nationality = name.Nationality, Gender = name.Gender, Look = name.Look };
     }
 
+    public static SoldierPersonalState NormalizeNationality(SoldierPersonalState state, RuntimeSoldierRule rule, IRandomSource random)
+    {
+        if (rule.NamePools.Count == 0) return state with { Nationality = 0 };
+        return (uint)state.Nationality < (uint)rule.NamePools.Count
+            ? state
+            : state with { Nationality = random.NextExclusive(rule.NamePools.Count) };
+    }
+
     public static SoldierPersonalState ApplyTemplate(SoldierPersonalState state, RuntimeSoldierTemplate template,
         RuntimeSoldierRule rule, RuntimeRuleCatalog rules, IRandomSource random, bool mergeStats = true)
     {

@@ -5,29 +5,26 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
-    private int SaleItemCount(BaseState state, string id)
+    private ReadOnlyDictionary<string, int> SaleInventory(BaseState state)
     {
-        var total = state.Items.GetValueOrDefault(_content.RuntimeRules.Items.GetRequired(id));
-        foreach (var craft in state.Crafts) total = checked(total + CountCraft(craft.Logistics!));
+        var items = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var pair in state.Items)
+            Add(_content.RuntimeRules.Items.GetExternalId(pair.Key), pair.Value);
+        foreach (var craft in state.Crafts)
+            if (craft.Logistics is { } logistics) AddCraft(logistics);
         foreach (var transfer in state.Transfers.Where(t => !t.Delivered))
-            total = checked(total + (transfer.Kind == CampaignTransferKind.Item && transfer.RuleId == id ? transfer.Quantity :
-                transfer.Craft?.Logistics is { } craft ? CountCraft(craft) : 0));
-        return total;
+            if (transfer.Kind == CampaignTransferKind.Item) Add(transfer.RuleId, transfer.Quantity);
+            else if (transfer.Craft?.Logistics is { } logistics) AddCraft(logistics);
+        return new ReadOnlyDictionary<string, int>(items);
 
-        int CountCraft(CraftLogisticsState craft)
+        void AddCraft(CraftLogisticsState logistics)
         {
-            var count = craft.Items.GetValueOrDefault(id);
-            foreach (var weapon in craft.Weapons.OfType<CraftWeaponSnapshot>())
-            {
-                var rule = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-                count = checked(count + (rule.Launcher == id ? 1 : rule.Clip == id ? CraftLogistics.WeaponClipCount(weapon, _content.RuntimeRules) : 0));
-            }
-            foreach (var vehicle in craft.Vehicles)
-            {
-                var ammo = CraftLogistics.VehicleAmmunition(vehicle, _content.RuntimeRules);
-                count = checked(count + (vehicle.RuleId == id ? 1 : ammo.Id == id ? ammo.Count : 0));
-            }
-            return count;
+            foreach (var pair in CraftLogistics.UnloadedItems(logistics, _content.RuntimeRules)) Add(pair.Key, pair.Value);
+        }
+
+        void Add(string id, int count)
+        {
+            if (count > 0) items[id] = checked(items.GetValueOrDefault(id) + count);
         }
     }
 
@@ -87,7 +84,12 @@ public sealed partial class CampaignState
         count -= take;
         if (stored == take) state.Items.Remove(handle); else state.Items[handle] = stored - take;
         for (var i = 0; i < state.Crafts.Count && count > 0; i++)
-            state.Crafts[i] = state.Crafts[i] with { Logistics = RemoveFromCraft(state.Crafts[i].Logistics!) };
+            state.Crafts[i] = state.Crafts[i] with
+            {
+                Logistics = RemoveFromCraft(state.Crafts[i].Logistics!,
+                _content.RuntimeRules.Crafts[state.Crafts[i].Rule].Value,
+                _content.RuntimeRules.Crafts.GetExternalId(state.Crafts[i].Rule), state.Crafts[i].Id)
+            };
         for (var i = 0; i < state.Transfers.Count && count > 0;)
         {
             var transfer = state.Transfers[i];
@@ -100,12 +102,19 @@ public sealed partial class CampaignState
                 state.Transfers[i] = transfer with { Quantity = transfer.Quantity - removed };
             }
             else if (transfer.Craft is { } craft)
-                state.Transfers[i] = transfer with { Craft = craft with { Logistics = RemoveFromCraft(craft.Logistics!) } };
+                state.Transfers[i] = transfer with
+                {
+                    Craft = craft with
+                    {
+                        Logistics = RemoveFromCraft(craft.Logistics!,
+                    _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(craft.RuleId)].Value, craft.RuleId, craft.Id)
+                    }
+                };
             i++;
         }
         if (count != 0) throw new InvalidDataException("Sale quantity exceeds available inventory.");
 
-        CraftLogisticsState RemoveFromCraft(CraftLogisticsState craft)
+        CraftLogisticsState RemoveFromCraft(CraftLogisticsState craft, RuntimeCraftRule craftRule, string craftType, int craftId)
         {
             var items = new Dictionary<string, int>(craft.Items, StringComparer.Ordinal);
             var stored = items.GetValueOrDefault(id);
@@ -120,10 +129,6 @@ public sealed partial class CampaignState
                 var launcher = Take(rule.Launcher, 1);
                 var clips = Take(rule.Clip, CraftLogistics.WeaponClipCount(weapon, _content.RuntimeRules));
                 if (!launcher.Changed && !clips.Changed) continue;
-                // SellState deletes these weapons without refreshing the craft's cached stats.
-                // Readiness owns that mutable cache; do not silently substitute recalculated stats.
-                if (rule.BonusStats.Any(p => p.Value != 0))
-                    throw new SaleCapabilityException("Selling mounted bonus equipment requires craft readiness state.");
                 Store(state, rule.Launcher, launcher.Remaining);
                 Store(state, rule.Clip, clips.Remaining);
                 weapons[slot] = null;
@@ -138,7 +143,23 @@ public sealed partial class CampaignState
                 Store(state, vehicle.RuleId, launcher.Remaining);
                 Store(state, ammunition.Id, clips.Remaining);
             }
-            return craft with { Items = new ReadOnlyDictionary<string, int>(items), Weapons = Array.AsReadOnly(weapons), Vehicles = vehicles.AsReadOnly() };
+            var effective = CraftLogistics.EffectiveStats(craftRule, weapons, _content.RuntimeRules);
+            var assigned = state.Soldiers.Where(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId)
+                .Sum(s => _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal!.Armor)].Value.SpaceOccupied);
+            var vehicleSpace = vehicles.Sum(v => v.SpaceOccupied ?? _content.RuntimeRules.Armors[
+                _content.RuntimeRules.Items[_content.RuntimeRules.Items.GetRequired(v.RuleId)].Value.VehicleArmor!.Value].Value.SpaceOccupied);
+            var largeSoldiers = state.Soldiers.Count(s => s.Personal?.CraftType == craftType && s.Personal.CraftId == craftId &&
+                _content.RuntimeRules.Armors[_content.RuntimeRules.Armors.GetRequired(s.Personal.Armor)].Value.Size != 1);
+            if (assigned + vehicleSpace > effective.SoldierCapacity || vehicles.Count + largeSoldiers > effective.VehicleCapacity)
+                throw new SaleCapabilityException("Selling mounted equipment would exceed craft capacity.");
+            return craft with
+            {
+                Items = new ReadOnlyDictionary<string, int>(items),
+                Weapons = Array.AsReadOnly(weapons),
+                Vehicles = vehicles.AsReadOnly(),
+                Fuel = Math.Clamp(craft.Fuel, 0, Math.Max(0, effective.FuelMaximum)),
+                Shield = Math.Clamp(craft.Shield, 0, Math.Max(0, effective.ShieldMaximum))
+            };
         }
 
         (bool Changed, int Remaining) Take(string type, int quantity)

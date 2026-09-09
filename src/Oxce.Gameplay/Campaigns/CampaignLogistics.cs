@@ -48,13 +48,19 @@ public sealed partial class CampaignState
         var criticalSale = command.Operation == LogisticsOperation.Sell && Options.StorageLimitsEnforced &&
             StrategicLogisticsMath.StoresOverfull(AvailableStores(origin), UsedStores(origin) -
                 origin.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value));
+        IReadOnlyDictionary<string, int>? saleInventory = null;
+        if (criticalSale)
+        {
+            try { saleInventory = SaleInventory(origin); }
+            catch (OverflowException) { return Blocked("Sale inventory exceeds the supported quantity range."); }
+        }
         foreach (var entry in _content.RuntimeRules.Items.Rules)
         {
             var handle = _content.RuntimeRules.Items.GetRequired(entry.Id);
             var rule = entry.Value;
             if (command.Operation == LogisticsOperation.Sell && rule.IsAlien && !Options.CanSellLiveAliens) continue;
             var owned = origin.Items.GetValueOrDefault(handle);
-            if (criticalSale) owned = SaleItemCount(origin, entry.Id);
+            if (saleInventory is not null) owned = saleInventory.GetValueOrDefault(entry.Id);
             if (command.Operation != LogisticsOperation.Purchase && owned == 0) continue;
             string? unavailable = null;
             var cost = command.Operation switch
@@ -190,8 +196,14 @@ public sealed partial class CampaignState
             if (subtotal > _funds[^1]) return Blocked("STR_NOT_ENOUGH_MONEY");
         }
         var delta = quote.Operation == LogisticsOperation.Sell ? subtotal : -subtotal;
-        var funds = checked(_funds[^1] + delta);
-        var accounting = delta > 0 ? checked(_incomes[^1] + delta) : checked(_expenditures[^1] - delta);
+        long funds;
+        long accounting;
+        try
+        {
+            funds = checked(_funds[^1] + delta);
+            accounting = delta > 0 ? checked(_incomes[^1] + delta) : checked(_expenditures[^1] - delta);
+        }
+        catch (OverflowException) { return Blocked("Order accounting exceeds the supported range."); }
         if (quote.Operation == LogisticsOperation.Sell)
             return CompleteSale(origin, quote, selections, subtotal, funds, accounting);
         // All eligibility/capacity/cost checks precede stock and fund mutation.
@@ -534,11 +546,21 @@ public sealed partial class CampaignState
                                     _content.RuntimeRules, state.Longitude, state.Latitude),
                                 PreservationKey = craft.PreservationKey,
                             });
-                            (effects.ArrivingCrafts ??= []).Add((state.Id, craft.RuleId, craft.Id));
                             break;
                         case CampaignTransferKind.Item:
                             var handle = _content.RuntimeRules.Items.GetRequired(transfer.RuleId);
                             state.Items[handle] = state.Items.GetValueOrDefault(handle) + transfer.Quantity;
+                            if (_content.RuntimeRules.Items[handle].Value.BattleType == 0)
+                                for (var craftIndex = 0; craftIndex < state.Crafts.Count; craftIndex++)
+                                {
+                                    var servicedCraft = state.Crafts[craftIndex];
+                                    if (servicedCraft.Logistics is null) continue;
+                                    state.Crafts[craftIndex] = servicedCraft with
+                                    {
+                                        Logistics = CraftServicing.ReuseItem(servicedCraft.Logistics,
+                                            _content.RuntimeRules.Crafts[servicedCraft.Rule].Value, _content.RuntimeRules, handle)
+                                    };
+                                }
                             break;
                         default: throw new InvalidOperationException("Arrival provider was not preflighted.");
                     }

@@ -50,7 +50,8 @@ public sealed class PrivateStrategicLogisticsTests
         var campaign = CampaignFactory.Create(content,
             new(new(Guid.Parse("9929e1b4-b21e-46f0-8c43-0d8c08f0bb21")), "Logistics corpus", request.MasterId, request.ActiveMods, CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(42), new FixedClock());
-        Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0)).Events));
+        var site = campaign.QueryBaseSites(true)[0];
+        Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", site.Longitude, site.Latitude)).Events));
         var initial = campaign.Capture();
         var quoteResult = campaign.Execute(new PrepareLogisticsQuote(initial.Bases[0].Id, LogisticsOperation.Purchase));
         var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(quoteResult.Events)).Quote;
@@ -73,10 +74,10 @@ public sealed class PrivateStrategicLogisticsTests
             Assert.IsType<LogisticsOrderCompleted>(Assert.Single(loaded.Campaign.Execute(new SubmitLogisticsOrder(saleQuote.Id, [new(sell.Id, 1)])).Events));
         var advanced = loaded.Campaign.Execute(new AdvanceCampaignTime(2 * 24 * 720));
         var stopped = loaded.Campaign.Capture();
-        var blocked = Assert.Single(advanced.Events.OfType<CampaignActionBlocked>());
+        Assert.Empty(advanced.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(purchased.DaysPassed + 2, stopped.DaysPassed);
         var retry = loaded.Campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Contains(retry.Events, e => e is CampaignActionBlocked);
-        Assert.Equivalent(stopped, loaded.Campaign.Capture(), strict: true);
+        Assert.DoesNotContain(retry.Events, e => e is CampaignActionBlocked);
         return new
         {
             soldiers = initial.Bases[0].Soldiers.Count,
@@ -86,7 +87,7 @@ public sealed class PrivateStrategicLogisticsTests
             bought = item.RuleId,
             sold = sell?.RuleId,
             recruited = recruit?.RuleId,
-            stop = blocked.ToString(),
+            stop = "daily-readiness-complete",
             time = stopped.Time.ToString(),
             templates = content.RuntimeRules.Soldiers.Rules.Count(r => r.Value.SpawnedTemplate is not null),
             guardedTemplates = content.RuntimeRules.Soldiers.Rules.Count(r => r.Value.SpawnedTemplate is { UnsupportedFields.Count: > 0 }),
