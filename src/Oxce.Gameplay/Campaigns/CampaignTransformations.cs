@@ -54,8 +54,27 @@ public sealed partial class CampaignState
         var transferHours = transformation.Integers["transferTime"];
         if (transferHours < 0) return Blocked("Transformation transfer time cannot be negative.");
         if (producedItem.Length != 0) _content.RuntimeRules.Items.GetRequired(producedItem);
-        if (producedType.Length != 0) _content.RuntimeRules.Soldiers.GetRequired(producedType);
         if (createsClone && producedItem.Length != 0) return Blocked("A transformation cannot both clone a soldier and produce an item.");
+
+        var nextTransferId = NextTransferId();
+        if (nextTransferId == int.MaxValue) return Blocked("Transformation identity range is exhausted.");
+        long funds = 0; long income = 0; long spending = 0;
+        Dictionary<RuleHandle<ItemRuleFamily>, int> stock = null!;
+        string? selectedEvent = null;
+
+        if (producedItem.Length != 0)
+        {
+            PrepareTransformationResources();
+            PublishTransformationResources();
+            owner.Soldiers.RemoveAt(index);
+            var hours = transferHours > 0 ? transferHours : 1;
+            owner.Transfers.Add(new(nextTransferId, hours, CampaignTransferKind.Item, producedItem, 1)
+            { PreservationKey = $"{Identity.Id}:transfer:{nextTransferId}" });
+            _nextIds["oxcePortTransfer"] = nextTransferId + 1;
+            return TransformationEvents(command.SoldierId, hours);
+        }
+
+        if (producedType.Length != 0) _content.RuntimeRules.Soldiers.GetRequired(producedType);
         var destinationRuleId = producedType.Length == 0 ? soldierType : producedType;
         var destinationHandle = _content.RuntimeRules.Soldiers.GetRequired(destinationRuleId);
         var destinationRule = _content.RuntimeRules.Soldiers[destinationHandle].Value;
@@ -77,38 +96,9 @@ public sealed partial class CampaignState
             if (returnedArmor is { } item && owner.Items.GetValueOrDefault(item) == int.MaxValue)
                 return Blocked("Returned armor exceeds the supported stock range.");
         }
-
-        var nextTransferId = NextTransferId();
         var nextSoldierId = createsClone ? NextSoldierId() : command.SoldierId;
-        if (nextTransferId == int.MaxValue || createsClone && nextSoldierId == int.MaxValue) return Blocked("Transformation identity range is exhausted.");
-        var funds = _funds[^1]; var income = _incomes[^1]; var spending = _expenditures[^1];
-        Account(-(long)transformation.Integers["cost"], ref funds, ref income, ref spending);
-        var stock = new Dictionary<RuleHandle<ItemRuleFamily>, int>(owner.Items);
-        string? selectedEvent = null;
-        if (eventWeight != 0)
-        {
-            var choice = _random.NextInclusive(1, (int)eventWeight);
-            foreach (var pair in transformation.Events)
-            {
-                choice -= (int)pair.Value;
-                if (choice > 0) continue;
-                selectedEvent = pair.Key;
-                break;
-            }
-        }
-        foreach (var item in transformation.RequiredItems)
-            ChangeStock(stock, _content.RuntimeRules.Items.GetRequired(item.Key), -item.Value);
-
-        if (producedItem.Length != 0)
-        {
-            PublishTransformationResources();
-            owner.Soldiers.RemoveAt(index);
-            var hours = transferHours > 0 ? transferHours : 1;
-            owner.Transfers.Add(new(nextTransferId, hours, CampaignTransferKind.Item, producedItem, 1)
-            { PreservationKey = $"{Identity.Id}:transfer:{nextTransferId}" });
-            _nextIds["oxcePortTransfer"] = nextTransferId + 1;
-            return TransformationEvents(command.SoldierId, hours);
-        }
+        if (createsClone && nextSoldierId == int.MaxValue) return Blocked("Transformation identity range is exhausted.");
+        PrepareTransformationResources();
 
         var generated = createsClone || transformation.StatSets["rerollStats"].Any(pair => pair.Value != 0)
             ? SoldierGeneration.Generate(destinationRule, _content.RuntimeRules.Armors.GetExternalId(destinationRule.Armor), sourcePersonal.Nationality,
@@ -207,6 +197,26 @@ public sealed partial class CampaignState
             { new CampaignSoldierTransformed(owner.Id, soldierId, command.TransformationRuleId, hours) };
             if (selectedEvent is not null) events.Add(new CampaignTransformationEventSelected(selectedEvent));
             return new(events.AsReadOnly());
+        }
+
+        void PrepareTransformationResources()
+        {
+            funds = _funds[^1]; income = _incomes[^1]; spending = _expenditures[^1];
+            Account(-(long)transformation.Integers["cost"], ref funds, ref income, ref spending);
+            stock = new Dictionary<RuleHandle<ItemRuleFamily>, int>(owner.Items);
+            if (eventWeight != 0)
+            {
+                var choice = _random.NextInclusive(1, (int)eventWeight);
+                foreach (var pair in transformation.Events)
+                {
+                    choice -= (int)pair.Value;
+                    if (choice > 0) continue;
+                    selectedEvent = pair.Key;
+                    break;
+                }
+            }
+            foreach (var item in transformation.RequiredItems)
+                ChangeStock(stock, _content.RuntimeRules.Items.GetRequired(item.Key), -item.Value);
         }
 
         void PublishTransformationResources()

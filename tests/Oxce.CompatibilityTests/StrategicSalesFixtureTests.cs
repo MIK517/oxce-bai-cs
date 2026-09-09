@@ -31,8 +31,19 @@ public sealed class StrategicSalesFixtureTests
 
         var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
             new PrepareLogisticsQuote(0, LogisticsOperation.Sell)).Events)).Quote;
+        var supply = quote.Rows.Single(row => row.RuleId == "SUPPLY");
+        Assert.Equal(13, supply.Owned);
+        var before = campaign.Capture();
 
-        Assert.Equal(13, quote.Rows.Single(row => row.RuleId == "SUPPLY").Owned);
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(
+            new SubmitLogisticsOrder(quote.Id, [new(supply.Id, 13)])).Events));
+        var sold = campaign.Capture();
+        Assert.All(sold.Bases[0].Crafts[0].Logistics!.Weapons, Assert.Null);
+        Assert.False(sold.Bases[0].Items.ContainsKey("SUPPLY"));
+        Assert.Equal(checked(before.Funds[^1] + 13L * supply.UnitCost), sold.Funds[^1]);
+        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(sold), "overlapping-sale.sav", content,
+            new SplitMix64RandomSource(1), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        Assert.Equivalent(sold, loaded.Campaign.Capture(), strict: true);
     }
 
     [Theory]

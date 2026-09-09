@@ -21,6 +21,45 @@ public sealed class StrategicReadinessRegressionTests
     }
 
     [Fact]
+    public void ArmorVariantsSharingAStoreItemPreserveMaximumStock()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var campaign = CreateCampaign(content, Personal(), new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue });
+
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(campaign.Execute(
+            new EquipSoldierArmor(0, 1, "LARGE_ARMOR")).Events));
+
+        Assert.Equal(int.MaxValue, campaign.Capture().Bases[0].Items["SUPPLY"]);
+    }
+
+    [Fact]
+    public void ReadinessIgnoresUnrequestedSoldierCapacityOverflow()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var rules = content.RuntimeRules;
+        var logistics = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        { Weapons = [new("SOLDIER_OVERFLOW_WEAPON", 0), null] };
+        var campaign = CreateCampaign(content, Personal(), crafts: [new("SHIP", 1) { Logistics = logistics }]);
+
+        var readiness = Assert.Single(campaign.QueryReadiness(0).Crafts);
+
+        Assert.Equal(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value.FuelMaximum, readiness.FuelMaximum);
+    }
+
+    [Fact]
+    public void PersonnelAssignmentIgnoresUnrequestedFuelCapacityOverflow()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var rules = content.RuntimeRules;
+        var logistics = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        { Weapons = [new("OVERFLOW_WEAPON", 0), null] };
+        var campaign = CreateCampaign(content, Personal(), crafts: [new("SHIP", 1) { Logistics = logistics }]);
+
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(campaign.Execute(
+            new AssignSoldierToCraft(0, 1, "SHIP", 1)).Events));
+    }
+
+    [Fact]
     public void ResetTransformationClearsMaximumCountersBeforeAwardingNewValues()
     {
         var content = StrategicReadinessTestContent.Load();
@@ -65,6 +104,34 @@ public sealed class StrategicReadinessRegressionTests
     }
 
     [Fact]
+    public void ItemProducingTransformationIgnoresUnusedSoldierCountersAndArmorStock()
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var personal = Personal() with
+        {
+            Armor = "LARGE_ARMOR",
+            PreviousTransformations = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["RETIRE_TRANSFORMATION"] = int.MaxValue,
+            },
+            TransformationBonuses = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["PILOT_BONUS"] = int.MaxValue,
+            },
+        };
+        var campaign = CreateCampaign(content, personal, new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue });
+
+        Assert.IsType<CampaignSoldierTransformed>(Assert.Single(campaign.Execute(
+            new TransformCampaignSoldier(0, 1, "RETIRE_TRANSFORMATION")).Events));
+        var state = campaign.Capture().Bases[0];
+        Assert.Empty(state.Soldiers);
+        Assert.Equal(int.MaxValue, state.Items["SUPPLY"]);
+        var transfer = Assert.Single(state.Transfers);
+        Assert.Equal(CampaignTransferKind.Item, transfer.Kind);
+        Assert.Equal("SUPPLY", transfer.RuleId);
+    }
+
+    [Fact]
     public void TypeChangingTransformationNormalizesNationalityForDestinationPools()
     {
         var content = StrategicReadinessTestContent.Load();
@@ -87,7 +154,8 @@ public sealed class StrategicReadinessRegressionTests
         Assert.Null(facilities.Single(facility => facility.RuleId == "UPGRADE_LIFT").UnavailableReason);
     }
 
-    private static CampaignState CreateCampaign(RuntimeContent content, SoldierPersonalState personal)
+    private static CampaignState CreateCampaign(RuntimeContent content, SoldierPersonalState personal,
+        IReadOnlyDictionary<string, int>? items = null, IReadOnlyList<CraftSnapshot>? crafts = null)
     {
         var initial = CampaignFactory.Create(content,
             new(new(Guid.NewGuid()), "Readiness regressions", "logistics", ["logistics"], CampaignDifficulty.Beginner),
@@ -99,7 +167,8 @@ public sealed class StrategicReadinessRegressionTests
             {
                 Name = "Alpha",
                 Soldiers = [new("RECRUIT", 1) { Personal = personal }],
-                Items = new Dictionary<string, int>(),
+                Crafts = crafts ?? [],
+                Items = items ?? new Dictionary<string, int>(),
             }],
         }, content, new SplitMix64RandomSource(42));
     }

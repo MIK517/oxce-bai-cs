@@ -46,7 +46,7 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
                     var definition = _content.RuntimeRules.CraftWeapons[_content.RuntimeRules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
                     return new CampaignWeaponReadiness(weapon.RuleId, weapon.Ammo, definition.AmmoMaximum, weapon.Rearming, weapon.Disabled);
                 }).ToArray() ?? [];
-                var effective = CraftLogistics.EffectiveStats(rule, state?.Weapons ?? [], _content.RuntimeRules);
+                var effective = CraftLogistics.EffectiveServiceCapacities(rule, state?.Weapons ?? [], _content.RuntimeRules);
                 return new CampaignCraftReadiness(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
                     state?.Name ?? "", state?.Status ?? "Unresolved craft state", state?.Fuel ?? 0, effective.FuelMaximum,
                     state?.Damage ?? 0, state?.Shield ?? 0, effective.ShieldMaximum, Array.AsReadOnly(weapons),

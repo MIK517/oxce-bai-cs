@@ -23,7 +23,7 @@ internal static class StartingCrewAssignment
                 var state = craft.Logistics!;
                 var vehicles = state.Vehicles.Select(v => VehicleDimensions(v, rules)).ToArray();
                 var used = checked(crew.Sum(s => Armor(s).SpaceOccupied) + vehicles.Sum(v => v.Space));
-                var capacity = CraftLogistics.EffectiveStats(rule, state.Weapons, rules).SoldierCapacity;
+                var capacity = CraftLogistics.EffectiveSoldierCapacity(rule, state.Weapons, rules);
                 var small = crew.Count(s => Armor(s).Size == 1);
                 if (capacity - used < armor.SpaceOccupied ||
                     Reached(rule.MaximumSoldiers, crew.Length) || Reached(rule.MaximumSmallSoldiers, small) ||

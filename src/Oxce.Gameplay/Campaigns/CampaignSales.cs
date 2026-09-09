@@ -15,7 +15,7 @@ public sealed partial class CampaignState
         return total;
 
         int CountCraft(CraftLogisticsState craft)
-            => CraftLogistics.UnloadedItems(craft, _content.RuntimeRules).GetValueOrDefault(id);
+            => CraftLogistics.UnloadedItemCount(craft, id, _content.RuntimeRules);
     }
 
     private CampaignCommandResult CompleteSale(BaseState origin, LogisticsQuote quote, LogisticsSelection[] selections,
