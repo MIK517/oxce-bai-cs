@@ -40,6 +40,13 @@ facilities:
     sickBayRelativeBonus: 2.5
   - type: STORES
     lift: true
+  - type: UPGRADE
+    mapName: LOGISTICS
+    sizeX: 2
+    buildCost: 70
+    buildTime: 2
+    upgradeOnly: true
+    buildOverFacilities: [ROOM]
 soldierTransformation:
   - name: READINESS_TRANSFORMATION
     cost: 100
