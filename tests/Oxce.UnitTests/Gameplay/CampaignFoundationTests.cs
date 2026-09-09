@@ -137,8 +137,14 @@ public sealed class CampaignFoundationTests
     [Fact]
     public void TimeAdvanceRetainsConstantSizeSummaryAndReplaysOrderedTriggers()
     {
-        var campaign = CampaignFactory.Create(
-            LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
+        var content = LoadFixture();
+        var populated = CampaignFactory.Create(
+            content, Request(), new SplitMix64RandomSource(7), new FixedClock());
+        var snapshot = populated.Capture();
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Bases = snapshot.Bases.Select(state => state with { Crafts = [], Soldiers = [], Transfers = [] }).ToArray()
+        }, content, new SplitMix64RandomSource(7));
         campaign.Execute(new AdvanceCampaignTime(1));
         var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
 
@@ -147,13 +153,30 @@ public sealed class CampaignFoundationTests
         var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
         var advanced = Assert.Single(result.Events.OfType<CampaignTimeAdvanced>());
         Assert.Single(result.Events.OfType<CampaignActionBlocked>());
-        Assert.InRange(allocated, 0, 512_000);
+        Assert.InRange(allocated, 0, 16_384);
         Assert.InRange(advanced.Summary.TickCount, 1, CampaignState.MaximumCommandTicks - 1);
         var replayed = new int[Enum.GetValues<CampaignTimeTrigger>().Length];
         foreach (var trigger in advanced.Triggers) replayed[(int)trigger]++;
         foreach (var trigger in Enum.GetValues<CampaignTimeTrigger>())
             Assert.Equal(advanced.Summary.Count(trigger), replayed[(int)trigger]);
         Assert.Equal(advanced.Summary.TickCount, replayed.Sum());
+    }
+
+    [Fact]
+    public void PopulatedReadinessAdvanceHasABoundedPerDayAllocationBudget()
+    {
+        var campaign = CampaignFactory.Create(
+            LoadFixture(), Request(), new SplitMix64RandomSource(7), new FixedClock());
+        campaign.Execute(new AdvanceCampaignTime(1));
+        var daysBefore = campaign.DaysPassed;
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+
+        campaign.Execute(new AdvanceCampaignTime(CampaignState.MaximumCommandTicks));
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        var simulatedDays = campaign.DaysPassed - daysBefore;
+        Assert.True(simulatedDays > 0);
+        Assert.InRange(allocated, 0, 16_384L * (simulatedDays + 1));
     }
 
     [Fact]
