@@ -17,10 +17,22 @@ armors:
     corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
     corpseGeo: CORPSE
     loftempsSet: [0, 0, 0, 0]
+  - type: VEHICLE_ARMOR
+    size: 2
+    corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [0, 0, 0, 0]
+items:
+  - type: VEHICLE
+    fixedWeapon: true
+units:
+  - type: VEHICLE
+    armor: VEHICLE_ARMOR
 crafts:
   - type: SHIP
     soldiers: 4
     vehicles: 4
+    maxHWPUnitsLimit: 4
   - type: CAPACITY_SHIP
     soldiers: 4
     vehicles: 0
