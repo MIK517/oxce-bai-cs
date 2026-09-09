@@ -71,7 +71,8 @@ public static class CampaignFactory
             throw new InvalidDataException($"No starting-base template is available for {request.Difficulty}.");
         var ids = new SortedDictionary<string, int>(StringComparer.Ordinal);
         var facilities = template.Facilities.Select(facility => new CampaignState.FacilityState(
-            facility.Rule, facility.X, facility.Y, facility.BuildTime, 0, false, false, false)).ToArray();
+            facility.Rule, facility.X, facility.Y, facility.BuildTime, facility.Ammo, facility.AmmoMissingReported,
+            facility.Disabled, facility.HadPreviousFacility)).ToArray();
         var crafts = template.Crafts.Select(craft =>
         {
             var type = rules.Crafts.GetExternalId(craft.Rule);

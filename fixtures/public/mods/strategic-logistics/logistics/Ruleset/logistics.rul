@@ -125,3 +125,8 @@ costHireScientist: 1000
 costHireEngineer: 500
 timePersonnel: 1
 buyPriceCoefficient: [75, 100, 100, 100, 100]
+
+globe:
+  polygons:
+    - [0, -15, -15, 15, -15, 15, 15, -15, 15]
+    - [0, 60, -40, 80, -40, 80, -20, 60, -20]

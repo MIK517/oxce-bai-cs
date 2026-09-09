@@ -1,0 +1,177 @@
+globe:
+  polygons:
+    - [1, 20, -10, 40, -10, 40, 10, 20, 10]
+    - [0, 0, -10, 20, -10, 20, 10, 0, 10]
+    - [2, 40, -10, 60, -10, 60, 10, 40, 10]
+  textures:
+    - {id: 0}
+    - {id: 1, fakeUnderwater: true}
+    - {id: 2, isOcean: true}
+fakeUnderwaterBaseUnlockResearch: UNLOCK
+regions:
+  - type: REGION
+    cost: 5000
+armors:
+  - type: LARGE_ARMOR
+    size: 2
+    storeItem: SUPPLY
+    corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [0, 0, 0, 0]
+  - type: VEHICLE_ARMOR
+    size: 2
+    corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [0, 0, 0, 0]
+  - type: SMALL_VEHICLE_ARMOR
+    size: 1
+    corpseBattle: [CORPSE]
+    corpseGeo: CORPSE
+    loftempsSet: [0]
+items:
+  - type: VEHICLE
+    fixedWeapon: true
+  - type: VEHICLE_B
+    fixedWeapon: true
+units:
+  - type: VEHICLE
+    armor: VEHICLE_ARMOR
+  - type: VEHICLE_B
+    armor: SMALL_VEHICLE_ARMOR
+crafts:
+  - type: SHIP
+    soldiers: 4
+    vehicles: 4
+    maxHWPUnitsLimit: 4
+  - type: CAPACITY_SHIP
+    soldiers: 4
+    vehicles: 0
+    maxHWPUnitsLimit: 1
+    weapons: 1
+craftWeapons:
+  - type: CAPACITY_WEAPON
+    ammoMax: 10
+    launcher: SUPPLY
+    clip: BULKY
+    stats: {vehicles: 1}
+  - type: OVERFLOW_WEAPON
+    ammoMax: 10
+    launcher: SUPPLY
+    stats: {fuelMax: 2147483647}
+  - type: SHIELD_OVERFLOW_WEAPON
+    ammoMax: 10
+    launcher: SUPPLY
+    stats: {shieldCapacity: 2147483647}
+  - type: SOLDIER_OVERFLOW_WEAPON
+    ammoMax: 10
+    launcher: SUPPLY
+    stats: {soldiers: 2147483647}
+  - type: OVERLAP_WEAPON
+    ammoMax: 20
+    rearmRate: 1
+    launcher: SUPPLY
+    clip: SUPPLY
+facilities:
+  - type: LIFT
+    lift: true
+    mapName: LOGISTICS
+    fakeUnderwater: 0
+  - type: WATER_LIFT
+    lift: true
+    mapName: LOGISTICS
+    fakeUnderwater: 1
+  - type: LOCKED_LIFT
+    lift: true
+    mapName: LOGISTICS
+    fakeUnderwater: 0
+    requires: [UNLOCK]
+  - type: UPGRADE_LIFT
+    lift: true
+    upgradeOnly: true
+    mapName: LOGISTICS
+    fakeUnderwater: 0
+  - type: ROOM
+    mapName: LOGISTICS
+    buildCost: 100
+    refundValue: 40
+    buildTime: 2
+    monthlyCost: 30
+    personnel: 10
+    trainingRooms: 2
+    psiLabs: 2
+    manaRecoveryPerDay: 6
+    healthRecoveryPerDay: 4
+    sickBayAbsoluteBonus: 0.5
+    sickBayRelativeBonus: 2.5
+  - type: STORES
+    lift: true
+    fakeUnderwater: 0
+  - type: UPGRADE
+    mapName: LOGISTICS
+    sizeX: 2
+    buildCost: 70
+    buildTime: 2
+    upgradeOnly: true
+    buildOverFacilities: [ROOM]
+soldierTransformation:
+  - name: READINESS_TRANSFORMATION
+    cost: 100
+    transferTime: 2
+    recoveryTime: 3
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    requiredItems: {SUPPLY: 1}
+    lowerBoundAtMinStats: false
+    flatOverallStatChange: {tu: 1}
+  - name: SOFT_LIMIT_TRANSFORMATION
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    lowerBoundAtMinStats: false
+    upperBoundAtMaxStats: true
+    upperBoundType: 1
+    flatOverallStatChange: {tu: -1}
+  - name: REROLL_TRANSFORMATION
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    rerollStats: {tu: 1}
+  - name: ARMOR_RETURN_TRANSFORMATION
+    cost: 100
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    producedSoldierArmor: ARMOR
+  - name: CLONE_RESET_TRANSFORMATION
+    createsClone: true
+    reset: true
+    resetRank: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+  - name: RESET_TRANSFORMATION
+    reset: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+  - name: IMMEDIATE_TYPE_TRANSFORMATION
+    recoveryTime: 3
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    producedSoldierType: NO_PSI
+  - name: RESET_COUNTER_TRANSFORMATION
+    reset: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    soldierBonusType: PILOT_BONUS
+  - name: CLONE_BONUS_TRANSFORMATION
+    createsClone: true
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    soldierBonusType: PILOT_BONUS
+  - name: RETIRE_TRANSFORMATION
+    allowsLiveSoldiers: true
+    allowedSoldierTypes: [RECRUIT]
+    producedItem: SUPPLY
+    soldierBonusType: PILOT_BONUS
+soldiers:
+  - type: NO_PSI
+    armor: ARMOR
+    minStats: {tu: 50, stamina: 60, health: 30, mana: 20, bravery: 25, reactions: 40, firing: 55, throwing: 45, strength: 25, psiStrength: 0, melee: 30, psiSkill: 0}
+    maxStats: {tu: 50, stamina: 60, health: 30, mana: 20, bravery: 25, reactions: 40, firing: 55, throwing: 45, strength: 25, psiStrength: 0, melee: 30, psiSkill: 0}
+    trainingStatCaps: {psiSkill: 0}

@@ -206,9 +206,13 @@ public sealed class CampaignLogisticsTests
             Assert.True(c.Logistics.Weapons[0]!.Rearming);
             Assert.Null(c.Logistics.Weapons[1]);
         });
-        Assert.Single(loaded.Campaign.Execute(new AdvanceCampaignTime(1000)).Events.OfType<CampaignActionBlocked>());
-        Assert.Equal(29, loaded.Campaign.Time.Minute);
-        Assert.Equal(55, loaded.Campaign.Time.Second);
+        var servicing = loaded.Campaign.Execute(new AdvanceCampaignTime(1000));
+        Assert.Empty(servicing.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(2, servicing.Events.OfType<CraftArrivalServiceMessage>().Count());
+        Assert.Equal(2, loaded.Campaign.Time.Hour);
+        Assert.Equal(0, loaded.Campaign.Time.Minute);
+        Assert.Equal(0, loaded.Campaign.Time.Second);
+        Assert.All(loaded.Campaign.Capture().Bases[0].Crafts, c => Assert.False(c.Logistics!.Weapons[0]!.Rearming));
     }
 
     [Fact]
@@ -379,7 +383,7 @@ public sealed class CampaignLogisticsTests
         Assert.Equivalent(arrived, reloaded.Campaign.Capture(), strict: true);
     }
 
-    private static CampaignState Create(RuntimeContent content)
+    internal static CampaignState Create(RuntimeContent content)
     {
         var campaign = CampaignFactory.Create(content,
             CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
