@@ -47,6 +47,32 @@ public sealed class StrategicSalesFixtureTests
     }
 
     [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void SaleBlocksAccountingOverflowAtomically(bool fundsOverflow, bool incomeOverflow)
+    {
+        var content = StrategicReadinessTestContent.Load();
+        var initial = CampaignFactory.Create(content,
+            new(new(Guid.NewGuid()), "Sale overflow", "logistics", ["logistics"], CampaignDifficulty.Beginner),
+            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var campaign = CampaignState.Restore(initial with
+        {
+            Funds = [fundsOverflow ? long.MaxValue : 0],
+            Incomes = [incomeOverflow ? long.MaxValue : 0],
+            Bases = [initial.Bases[0] with { Name = "Alpha", Items = new Dictionary<string, int> { ["SUPPLY"] = 1 } }],
+        }, content, new SplitMix64RandomSource(0));
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(0, LogisticsOperation.Sell)).Events)).Quote;
+        var supply = quote.Rows.Single(row => row.RuleId == "SUPPLY");
+        var before = campaign.Capture();
+
+        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new SubmitLogisticsOrder(quote.Id, [new(supply.Id, 1)])).Events));
+
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]

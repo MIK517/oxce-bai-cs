@@ -121,7 +121,7 @@ public sealed class StrategicReadinessFixtureTests
     [InlineData(true)]
     public void SoldierTrainingEligibilityFormsAnIndependentCompatibilitySlice(bool fromCache)
     {
-                var (content, _, facilityState, facilityBase, _) = CreateConstructedBaseScenario(fromCache);
+                var (content, _, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
 
                 var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
                 var stats = recruit.MinimumStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -172,7 +172,7 @@ public sealed class StrategicReadinessFixtureTests
     [InlineData(true)]
     public void CraftCapacityRulesFormAnIndependentCompatibilitySlice(bool fromCache)
     {
-                var (content, _, facilityState, facilityBase, _) = CreateConstructedBaseScenario(fromCache);
+                var (content, _, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
                 var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
                 var undertrainedStats = recruit.TrainingStatCaps.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
                 foreach (var key in new[] { "firing", "health", "melee", "throwing", "strength", "tu", "stamina" })
@@ -248,7 +248,7 @@ public sealed class StrategicReadinessFixtureTests
     [InlineData(true)]
     public void CraftVehicleManagementFormsAnIndependentCompatibilitySlice(bool fromCache)
     {
-                var (content, _, facilityState, facilityBase, _) = CreateConstructedBaseScenario(fromCache);
+                var (content, _, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
                 var vehicleShipRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
 
                 var vehicleCraft = CraftLogistics.Purchase(vehicleShipRule, content.RuntimeRules, 0, 0);
@@ -311,7 +311,7 @@ public sealed class StrategicReadinessFixtureTests
     public void SoldierTransformationsFormAnIndependentCompatibilitySlice(bool fromCache)
     {
                 var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-                var (content, campaign, facilityState, _, created) = CreateConstructedBaseScenario(fromCache);
+                var (content, campaign, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
                 using var readinessOracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
                     "fixtures/expected/savegames/strategic-readiness.expected.json")));
                 var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
@@ -324,7 +324,7 @@ public sealed class StrategicReadinessFixtureTests
                 };
                 var state = campaign.Capture();
                 var shipRule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
-                var beta = state.Bases.Single(b => b.Id == created.BaseId) with
+                var beta = state.Bases.Single(b => b.Id == facilityBase.Id) with
                 {
                     Soldiers = [soldier],
                     Crafts = [new CraftSnapshot("SHIP", 1) { Logistics = CraftLogistics.Purchase(shipRule, content.RuntimeRules, 0, 0) }],
@@ -460,28 +460,31 @@ public sealed class StrategicReadinessFixtureTests
     }
 
     private static (RuntimeContent Content, CampaignState Campaign, CampaignSnapshot State,
-        BaseSnapshot Base, CampaignBaseCreated Created) CreateConstructedBaseScenario(bool fromCache)
+        BaseSnapshot Base) CreateReadinessScenario(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load(fromCache: fromCache);
         var original = CampaignFactory.Create(content,
             new(new(Guid.NewGuid()), "Bases", "logistics", ["logistics"], CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
-        var funded = original.Capture() with { Funds = [20_000], Incomes = [0], Expenditures = [0] };
-        var campaign = CampaignState.Restore(funded, content, new SplitMix64RandomSource(42));
-        _ = campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
-        var site = campaign.QueryBaseSites(false).First(candidate => !candidate.FakeUnderwater);
-        var created = Assert.IsType<CampaignBaseCreated>(Assert.Single(campaign.Execute(
-            new CreateCampaignBase("Beta", site.Longitude, site.Latitude, "LIFT", 2, 2)).Events));
-        _ = campaign.Execute(new BuildCampaignFacility(created.BaseId, "ROOM", 3, 2));
-        var constructing = campaign.Capture();
-        var reload = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(constructing), "bases.sav", content,
-            new SplitMix64RandomSource(42), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
-        var midnight = constructing.Time with { Hour = 23, Minute = 59, Second = 55 };
-        campaign = CampaignState.Restore(reload.Campaign.Capture() with { Time = midnight }, content,
-            new SplitMix64RandomSource(42));
-        _ = campaign.Execute(new AdvanceCampaignTime(1));
+        var initial = original.Capture();
+        var prepared = initial.Bases[0] with
+        {
+            Name = "Alpha",
+            Facilities =
+            [
+                new("LIFT", 2, 2, 0, 0, false, false, false),
+                new("ROOM", 3, 2, 0, 0, false, false, false),
+            ],
+        };
+        var campaign = CampaignState.Restore(initial with
+        {
+            Funds = [20_000],
+            Incomes = [0],
+            Expenditures = [0],
+            Bases = [prepared],
+        }, content, new SplitMix64RandomSource(42));
         var state = campaign.Capture();
-        return (content, campaign, state, state.Bases.Single(b => b.Id == created.BaseId), created);
+        return (content, campaign, state, state.Bases[0]);
     }
 
     [Theory]

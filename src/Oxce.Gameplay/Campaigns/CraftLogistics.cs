@@ -77,58 +77,32 @@ public static class CraftLogistics
         catch (OverflowException) { capacities = null; return false; }
     }
 
+    public static bool TryEffectiveUnitCapacities(RuntimeCraftRule rule, IEnumerable<CraftWeaponSnapshot?> weapons,
+        RuntimeRuleCatalog rules, out CraftUnitCapacities capacities)
+    {
+        try { capacities = EffectiveUnitCapacities(rule, weapons, rules); return true; }
+        catch (OverflowException) { capacities = null!; return false; }
+    }
+
     public static IReadOnlyDictionary<string, int> UnloadedWeaponItems(CraftLogisticsState state, RuntimeRuleCatalog rules)
     {
         var items = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
-        {
-            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-            Add(rule.Launcher, 1);
-            Add(rule.Clip, WeaponClipCount(weapon, rules));
-        }
+        AddUnloadedWeaponItems(items, state, rules);
         return new ReadOnlyDictionary<string, int>(items);
-
-        void Add(string id, int count)
-        {
-            if (count > 0 && id.Length != 0) items[id] = checked(items.GetValueOrDefault(id) + count);
-        }
     }
 
     public static IReadOnlyDictionary<string, int> UnloadedItems(CraftLogisticsState state, RuntimeRuleCatalog rules)
     {
         var items = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var pair in UnloadedWeaponItems(state, rules)) Add(pair.Key, pair.Value);
-        foreach (var pair in state.Items) Add(pair.Key, pair.Value);
+        AddUnloadedWeaponItems(items, state, rules);
+        foreach (var pair in state.Items) AddItem(items, pair.Key, pair.Value);
         foreach (var vehicle in state.Vehicles)
         {
-            Add(vehicle.RuleId, 1);
+            AddItem(items, vehicle.RuleId, 1);
             var ammunition = VehicleAmmunition(vehicle, rules);
-            Add(ammunition.Id, ammunition.Count);
+            AddItem(items, ammunition.Id, ammunition.Count);
         }
         return new ReadOnlyDictionary<string, int>(items);
-
-        void Add(string id, int count)
-        {
-            if (count > 0 && id.Length != 0) items[id] = checked(items.GetValueOrDefault(id) + count);
-        }
-    }
-
-    public static int UnloadedItemCount(CraftLogisticsState state, string id, RuntimeRuleCatalog rules)
-    {
-        var count = state.Items.GetValueOrDefault(id);
-        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
-        {
-            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-            if (rule.Launcher == id) count = checked(count + 1);
-            if (rule.Clip == id) count = checked(count + WeaponClipCount(weapon, rules));
-        }
-        foreach (var vehicle in state.Vehicles)
-        {
-            if (vehicle.RuleId == id) count = checked(count + 1);
-            var ammunition = VehicleAmmunition(vehicle, rules);
-            if (ammunition.Id == id) count = checked(count + ammunition.Count);
-        }
-        return count;
     }
 
     public static double StoredSize(CraftLogisticsState state, RuntimeRuleCatalog rules)
@@ -285,6 +259,22 @@ public static class CraftLogistics
             shield += bonus.GetValueOrDefault("shieldCapacity");
         }
         return new(soldiers, vehicles, fuel, shield);
+    }
+
+    private static void AddUnloadedWeaponItems(Dictionary<string, int> items, CraftLogisticsState state,
+        RuntimeRuleCatalog rules)
+    {
+        foreach (var weapon in state.Weapons.OfType<CraftWeaponSnapshot>())
+        {
+            var rule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            AddItem(items, rule.Launcher, 1);
+            AddItem(items, rule.Clip, WeaponClipCount(weapon, rules));
+        }
+    }
+
+    private static void AddItem(Dictionary<string, int> items, string id, int count)
+    {
+        if (count > 0 && id.Length != 0) items[id] = checked(items.GetValueOrDefault(id) + count);
     }
 
     private static bool HasNegativeCapacity(RuntimeCraftRule rule, IEnumerable<CraftWeaponSnapshot?> weapons,
