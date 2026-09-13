@@ -88,6 +88,12 @@ public sealed record TransferSnapshot(
 
 public sealed record CampaignRestriction(string Feature, int? BaseId, bool BlocksLogistics, bool BlocksTime);
 
+public sealed record ResearchProjectSnapshot(string RuleId, int Assigned, int Spent, int Cost);
+
+public sealed record ProductionSnapshot(
+    string RuleId, int Assigned, int Spent, int Amount, bool Infinite, bool Sell, bool IsFallback,
+    IReadOnlyDictionary<string, int> RandomProductionInfo);
+
 public sealed record BaseSnapshot(
     int Id,
     string Name,
@@ -102,6 +108,8 @@ public sealed record BaseSnapshot(
 {
     public bool FakeUnderwater { get; init; }
     public IReadOnlyList<TransferSnapshot> Transfers { get; init; } = [];
+    public IReadOnlyList<ResearchProjectSnapshot> Research { get; init; } = [];
+    public IReadOnlyList<ProductionSnapshot> Productions { get; init; } = [];
 }
 
 public sealed record CampaignSnapshot(
@@ -125,6 +133,8 @@ public sealed record CampaignSnapshot(
 {
     public IReadOnlyList<CampaignRestriction> Restrictions { get; init; } = [];
     public IReadOnlyList<string> CompletedResearch { get; init; } = [];
+    public IReadOnlyDictionary<string, int> ResearchRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
+    public IReadOnlyDictionary<string, int> ManufactureRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public bool DebugMode { get; init; }
     public CampaignOptions Options { get; init; } = new();

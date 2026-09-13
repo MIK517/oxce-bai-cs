@@ -1,7 +1,8 @@
 # Phase 6 ownership and fixture ledger
 
 Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Implementation
-branches: `codex/strategic-base-logistics` and `codex/strategic-base-readiness`. This is
+branches: `codex/strategic-base-logistics`, `codex/strategic-base-readiness`, and
+`codex/strategic-research-production`. This is
 an implementation/evidence ledger; bounded acceptance is recorded in their status files.
 Checkpoint notes below retain the scope and outstanding work at each implementation milestone.
 
@@ -15,7 +16,7 @@ Checkpoint notes below retain the scope and outstanding work at each implementat
 | Craft initialization, cargo/assignment effects, arrival checkup | Branch 1 | `Craft`, `Transfer`, purchase/sale/transfer states | Starting/purchase/arrival and save-cycle fixtures |
 | Transfer quantities, cost/distance, time and mobile save fields | Branch 1 | `TransferItemsState`, `TransferConfirmState`, `Transfer` | Extracted arithmetic and two-base fixtures; mobile ownership |
 | Facility editing, training, recovery, transformations, servicing | Branch 2 | Base/personnel/craft states, timed handlers | Implemented with fresh/cache/save and indexed UI acceptance. See [readiness status](strategic-readiness-status.md). |
-| Research and production progression | Branch 3 | `ResearchProject`, `Production`, timed handlers | Deferred; completed research eligibility belongs in branch 1 |
+| Research and production progression | Branch 3 | `ResearchProject`, `Production`, timed handlers | Implemented with extracted C++ progression oracle, fresh/cache economy chain, save/reload and indexed UI. See [branch 3 status](strategic-research-production-status.md). |
 | World entities, mission/arc/event scheduling and movement | Branch 4 | `GeoscapeState`, mission/target classes | Deferred; do not advance opaque entities |
 | Interception and strategic deployment | Branch 5 | `DogfightState`, landing/deployment callers | Deferred |
 | Monthly ledger, event consequences, strategic endings | Branch 6 | `MonthlyReportState`, `GeoscapeEventState`, `SavedGame` | Deferred; earlier monthly hooks must not run twice |

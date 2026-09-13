@@ -436,7 +436,12 @@ public sealed partial class CampaignState
 
     private int AvailableStores(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Storage);
     private int AvailableQuarters(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Personnel);
-    private static int UsedQuarters(BaseState state) => checked(state.Soldiers.Count + state.Scientists + state.Engineers + state.Transfers.Where(t => !t.Delivered && t.Kind is CampaignTransferKind.Soldier or CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => t.Quantity));
+    private static int UsedQuarters(BaseState state) => checked(
+        state.Soldiers.Count + state.Scientists + state.Engineers +
+        state.Research.Sum(project => project.Assigned) +
+        state.Productions.Sum(project => project.Assigned) +
+        state.Transfers.Where(t => !t.Delivered && t.Kind is CampaignTransferKind.Soldier or
+            CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => t.Quantity));
     private double UsedStores(BaseState state) => state.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value) +
         state.Crafts.Sum(c => c.Logistics is { } logistics ? CraftLogistics.StoredSize(logistics, _content.RuntimeRules) : 0) +
         state.Transfers.Where(t => !t.Delivered).Sum(t => t.Kind == CampaignTransferKind.Item

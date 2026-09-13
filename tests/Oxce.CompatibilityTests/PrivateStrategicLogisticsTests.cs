@@ -10,7 +10,6 @@ namespace Oxce.CompatibilityTests;
 public sealed class PrivateStrategicLogisticsTests
 {
     private const string TacticalBattleBlocked = "Active tactical battle is preserved; tactical continuation is unavailable.";
-    private const string ProjectsBlocked = "Active research/production needs staff and capacity accounting.";
 
     [Fact]
     public void OwnedContentHasEquivalentFreshAndCachedLogistics()
@@ -41,7 +40,7 @@ public sealed class PrivateStrategicLogisticsTests
                 "xcom2" => new ImportedResult("early/IronMode.sav", ImportedOutcome.Purchased, "STR_AJAX_LAUNCHER"),
                 _ => new ImportedResult("early/Begining.sav", ImportedOutcome.Purchased, "STR_STINGRAY_LAUNCHER"),
             };
-            Assert.Equal(expectedPurchase, Assert.Single(imported, result => result.Outcome == ImportedOutcome.Purchased));
+            Assert.Contains(expectedPurchase, imported);
         }
     }
 
@@ -111,7 +110,7 @@ public sealed class PrivateStrategicLogisticsTests
             var prepared = Assert.Single(loaded.Campaign.Execute(new PrepareLogisticsQuote(before.Bases[0].Id, LogisticsOperation.Purchase)).Events);
             if (prepared is CampaignActionBlocked blocked)
             {
-                Assert.Contains(blocked.Reason, new[] { TacticalBattleBlocked, ProjectsBlocked });
+                Assert.Equal(TacticalBattleBlocked, blocked.Reason);
                 results.Add(new(name, ImportedOutcome.Blocked, blocked.Reason));
                 Assert.Equivalent(before, loaded.Campaign.Capture(), strict: true);
                 continue;

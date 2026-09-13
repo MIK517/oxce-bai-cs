@@ -26,6 +26,8 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
     private bool _readiness;
     private bool _management;
     private bool _personnel;
+    private bool _economy;
+    private bool _production;
     private int _gridX;
     private int _gridY;
     private int _choice;
@@ -82,7 +84,8 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             }
             else if (key == 27)
             {
-                if (_management || _personnel) { _management = false; _personnel = false; }
+                if (_management || _personnel || _economy)
+                { _management = false; _personnel = false; _economy = false; }
                 else if (_readiness) _readiness = false;
                 else if (_chooseDestination) _chooseDestination = false;
                 else if (_screen?.Quote is not null) _screen.Cancel();
@@ -106,6 +109,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 _screen = null;
                 _management = false;
                 _personnel = false;
+                _economy = false;
                 _chooseDestination = false;
             }
             else if (_chooseDestination)
@@ -146,6 +150,49 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             else if (key == 'u' && _session.Queries is ICampaignReadinessQuery)
             {
                 _personnel = true; _management = false; _readiness = false; _screen = null; _row = 0;
+            }
+            else if (key is (uint)'h' or (uint)'m' && _session.Queries is ICampaignResearchProductionQuery)
+            {
+                _economy = true; _production = key == 'm'; _personnel = false;
+                _management = false; _readiness = false; _screen = null; _row = 0;
+            }
+            else if (_economy && _session.Queries is ICampaignResearchProductionQuery economy)
+            {
+                var baseId = overview.Bases[_baseIndex].Id;
+                var state = economy.QueryResearchProduction(baseId);
+                var choices = _production ? state.ProductionChoices.Count : state.ResearchChoices.Count;
+                if (key is 0x40000051 or 0x40000052)
+                    _row = Math.Clamp(_row + (key == 0x40000051 ? 1 : -1), 0, Math.Max(0, choices - 1));
+                else if (key == 13 && choices > 0)
+                {
+                    if (_production)
+                    {
+                        var choice = state.ProductionChoices[_row];
+                        Feedback(_session.Commands.Execute(new ConfigureProductionProject(baseId,
+                            choice.RuleId, Math.Min(state.EngineersAvailable, state.WorkshopsAvailable), 1)));
+                    }
+                    else
+                    {
+                        var choice = state.ResearchChoices[_row];
+                        Feedback(_session.Commands.Execute(new ConfigureResearchProject(baseId,
+                            choice.RuleId, Math.Min(state.ScientistsAvailable, state.LaboratoriesAvailable))));
+                    }
+                }
+                else if (key == 'x')
+                {
+                    if (_production && state.Productions.Count > 0)
+                    {
+                        var project = state.Productions[0];
+                        Feedback(_session.Commands.Execute(new ConfigureProductionProject(baseId,
+                            project.RuleId, 0, project.Amount, project.Infinite, project.Sell, Cancel: true)));
+                    }
+                    else if (!_production && state.Research.Count > 0)
+                    {
+                        var project = state.Research[0];
+                        Feedback(_session.Commands.Execute(new ConfigureResearchProject(baseId,
+                            project.RuleId, 0, Cancel: true)));
+                    }
+                }
             }
             else if (_management && _session.Queries is ICampaignReadinessQuery management)
             {
@@ -281,6 +328,11 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             CampaignTrainingCompleted training => $"Soldier {training.SoldierId} completed training.",
             CampaignPersonnelChanged personnel => $"Soldier {personnel.SoldierId} updated.",
             CampaignSoldierTransformed transformed => $"Soldier {transformed.SoldierId} transformed.",
+            CampaignResearchChanged research => $"Research {research.RuleId} updated.",
+            CampaignResearchCompleted research => $"Research {research.RuleId} completed.",
+            CampaignProductionChanged production => $"Production {production.RuleId} updated.",
+            CampaignProductionProgress production => production.StopReason ??
+                $"Produced {production.Produced} {production.RuleId}.",
             _ => "",
         }).Where(s => s.Length > 0));
     }
@@ -292,10 +344,35 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
         var selectedBase = overview.Bases.Count == 0 ? null : overview.Bases[_baseIndex];
         Text($"{overview.Time.Year}-{overview.Time.Month:D2}-{overview.Time.Day:D2}  {overview.Time.Hour:D2}:{overview.Time.Minute:D2}    {overview.Funds}", 12, 10, 2);
         Text(selectedBase?.Name is { Length: > 0 } name ? name : "Starting base", 12, 28);
-        Text("I: Stores B: Buy T: Transfer R: Readiness A: Base U: Personnel N: New", 12, 48);
+        Text("I: Stores B: Buy T: Transfer R: Ready A: Base U: Staff H: Research M: Make", 12, 48);
         Text("Space: Minute  Shift+Space: Hour  F5: Save  F9: Load  Esc: Back/quit", 12, 64);
         if (_screen is null && selectedBase is { IsPlaced: false }) Text("P: Place starting base at 0,0", 12, 86, 3);
-        if (_management && selectedBase is not null && _session.Queries is ICampaignReadinessQuery management)
+        if (_economy && selectedBase is not null && _session.Queries is ICampaignResearchProductionQuery economy)
+        {
+            var state = economy.QueryResearchProduction(selectedBase.Id);
+            Text(_production
+                ? $"Production  Engineers {state.EngineersAvailable}  Workshops {state.WorkshopsAvailable}"
+                : $"Research  Scientists {state.ScientistsAvailable}  Laboratories {state.LaboratoriesAvailable}", 12, 88);
+            Text("Up/Down: choose  Enter: start  X: cancel first active  H/M: switch", 12, 106);
+            var rows = _production
+                ? state.ProductionChoices.Select(choice =>
+                    $"{_text(choice.RuleId)}  {choice.Time}h  {choice.Cost}  {choice.UnavailableReason}").ToArray()
+                : state.ResearchChoices.Select(choice =>
+                    $"{_text(choice.RuleId)}  {choice.Cost}d  {choice.UnavailableReason}").ToArray();
+            _row = Math.Min(_row, Math.Max(0, rows.Length - 1));
+            for (var i = 0; i < Math.Min(10, rows.Length); i++)
+            {
+                if (i == _row) Frame.FillRectangle(8, 124 + i * 17, 624, 16, 2);
+                Text(rows[i], 12, 127 + i * 17);
+            }
+            var active = _production
+                ? state.Productions.Select(project =>
+                    $"{_text(project.RuleId)} {project.Produced}/{(project.Infinite ? "∞" : project.Amount)} {project.Assigned} eng")
+                : state.Research.Select(project =>
+                    $"{_text(project.RuleId)} {project.Spent}/{project.Cost} {project.Assigned} sci {_text(project.Progress)}");
+            Text("Active: " + string.Join("; ", active), 12, 315, 2);
+        }
+        else if (_management && selectedBase is not null && _session.Queries is ICampaignReadinessQuery management)
         {
             var state = management.QueryBaseManagement(selectedBase.Id);
             Text($"Base layout cursor ({_gridX},{_gridY})  WASD: Move  Enter: Build  X: Dismantle", 12, 88);

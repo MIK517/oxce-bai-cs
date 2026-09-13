@@ -2,10 +2,63 @@ using Oxce.Mods.Resources;
 using System.Collections.ObjectModel;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.Mods.Rulesets.EquipmentProduction;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
 public sealed record RuntimeIdentityRule(string Id);
+
+public sealed record RuntimeResearchRule(
+    string Lookup,
+    string SpawnedItem,
+    int SpawnedItemCount,
+    IReadOnlyList<string> SpawnedItemList,
+    IReadOnlyList<string> DecreaseCounters,
+    IReadOnlyList<string> IncreaseCounters,
+    string SpawnedEvent,
+    int Cost,
+    int Points,
+    IReadOnlyList<string> Dependencies,
+    IReadOnlyList<string> Unlocks,
+    IReadOnlyList<string> Disables,
+    IReadOnlyList<string> Reenables,
+    IReadOnlyList<string> GetOneFree,
+    bool SequentialGetOneFree,
+    IReadOnlyList<ResearchProtectedTopics> GetOneFreeProtected,
+    IReadOnlyList<string> Requirements,
+    IReadOnlyList<string> RequiredBaseFunctions,
+    string? NeededItem,
+    bool NeedItem,
+    bool DestroyItem,
+    bool ReturnsItem,
+    bool Repeatable,
+    int ListOrder,
+    IReadOnlyDictionary<string, ulong> Events);
+
+public sealed record RuntimeManufactureMaterial(
+    string Id,
+    int Quantity,
+    RuleHandle<ItemRuleFamily>? Item,
+    RuleHandle<CraftRuleFamily>? Craft);
+
+public sealed record RuntimeManufactureRule(
+    string Category,
+    IReadOnlyList<string> Requirements,
+    IReadOnlyList<string> RequiredBaseFunctions,
+    int Space,
+    int Time,
+    int Cost,
+    int Points,
+    bool Refund,
+    IReadOnlyList<RuntimeManufactureMaterial> RequiredMaterials,
+    IReadOnlyList<RuntimeManufactureMaterial> ProducedMaterials,
+    IReadOnlyList<RandomProducedItems> RandomProducedItems,
+    string SpawnedPersonType,
+    string SpawnedPersonName,
+    RuntimeSoldierTemplate? SpawnedSoldierTemplate,
+    IReadOnlyList<int> TransferTimes,
+    int ListOrder,
+    IReadOnlyDictionary<string, ulong> Events);
 
 public sealed record RuntimePurchaseRequirements(
     int MonthlyLimit, string MonthlyLimitMessage, string AlliedCountry,
