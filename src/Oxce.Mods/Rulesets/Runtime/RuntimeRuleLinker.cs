@@ -319,8 +319,9 @@ public static class RuntimeRuleLinker
                     rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
                     rule.Value.Space, rule.Value.Time, rule.Value.Cost, rule.Value.Points,
                     rule.Value.Refund,
-                    Array.AsReadOnly(rule.Value.RequiredItems.Select(pair => Material(pair.Key, pair.Value)).ToArray()),
-                    Array.AsReadOnly(rule.Value.ProducedItems.Select(pair => Material(pair.Key, pair.Value)).ToArray()),
+                    Array.AsReadOnly(rule.Value.RequiredItems.Select(pair => RequiredMaterial(pair.Key, pair.Value)).ToArray()),
+                    Array.AsReadOnly(rule.Value.ProducedItems.Select(pair => ProducedMaterial(
+                        pair.Key, pair.Value, rule.Value.Category == "STR_CRAFT")).ToArray()),
                     rule.Value.RandomProducedItems, rule.Value.SpawnedPersonType,
                     rule.Value.SpawnedPersonName,
                     RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
@@ -332,8 +333,15 @@ public static class RuntimeRuleLinker
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
 
-        RuntimeManufactureMaterial Material(string id, int quantity) => new(
-            id, quantity, OptionalRuntime(itemHandles, id), OptionalRuntime(craftHandles, id));
+        RuntimeManufactureMaterial RequiredMaterial(string id, int quantity)
+        {
+            var item = OptionalRuntime(itemHandles, id);
+            return new(id, quantity, item, item is null ? OptionalRuntime(craftHandles, id) : null);
+        }
+
+        RuntimeManufactureMaterial ProducedMaterial(string id, int quantity, bool craft) => craft
+            ? new(id, quantity, null, OptionalRuntime(craftHandles, id))
+            : new(id, quantity, OptionalRuntime(itemHandles, id), null);
 
         RuntimeCampaignSettings BuildCampaignSettings(CampaignStartSettings source)
         {

@@ -35,6 +35,23 @@ research:
     cost: 0
     points: 7
     requires: [THEORY]
+  - name: TARGET
+    cost: 100
+  - name: DISABLER
+    cost: 1
+    disables: [TARGET]
+  - name: REENABLER
+    cost: 1
+    reenables: [TARGET]
+  - name: DUPLICATE_REWARD
+    cost: 1
+    spawnedItem: MATERIAL
+    spawnedItemCount: 1
+    increaseCounter: [DUPLICATE_REWARD_COUNT]
+  - name: ZERO_REWARD
+    cost: 1
+    spawnedItem: PRODUCT
+    spawnedItemCount: 0
 manufacture:
   - name: PRODUCT
     category: STR_WEAPON
@@ -46,8 +63,28 @@ manufacture:
     points: 11
     requiredItems: {MATERIAL: 1}
     producedItems: {PRODUCT: 1}
+  - name: RECYCLE_SHIP
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    requiredItems: {SHIP: 1}
+    producedItems: {PRODUCT: 1}
+  - name: MAKE_ENGINEER
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    spawnedPersonType: STR_ENGINEER
+    producedItems: {PRODUCT: 0}
+  - name: RANDOM_PRODUCT
+    category: STR_WEAPON
+    space: 1
+    time: 4
+    producedItems: {PRODUCT: 1}
+    randomProducedItems:
+      - [1, {MATERIAL: 1}]
 startingBase:
   facilities: [{type: STORES, x: 0, y: 0}]
   items: {SPECIMEN: 1}
   scientists: 3
   engineers: 4
+sellPriceCoefficient: [50, 50, 50, 50, 50]
