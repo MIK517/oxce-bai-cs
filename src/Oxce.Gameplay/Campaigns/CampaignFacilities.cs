@@ -181,6 +181,12 @@ public sealed partial class CampaignState
             return "STR_FACILITY_IN_USE_PSI_LABS";
         if (removedRules.Any(r => r.TrainingRooms > 0) && operational.Sum(r => r.TrainingRooms) + (replacement?.TrainingRooms ?? 0) < owner.Soldiers.Count(s => s.Personal?.Training == true))
             return "STR_FACILITY_IN_USE_GYMS";
+        if (removedRules.Any(r => r.Laboratories > 0) && operational.Sum(r => r.Laboratories) +
+            (replacement?.Laboratories ?? 0) < owner.Research.Sum(project => project.Assigned))
+            return "STR_FACILITY_IN_USE_LABS";
+        if (removedRules.Any(r => r.Workshops > 0) && operational.Sum(r => r.Workshops) +
+            (replacement?.Workshops ?? 0) < UsedWorkshopSpace(owner))
+            return "STR_FACILITY_IN_USE_WORKSHOPS";
         return null;
     }
 

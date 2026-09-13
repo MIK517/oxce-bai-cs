@@ -56,6 +56,7 @@ public static class RuntimeRuleLinker
         var armorHandles = Handles<ArmorRuleFamily, ArmorRule>(generation, content.PersonnelTactical.Armors);
         var skillHandles = Handles<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills);
         var researchHandles = Handles<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research);
+        var manufactureHandles = Handles<ManufactureRuleFamily, ManufactureRule>(generation, content.EquipmentProduction.Manufacture);
         var eventHandles = Handles<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events);
         var scriptBuild = BuildScripts(generation, scripts, cancellationToken);
 
@@ -301,12 +302,38 @@ public static class RuntimeRuleLinker
             BuildFamily<CommendationRuleFamily, CommendationRule, RuntimeCommendationRule>(generation,
                 content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)),
             IdentityFamily<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills),
-            IdentityFamily<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research),
+            BuildFamily<ResearchRuleFamily, ResearchRule, RuntimeResearchRule>(generation,
+                content.EquipmentProduction.Research, rule => new(
+                    rule.Value.Lookup, rule.Value.SpawnedItem, rule.Value.SpawnedItemCount,
+                    rule.Value.SpawnedItemList, rule.Value.DecreaseCounters,
+                    rule.Value.IncreaseCounters, rule.Value.SpawnedEvent,
+                    rule.Value.Cost, rule.Value.Points, rule.Value.Dependencies, rule.Value.Unlocks,
+                    rule.Value.Disables, rule.Value.Reenables, rule.Value.GetOneFree,
+                    rule.Value.SequentialGetOneFree,
+                    rule.Value.GetOneFreeProtected, rule.Value.Requirements,
+                    rule.Value.RequiredBaseFunctions, rule.Value.NeededItem, rule.Value.NeedItem,
+                    rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
+                    rule.Value.ListOrder, rule.Value.Events)),
+            BuildFamily<ManufactureRuleFamily, ManufactureRule, RuntimeManufactureRule>(generation,
+                content.EquipmentProduction.Manufacture, rule => new(
+                    rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
+                    rule.Value.Space, rule.Value.Time, rule.Value.Cost, rule.Value.Points,
+                    rule.Value.Refund,
+                    Array.AsReadOnly(rule.Value.RequiredItems.Select(pair => Material(pair.Key, pair.Value)).ToArray()),
+                    Array.AsReadOnly(rule.Value.ProducedItems.Select(pair => Material(pair.Key, pair.Value)).ToArray()),
+                    rule.Value.RandomProducedItems, rule.Value.SpawnedPersonType,
+                    rule.Value.SpawnedPersonName,
+                    RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
+                    rule.Value.TransferTimes, rule.Value.ListOrder,
+                    rule.Value.Events)),
             IdentityFamily<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events),
             scriptBuild.Family,
             settings);
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
+
+        RuntimeManufactureMaterial Material(string id, int quantity) => new(
+            id, quantity, OptionalRuntime(itemHandles, id), OptionalRuntime(craftHandles, id));
 
         RuntimeCampaignSettings BuildCampaignSettings(CampaignStartSettings source)
         {

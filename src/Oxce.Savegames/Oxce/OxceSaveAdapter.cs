@@ -207,6 +207,8 @@ public static class OxceSaveAdapter
         {
             Restrictions = ReadRestrictions(body),
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString).Order(StringComparer.Ordinal).ToArray()),
+            ResearchRuleStatus = ReadIntMap(body, "researchRuleStatus"),
+            ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
             Options = body.TryGet("oxcePortOptions", out var optionsNode)
@@ -225,12 +227,6 @@ public static class OxceSaveAdapter
         string[] worldKeys = ["ufos", "alienMissions", "missionSites", "alienBases", "geoscapeEvents"];
         foreach (var key in worldKeys)
             if (HasContents(body, key)) result.Add(new($"Live {key} requires world simulation.", null, false, true));
-        foreach (var identified in IdentifyBases(body))
-        {
-            var map = identified.Value;
-            if (HasContents(map, "research") || HasContents(map, "productions"))
-                result.Add(new("Active research/production needs staff and capacity accounting.", identified.Id, true, true));
-        }
         return Array.AsReadOnly(result.ToArray());
     }
 
@@ -304,8 +300,25 @@ public static class OxceSaveAdapter
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
                     ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
+                Research = Array.AsReadOnly(Maps(map, "research").Select(project => new ResearchProjectSnapshot(
+                    RequiredString(project, "project"), Integer(project, "assigned", 0),
+                    Integer(project, "spent", 0), Integer(project, "cost", 0))).ToArray()),
+                Productions = Array.AsReadOnly(Maps(map, "productions").Select(ReadProduction).ToArray()),
             };
         }).ToArray());
+    }
+
+    private static ProductionSnapshot ReadProduction(YamlMappingNode production)
+    {
+        var amount = Integer(production, "amount", 0);
+        var legacyInfinite = amount == int.MaxValue;
+        return new ProductionSnapshot(
+            RequiredString(production, "item"), Integer(production, "assigned", 0),
+            Integer(production, "spent", 0), legacyInfinite ? 999 : amount,
+            legacyInfinite || Boolean(production, "infinite", false),
+            legacyInfinite || Boolean(production, "sell", false),
+            Boolean(production, "isFallback", false),
+            ReadIntMap(production, "randomProductionInfo"));
     }
 
     private static ReadOnlyCollection<ScriptValueEntry> ReadScriptValues(
@@ -389,6 +402,10 @@ public static class OxceSaveAdapter
             Pair("bases", Sequence(bases)),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
+            Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
+                Mapping(snapshot.ResearchRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("manufactureRuleStatus", snapshot.ManufactureRuleStatus.Count == 0 ? null :
+                Mapping(snapshot.ManufactureRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
             Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : Mapping(snapshot.MonthlyPurchaseLog.Select(p => Pair(p.Key, Integer(p.Value))))),
             Pair("debug", snapshot.DebugMode ? Boolean(true) : null),
             Pair("oxcePortOptions", Mapping([
@@ -425,6 +442,10 @@ public static class OxceSaveAdapter
     {
         EnsureUnique(value.Facilities.Select(FacilityIdentity), "facility identity");
         var oldFacilities = Maps(source, "facilities").ToDictionary(FacilityIdentity);
+        var oldResearch = Maps(source, "research").ToDictionary(
+            project => RequiredString(project, "project"), StringComparer.Ordinal);
+        var oldProductions = Maps(source, "productions").ToDictionary(
+            production => RequiredString(production, "item"), StringComparer.Ordinal);
         var facilities = value.Facilities.Select(facility => Overlay(
             oldFacilities.GetValueOrDefault(FacilityIdentity(facility)),
             [
@@ -449,6 +470,23 @@ public static class OxceSaveAdapter
             Pair("items", Mapping(value.Items.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
             Pair("scientists", Integer(value.Scientists)), Pair("engineers", Integer(value.Engineers)),
             Pair("transfers", value.Transfers.Count == 0 ? null : Sequence(value.Transfers.Select(t => BuildTransfer(t, entityIndex)))),
+            Pair("research", value.Research.Count == 0 ? null : Sequence(value.Research.Select(project => Overlay(
+                oldResearch.GetValueOrDefault(project.RuleId),
+            [
+                Pair("project", Scalar(project.RuleId)), Pair("assigned", Integer(project.Assigned)),
+                Pair("spent", Integer(project.Spent)), Pair("cost", Integer(project.Cost)),
+            ])))),
+            Pair("productions", value.Productions.Count == 0 ? null : Sequence(value.Productions.Select(production => Overlay(
+                oldProductions.GetValueOrDefault(production.RuleId),
+            [
+                Pair("item", Scalar(production.RuleId)), Pair("assigned", Integer(production.Assigned)),
+                Pair("spent", Integer(production.Spent)), Pair("amount", Integer(production.Amount)),
+                Pair("infinite", Boolean(production.Infinite)),
+                Pair("sell", production.Sell ? Boolean(true) : null),
+                Pair("isFallback", production.IsFallback ? Boolean(true) : null),
+                Pair("randomProductionInfo", production.RandomProductionInfo.Count == 0 ? null :
+                    Mapping(production.RandomProductionInfo.Select(p => Pair(p.Key, Integer(p.Value))))),
+            ])))),
         ]);
     }
 

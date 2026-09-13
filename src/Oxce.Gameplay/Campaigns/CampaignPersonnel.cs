@@ -295,6 +295,7 @@ public sealed partial class CampaignState
                 if (facility.BuildTime == 0) effects.Notify(new CampaignConstructionCompleted(owner.Id,
                     _content.RuntimeRules.Facilities.GetExternalId(facility.Rule), facility.X, facility.Y));
             }
+            AdvanceResearchDaily(owner, effects);
             if (owner.Soldiers.Count == 0) continue;
             var complete = owner.Facilities.Where(f => f.BuildTime == 0).Select(FacilityRule).ToArray();
             var positiveMana = complete.MaxBy(r => r.ManaRecoveryPerDay)?.ManaRecoveryPerDay ?? 0;
