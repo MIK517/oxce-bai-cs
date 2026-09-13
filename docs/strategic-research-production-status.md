@@ -1,6 +1,6 @@
 # Strategic research and production status
 
-Branch: `codex/strategic-research-production`. Date: 2026-09-13.
+Branch: `codex/strategic-research-production`. Date: 2026-09-14.
 
 Phase 6 branch 3 implements a persisted research-to-manufacture economy chain. Research
 eligibility, randomized project cost, allocation, held specimens, daily completion,
@@ -8,7 +8,11 @@ ordered free/lookup/zero-cost discoveries, disables/re-enables, score and item r
 plus reference-encoded custom-counter changes are gameplay-owned. Production owns first-unit prepayment, engineer/workshop allocation,
 hourly multi-unit progression, material/craft consumption, item/craft/person outputs,
 transfer delays, autosell, refund-on-cancel, random output bookkeeping and completion or
-shortage pauses.
+shortage pauses. Compatibility-audit corrections preserve active research projects while
+their rule is disabled so a later re-enable restores availability, deduplicate primary
+research side effects across bases, route research rewards through one-hour transfers,
+unload consumed craft, enforce living-space limits for manufactured personnel, assign
+fallback engineers, and apply adjusted sell prices to autosold output.
 
 The indexed campaign client exposes research with `H` and manufacture with `M`; Enter
 starts the selected row and `X` cancels the first active project. Queries show staff,
@@ -20,7 +24,7 @@ equipment and craft eligibility checks.
 
 Authoritative sources inspected at `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`:
 
-- `src/Savegame/ResearchProject.cpp`, `Production.cpp`, `Base.cpp`, and the
+- `src/Savegame/ResearchProject.cpp`, `Production.cpp`, `Base.cpp`, `Craft.cpp`, and the
   research availability/completion helpers in `SavedGame.cpp`.
 - `src/Basescape/ResearchInfoState.cpp`, `NewResearchListState.cpp`,
   `ManufactureInfoState.cpp`, and `ManufactureStartState.cpp`.
@@ -34,7 +38,10 @@ content through research, free and protected unlocks, item rewards, manufacture,
 save/reload, resource/fund accounting, cancellation, atomic rejection and preservation
 of unknown nested save fields. Coverage includes simultaneous daily completions,
 insufficient funds, zero staff, the legacy `INT_MAX` infinite/autosell migration and
-strict ruleset diagnostics for unresolved or invalid values. Runtime compiler/cache
+strict ruleset diagnostics for unresolved or invalid values. Audit coverage also locks
+down disable/re-enable reversibility, cross-base primary-side-effect deduplication,
+fallback allocation, personnel living-space rejection, craft cargo unloading, adjusted
+autosell prices, and complete fixed-plus-random output bookkeeping. Runtime compiler/cache
 revision 14 carries the new dense research and manufacture projections.
 
 ## Deliberate later boundaries

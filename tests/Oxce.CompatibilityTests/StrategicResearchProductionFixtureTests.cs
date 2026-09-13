@@ -104,6 +104,12 @@ public sealed class StrategicResearchProductionFixtureTests
         Assert.IsType<CampaignResearchChanged>(Assert.Single(campaign.Execute(
             new ConfigureResearchProject(0, "THEORY", 0, Cancel: true)).Events));
         Assert.Equal(1, campaign.Capture().Bases[0].Items["SPECIMEN"]);
+
+        campaign.Execute(new ConfigureResearchProject(0, "ZERO_REWARD", 1));
+        campaign = PrimeResearch(campaign, content, "ZERO_REWARD");
+        var reward = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Contains(reward.Events, value => value is SuppliesArrived);
+        Assert.Equal(1, campaign.Capture().Bases[0].Items["PRODUCT"]);
     }
 
     [Fact]
@@ -205,5 +211,165 @@ public sealed class StrategicResearchProductionFixtureTests
         Assert.Equal("STR_NOT_ENOUGH_MONEY", blocked.Reason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
 
+    }
+
+    [Fact]
+    public void ResearchDisableCanBeReenabledWithoutDiscardingTheActiveProject()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var campaign = NewCampaign(content, 17);
+        campaign.Execute(new ConfigureResearchProject(0, "TARGET", 1));
+        campaign.Execute(new ConfigureResearchProject(0, "DISABLER", 1));
+        campaign = PrimeResearch(campaign, content, "DISABLER");
+
+        campaign.Execute(new AdvanceCampaignTime(1));
+        var disabled = campaign.Capture();
+        Assert.Equal(2, disabled.ResearchRuleStatus["TARGET"]);
+        Assert.Contains(disabled.Bases[0].Research, project => project.RuleId == "TARGET");
+
+        campaign.Execute(new ConfigureResearchProject(0, "REENABLER", 1));
+        campaign = PrimeResearch(campaign, content, "REENABLER");
+        campaign.Execute(new AdvanceCampaignTime(1));
+        var reenabled = campaign.Capture();
+        Assert.Equal(0, reenabled.ResearchRuleStatus["TARGET"]);
+        Assert.Contains(reenabled.Bases[0].Research, project => project.RuleId == "TARGET");
+    }
+
+    [Fact]
+    public void DuplicateCrossBaseResearchAppliesPrimarySideEffectsOnce()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var campaign = NewCampaign(content, 19);
+        var snapshot = campaign.Capture();
+        var project = new ResearchProjectSnapshot("DUPLICATE_REWARD", 1, 0, 1);
+        var alpha = snapshot.Bases[0] with { Scientists = 2, Research = [project] };
+        var beta = snapshot.Bases[0] with
+        {
+            Id = 1,
+            Name = "Beta",
+            Scientists = 2,
+            Research = [project],
+        };
+        campaign = CampaignState.Restore(snapshot with
+        {
+            Time = snapshot.Time with { Hour = 23, Minute = 59, Second = 55 },
+            Bases = [alpha, beta],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        campaign.Execute(new AdvanceCampaignTime(1));
+        var completed = campaign.Capture();
+        Assert.DoesNotContain(completed.Bases.SelectMany(baseState => baseState.Research),
+            value => value.RuleId == "DUPLICATE_REWARD");
+        Assert.Equal(1, completed.Bases.Sum(baseState =>
+            baseState.Items.GetValueOrDefault("MATERIAL")));
+        Assert.Equal(2, completed.NextIds["DUPLICATE_REWARD_COUNT"]);
+        Assert.Equal(3, completed.Bases[1].Scientists);
+    }
+
+    [Fact]
+    public void ProductionHonorsFallbackQuartersPricesBookkeepingAndCraftUnload()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+
+        var fallback = NewCampaign(content, 23);
+        var fallbackSnapshot = fallback.Capture();
+        fallback = CampaignState.Restore(fallbackSnapshot with
+        {
+            Bases =
+            [
+                fallbackSnapshot.Bases[0] with
+                {
+                    Productions =
+                    [
+                        new("RANDOM_PRODUCT", 0, 0, 2, false, false, true,
+                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                    ],
+                },
+            ],
+        }, content, new SplitMix64RandomSource(fallbackSnapshot.RandomState));
+        fallback.Execute(new AdvanceCampaignTime(1));
+        var fallbackResult = fallback.Capture();
+        var active = Assert.Single(fallbackResult.Bases[0].Productions);
+        Assert.Equal(1, active.RandomProductionInfo["PRODUCT"]);
+        Assert.Equal(1, active.RandomProductionInfo["MATERIAL"]);
+        Assert.Equal(1, fallbackResult.Bases[0].Items["PRODUCT"]);
+        Assert.Equal(1, fallbackResult.Bases[0].Items["MATERIAL"]);
+
+        var autosell = NewCampaign(content, 29);
+        var sellSnapshot = autosell.Capture();
+        var sellBase = sellSnapshot.Bases[0] with
+        {
+            Items = new Dictionary<string, int>(sellSnapshot.Bases[0].Items, StringComparer.Ordinal)
+            {
+                ["MATERIAL"] = 1,
+            },
+        };
+        autosell = CampaignState.Restore(sellSnapshot with
+        {
+            CompletedResearch = ["APPLICATION"],
+            Bases = [sellBase],
+        }, content, new SplitMix64RandomSource(sellSnapshot.RandomState));
+        var fundsBefore = autosell.Capture().Funds[^1];
+        autosell.Execute(new ConfigureProductionProject(0, "PRODUCT", 4, 1, Sell: true));
+        autosell.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(fundsBefore - 100 + 37, autosell.Capture().Funds[^1]);
+
+        var living = NewCampaign(content, 31);
+        var livingSnapshot = living.Capture();
+        living = CampaignState.Restore(livingSnapshot with
+        {
+            Bases = [livingSnapshot.Bases[0] with { Scientists = 6, Engineers = 4 }],
+        }, content, new SplitMix64RandomSource(livingSnapshot.RandomState));
+        var livingBlocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(living.Execute(
+            new ConfigureProductionProject(0, "MAKE_ENGINEER", 0, 1)).Events));
+        Assert.Equal("STR_NOT_ENOUGH_LIVING_SPACE", livingBlocked.Reason);
+
+        var recycling = NewCampaign(content, 37);
+        var recycleSnapshot = recycling.Capture();
+        var logistics = new CraftLogisticsState(0, 0, "STR_READY", [null, null],
+            new Dictionary<string, int>(StringComparer.Ordinal) { ["SUPPLY"] = 2 }, []);
+        recycling = CampaignState.Restore(recycleSnapshot with
+        {
+            Bases =
+            [
+                recycleSnapshot.Bases[0] with
+                {
+                    Crafts = [new CraftSnapshot("SHIP", 1) { Logistics = logistics }],
+                },
+            ],
+        }, content, new SplitMix64RandomSource(recycleSnapshot.RandomState));
+        recycling.Execute(new ConfigureProductionProject(0, "RECYCLE_SHIP", 1, 1));
+        var recycled = recycling.Capture();
+        Assert.Empty(recycled.Bases[0].Crafts);
+        Assert.Equal(2, recycled.Bases[0].Items["SUPPLY"]);
+    }
+
+    private static CampaignState NewCampaign(Oxce.Mods.Rulesets.Content.RuntimeContent content, ulong seed)
+    {
+        var campaign = CampaignFactory.Create(content,
+            new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
+            new SplitMix64RandomSource(seed), SystemCampaignClock.Instance);
+        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
+        return campaign;
+    }
+
+    private static CampaignState PrimeResearch(
+        CampaignState campaign, Oxce.Mods.Rulesets.Content.RuntimeContent content, string ruleId)
+    {
+        var snapshot = campaign.Capture();
+        var owner = snapshot.Bases[0];
+        return CampaignState.Restore(snapshot with
+        {
+            Time = snapshot.Time with { Hour = 23, Minute = 59, Second = 55 },
+            Bases =
+            [
+                owner with
+                {
+                    Research = owner.Research.Select(project => project.RuleId == ruleId
+                        ? project with { Spent = project.Cost - project.Assigned }
+                        : project).ToArray(),
+                },
+            ],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
     }
 }
