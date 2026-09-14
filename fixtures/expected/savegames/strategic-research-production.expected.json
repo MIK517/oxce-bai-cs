@@ -1,1 +1,1 @@
-{"referenceCommit":"4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15","research":[0,"STR_UNKNOWN",0,1],"production":[2,7]}
+{"schemaVersion":1,"referenceCommit":"4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15","referenceBuild":{"compiler":"MSVC","languageStandard":"c++20"},"mods":[],"research":[0,"STR_UNKNOWN",0,1],"production":[2]}

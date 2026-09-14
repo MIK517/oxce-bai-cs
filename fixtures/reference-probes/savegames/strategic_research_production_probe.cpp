@@ -34,8 +34,7 @@ int main() {
     bool first = research.step(); std::string progress = research.getResearchProgress();
     bool second = research.step(); bool third = research.step();
     RuleManufacture manufactureRule(4); Production production(&manufactureRule, 3); production.setTimeSpent(11);
-    RuleManufacture instantRule(0); Production instant(&instantRule, 7);
-    std::cout << "{\"referenceCommit\":\"4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15\",\"research\":["
+    std::cout << R"({"schemaVersion":1,"referenceCommit":"4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15","referenceBuild":{"compiler":"MSVC","languageStandard":"c++20"},"mods":[],"research":[)"
               << first << ",\"" << progress << "\"," << second << "," << third << "],\"production\":["
-              << production.getAmountProduced() << "," << instant.getAmountProduced() << "]}\n";
+              << production.getAmountProduced() << "]}\n";
 }

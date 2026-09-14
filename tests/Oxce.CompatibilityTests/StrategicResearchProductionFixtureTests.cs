@@ -16,11 +16,6 @@ public sealed class StrategicResearchProductionFixtureTests
     public void ResearchUnlockManufactureAndReloadFormOneEconomyChain(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul", fromCache);
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        using var oracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
-            "fixtures/expected/savegames/strategic-research-production.expected.json")));
-        Assert.Equal("4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
-            oracle.RootElement.GetProperty("referenceCommit").GetString());
         var campaign = CampaignFactory.Create(content,
             new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
             new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
@@ -31,8 +26,7 @@ public sealed class StrategicResearchProductionFixtureTests
         Assert.Equal(3, started.Assigned);
         var active = Assert.Single(campaign.Capture().Bases[0].Research);
         Assert.InRange(active.Cost, 5, 15);
-        Assert.Equal(oracle.RootElement.GetProperty("research")[1].GetString(),
-            campaign.QueryResearchProduction(0).Research[0].Progress);
+        Assert.Equal("STR_UNKNOWN", campaign.QueryResearchProduction(0).Research[0].Progress);
         Assert.False(campaign.Capture().Bases[0].Items.ContainsKey("SPECIMEN"));
 
         var primed = campaign.Capture();
@@ -87,6 +81,55 @@ public sealed class StrategicResearchProductionFixtureTests
     }
 
     [Fact]
+    public void ProjectProgressAndProducedAmountMatchReferenceOracle()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
+        using var oracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
+            "fixtures/expected/savegames/strategic-research-production.expected.json")));
+        var expected = oracle.RootElement;
+        Assert.Equal(1, expected.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+            expected.GetProperty("referenceCommit").GetString());
+        Assert.Equal("MSVC", expected.GetProperty("referenceBuild").GetProperty("compiler").GetString());
+        Assert.Equal("c++20", expected.GetProperty("referenceBuild").GetProperty("languageStandard").GetString());
+        Assert.Empty(expected.GetProperty("mods").EnumerateArray());
+
+        var campaign = NewCampaign(content, 5);
+        campaign.Execute(new ConfigureResearchProject(0, "THEORY", 3));
+        var snapshot = campaign.Capture();
+        var owner = snapshot.Bases[0];
+        campaign = CampaignState.Restore(snapshot with
+        {
+            Time = DailyBoundary(snapshot.Time),
+            Bases =
+            [
+                owner with
+                {
+                    Research = [Assert.Single(owner.Research) with { Spent = 0, Cost = 8 }],
+                    Productions =
+                    [
+                        new("PRODUCT", 0, 11, 3, false, false, false,
+                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                    ],
+                },
+            ],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        var research = expected.GetProperty("research");
+        Assert.Equal(research[0].GetInt32() != 0, CompletesResearch(campaign.Execute(new AdvanceCampaignTime(1))));
+        Assert.Equal(research[1].GetString(),
+            Assert.Single(campaign.QueryResearchProduction(0).Research).Progress);
+        Assert.Equal(expected.GetProperty("production")[0].GetInt32(),
+            Assert.Single(campaign.QueryResearchProduction(0).Productions).Produced);
+
+        campaign = AtNextDailyBoundary(campaign, content);
+        Assert.Equal(research[2].GetInt32() != 0, CompletesResearch(campaign.Execute(new AdvanceCampaignTime(1))));
+        campaign = AtNextDailyBoundary(campaign, content);
+        Assert.Equal(research[3].GetInt32() != 0, CompletesResearch(campaign.Execute(new AdvanceCampaignTime(1))));
+    }
+
+    [Fact]
     public void HeldItemCancellationAndFailedAllocationAreAtomic()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
@@ -121,12 +164,74 @@ public sealed class StrategicResearchProductionFixtureTests
             new SplitMix64RandomSource(9), SystemCampaignClock.Instance);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
         campaign.Execute(new ConfigureResearchProject(0, "THEORY", 1));
-        var sourceText = OxceSaveAdapter.EmitNewCampaign(campaign.Capture()).Replace(
+        var snapshot = campaign.Capture();
+        var source = snapshot with
+        {
+            Bases =
+            [
+                snapshot.Bases[0] with
+                {
+                    Productions =
+                    [
+                        new("PRODUCT", 1, 0, 2, false, false, false,
+                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                    ],
+                },
+            ],
+        };
+        var sourceText = OxceSaveAdapter.EmitNewCampaign(source).Replace(
             "project: THEORY", "project: THEORY\n        futureResearchField: retained", StringComparison.Ordinal);
+        sourceText = sourceText.Replace(
+            "item: PRODUCT", "item: PRODUCT\n        futureProductionField: retained", StringComparison.Ordinal);
         var loaded = OxceSaveAdapter.Load(sourceText, "future.sav", content, new SplitMix64RandomSource(0),
             new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
         var rewritten = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
         Assert.Contains("futureResearchField: retained", rewritten, StringComparison.Ordinal);
+        Assert.Contains("futureProductionField: retained", rewritten, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NonemptyStrategicMapsSurviveSaveRoundTripAndControlAvailability()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var campaign = NewCampaign(content, 10);
+        var snapshot = campaign.Capture() with
+        {
+            ResearchRuleStatus = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["TARGET"] = 2,
+                ["REENABLER"] = 0,
+            },
+            ManufactureRuleStatus = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["PRODUCT"] = 2,
+            },
+            MonthlyPurchaseLog = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["PRODUCT"] = 3,
+            },
+        };
+        campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
+            "strategic-maps.sav", content, new SplitMix64RandomSource(0),
+            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var restored = loaded.Campaign.Capture();
+
+        Assert.Equivalent(snapshot, restored, strict: true);
+        Assert.Equal("Research is permanently disabled.", loaded.Campaign.QueryResearchProduction(0)
+            .ResearchChoices.Single(choice => choice.RuleId == "TARGET").UnavailableReason);
+        Assert.Equal("Production is hidden.", loaded.Campaign.QueryResearchProduction(0)
+            .ProductionChoices.Single(choice => choice.RuleId == "PRODUCT").UnavailableReason);
+        Assert.Null(loaded.Campaign.QueryResearchProduction(0)
+            .ResearchChoices.Single(choice => choice.RuleId == "REENABLER").UnavailableReason);
+
+        loaded.Campaign.Execute(new ConfigureResearchProject(0, "REENABLER", 1));
+        var reenabled = PrimeResearch(loaded.Campaign, content, "REENABLER");
+        reenabled.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(0, reenabled.Capture().ResearchRuleStatus["TARGET"]);
+        Assert.Null(reenabled.QueryResearchProduction(0)
+            .ResearchChoices.Single(choice => choice.RuleId == "TARGET").UnavailableReason);
     }
 
     [Fact]
@@ -547,6 +652,38 @@ public sealed class StrategicResearchProductionFixtureTests
         Assert.True(manufactured.Weapons[0]!.Rearming);
     }
 
+    [Fact]
+    public void InvalidResearchAndProductionProjectsFailBeforePublication()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var snapshot = NewCampaign(content, 73).Capture();
+        var owner = snapshot.Bases[0];
+
+        Reject(owner with { Research = [new("THEORY", 1, -1, 10)] });
+        Reject(owner with
+        {
+            Productions =
+            [
+                new("PRODUCT", 1, 0, -1, false, false, false,
+                    new Dictionary<string, int>(StringComparer.Ordinal)),
+            ],
+        });
+        Reject(owner with { Scientists = 0, Research = [new("THEORY", 11, 0, 10)] });
+        Reject(owner with
+        {
+            Engineers = 0,
+            Productions =
+            [
+                new("PRODUCT", 10, 0, 1, false, false, false,
+                    new Dictionary<string, int>(StringComparer.Ordinal)),
+            ],
+        });
+
+        void Reject(BaseSnapshot invalidBase) => Assert.Throws<InvalidDataException>(() =>
+            CampaignState.Restore(snapshot with { Bases = [invalidBase] }, content,
+                new SplitMix64RandomSource(snapshot.RandomState)));
+    }
+
     private static CampaignState NewCampaign(Oxce.Mods.Rulesets.Content.RuntimeContent content, ulong seed)
     {
         var campaign = CampaignFactory.Create(content,
@@ -575,4 +712,18 @@ public sealed class StrategicResearchProductionFixtureTests
             ],
         }, content, new SplitMix64RandomSource(snapshot.RandomState));
     }
+
+    private static CampaignState AtNextDailyBoundary(
+        CampaignState campaign, Oxce.Mods.Rulesets.Content.RuntimeContent content)
+    {
+        var snapshot = campaign.Capture();
+        return CampaignState.Restore(snapshot with { Time = DailyBoundary(snapshot.Time) },
+            content, new SplitMix64RandomSource(snapshot.RandomState));
+    }
+
+    private static CampaignTime DailyBoundary(CampaignTime time) =>
+        time with { Hour = 23, Minute = 59, Second = 55 };
+
+    private static bool CompletesResearch(CampaignCommandResult result) =>
+        result.Events.Any(value => value is CampaignResearchCompleted);
 }
