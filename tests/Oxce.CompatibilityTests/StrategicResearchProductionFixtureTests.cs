@@ -408,6 +408,9 @@ public sealed class StrategicResearchProductionFixtureTests
     public void ProductionRejectsCapacityAndIllegalModesWithoutMutation()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        Assert.Equal("Random production weights exceed the supported range.",
+            NewCampaign(content, 51).QueryResearchProduction(0).ProductionChoices.Single(choice =>
+                choice.RuleId == "OVERWEIGHT_RANDOM").UnavailableReason);
         var workshop = NewCampaign(content, 53);
         var workshopSnapshot = workshop.Capture();
         workshop = CampaignState.Restore(workshopSnapshot with
@@ -481,6 +484,27 @@ public sealed class StrategicResearchProductionFixtureTests
             new ConfigureProductionProject(0, "RANDOM_PRODUCT", 1, 1, Sell: true)).Events));
         Assert.Equal("Production does not support autosell.", sellBlocked.Reason);
         Assert.Equivalent(beforeSell, sell.Capture(), strict: true);
+
+        var refund = NewCampaign(content, 63);
+        var refundSnapshot = refund.Capture();
+        refund = CampaignState.Restore(refundSnapshot with
+        {
+            Incomes = [long.MaxValue],
+            Bases = [refundSnapshot.Bases[0] with
+            {
+                Engineers = 3,
+                Productions =
+                [
+                    new("REFUNDABLE", 1, 0, 1, false, false, false,
+                        new Dictionary<string, int>(StringComparer.Ordinal)),
+                ],
+            }],
+        }, content, new SplitMix64RandomSource(refundSnapshot.RandomState));
+        var beforeRefund = refund.Capture();
+        var refundBlocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(refund.Execute(
+            new ConfigureProductionProject(0, "REFUNDABLE", 0, 1, Cancel: true)).Events));
+        Assert.Equal("Production accounting exceeds the supported range.", refundBlocked.Reason);
+        Assert.Equivalent(beforeRefund, refund.Capture(), strict: true);
     }
 
     [Fact]

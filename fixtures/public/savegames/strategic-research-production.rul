@@ -111,6 +111,21 @@ manufacture:
     space: 1
     time: 1
     producedItems: {SHIP: 1}
+  - name: REFUNDABLE
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    cost: 1
+    refund: true
+    producedItems: {PRODUCT: 1}
+  - name: OVERWEIGHT_RANDOM
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    producedItems: {PRODUCT: 1}
+    randomProducedItems:
+      - [2147483647, {MATERIAL: 1}]
+      - [2147483647, {PRODUCT: 1}]
 startingBase:
   facilities: [{type: STORES, x: 0, y: 0}]
   items: {SPECIMEN: 1, IMPLICIT_ITEM: 1}
