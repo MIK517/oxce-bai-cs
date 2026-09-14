@@ -151,6 +151,22 @@ public sealed class StrategicResearchProductionFixtureTests
         Assert.Contains(labels, label => label.StartsWith("Research  Scientists", StringComparison.Ordinal));
         Key('m');
         Assert.Contains(labels, label => label.StartsWith("Production  Engineers", StringComparison.Ordinal));
+        var priorLabels = labels.Count;
+        Key('r');
+        Assert.Contains(labels.Skip(priorLabels), label =>
+            label.StartsWith("Hourly service.", StringComparison.Ordinal));
+        priorLabels = labels.Count;
+        Key('a');
+        Assert.Contains(labels.Skip(priorLabels), label =>
+            label.StartsWith("Base layout cursor", StringComparison.Ordinal));
+        priorLabels = labels.Count;
+        Key('u');
+        Assert.Contains(labels.Skip(priorLabels), label =>
+            label.StartsWith("Up/Down: Soldier", StringComparison.Ordinal));
+        priorLabels = labels.Count;
+        Key('h');
+        Assert.Contains(labels.Skip(priorLabels), label =>
+            label.StartsWith("Research  Scientists", StringComparison.Ordinal));
 
         var snapshot = campaign.Capture();
         var baseSnapshot = snapshot.Bases[0] with

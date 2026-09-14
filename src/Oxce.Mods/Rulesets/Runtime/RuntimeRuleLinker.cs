@@ -322,9 +322,7 @@ public static class RuntimeRuleLinker
                     rule.Value.Space, rule.Value.Time, rule.Value.Cost, rule.Value.Points,
                     rule.Value.Refund,
                     Array.AsReadOnly(rule.Value.RequiredItems.Select(pair => RequiredMaterial(pair.Key, pair.Value)).ToArray()),
-                    Array.AsReadOnly((rule.Value.Category == "STR_CRAFT"
-                        ? rule.Value.ProducedItems.OrderBy(pair => pair.Key, StringComparer.Ordinal).Take(1)
-                        : rule.Value.ProducedItems).Select(pair => ProducedMaterial(
+                    Array.AsReadOnly(rule.Value.EffectiveProducedItems().Select(pair => ProducedMaterial(
                             pair.Key, pair.Value, rule.Value.Category == "STR_CRAFT")).ToArray()),
                     rule.Value.RandomProducedItems, rule.Value.SpawnedPersonType,
                     rule.Value.SpawnedPersonName,

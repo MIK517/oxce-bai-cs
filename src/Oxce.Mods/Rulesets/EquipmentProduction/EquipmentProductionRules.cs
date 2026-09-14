@@ -135,7 +135,12 @@ public sealed record ManufactureRule(
     YamlMappingNode? SpawnedSoldierTemplate,
     IReadOnlyList<int> TransferTimes,
     IReadOnlyDictionary<string, ulong> Events,
-    int ListOrder);
+    int ListOrder)
+{
+    public IEnumerable<KeyValuePair<string, int>> EffectiveProducedItems() => Category == "STR_CRAFT"
+        ? ProducedItems.OrderBy(pair => pair.Key, StringComparer.Ordinal).Take(1)
+        : ProducedItems;
+}
 
 public sealed record ManufactureShortcutRule(
     string StartFrom,

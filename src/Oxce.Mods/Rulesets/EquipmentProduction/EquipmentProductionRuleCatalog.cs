@@ -175,7 +175,7 @@ public sealed class EquipmentProductionRuleCatalog
                     if (!Research.TryGet(research, out _)) Missing(rule, "requires", research);
                 if (rule.Value.Category == "STR_CRAFT")
                 {
-                    var produced = rule.Value.ProducedItems.OrderBy(pair => pair.Key, StringComparer.Ordinal).FirstOrDefault();
+                    var produced = rule.Value.EffectiveProducedItems().FirstOrDefault();
                     if (produced.Key is null) Invalid(rule, "producedItems", null, "No craft is defined for production.");
                     else
                     {
