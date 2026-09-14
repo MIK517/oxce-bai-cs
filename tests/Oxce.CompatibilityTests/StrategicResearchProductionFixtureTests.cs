@@ -214,25 +214,35 @@ public sealed class StrategicResearchProductionFixtureTests
     }
 
     [Fact]
-    public void ResearchDisableCanBeReenabledWithoutDiscardingTheActiveProject()
+    public void ResearchDisableCleanupRunsAfterSameBoundaryReenables()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
         var campaign = NewCampaign(content, 17);
         campaign.Execute(new ConfigureResearchProject(0, "TARGET", 1));
         campaign.Execute(new ConfigureResearchProject(0, "DISABLER", 1));
-        campaign = PrimeResearch(campaign, content, "DISABLER");
-
-        campaign.Execute(new AdvanceCampaignTime(1));
-        var disabled = campaign.Capture();
-        Assert.Equal(2, disabled.ResearchRuleStatus["TARGET"]);
-        Assert.Contains(disabled.Bases[0].Research, project => project.RuleId == "TARGET");
-
         campaign.Execute(new ConfigureResearchProject(0, "REENABLER", 1));
-        campaign = PrimeResearch(campaign, content, "REENABLER");
+        campaign = PrimeResearch(PrimeResearch(campaign, content, "DISABLER"), content, "REENABLER");
+
         campaign.Execute(new AdvanceCampaignTime(1));
-        var reenabled = campaign.Capture();
-        Assert.Equal(0, reenabled.ResearchRuleStatus["TARGET"]);
-        Assert.Contains(reenabled.Bases[0].Research, project => project.RuleId == "TARGET");
+        var sameBoundary = campaign.Capture();
+        Assert.Equal(0, sameBoundary.ResearchRuleStatus["TARGET"]);
+        Assert.Contains(sameBoundary.Bases[0].Research, project => project.RuleId == "TARGET");
+
+        var later = NewCampaign(content, 18);
+        later.Execute(new ConfigureResearchProject(0, "TARGET", 1));
+        later.Execute(new ConfigureResearchProject(0, "DISABLER", 1));
+        later = PrimeResearch(later, content, "DISABLER");
+        later.Execute(new AdvanceCampaignTime(1));
+        var disabled = later.Capture();
+        Assert.Equal(2, disabled.ResearchRuleStatus["TARGET"]);
+        Assert.DoesNotContain(disabled.Bases[0].Research, project => project.RuleId == "TARGET");
+
+        later.Execute(new ConfigureResearchProject(0, "REENABLER", 1));
+        later = PrimeResearch(later, content, "REENABLER");
+        later.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(0, later.Capture().ResearchRuleStatus["TARGET"]);
+        Assert.Null(later.QueryResearchProduction(0).ResearchChoices.Single(choice =>
+            choice.RuleId == "TARGET").UnavailableReason);
     }
 
     [Fact]
@@ -342,6 +352,159 @@ public sealed class StrategicResearchProductionFixtureTests
         var recycled = recycling.Capture();
         Assert.Empty(recycled.Bases[0].Crafts);
         Assert.Equal(2, recycled.Bases[0].Items["SUPPLY"]);
+    }
+
+    [Fact]
+    public void ResearchUsesImplicitItemsAndReferenceRewardAvailability()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var implicitItem = NewCampaign(content, 41);
+        Assert.IsType<CampaignResearchChanged>(Assert.Single(implicitItem.Execute(
+            new ConfigureResearchProject(0, "IMPLICIT_ITEM", 1)).Events));
+        Assert.False(implicitItem.Capture().Bases[0].Items.ContainsKey("IMPLICIT_ITEM"));
+
+        var protectedSource = NewCampaign(content, 43);
+        protectedSource.Execute(new ConfigureResearchProject(0, "PROTECTED_SOURCE", 1));
+        protectedSource = PrimeResearch(protectedSource, content, "PROTECTED_SOURCE");
+        protectedSource.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal("Research is already complete.", protectedSource.QueryResearchProduction(0)
+            .ResearchChoices.Single(choice => choice.RuleId == "PROTECTED_SOURCE").UnavailableReason);
+
+        protectedSource.Execute(new ConfigureResearchProject(0, "UNLOCK", 1));
+        protectedSource = PrimeResearch(protectedSource, content, "UNLOCK");
+        protectedSource.Execute(new AdvanceCampaignTime(1));
+        Assert.Null(protectedSource.QueryResearchProduction(0).ResearchChoices
+            .Single(choice => choice.RuleId == "PROTECTED_SOURCE").UnavailableReason);
+
+        var repeatable = NewCampaign(content, 47);
+        var repeatableSnapshot = repeatable.Capture();
+        repeatable = CampaignState.Restore(repeatableSnapshot with
+        {
+            CompletedResearch = ["REPEATABLE_PREREQ"],
+        }, content, new SplitMix64RandomSource(repeatableSnapshot.RandomState));
+        repeatable.Execute(new ConfigureResearchProject(0, "REPEATABLE_SOURCE", 1));
+        repeatable = PrimeResearch(repeatable, content, "REPEATABLE_SOURCE");
+        repeatable.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain("REPEATABLE_ZERO", repeatable.Capture().CompletedResearch);
+    }
+
+    [Fact]
+    public void ProductionRejectsCapacityAndIllegalModesWithoutMutation()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var workshop = NewCampaign(content, 53);
+        var workshopSnapshot = workshop.Capture();
+        workshop = CampaignState.Restore(workshopSnapshot with
+        {
+            Bases =
+            [
+                workshopSnapshot.Bases[0] with
+                {
+                    Engineers = 1,
+                    Productions =
+                    [
+                        new("PRODUCT", 9, 1, 2, false, false, false,
+                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                    ],
+                },
+            ],
+        }, content, new SplitMix64RandomSource(workshopSnapshot.RandomState));
+        var beforeWorkshop = workshop.Capture();
+        var workshopBlocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(workshop.Execute(
+            new ConfigureProductionProject(0, "MAKE_AMMO", 1, 1)).Events));
+        Assert.Equal("STR_NOT_ENOUGH_WORK_SPACE", workshopBlocked.Reason);
+        Assert.Equivalent(beforeWorkshop, workshop.Capture(), strict: true);
+
+        var hangar = NewCampaign(content, 59);
+        var hangarSnapshot = hangar.Capture();
+        var ready = new CraftLogisticsState(0, 0, "STR_READY", [null, null],
+            new Dictionary<string, int>(StringComparer.Ordinal), []);
+        hangar = CampaignState.Restore(hangarSnapshot with
+        {
+            Bases =
+            [
+                hangarSnapshot.Bases[0] with
+                {
+                    Crafts =
+                    [
+                        new CraftSnapshot("SHIP", 1) { Logistics = ready },
+                        new CraftSnapshot("SHIP", 2) { Logistics = ready },
+                    ],
+                },
+            ],
+        }, content, new SplitMix64RandomSource(hangarSnapshot.RandomState));
+        var beforeHangar = hangar.Capture();
+        var hangarBlocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(hangar.Execute(
+            new ConfigureProductionProject(0, "BUILD_SHIP", 1, 1)).Events));
+        Assert.Equal("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION", hangarBlocked.Reason);
+        Assert.Equivalent(beforeHangar, hangar.Capture(), strict: true);
+
+        var growing = NewCampaign(content, 60);
+        growing.Execute(new ConfigureProductionProject(0, "BUILD_SHIP", 1, 1));
+        var growingSnapshot = growing.Capture();
+        growing = CampaignState.Restore(growingSnapshot with
+        {
+            Bases = [growingSnapshot.Bases[0] with
+            {
+                Crafts =
+                [
+                    new CraftSnapshot("SHIP", 1) { Logistics = ready },
+                    new CraftSnapshot("SHIP", 2) { Logistics = ready },
+                ],
+            }],
+        }, content, new SplitMix64RandomSource(growingSnapshot.RandomState));
+        var beforeGrowing = growing.Capture();
+        var growingBlocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(growing.Execute(
+            new ConfigureProductionProject(0, "BUILD_SHIP", 1, 2)).Events));
+        Assert.Equal("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION", growingBlocked.Reason);
+        Assert.Equivalent(beforeGrowing, growing.Capture(), strict: true);
+
+        var sell = NewCampaign(content, 61);
+        var beforeSell = sell.Capture();
+        var sellBlocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(sell.Execute(
+            new ConfigureProductionProject(0, "RANDOM_PRODUCT", 1, 1, Sell: true)).Events));
+        Assert.Equal("Production does not support autosell.", sellBlocked.Reason);
+        Assert.Equivalent(beforeSell, sell.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void ProductionIgnoresAirborneCraftMaterialsAndReusesImmediateAmmo()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var airborne = NewCampaign(content, 67);
+        var airborneSnapshot = airborne.Capture();
+        var outLogistics = new CraftLogisticsState(0, 0, "STR_OUT", [null, null],
+            new Dictionary<string, int>(StringComparer.Ordinal), []);
+        airborne = CampaignState.Restore(airborneSnapshot with
+        {
+            Bases = [airborneSnapshot.Bases[0] with
+            {
+                Crafts = [new CraftSnapshot("SHIP", 1) { Logistics = outLogistics }],
+            }],
+        }, content, new SplitMix64RandomSource(airborneSnapshot.RandomState));
+        var beforeAirborne = airborne.Capture();
+        var materialBlocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(airborne.Execute(
+            new ConfigureProductionProject(0, "RECYCLE_SHIP", 1, 1)).Events));
+        Assert.Equal("STR_NOT_ENOUGH_MATERIALS", materialBlocked.Reason);
+        Assert.Equivalent(beforeAirborne, airborne.Capture(), strict: true);
+
+        var ammunition = NewCampaign(content, 71);
+        var ammunitionSnapshot = ammunition.Capture();
+        var weapon = new CraftWeaponSnapshot("FIXED", 0);
+        var armedLogistics = new CraftLogisticsState(0, 0, "STR_READY", [weapon, null],
+            new Dictionary<string, int>(StringComparer.Ordinal), []);
+        ammunition = CampaignState.Restore(ammunitionSnapshot with
+        {
+            Bases = [ammunitionSnapshot.Bases[0] with
+            {
+                Crafts = [new CraftSnapshot("SHIP", 1) { Logistics = armedLogistics }],
+            }],
+        }, content, new SplitMix64RandomSource(ammunitionSnapshot.RandomState));
+        ammunition.Execute(new ConfigureProductionProject(0, "MAKE_AMMO", 1, 1));
+        ammunition.Execute(new AdvanceCampaignTime(1));
+        var manufactured = Assert.Single(ammunition.Capture().Bases[0].Crafts).Logistics!;
+        Assert.Equal("STR_REARMING", manufactured.Status);
+        Assert.True(manufactured.Weapons[0]!.Rearming);
     }
 
     private static CampaignState NewCampaign(Oxce.Mods.Rulesets.Content.RuntimeContent content, ulong seed)

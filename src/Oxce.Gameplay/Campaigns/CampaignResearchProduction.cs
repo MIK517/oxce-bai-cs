@@ -103,9 +103,14 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             if (command.Amount == 0 && !command.Infinite) return Blocked("Production amount must be positive.");
             if (ProductionUnavailable(owner, handle) is { } reason) return Blocked(reason);
             var rule = _content.RuntimeRules.Manufacture[handle].Value;
-            if (command.AssignedEngineers > owner.Engineers ||
-                command.AssignedEngineers + rule.Space > AvailableWorkshops(owner))
+            if (command.AssignedEngineers > owner.Engineers || command.AssignedEngineers > 0 &&
+                command.AssignedEngineers + (long)rule.Space + UsedWorkshopSpace(owner) > AvailableWorkshops(owner))
                 return Blocked("STR_NOT_ENOUGH_WORK_SPACE");
+            if (rule.ProducedMaterials.FirstOrDefault(material => material.Craft is not null) is { Craft: { } producedCraft } &&
+                UsedHangars(owner, _content.RuntimeRules.Crafts[producedCraft].Value.HangarType) >=
+                AvailableHangars(owner, _content.RuntimeRules.Crafts[producedCraft].Value.HangarType))
+                return Blocked("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION");
+            if (command.Sell && !CanAutoSell(rule)) return Blocked("Production does not support autosell.");
             if (command.Sell && ProductionSellUnavailable(rule) is { } sellReason) return Blocked(sellReason);
             if (StartProductionUnit(owner, rule, initial: true) is { } startReason) return Blocked(startReason);
             owner.Productions.Add(new(handle, 0, 0, command.Amount, command.Infinite,
@@ -113,12 +118,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             index = owner.Productions.Count - 1;
         }
         var current = owner.Productions[index];
+        var currentRule = _content.RuntimeRules.Manufacture[current.Rule].Value;
+        if (command.Sell && !current.Sell && !CanAutoSell(currentRule))
+            return Blocked("Production does not support autosell.");
         var nextAmount = command.Infinite ? Math.Max(1, command.Amount) : command.Amount;
         if (!command.Infinite && nextAmount <= Produced(current))
             return Blocked("Production amount cannot be less than completed units.");
+        if (nextAmount > current.Amount &&
+            currentRule.ProducedMaterials.FirstOrDefault(material => material.Craft is not null) is { Craft: { } additionalCraft } &&
+            UsedHangars(owner, _content.RuntimeRules.Crafts[additionalCraft].Value.HangarType) >=
+            AvailableHangars(owner, _content.RuntimeRules.Crafts[additionalCraft].Value.HangarType))
+            return Blocked("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION");
         var delta = command.AssignedEngineers - current.Assigned;
         if (delta > 0 && (delta > owner.Engineers ||
-            command.AssignedEngineers + UsedWorkshopSpace(owner, current) > AvailableWorkshops(owner)))
+            command.AssignedEngineers + (long)UsedWorkshopSpace(owner, current) > AvailableWorkshops(owner)))
             return Blocked("STR_NOT_ENOUGH_WORK_SPACE");
         owner.Engineers = checked(owner.Engineers - delta);
         owner.Productions[index] = current with
@@ -293,6 +306,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
 
     private void AddFinishedResearch(BaseState owner, string initial, List<string> discoveries)
     {
+        if (!_content.RuntimeRules.Research.TryGet(initial, out var initialHandle) ||
+            _researchRuleStatus.GetValueOrDefault(initial) == 2) return;
+        var markDiscovered = !_content.RuntimeRules.Research[initialHandle].Value.Repeatable;
         var queue = new List<string> { initial };
         for (var offset = 0; offset < queue.Count; offset++)
         {
@@ -303,7 +319,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             var wasComplete = _completedResearch.Contains(id);
             if (!wasComplete)
             {
-                if (!rule.Repeatable)
+                if (markDiscovered)
                 {
                     _completedResearch.Add(id);
                     discoveries.Add(id);
@@ -352,7 +368,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     }
 
     private bool HasRemainingResearchReward(RuntimeResearchRule rule) =>
-        rule.GetOneFree.Any(IsNew) || rule.GetOneFreeProtected.Any(group => group.Topics.Any(IsNew));
+        rule.GetOneFree.Any(IsNew) || rule.GetOneFreeProtected.Any(group =>
+            _completedResearch.Contains(group.Prerequisite) && group.Topics.Any(IsNew));
     private bool HasProtectedUnlock(RuntimeResearchRule rule) => rule.Unlocks.Any(id =>
         _content.RuntimeRules.Research.TryGet(id, out var handle) &&
         _content.RuntimeRules.Research[handle].Value.Requirements.Count != 0 &&
@@ -398,6 +415,18 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         {
             PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}"),
         });
+    }
+
+    private void RemoveDisabledResearchProjects()
+    {
+        foreach (var owner in _bases)
+            foreach (var project in owner.Research.Where(project => _researchRuleStatus.GetValueOrDefault(
+                _content.RuntimeRules.Research.GetExternalId(project.Rule)) == 2).ToArray())
+            {
+                owner.Scientists = checked(owner.Scientists + project.Assigned);
+                ReturnHeldResearchItem(owner, _content.RuntimeRules.Research[project.Rule].Value);
+                owner.Research.Remove(project);
+            }
     }
 
     private void AdvanceProductionHourly(TimeEffects effects)
@@ -469,10 +498,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         {
             if (material.Item is { } item && owner.Items.GetValueOrDefault(item) < material.Quantity)
                 return "STR_NOT_ENOUGH_MATERIALS";
-            if (material.Craft is { } craft && owner.Crafts.Count(value => value.Rule == craft) < material.Quantity)
+            if (material.Craft is { } craft && owner.Crafts.Count(value => value.Rule == craft &&
+                value.Logistics?.Status != "STR_OUT") < material.Quantity)
                 return "STR_NOT_ENOUGH_MATERIALS";
             if (material.Craft is { } resolvedCraft && owner.Crafts
-                .Where(value => value.Rule == resolvedCraft).Take(material.Quantity)
+                .Where(value => value.Rule == resolvedCraft && value.Logistics?.Status != "STR_OUT")
+                .Take(material.Quantity)
                 .Any(value => value.Logistics is null))
                 return "Required craft material has unresolved logistics state.";
         }
@@ -484,7 +515,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             else if (material.Craft is { } craft)
                 for (var count = 0; count < material.Quantity; count++)
                 {
-                    var removed = owner.Crafts.First(value => value.Rule == craft);
+                    var removed = owner.Crafts.First(value => value.Rule == craft &&
+                        value.Logistics?.Status != "STR_OUT");
                     foreach (var unloaded in CraftLogistics.UnloadedItems(removed.Logistics!, _content.RuntimeRules))
                         ChangeStock(owner.Items, _content.RuntimeRules.Items.GetRequired(unloaded.Key), unloaded.Value);
                     owner.Crafts.Remove(removed);
@@ -601,7 +633,22 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     {
         if (quantity <= 0) return;
         var transferHours = rule.TransferTimes.Count == 0 ? 0 : Math.Max(0, rule.TransferTimes[0]);
-        if (transferHours == 0) ChangeStock(owner.Items, _content.RuntimeRules.Items.GetRequired(id), quantity);
+        if (transferHours == 0)
+        {
+            var item = _content.RuntimeRules.Items.GetRequired(id);
+            ChangeStock(owner.Items, item, quantity);
+            if (_content.RuntimeRules.Items[item].Value.BattleType == 0)
+                for (var craftIndex = 0; craftIndex < owner.Crafts.Count; craftIndex++)
+                {
+                    var craft = owner.Crafts[craftIndex];
+                    if (craft.Logistics is null) continue;
+                    owner.Crafts[craftIndex] = craft with
+                    {
+                        Logistics = CraftServicing.ReuseItem(craft.Logistics,
+                            _content.RuntimeRules.Crafts[craft.Rule].Value, _content.RuntimeRules, item),
+                    };
+                }
+        }
         else
         {
             var transferId = NextId("oxcePortTransfer");
@@ -685,6 +732,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         _content.RuntimeRules.Manufacture[state.Rule].Value.Time > 0
             ? state.Spent / _content.RuntimeRules.Manufacture[state.Rule].Value.Time
             : state.Amount;
+    private static bool CanAutoSell(RuntimeManufactureRule rule) =>
+        rule.SpawnedPersonType.Length == 0 && rule.RandomProducedItems.Count == 0;
     private static bool HoldsResearchItem(RuntimeResearchRule rule) =>
         rule.NeedItem && (rule.DestroyItem || rule.ReturnsItem);
     private void ReturnHeldResearchItem(BaseState owner, RuntimeResearchRule rule)
