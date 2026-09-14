@@ -253,11 +253,6 @@ public sealed partial class CampaignState
         if (value < 0) throw new InvalidDataException("Insufficient facility stock.");
         if (value == 0) stock.Remove(item); else stock[item] = value;
     }
-    private static void Account(long delta, ref long funds, ref long income, ref long spending)
-    {
-        funds = checked(funds + delta);
-        if (delta > 0) income = checked(income + delta); else spending = checked(spending - delta);
-    }
     private void PublishFacilityChange(BaseState owner, List<FacilityState> facilities,
         Dictionary<RuleHandle<ItemRuleFamily>, int> stock, long funds, long income, long spending)
     {

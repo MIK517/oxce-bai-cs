@@ -68,10 +68,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             index = owner.Research.Count - 1;
         }
         var current = owner.Research[index];
-        var delta = command.AssignedScientists - current.Assigned;
-        if (delta > 0 && (delta > owner.Scientists || command.AssignedScientists > FreeLaboratories(owner) + current.Assigned))
+        if (!TryReassignProjectStaff(command.AssignedScientists, current.Assigned, owner.Scientists,
+            FreeLaboratories(owner) + (long)current.Assigned, out var remainingScientists))
             return Blocked("STR_NOT_ENOUGH_LAB_SPACE");
-        owner.Scientists = checked(owner.Scientists - delta);
+        owner.Scientists = remainingScientists;
         owner.Research[index] = current with { Assigned = command.AssignedScientists };
         return new([new CampaignResearchChanged(owner.Id, command.RuleId, command.AssignedScientists, false)]);
     }
@@ -90,8 +90,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             if (index < 0) return Blocked("Production queue was not found.");
             var project = owner.Productions[index];
             var rule = _content.RuntimeRules.Manufacture[project.Rule].Value;
+            var refundAccounting = default(AccountingState);
+            if (rule.Refund && !TryStageAccounting(rule.Cost, out refundAccounting))
+                return Blocked("Production accounting exceeds the supported range.");
             owner.Engineers = checked(owner.Engineers + project.Assigned);
-            if (rule.Refund) RefundProductionUnit(owner, rule);
+            if (rule.Refund) RefundProductionUnit(owner, rule, refundAccounting);
             owner.Productions.RemoveAt(index);
             return new([new CampaignProductionChanged(owner.Id, command.RuleId, 0, project.Amount, true)]);
         }
@@ -126,11 +129,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             UsedHangars(owner, _content.RuntimeRules.Crafts[additionalCraft].Value.HangarType) >=
             AvailableHangars(owner, _content.RuntimeRules.Crafts[additionalCraft].Value.HangarType))
             return Blocked("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION");
-        var delta = command.AssignedEngineers - current.Assigned;
-        if (delta > 0 && (delta > owner.Engineers ||
-            command.AssignedEngineers + (long)UsedWorkshopSpace(owner, current) > AvailableWorkshops(owner)))
+        if (!TryReassignProjectStaff(command.AssignedEngineers, current.Assigned, owner.Engineers,
+            AvailableWorkshops(owner) - (long)UsedWorkshopSpace(owner, current), out var remainingEngineers))
             return Blocked("STR_NOT_ENOUGH_WORK_SPACE");
-        owner.Engineers = checked(owner.Engineers - delta);
+        owner.Engineers = remainingEngineers;
         owner.Productions[index] = current with
         {
             Assigned = command.AssignedEngineers, Amount = nextAmount,
@@ -185,7 +187,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         if (!rule.Repeatable && _completedResearch.Contains(id) && !HasRemainingResearchReward(rule))
             return "Research is already complete.";
         if (owner.Research.Any(project => project.Rule == handle)) return "Research is already active.";
-        if (!WeightsFit(rule.Events)) return "Strategic event weights exceed the supported range.";
+        if (!WeightsFit(rule.Events, static entry => entry.Value))
+            return "Strategic event weights exceed the supported range.";
         if (rule.NeedItem && (rule.NeededItem is null || !_content.RuntimeRules.Items.TryGet(rule.NeededItem, out var item) ||
             owner.Items.GetValueOrDefault(item) == 0)) return "Required research item is unavailable.";
         return HasFunctions(owner, rule.RequiredBaseFunctions) ? null : "Required base functions are unavailable.";
@@ -209,13 +212,14 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         if (rule.SpawnedPersonType.Length != 0 && rule.SpawnedPersonType is not "STR_SCIENTIST" and not "STR_ENGINEER" &&
             !_content.RuntimeRules.Soldiers.TryGet(rule.SpawnedPersonType, out _))
             return "Production references an unresolved person type.";
-        if (rule.RandomProducedItems.Sum(set => (long)set.Weight) is <= 0 or > int.MaxValue &&
-            rule.RandomProducedItems.Count != 0)
+        if (!WeightsFit(rule.RandomProducedItems, static entry => unchecked((ulong)entry.Weight),
+                requirePositive: rule.RandomProducedItems.Count != 0))
             return "Random production weights exceed the supported range.";
         if (rule.RandomProducedItems.SelectMany(set => set.Items).Any(pair =>
             pair.Value < 0 || !_content.RuntimeRules.Items.TryGet(pair.Key, out _)))
             return "Random production references an invalid item quantity or ID.";
-        if (!WeightsFit(rule.Events)) return "Strategic event weights exceed the supported range.";
+        if (!WeightsFit(rule.Events, static entry => entry.Value))
+            return "Strategic event weights exceed the supported range.";
         return null;
     }
 
@@ -223,14 +227,16 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     {
         if (highest >= CampaignTimeTrigger.OneDay)
         {
-            if (_content.RuntimeRules.Research.Rules.Any(rule => !WeightsFit(rule.Value.Events)))
+            if (_content.RuntimeRules.Research.Rules.Any(rule =>
+                    !WeightsFit(rule.Value.Events, static entry => entry.Value)))
                 return "Strategic event weights exceed the supported range.";
             foreach (var owner in _bases)
                 foreach (var project in owner.Research)
                 {
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
                         return "Research progress exceeds the supported range.";
-                    if (!WeightsFit(_content.RuntimeRules.Research[project.Rule].Value.Events))
+                    if (!WeightsFit(_content.RuntimeRules.Research[project.Rule].Value.Events,
+                            static entry => entry.Value))
                         return "Strategic event weights exceed the supported range.";
                 }
         }
@@ -240,7 +246,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 {
                     if ((long)production.Spent + production.Assigned > int.MaxValue)
                         return "Production progress exceeds the supported range.";
-                    if (!WeightsFit(_content.RuntimeRules.Manufacture[production.Rule].Value.Events))
+                    if (!WeightsFit(_content.RuntimeRules.Manufacture[production.Rule].Value.Events,
+                            static entry => entry.Value))
                         return "Strategic event weights exceed the supported range.";
                     if (production.Sell &&
                         ProductionSellUnavailable(_content.RuntimeRules.Manufacture[production.Rule].Value) is { } sellReason)
@@ -376,9 +383,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     {
         if (rule.SpawnedItem.Length != 0 &&
             _content.RuntimeRules.Items.TryGet(rule.SpawnedItem, out _))
-            QueueResearchItem(owner, rule.SpawnedItem, Math.Max(1, rule.SpawnedItemCount));
+            QueueTransfer(owner, 1, CampaignTransferKind.Item,
+                rule.SpawnedItem, Math.Max(1, rule.SpawnedItemCount));
         foreach (var id in rule.SpawnedItemList)
-            if (_content.RuntimeRules.Items.TryGet(id, out _)) QueueResearchItem(owner, id, 1);
+            if (_content.RuntimeRules.Items.TryGet(id, out _))
+                QueueTransfer(owner, 1, CampaignTransferKind.Item, id, 1);
         foreach (var id in rule.IncreaseCounters)
             if (id.Length != 0)
                 _nextIds[id] = checked(_nextIds.TryGetValue(id, out var value) ? value + 1 : 2);
@@ -387,8 +396,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 _nextIds[id] = _nextIds.TryGetValue(id, out var value) ? Math.Max(1, value - 1) : 1;
         if (rule.SpawnedEvent.Length != 0)
             effects.Notify(new CampaignStrategicEventRequested(rule.SpawnedEvent, source));
-        if (SelectWeightedEvent(rule.Events) is { } eventId)
-            effects.Notify(new CampaignStrategicEventRequested(eventId, source));
+        var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
+            "Strategic event weights exceed the supported range.");
+        if (selectedEvent.HasValue)
+            effects.Notify(new CampaignStrategicEventRequested(selectedEvent.Value.Key, source));
         if (!HasRemainingResearchReward(rule) && !HasProtectedUnlock(rule))
             foreach (var baseState in _bases)
             {
@@ -396,15 +407,6 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                     _content.RuntimeRules.Research.GetExternalId(project.Rule) == source).ToArray())
                     RemoveResearchProject(baseState, project);
             }
-    }
-
-    private void QueueResearchItem(BaseState owner, string id, int quantity)
-    {
-        var transferId = NextId("oxcePortTransfer");
-        owner.Transfers.Add(new(transferId, 1, CampaignTransferKind.Item, id, quantity)
-        {
-            PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}"),
-        });
     }
 
     private void RemoveDisabledResearchProjects()
@@ -474,6 +476,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         BaseState owner, RuntimeManufactureRule rule, bool initial = false, bool checkLivingSpace = true)
     {
         if (_funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
+        if (!TryStageAccounting(-rule.Cost, out var accounting))
+            return "Production accounting exceeds the supported range.";
         if (rule.SpawnedPersonType.Length != 0 && checkLivingSpace)
         {
             var available = AvailableQuarters(owner);
@@ -493,8 +497,6 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 .Any(value => value.Logistics is null))
                 return "Required craft material has unresolved logistics state.";
         }
-        _funds[^1] = checked(_funds[^1] - rule.Cost);
-        _expenditures[^1] = checked(_expenditures[^1] + rule.Cost);
         foreach (var material in rule.RequiredMaterials)
         {
             if (material.Item is { } item) ChangeStock(owner.Items, item, -material.Quantity);
@@ -517,34 +519,38 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                     }
                 }
         }
+        PublishAccounting(accounting);
         return null;
     }
 
-    private void RefundProductionUnit(BaseState owner, RuntimeManufactureRule rule)
+    private void RefundProductionUnit(
+        BaseState owner, RuntimeManufactureRule rule, AccountingState accounting)
     {
-        _funds[^1] = checked(_funds[^1] + rule.Cost);
-        _incomes[^1] = checked(_incomes[^1] + rule.Cost);
         foreach (var material in rule.RequiredMaterials)
             if (material.Item is { } item) ChangeStock(owner.Items, item, material.Quantity);
+        PublishAccounting(accounting);
     }
 
     private void CompleteProductionUnit(BaseState owner, ProductionState production, TimeEffects effects)
     {
         var rule = _content.RuntimeRules.Manufacture[production.Rule].Value;
-        foreach (var material in rule.ProducedMaterials)
-        {
-            if (material.Item is { } item)
-            {
-                if (production.Sell)
+        var saleValue = 0L;
+        if (production.Sell)
+            foreach (var material in rule.ProducedMaterials)
+                if (material.Item is { } item)
                 {
                     var price = ItemPrice(material.Id, _content.RuntimeRules.Items[item].Value,
                         buying: false, out var unavailable);
                     if (unavailable is not null) throw new InvalidOperationException(unavailable);
-                    var value = checked((long)price * material.Quantity);
-                    _funds[^1] = checked(_funds[^1] + value);
-                    _incomes[^1] = checked(_incomes[^1] + value);
+                    saleValue = checked(saleValue + checked((long)price * material.Quantity));
                 }
-                else
+        if (!TryStageAccounting(saleValue, out var saleAccounting))
+            throw new InvalidDataException("Production accounting exceeds the supported range.");
+        foreach (var material in rule.ProducedMaterials)
+        {
+            if (material.Item is { } item)
+            {
+                if (!production.Sell)
                 {
                     DeliverProducedItem(owner, material.Id, material.Quantity, rule);
                     if (rule.RandomProducedItems.Count != 0)
@@ -554,26 +560,27 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             }
             else if (material.Craft is { } craft) ProduceCraft(owner, craft, material.Quantity, rule);
         }
+        if (production.Sell) PublishAccounting(saleAccounting);
         if (rule.RandomProducedItems.Count != 0)
         {
-            var total = rule.RandomProducedItems.Sum(set => (long)set.Weight);
-            var roll = _random.NextInclusive(1, checked((int)total));
-            foreach (var set in rule.RandomProducedItems)
+            var selected = SelectWeighted(rule.RandomProducedItems,
+                static entry => unchecked((ulong)entry.Weight),
+                "Random production weights exceed the supported range.");
+            if (selected.HasValue)
             {
-                roll -= set.Weight;
-                if (roll > 0) continue;
-                foreach (var item in set.Items)
+                foreach (var item in selected.Value.Items)
                 {
                     DeliverProducedItem(owner, item.Key, item.Value, rule);
                     production.RandomProductionInfo[item.Key] =
                         checked(production.RandomProductionInfo.GetValueOrDefault(item.Key) + item.Value);
                 }
-                break;
             }
         }
         ProducePerson(owner, rule);
-        if (SelectWeightedEvent(rule.Events) is { } eventId)
-            effects.Notify(new CampaignStrategicEventRequested(eventId,
+        var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
+            "Strategic event weights exceed the supported range.");
+        if (selectedEvent.HasValue)
+            effects.Notify(new CampaignStrategicEventRequested(selectedEvent.Value.Key,
                 _content.RuntimeRules.Manufacture.GetExternalId(production.Rule)));
         _researchScores[^1] = checked(_researchScores[^1] + rule.Points);
     }
@@ -590,28 +597,40 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         return null;
     }
 
-    private string? SelectWeightedEvent(IReadOnlyDictionary<string, ulong> events)
+    private WeightedSelection<T> SelectWeighted<T>(
+        IEnumerable<T> entries, Func<T, ulong> weight, string invalidMessage)
     {
-        var total = events.Aggregate(0UL, (value, pair) => checked(value + pair.Value));
-        if (total == 0) return null;
-        if (total > int.MaxValue) throw new InvalidDataException("Strategic event weights exceed the supported range.");
-        var roll = _random.NextInclusive(1, (int)total);
-        foreach (var pair in events)
+        if (!TryGetTotalWeight(entries, weight, out var total)) throw new InvalidDataException(invalidMessage);
+        if (total == 0) return default;
+        var roll = _random.NextInclusive(1, total);
+        foreach (var entry in entries)
         {
-            if ((ulong)roll <= pair.Value) return pair.Key;
-            roll -= checked((int)pair.Value);
+            var entryWeight = weight(entry);
+            if ((ulong)roll <= entryWeight) return new(true, entry);
+            roll -= checked((int)entryWeight);
         }
-        throw new InvalidOperationException("Weighted event selection did not produce a result.");
+        throw new InvalidOperationException("Weighted selection did not produce a result.");
     }
 
-    private static bool WeightsFit(IReadOnlyDictionary<string, ulong> events)
+    private static bool WeightsFit<T>(
+        IEnumerable<T> entries, Func<T, ulong> weight, bool requirePositive = false) =>
+        TryGetTotalWeight(entries, weight, out var total) && (!requirePositive || total != 0);
+
+    private static bool TryGetTotalWeight<T>(
+        IEnumerable<T> entries, Func<T, ulong> weight, out int total)
     {
-        ulong total = 0;
-        foreach (var value in events.Values)
+        ulong sum = 0;
+        foreach (var entry in entries)
         {
-            if (value > int.MaxValue || total > (ulong)int.MaxValue - value) return false;
-            total += value;
+            var value = weight(entry);
+            if (value > int.MaxValue || sum > (ulong)int.MaxValue - value)
+            {
+                total = 0;
+                return false;
+            }
+            sum += value;
         }
+        total = (int)sum;
         return true;
     }
 
@@ -637,11 +656,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         }
         else
         {
-            var transferId = NextId("oxcePortTransfer");
-            owner.Transfers.Add(new(transferId, transferHours, CampaignTransferKind.Item, id, quantity)
-            {
-                PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}"),
-            });
+            QueueTransfer(owner, transferHours, CampaignTransferKind.Item, id, quantity);
         }
     }
 
@@ -659,12 +674,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 owner.Crafts.Add(new(craft, craftId) { PreservationKey = key, Logistics = logistics });
             else
             {
-                var transferId = NextId("oxcePortTransfer");
-                owner.Transfers.Add(new(transferId, transferHours, CampaignTransferKind.Craft,
-                    id, 1, Craft: value)
-                {
-                    PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}"),
-                });
+                QueueTransfer(owner, transferHours, CampaignTransferKind.Craft, id, 1, craft: value);
             }
         }
     }
@@ -673,14 +683,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     {
         if (rule.SpawnedPersonType.Length == 0) return;
         var hours = Math.Max(1, rule.TransferTimes.Count < 2 ? 24 : rule.TransferTimes[1]);
-        var transferId = NextId("oxcePortTransfer");
-        var key = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}");
         if (rule.SpawnedPersonType == "STR_SCIENTIST")
-            owner.Transfers.Add(new(transferId, hours, CampaignTransferKind.Scientist, "", 1)
-            { PreservationKey = key });
+            QueueTransfer(owner, hours, CampaignTransferKind.Scientist, "", 1);
         else if (rule.SpawnedPersonType == "STR_ENGINEER")
-            owner.Transfers.Add(new(transferId, hours, CampaignTransferKind.Engineer, "", 1)
-            { PreservationKey = key });
+            QueueTransfer(owner, hours, CampaignTransferKind.Engineer, "", 1);
         else
         {
             var handle = _content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType);
@@ -701,9 +707,19 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:soldier:{soldierId}"),
                 Personal = personal,
             };
-            owner.Transfers.Add(new(transferId, hours, CampaignTransferKind.Soldier,
-                rule.SpawnedPersonType, 1, Soldier: soldier) { PreservationKey = key });
+            QueueTransfer(owner, hours, CampaignTransferKind.Soldier,
+                rule.SpawnedPersonType, 1, soldier: soldier);
         }
+    }
+
+    private void QueueTransfer(BaseState owner, int hours, CampaignTransferKind kind,
+        string ruleId, int quantity, SoldierSnapshot? soldier = null, CraftSnapshot? craft = null)
+    {
+        var transferId = NextId("oxcePortTransfer");
+        owner.Transfers.Add(new(transferId, hours, kind, ruleId, quantity, soldier, craft)
+        {
+            PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}"),
+        });
     }
 
     private int FreeLaboratories(BaseState owner) =>
@@ -720,6 +736,18 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             : state.Amount;
     private static bool CanAutoSell(RuntimeManufactureRule rule) =>
         rule.SpawnedPersonType.Length == 0 && rule.RandomProducedItems.Count == 0;
+    private static bool TryReassignProjectStaff(
+        int requested, int assigned, int available, long capacity, out int remaining)
+    {
+        var delta = requested - assigned;
+        if (delta > 0 && (delta > available || requested > capacity))
+        {
+            remaining = available;
+            return false;
+        }
+        remaining = checked(available - delta);
+        return true;
+    }
     private static RuleHandle<CraftRuleFamily>? ProducedCraft(RuntimeManufactureRule rule) =>
         rule.ProducedMaterials.FirstOrDefault(material => material.Craft is not null)?.Craft;
     private static bool HoldsResearchItem(RuntimeResearchRule rule) =>
@@ -749,4 +777,6 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         if (rating <= 0.25f) return "STR_GOOD";
         return "STR_EXCELLENT";
     }
+
+    private readonly record struct WeightedSelection<T>(bool HasValue, T Value);
 }
