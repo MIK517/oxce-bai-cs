@@ -332,5 +332,6 @@ public sealed partial class CampaignState
                 owner.Soldiers[index] = soldier with { Personal = personal };
             }
         }
+        RemoveDisabledResearchProjects();
     }
 }

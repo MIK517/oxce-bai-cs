@@ -125,6 +125,27 @@ public sealed class RuntimeRuleLinkerTests
     }
 
     [Fact]
+    public void ResearchProjectionAppliesImplicitItemAndSelfLookupDefaults()
+    {
+        const string yaml = """
+            items: [{type: RESEARCH}]
+            research:
+              - name: RESEARCH
+                needItem: true
+                lookup: RESEARCH
+            """;
+        using var fixture = new TemporaryModFixture(yaml);
+
+        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root, "fixture", ["fixture"]));
+
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var rule = snapshot.Content.RuntimeRules.Research[
+            snapshot.Content.RuntimeRules.Research.GetRequired("RESEARCH")].Value;
+        Assert.Equal(string.Empty, rule.Lookup);
+        Assert.Equal("RESEARCH", rule.NeededItem);
+    }
+
+    [Fact]
     public void ScratchBufferCanBeReusedWithoutPublishingMutableStorage()
     {
         var rules = ContentSnapshotBuilder.Build(CreateFixturePlan()).Content.RuntimeRules;

@@ -8,11 +8,12 @@ ordered free/lookup/zero-cost discoveries, disables/re-enables, score and item r
 plus reference-encoded custom-counter changes are gameplay-owned. Production owns first-unit prepayment, engineer/workshop allocation,
 hourly multi-unit progression, material/craft consumption, item/craft/person outputs,
 transfer delays, autosell, refund-on-cancel, random output bookkeeping and completion or
-shortage pauses. Compatibility-audit corrections preserve active research projects while
-their rule is disabled so a later re-enable restores availability, deduplicate primary
-research side effects across bases, route research rewards through one-hour transfers,
-unload consumed craft, enforce living-space limits for manufactured personnel, assign
-fallback engineers, and apply adjusted sell prices to autosold output.
+shortage pauses. Compatibility-audit corrections defer disabled-project cleanup until all
+same-boundary completions and re-enables have run, then cancel projects that remain disabled;
+a later re-enable restores availability but does not restore the cancelled project. They also
+deduplicate primary research side effects across bases, route research rewards through
+one-hour transfers, unload consumed craft, enforce living-space limits for manufactured
+personnel, assign fallback engineers, and apply adjusted sell prices to autosold output.
 
 The indexed campaign client exposes research with `H` and manufacture with `M`; Enter
 starts the selected row and `X` cancels the first active project. Queries show staff,
@@ -39,10 +40,13 @@ save/reload, resource/fund accounting, cancellation, atomic rejection and preser
 of unknown nested save fields. Coverage includes simultaneous daily completions,
 insufficient funds, zero staff, the legacy `INT_MAX` infinite/autosell migration and
 strict ruleset diagnostics for unresolved or invalid values. Audit coverage also locks
-down disable/re-enable reversibility, cross-base primary-side-effect deduplication,
-fallback allocation, personnel living-space rejection, craft cargo unloading, adjusted
-autosell prices, and complete fixed-plus-random output bookkeeping. Runtime compiler/cache
-revision 14 carries the new dense research and manufacture projections.
+down same-boundary disable/re-enable ordering and later project cancellation, implicit
+research items, protected rewards, repeatable zero-cost chains, workshop and hangar
+admission, autosell eligibility, airborne craft materials, immediate ammo reuse, cross-base
+primary-side-effect deduplication, fallback allocation, personnel living-space rejection,
+craft cargo unloading, adjusted autosell prices, and complete fixed-plus-random output
+bookkeeping. Runtime compiler/cache revision 14 carries the new dense research and
+manufacture projections.
 
 ## Deliberate later boundaries
 

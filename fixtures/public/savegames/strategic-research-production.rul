@@ -6,6 +6,8 @@ items:
   - type: PRODUCT
     costSell: 75
     size: 1
+  - type: IMPLICIT_ITEM
+    size: 1
 facilities:
   - type: STORES
     labs: 10
@@ -52,6 +54,23 @@ research:
     cost: 1
     spawnedItem: PRODUCT
     spawnedItemCount: 0
+  - name: IMPLICIT_ITEM
+    cost: 1
+    needItem: true
+    destroyItem: true
+  - name: PROTECTED_SOURCE
+    cost: 1
+    getOneFreeProtected: {UNLOCK: [PROTECTED_REWARD]}
+  - name: PROTECTED_REWARD
+    cost: 1
+  - name: REPEATABLE_SOURCE
+    cost: 1
+    repeatable: true
+  - name: REPEATABLE_PREREQ
+    cost: 1
+  - name: REPEATABLE_ZERO
+    cost: 0
+    dependencies: [REPEATABLE_PREREQ]
 manufacture:
   - name: PRODUCT
     category: STR_WEAPON
@@ -82,9 +101,19 @@ manufacture:
     producedItems: {PRODUCT: 1}
     randomProducedItems:
       - [1, {MATERIAL: 1}]
+  - name: MAKE_AMMO
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    producedItems: {BULKY: 1}
+  - name: BUILD_SHIP
+    category: STR_CRAFT
+    space: 1
+    time: 1
+    producedItems: {SHIP: 1}
 startingBase:
   facilities: [{type: STORES, x: 0, y: 0}]
-  items: {SPECIMEN: 1}
+  items: {SPECIMEN: 1, IMPLICIT_ITEM: 1}
   scientists: 3
   engineers: 4
 sellPriceCoefficient: [50, 50, 50, 50, 50]

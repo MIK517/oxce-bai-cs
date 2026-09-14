@@ -231,6 +231,28 @@ public sealed class EquipmentProductionRuleCatalogTests
         Assert.False(content.Capabilities.Has(ContentLoadStage.Linked));
     }
 
+    [Fact]
+    public void ReportsConflictingExplicitAndImplicitResearchItems()
+    {
+        const string yaml = """
+            items:
+              - type: RESEARCH
+              - type: OTHER_ITEM
+            research:
+              - name: RESEARCH
+                needItem: true
+                neededItem: OTHER_ITEM
+            """;
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
+        var plan = CreatePlan(fixture.Root);
+        var content = EquipmentProductionRuleCatalog.Load(plan);
+
+        var result = content.ValidateRelationships(ItemRuleCatalog.Load(plan));
+
+        var issue = Assert.Single(result.Issues, issue => issue.Property == "neededItem");
+        Assert.Contains("Conflict between researched item", issue.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("crafts: [{type: CRAFT, weaponTypes: {slot: 1}}]")]
     [InlineData("ufos: [{type: UFO, raceBonus: [RACE]}]")]
