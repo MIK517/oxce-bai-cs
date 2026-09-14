@@ -106,10 +106,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             if (command.AssignedEngineers > owner.Engineers || command.AssignedEngineers > 0 &&
                 command.AssignedEngineers + (long)rule.Space + UsedWorkshopSpace(owner) > AvailableWorkshops(owner))
                 return Blocked("STR_NOT_ENOUGH_WORK_SPACE");
-            if (ProducedCraft(rule) is { } producedCraft &&
-                UsedHangars(owner, _content.RuntimeRules.Crafts[producedCraft].Value.HangarType) >=
-                AvailableHangars(owner, _content.RuntimeRules.Crafts[producedCraft].Value.HangarType))
-                return Blocked("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION");
+            if (ProductionHangarUnavailable(owner, rule) is { } hangarReason) return Blocked(hangarReason);
             if (command.Sell && !CanAutoSell(rule)) return Blocked("Production does not support autosell.");
             if (command.Sell && ProductionSellUnavailable(rule) is { } sellReason) return Blocked(sellReason);
             if (StartProductionUnit(owner, rule, initial: true) is { } startReason) return Blocked(startReason);
@@ -125,10 +122,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         if (!command.Infinite && nextAmount <= Produced(current))
             return Blocked("Production amount cannot be less than completed units.");
         if (nextAmount > current.Amount &&
-            ProducedCraft(currentRule) is { } additionalCraft &&
-            UsedHangars(owner, _content.RuntimeRules.Crafts[additionalCraft].Value.HangarType) >=
-            AvailableHangars(owner, _content.RuntimeRules.Crafts[additionalCraft].Value.HangarType))
-            return Blocked("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION");
+            ProductionHangarUnavailable(owner, currentRule) is { } additionalHangarReason)
+            return Blocked(additionalHangarReason);
         if (!TryReassignProjectStaff(command.AssignedEngineers, current.Assigned, owner.Engineers,
             AvailableWorkshops(owner) - (long)UsedWorkshopSpace(owner, current), out var remainingEngineers))
             return Blocked("STR_NOT_ENOUGH_WORK_SPACE");
@@ -177,15 +172,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     {
         var id = _content.RuntimeRules.Research.GetExternalId(handle);
         var rule = _content.RuntimeRules.Research[handle].Value;
-        if (_researchRuleStatus.GetValueOrDefault(id) == 2) return "Research is permanently disabled.";
-        if (direct && rule.Requirements.Count != 0) return "Research is only available as an indirect unlock.";
-        var explicitlyUnlocked = IsExplicitlyUnlocked(id);
-        if (!explicitlyUnlocked && !_debugMode && rule.Dependencies.Any(required => !_completedResearch.Contains(required)))
-            return "Research dependencies are incomplete.";
-        if (!_debugMode && rule.Requirements.Any(required => !_completedResearch.Contains(required)))
-            return "Research requirements are incomplete.";
-        if (!rule.Repeatable && _completedResearch.Contains(id) && !HasRemainingResearchReward(rule))
-            return "Research is already complete.";
+        var options = (direct ? ResearchEligibilityOptions.Direct : ResearchEligibilityOptions.None) |
+            (_debugMode ? ResearchEligibilityOptions.IgnoreProgressRequirements : ResearchEligibilityOptions.None);
+        if (CoreResearchUnavailable(id, rule, options) is { } coreReason) return coreReason;
         if (owner.Research.Any(project => project.Rule == handle)) return "Research is already active.";
         if (!WeightsFit(rule.Events, static entry => entry.Value))
             return "Strategic event weights exceed the supported range.";
@@ -292,18 +281,22 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         var bonus = SelectResearchReward(rule);
         if (bonus is not null)
         {
-            AddFinishedResearch(owner, bonus, discoveries);
             if (_content.RuntimeRules.Research.TryGet(bonus, out var bonusHandle))
-            {
-                var bonusRule = _content.RuntimeRules.Research[bonusHandle].Value;
-                if (bonusRule.Lookup.Length != 0) AddFinishedResearch(owner, bonusRule.Lookup, discoveries);
-                sideEffects.Add(bonus);
-            }
+                CompleteResearchTopic(owner, bonus, _content.RuntimeRules.Research[bonusHandle].Value,
+                    discoveries, sideEffects);
+            else
+                AddFinishedResearch(owner, bonus, discoveries);
         }
+        CompleteResearchTopic(owner, id, rule, discoveries, sideEffects);
+        return Array.AsReadOnly(discoveries.ToArray());
+    }
+
+    private void CompleteResearchTopic(
+        BaseState owner, string id, RuntimeResearchRule rule, List<string> discoveries, List<string> sideEffects)
+    {
         AddFinishedResearch(owner, id, discoveries);
         if (rule.Lookup.Length != 0) AddFinishedResearch(owner, rule.Lookup, discoveries);
         sideEffects.Add(id);
-        return Array.AsReadOnly(discoveries.ToArray());
     }
 
     private void AddFinishedResearch(BaseState owner, string initial, List<string> discoveries)
@@ -346,13 +339,23 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         }
     }
 
-    private bool ResearchAvailableWithoutBase(string id, RuntimeResearchRule rule)
+    private bool ResearchAvailableWithoutBase(string id, RuntimeResearchRule rule) =>
+        CoreResearchUnavailable(id, rule, ResearchEligibilityOptions.None) is null;
+
+    private string? CoreResearchUnavailable(
+        string id, RuntimeResearchRule rule, ResearchEligibilityOptions options)
     {
-        if (_researchRuleStatus.GetValueOrDefault(id) == 2) return false;
-        var unlocked = IsExplicitlyUnlocked(id);
-        return (unlocked || rule.Dependencies.All(_completedResearch.Contains)) &&
-            rule.Requirements.All(_completedResearch.Contains) &&
-            (!(_completedResearch.Contains(id) && !rule.Repeatable) || HasRemainingResearchReward(rule));
+        if (_researchRuleStatus.GetValueOrDefault(id) == 2) return "Research is permanently disabled.";
+        if (options.HasFlag(ResearchEligibilityOptions.Direct) && rule.Requirements.Count != 0)
+            return "Research is only available as an indirect unlock.";
+        var ignoreProgressRequirements = options.HasFlag(ResearchEligibilityOptions.IgnoreProgressRequirements);
+        if (!IsExplicitlyUnlocked(id) && !ignoreProgressRequirements &&
+            rule.Dependencies.Any(required => !_completedResearch.Contains(required)))
+            return "Research dependencies are incomplete.";
+        if (!ignoreProgressRequirements && rule.Requirements.Any(required => !_completedResearch.Contains(required)))
+            return "Research requirements are incomplete.";
+        return !rule.Repeatable && _completedResearch.Contains(id) && !HasRemainingResearchReward(rule)
+            ? "Research is already complete." : null;
     }
 
     private string? SelectResearchReward(RuntimeResearchRule rule)
@@ -484,43 +487,74 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             var used = UsedQuarters(owner);
             if (initial ? available <= used : available < used) return "STR_NOT_ENOUGH_LIVING_SPACE";
         }
-        foreach (var material in rule.RequiredMaterials)
-        {
-            if (material.Item is { } item && owner.Items.GetValueOrDefault(item) < material.Quantity)
-                return "STR_NOT_ENOUGH_MATERIALS";
-            if (material.Craft is { } craft && owner.Crafts.Count(value => value.Rule == craft &&
-                value.Logistics?.Status != "STR_OUT") < material.Quantity)
-                return "STR_NOT_ENOUGH_MATERIALS";
-            if (material.Craft is { } resolvedCraft && owner.Crafts
-                .Where(value => value.Rule == resolvedCraft && value.Logistics?.Status != "STR_OUT")
-                .Take(material.Quantity)
-                .Any(value => value.Logistics is null))
-                return "Required craft material has unresolved logistics state.";
-        }
-        foreach (var material in rule.RequiredMaterials)
+        if (!TryPlanProductionMaterials(owner, rule, out var materialPlan, out var materialReason))
+            return materialReason;
+        foreach (var material in materialPlan)
         {
             if (material.Item is { } item) ChangeStock(owner.Items, item, -material.Quantity);
-            else if (material.Craft is { } craft)
-                for (var count = 0; count < material.Quantity; count++)
+            else if (material.Craft is { } removed)
+            {
+                foreach (var unloaded in CraftLogistics.UnloadedItems(removed.Logistics!, _content.RuntimeRules))
+                    ChangeStock(owner.Items, _content.RuntimeRules.Items.GetRequired(unloaded.Key), unloaded.Value);
+                owner.Crafts.Remove(removed);
+                foreach (var soldier in owner.Soldiers.Where(s => s.Personal is { } personal &&
+                    personal.CraftType == material.Id && personal.CraftId == removed.Id).ToArray())
                 {
-                    var removed = owner.Crafts.First(value => value.Rule == craft &&
-                        value.Logistics?.Status != "STR_OUT");
-                    foreach (var unloaded in CraftLogistics.UnloadedItems(removed.Logistics!, _content.RuntimeRules))
-                        ChangeStock(owner.Items, _content.RuntimeRules.Items.GetRequired(unloaded.Key), unloaded.Value);
-                    owner.Crafts.Remove(removed);
-                    foreach (var soldier in owner.Soldiers.Where(s => s.Personal is { } personal &&
-                        personal.CraftType == material.Id && personal.CraftId == removed.Id).ToArray())
+                    var index = owner.Soldiers.IndexOf(soldier);
+                    owner.Soldiers[index] = soldier with
                     {
-                        var index = owner.Soldiers.IndexOf(soldier);
-                        owner.Soldiers[index] = soldier with
-                        {
-                            Personal = soldier.Personal! with { CraftType = "", CraftId = 0 },
-                        };
-                    }
+                        Personal = soldier.Personal! with { CraftType = "", CraftId = 0 },
+                    };
                 }
+            }
         }
         PublishAccounting(accounting);
         return null;
+    }
+
+    private static bool TryPlanProductionMaterials(
+        BaseState owner, RuntimeManufactureRule rule,
+        out IReadOnlyList<ProductionMaterialConsumption> plan, out string reason)
+    {
+        var result = new List<ProductionMaterialConsumption>();
+        var availableCrafts = owner.Crafts.Where(craft => craft.Logistics?.Status != "STR_OUT").ToList();
+        foreach (var material in rule.RequiredMaterials)
+        {
+            if (material.Item is { } item)
+            {
+                if (owner.Items.GetValueOrDefault(item) < material.Quantity)
+                {
+                    plan = [];
+                    reason = "STR_NOT_ENOUGH_MATERIALS";
+                    return false;
+                }
+                result.Add(new(material.Id, material.Quantity, item, null));
+                continue;
+            }
+            if (material.Craft is not { } craft) continue;
+            for (var count = 0; count < material.Quantity; count++)
+            {
+                var index = availableCrafts.FindIndex(value => value.Rule == craft);
+                if (index < 0)
+                {
+                    plan = [];
+                    reason = "STR_NOT_ENOUGH_MATERIALS";
+                    return false;
+                }
+                var selected = availableCrafts[index];
+                if (selected.Logistics is null)
+                {
+                    plan = [];
+                    reason = "Required craft material has unresolved logistics state.";
+                    return false;
+                }
+                availableCrafts.RemoveAt(index);
+                result.Add(new(material.Id, 1, null, selected));
+            }
+        }
+        plan = result;
+        reason = string.Empty;
+        return true;
     }
 
     private void RefundProductionUnit(
@@ -722,14 +756,6 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         });
     }
 
-    private int FreeLaboratories(BaseState owner) =>
-        Math.Max(0, owner.Facilities.Where(f => f.BuildTime == 0)
-            .Sum(f => FacilityRule(f).Laboratories) - owner.Research.Sum(project => project.Assigned));
-    private int AvailableWorkshops(BaseState owner) =>
-        owner.Facilities.Where(f => f.BuildTime == 0).Sum(f => FacilityRule(f).Workshops);
-    private int UsedWorkshopSpace(BaseState owner, ProductionState? exclude = null) =>
-        owner.Productions.Where(project => project != exclude && (project.Assigned != 0 || project.Spent != 0))
-            .Sum(project => checked(project.Assigned + _content.RuntimeRules.Manufacture[project.Rule].Value.Space));
     private int Produced(ProductionState state) =>
         _content.RuntimeRules.Manufacture[state.Rule].Value.Time > 0
             ? state.Spent / _content.RuntimeRules.Manufacture[state.Rule].Value.Time
@@ -750,6 +776,13 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     }
     private static RuleHandle<CraftRuleFamily>? ProducedCraft(RuntimeManufactureRule rule) =>
         rule.ProducedMaterials.FirstOrDefault(material => material.Craft is not null)?.Craft;
+    private string? ProductionHangarUnavailable(BaseState owner, RuntimeManufactureRule rule)
+    {
+        if (ProducedCraft(rule) is not { } craft) return null;
+        var hangarType = _content.RuntimeRules.Crafts[craft].Value.HangarType;
+        return UsedHangars(owner, hangarType) >= AvailableHangars(owner, hangarType)
+            ? "STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION" : null;
+    }
     private static bool HoldsResearchItem(RuntimeResearchRule rule) =>
         rule.NeedItem && (rule.DestroyItem || rule.ReturnsItem);
     private void ReturnHeldResearchItem(BaseState owner, RuntimeResearchRule rule)
@@ -764,6 +797,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         ReturnHeldResearchItem(owner, _content.RuntimeRules.Research[project.Rule].Value);
         owner.Research.Remove(project);
     }
+
+    [Flags]
+    private enum ResearchEligibilityOptions { None = 0, Direct = 1, IgnoreProgressRequirements = 2 }
+
+    private readonly record struct ProductionMaterialConsumption(
+        string Id, int Quantity, RuleHandle<ItemRuleFamily>? Item, CraftState? Craft);
 
     private string ResearchProgress(ResearchProjectState project)
     {

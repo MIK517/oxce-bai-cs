@@ -571,12 +571,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 production.RandomProductionInfo.Any(pair => pair.Key.Length == 0 || pair.Value < 0))
                 throw new InvalidDataException("Production values cannot be negative.");
         }
-        if (state.Research.Sum(project => (long)project.Assigned) >
-            state.Facilities.Where(f => f.BuildTime == 0).Sum(f => (long)rules.Facilities[f.Rule].Value.Laboratories))
+        if (UsedLaboratories(state) > AvailableLaboratories(state, rules))
             throw new InvalidDataException("Assigned scientists exceed laboratory capacity.");
-        if (state.Productions.Where(project => project.Assigned != 0 || project.Spent != 0).Sum(project =>
-            (long)project.Assigned + rules.Manufacture[project.Rule].Value.Space) >
-            state.Facilities.Where(f => f.BuildTime == 0).Sum(f => (long)rules.Facilities[f.Rule].Value.Workshops))
+        if (UsedWorkshopSpace(state, rules) > AvailableWorkshops(state, rules))
             throw new InvalidDataException("Assigned production exceeds workshop capacity.");
         if (!double.IsFinite(state.Longitude) || state.Longitude < 0 || state.Longitude >= 2 * Math.PI)
             throw new InvalidDataException("Base longitude must be in [0, 2π).");
