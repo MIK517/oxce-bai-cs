@@ -20,11 +20,7 @@ public sealed class ManagedExtensionHostTests
         var diagnostics = new DiagnosticCollector();
         using var host = ManagedExtensionHost.LoadFromDirectory(
             installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
-        var campaign = CampaignFactory.Create(
-            CampaignFoundationTests.LoadFixture(),
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(CampaignFoundationTests.LoadFixture());
 
         using var session = host.AttachCampaign(
             campaign, campaign, TestContext.Current.CancellationToken);
@@ -51,11 +47,7 @@ public sealed class ManagedExtensionHostTests
         var diagnostics = new DiagnosticCollector();
         using var host = ManagedExtensionHost.LoadFromDirectory(
             installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
-        var campaign = CampaignFactory.Create(
-            CampaignFoundationTests.LoadFixture(),
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(CampaignFoundationTests.LoadFixture());
         using var session = host.AttachCampaign(
             campaign, campaign, TestContext.Current.CancellationToken);
 

@@ -54,5 +54,4 @@ public sealed class RulesetCompositionFixtureTests
         Assert.True(mapping.TryGet(key, out var node));
         return YamlValueReader.ReadInt32(node!);
     }
-
 }

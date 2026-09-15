@@ -1,9 +1,9 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
 using Oxce.Mods.Bootstrap;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Resources;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -154,16 +154,7 @@ public sealed class CompiledResourceDependencyTests
         {
             _sound = sound;
             _archive = archive;
-            var repository = new DirectoryInfo(AppContext.BaseDirectory);
-            while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "Oxce.slnx")))
-                repository = repository.Parent;
-            var source = Path.Combine(repository!.FullName, "fixtures", "public", "mods", "runtime-rule-linking");
-            foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
-            {
-                var target = Path.Combine(_root, "standard", Path.GetRelativePath(source, file));
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.Copy(file, target);
-            }
+            TestFixtures.CopyDirectory(TestFixtures.PublicModsPath("runtime-rule-linking"), Path.Combine(_root, "standard"));
             Directory.CreateDirectory(Path.Combine(_root, "user", "mods"));
             var addon = Path.Combine(_root, "standard", "runtime-addon");
             var rule = Directory.EnumerateFiles(addon, "*.rul", SearchOption.AllDirectories).Single();
@@ -225,8 +216,7 @@ public sealed class CompiledResourceDependencyTests
 
         public InstallationContentLoadResult Load(bool enabled = true, ResourceResolutionOptions? resolution = null) =>
             InstallationContentLoader.Load(
-                InstallationLoadRequest.ForMasterAndAddOn(_root, "runtime-master", "runtime-addon",
-                    new ModEngineIdentity("Extended", "8.6.1.0")),
+                InstallationLoadRequest.ForMasterAndAddOn(_root, "runtime-master", "runtime-addon", TestFixtures.Engine),
                 new InstallationContentLoadOptions
                 {
                     Cache = new CompiledContentCacheOptions { Enabled = enabled },

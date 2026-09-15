@@ -6,6 +6,7 @@ using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -17,10 +18,7 @@ public sealed class TypedRuleReplayFixtureTests
     [Fact]
     public void TypedReplayMatchesPinnedReferenceFixture()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(
-            Path.Combine(root, "fixtures", "manifests", "typed-rule-replay.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("typed-rule-replay");
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "typed-rule-replay");
         var expectedPath = Path.GetFullPath(manifest.Expected, root);
         var diagnostics = new DiagnosticCollector();
@@ -62,7 +60,6 @@ public sealed class TypedRuleReplayFixtureTests
         Assert.Equal("script", deferred.Key);
         Assert.Equal("return 1;", YamlValueReader.ReadString(deferred.Node));
     }
-
 
     private sealed class ProbeLoader : IdOnlyTypedRuleFamilyLoader<ProbeBuilder, ProbeRule>
     {

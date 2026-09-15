@@ -71,8 +71,8 @@ public sealed class VirtualFileCatalogTests
             ("TEMP/KELVIN.DAT", "kelvin-sign"),
             ("temp/kelvin.dat", "ascii-k"));
 
-        var latin = layer.TryGet("über/café.dat", out var foundLatin) ? foundLatin! : null;
-        Assert.NotNull(latin);
+        var latin = AssertEntry(layer, "über/café.dat");
+        Assert.Equal("latin", latin.SourcePath);
         Assert.Equal("ÜBER/CAFÉ.DAT", latin.OriginalPath);
         Assert.Equal("über/café.dat", latin.CanonicalPath);
         Assert.Equal("composed", AssertEntry(layer, "norm/café.dat").SourcePath);

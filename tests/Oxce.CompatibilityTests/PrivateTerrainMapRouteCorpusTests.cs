@@ -178,5 +178,4 @@ public sealed class PrivateTerrainMapRouteCorpusTests
 
     private static string RelativePath(string root, string path) =>
         Path.GetRelativePath(root, path).Replace('\\', '/');
-
 }

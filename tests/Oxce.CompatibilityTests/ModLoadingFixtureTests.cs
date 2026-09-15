@@ -80,5 +80,4 @@ public sealed class ModLoadingFixtureTests
             diagnostics.Snapshot(),
             item => item.Severity is DiagnosticSeverity.Critical);
     }
-
 }

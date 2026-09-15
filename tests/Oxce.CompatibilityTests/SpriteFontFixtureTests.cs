@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Rendering;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,10 +12,7 @@ public sealed class SpriteFontFixtureTests
     [Fact]
     public void GlyphBoundsFallbackAndWhitespaceMetricsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "sprite-font.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("sprite-font");
         var pixels = Convert.FromHexString(
             File.ReadAllText(Path.GetFullPath(manifest.Inputs[0].Path, root)).Trim());
         var surface = new IndexedSurface(8, 4);
@@ -37,9 +35,8 @@ public sealed class SpriteFontFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static int[] ToArray(IndexedTextSize size) => [size.Width, size.Height];
-
 }

@@ -82,5 +82,4 @@ public sealed class EquipmentProductionRulesFixtureTests
         Assert.True(actual.ValidateRelationships(items, diagnostics).IsValid);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
-
 }

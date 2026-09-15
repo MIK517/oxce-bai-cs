@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Globalization;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Binary;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,10 +12,7 @@ public sealed class BinaryFixtureTests
     [Fact]
     public void EndianPrimitivesMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "binary-endian-primitives.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("binary-endian-primitives");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var hex = string.Concat(File.ReadAllText(fixturePath).Where(value => !char.IsWhiteSpace(value)));
         var reader = new BinaryDataReader(Convert.FromHexString(hex));
@@ -42,7 +40,6 @@ public sealed class BinaryFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
-
 }

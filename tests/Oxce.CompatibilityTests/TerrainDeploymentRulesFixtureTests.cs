@@ -51,5 +51,4 @@ public sealed class TerrainDeploymentRulesFixtureTests
             new[] { deployment.Depth[0], deployment.Depth[1], deployment.DeploymentData.Count });
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
-
 }

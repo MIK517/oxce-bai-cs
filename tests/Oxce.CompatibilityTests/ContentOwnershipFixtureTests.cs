@@ -4,6 +4,7 @@ using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Scripting.Runtime;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -13,10 +14,7 @@ public sealed class ContentOwnershipFixtureTests
     [Fact]
     public void MultiModFileScopesMatchPinnedBehavior()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(
-            Path.Combine(root, "fixtures", "manifests", "content-ownership.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("content-ownership");
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "content-ownership");
         using var expectedDocument = JsonDocument.Parse(File.ReadAllText(
             Path.GetFullPath(manifest.Expected, root)));
@@ -60,5 +58,4 @@ public sealed class ContentOwnershipFixtureTests
             expected.GetProperty("sharedItemDeferredProperties").GetInt32(),
             shared!.CompatibilityData.DeferredProperties.Count);
     }
-
 }

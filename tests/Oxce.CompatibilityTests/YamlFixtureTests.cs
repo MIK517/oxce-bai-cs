@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Globalization;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Yaml;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -19,10 +20,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void YamlSemanticsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-reference-semantics.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("yaml-reference-semantics");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var documents = YamlCompatibilityReader.ParseFile(fixturePath);
 
@@ -69,10 +67,7 @@ public sealed class YamlFixtureTests
     [Fact]
     public void ScalarConversionsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-scalar-conversions.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("yaml-scalar-conversions");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var documents = YamlCompatibilityReader.ParseFile(fixturePath);
         var document = Assert.IsType<YamlMappingNode>(documents.Documents[0].Root);
@@ -104,16 +99,13 @@ public sealed class YamlFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     [Fact]
     public void ContainerConversionsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-container-conversions.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("yaml-container-conversions");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var document = Assert.IsType<YamlMappingNode>(
             YamlCompatibilityReader.ParseFile(fixturePath).Documents[0].Root);
@@ -168,32 +160,26 @@ public sealed class YamlFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     [Fact]
     public void RepresentativeStructuresNormalizeLikeCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-representative-normalization.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("yaml-representative-normalization");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var documents = YamlCompatibilityReader.ParseFile(fixturePath);
 
         var actual = YamlSemanticNormalizer.NormalizeToUtf8Json(documents);
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     [Fact]
     public void SpecialScalarConversionsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "yaml-special-scalar-conversions.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("yaml-special-scalar-conversions");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var document = Assert.IsType<YamlMappingNode>(
             YamlCompatibilityReader.ParseFile(fixturePath).Documents[0].Root);
@@ -215,7 +201,7 @@ public sealed class YamlFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static object?[] ProjectBase64(YamlMappingNode testCase)
@@ -310,7 +296,6 @@ public sealed class YamlFixtureTests
         Assert.True(mapping.TryGet(key, out var value));
         return Assert.IsAssignableFrom<YamlNode>(value);
     }
-
 
     private enum ProbeEnum
     {

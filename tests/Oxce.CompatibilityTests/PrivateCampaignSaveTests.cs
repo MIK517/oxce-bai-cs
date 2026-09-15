@@ -100,5 +100,4 @@ public sealed class PrivateCampaignSaveTests
             string.Join(Environment.NewLine, errors.Take(25).Select(static item => $"{item.Code}: {item.Message}")));
         return snapshot.Content;
     }
-
 }

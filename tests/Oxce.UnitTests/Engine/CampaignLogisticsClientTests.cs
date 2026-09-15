@@ -3,6 +3,7 @@ using Oxce.Engine;
 using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Oxce.UnitTests.Gameplay;
 using Xunit;
 
@@ -45,14 +46,12 @@ public sealed class CampaignLogisticsClientTests
     public void KeyboardPurchaseConfirmsOnceAndCanSaveLoadDuringTransit()
     {
         var content = CampaignLogisticsTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "UI", "logistics", ["logistics"],
-            CampaignDifficulty.Beginner), new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UI");
         string? saved = null;
         var client = new CampaignLogisticsClient(new(campaign, campaign), save: () => saved = OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
             load: () =>
             {
-                campaign = OxceSaveAdapter.Load(saved!, "ui.sav", content, new SplitMix64RandomSource(0),
-                    new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" })).Campaign;
+                campaign = TestFixtures.LoadLogisticsSave(saved!, content, seed: 0, name: "ui.sav").Campaign;
                 return new(campaign, campaign);
             });
         Key('p');
@@ -96,8 +95,7 @@ public sealed class CampaignLogisticsClientTests
     public void OpaqueCraftInventoryIsReportedInsteadOfAssumedEmpty()
     {
         var content = CampaignLogisticsTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "UI", "logistics", ["logistics"],
-            CampaignDifficulty.Beginner), new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UI");
         var snapshot = campaign.Capture();
         campaign = CampaignState.Restore(snapshot with { Bases = [snapshot.Bases[0] with { Name = "Alpha", Crafts = [new("SHIP", 1)] }] },
             content, new SplitMix64RandomSource(0));
@@ -113,8 +111,7 @@ public sealed class CampaignLogisticsClientTests
     public void StoresQueriesAndRedrawsDoNotConsumeRandomOrMutateOrders()
     {
         var content = CampaignLogisticsTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "UI", "logistics", ["logistics"],
-            CampaignDifficulty.Beginner), new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UI");
         var before = campaign.Capture();
         var screen = new CampaignLogisticsScreen(campaign, campaign, 0);
         Assert.Equal(2, screen.Stores.Items.Single(i => i.RuleId == "SUPPLY").Stored);
@@ -128,8 +125,7 @@ public sealed class CampaignLogisticsClientTests
     public void ChangingBaseWhileChoosingTransferDestinationCancelsTheTransferScreen()
     {
         var content = CampaignLogisticsTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "UI", "logistics", ["logistics"],
-            CampaignDifficulty.Beginner), new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UI");
         var client = new CampaignLogisticsClient(new(campaign, campaign));
 
         Key('t');

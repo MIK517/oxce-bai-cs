@@ -124,7 +124,11 @@ directories, archive names, save directories, and save filenames.
 ## Test and fixture runners
 
 Unit and compatibility tests use centrally pinned xUnit v3 packages on Microsoft
-Testing Platform v2. Coverlet provides cross-platform coverage. The separate
+Testing Platform v2. Coverlet provides cross-platform coverage. Both test projects link
+`tests/Shared/TestFixtures.cs` for verified manifest loading, public-mod load plans,
+deterministic logistics campaigns (fixed ID, clock, and seed), save options, and
+non-empty oracle row access; fixture comparisons assert on normalized canonical JSON
+so a failure prints the differing document. The separate
 `Oxce.FixtureTool` command-line application validates manifests and supports hashing,
 canonical JSON normalization, YAML semantic-tree normalization, and semantic comparison
 outside the test runner. `audit-typed-install` accepts an isolated mod root, an owned

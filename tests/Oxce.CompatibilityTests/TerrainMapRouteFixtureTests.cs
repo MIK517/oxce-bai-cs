@@ -3,6 +3,7 @@ using Oxce.Core.Geometry;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Binary;
 using Oxce.Formats.Terrain;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -12,10 +13,7 @@ public sealed class TerrainMapRouteFixtureTests
     [Fact]
     public void MapAndRouteSemanticsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "terrain-map-route.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("terrain-map-route");
         var map = XcomMapCodec.Decode(ReadHex(root, manifest.Inputs[0].Path));
         var route = RmpRouteCodec.Decode(
             ReadHex(root, manifest.Inputs[1].Path),
@@ -62,12 +60,9 @@ public sealed class TerrainMapRouteFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(
-            CanonicalJson.SemanticallyEquals(expected, actual),
-            $"Expected: {System.Text.Encoding.UTF8.GetString(expected)}{Environment.NewLine}Actual: {System.Text.Encoding.UTF8.GetString(actual)}");
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static BinaryDataReader ReadHex(string root, string relativePath) =>
         new(Convert.FromHexString(File.ReadAllText(Path.GetFullPath(relativePath, root)).Trim()));
-
 }

@@ -2,10 +2,9 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Presentation;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -76,7 +75,7 @@ public sealed class PresentationRuleCatalogTests
         using var fixture = new TemporaryModFixture(yaml);
         var diagnostics = new DiagnosticCollector();
 
-        var content = PresentationRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var content = PresentationRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
         Assert.Equal("InterfaceFonts.dat", content.Special.FontName);
 
         var interfaceRule = Assert.Single(content.Interfaces.Rules).Value;
@@ -134,7 +133,7 @@ public sealed class PresentationRuleCatalogTests
         using var fixture = new TemporaryModFixture(yaml);
         fixture.WriteResource("Resources/images/frame.png", "image");
         fixture.WriteResource("SOUND/SAMPLE.CAT", "cat");
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         var content = PresentationRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
 
@@ -153,7 +152,7 @@ public sealed class PresentationRuleCatalogTests
         using var fixture = new TemporaryModFixture("extraStrings: {type: en-US}");
 
         var exception = Assert.Throws<YamlFormatException>(
-            () => PresentationRuleCatalog.Load(CreatePlan(fixture.Root)));
+            () => PresentationRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
         Assert.Contains("extraStrings", exception.Message, StringComparison.Ordinal);
     }
 
@@ -163,21 +162,9 @@ public sealed class PresentationRuleCatalogTests
         using var fixture = new TemporaryModFixture("soundDefs: [{type: REGULAR, file: regular.cat}]");
         fixture.SetResourceConfig("preload.rul", "soundDefs: [{type: PRELOAD, file: preload.cat}]");
 
-        var content = PresentationRuleCatalog.Load(CreatePlan(fixture.Root));
+        var content = PresentationRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.Equal(["PRELOAD"], content.ResourceConfigSoundDefinitions.Rules.Select(rule => rule.Id));
         Assert.Equal(["PRELOAD", "REGULAR"], content.SoundDefinitions.Rules.Select(rule => rule.Id));
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        return ModLoadPlanner.Create(
-            catalog,
-            [new ModActivation("fixture", true)],
-            "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
 }

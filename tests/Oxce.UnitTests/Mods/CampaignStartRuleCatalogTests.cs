@@ -2,10 +2,9 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.CampaignStart;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -60,7 +59,7 @@ public sealed class CampaignStartRuleCatalogTests
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
-        var content = CampaignStartRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var content = CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         var country = Assert.Single(content.Countries.Rules).Value;
         Assert.Equal(100, country.FundingBase);
@@ -123,7 +122,7 @@ public sealed class CampaignStartRuleCatalogTests
             """;
         using var fixture = new TemporaryModFixture(("20-base.rul", baseRules), ("10-patch.rul", patchRules));
 
-        var settings = CampaignStartRuleCatalog.Load(CreatePlan(fixture.Root)).Settings;
+        var settings = CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Settings;
 
         var defaultBase = settings.GetStartingBase(StartingBaseVariant.Default)!;
         Assert.Equal("B", YamlValueReader.ReadString(((YamlSequenceNode)defaultBase.Entries[0].Value).Items[0]));
@@ -153,7 +152,7 @@ public sealed class CampaignStartRuleCatalogTests
                 mapName: MAP_SMALL
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        var content = CampaignStartRuleCatalog.Load(CreatePlan(fixture.Root));
+        var content = CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root));
         var diagnostics = new DiagnosticCollector();
 
         var result = content.ValidateInternalRelationships(diagnostics);
@@ -164,13 +163,4 @@ public sealed class CampaignStartRuleCatalogTests
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.InvalidRuleRelationship);
         Assert.False(content.Capabilities.Has(ContentLoadStage.Linked));
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        return ModLoadPlanner.Create(catalog, [new ModActivation("fixture", true)], "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
 }

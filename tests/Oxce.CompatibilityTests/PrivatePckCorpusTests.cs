@@ -52,5 +52,4 @@ public sealed class PrivatePckCorpusTests
             BinaryDataReader.FromFile(Path.Combine(directory, name + ".TAB")),
             width,
             height);
-
 }

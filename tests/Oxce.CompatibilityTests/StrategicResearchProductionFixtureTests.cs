@@ -4,6 +4,7 @@ using Oxce.Engine;
 using Oxce.Engine.Input;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -768,16 +769,14 @@ public sealed class StrategicResearchProductionFixtureTests
 
     private static CampaignState NewCampaign(Oxce.Mods.Rulesets.Content.RuntimeContent content, ulong seed)
     {
-        var campaign = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(seed), SystemCampaignClock.Instance);
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Economy", seed: seed);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
         return campaign;
     }
 
     private static LoadedOxceCampaign LoadSave(string text, string name, Oxce.Mods.Rulesets.Content.RuntimeContent content) =>
         OxceSaveAdapter.Load(text, name, content, new SplitMix64RandomSource(0),
-            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+            TestFixtures.LogisticsSaveOptions());
 
     private static Dictionary<string, int> NoRandomOutput() => new(StringComparer.Ordinal);
 

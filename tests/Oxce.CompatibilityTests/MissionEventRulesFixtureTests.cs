@@ -37,5 +37,4 @@ public sealed class MissionEventRulesFixtureTests
         Assert.Equal(articleExpected[3].GetString(), article.Pages[0].Title); Assert.Equal(articleExpected[4].GetString(), article.Pages[0].Text); Assert.Equal(articleExpected[5].GetString(), article.Pages[1].Text);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
-
 }

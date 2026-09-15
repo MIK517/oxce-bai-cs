@@ -3,12 +3,16 @@ using Oxce.FixtureSupport;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Events;
 using Oxce.Scripting.Runtime;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
 
 public sealed class ScriptEventFixtureTests
 {
+    // The probe loads every case against this current script with result initialized to 1.
+    private const string CurrentSource = "mul result 2; return result;";
+
     [Fact]
     public void ManagedEventCompositionMatchesCapturedReferenceOutcomes()
     {
@@ -27,32 +31,60 @@ public sealed class ScriptEventFixtureTests
             Event(ScriptEventMutationKind.New, "late", 100, "add result 10; return result;"),
             Event(ScriptEventMutationKind.Update, "early", -100, "add result 2; return result;"),
         ]);
-        var execution = ScriptEventRunner.Execute(
-            ordered.Plan!,
-            Program("mul result 2; return result;"),
-            new Dictionary<string, int> { ["result"] = 1 });
-        Assert.Equal(Value(cases, "ordered-update"), execution.Outputs["result"]);
+        AssertExecution(cases, "ordered-update", ordered);
         var frame = new ScriptExecutionFrame();
         var directInitial = new[] { ScriptRuntimeValue.FromScalar(1) };
         var directOutput = new ScriptRuntimeValue[1];
         var direct = ScriptEventRunner.Execute(
             ordered.Plan!,
-            Program("mul result 2; return result;"),
+            Program(CurrentSource),
             directInitial,
             directOutput,
             frame);
         Assert.True(direct.Succeeded);
         Assert.Equal(Value(cases, "ordered-update"), directOutput[0].Scalar);
 
+        var unknownUpdateDelete = ScriptEventComposer.Compose(
+        [
+            Event(ScriptEventMutationKind.Update, "missing", 100, "add result 100; return result;"),
+            Delete("alsoMissing"),
+        ]);
+        AssertExecution(cases, "unknown-update-delete", unknownUpdateDelete);
+
         var unknownOverride = ScriptEventComposer.Compose(
             [Event(ScriptEventMutationKind.Override, "missing", 100, "return result;")]);
         Assert.Equal(Accepted(cases, "unknown-override"), unknownOverride.Accepted);
 
-        var zeroOffset = ScriptEventComposer.Compose(
-            [Event(ScriptEventMutationKind.New, "zero", 0, "add result 1000; return result;")]);
-        Assert.Equal(Accepted(cases, "ignore-and-zero-offset"), zeroOffset.Accepted);
-        Assert.False(zeroOffset.Succeeded);
+        var deleteExisting = ScriptEventComposer.Compose(
+        [
+            Event(ScriptEventMutationKind.New, "removed", -100, "add result 100; return result;"),
+            Delete("removed"),
+        ]);
+        AssertExecution(cases, "delete-existing", deleteExisting);
+
+        var ignoreAndZeroOffset = ScriptEventComposer.Compose(
+        [
+            Event(ScriptEventMutationKind.Ignore, "ignored", -100, "add result 100; return result;"),
+            Event(ScriptEventMutationKind.New, "zero", 0, "add result 1000; return result;"),
+        ]);
+        AssertExecution(cases, "ignore-and-zero-offset", ignoreAndZeroOffset);
+        // The reference logs the invalid offset and drops the event without rejecting the file.
+        Assert.False(ignoreAndZeroOffset.Succeeded);
     }
+
+    private static void AssertExecution(JsonElement[] cases, string name, ScriptEventCompositionResult composed)
+    {
+        Assert.Equal(Accepted(cases, name), composed.Accepted);
+        var execution = ScriptEventRunner.Execute(
+            composed.Plan!,
+            Program(CurrentSource),
+            new Dictionary<string, int> { ["result"] = 1 });
+        Assert.Equal(ScriptExecutionStatus.Completed, execution.Status);
+        Assert.Equal(Value(cases, name), execution.Outputs["result"]);
+    }
+
+    private static ScriptEventMutation Delete(string name) =>
+        new(ScriptEventMutationKind.Delete, name, 0, null, "probe", 1);
 
     private static ScriptEventMutation Event(
         ScriptEventMutationKind kind,
@@ -60,14 +92,16 @@ public sealed class ScriptEventFixtureTests
         int offset,
         string source) => new(kind, name, offset, Program(source), "probe", 1);
 
-    private static ScriptProgram Program(string source) =>
-        ScriptCompiler.Compile(source, new ScriptParserDefinition("Probe", ["result"])).Program!;
+    private static ScriptProgram Program(string source)
+    {
+        var compiled = ScriptCompiler.Compile(source, new ScriptParserDefinition("Probe", ["result"]));
+        Assert.True(compiled.Succeeded, source);
+        return compiled.Program!;
+    }
 
     private static JsonElement[] ReadCases()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(Path.Combine(root, "fixtures", "manifests", "script-events.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("script-events");
         using var document = JsonDocument.Parse(File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root)));
         return document.RootElement.GetProperty("cases").EnumerateArray().Select(static item => item.Clone()).ToArray();
     }
@@ -85,5 +119,4 @@ public sealed class ScriptEventFixtureTests
     private static int Value(JsonElement[] cases, string name) =>
         Assert.Single(cases, item => item.GetProperty("name").GetString() == name)
             .GetProperty("result").GetInt32();
-
 }

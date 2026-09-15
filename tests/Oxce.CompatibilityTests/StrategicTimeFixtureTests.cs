@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Oxce.Gameplay.Campaigns;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -9,15 +9,11 @@ public sealed class StrategicTimeFixtureTests
     [Fact]
     public void DispatcherMatchesExtractedReferenceLoopIncludingPauseFallthrough()
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Oxce.slnx"))) root = root.Parent;
-        Assert.NotNull(root);
-        using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(root.FullName,
-            "fixtures", "expected", "savegames", "strategic-time.expected.json")));
+        using var expected = TestFixtures.ReadExpected("savegames", "strategic-time.expected.json");
         CampaignTime[] starts = [new(1, 1, 1, 1999, 0, 0, 0), new(1, 1, 1, 1999, 0, 9, 55),
             new(1, 1, 1, 1999, 0, 29, 55), new(1, 1, 1, 1999, 0, 59, 55),
             new(1, 1, 1, 1999, 23, 59, 55), new(1, 31, 1, 1999, 23, 59, 55)];
-        foreach (var scenario in expected.RootElement.GetProperty("cases").EnumerateArray())
+        foreach (var scenario in TestFixtures.Rows(expected.RootElement, "cases"))
         {
             var effects = new Effects(scenario.GetProperty("pauseAt").GetInt32());
             var result = CampaignTimeDispatcher.Advance(starts[scenario.GetProperty("trigger").GetInt32()], 2, effects);

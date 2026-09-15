@@ -5,6 +5,7 @@ using Oxce.Mods.Loading;
 using Oxce.Mods.Resources;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -14,10 +15,7 @@ public sealed class ResourceResolutionFixtureTests
     [Fact]
     public void MultiModResourcesResolveToPinnedDescriptorsAndOffsets()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(
-            Path.Combine(root, "fixtures", "manifests", "resource-resolution.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("resource-resolution");
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "resource-resolution");
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
@@ -57,5 +55,4 @@ public sealed class ResourceResolutionFixtureTests
             item => item.Severity >= Oxce.Core.Diagnostics.DiagnosticSeverity.Error);
         Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
-
 }

@@ -57,5 +57,4 @@ public sealed class PrivateCatSoundCorpusTests
 
         return entry.Length - 1 - entry[0];
     }
-
 }

@@ -2,11 +2,10 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.EquipmentProduction;
 using Oxce.Mods.Rulesets.Items;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -95,7 +94,7 @@ public sealed class EquipmentProductionRuleCatalogTests
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
-        var content = EquipmentProductionRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var content = EquipmentProductionRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         var category = Assert.Single(content.ItemCategories.Rules).Value;
         Assert.Equal(200, category.ListOrder);
@@ -169,7 +168,7 @@ public sealed class EquipmentProductionRuleCatalogTests
             """;
         using var fixture = new TemporaryModFixture(("20-base.rul", first), ("10-patch.rul", second));
 
-        var manufacture = Assert.Single(EquipmentProductionRuleCatalog.Load(CreatePlan(fixture.Root)).Manufacture.Rules).Value;
+        var manufacture = Assert.Single(EquipmentProductionRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Manufacture.Rules).Value;
 
         Assert.Equal(1, manufacture.RequiredItems["A"]);
         Assert.Equal(2, manufacture.RequiredItems["B"]);
@@ -212,7 +211,7 @@ public sealed class EquipmentProductionRuleCatalogTests
                 startFrom: MISSING_MANUFACTURE
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         var content = EquipmentProductionRuleCatalog.Load(plan);
         var items = ItemRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
@@ -244,7 +243,7 @@ public sealed class EquipmentProductionRuleCatalogTests
                 neededItem: OTHER_ITEM
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         var content = EquipmentProductionRuleCatalog.Load(plan);
 
         var result = content.ValidateRelationships(ItemRuleCatalog.Load(plan));
@@ -262,15 +261,6 @@ public sealed class EquipmentProductionRuleCatalogTests
     {
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
 
-        Assert.Throws<YamlFormatException>(() => EquipmentProductionRuleCatalog.Load(CreatePlan(fixture.Root)));
+        Assert.Throws<YamlFormatException>(() => EquipmentProductionRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        return ModLoadPlanner.Create(catalog, [new ModActivation("fixture", true)], "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
 }

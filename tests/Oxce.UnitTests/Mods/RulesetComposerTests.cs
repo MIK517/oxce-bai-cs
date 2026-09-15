@@ -2,9 +2,8 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -123,13 +122,7 @@ public sealed class RulesetComposerTests
     public void DefaultCompositionUsesTheCompleteNamedSectionRegistry()
     {
         using var fixture = new TemporaryModFixture("items: [{type: ITEM_A}]\nmusics: [{type: MUSIC_A}]");
-        var discovery = ModDiscovery.ScanDirectory(fixture.Root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        var plan = ModLoadPlanner.Create(
-            catalog,
-            [new ModActivation("fixture", true)],
-            "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
+        var plan = TestFixtures.CreatePlan(fixture.Root);
 
         var rules = RulesetComposer.Compose(plan);
 
@@ -162,14 +155,7 @@ public sealed class RulesetComposerTests
         RulesetCompositionOptions? options = null)
     {
         using var fixture = new TemporaryModFixture(yaml);
-        var discovery = ModDiscovery.ScanDirectory(fixture.Root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        var plan = ModLoadPlanner.Create(
-            catalog,
-            [new ModActivation("fixture", true)],
-            "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         return RulesetComposer.Compose(plan, [Items], diagnostics, options);
     }
-
 }
