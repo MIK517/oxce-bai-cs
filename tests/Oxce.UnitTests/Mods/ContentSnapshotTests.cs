@@ -3,12 +3,12 @@ using System.Runtime.CompilerServices;
 using Oxce.Core.Diagnostics;
 using Oxce.FixtureSupport;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Scripting.Diagnostics;
 using Oxce.Scripting.Runtime;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -20,7 +20,7 @@ public sealed class ContentSnapshotTests
     {
         using var fixture = new TemporaryModFixture("{}");
 
-        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), Diagnostics(snapshot));
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
@@ -61,7 +61,7 @@ public sealed class ContentSnapshotTests
             """;
         using var fixture = new TemporaryModFixture(rules);
 
-        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled), Diagnostics(snapshot));
         Assert.Collection(snapshot.Tags.Tags, static _ => { }, static _ => { });
@@ -95,7 +95,7 @@ public sealed class ContentSnapshotTests
         using var fixture = new TemporaryModFixture(rules);
 
         var snapshot = ContentSnapshotBuilder.Build(
-            CreatePlan(fixture.Root),
+            TestFixtures.CreatePlan(fixture.Root),
             options: new ContentSnapshotOptions { MaximumDiagnostics = 1 });
 
         Assert.False(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled));
@@ -109,7 +109,7 @@ public sealed class ContentSnapshotTests
     {
         using var fixture = new TemporaryModFixture("extended: {tagsFile: Ruleset/missing.rul}");
 
-        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.False(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled));
         Assert.Contains(snapshot.Diagnostics, diagnostic =>
@@ -120,14 +120,10 @@ public sealed class ContentSnapshotTests
     [Fact]
     public void MultiModScopesPreserveFileVisibilityAndAuditOwnershipIsExplicit()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var fixture = Path.Combine(root, "fixtures", "public", "mods", "content-ownership");
-        var discovery = ModDiscovery.ScanDirectory(fixture);
-        var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
-            [new ModActivation("ownership-master", true), new ModActivation("ownership-addon", true)],
+        var plan = TestFixtures.CreatePlan(
+            TestFixtures.PublicModsPath("content-ownership"),
             "ownership-master",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
+            ["ownership-master", "ownership-addon"]);
 
         var runtimeOnly = ContentSnapshotBuilder.Build(plan);
 
@@ -177,7 +173,7 @@ public sealed class ContentSnapshotTests
                   LATE: int
             """);
 
-        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root));
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.Equal(2, snapshot.Content.ParsedFileCount);
         Assert.Equal(2, snapshot.SourceScopeCount);
@@ -191,7 +187,7 @@ public sealed class ContentSnapshotTests
     public void ReleasedAuditGraphsAreNotReachableFromRuntimeContent()
     {
         using var fixture = new TemporaryModFixture("items: [{type: ITEM, customPayload: {value: 1}}]");
-        var (runtime, compatibility, documents, composed) = BuildRuntimeAndReleaseAudit(CreatePlan(fixture.Root));
+        var (runtime, compatibility, documents, composed) = BuildRuntimeAndReleaseAudit(TestFixtures.CreatePlan(fixture.Root));
 
         GC.Collect();
         GC.WaitForPendingFinalizers();
@@ -236,17 +232,6 @@ public sealed class ContentSnapshotTests
         var composed = new WeakReference(audit.ComposedRules);
         audit.Dispose();
         return (snapshot.Content, compatibility, documents, composed);
-    }
-
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        return ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
-            [new ModActivation("fixture", true)],
-            "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
     }
 
     private sealed class TemporaryArchiveMod : IDisposable

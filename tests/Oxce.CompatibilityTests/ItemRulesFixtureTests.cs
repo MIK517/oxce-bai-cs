@@ -66,5 +66,4 @@ public sealed class ItemRulesFixtureTests
         }
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
-
 }

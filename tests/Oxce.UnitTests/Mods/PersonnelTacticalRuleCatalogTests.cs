@@ -2,12 +2,11 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.EquipmentProduction;
 using Oxce.Mods.Rulesets.Items;
 using Oxce.Mods.Rulesets.PersonnelTactical;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -134,7 +133,7 @@ public sealed class PersonnelTacticalRuleCatalogTests
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
 
         var content = PersonnelTacticalRuleCatalog.Load(plan, diagnostics);
         var validation = content.ValidateRelationships(
@@ -220,7 +219,7 @@ public sealed class PersonnelTacticalRuleCatalogTests
                 soldierBonusTypes: [MISSING_BONUS]
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         var content = PersonnelTacticalRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
 
@@ -246,15 +245,6 @@ public sealed class PersonnelTacticalRuleCatalogTests
     {
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
 
-        Assert.Throws<YamlFormatException>(() => PersonnelTacticalRuleCatalog.Load(CreatePlan(fixture.Root)));
+        Assert.Throws<YamlFormatException>(() => PersonnelTacticalRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        return ModLoadPlanner.Create(catalog, [new ModActivation("fixture", true)], "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
 }

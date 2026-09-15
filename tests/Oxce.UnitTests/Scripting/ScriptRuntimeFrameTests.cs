@@ -24,6 +24,7 @@ public sealed class ScriptRuntimeFrameTests
             new(ScriptEventMutationKind.Append, "", -100, before, "price", 1),
             new(ScriptEventMutationKind.Append, "", 100, after, "price", 2),
         ]);
+        Assert.True(composed.Succeeded);
         var frame = new ScriptExecutionFrame();
         frame.Prepare(before);
         frame.Prepare(current);
@@ -233,6 +234,7 @@ public sealed class ScriptRuntimeFrameTests
                 "probe",
                 1),
         ]);
+        Assert.True(composed.Succeeded);
         var frame = new ScriptExecutionFrame();
         frame.Prepare(before);
         frame.Prepare(current);
@@ -255,6 +257,7 @@ public sealed class ScriptRuntimeFrameTests
             new ScriptEventMutation(
                 ScriptEventMutationKind.Append, string.Empty, -100, before, "probe", 1),
         ]);
+        Assert.True(composed.Succeeded);
         var frame = new ScriptExecutionFrame();
         frame.Prepare(before);
         frame.Prepare(current);

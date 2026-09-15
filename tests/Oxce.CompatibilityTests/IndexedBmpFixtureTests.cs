@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Binary;
 using Oxce.Formats.Images;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,10 +12,7 @@ public sealed class IndexedBmpFixtureTests
     [Fact]
     public void IndexedRowsPaletteAndTransparencyMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "indexed-bmp.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("indexed-bmp");
         var fixture = Convert.FromHexString(
             File.ReadAllText(Path.GetFullPath(manifest.Inputs[0].Path, root)).Trim());
         var image = IndexedBmpCodec.Decode(new BinaryDataReader(fixture));
@@ -32,7 +30,6 @@ public sealed class IndexedBmpFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
-
 }

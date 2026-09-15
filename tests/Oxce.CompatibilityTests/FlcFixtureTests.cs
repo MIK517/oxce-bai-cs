@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.Core.Graphics;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Video;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,9 +12,7 @@ public sealed class FlcFixtureTests
     [Fact]
     public void IndexedFramesMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(Path.Combine(root, "fixtures", "manifests", "flc-indexed.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("flc-indexed");
         var encoded = string.Concat(File.ReadAllText(Path.GetFullPath(manifest.Inputs[0].Path, root))
             .Where(value => !char.IsWhiteSpace(value)));
         using var input = new MemoryStream(Convert.FromHexString(encoded));
@@ -28,11 +27,10 @@ public sealed class FlcFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
         Assert.Equal(5, summary.DecodedFrames);
         Assert.Equal(377, summary.BytesRead);
     }
-
 
     private sealed class CaptureSink : IFlcFrameSink
     {

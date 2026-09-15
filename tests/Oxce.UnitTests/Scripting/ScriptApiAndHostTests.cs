@@ -13,7 +13,7 @@ public sealed class ScriptApiAndHostTests
     public void DeclaredBindingCompilesWithoutProviderAndFailsAsMissingCapability()
     {
         var compiled = Compile("set result GLOBAL_VALUE; adjust result 5; return result;");
-        Assert.True(compiled.Succeeded);
+        Assert.True(compiled.Succeeded, Messages(compiled));
 
         var result = ScriptVm.Execute(compiled.Program!);
 
@@ -27,6 +27,7 @@ public sealed class ScriptApiAndHostTests
     public void InstalledProviderUpdatesWritableArguments()
     {
         var compiled = Compile("set result GLOBAL_VALUE; adjust result 5; return result;");
+        Assert.True(compiled.Succeeded, Messages(compiled));
         var providers = new ScriptHostBindingsBuilder();
         providers.Add(AdjustId, static arguments =>
         {
@@ -44,6 +45,7 @@ public sealed class ScriptApiAndHostTests
     public void ProviderFailureIsDistinctFromMissingProvider()
     {
         var compiled = Compile("adjust result 5; return result;");
+        Assert.True(compiled.Succeeded, Messages(compiled));
         var providers = new ScriptHostBindingsBuilder();
         providers.Add(AdjustId, static _ => ScriptBindingResult.Failure("probe rejected the value"));
 
@@ -183,8 +185,7 @@ public sealed class ScriptApiAndHostTests
         var compiled = ScriptCompiler.Compile(
             "var ptr RuleItem optional_rule null; var Position position; return;", definition);
 
-        Assert.True(compiled.Succeeded, string.Join(Environment.NewLine,
-            compiled.Diagnostics.Select(static diagnostic => diagnostic.Message)));
+        Assert.True(compiled.Succeeded, Messages(compiled));
         Assert.Contains(compiled.Program!.Registers,
             register => register.Name == "optional_rule" && register.Type.IsReference);
         Assert.Contains(compiled.Program.Registers,

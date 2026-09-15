@@ -5,6 +5,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Formats.Yaml;
 using Oxce.Scripting.Runtime;
 using System.IO.Compression;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -19,9 +20,7 @@ public sealed class InstallationContentLoaderTests
             .Replace("fixedWeapons: [FIXED]", "fixedWeapons: [FIXED, FIXED]", StringComparison.Ordinal)
             .Replace("  - type: FIXED", "  - type: FIXED\n    stats: {soldiers: 2147483647}", StringComparison.Ordinal));
         var content = InstallationContentLoader.Load(installation.Request("logistics", "-"), cancellationToken: TestContext.Current.CancellationToken).Content!;
-        var campaign = Oxce.Gameplay.Campaigns.CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Overflow", "logistics", ["logistics"], Oxce.Gameplay.Campaigns.CampaignDifficulty.Beginner),
-            new Oxce.Core.Random.SplitMix64RandomSource(42), Oxce.Gameplay.Campaigns.SystemCampaignClock.Instance);
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Overflow");
         Assert.IsType<Oxce.Gameplay.Campaigns.StartingBasePlaced>(Assert.Single(campaign.Execute(
             new Oxce.Gameplay.Campaigns.PlaceStartingBase(0, "Alpha", 0, 0)).Events));
         var before = campaign.Capture();
@@ -377,7 +376,7 @@ public sealed class InstallationContentLoaderTests
         Assert.Equal(["runtime-master"], result.Plan!.Groups.Select(static group => group.Mod.Metadata.Id));
     }
 
-    private static ModEngineIdentity EngineIdentity() => new("Extended", "8.6.1.0");
+    private static ModEngineIdentity EngineIdentity() => TestFixtures.Engine;
 
     private static int ExecuteSpriteScript(RuntimeContent content, string ownerId)
     {
@@ -417,9 +416,7 @@ public sealed class InstallationContentLoaderTests
             var standard = Path.Combine(Root, "standard");
             Directory.CreateDirectory(standard);
             Directory.CreateDirectory(Path.Combine(Root, "user", "mods"));
-            CopyDirectory(
-                Path.Combine(Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(), "fixtures", "public", "mods", fixtureName),
-                standard);
+            TestFixtures.CopyDirectory(TestFixtures.PublicModsPath(fixtureName), standard);
         }
 
         public string Root { get; }
@@ -435,22 +432,10 @@ public sealed class InstallationContentLoaderTests
 
         public string CacheFile => Path.Combine(CacheDirectory, "content-v1.json.gz");
 
+        // Ordered so the chosen file does not depend on file-system enumeration order.
         public string FirstRuleset => Directory.EnumerateFiles(
-            Path.Combine(Root, "standard"), "*.rul", SearchOption.AllDirectories).First();
+            Path.Combine(Root, "standard"), "*.rul", SearchOption.AllDirectories).Order(StringComparer.Ordinal).First();
 
         public void Dispose() => Directory.Delete(Root, recursive: true);
-
-        private static void CopyDirectory(string source, string destination)
-        {
-            foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
-                Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
-            foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
-            {
-                var target = Path.Combine(destination, Path.GetRelativePath(source, file));
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.Copy(file, target);
-            }
-        }
-
     }
 }

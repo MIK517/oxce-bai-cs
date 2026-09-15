@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Binary;
 using Oxce.Formats.Images;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,15 +12,8 @@ public sealed class IndexedImageFixtureTests
     [Fact]
     public void PckTabSpritesMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "pck-tab-sprites.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
-        var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
-        var fixture = File.ReadLines(fixturePath)
-            .Where(line => line.Length != 0)
-            .Select(line => line.Split('=', 2))
-            .ToDictionary(values => values[0], values => values[1], StringComparer.Ordinal);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("pck-tab-sprites");
+        var fixture = TestFixtures.ReadKeyValues(Path.GetFullPath(manifest.Inputs[0].Path, root));
         var width = int.Parse(fixture["width"], System.Globalization.CultureInfo.InvariantCulture);
         var height = int.Parse(fixture["height"], System.Globalization.CultureInfo.InvariantCulture);
         var pck = Convert.FromHexString(fixture["pck"]);
@@ -45,21 +39,14 @@ public sealed class IndexedImageFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     [Fact]
     public void ScreenCodecsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "indexed-screen-codecs.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
-        var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
-        var fixture = File.ReadLines(fixturePath)
-            .Where(line => line.Length != 0)
-            .Select(line => line.Split('=', 2))
-            .ToDictionary(values => values[0], values => values[1], StringComparer.Ordinal);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("indexed-screen-codecs");
+        var fixture = TestFixtures.ReadKeyValues(Path.GetFullPath(manifest.Inputs[0].Path, root));
         var width = int.Parse(fixture["width"], System.Globalization.CultureInfo.InvariantCulture);
         var height = int.Parse(fixture["height"], System.Globalization.CultureInfo.InvariantCulture);
 
@@ -77,7 +64,7 @@ public sealed class IndexedImageFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static byte[] Decode(
@@ -97,5 +84,4 @@ public sealed class IndexedImageFixtureTests
         frames.Select(frame => frame.Select(value => (int)value).ToArray()).ToArray();
 
     private delegate void DecodeAction(BinaryDataReader input, Span<byte> destination);
-
 }

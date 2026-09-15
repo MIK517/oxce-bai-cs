@@ -2,8 +2,6 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.EquipmentProduction;
@@ -11,6 +9,7 @@ using Oxce.Mods.Rulesets.Items;
 using Oxce.Mods.Rulesets.MissionEvents;
 using Oxce.Mods.Rulesets.PersonnelTactical;
 using Oxce.Mods.Rulesets.TerrainDeployment;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -88,12 +87,14 @@ public sealed class MissionEventRuleCatalogTests
         using var fixture = new TemporaryModFixture(("20-base.rul", first), ("10-patch.rul", patch));
         var diagnostics = new DiagnosticCollector();
 
-        var catalog = MissionEventRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var catalog = MissionEventRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         var trajectory = Assert.Single(catalog.UfoTrajectories.Rules).Value;
-        Assert.Equal(7, trajectory.GroundTimer); Assert.Equal(new(1, 2, 3), Assert.Single(trajectory.Waypoints));
+        Assert.Equal(7, trajectory.GroundTimer);
+        Assert.Equal(new(1, 2, 3), Assert.Single(trajectory.Waypoints));
         var mission = Assert.Single(catalog.AlienMissions.Rules).Value;
-        Assert.True(mission.Booleans["multiUfoRetaliation"]); Assert.Equal(2ul, Assert.Single(mission.Waves).Count);
+        Assert.True(mission.Booleans["multiUfoRetaliation"]);
+        Assert.Equal(2ul, Assert.Single(mission.Waves).Count);
         Assert.Equal("RACE_2", Assert.Single(Assert.Single(mission.RaceWeights).Weights).Key);
         Assert.Equal(3, Assert.Single(catalog.EventScripts.Rules).Value.Integers["counterMin"]);
         Assert.Equal(3ul, Assert.Single(Assert.Single(catalog.ArcScripts.Rules).Value.Random).Value);
@@ -103,9 +104,12 @@ public sealed class MissionEventRuleCatalogTests
         Assert.True(spawned.TryGet("stats", out _));
         Assert.Equal(3ul, Assert.Single(Assert.Single(catalog.Events.Rules).Value.WeightedItems).Value);
         var article = Assert.Single(catalog.Ufopaedia).Value;
-        Assert.Equal(100, article.ListOrder); Assert.Equal(2, article.Pages.Count);
-        Assert.Equal("PAGE_1", article.Pages[0].Title); Assert.Equal("PATCHED", article.Pages[0].Text);
-        Assert.Equal("PAGE_2", article.Pages[1].Text); Assert.DoesNotContain("DELETED", catalog.Ufopaedia.Keys);
+        Assert.Equal(100, article.ListOrder);
+        Assert.Equal(2, article.Pages.Count);
+        Assert.Equal("PAGE_1", article.Pages[0].Title);
+        Assert.Equal("PATCHED", article.Pages[0].Text);
+        Assert.Equal("PAGE_2", article.Pages[1].Text);
+        Assert.DoesNotContain("DELETED", catalog.Ufopaedia.Keys);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.UnconsumedRuleProperty);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
@@ -117,7 +121,10 @@ public sealed class MissionEventRuleCatalogTests
     [InlineData("ufopaedia: [{id: A, type_id: 99}]")]
     [InlineData("ufopaedia: [{id: A, type_id: 8, pages: PAGE}]")]
     public void RejectsMalformedMissionEventProperties(string yaml)
-    { using var fixture = new TemporaryModFixture(("fixture.rul", yaml)); Assert.Throws<YamlFormatException>(() => MissionEventRuleCatalog.Load(CreatePlan(fixture.Root))); }
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
+        Assert.Throws<YamlFormatException>(() => MissionEventRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
+    }
 
     [Fact]
     public void SkipsNewUfopaediaArticleWithoutTypeAndContinuesLoading()
@@ -133,7 +140,7 @@ public sealed class MissionEventRuleCatalogTests
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
-        var catalog = MissionEventRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var catalog = MissionEventRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         var article = Assert.Single(catalog.Ufopaedia);
         Assert.Equal("VALID", article.Key);
@@ -163,8 +170,10 @@ public sealed class MissionEventRuleCatalogTests
               - id: MISSING_ARTICLE_ITEM
                 type_id: 4
             """;
-        using var fixture = new TemporaryModFixture(("fixture.rul", yaml)); var plan = CreatePlan(fixture.Root);
-        var catalog = MissionEventRuleCatalog.Load(plan); var diagnostics = new DiagnosticCollector();
+        using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
+        var plan = TestFixtures.CreatePlan(fixture.Root);
+        var catalog = MissionEventRuleCatalog.Load(plan);
+        var diagnostics = new DiagnosticCollector();
 
         var validation = catalog.ValidateRelationships(CampaignStartRuleCatalog.Load(plan), ItemRuleCatalog.Load(plan),
             EquipmentProductionRuleCatalog.Load(plan), PersonnelTacticalRuleCatalog.Load(plan),
@@ -206,7 +215,7 @@ public sealed class MissionEventRuleCatalogTests
                 type_id: 17
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         var catalog = MissionEventRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
 
@@ -228,7 +237,4 @@ public sealed class MissionEventRuleCatalogTests
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference &&
             item.Context.RuleId == "MISSING_TFTD_USO");
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    { var discovery = ModDiscovery.ScanDirectory(root); return ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods), [new ModActivation("fixture", true)], "fixture", new ModEngineIdentity("Extended", "8.6.1.0")); }
 }

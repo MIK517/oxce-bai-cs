@@ -1,10 +1,9 @@
 using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Items;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -54,7 +53,7 @@ public sealed class ItemRuleCatalogTests
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
         var diagnostics = new DiagnosticCollector();
 
-        var catalog = ItemRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var catalog = ItemRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         Assert.Equal(["AMMO", "ALIEN", "WEAPON", "PSI"], catalog.Items.Rules.Select(rule => rule.Id));
         var weapon = catalog.Items.Rules[2];
@@ -112,7 +111,7 @@ public sealed class ItemRuleCatalogTests
                   1: {compatibleAmmo: [MISSING_AMMO]}
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        var content = ItemRuleCatalog.Load(CreatePlan(fixture.Root));
+        var content = ItemRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root));
         var diagnostics = new DiagnosticCollector();
 
         var result = content.ValidateInternalRelationships(diagnostics);
@@ -127,13 +126,4 @@ public sealed class ItemRuleCatalogTests
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.InvalidRuleRelationship);
         Assert.False(content.Capabilities.Has(ContentLoadStage.Linked));
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        return ModLoadPlanner.Create(catalog, [new ModActivation("fixture", true)], "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
 }

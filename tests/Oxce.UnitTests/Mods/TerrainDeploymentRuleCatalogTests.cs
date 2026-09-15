@@ -2,13 +2,12 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.EquipmentProduction;
 using Oxce.Mods.Rulesets.Items;
 using Oxce.Mods.Rulesets.PersonnelTactical;
 using Oxce.Mods.Rulesets.TerrainDeployment;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -78,7 +77,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
         using var fixture = new TemporaryModFixture(("20-base.rul", baseYaml), ("10-patch.rul", patchYaml));
         var diagnostics = new DiagnosticCollector();
 
-        var catalog = TerrainDeploymentRuleCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var catalog = TerrainDeploymentRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         var terrain = Assert.Single(catalog.Terrains.Rules).Value;
         Assert.Equal(["MALE_CIVILIAN", "CIVILIAN"], terrain.CivilianTypes);
@@ -109,7 +108,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
     public void RejectsMalformedTerrainProperties(string yaml)
     {
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        Assert.Throws<YamlFormatException>(() => TerrainDeploymentRuleCatalog.Load(CreatePlan(fixture.Root)));
+        Assert.Throws<YamlFormatException>(() => TerrainDeploymentRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
     }
 
     [Fact]
@@ -137,7 +136,7 @@ public sealed class TerrainDeploymentRuleCatalogTests
                 startingCondition: MISSING_START
             """;
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         var catalog = TerrainDeploymentRuleCatalog.Load(plan);
         var diagnostics = new DiagnosticCollector();
 
@@ -155,12 +154,4 @@ public sealed class TerrainDeploymentRuleCatalogTests
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DeferredRuleReference &&
             item.Context.RelatedId == "MISSING_SCRIPT_TERRAIN");
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        return ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods), [new ModActivation("fixture", true)], "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
 }

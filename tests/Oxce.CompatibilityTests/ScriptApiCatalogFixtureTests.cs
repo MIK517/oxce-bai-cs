@@ -3,6 +3,7 @@ using Oxce.FixtureSupport;
 using Oxce.Scripting.Api;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Types;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -12,10 +13,7 @@ public sealed class ScriptApiCatalogFixtureTests
     [Fact]
     public void RuntimeCatalogMatchesPinnedTemplateResolvedMetadata()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(
-            Path.Combine(root, "fixtures", "manifests", "script-api-catalog.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("script-api-catalog");
         using var document = JsonDocument.Parse(File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root)));
         var expected = document.RootElement;
         var counts = expected.GetProperty("counts");
@@ -163,5 +161,4 @@ public sealed class ScriptApiCatalogFixtureTests
         Assert.Equal(10_562, binding.Id.Value);
         Assert.Equal("RuleMod.getMaxViewDistance", binding.Name);
     }
-
 }

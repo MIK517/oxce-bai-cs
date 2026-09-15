@@ -1,9 +1,9 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Bootstrap;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -110,18 +110,9 @@ public sealed class StartingPersonnelFixtureTests
 
         public Installation()
         {
-            var repository = new DirectoryInfo(AppContext.BaseDirectory);
-            while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "Oxce.slnx")))
-                repository = repository.Parent;
-            var source = Path.Combine(repository!.FullName, "fixtures", "public", "mods", "runtime-rule-linking");
-            foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
-            {
-                var target = Path.Combine(Root, "standard", Path.GetRelativePath(source, file));
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.Copy(file, target);
-            }
+            TestFixtures.CopyDirectory(TestFixtures.PublicModsPath("runtime-rule-linking"), Path.Combine(Root, "standard"));
             Directory.CreateDirectory(Path.Combine(Root, "user", "mods"));
-            File.Copy(Path.Combine(repository.FullName, "fixtures", "public", "savegames", "starting-personnel.rul"),
+            File.Copy(TestFixtures.RepositoryPath("fixtures", "public", "savegames", "starting-personnel.rul"),
                 Path.Combine(Root, "standard", "runtime-master", "Ruleset", "zz-personnel.rul"));
         }
 
@@ -129,8 +120,7 @@ public sealed class StartingPersonnelFixtureTests
             Path.Combine(Root, "standard", "runtime-addon", "Ruleset", "zzz-personnel.rul"), yaml);
 
         public InstallationContentLoadResult Load() => InstallationContentLoader.Load(
-            InstallationLoadRequest.ForMasterAndAddOn(Root, "runtime-master", "runtime-addon",
-                new ModEngineIdentity("Extended", "8.6.1.0")),
+            InstallationLoadRequest.ForMasterAndAddOn(Root, "runtime-master", "runtime-addon", TestFixtures.Engine),
             cancellationToken: TestContext.Current.CancellationToken);
 
         public void Dispose() => Directory.Delete(Root, recursive: true);

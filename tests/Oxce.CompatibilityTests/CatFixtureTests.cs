@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Binary;
 using Oxce.Formats.Containers;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,10 +12,7 @@ public sealed class CatFixtureTests
     [Fact]
     public void EntryBoundariesMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "cat-entries.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("cat-entries");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var archive = CatArchive.Parse(
             new BinaryDataReader(Convert.FromHexString(File.ReadAllText(fixturePath).Trim())));
@@ -29,7 +27,6 @@ public sealed class CatFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
-
 }

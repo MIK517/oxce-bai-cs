@@ -73,5 +73,4 @@ public sealed class PresentationRulesFixtureTests
         Assert.Equal(expectedSprite.GetProperty("file").GetString(), sprite.Files[0]);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
-
 }

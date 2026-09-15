@@ -4,6 +4,7 @@ using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Lexing;
 using Oxce.Scripting.Runtime;
 using Oxce.Scripting.Syntax;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -13,14 +14,7 @@ public sealed class ScriptCoreFixtureTests
     [Fact]
     public void CapturedReferenceCasesProvideCompilerAndExecutionOracle()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(
-            Path.Combine(root, "fixtures", "manifests", "script-core.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
-
-        using var document = JsonDocument.Parse(
-            File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root)));
-        var cases = document.RootElement.GetProperty("cases").EnumerateArray().ToArray();
+        var cases = ReadCases();
 
         Assert.Equal(33, cases.Length);
         AssertCase(cases, "return-only", compiled: true, result: 7);
@@ -118,10 +112,11 @@ public sealed class ScriptCoreFixtureTests
 
     private static JsonElement[] ReadCases()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var path = Path.Combine(root, "fixtures", "expected", "scripting", "script-core.expected.json");
-        using var document = JsonDocument.Parse(File.ReadAllBytes(path));
-        return document.RootElement.GetProperty("cases").EnumerateArray().Select(item => item.Clone()).ToArray();
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("script-core");
+        using var document = JsonDocument.Parse(
+            File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root)));
+        return document.RootElement.GetProperty("cases").EnumerateArray()
+            .Select(static item => item.Clone()).ToArray();
     }
 
     private static ScriptSyntaxTree Parse(JsonElement[] cases, string name) =>
@@ -155,5 +150,4 @@ public sealed class ScriptCoreFixtureTests
         Assert.Contains(item.GetProperty("diagnostics").EnumerateArray(),
             value => value.GetString()!.Contains("Invalid script operation", StringComparison.Ordinal));
     }
-
 }
