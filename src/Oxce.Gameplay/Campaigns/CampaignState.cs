@@ -571,6 +571,10 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 production.RandomProductionInfo.Any(pair => pair.Key.Length == 0 || pair.Value < 0))
                 throw new InvalidDataException("Production values cannot be negative.");
         }
+        if (state.Research.DistinctBy(project => project.Rule).Count() != state.Research.Count)
+            throw new InvalidDataException("A base cannot contain duplicate research projects.");
+        if (state.Productions.DistinctBy(production => production.Rule).Count() != state.Productions.Count)
+            throw new InvalidDataException("A base cannot contain duplicate production projects.");
         if (UsedLaboratories(state) > AvailableLaboratories(state, rules))
             throw new InvalidDataException("Assigned scientists exceed laboratory capacity.");
         if (UsedWorkshopSpace(state, rules) > AvailableWorkshops(state, rules))

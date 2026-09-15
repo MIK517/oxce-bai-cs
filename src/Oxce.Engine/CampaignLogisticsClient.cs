@@ -161,9 +161,11 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 {
                     if (production)
                     {
+                        // A newly started project also reserves its required workshop space.
                         var choice = state.ProductionChoices[_row];
                         Feedback(_session.Commands.Execute(new ConfigureProductionProject(baseId,
-                            choice.RuleId, Math.Min(state.EngineersAvailable, state.WorkshopsAvailable), 1)));
+                            choice.RuleId, Math.Min(state.EngineersAvailable,
+                                Math.Max(0, state.WorkshopsAvailable - choice.Space)), 1)));
                     }
                     else
                     {
@@ -355,11 +357,13 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     $"{_text(choice.RuleId)}  {choice.Time}h  {choice.Cost}  {choice.UnavailableReason}").ToArray()
                 : state.ResearchChoices.Select(choice =>
                     $"{_text(choice.RuleId)}  {choice.Cost}d  {choice.UnavailableReason}").ToArray();
+            const int visibleRows = 10;
             _row = Math.Min(_row, Math.Max(0, rows.Length - 1));
-            for (var i = 0; i < Math.Min(10, rows.Length); i++)
+            var first = Math.Clamp(_row - visibleRows + 1, 0, Math.Max(0, rows.Length - visibleRows));
+            for (var i = 0; i < Math.Min(visibleRows, rows.Length - first); i++)
             {
-                if (i == _row) Frame.FillRectangle(8, 124 + i * 17, 624, 16, 2);
-                Text(rows[i], 12, 127 + i * 17);
+                if (first + i == _row) Frame.FillRectangle(8, 124 + i * 17, 624, 16, 2);
+                Text(rows[first + i], 12, 127 + i * 17);
             }
             var active = production
                 ? state.Productions.Select(project =>
