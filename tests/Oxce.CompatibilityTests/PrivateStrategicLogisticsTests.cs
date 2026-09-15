@@ -17,6 +17,7 @@ public sealed class PrivateStrategicLogisticsTests
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var installation = Path.Combine(root, "artifacts/private-install");
         Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")), "Owned installation is not staged.");
+        var purchasedWithProjects = 0;
         foreach (var (master, addon) in new[] { ("xcom1", "-"), ("xcom2", "-"), ("40k", "40k_ROSIGMA_edits") })
         {
             var request = InstallationLoadRequest.ForMasterAndAddOn(installation, master, addon, new("Extended", "8.6.1.0"));
@@ -34,14 +35,19 @@ public sealed class PrivateStrategicLogisticsTests
             var imported = ExerciseImported(fresh.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
             var cachedImported = ExerciseImported(cached.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
             Assert.Equivalent(imported, cachedImported, strict: true);
-            var expectedPurchase = master switch
+            var (expectedSave, expectedItem) = master switch
             {
-                "xcom1" => new ImportedResult("early/IronMode.sav", ImportedOutcome.Purchased, "STR_STINGRAY_LAUNCHER"),
-                "xcom2" => new ImportedResult("early/IronMode.sav", ImportedOutcome.Purchased, "STR_AJAX_LAUNCHER"),
-                _ => new ImportedResult("early/Begining.sav", ImportedOutcome.Purchased, "STR_STINGRAY_LAUNCHER"),
+                "xcom1" => ("early/IronMode.sav", "STR_STINGRAY_LAUNCHER"),
+                "xcom2" => ("early/IronMode.sav", "STR_AJAX_LAUNCHER"),
+                _ => ("early/Begining.sav", "STR_STINGRAY_LAUNCHER"),
             };
-            Assert.Contains(expectedPurchase, imported);
+            Assert.Contains(imported, result => result.Name == expectedSave &&
+                result.Outcome == ImportedOutcome.Purchased && result.Detail == expectedItem);
+            purchasedWithProjects += imported.Count(result =>
+                result.Outcome == ImportedOutcome.Purchased && result.ActiveProjects > 0);
         }
+        // Active research/production no longer blocks imported saves.
+        Assert.True(purchasedWithProjects > 0, "No imported save with active projects completed a purchase.");
     }
 
     private static object Exercise(RuntimeContent content, InstallationLoadRequest request)
@@ -111,7 +117,7 @@ public sealed class PrivateStrategicLogisticsTests
             if (prepared is CampaignActionBlocked blocked)
             {
                 Assert.Equal(TacticalBattleBlocked, blocked.Reason);
-                results.Add(new(name, ImportedOutcome.Blocked, blocked.Reason));
+                results.Add(new(name, ImportedOutcome.Blocked, blocked.Reason, ActiveProjects(before)));
                 Assert.Equivalent(before, loaded.Campaign.Capture(), strict: true);
                 continue;
             }
@@ -123,7 +129,7 @@ public sealed class PrivateStrategicLogisticsTests
             var rewritten = OxceSaveAdapter.EmitLoadedCampaign(after, loaded.Source);
             var restored = OxceSaveAdapter.Load(rewritten, file, content, new SplitMix64RandomSource(0), options);
             Assert.Equivalent(after, restored.Campaign.Capture(), strict: true);
-            results.Add(new(name, ImportedOutcome.Purchased, item.RuleId));
+            results.Add(new(name, ImportedOutcome.Purchased, item.RuleId, ActiveProjects(before)));
         }
         Assert.NotEmpty(results);
         return results.ToArray();
@@ -131,7 +137,10 @@ public sealed class PrivateStrategicLogisticsTests
 
     private enum ImportedOutcome { Blocked, Purchased }
 
-    private sealed record ImportedResult(string Name, ImportedOutcome Outcome, string Detail);
+    private sealed record ImportedResult(string Name, ImportedOutcome Outcome, string Detail, int ActiveProjects);
+
+    private static int ActiveProjects(CampaignSnapshot snapshot) =>
+        snapshot.Bases.Sum(owner => owner.Research.Count + owner.Productions.Count);
 
     private sealed class FixedClock : ICampaignClock
     {

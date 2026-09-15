@@ -312,7 +312,9 @@ public static class RuntimeRuleLinker
                     rule.Value.SequentialGetOneFree,
                     rule.Value.GetOneFreeProtected, rule.Value.Requirements,
                     rule.Value.RequiredBaseFunctions,
-                    rule.Value.NeededItem ?? (rule.Value.NeedItem && itemHandles.ContainsKey(rule.Id) ? rule.Id : null),
+                    // RuleResearch::afterLoad treats an empty neededItem like a missing one.
+                    rule.Value.NeededItem is { Length: > 0 } neededItem ? neededItem
+                        : rule.Value.NeedItem && itemHandles.ContainsKey(rule.Id) ? rule.Id : null,
                     rule.Value.NeedItem,
                     rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
                     rule.Value.ListOrder, rule.Value.Events)),

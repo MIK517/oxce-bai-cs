@@ -292,20 +292,52 @@ public static class OxceSaveAdapter
                 return ReadSoldier(soldier, defaultSoldier);
             }).ToArray();
             var items = ReadIntMap(map, "items");
+            // Base::load skips projects whose rules are no longer defined and returns their staff.
+            var scientists = Integer(map, "scientists", 0);
+            var research = KnownProjects(Maps(map, "research").Select(project => new ResearchProjectSnapshot(
+                    RequiredString(project, "project"), Integer(project, "assigned", 0),
+                    Integer(project, "spent", 0), Integer(project, "cost", 0))),
+                project => content.RuntimeRules.Research.TryGet(project.RuleId, out _),
+                project => project.Assigned, ref scientists);
+            var engineers = Integer(map, "engineers", 0);
+            var productions = KnownProjects(Maps(map, "productions").Select(ReadProduction),
+                production => content.RuntimeRules.Manufacture.TryGet(production.RuleId, out _),
+                production => production.Assigned, ref engineers);
             return new BaseSnapshot(
                 identified.Id, String(map, "name", string.Empty), Double(map, "lon", 0),
                 Double(map, "lat", 0), Array.AsReadOnly(facilities), Array.AsReadOnly(crafts),
-                Array.AsReadOnly(soldiers), items, Integer(map, "scientists", 0), Integer(map, "engineers", 0))
+                Array.AsReadOnly(soldiers), items, scientists, engineers)
             {
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
                     ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
-                Research = Array.AsReadOnly(Maps(map, "research").Select(project => new ResearchProjectSnapshot(
-                    RequiredString(project, "project"), Integer(project, "assigned", 0),
-                    Integer(project, "spent", 0), Integer(project, "cost", 0))).ToArray()),
-                Productions = Array.AsReadOnly(Maps(map, "productions").Select(ReadProduction).ToArray()),
+                Research = research,
+                Productions = productions,
             };
         }).ToArray());
+    }
+
+    private static ReadOnlyCollection<T> KnownProjects<T>(
+        IEnumerable<T> projects, Func<T, bool> isKnown, Func<T, int> assigned, ref int releasedStaff)
+    {
+        var known = new List<T>();
+        foreach (var project in projects)
+        {
+            if (isKnown(project))
+            {
+                known.Add(project);
+                continue;
+            }
+            if (assigned(project) < 0)
+                throw new InvalidDataException("Assigned project staff cannot be negative.");
+            try { releasedStaff = checked(releasedStaff + assigned(project)); }
+            catch (OverflowException exception)
+            {
+                throw new InvalidDataException("Base staff released from unknown projects exceeds the supported range.",
+                    exception);
+            }
+        }
+        return Array.AsReadOnly(known.ToArray());
     }
 
     private static ProductionSnapshot ReadProduction(YamlMappingNode production)
