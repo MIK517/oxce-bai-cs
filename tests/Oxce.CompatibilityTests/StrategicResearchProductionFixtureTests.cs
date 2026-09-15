@@ -254,6 +254,13 @@ public sealed class StrategicResearchProductionFixtureTests
         Key('h');
         Assert.Contains(labels.Skip(priorLabels), label =>
             label.StartsWith("Research  Scientists", StringComparison.Ordinal));
+        // Global keys stay available inside project views.
+        var timeBefore = campaign.Capture().Time;
+        Key(' ');
+        Assert.NotEqual(timeBefore, campaign.Capture().Time);
+        Key('h');
+        Key('i');
+        Assert.NotNull(client.Screen);
 
         var snapshot = campaign.Capture();
         var baseSnapshot = snapshot.Bases[0] with
@@ -670,6 +677,53 @@ public sealed class StrategicResearchProductionFixtureTests
         var manufactured = Assert.Single(ammunition.Capture().Bases[0].Crafts).Logistics!;
         Assert.Equal("STR_REARMING", manufactured.Status);
         Assert.True(manufactured.Weapons[0]!.Rearming);
+    }
+
+    [Fact]
+    public void UnknownSavedProjectsAreDroppedAndReleaseTheirStaff()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var snapshot = NewCampaign(content, 79).Capture();
+        var owner = snapshot.Bases[0] with
+        {
+            Scientists = 1,
+            Engineers = 1,
+            Research = [new("UNLOCK", 1, 0, 1), new("RETIRED_TOPIC", 2, 0, 5)],
+            Productions = [new("RETIRED_ITEM", 3, 0, 1, false, false, false, NoRandomOutput())],
+        };
+
+        var loaded = LoadSave(OxceSaveAdapter.EmitNewCampaign(snapshot with { Bases = [owner] }),
+            "retired.sav", content);
+
+        // Base::load drops unknown projects and returns their assigned staff.
+        var restored = loaded.Campaign.Capture().Bases[0];
+        Assert.Equal("UNLOCK", Assert.Single(restored.Research).RuleId);
+        Assert.Empty(restored.Productions);
+        Assert.Equal(3, restored.Scientists);
+        Assert.Equal(4, restored.Engineers);
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
+        Assert.DoesNotContain("RETIRED_", rewritten, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RestoredInvalidProductionStopsTimeBeforeProgress()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var snapshot = NewCampaign(content, 83).Capture();
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Productions = [new("OVERWEIGHT_RANDOM", 1, 0, 1, false, false, false, NoRandomOutput())],
+            }],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        var result = campaign.Execute(new AdvanceCampaignTime(720));
+
+        var blocked = Assert.Single(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal("Random production weights exceed the supported range.", blocked.Reason);
+        var production = Assert.Single(campaign.Capture().Bases[0].Productions);
+        Assert.Equal(0, production.Spent);
     }
 
     [Fact]

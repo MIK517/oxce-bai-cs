@@ -48,5 +48,5 @@ if ($LASTEXITCODE -ne 0) { throw 'Reference probe compilation failed.' }
 $raw = & $exe
 if ($LASTEXITCODE -ne 0) { throw 'Reference probe execution failed.' }
 $output = Join-Path $work 'strategic-research-production.actual.json'
-[IO.File]::WriteAllText($output, ($raw -join [Environment]::NewLine) + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText($output, ($raw -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
 Write-Output $output

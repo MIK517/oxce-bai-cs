@@ -34,6 +34,8 @@ public sealed record CampaignResearchProduction(
 
 public sealed partial class CampaignState : ICampaignResearchProductionQuery
 {
+    private bool? _researchEventWeightsFit;
+
     private CampaignCommandResult ConfigureResearch(ConfigureResearchProject command)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command.RuleId);
@@ -204,6 +206,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         if (!_debugMode && rule.Requirements.Any(required => !_completedResearch.Contains(required)))
             return "Required research is incomplete.";
         if (!HasFunctions(owner, rule.RequiredBaseFunctions)) return "Required base functions are unavailable.";
+        return ProductionRuleInvalid(rule);
+    }
+
+    /// <summary>Rule defects that would make hourly progression throw; shared by start and time preflight.</summary>
+    private string? ProductionRuleInvalid(RuntimeManufactureRule rule)
+    {
         if (rule.Time < 0 || rule.Space < 0 || rule.Cost < 0 ||
             rule.RequiredMaterials.Any(material => material.Quantity < 0) ||
             rule.ProducedMaterials.Any(material => material.Quantity < 0))
@@ -229,18 +237,16 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     {
         if (highest >= CampaignTimeTrigger.OneDay)
         {
-            if (_content.RuntimeRules.Research.Rules.Any(rule =>
-                    !WeightsFit(rule.Value.Events, static entry => entry.Value)))
+            // Any topic can complete through free or lookup discoveries, so all research events are checked.
+            // Content is immutable for the campaign lifetime, so the scan result is cached.
+            _researchEventWeightsFit ??= _content.RuntimeRules.Research.Rules.All(rule =>
+                WeightsFit(rule.Value.Events, static entry => entry.Value));
+            if (_researchEventWeightsFit == false)
                 return "Strategic event weights exceed the supported range.";
             foreach (var owner in _bases)
                 foreach (var project in owner.Research)
-                {
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
                         return "Research progress exceeds the supported range.";
-                    if (!WeightsFit(_content.RuntimeRules.Research[project.Rule].Value.Events,
-                            static entry => entry.Value))
-                        return "Strategic event weights exceed the supported range.";
-                }
         }
         if (highest >= CampaignTimeTrigger.OneHour)
             foreach (var owner in _bases)
@@ -248,11 +254,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 {
                     if ((long)production.Spent + production.Assigned > int.MaxValue)
                         return "Production progress exceeds the supported range.";
-                    if (!WeightsFit(_content.RuntimeRules.Manufacture[production.Rule].Value.Events,
-                            static entry => entry.Value))
-                        return "Strategic event weights exceed the supported range.";
-                    if (production.Sell &&
-                        ProductionSellUnavailable(_content.RuntimeRules.Manufacture[production.Rule].Value) is { } sellReason)
+                    // Restored saves can carry projects that were never validated by a start command.
+                    var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
+                    if (ProductionRuleInvalid(manufacture) is { } invalidReason) return invalidReason;
+                    if (production.Sell && ProductionSellUnavailable(manufacture) is { } sellReason)
                         return sellReason;
                 }
         return null;

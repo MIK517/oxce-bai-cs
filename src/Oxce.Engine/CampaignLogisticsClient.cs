@@ -29,6 +29,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
     private int _gridX;
     private int _gridY;
     private int _choice;
+    private (int BaseId, CampaignResearchProduction State)? _economySnapshot;
 
     public CampaignLogisticsClient(CampaignUiSession session, IndexedSpriteFont? font = null,
         Func<string, string>? localize = null, Action? save = null, Func<CampaignUiSession>? load = null)
@@ -148,6 +149,42 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 _view = key == 'm' ? CampaignView.Production : CampaignView.Research;
                 _screen = null; _row = 0;
             }
+            // Global campaign keys run before view handlers so every view can advance time and open logistics.
+            else if (key == ' ')
+            {
+                _screen = null;
+                Feedback(_session.Commands.Execute(new AdvanceCampaignTime((input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12)));
+            }
+            else if (key is (uint)'i' or (uint)'b' or (uint)'t' || key == 's' && _view != CampaignView.Management)
+            {
+                _view = CampaignView.None;
+                _screen = new(_session.Queries, _session.Commands, overview.Bases[_baseIndex].Id);
+                _row = 0;
+                _message = "";
+                if (key == 'b') _screen.OpenOrder(LogisticsOperation.Purchase);
+                if (key == 's') _screen.OpenOrder(LogisticsOperation.Sell);
+                if (key == 't')
+                {
+                    _chooseDestination = true;
+                    _destinationIndex = (_baseIndex + 1) % overview.Bases.Count;
+                }
+            }
+            else if (key == 'p' && !overview.Bases[_baseIndex].IsPlaced && _session.Queries is ICampaignReadinessQuery placement)
+            {
+                var sites = placement.QueryBaseSites(true);
+                if (sites.Count == 0) _message = "No legal starting-base site is available.";
+                else Feedback(_session.Commands.Execute(new PlaceStartingBase(_baseIndex, "First Base", sites[0].Longitude, sites[0].Latitude)));
+            }
+            else if (key == 'n' && _session.Queries is ICampaignReadinessQuery newBase)
+            {
+                var sites = newBase.QueryBaseSites(false);
+                var site = sites.Count == 0 ? null : sites[0];
+                var lift = site is null ? null : newBase.QueryAccessLifts(site.FakeUnderwater)
+                    .FirstOrDefault(f => f.UnavailableReason is null);
+                if (sites.Count == 0 || lift is null) _message = "No legal site or access lift is available.";
+                else Feedback(_session.Commands.Execute(new CreateCampaignBase($"Base {overview.Bases.Count + 1}",
+                    site!.Longitude, site.Latitude, lift.RuleId, 2, 2)));
+            }
             else if (_view is CampaignView.Research or CampaignView.Production &&
                 _session.Queries is ICampaignResearchProductionQuery economy)
             {
@@ -156,7 +193,11 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 var state = economy.QueryResearchProduction(baseId);
                 var choices = production ? state.ProductionChoices.Count : state.ResearchChoices.Count;
                 if (key is 0x40000051 or 0x40000052)
+                {
                     _row = Math.Clamp(_row + (key == 0x40000051 ? 1 : -1), 0, Math.Max(0, choices - 1));
+                    // Navigation executes no command, so the redraw below can reuse this state.
+                    _economySnapshot = (baseId, state);
+                }
                 else if (key == 13 && choices > 0)
                 {
                     if (production)
@@ -232,36 +273,6 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     }
                 }
             }
-            else if (key is (uint)'i' or (uint)'b' or (uint)'s' or (uint)'t')
-            {
-                _view = CampaignView.None;
-                _screen = new(_session.Queries, _session.Commands, overview.Bases[_baseIndex].Id);
-                _row = 0;
-                _message = "";
-                if (key == 'b') _screen.OpenOrder(LogisticsOperation.Purchase);
-                if (key == 's') _screen.OpenOrder(LogisticsOperation.Sell);
-                if (key == 't')
-                {
-                    _chooseDestination = true;
-                    _destinationIndex = (_baseIndex + 1) % overview.Bases.Count;
-                }
-            }
-            else if (key == 'p' && !overview.Bases[_baseIndex].IsPlaced && _session.Queries is ICampaignReadinessQuery placement)
-            {
-                var sites = placement.QueryBaseSites(true);
-                if (sites.Count == 0) _message = "No legal starting-base site is available.";
-                else Feedback(_session.Commands.Execute(new PlaceStartingBase(_baseIndex, "First Base", sites[0].Longitude, sites[0].Latitude)));
-            }
-            else if (key == 'n' && _session.Queries is ICampaignReadinessQuery newBase)
-            {
-                var sites = newBase.QueryBaseSites(false);
-                var site = sites.Count == 0 ? null : sites[0];
-                var lift = site is null ? null : newBase.QueryAccessLifts(site.FakeUnderwater)
-                    .FirstOrDefault(f => f.UnavailableReason is null);
-                if (sites.Count == 0 || lift is null) _message = "No legal site or access lift is available.";
-                else Feedback(_session.Commands.Execute(new CreateCampaignBase($"Base {overview.Bases.Count + 1}",
-                    site!.Longitude, site.Latitude, lift.RuleId, 2, 2)));
-            }
             else if (_view == CampaignView.Readiness && key == 'e' && _session.Queries is ICampaignReadinessQuery equipment)
             {
                 var readiness = equipment.QueryReadiness(overview.Bases[_baseIndex].Id);
@@ -288,11 +299,6 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     Feedback(_session.Commands.Execute(new ChangeCraftVehicle(overview.Bases[_baseIndex].Id,
                         craft.RuleId, craft.Id, choices[0], !craft.Vehicles.Contains(choices[0], StringComparer.Ordinal))));
                 }
-            }
-            else if (key == ' ')
-            {
-                _screen = null;
-                Feedback(_session.Commands.Execute(new AdvanceCampaignTime((input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12)));
             }
             else if (_view == CampaignView.Readiness && key is 0x40000051 or 0x40000052)
                 _row = Math.Max(0, _row + (key == 0x40000051 ? 1 : -1));
@@ -335,6 +341,9 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
 
     private void Redraw()
     {
+        // A handler snapshot is only valid for the redraw that immediately follows it.
+        var economySnapshot = _economySnapshot;
+        _economySnapshot = null;
         Frame.Clear(1);
         var overview = _session.Queries.QueryOverview();
         var selectedBase = overview.Bases.Count == 0 ? null : overview.Bases[_baseIndex];
@@ -347,7 +356,9 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             _session.Queries is ICampaignResearchProductionQuery economy)
         {
             var production = _view == CampaignView.Production;
-            var state = economy.QueryResearchProduction(selectedBase.Id);
+            var state = economySnapshot is { } snapshot && snapshot.BaseId == selectedBase.Id
+                ? snapshot.State
+                : economy.QueryResearchProduction(selectedBase.Id);
             Text(production
                 ? $"Production  Engineers {state.EngineersAvailable}  Workshops {state.WorkshopsAvailable}"
                 : $"Research  Scientists {state.ScientistsAvailable}  Laboratories {state.LaboratoriesAvailable}", 12, 88);

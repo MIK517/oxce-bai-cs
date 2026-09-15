@@ -17,6 +17,9 @@ personnel, assign fallback engineers, and apply adjusted sell prices to autosold
 Production configuration validates everything before mutating state, counts a project's
 required workshop space when staff is added to it, reserves one hangar per pending craft
 (`Base::getUsedHangars`), rejects infinite craft queues and duplicate projects per base.
+Like `Base::load`, saves drop projects whose research or manufacture rule no longer exists and
+return their assigned staff. Hourly preflight revalidates restored production rules so invalid
+random-output or event weights stop time instead of failing mid-tick.
 
 The indexed campaign client exposes research with `H` and manufacture with `M`; Enter
 starts the selected row and `X` cancels the first active project. Queries show staff,
