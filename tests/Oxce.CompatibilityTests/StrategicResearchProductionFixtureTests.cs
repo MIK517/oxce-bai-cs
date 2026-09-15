@@ -16,10 +16,7 @@ public sealed class StrategicResearchProductionFixtureTests
     public void ResearchUnlockManufactureAndReloadFormOneEconomyChain(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul", fromCache);
-        var campaign = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
+        var campaign = NewCampaign(content, 42);
 
         var started = Assert.IsType<CampaignResearchChanged>(Assert.Single(campaign.Execute(
             new ConfigureResearchProject(0, "THEORY", 3)).Events));
@@ -36,7 +33,7 @@ public sealed class StrategicResearchProductionFixtureTests
         };
         campaign = CampaignState.Restore(primed with
         {
-            Time = primed.Time with { Hour = 23, Minute = 59, Second = 55 },
+            Time = DailyBoundary(primed.Time),
             Bases = [primedBase],
         }, content, new SplitMix64RandomSource(primed.RandomState));
 
@@ -57,9 +54,7 @@ public sealed class StrategicResearchProductionFixtureTests
         var running = campaign.Capture();
         Assert.Equal(1, running.Bases[0].Items["MATERIAL"]);
         Assert.Equal(100, running.Expenditures[^1]);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(running), "economy.sav", content,
-            new SplitMix64RandomSource(0),
-            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = LoadSave(OxceSaveAdapter.EmitNewCampaign(running), "economy.sav", content);
         Assert.Equivalent(running, loaded.Campaign.Capture(), strict: true);
 
         var firstHour = loaded.Campaign.Execute(new AdvanceCampaignTime(720));
@@ -109,8 +104,7 @@ public sealed class StrategicResearchProductionFixtureTests
                     Research = [Assert.Single(owner.Research) with { Spent = 0, Cost = 8 }],
                     Productions =
                     [
-                        new("PRODUCT", 0, 11, 3, false, false, false,
-                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                        new("PRODUCT", 0, 11, 3, false, false, false, NoRandomOutput()),
                     ],
                 },
             ],
@@ -133,10 +127,7 @@ public sealed class StrategicResearchProductionFixtureTests
     public void HeldItemCancellationAndFailedAllocationAreAtomic()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
-        var campaign = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(7), SystemCampaignClock.Instance);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
+        var campaign = NewCampaign(content, 7);
         var before = campaign.Capture();
 
         Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
@@ -159,10 +150,7 @@ public sealed class StrategicResearchProductionFixtureTests
     public void ActiveProjectAndProductionUnknownFieldsSurviveOwnedSaveRewrite()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
-        var campaign = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(9), SystemCampaignClock.Instance);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
+        var campaign = NewCampaign(content, 9);
         campaign.Execute(new ConfigureResearchProject(0, "THEORY", 1));
         var snapshot = campaign.Capture();
         var source = snapshot with
@@ -173,8 +161,7 @@ public sealed class StrategicResearchProductionFixtureTests
                 {
                     Productions =
                     [
-                        new("PRODUCT", 1, 0, 2, false, false, false,
-                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                        new("PRODUCT", 1, 0, 2, false, false, false, NoRandomOutput()),
                     ],
                 },
             ],
@@ -183,8 +170,7 @@ public sealed class StrategicResearchProductionFixtureTests
             "project: THEORY", "project: THEORY\n        futureResearchField: retained", StringComparison.Ordinal);
         sourceText = sourceText.Replace(
             "item: PRODUCT", "item: PRODUCT\n        futureProductionField: retained", StringComparison.Ordinal);
-        var loaded = OxceSaveAdapter.Load(sourceText, "future.sav", content, new SplitMix64RandomSource(0),
-            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = LoadSave(sourceText, "future.sav", content);
         var rewritten = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
         Assert.Contains("futureResearchField: retained", rewritten, StringComparison.Ordinal);
         Assert.Contains("futureProductionField: retained", rewritten, StringComparison.Ordinal);
@@ -213,9 +199,8 @@ public sealed class StrategicResearchProductionFixtureTests
         };
         campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(snapshot.RandomState));
 
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
-            "strategic-maps.sav", content, new SplitMix64RandomSource(0),
-            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = LoadSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
+            "strategic-maps.sav", content);
         var restored = loaded.Campaign.Capture();
 
         Assert.Equivalent(snapshot, restored, strict: true);
@@ -238,10 +223,7 @@ public sealed class StrategicResearchProductionFixtureTests
     public void LegacyInfiniteProductionMigratesAndKeyboardUiStartsResearch()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
-        var campaign = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(11), SystemCampaignClock.Instance);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
+        var campaign = NewCampaign(content, 11);
 
         var labels = new List<string>();
         var client = new CampaignLogisticsClient(new(campaign, campaign),
@@ -279,13 +261,11 @@ public sealed class StrategicResearchProductionFixtureTests
             Research = [],
             Productions =
             [
-                new("PRODUCT", 0, 0, int.MaxValue, false, false, false,
-                    new Dictionary<string, int>(StringComparer.Ordinal)),
+                new("PRODUCT", 0, 0, int.MaxValue, false, false, false, NoRandomOutput()),
             ],
         };
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(snapshot with { Bases = [baseSnapshot] }),
-            "legacy-infinite.sav", content, new SplitMix64RandomSource(0),
-            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = LoadSave(OxceSaveAdapter.EmitNewCampaign(snapshot with { Bases = [baseSnapshot] }),
+            "legacy-infinite.sav", content);
         var migrated = Assert.Single(loaded.Campaign.Capture().Bases[0].Productions);
         Assert.Equal(999, migrated.Amount);
         Assert.True(migrated.Infinite);
@@ -299,16 +279,13 @@ public sealed class StrategicResearchProductionFixtureTests
     public void MultipleResearchCompletionsShareOneBoundaryAndProductionFailureIsAtomic()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
-        var campaign = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Economy", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(13), SystemCampaignClock.Instance);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
+        var campaign = NewCampaign(content, 13);
         campaign.Execute(new ConfigureResearchProject(0, "UNLOCK", 1));
         campaign.Execute(new ConfigureResearchProject(0, "THEORY", 2));
         var primed = campaign.Capture();
         campaign = CampaignState.Restore(primed with
         {
-            Time = primed.Time with { Hour = 23, Minute = 59, Second = 55 },
+            Time = DailyBoundary(primed.Time),
             Bases =
             [
                 primed.Bases[0] with
@@ -331,7 +308,6 @@ public sealed class StrategicResearchProductionFixtureTests
             new ConfigureProductionProject(0, "PRODUCT", 1, 1)).Events));
         Assert.Equal("STR_NOT_ENOUGH_MONEY", blocked.Reason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
-
     }
 
     [Fact]
@@ -383,7 +359,7 @@ public sealed class StrategicResearchProductionFixtureTests
         };
         campaign = CampaignState.Restore(snapshot with
         {
-            Time = snapshot.Time with { Hour = 23, Minute = 59, Second = 55 },
+            Time = DailyBoundary(snapshot.Time),
             Bases = [alpha, beta],
         }, content, new SplitMix64RandomSource(snapshot.RandomState));
 
@@ -412,8 +388,7 @@ public sealed class StrategicResearchProductionFixtureTests
                 {
                     Productions =
                     [
-                        new("RANDOM_PRODUCT", 0, 0, 2, false, false, true,
-                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                        new("RANDOM_PRODUCT", 0, 0, 2, false, false, true, NoRandomOutput()),
                     ],
                 },
             ],
@@ -527,8 +502,7 @@ public sealed class StrategicResearchProductionFixtureTests
                     Engineers = 1,
                     Productions =
                     [
-                        new("PRODUCT", 9, 1, 2, false, false, false,
-                            new Dictionary<string, int>(StringComparer.Ordinal)),
+                        new("PRODUCT", 9, 1, 2, false, false, false, NoRandomOutput()),
                     ],
                 },
             ],
@@ -600,8 +574,7 @@ public sealed class StrategicResearchProductionFixtureTests
                 Engineers = 3,
                 Productions =
                 [
-                    new("REFUNDABLE", 1, 0, 1, false, false, false,
-                        new Dictionary<string, int>(StringComparer.Ordinal)),
+                    new("REFUNDABLE", 1, 0, 1, false, false, false, NoRandomOutput()),
                 ],
             }],
         }, content, new SplitMix64RandomSource(refundSnapshot.RandomState));
@@ -610,6 +583,53 @@ public sealed class StrategicResearchProductionFixtureTests
             new ConfigureProductionProject(0, "REFUNDABLE", 0, 1, Cancel: true)).Events));
         Assert.Equal("Production accounting exceeds the supported range.", refundBlocked.Reason);
         Assert.Equivalent(beforeRefund, refund.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void ProductionStaffingReservesWorkshopSpaceAndCraftHangars()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var staffed = NewCampaign(content, 57);
+        var staffedSnapshot = staffed.Capture();
+        staffed = CampaignState.Restore(staffedSnapshot with
+        {
+            Bases = [staffedSnapshot.Bases[0] with
+            {
+                Scientists = 0,
+                Engineers = 5,
+                Productions = [new("PRODUCT", 5, 1, 2, false, false, false, NoRandomOutput())],
+            }],
+        }, content, new SplitMix64RandomSource(staffedSnapshot.RandomState));
+        var beforeStaffing = staffed.Capture();
+        // Ten workshops hold the one-space project plus at most nine engineers.
+        var overstaffed = Assert.IsType<CampaignActionBlocked>(Assert.Single(staffed.Execute(
+            new ConfigureProductionProject(0, "PRODUCT", 10, 2)).Events));
+        Assert.Equal("STR_NOT_ENOUGH_WORK_SPACE", overstaffed.Reason);
+        Assert.Equivalent(beforeStaffing, staffed.Capture(), strict: true);
+        Assert.IsType<CampaignProductionChanged>(Assert.Single(staffed.Execute(
+            new ConfigureProductionProject(0, "PRODUCT", 9, 2)).Events));
+        var fullyStaffed = staffed.Capture().Bases[0];
+        Assert.Equal(9, Assert.Single(fullyStaffed.Productions).Assigned);
+        Assert.Equal(1, fullyStaffed.Engineers);
+
+        var hangars = NewCampaign(content, 58);
+        var beforeHangars = hangars.Capture();
+        var oversized = Assert.IsType<CampaignActionBlocked>(Assert.Single(hangars.Execute(
+            new ConfigureProductionProject(0, "BUILD_SHIP", 0, 3)).Events));
+        Assert.Equal("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION", oversized.Reason);
+        var infinite = Assert.IsType<CampaignActionBlocked>(Assert.Single(hangars.Execute(
+            new ConfigureProductionProject(0, "BUILD_SHIP", 0, 1, Infinite: true)).Events));
+        Assert.Equal("Craft production cannot be infinite.", infinite.Reason);
+        Assert.Equivalent(beforeHangars, hangars.Capture(), strict: true);
+
+        Assert.IsType<CampaignProductionChanged>(Assert.Single(hangars.Execute(
+            new ConfigureProductionProject(0, "BUILD_SHIP", 0, 2)).Events));
+        var reserved = hangars.Capture();
+        // Both hangars are now reserved by pending units, so the queue cannot grow further.
+        var grown = Assert.IsType<CampaignActionBlocked>(Assert.Single(hangars.Execute(
+            new ConfigureProductionProject(0, "BUILD_SHIP", 0, 3)).Events));
+        Assert.Equal("STR_NO_FREE_HANGARS_FOR_CRAFT_PRODUCTION", grown.Reason);
+        Assert.Equivalent(reserved, hangars.Capture(), strict: true);
     }
 
     [Fact]
@@ -664,8 +684,7 @@ public sealed class StrategicResearchProductionFixtureTests
         {
             Productions =
             [
-                new("PRODUCT", 1, 0, -1, false, false, false,
-                    new Dictionary<string, int>(StringComparer.Ordinal)),
+                new("PRODUCT", 1, 0, -1, false, false, false, NoRandomOutput()),
             ],
         });
         Reject(owner with { Scientists = 0, Research = [new("THEORY", 11, 0, 10)] });
@@ -674,8 +693,17 @@ public sealed class StrategicResearchProductionFixtureTests
             Engineers = 0,
             Productions =
             [
-                new("PRODUCT", 10, 0, 1, false, false, false,
-                    new Dictionary<string, int>(StringComparer.Ordinal)),
+                new("PRODUCT", 10, 0, 1, false, false, false, NoRandomOutput()),
+            ],
+        });
+
+        Reject(owner with { Research = [new("UNLOCK", 0, 0, 1), new("UNLOCK", 0, 0, 1)] });
+        Reject(owner with
+        {
+            Productions =
+            [
+                new("PRODUCT", 0, 0, 1, false, false, false, NoRandomOutput()),
+                new("PRODUCT", 0, 0, 2, false, false, false, NoRandomOutput()),
             ],
         });
 
@@ -693,6 +721,12 @@ public sealed class StrategicResearchProductionFixtureTests
         return campaign;
     }
 
+    private static LoadedOxceCampaign LoadSave(string text, string name, Oxce.Mods.Rulesets.Content.RuntimeContent content) =>
+        OxceSaveAdapter.Load(text, name, content, new SplitMix64RandomSource(0),
+            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+
+    private static Dictionary<string, int> NoRandomOutput() => new(StringComparer.Ordinal);
+
     private static CampaignState PrimeResearch(
         CampaignState campaign, Oxce.Mods.Rulesets.Content.RuntimeContent content, string ruleId)
     {
@@ -700,7 +734,7 @@ public sealed class StrategicResearchProductionFixtureTests
         var owner = snapshot.Bases[0];
         return CampaignState.Restore(snapshot with
         {
-            Time = snapshot.Time with { Hour = 23, Minute = 59, Second = 55 },
+            Time = DailyBoundary(snapshot.Time),
             Bases =
             [
                 owner with

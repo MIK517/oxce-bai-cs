@@ -14,6 +14,9 @@ a later re-enable restores availability but does not restore the cancelled proje
 deduplicate primary research side effects across bases, route research rewards through
 one-hour transfers, unload consumed craft, enforce living-space limits for manufactured
 personnel, assign fallback engineers, and apply adjusted sell prices to autosold output.
+Production configuration validates everything before mutating state, counts a project's
+required workshop space when staff is added to it, reserves one hangar per pending craft
+(`Base::getUsedHangars`), rejects infinite craft queues and duplicate projects per base.
 
 The indexed campaign client exposes research with `H` and manufacture with `M`; Enter
 starts the selected row and `X` cancels the first active project. Queries show staff,

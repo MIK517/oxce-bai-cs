@@ -442,10 +442,10 @@ public static class OxceSaveAdapter
     {
         EnsureUnique(value.Facilities.Select(FacilityIdentity), "facility identity");
         var oldFacilities = Maps(source, "facilities").ToDictionary(FacilityIdentity);
-        var oldResearch = Maps(source, "research").ToDictionary(
-            project => RequiredString(project, "project"), StringComparer.Ordinal);
-        var oldProductions = Maps(source, "productions").ToDictionary(
-            production => RequiredString(production, "item"), StringComparer.Ordinal);
+        EnsureUnique(value.Research.Select(static project => project.RuleId), "research project");
+        EnsureUnique(value.Productions.Select(static production => production.RuleId), "production project");
+        var oldResearch = FirstByKey(Maps(source, "research"), static project => RequiredString(project, "project"));
+        var oldProductions = FirstByKey(Maps(source, "productions"), static production => RequiredString(production, "item"));
         var facilities = value.Facilities.Select(facility => Overlay(
             oldFacilities.GetValueOrDefault(FacilityIdentity(facility)),
             [
@@ -838,6 +838,14 @@ public static class OxceSaveAdapter
         var seen = new HashSet<T>();
         foreach (var value in values)
             if (!seen.Add(value)) throw new InvalidDataException($"Duplicate {name} '{value}'.");
+    }
+
+    private static Dictionary<string, YamlMappingNode> FirstByKey(
+        IEnumerable<YamlMappingNode> nodes, Func<YamlMappingNode, string> key)
+    {
+        var result = new Dictionary<string, YamlMappingNode>(StringComparer.Ordinal);
+        foreach (var node in nodes) result.TryAdd(key(node), node);
+        return result;
     }
 
     private readonly record struct IdentifiedBase(int Id, YamlMappingNode Value);
