@@ -123,7 +123,7 @@ public sealed class ManagedAudioMixerTests
     [Fact]
     public async Task ControlUpdatesAndCallbacksAlternateWithoutDeadlock()
     {
-        const int iterations = 100;
+        const int iterations = 1_000;
         using var mixer = new ManagedAudioMixer(48_000, maximumEffectVoices: 32);
         var clip = new PcmAudioClip(new short[8_192], 48_000, 2);
         using var playback = mixer.Play(
