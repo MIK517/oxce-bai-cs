@@ -47,6 +47,36 @@ public sealed class YamlCompatibilityWriterTests
         Assert.Contains("control: \"line\\nfeed\"\n", emitted, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(" leading", YamlScalarStyle.Plain)]
+    [InlineData("trailing ", YamlScalarStyle.Plain)]
+    [InlineData("Base:", YamlScalarStyle.Plain)]
+    [InlineData("a\u007Fb", YamlScalarStyle.Plain)]
+    [InlineData("c1\u0090control", YamlScalarStyle.Plain)]
+    [InlineData("line\u2028separator", YamlScalarStyle.Plain)]
+    [InlineData("next\u0085line", YamlScalarStyle.Plain)]
+    [InlineData("bom\uFEFF", YamlScalarStyle.Plain)]
+    [InlineData("two\nlines", YamlScalarStyle.SingleQuoted)]
+    [InlineData("tab\there", YamlScalarStyle.SingleQuoted)]
+    [InlineData("it's", YamlScalarStyle.SingleQuoted)]
+    public void EmittedScalarsRoundTripExactly(string value, YamlScalarStyle style)
+    {
+        var span = new Oxce.Core.Diagnostics.SourceSpan("generated", new(1, 1, 0), new(1, 1, 0));
+        var root = new YamlMappingNode(span,
+        [
+            new YamlMappingEntry(new YamlScalarNode(span, value, style), new YamlScalarNode(span, value, style)),
+        ]);
+        var documents = new YamlDocumentSet("generated", [new YamlDocument(root, span)]);
+
+        var emitted = YamlCompatibilityWriter.Emit(documents);
+        var reparsed = Assert.IsType<YamlMappingNode>(
+            YamlCompatibilityReader.Parse(emitted, "emitted.yml").Documents[0].Root);
+
+        var entry = Assert.Single(reparsed.Entries);
+        Assert.Equal(value, YamlValueReader.ReadString(entry.Key));
+        Assert.Equal(value, YamlValueReader.ReadString(entry.Value));
+    }
+
     [Fact]
     public void EmitEnforcesByteAndDepthLimits()
     {

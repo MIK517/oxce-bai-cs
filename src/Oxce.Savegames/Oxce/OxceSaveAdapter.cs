@@ -206,7 +206,9 @@ public static class OxceSaveAdapter
             ReadScriptValues(body, content, "GeoscapeGame"))
         {
             Restrictions = ReadRestrictions(body),
-            CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString).Order(StringComparer.Ordinal).ToArray()),
+            // SavedGame::load accepts repeated topics; the port keeps one entry per topic.
+            CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
+                .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()),
             ResearchRuleStatus = ReadIntMap(body, "researchRuleStatus"),
             ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),

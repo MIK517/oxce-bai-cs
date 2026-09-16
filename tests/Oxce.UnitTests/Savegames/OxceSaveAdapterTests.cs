@@ -183,6 +183,19 @@ public sealed class OxceSaveAdapterTests
     }
 
     [Fact]
+    public void RepeatedDiscoveredTopicsAreAcceptedOnce()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFoundationTests.Create(content);
+        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture())
+            .Replace("difficulty: 0", "discovered: [TOPIC_B, TOPIC_A, TOPIC_B]\ndifficulty: 0", StringComparison.Ordinal);
+
+        var loaded = OxceSaveAdapter.Load(yaml, "repeated.sav", content, new SplitMix64RandomSource(0), Options());
+
+        Assert.Equal(["TOPIC_A", "TOPIC_B"], loaded.Campaign.Capture().CompletedResearch);
+    }
+
+    [Fact]
     public void LoadedAtomicRewriteRequiresAndPreservesSourceDocument()
     {
         var content = CampaignFoundationTests.LoadFixture();

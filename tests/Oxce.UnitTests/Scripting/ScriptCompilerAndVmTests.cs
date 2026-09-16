@@ -52,6 +52,23 @@ public sealed class ScriptCompilerAndVmTests
         Assert.Equal(locals[0].Offset, locals[1].Offset);
     }
 
+    [Theory]
+    [InlineData(2, 10, 1024)]
+    [InlineData(2, 31, int.MinValue)]
+    [InlineData(10, 20, int.MinValue)]
+    [InlineData(-2, 31, int.MinValue)]
+    [InlineData(-3, 21, int.MinValue)]
+    [InlineData(-2, 3, -8)]
+    [InlineData(7, -4, 1)]
+    public void PowerOverflowMatchesReferenceTruncation(int value, int exponent, int expected)
+    {
+        // Script.cpp assigns std::pow's double to int; x64 yields INT_MIN when out of range.
+        var result = Execute($"set result {value}; pow result {exponent}; return result;");
+
+        Assert.Equal(ScriptExecutionStatus.Completed, result.Status);
+        Assert.Equal(expected, result.Outputs["result"]);
+    }
+
     [Fact]
     public void CompilerStopsAtConfiguredInstructionLimit()
     {
