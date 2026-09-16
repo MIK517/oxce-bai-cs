@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "terrain-deployment-rules",
+  "description": "Pins terrain, map blocks, map scripts, MCD patches, deployments, environments, races and starting conditions after an ordered base/patch ruleset pair.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/RuleTerrain.cpp, MapBlock.cpp, MapScript.cpp, MCDPatch.cpp, AlienDeployment.cpp, RuleEnviroEffects.cpp, AlienRace.cpp, RuleStartingCondition.cpp",
+      "probe": "fixtures/reference-probes/mods/terrain_deployment_rules_probe.cpp",
+      "capture": "tools/capture-terrain-deployment-rules-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20, rapidyaml from the reference checkout"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/MAPS/BLOCK.MAP", "size": 6, "sha256": "90a7b08f76a1a33dc3e4c9decf39ff93a88918f1f46fd1b3fbf5edd619d77dc6" },
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/MAPS/EXTRA.MAP", "size": 6, "sha256": "65110ea3b8b62b0c09742c368bf1527f0978b06dff7a1371ef7b4c98e244d91a" },
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/Ruleset/10-patch.rul", "size": 305, "sha256": "777079a5feb16b571eae7ca045c4686e40dbdd03eb5d5ce076c76d32316218a3" },
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/Ruleset/20-base.rul", "size": 914, "sha256": "fcca0eec5a690fbaa9c3bc93d2aa5768ff63a23c8101077ee9b16ad316bbf19b" },
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/TERRAIN/URBAN.MCD", "size": 4, "sha256": "773d7d0acaddeca3c853a4d854df36672439f8aaa48211fac0ab8651b9593e92" },
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/TERRAIN/URBAN.PCK", "size": 4, "sha256": "25e1566cc22a1513631028a5a9f17faf814d3c73d8745815dfa9c25d2c3c11bd" },
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/TERRAIN/URBAN.TAB", "size": 4, "sha256": "40cfae8acb2627ac5b6b871b5a3ed1dcb5315ff489ad3dd5d192dff5d59405cf" },
+    { "path": "fixtures/public/mods/terrain-deployment-rules/fixture/metadata.yml", "size": 93, "sha256": "46313e821b98b18350c8376a2ecf9aa1fdefa919301a0a485d606f413bcbe421" },
+    { "path": "fixtures/reference-probes/mods/terrain_deployment_rules_probe.cpp", "size": 4243, "sha256": "38ecbe6adc457efc6ca3c09bc9762bc6cb96de61f1719424f956a3ba064d82e6" }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/terrain-deployment-rules.expected.json"
+}

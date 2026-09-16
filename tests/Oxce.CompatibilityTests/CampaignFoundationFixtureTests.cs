@@ -12,9 +12,7 @@ public sealed class CampaignFoundationFixtureTests
     [Fact]
     public void NewCampaignAndStartingBaseMatchPinnedReferenceScenario()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(
-            root, "fixtures", "expected", "savegames", "campaign-foundation.expected.json")));
+        using var expected = TestFixtures.ReadVerifiedExpected("campaign-foundation");
         var content = ContentSnapshotBuilder.Build(TestFixtures.CreateRuntimeRuleLinkingPlan()).Content;
         var campaign = CampaignFactory.Create(
             content,

@@ -130,6 +130,16 @@ implementation are recorded under each item.
 - `AddFinishedResearch` scans all research rules for each queued topic. This is fine
   today. Revisit it if monthly or world ticks start calling research availability often.
 
+## Oracle manifests (follow-up)
+
+All eleven expected outputs that had no manifest now have one, listing the fixture mods and
+overlays, the probe source and, for template probes, the capture script. Tests read every
+oracle through `TestFixtures.ReadVerifiedExpected`/`VerifiedExpectedPath`, which verifies the
+manifest first; `CampaignFoundationFixtureTests` now does as well. A new pipeline test
+requires every file under `fixtures/expected/` to belong to exactly one manifest.
+`.gitattributes` now pins `.nam` and `.sav` fixtures to LF so their hashes are stable on
+Windows checkouts with `core.autocrlf`.
+
 ## Windows validation
 
 After the decision follow-ups, the branch passed on Windows with the private corpus
@@ -139,9 +149,7 @@ errors, so the expected `OXCE-YAML-0001` warnings are not printed.
 
 ## Suggested next steps
 
-1. Add manifests for the eleven oracles without one, and make
-   `CampaignFoundationFixtureTests` use `LoadVerifiedManifest`.
-2. Map `common` once as a plan-level base layer (item 5).
-3. Split `CampaignState` at the start of Phase 6 branch 4 (item 4).
-4. Keep `docs/code-map.md` current by running `python3 tools/generate-code-map.py`. CI
+1. Map `common` once as a plan-level base layer (item 5).
+2. Split `CampaignState` at the start of Phase 6 branch 4 (item 4).
+3. Keep `docs/code-map.md` current by running `python3 tools/generate-code-map.py`. CI
    runs it with `--check`.

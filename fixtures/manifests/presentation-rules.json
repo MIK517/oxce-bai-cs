@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "presentation-rules",
+  "description": "Pins interface, music, extra sprite, extra string and cutscene presentation rules from one ruleset.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/RuleInterface.cpp, RuleMusic.cpp, ExtraSprites.cpp, ExtraStrings.cpp, RuleVideo.cpp, Mod.cpp",
+      "probe": "fixtures/reference-probes/mods/presentation_rules_probe.cpp",
+      "capture": "tools/capture-presentation-rules-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20, rapidyaml from the reference checkout"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/presentation-rules/fixture/Resources/b.png", "size": 7, "sha256": "dcfe0f5d9a5485501ac880184b0cfabf351ef2e1e4645a735c01b4ee79dda558" },
+    { "path": "fixtures/public/mods/presentation-rules/fixture/Resources/slide.png", "size": 6, "sha256": "d8bfbf38633d792a9cc6cd40659d8b10d7e6bd8eddf1ca50666fa1c82fe582e0" },
+    { "path": "fixtures/public/mods/presentation-rules/fixture/Ruleset/fixture.rul", "size": 783, "sha256": "c76cb5121e9f6bb916f21394d0eda81049702eaa6e1677d56d36d8820f975d0a" },
+    { "path": "fixtures/public/mods/presentation-rules/fixture/metadata.yml", "size": 93, "sha256": "ff51d30fa1d0834b927166661a1fea4e17966a925c75de70ad0d1da72c70120b" },
+    { "path": "fixtures/reference-probes/mods/presentation_rules_probe.cpp", "size": 5654, "sha256": "2f2ee310479f1f68d981d55b287a54ecc1dec1029755f5bfc6a0a70b63caeb22" }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/presentation-rules.expected.json"
+}

@@ -19,7 +19,6 @@ public sealed class StrategicReadinessFixtureTests
     [InlineData(true)]
     public void BasePlacementFacilityConstructionAndSaveReloadFormACompatibilitySlice(bool fromCache)
     {
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var content = StrategicReadinessTestContent.Load(fromCache: fromCache);
         var original = TestFixtures.CreateLogisticsCampaign(content, "Bases");
         var funded = original.Capture() with { Funds = [20_000], Incomes = [0], Expenditures = [0] };
@@ -76,8 +75,7 @@ public sealed class StrategicReadinessFixtureTests
             Expenditures = [0],
             Bases = facilityState.Bases.Select(b => b.Id == upgradeBase.Id ? upgradeBase : b).ToArray(),
         }, content, new SplitMix64RandomSource(42));
-        using var readinessOracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
-            "fixtures/expected/savegames/strategic-readiness.expected.json")));
+        using var readinessOracle = TestFixtures.ReadVerifiedExpected("strategic-readiness");
         Assert.Equal(0, readinessOracle.RootElement.GetProperty("facilityAffordability")[0][4].GetInt32());
         var beforeUpgrade = upgradeCampaign.Capture();
         Assert.IsType<CampaignActionBlocked>(Assert.Single(upgradeCampaign.Execute(
@@ -307,10 +305,8 @@ public sealed class StrategicReadinessFixtureTests
     [InlineData(true)]
     public void SoldierTransformationsFormAnIndependentCompatibilitySlice(bool fromCache)
     {
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var (content, campaign, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
-        using var readinessOracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
-            "fixtures/expected/savegames/strategic-readiness.expected.json")));
+        using var readinessOracle = TestFixtures.ReadVerifiedExpected("strategic-readiness");
         var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
         var stats = recruit.MinimumStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
@@ -524,7 +520,7 @@ public sealed class StrategicReadinessFixtureTests
     [Fact]
     public void RearmingMatchesExtractedCppIncludingStatisticalBulletSaving()
     {
-        using var expected = TestFixtures.ReadExpected("savegames", "strategic-readiness.expected.json");
+        using var expected = TestFixtures.ReadVerifiedExpected("strategic-readiness");
         Assert.Equal("4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15", expected.RootElement.GetProperty("referenceCommit").GetString());
         foreach (var row in TestFixtures.Rows(expected.RootElement, "weapons"))
         {
@@ -541,7 +537,7 @@ public sealed class StrategicReadinessFixtureTests
     [Fact]
     public void RecoveryMatchesExtractedCppOrderingAndClamps()
     {
-        using var expected = TestFixtures.ReadExpected("savegames", "strategic-readiness.expected.json");
+        using var expected = TestFixtures.ReadVerifiedExpected("strategic-readiness");
         foreach (var row in TestFixtures.Rows(expected.RootElement, "recovery"))
         {
             var stats = new Dictionary<string, short>(StringComparer.Ordinal) { ["health"] = 40, ["mana"] = 30 };
@@ -557,7 +553,7 @@ public sealed class StrategicReadinessFixtureTests
     [Fact]
     public void PhysicalTrainingCompletionMatchesExtractedCppStatComparison()
     {
-        using var expected = TestFixtures.ReadExpected("savegames", "strategic-readiness.expected.json");
+        using var expected = TestFixtures.ReadVerifiedExpected("strategic-readiness");
         var content = TestFixtures.LoadStrategicLogistics();
         var rule = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
         foreach (var row in TestFixtures.Rows(expected.RootElement, "training"))

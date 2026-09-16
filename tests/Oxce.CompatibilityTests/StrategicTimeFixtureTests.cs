@@ -9,7 +9,7 @@ public sealed class StrategicTimeFixtureTests
     [Fact]
     public void DispatcherMatchesExtractedReferenceLoopIncludingPauseFallthrough()
     {
-        using var expected = TestFixtures.ReadExpected("savegames", "strategic-time.expected.json");
+        using var expected = TestFixtures.ReadVerifiedExpected("strategic-time");
         CampaignTime[] starts = [new(1, 1, 1, 1999, 0, 0, 0), new(1, 1, 1, 1999, 0, 9, 55),
             new(1, 1, 1, 1999, 0, 29, 55), new(1, 1, 1, 1999, 0, 59, 55),
             new(1, 1, 1, 1999, 23, 59, 55), new(1, 31, 1, 1999, 23, 59, 55)];

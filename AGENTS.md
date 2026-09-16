@@ -78,6 +78,7 @@ mechanical translations with no executable acceptance test.
 
 - Shared helpers live in `tests/Shared/TestFixtures.cs` (linked into both test
   projects). Use them instead of local copies: `LoadVerifiedManifest`,
+  `ReadVerifiedExpected`/`VerifiedExpectedPath` (the only way to read an oracle),
   `CreatePlan`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`,
   `CreateLogisticsCampaign`, `LoadLogisticsSave`, `CopyDirectory`.
 - Tests must be deterministic: fixed campaign IDs, `FixedClock`, explicit
