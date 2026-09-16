@@ -215,6 +215,12 @@ public sealed class InstallationContentLoaderTests
             first.Diagnostics.Select(static item => (item.Code, item.Severity, item.Message)),
             second.Diagnostics.Select(static item => (item.Code, item.Severity, item.Message)));
         Assert.Empty(Directory.EnumerateFiles(installation.CacheDirectory, "*.tmp"));
+        // Fresh and restored loads both publish the files their resources resolve against.
+        foreach (var descriptor in second.Content.Resources.Descriptors)
+        {
+            Assert.True(first.VirtualFiles!.TryGet(descriptor.CanonicalPath, out _), descriptor.CanonicalPath);
+            Assert.True(second.VirtualFiles!.TryGet(descriptor.CanonicalPath, out _), descriptor.CanonicalPath);
+        }
     }
 
     [Fact]

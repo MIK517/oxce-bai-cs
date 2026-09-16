@@ -29,7 +29,7 @@ public static class ResourceDescriptorResolver
         options.Validate();
         var cancellationToken = options.CancellationToken;
         cancellationToken.ThrowIfCancellationRequested();
-        var files = plan.CreateVirtualFileCatalog();
+        var files = plan.VirtualFiles;
         var generation = ContentGenerationId.Next();
         var descriptors = new List<ResolvedResourceDescriptor>();
         var descriptorIds = new Dictionary<string, int>(StringComparer.Ordinal);

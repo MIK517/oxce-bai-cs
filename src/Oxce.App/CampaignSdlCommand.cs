@@ -17,10 +17,7 @@ internal static class CampaignSdlCommand
         var loaded = InstallationContentLoader.Load(request);
         if (!loaded.IsSuccess) throw new InvalidDataException(loaded.DescribeFailure());
         var content = loaded.Content!;
-        var plan = InstallationPlanBuilder.Create(request);
-        if (!plan.IsSuccess) throw new InvalidDataException(plan.DescribeFailure());
-        var assets = CampaignUiAssets.Load(plan.Plan!.CreateVirtualFileCatalog(), installationRoot,
-            content.Presentation);
+        var assets = CampaignUiAssets.Load(loaded.VirtualFiles!, installationRoot, content.Presentation);
         loaded = null!;
         var activeMods = request.ActiveMods;
 

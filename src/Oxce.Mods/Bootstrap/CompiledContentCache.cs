@@ -270,7 +270,7 @@ internal static class CompiledContentCache
             var namePools = envelope.Content.SoldierNamePools.Values.SelectMany(p => p).DistinctBy(p => p.Source).ToArray();
             if (namePools.Length != 0)
             {
-                var files = plan.CreateVirtualFileCatalog();
+                var files = plan.VirtualFiles;
                 foreach (var pool in namePools)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -278,7 +278,7 @@ internal static class CompiledContentCache
                         return CompiledContentCacheReadResult.Rejected("Soldier name pool content changed.");
                 }
             }
-            var restored = envelope.Content.Restore(contentOptions, measurements, plan.CreateVirtualFileCatalog(), cancellationToken);
+            var restored = envelope.Content.Restore(contentOptions, measurements, plan.VirtualFiles, cancellationToken);
             return new CompiledContentCacheReadResult(
                 restored.Content,
                 restored.CompatibilityData,
