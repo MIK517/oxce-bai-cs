@@ -80,9 +80,7 @@ public sealed class StrategicResearchProductionFixtureTests
     public void ProjectProgressAndProducedAmountMatchReferenceOracle()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        using var oracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
-            "fixtures/expected/savegames/strategic-research-production.expected.json")));
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-production");
         var expected = oracle.RootElement;
         Assert.Equal(1, expected.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
@@ -348,6 +346,68 @@ public sealed class StrategicResearchProductionFixtureTests
         Assert.Equal(0, later.Capture().ResearchRuleStatus["TARGET"]);
         Assert.Null(later.QueryResearchProduction(0).ResearchChoices.Single(choice =>
             choice.RuleId == "TARGET").UnavailableReason);
+    }
+
+    [Fact]
+    public void ZeroCostDiscoveriesUseTheCompletingBaseAvailability()
+    {
+        // SavedGame::addFinishedResearch scans getAvailableResearchProjects(..., base).
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var campaign = NewCampaign(content, 37);
+        campaign.Execute(new ConfigureResearchProject(0, "BASE_GATED_SOURCE", 1));
+        campaign = PrimeResearch(campaign, content, "BASE_GATED_SOURCE");
+
+        var completed = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events
+            .OfType<CampaignResearchCompleted>());
+
+        Assert.Equal(["BASE_GATED_SOURCE", "FREE_UNGATED"], completed.Discoveries);
+        var research = campaign.Capture().CompletedResearch;
+        Assert.DoesNotContain("FREE_NEEDS_FUNCTION", research);
+        Assert.DoesNotContain("FREE_NEEDS_ITEM", research);
+
+        // Once the item is in stores, the next qualifying completion discovers the gated topic.
+        var stocked = NewCampaign(content, 41);
+        var snapshot = stocked.Capture();
+        stocked = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Items = new Dictionary<string, int>(snapshot.Bases[0].Items, StringComparer.Ordinal) { ["MATERIAL"] = 1 },
+            }],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+        stocked.Execute(new ConfigureResearchProject(0, "BASE_GATED_SOURCE", 1));
+        stocked = PrimeResearch(stocked, content, "BASE_GATED_SOURCE");
+        stocked.Execute(new AdvanceCampaignTime(1));
+        Assert.Contains("FREE_NEEDS_ITEM", stocked.Capture().CompletedResearch);
+        Assert.DoesNotContain("FREE_NEEDS_FUNCTION", stocked.Capture().CompletedResearch);
+    }
+
+    [Fact]
+    public void CompletedTopicWithPendingProtectedUnlockStaysResearchable()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var campaign = NewCampaign(content, 43);
+        campaign.Execute(new ConfigureResearchProject(0, "PROTECTED_UNLOCK_SOURCE", 1));
+        campaign = PrimeResearch(campaign, content, "PROTECTED_UNLOCK_SOURCE");
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Contains("PROTECTED_UNLOCK_SOURCE", campaign.Capture().CompletedResearch);
+        Assert.DoesNotContain("PROTECTED_CHILD", campaign.Capture().CompletedResearch);
+        Assert.Null(Choice(campaign, "PROTECTED_UNLOCK_SOURCE").UnavailableReason);
+
+        campaign = CampaignState.Restore(campaign.Capture() with
+        {
+            CompletedResearch = ["PROTECTED_UNLOCK_SOURCE", "UNLOCK_GATE"],
+        }, content, new SplitMix64RandomSource(campaign.Capture().RandomState));
+        campaign.Execute(new ConfigureResearchProject(0, "PROTECTED_UNLOCK_SOURCE", 1));
+        campaign = PrimeResearch(campaign, content, "PROTECTED_UNLOCK_SOURCE");
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Contains("PROTECTED_CHILD", campaign.Capture().CompletedResearch);
+        Assert.Equal("Research is already complete.", Choice(campaign, "PROTECTED_UNLOCK_SOURCE").UnavailableReason);
+
+        static CampaignResearchChoice Choice(CampaignState state, string id) =>
+            state.QueryResearchProduction(0).ResearchChoices.Single(choice => choice.RuleId == id);
     }
 
     [Fact]
@@ -678,6 +738,61 @@ public sealed class StrategicResearchProductionFixtureTests
         var manufactured = Assert.Single(ammunition.Capture().Bases[0].Crafts).Logistics!;
         Assert.Equal("STR_REARMING", manufactured.Status);
         Assert.True(manufactured.Weapons[0]!.Rearming);
+    }
+
+    [Fact]
+    public void FreeProductionContinuesWithNegativeFunds()
+    {
+        // RuleManufacture::haveEnoughMoneyForOneMoreUnit accepts any funds when the unit is free.
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var snapshot = NewCampaign(content, 83).Capture();
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Time = snapshot.Time with { Minute = 59, Second = 55 },
+            Funds = [-500],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        var started = Assert.IsType<CampaignProductionChanged>(Assert.Single(campaign.Execute(
+            new ConfigureProductionProject(0, "MAKE_AMMO", 1, 2)).Events));
+        Assert.False(started.Removed);
+        var progress = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events
+            .OfType<CampaignProductionProgress>());
+
+        Assert.Equal(1, progress.Produced);
+        Assert.Null(progress.StopReason);
+        var result = campaign.Capture();
+        Assert.Equal(1, Assert.Single(result.Bases[0].Productions).Spent);
+        Assert.Equal(-500, result.Funds[^1]);
+    }
+
+    [Fact]
+    public void ProducedTransfersSkipIdsAssignedToLoadedTransfers()
+    {
+        // OxceSaveAdapter numbers reference-save transfers from 1 without writing a port counter.
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var snapshot = NewCampaign(content, 89).Capture();
+        var pending = new TransferSnapshot(1, 5, CampaignTransferKind.Item, "PRODUCT", 1)
+        {
+            PreservationKey = "transfer:1",
+        };
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Time = snapshot.Time with { Minute = 59, Second = 55 },
+            NextIds = snapshot.NextIds.Where(pair => pair.Key != "oxcePortTransfer")
+                .ToDictionary(StringComparer.Ordinal),
+            Bases = [snapshot.Bases[0] with { Engineers = 1, Transfers = [pending] }],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        campaign.Execute(new ConfigureProductionProject(0, "MAKE_ENGINEER", 1, 1));
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        var produced = campaign.Capture();
+        var transfers = produced.Bases[0].Transfers;
+        Assert.Equal(2, transfers.Count);
+        Assert.Equal(transfers.Count, transfers.Select(transfer => transfer.Id).Distinct().Count());
+        Assert.Contains(transfers, transfer => transfer.Kind == CampaignTransferKind.Engineer);
+        var restored = CampaignState.Restore(produced, content, new SplitMix64RandomSource(produced.RandomState));
+        Assert.Equivalent(produced, restored.Capture(), strict: true);
     }
 
     [Fact]

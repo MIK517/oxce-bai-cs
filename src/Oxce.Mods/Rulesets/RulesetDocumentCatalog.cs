@@ -1,3 +1,4 @@
+using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Files;
@@ -29,7 +30,8 @@ public sealed class RulesetDocumentCatalog
 
     public static RulesetDocumentCatalog Parse(
         ModLoadPlan plan,
-        RulesetCompositionOptions? options = null)
+        RulesetCompositionOptions? options = null,
+        IDiagnosticSink? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
         if (!plan.IsValid)
@@ -50,6 +52,8 @@ public sealed class RulesetDocumentCatalog
                 parsedFileCount = checked(parsedFileCount + 1);
                 using var input = file.OpenRead();
                 var stream = YamlCompatibilityReader.Parse(input, file.SourcePath, options.Yaml);
+                YamlCompatibilityReader.ReportLegacyEncoding(stream, diagnostics,
+                    new DiagnosticContext(file.Provenance.LayerId, group.Mod.Metadata.Id));
                 options.CancellationToken.ThrowIfCancellationRequested();
                 if (stream.Documents.Count == 0)
                 {

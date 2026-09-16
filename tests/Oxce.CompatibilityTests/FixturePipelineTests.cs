@@ -28,6 +28,26 @@ public sealed class FixturePipelineTests
     }
 
     [Fact]
+    public void EveryExpectedOutputBelongsToExactlyOneManifest()
+    {
+        // An oracle without a manifest would be read without verifying its pinned inputs.
+        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
+        var owners = Directory.EnumerateFiles(Path.Combine(root, "fixtures", "manifests"), "*.json")
+            .Order(StringComparer.Ordinal)
+            .Select(FixtureManifestLoader.Load)
+            .GroupBy(static manifest => manifest.Expected, StringComparer.Ordinal)
+            .ToDictionary(static group => group.Key, static group => group.Count(), StringComparer.Ordinal);
+        var outputs = Directory.EnumerateFiles(Path.Combine(root, "fixtures", "expected"), "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.NotEmpty(outputs);
+        Assert.All(outputs, output => Assert.Equal(1, owners.GetValueOrDefault(output)));
+        Assert.All(owners.Keys, expected => Assert.Contains(expected, outputs));
+    }
+
+    [Fact]
     public void BootstrapFixtureNormalizesToExpectedOutput()
     {
         var (root, manifest) = TestFixtures.LoadVerifiedManifest("bootstrap-json");

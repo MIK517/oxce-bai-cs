@@ -15,6 +15,7 @@ public static class ModMetadataReader
         ArgumentException.ThrowIfNullOrWhiteSpace(modPath);
         diagnostics ??= NullDiagnosticSink.Instance;
         var documents = YamlCompatibilityReader.ParseFile(metadataPath, yamlOptions);
+        YamlCompatibilityReader.ReportLegacyEncoding(documents, diagnostics);
         if (documents.Documents.Count == 0 || documents.Documents[0].Root is not YamlMappingNode mapping)
         {
             SourceSpan? source = documents.Documents.Count == 0 ? null : documents.Documents[0].Root.Span;
@@ -38,6 +39,7 @@ public static class ModMetadataReader
         ArgumentException.ThrowIfNullOrWhiteSpace(modPath);
         diagnostics ??= NullDiagnosticSink.Instance;
         var documents = YamlCompatibilityReader.Parse(metadata, sourceName, yamlOptions);
+        YamlCompatibilityReader.ReportLegacyEncoding(documents, diagnostics);
         if (documents.Documents.Count == 0 || documents.Documents[0].Root is not YamlMappingNode mapping)
         {
             SourceSpan? source = documents.Documents.Count == 0 ? null : documents.Documents[0].Root.Span;

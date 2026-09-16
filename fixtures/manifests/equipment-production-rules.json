@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "equipment-production-rules",
+  "description": "Pins item categories, crafts, craft weapons, research, manufacture and shortcut rules after an ordered base/patch ruleset pair.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/RuleItemCategory.cpp, RuleCraft.cpp, RuleCraftWeapon.cpp, RuleResearch.cpp, RuleManufacture.cpp, RuleManufactureShortcut.cpp",
+      "probe": "fixtures/reference-probes/mods/equipment_production_rules_probe.cpp",
+      "capture": "tools/capture-equipment-production-rules-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20, rapidyaml from the reference checkout"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/equipment-production-rules/fixture/Ruleset/10-patch.rul", "size": 322, "sha256": "819e129c1ef866666356334cde086dc8200644198fa1812667ade82ca9a4aa92" },
+    { "path": "fixtures/public/mods/equipment-production-rules/fixture/Ruleset/20-base.rul", "size": 914, "sha256": "f440a927e9e4b461c48da16c89fe4eee805e8097379c852be3b73945f017f6fa" },
+    { "path": "fixtures/public/mods/equipment-production-rules/fixture/metadata.yml", "size": 101, "sha256": "c714b01a1f641f47316baab8a564151670bbf041b1e3c3e812d5b731979966c5" },
+    { "path": "fixtures/reference-probes/mods/equipment_production_rules_probe.cpp", "size": 7901, "sha256": "387df4cca4878c922fcbeccfd312208c04c17ec19069e6fad5356a602e855ee3" }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/equipment-production-rules.expected.json"
+}

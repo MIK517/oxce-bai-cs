@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Security.Cryptography;
+using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Files;
 using Oxce.Mods.Rulesets.PersonnelTactical;
@@ -37,7 +38,7 @@ internal static class RuntimeSoldierNamePoolLoader
     }
 
     public static IReadOnlyDictionary<string, IReadOnlyList<RuntimeSoldierNamePool>> Load(
-        TypedRuleSection<SoldierRule> soldiers, VirtualFileCatalog files)
+        TypedRuleSection<SoldierRule> soldiers, VirtualFileCatalog files, IDiagnosticSink? diagnostics = null)
     {
         var result = new Dictionary<string, IReadOnlyList<RuntimeSoldierNamePool>>(StringComparer.Ordinal);
         var loaded = new Dictionary<string, RuntimeSoldierNamePool>(StringComparer.Ordinal);
@@ -59,6 +60,8 @@ internal static class RuntimeSoldierNamePoolLoader
                         var bytes = ReadBytes(file);
                         using var input = new MemoryStream(bytes, writable: false);
                         var yaml = YamlCompatibilityReader.Parse(input, file.SourcePath);
+                        YamlCompatibilityReader.ReportLegacyEncoding(yaml, diagnostics,
+                            new DiagnosticContext(file.Provenance.LayerId, file.Provenance.ModId));
                         if (yaml.Documents.Count != 1 || yaml.Documents[0].Root is not YamlMappingNode node)
                             throw new InvalidDataException($"Name pool '{path}' requires one YAML mapping.");
                         pool = Read(file.CanonicalPath, node) with { ContentHash = Convert.ToHexString(SHA256.HashData(bytes)) };

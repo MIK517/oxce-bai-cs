@@ -333,6 +333,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 _researchRuleStatus.GetValueOrDefault(id) == 2) continue;
             var rule = _content.RuntimeRules.Research[handle].Value;
             var wasComplete = _completedResearch.Contains(id);
+            // Captured before disables/re-enables, like SavedGame::addFinishedResearch step 1.
+            var hadProtectedUnlock = wasComplete && HasProtectedUnlock(rule);
             if (!wasComplete)
             {
                 if (markDiscovered)
@@ -349,19 +351,34 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             }
             foreach (var enabled in rule.Reenables)
                 if (_researchRuleStatus.GetValueOrDefault(enabled) == 2) _researchRuleStatus[enabled] = 0;
-            if (wasComplete && !HasProtectedUnlock(rule)) continue;
+            if (wasComplete && !hadProtectedUnlock) continue;
+            HashSet<string>? unlocked = null;
             foreach (var candidate in _content.RuntimeRules.Research.Rules)
             {
                 if (candidate.Value.Cost != 0 || queued.Contains(candidate.Id)) continue;
                 if ((candidate.Value.Requirements.Count == 0 || rule.Unlocks.Contains(candidate.Id, StringComparer.Ordinal)) &&
-                    ResearchAvailableWithoutBase(candidate.Id, candidate.Value) && queued.Add(candidate.Id))
+                    ZeroCostResearchAvailable(owner, candidate.Id, candidate.Value, ref unlocked) && queued.Add(candidate.Id))
                     queue.Add(candidate.Id);
             }
         }
     }
 
-    private bool ResearchAvailableWithoutBase(string id, RuntimeResearchRule rule) =>
-        CoreResearchUnavailable(id, rule, ResearchEligibilityOptions.None) is null;
+    /// <summary>
+    /// SavedGame::getAvailableResearchProjects for the completing base: besides the global
+    /// rules, a topic already running there, lacking its needed item, or lacking required
+    /// base functions is not auto-completed.
+    /// </summary>
+    private bool ZeroCostResearchAvailable(
+        BaseState owner, string id, RuntimeResearchRule rule, ref HashSet<string>? unlocked)
+    {
+        unlocked ??= ExplicitlyUnlockedResearch();
+        if (CoreResearchUnavailable(id, rule, ResearchEligibilityOptions.None, unlocked) is not null) return false;
+        var handle = _content.RuntimeRules.Research.GetRequired(id);
+        if (owner.Research.Any(project => project.Rule == handle)) return false;
+        if (rule.NeedItem && (rule.NeededItem is null || !_content.RuntimeRules.Items.TryGet(rule.NeededItem, out var item) ||
+            owner.Items.GetValueOrDefault(item) == 0)) return false;
+        return HasFunctions(owner, rule.RequiredBaseFunctions);
+    }
 
     private string? CoreResearchUnavailable(
         string id, RuntimeResearchRule rule, ResearchEligibilityOptions options, IReadOnlySet<string>? unlocked = null)
@@ -376,7 +393,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             return "Research dependencies are incomplete.";
         if (!ignoreProgressRequirements && rule.Requirements.Any(required => !_completedResearch.Contains(required)))
             return "Research requirements are incomplete.";
-        return !rule.Repeatable && _completedResearch.Contains(id) && !HasRemainingResearchReward(rule)
+        // getAvailableResearchProjects keeps a discovered topic only while it can still yield a
+        // free topic or a protected unlock; repeatable topics are simply never marked discovered.
+        return _completedResearch.Contains(id) && !HasRemainingResearchReward(rule) && !HasProtectedUnlock(rule)
             ? "Research is already complete." : null;
     }
 
@@ -509,7 +528,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     private string? StartProductionUnit(
         BaseState owner, RuntimeManufactureRule rule, bool initial = false, bool checkLivingSpace = true)
     {
-        if (_funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
+        // RuleManufacture::haveEnoughMoneyForOneMoreUnit: free units start even with negative funds.
+        if (rule.Cost > 0 && _funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
         if (!TryStageAccounting(-rule.Cost, out var accounting))
             return "Production accounting exceeds the supported range.";
         if (rule.SpawnedPersonType.Length != 0 && checkLivingSpace)
@@ -731,7 +751,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         var transferHours = rule.TransferTimes.Count < 3 ? 0 : Math.Max(0, rule.TransferTimes[2]);
         for (var count = 0; count < quantity; count++)
         {
-            var craftId = NextId(id);
+            var craftId = NextCraftId(id);
+            _nextIds[id] = checked(craftId + 1);
             var key = FormattableString.Invariant($"created:{Identity.Id}:craft:{id}:{craftId}");
             var logistics = CraftLogistics.LoadStarting(_content.RuntimeRules.Crafts[craft].Value, null);
             var value = new CraftSnapshot(id, craftId) { PreservationKey = key, Logistics = logistics };
@@ -756,7 +777,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         {
             var handle = _content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType);
             var definition = _content.RuntimeRules.Soldiers[handle].Value;
-            var soldierId = NextId("STR_SOLDIER");
+            var soldierId = NextSoldierId();
+            _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
             var personal = SoldierGeneration.Generate(definition,
                 _content.RuntimeRules.Armors.GetExternalId(definition.Armor), -1,
                 _bases.SelectMany(baseState => baseState.Soldiers)
@@ -780,7 +802,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     private void QueueTransfer(BaseState owner, int hours, CampaignTransferKind kind,
         string ruleId, int quantity, SoldierSnapshot? soldier = null, CraftSnapshot? craft = null)
     {
-        var transferId = NextId("oxcePortTransfer");
+        // Loaded reference saves assign transfer IDs without a matching counter, so allocation must
+        // skip every existing ID exactly like the logistics and transformation paths.
+        var transferId = NextTransferId();
+        _nextIds["oxcePortTransfer"] = checked(transferId + 1);
         owner.Transfers.Add(new(transferId, hours, kind, ruleId, quantity, soldier, craft)
         {
             PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}"),

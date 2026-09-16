@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "mission-event-rules",
+  "description": "Pins alien missions, arcs, events, event/mission scripts, trajectories and Ufopaedia articles after an ordered base/patch ruleset pair.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/RuleAlienMission.cpp, RuleArcScript.cpp, RuleEvent.cpp, RuleEventScript.cpp, RuleMissionScript.cpp, UfoTrajectory.cpp, ArticleDefinition.cpp",
+      "probe": "fixtures/reference-probes/mods/mission_event_rules_probe.cpp",
+      "capture": "tools/capture-mission-event-rules-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20, rapidyaml from the reference checkout"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/mission-event-rules/fixture/Ruleset/10-patch.rul", "size": 276, "sha256": "af6a9fa31a8b71533a055e1feff8e18aa39514485f51f6fca5a08d132188599b" },
+    { "path": "fixtures/public/mods/mission-event-rules/fixture/Ruleset/20-base.rul", "size": 1015, "sha256": "e6797bce3ddade475bdf4389f7f580cd972cda76f123c7ef73fa14b16916bd73" },
+    { "path": "fixtures/public/mods/mission-event-rules/fixture/metadata.yml", "size": 88, "sha256": "37d11ec932a563efa45ea2b0b3a42d1b3e44fd77b7a3a1f70ce7b26f9705ea0c" },
+    { "path": "fixtures/reference-probes/mods/mission_event_rules_probe.cpp", "size": 4662, "sha256": "3f4451f441a4e141cc79dfd70fd7f9bd13df8c3d7fdae4726f5aa2421cd3fe89" }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/mission-event-rules.expected.json"
+}

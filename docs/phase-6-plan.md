@@ -306,6 +306,14 @@ mission-script, arc-script and event rules under `Mod/`.
 
 **Commit purposes:**
 
+0. Split `CampaignState` by capability before adding world state (2026-09-16 audit
+   decision). Keep the single writer, transaction gate and validation centralized, and
+   move each feature's commands, time handlers, queries and capture/restore pieces behind
+   registered internal handlers. Replace the central `Execute` switch and the hard-coded
+   `TimeEffects.Apply` sequence with ordered registrations that keep the reference
+   handler order. This is a behavior-preserving refactoring: existing unit,
+   compatibility and save fixtures must pass unchanged. World simulation lands as new
+   capabilities instead of growing the partial class.
 1. Capture world geometry, mission selection/scheduling, movement and detection traces;
    establish deterministic choice injection and persistent target-reference fixtures.
 2. Extend branch 2's placement geography with globe/region/terrain/depth queries and
@@ -320,7 +328,9 @@ mission-script, arc-script and event rules under `Mod/`.
 6. Close multi-day and month-boundary world scenarios, bounded population/save tests,
    scripting coverage, representative allocation measurements and matrix updates.
 
-**Acceptance:** controlled choices produce the expected eligible mission, trajectory,
+**Acceptance:** `CampaignState` no longer grows per feature; world simulation
+capabilities register handlers without editing central switches. Controlled choices
+produce the expected eligible mission, trajectory,
 spawn order and detection decisions. A craft can pursue and return safely; target
 expiry/deletion leaves no dangling references. Reload in-flight UFOs, craft, scheduled
 waves and sites. Cover TFTD depth/terrain and modded deployment-only/no-object waves.

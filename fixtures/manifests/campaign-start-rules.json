@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "campaign-start-rules",
+  "description": "Pins country, region, facility and campaign-start settings after an ordered base/patch ruleset pair.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/RuleCountry.cpp, RuleRegion.cpp, RuleBaseFacility.cpp, Mod.cpp",
+      "probe": "fixtures/reference-probes/mods/campaign_start_rules_probe.cpp",
+      "capture": "tools/capture-campaign-start-rules-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20, rapidyaml from the reference checkout"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/campaign-start-rules/fixture/Ruleset/10-patch.rul", "size": 400, "sha256": "632e1d95622b7e7f7a04c360ad23bdb6441c1f763a4d7026281e96bf297c1dbf" },
+    { "path": "fixtures/public/mods/campaign-start-rules/fixture/Ruleset/20-base.rul", "size": 428, "sha256": "b59c8f9c58e508fedb7e43e9c46dd367784cff46324a8e2a4fe3fc94ea84dcd7" },
+    { "path": "fixtures/public/mods/campaign-start-rules/fixture/metadata.yml", "size": 95, "sha256": "8158d04284861ccc4d2799413a99768cf37dc0fdea30783a757ece32f2e22755" },
+    { "path": "fixtures/reference-probes/mods/campaign_start_rules_probe.cpp", "size": 4889, "sha256": "8e5140339a1e79735e2ad20a081f0d71ad9519a34748c66e135c7dd7f7fd3873" }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/campaign-start-rules.expected.json"
+}

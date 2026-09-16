@@ -44,9 +44,12 @@ types to lower projects. See [ADR 0009](decisions/0009-structured-diagnostics-an
 
 ```text
 App -> Engine -> Gameplay -> Mods -> Scripting -> Core
+Gameplay -> Scripting
+Mods -> Formats -> Core
 App -> Extensions -> Gameplay
 Extensions -> Extensions.Abstractions
 App -> Engine -> Resources -> Mods
+Engine -> Rendering
 Resources -> Formats -> Core
 Resources -> Rendering -> Core
 App -> Savegames -> Gameplay
@@ -54,7 +57,12 @@ Savegames -> Formats -> Core
 Savegames -> Mods
 App -> Platform.Sdl -> Engine
 Platform.Sdl -> Rendering -> Core
+App -> Formats, Mods, Rendering
 ```
+
+`tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs` enforces this graph. For a
+per-project index of namespaces, public types, test helpers and fixture ownership see the
+generated [code map](code-map.md).
 
 `Gameplay` must not reference `Savegames`. `Savegames` is an external adapter that
 references gameplay-owned, save-neutral capture and restoration contracts. The
@@ -93,9 +101,16 @@ Resource resolution is owned by `Oxce.Mods`: it converts declarations and VFS wi
 into immutable, provenance-bearing descriptors and generation-scoped typed handles.
 `Oxce.Resources` consumes those descriptors for lazy decode, explicit preload groups,
 streaming media, and a bounded size-aware LRU. The application and resource browser
-must use that service rather than opening descriptor source paths. Shared `common`
+must use that service rather than opening descriptor source paths. UI strings and fonts
+are also read through the layered catalog (`InstallationContentLoadResult.VirtualFiles`),
+never from the installation directory. Shared `common`
 assets are mapped below game-specific external data and mod layers so normal OXCE
 installation precedence is preserved.
+
+Input the reference engine tolerates but the port considers malformed is handled by the
+launch-time input validation mode: strict by default, reference-tolerant in
+compatibility mode. The mode travels with the load plan into VFS lookups, CAT tables and
+the compiled-cache key. See [ADR 0026](decisions/0026-input-validation-modes.md).
 
 VFS entries retain their separator-normalized original relative spelling separately
 from a deterministic culture-independent lookup key. Unicode composition forms are not

@@ -266,9 +266,9 @@ public static class ContentSnapshotBuilder
             sink,
             new RuntimeRuleLinkOptions
             {
-                Files = plan.CreateVirtualFileCatalog(),
+                Files = plan.VirtualFiles,
                 CancellationToken = options.CancellationToken,
-                SoldierNamePools = RuntimeSoldierNamePoolLoader.Load(session.Catalog.PersonnelTactical.Soldiers, plan.CreateVirtualFileCatalog()),
+                SoldierNamePools = RuntimeSoldierNamePoolLoader.Load(session.Catalog.PersonnelTactical.Soldiers, plan.VirtualFiles, sink),
             });
         runtimeLinkTimer.Stop();
         var runtimeLinkMeasurement = new ContentBuildStageMeasurement(

@@ -1,3 +1,5 @@
+using Oxce.Core.Diagnostics;
+using System.Text;
 using Oxce.Core.Random;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
@@ -163,6 +165,39 @@ public sealed class OxceSaveAdapterTests
     }
 
     [Fact]
+    public void LegacyEncodedSaveLoadsWithWarning()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var yaml = OxceSaveAdapter.EmitNewCampaign(CampaignFoundationTests.Create(content).Capture());
+        var marker = Encoding.UTF8.GetBytes("name: Campaign");
+        var bytes = Encoding.UTF8.GetBytes(yaml);
+        var index = bytes.AsSpan().IndexOf(marker);
+        Assert.True(index >= 0);
+        byte[] legacy = [.. bytes[..(index + marker.Length)], 0xE9, .. bytes[(index + marker.Length)..]];
+        var path = Path.Combine(Path.GetTempPath(), $"oxce-legacy-{Guid.NewGuid():N}.sav");
+        try
+        {
+            var diagnostics = new DiagnosticCollector();
+            File.WriteAllBytes(path, bytes);
+            OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(0), Options() with { Diagnostics = diagnostics });
+            Assert.Empty(diagnostics.Snapshot());
+
+            File.WriteAllBytes(path, legacy);
+            var loaded = OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(0),
+                Options() with { Diagnostics = diagnostics });
+
+            Assert.Equal("Campaigné", loaded.Campaign.Capture().Identity.Name);
+            var warning = Assert.Single(diagnostics.Snapshot());
+            Assert.Equal(YamlCompatibilityReader.LegacyEncodingCode, warning.Code);
+            Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void EligibleUnknownFieldsSurviveKnownFieldOverlay()
     {
         var content = CampaignFoundationTests.LoadFixture();
@@ -180,6 +215,40 @@ public sealed class OxceSaveAdapterTests
         Assert.Contains("futureHeader: retained", emitted, StringComparison.Ordinal);
         Assert.Contains("futureBody:", emitted, StringComparison.Ordinal);
         Assert.Contains("futureCountry: yes", emitted, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RepeatedDiscoveredTopicsAreAcceptedOnce()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var campaign = CampaignFoundationTests.Create(content);
+        var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture())
+            .Replace("difficulty: 0", "discovered: [TOPIC_B, TOPIC_A, TOPIC_B]\ndifficulty: 0", StringComparison.Ordinal);
+
+        var loaded = OxceSaveAdapter.Load(yaml, "repeated.sav", content, new SplitMix64RandomSource(0), Options());
+
+        Assert.Equal(["TOPIC_A", "TOPIC_B"], loaded.Campaign.Capture().CompletedResearch);
+    }
+
+    [Fact]
+    public void CountedMapsAreWrittenInReferenceKeyOrder()
+    {
+        // ItemContainer::save and std::map fields write keys in byte order.
+        var content = CampaignFoundationTests.LoadFixture();
+        var snapshot = CampaignFoundationTests.Create(content).Capture();
+        var items = new Dictionary<string, int>(StringComparer.Ordinal) { ["zulu"] = 1, ["ALPHA"] = 2, ["Mike"] = 3 };
+        snapshot = snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { Items = items }],
+            ResearchRuleStatus = new Dictionary<string, int>(StringComparer.Ordinal) { ["b"] = 1, ["a"] = 2 },
+        };
+
+        var body = ReadBody(OxceSaveAdapter.EmitNewCampaign(snapshot));
+
+        var baseItems = Assert.IsType<YamlMappingNode>(Required(ReadMaps(body, "bases")[0], "items"));
+        Assert.Equal(["ALPHA", "Mike", "zulu"], baseItems.Entries.Select(static entry => entry.ScalarKey));
+        var status = Assert.IsType<YamlMappingNode>(Required(body, "researchRuleStatus"));
+        Assert.Equal(["a", "b"], status.Entries.Select(static entry => entry.ScalarKey));
     }
 
     [Fact]

@@ -221,7 +221,8 @@ public static class YamlCompatibilityWriter
                 return;
             }
 
-            if (scalar.Style == YamlScalarStyle.SingleQuoted)
+            // Single quotes cannot represent line breaks or non-printable characters.
+            if (scalar.Style == YamlScalarStyle.SingleQuoted && IsPrintableSingleLine(scalar.Value))
             {
                 Append('\'');
                 Append(scalar.Value.Replace("'", "''", StringComparison.Ordinal));
@@ -258,6 +259,17 @@ public static class YamlCompatibilityWriter
                 return false;
             }
 
+            // Plain scalars lose surrounding whitespace, and a trailing ':' starts a mapping value.
+            if (char.IsWhiteSpace(value[0]) || char.IsWhiteSpace(value[^1]) || value[^1] == ':')
+            {
+                return false;
+            }
+
+            if (!IsPrintableSingleLine(value))
+            {
+                return false;
+            }
+
             for (var index = 0; index < value.Length; index++)
             {
                 var character = value[index];
@@ -272,6 +284,25 @@ public static class YamlCompatibilityWriter
                 }
 
                 if (character == '#' && (index == 0 || char.IsWhiteSpace(value[index - 1])))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // YAML c-printable without line breaks; U+2028/U+2029 are line breaks for YAML 1.1 readers.
+        private static bool IsPrintable(char character) =>
+            character is '\t' or (>= ' ' and <= '~') or '\u0085' or (>= '\u00A0' and <= '\uD7FF') or
+                (>= '\uD800' and <= '\uDFFF') or (>= '\uE000' and <= '\uFFFD') &&
+            character is not ('\u2028' or '\u2029' or '\uFEFF');
+
+        private static bool IsPrintableSingleLine(string value)
+        {
+            foreach (var character in value)
+            {
+                if (character == '\u0085' || !IsPrintable(character))
                 {
                     return false;
                 }
@@ -297,11 +328,19 @@ public static class YamlCompatibilityWriter
                     case '\v': output.Append("\\v"); break;
                     case '\f': output.Append("\\f"); break;
                     case '\r': output.Append("\\r"); break;
+                    case '\u0085': output.Append("\\N"); break;
+                    case '\u2028': output.Append("\\L"); break;
+                    case '\u2029': output.Append("\\P"); break;
                     default:
-                        if (character < ' ')
+                        if (character <= '\u00FF' && !IsPrintable(character))
                         {
                             output.Append("\\x");
                             output.Append(((int)character).ToString("X2", System.Globalization.CultureInfo.InvariantCulture));
+                        }
+                        else if (!IsPrintable(character))
+                        {
+                            output.Append("\\u");
+                            output.Append(((int)character).ToString("X4", System.Globalization.CultureInfo.InvariantCulture));
                         }
                         else
                         {
