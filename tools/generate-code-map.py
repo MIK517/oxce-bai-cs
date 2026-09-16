@@ -285,15 +285,16 @@ def render(files: list[str]) -> str:
     w("")
     w("Navigational index of projects, namespaces, public types, test helpers and fixture ownership.")
     w("Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers or fixtures;")
-    w("`--check` reports a stale map. Types are listed with their first XML-doc sentence when present.")
+    w("`--check` reports a stale map. Types are listed with their first XML-doc sentence when present;")
+    w("line numbers are omitted so that ordinary edits do not invalidate the map.")
     w("")
     w("## Projects")
     w("")
-    w("| Project | Files | Lines | References |")
-    w("| --- | ---: | ---: | --- |")
+    w("| Project | Files | References |")
+    w("| --- | ---: | --- |")
     for p in projects:
         refs = ", ".join(r.removeprefix("Oxce.") for r in p.references) or "-"
-        w(f"| [{p.name}](#{p.name.lower().replace('.', '')}) | {p.file_count} | {p.line_count} | {refs} |")
+        w(f"| [{p.name}](#{p.name.lower().replace('.', '')}) | {p.file_count} | {refs} |")
     w("")
 
     for p in projects:
@@ -302,7 +303,7 @@ def render(files: list[str]) -> str:
         if not is_test and not has_public:
             w(f"## {p.name}")
             w("")
-            w(f"`{p.path}` - {p.file_count} files, {p.line_count} lines. No public API; top-level types:")
+            w(f"`{p.path}` - {p.file_count} files. No public API; top-level types:")
             w("")
             for namespace in sorted(p.namespaces, key=str):
                 for t in sorted(p.namespaces[namespace], key=lambda t: (t.path, t.line)):
@@ -310,12 +311,12 @@ def render(files: list[str]) -> str:
                         desc = f" - {t.summary}" if t.summary else ""
                         qualified = t.name if namespace == "(global)" else f"{namespace}.{t.name}"
                         w(f"- `{qualified}` ({t.visibility} {t.kind}) "
-                          f"[{t.path.split('/')[-1]}](../{t.path}#L{t.line}){desc}")
+                          f"[{t.path.split('/')[-1]}](../{t.path}){desc}")
             w("")
             continue
         w(f"## {p.name}")
         w("")
-        w(f"`{p.path}` - {p.file_count} files, {p.line_count} lines.")
+        w(f"`{p.path}` - {p.file_count} files.")
         w("")
         for namespace in sorted(p.namespaces, key=str):
             types = p.namespaces[namespace]
@@ -330,7 +331,7 @@ def render(files: list[str]) -> str:
             for t in sorted(shown, key=lambda t: (t.path, t.line)):
                 vis = "" if t.visibility == "public" else f"{t.visibility} "
                 desc = f" - {t.summary}" if t.summary else ""
-                w(f"- `{t.name}` ({vis}{t.kind}) [{t.path.split('/')[-1]}](../{t.path}#L{t.line}){desc}")
+                w(f"- `{t.name}` ({vis}{t.kind}) [{t.path.split('/')[-1]}](../{t.path}){desc}")
             w("")
         if is_test and p.path.startswith("tests/"):
             test_files = sorted((f for f in tests if f.startswith(p.path + "/")), key=str)
@@ -366,7 +367,7 @@ def render(files: list[str]) -> str:
             and not re.search(r"\b(class|struct|record|enum|interface)\b", line)
         ]
         for t in types:
-            w(f"- `{t.name}` ({t.kind}, line {t.line}){' - ' + t.summary if t.summary else ''}")
+            w(f"- `{t.name}` ({t.kind}){' - ' + t.summary if t.summary else ''}")
         if members:
             names = ", ".join(f"`{name}`" for _, name in dict.fromkeys(members))
             w(f"- members: {names}")
@@ -384,7 +385,7 @@ def render(files: list[str]) -> str:
         w("### Helpers nested in test classes")
         w("")
         for rel, t in nested:
-            w(f"- `{t.name}` ({t.visibility} {t.kind}) [{Path(rel).name}](../{rel}#L{t.line})")
+            w(f"- `{t.name}` ({t.visibility} {t.kind}) [{Path(rel).name}](../{rel})")
         w("")
 
     benchmark_files = [f for f in files if f.startswith("benchmarks/") and f.endswith(".cs")]
