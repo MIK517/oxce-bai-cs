@@ -196,16 +196,10 @@ public sealed partial class CampaignState
             if (subtotal > _funds[^1]) return Blocked("STR_NOT_ENOUGH_MONEY");
         }
         var delta = quote.Operation == LogisticsOperation.Sell ? subtotal : -subtotal;
-        long funds;
-        long accounting;
-        try
-        {
-            funds = checked(_funds[^1] + delta);
-            accounting = delta > 0 ? checked(_incomes[^1] + delta) : checked(_expenditures[^1] - delta);
-        }
-        catch (OverflowException) { return Blocked("Order accounting exceeds the supported range."); }
+        if (!TryStageAccounting(delta, out var accounting))
+            return Blocked("Order accounting exceeds the supported range.");
         if (quote.Operation == LogisticsOperation.Sell)
-            return CompleteSale(origin, quote, selections, subtotal, funds, accounting);
+            return CompleteSale(origin, quote, selections, subtotal, accounting);
         // All eligibility/capacity/cost checks precede stock and fund mutation.
         var transfers = new List<TransferSnapshot>();
         var nextTransferId = NextTransferId();
@@ -361,11 +355,10 @@ public sealed partial class CampaignState
                 _monthlyPurchaseLog[row.RuleId] = checked(_monthlyPurchaseLog.GetValueOrDefault(row.RuleId) + selection.Quantity);
         }
         destination.Transfers.AddRange(transfers);
-        _funds[^1] = funds;
+        PublishAccounting(accounting);
         if (transfers.Count != 0) _nextIds["oxcePortTransfer"] = nextTransferId;
         if (recruitCount != 0) _nextIds["STR_SOLDIER"] = nextSoldierId;
         foreach (var pair in craftIds) _nextIds[pair.Key] = pair.Value;
-        if (delta > 0) _incomes[^1] = accounting; else _expenditures[^1] = accounting;
         _logisticsQuote = null;
         return new CampaignCommandResult([new LogisticsOrderCompleted(origin.Id, quote.Operation, subtotal)]);
     }
@@ -436,7 +429,12 @@ public sealed partial class CampaignState
 
     private int AvailableStores(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Storage);
     private int AvailableQuarters(BaseState state) => state.Facilities.Where(f => f.BuildTime == 0).Sum(f => _content.RuntimeRules.Facilities[f.Rule].Value.Personnel);
-    private static int UsedQuarters(BaseState state) => checked(state.Soldiers.Count + state.Scientists + state.Engineers + state.Transfers.Where(t => !t.Delivered && t.Kind is CampaignTransferKind.Soldier or CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => t.Quantity));
+    private static int UsedQuarters(BaseState state) => checked(
+        state.Soldiers.Count + state.Scientists + state.Engineers +
+        state.Research.Sum(project => project.Assigned) +
+        state.Productions.Sum(project => project.Assigned) +
+        state.Transfers.Where(t => !t.Delivered && t.Kind is CampaignTransferKind.Soldier or
+            CampaignTransferKind.Scientist or CampaignTransferKind.Engineer).Sum(t => t.Quantity));
     private double UsedStores(BaseState state) => state.Items.Sum(p => _content.RuntimeRules.Items[p.Key].Value.Size * p.Value) +
         state.Crafts.Sum(c => c.Logistics is { } logistics ? CraftLogistics.StoredSize(logistics, _content.RuntimeRules) : 0) +
         state.Transfers.Where(t => !t.Delivered).Sum(t => t.Kind == CampaignTransferKind.Item

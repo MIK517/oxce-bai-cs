@@ -115,9 +115,11 @@ public sealed partial class CampaignState : ICampaignReadinessQuery
         long craft = owner.Crafts.Sum(c => (long)_content.RuntimeRules.Crafts[c.Rule].Value.CostRent) +
             owner.Transfers.Where(t => !t.Delivered && t.Craft is not null).Sum(t =>
                 (long)_content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(t.Craft!.RuleId)].Value.CostRent);
-        long personnel = checked((owner.Scientists + owner.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Scientist).Sum(t => t.Quantity)) *
+        long personnel = checked((owner.Scientists + owner.Research.Sum(p => p.Assigned) +
+            owner.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Scientist).Sum(t => t.Quantity)) *
             (long)_content.RuntimeRules.Campaign.CostScientist +
-            (owner.Engineers + owner.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Engineer).Sum(t => t.Quantity)) *
+            (owner.Engineers + owner.Productions.Sum(p => p.Assigned) +
+            owner.Transfers.Where(t => !t.Delivered && t.Kind == CampaignTransferKind.Engineer).Sum(t => t.Quantity)) *
             (long)_content.RuntimeRules.Campaign.CostEngineer);
         foreach (var soldier in owner.Soldiers.Select(s => (s.Rule, s.Personal?.Rank ?? 0)).Concat(owner.Transfers
             .Where(t => !t.Delivered && t.Soldier is not null).Select(t => (_content.RuntimeRules.Soldiers.GetRequired(t.Soldier!.RuleId), t.Soldier.Personal?.Rank ?? 0))))

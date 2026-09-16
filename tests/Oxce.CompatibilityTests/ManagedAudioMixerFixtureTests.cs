@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Text.Json;
 using Oxce.Engine.Audio;
 using Oxce.FixtureSupport;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,10 +12,7 @@ public sealed class ManagedAudioMixerFixtureTests
     [Fact]
     public void LoopVolumeAndPanningMatchCapturedSdlMixerReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "managed-mixer.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("managed-mixer");
         var encoded = Convert.FromHexString(
             File.ReadAllText(Path.GetFullPath(manifest.Inputs[0].Path, root)).Trim());
         var samples = new short[encoded.Length / sizeof(short)];
@@ -43,8 +41,7 @@ public sealed class ManagedAudioMixerFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
         Assert.False(playback.IsPlaying);
     }
-
 }

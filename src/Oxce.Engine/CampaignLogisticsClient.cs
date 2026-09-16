@@ -11,6 +11,8 @@ public sealed record CampaignUiSession(ICampaignQuery Queries, ICampaignCommandT
 /// <summary>Keyboard-operated indexed logistics UI; persistence is supplied by App.</summary>
 public sealed class CampaignLogisticsClient : IIndexedLoopClient
 {
+    private enum CampaignView { None, Readiness, Management, Personnel, Research, Production }
+
     private CampaignUiSession _session;
     private readonly IndexedSpriteFont _font;
     private readonly Func<string, string> _text;
@@ -23,12 +25,11 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
     private string _message = "";
     private bool _chooseDestination;
     private bool _loadConfirmation;
-    private bool _readiness;
-    private bool _management;
-    private bool _personnel;
+    private CampaignView _view;
     private int _gridX;
     private int _gridY;
     private int _choice;
+    private (int BaseId, CampaignResearchProduction State)? _economySnapshot;
 
     public CampaignLogisticsClient(CampaignUiSession session, IndexedSpriteFont? font = null,
         Func<string, string>? localize = null, Action? save = null, Func<CampaignUiSession>? load = null)
@@ -73,7 +74,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     _session = _load!();
                     _baseIndex = 0;
                     _screen = null;
-                    _readiness = false;
+                    _view = CampaignView.None;
                     _chooseDestination = false;
                     _message = "Campaign loaded.";
                     _loadConfirmation = false;
@@ -82,8 +83,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             }
             else if (key == 27)
             {
-                if (_management || _personnel) { _management = false; _personnel = false; }
-                else if (_readiness) _readiness = false;
+                if (_view != CampaignView.None) _view = CampaignView.None;
                 else if (_chooseDestination) _chooseDestination = false;
                 else if (_screen?.Quote is not null) _screen.Cancel();
                 else if (_screen is not null) _screen = null;
@@ -104,8 +104,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             {
                 _baseIndex = (_baseIndex + 1) % overview.Bases.Count;
                 _screen = null;
-                _management = false;
-                _personnel = false;
+                _view = CampaignView.None;
                 _chooseDestination = false;
             }
             else if (_chooseDestination)
@@ -133,65 +132,32 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             }
             else if (key == 'r')
             {
-                _readiness = true;
-                _management = false;
-                _personnel = false;
+                _view = CampaignView.Readiness;
                 _screen = null;
                 _row = 0;
             }
-            else if (key == 'a' && !_management && _session.Queries is ICampaignReadinessQuery)
+            else if (key == 'a' && _view != CampaignView.Management && _session.Queries is ICampaignReadinessQuery)
             {
-                _management = true; _personnel = false; _readiness = false; _screen = null; _choice = 0;
+                _view = CampaignView.Management; _screen = null; _choice = 0;
             }
             else if (key == 'u' && _session.Queries is ICampaignReadinessQuery)
             {
-                _personnel = true; _management = false; _readiness = false; _screen = null; _row = 0;
+                _view = CampaignView.Personnel; _screen = null; _row = 0;
             }
-            else if (_management && _session.Queries is ICampaignReadinessQuery management)
+            else if (key is (uint)'h' or (uint)'m' && _session.Queries is ICampaignResearchProductionQuery)
             {
-                var state = management.QueryBaseManagement(overview.Bases[_baseIndex].Id);
-                if (key is 0x40000051 or 0x40000052 && state.Facilities.Count > 0)
-                    _choice = (_choice + (key == 0x40000051 ? 1 : state.Facilities.Count - 1)) % state.Facilities.Count;
-                else if (key == 'w') _gridY = Math.Max(0, _gridY - 1);
-                else if (key == 's') _gridY = Math.Min(5, _gridY + 1);
-                else if (key == 'a') _gridX = Math.Max(0, _gridX - 1);
-                else if (key == 'd') _gridX = Math.Min(5, _gridX + 1);
-                else if (key == 13 && state.Facilities.Count > 0)
-                    Feedback(_session.Commands.Execute(new BuildCampaignFacility(overview.Bases[_baseIndex].Id,
-                        state.Facilities[_choice].RuleId, _gridX, _gridY)));
-                else if (key == 'x') Feedback(_session.Commands.Execute(new DismantleCampaignFacility(
-                    overview.Bases[_baseIndex].Id, _gridX, _gridY)));
+                _view = key == 'm' ? CampaignView.Production : CampaignView.Research;
+                _screen = null; _row = 0;
             }
-            else if (_personnel && _session.Queries is ICampaignReadinessQuery personnel)
+            // Global campaign keys run before view handlers so every view can advance time and open logistics.
+            else if (key == ' ')
             {
-                var state = personnel.QueryBaseManagement(overview.Bases[_baseIndex].Id);
-                if (key is 0x40000051 or 0x40000052)
-                    _row = Math.Clamp(_row + (key == 0x40000051 ? 1 : -1), 0, Math.Max(0, state.Soldiers.Count - 1));
-                else if (state.Soldiers.Count > 0)
-                {
-                    var soldier = state.Soldiers[_row];
-                    if (key == 'g') Feedback(_session.Commands.Execute(new SetSoldierTraining(overview.Bases[_baseIndex].Id,
-                        soldier.Id, !soldier.Training, soldier.PsiTraining)));
-                    else if (key == 'q') Feedback(_session.Commands.Execute(new SetSoldierTraining(overview.Bases[_baseIndex].Id,
-                        soldier.Id, soldier.Training, !soldier.PsiTraining)));
-                    else if (key == 'c')
-                    {
-                        var crafts = personnel.QueryReadiness(overview.Bases[_baseIndex].Id).Crafts;
-                        var craft = crafts.Count == 0 ? null : crafts[0];
-                        Feedback(_session.Commands.Execute(soldier.CraftRuleId.Length == 0 && craft is not null
-                            ? new AssignSoldierToCraft(overview.Bases[_baseIndex].Id, soldier.Id, craft.RuleId, craft.Id)
-                            : new AssignSoldierToCraft(overview.Bases[_baseIndex].Id, soldier.Id)));
-                    }
-                    else if (key == 'o' && state.Armors.Count > 0)
-                    {
-                        var armor = state.Armors[(state.Armors.ToList().IndexOf(soldier.Armor) + 1) % state.Armors.Count];
-                        Feedback(_session.Commands.Execute(new EquipSoldierArmor(overview.Bases[_baseIndex].Id, soldier.Id, armor)));
-                    }
-                }
+                _screen = null;
+                Feedback(_session.Commands.Execute(new AdvanceCampaignTime((input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12)));
             }
-            else if (key is (uint)'i' or (uint)'b' or (uint)'s' or (uint)'t')
+            else if (key is (uint)'i' or (uint)'b' or (uint)'t' || key == 's' && _view != CampaignView.Management)
             {
-                _readiness = false;
+                _view = CampaignView.None;
                 _screen = new(_session.Queries, _session.Commands, overview.Bases[_baseIndex].Id);
                 _row = 0;
                 _message = "";
@@ -219,7 +185,95 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                 else Feedback(_session.Commands.Execute(new CreateCampaignBase($"Base {overview.Bases.Count + 1}",
                     site!.Longitude, site.Latitude, lift.RuleId, 2, 2)));
             }
-            else if (_readiness && key == 'e' && _session.Queries is ICampaignReadinessQuery equipment)
+            else if (_view is CampaignView.Research or CampaignView.Production &&
+                _session.Queries is ICampaignResearchProductionQuery economy)
+            {
+                var production = _view == CampaignView.Production;
+                var baseId = overview.Bases[_baseIndex].Id;
+                var state = economy.QueryResearchProduction(baseId);
+                var choices = production ? state.ProductionChoices.Count : state.ResearchChoices.Count;
+                if (key is 0x40000051 or 0x40000052)
+                {
+                    _row = Math.Clamp(_row + (key == 0x40000051 ? 1 : -1), 0, Math.Max(0, choices - 1));
+                    // Navigation executes no command, so the redraw below can reuse this state.
+                    _economySnapshot = (baseId, state);
+                }
+                else if (key == 13 && choices > 0)
+                {
+                    if (production)
+                    {
+                        // A newly started project also reserves its required workshop space.
+                        var choice = state.ProductionChoices[_row];
+                        Feedback(_session.Commands.Execute(new ConfigureProductionProject(baseId,
+                            choice.RuleId, Math.Min(state.EngineersAvailable,
+                                Math.Max(0, state.WorkshopsAvailable - choice.Space)), 1)));
+                    }
+                    else
+                    {
+                        var choice = state.ResearchChoices[_row];
+                        Feedback(_session.Commands.Execute(new ConfigureResearchProject(baseId,
+                            choice.RuleId, Math.Min(state.ScientistsAvailable, state.LaboratoriesAvailable))));
+                    }
+                }
+                else if (key == 'x')
+                {
+                    if (production && state.Productions.Count > 0)
+                    {
+                        var project = state.Productions[0];
+                        Feedback(_session.Commands.Execute(new ConfigureProductionProject(baseId,
+                            project.RuleId, 0, project.Amount, project.Infinite, project.Sell, Cancel: true)));
+                    }
+                    else if (!production && state.Research.Count > 0)
+                    {
+                        var project = state.Research[0];
+                        Feedback(_session.Commands.Execute(new ConfigureResearchProject(baseId,
+                            project.RuleId, 0, Cancel: true)));
+                    }
+                }
+            }
+            else if (_view == CampaignView.Management && _session.Queries is ICampaignReadinessQuery management)
+            {
+                var state = management.QueryBaseManagement(overview.Bases[_baseIndex].Id);
+                if (key is 0x40000051 or 0x40000052 && state.Facilities.Count > 0)
+                    _choice = (_choice + (key == 0x40000051 ? 1 : state.Facilities.Count - 1)) % state.Facilities.Count;
+                else if (key == 'w') _gridY = Math.Max(0, _gridY - 1);
+                else if (key == 's') _gridY = Math.Min(5, _gridY + 1);
+                else if (key == 'a') _gridX = Math.Max(0, _gridX - 1);
+                else if (key == 'd') _gridX = Math.Min(5, _gridX + 1);
+                else if (key == 13 && state.Facilities.Count > 0)
+                    Feedback(_session.Commands.Execute(new BuildCampaignFacility(overview.Bases[_baseIndex].Id,
+                        state.Facilities[_choice].RuleId, _gridX, _gridY)));
+                else if (key == 'x') Feedback(_session.Commands.Execute(new DismantleCampaignFacility(
+                    overview.Bases[_baseIndex].Id, _gridX, _gridY)));
+            }
+            else if (_view == CampaignView.Personnel && _session.Queries is ICampaignReadinessQuery personnel)
+            {
+                var state = personnel.QueryBaseManagement(overview.Bases[_baseIndex].Id);
+                if (key is 0x40000051 or 0x40000052)
+                    _row = Math.Clamp(_row + (key == 0x40000051 ? 1 : -1), 0, Math.Max(0, state.Soldiers.Count - 1));
+                else if (state.Soldiers.Count > 0)
+                {
+                    var soldier = state.Soldiers[_row];
+                    if (key == 'g') Feedback(_session.Commands.Execute(new SetSoldierTraining(overview.Bases[_baseIndex].Id,
+                        soldier.Id, !soldier.Training, soldier.PsiTraining)));
+                    else if (key == 'q') Feedback(_session.Commands.Execute(new SetSoldierTraining(overview.Bases[_baseIndex].Id,
+                        soldier.Id, soldier.Training, !soldier.PsiTraining)));
+                    else if (key == 'c')
+                    {
+                        var crafts = personnel.QueryReadiness(overview.Bases[_baseIndex].Id).Crafts;
+                        var craft = crafts.Count == 0 ? null : crafts[0];
+                        Feedback(_session.Commands.Execute(soldier.CraftRuleId.Length == 0 && craft is not null
+                            ? new AssignSoldierToCraft(overview.Bases[_baseIndex].Id, soldier.Id, craft.RuleId, craft.Id)
+                            : new AssignSoldierToCraft(overview.Bases[_baseIndex].Id, soldier.Id)));
+                    }
+                    else if (key == 'o' && state.Armors.Count > 0)
+                    {
+                        var armor = state.Armors[(state.Armors.ToList().IndexOf(soldier.Armor) + 1) % state.Armors.Count];
+                        Feedback(_session.Commands.Execute(new EquipSoldierArmor(overview.Bases[_baseIndex].Id, soldier.Id, armor)));
+                    }
+                }
+            }
+            else if (_view == CampaignView.Readiness && key == 'e' && _session.Queries is ICampaignReadinessQuery equipment)
             {
                 var readiness = equipment.QueryReadiness(overview.Bases[_baseIndex].Id);
                 var choices = equipment.QueryBaseManagement(overview.Bases[_baseIndex].Id).CraftWeapons;
@@ -234,7 +288,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                         readiness.Crafts[0].RuleId, readiness.Crafts[0].Id, slot, next == 0 ? "" : choices[next - 1])));
                 }
             }
-            else if (_readiness && key == 'v' && _session.Queries is ICampaignReadinessQuery vehicleEquipment)
+            else if (_view == CampaignView.Readiness && key == 'v' && _session.Queries is ICampaignReadinessQuery vehicleEquipment)
             {
                 var readiness = vehicleEquipment.QueryReadiness(overview.Bases[_baseIndex].Id);
                 var choices = vehicleEquipment.QueryBaseManagement(overview.Bases[_baseIndex].Id).Vehicles;
@@ -246,12 +300,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                         craft.RuleId, craft.Id, choices[0], !craft.Vehicles.Contains(choices[0], StringComparer.Ordinal))));
                 }
             }
-            else if (key == ' ')
-            {
-                _screen = null;
-                Feedback(_session.Commands.Execute(new AdvanceCampaignTime((input.Modifiers & InputKeyModifiers.Shift) != 0 ? 720 : 12)));
-            }
-            else if (_readiness && key is 0x40000051 or 0x40000052)
+            else if (_view == CampaignView.Readiness && key is 0x40000051 or 0x40000052)
                 _row = Math.Max(0, _row + (key == 0x40000051 ? 1 : -1));
             else if (_screen is not null && key is 0x40000051 or 0x40000052)
                 _row = Math.Clamp(_row + (key == 0x40000051 ? 1 : -1), 0,
@@ -281,21 +330,61 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             CampaignTrainingCompleted training => $"Soldier {training.SoldierId} completed training.",
             CampaignPersonnelChanged personnel => $"Soldier {personnel.SoldierId} updated.",
             CampaignSoldierTransformed transformed => $"Soldier {transformed.SoldierId} transformed.",
+            CampaignResearchChanged research => $"Research {research.RuleId} updated.",
+            CampaignResearchCompleted research => $"Research {research.RuleId} completed.",
+            CampaignProductionChanged production => $"Production {production.RuleId} updated.",
+            CampaignProductionProgress production => production.StopReason ??
+                $"Produced {production.Produced} {production.RuleId}.",
             _ => "",
         }).Where(s => s.Length > 0));
     }
 
     private void Redraw()
     {
+        // A handler snapshot is only valid for the redraw that immediately follows it.
+        var economySnapshot = _economySnapshot;
+        _economySnapshot = null;
         Frame.Clear(1);
         var overview = _session.Queries.QueryOverview();
         var selectedBase = overview.Bases.Count == 0 ? null : overview.Bases[_baseIndex];
         Text($"{overview.Time.Year}-{overview.Time.Month:D2}-{overview.Time.Day:D2}  {overview.Time.Hour:D2}:{overview.Time.Minute:D2}    {overview.Funds}", 12, 10, 2);
         Text(selectedBase?.Name is { Length: > 0 } name ? name : "Starting base", 12, 28);
-        Text("I: Stores B: Buy T: Transfer R: Readiness A: Base U: Personnel N: New", 12, 48);
+        Text("I: Stores B: Buy T: Transfer R: Ready A: Base U: Staff H: Research M: Make", 12, 48);
         Text("Space: Minute  Shift+Space: Hour  F5: Save  F9: Load  Esc: Back/quit", 12, 64);
         if (_screen is null && selectedBase is { IsPlaced: false }) Text("P: Place starting base at 0,0", 12, 86, 3);
-        if (_management && selectedBase is not null && _session.Queries is ICampaignReadinessQuery management)
+        if (_view is CampaignView.Research or CampaignView.Production && selectedBase is not null &&
+            _session.Queries is ICampaignResearchProductionQuery economy)
+        {
+            var production = _view == CampaignView.Production;
+            var state = economySnapshot is { } snapshot && snapshot.BaseId == selectedBase.Id
+                ? snapshot.State
+                : economy.QueryResearchProduction(selectedBase.Id);
+            Text(production
+                ? $"Production  Engineers {state.EngineersAvailable}  Workshops {state.WorkshopsAvailable}"
+                : $"Research  Scientists {state.ScientistsAvailable}  Laboratories {state.LaboratoriesAvailable}", 12, 88);
+            Text("Up/Down: choose  Enter: start  X: cancel first active  H/M: switch", 12, 106);
+            var rows = production
+                ? state.ProductionChoices.Select(choice =>
+                    $"{_text(choice.RuleId)}  {choice.Time}h  {choice.Cost}  {choice.UnavailableReason}").ToArray()
+                : state.ResearchChoices.Select(choice =>
+                    $"{_text(choice.RuleId)}  {choice.Cost}d  {choice.UnavailableReason}").ToArray();
+            const int visibleRows = 10;
+            _row = Math.Min(_row, Math.Max(0, rows.Length - 1));
+            var first = Math.Clamp(_row - visibleRows + 1, 0, Math.Max(0, rows.Length - visibleRows));
+            for (var i = 0; i < Math.Min(visibleRows, rows.Length - first); i++)
+            {
+                if (first + i == _row) Frame.FillRectangle(8, 124 + i * 17, 624, 16, 2);
+                Text(rows[first + i], 12, 127 + i * 17);
+            }
+            var active = production
+                ? state.Productions.Select(project =>
+                    $"{_text(project.RuleId)} {project.Produced}/{(project.Infinite ? "∞" : project.Amount)} {project.Assigned} eng")
+                : state.Research.Select(project =>
+                    $"{_text(project.RuleId)} {project.Spent}/{project.Cost} {project.Assigned} sci {_text(project.Progress)}");
+            Text("Active: " + string.Join("; ", active), 12, 315, 2);
+        }
+        else if (_view == CampaignView.Management && selectedBase is not null &&
+            _session.Queries is ICampaignReadinessQuery management)
         {
             var state = management.QueryBaseManagement(selectedBase.Id);
             Text($"Base layout cursor ({_gridX},{_gridY})  WASD: Move  Enter: Build  X: Dismantle", 12, 88);
@@ -311,7 +400,8 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
             foreach (var facility in selectedBase.Facilities)
                 Text($"{facility.X},{facility.Y} {facility.SizeX}x{facility.SizeY} {facility.BuildTime}d", 30 + facility.X * 95, 180 + facility.Y * 28);
         }
-        else if (_personnel && selectedBase is not null && _session.Queries is ICampaignReadinessQuery personnel)
+        else if (_view == CampaignView.Personnel && selectedBase is not null &&
+            _session.Queries is ICampaignReadinessQuery personnel)
         {
             var state = personnel.QueryBaseManagement(selectedBase.Id);
             _row = Math.Min(_row, Math.Max(0, state.Soldiers.Count - 1));
@@ -324,7 +414,7 @@ public sealed class CampaignLogisticsClient : IIndexedLoopClient
                     12, 111 + i * 17);
             }
         }
-        else if (_readiness && selectedBase is not null)
+        else if (_view == CampaignView.Readiness && selectedBase is not null)
         {
             if (_session.Queries is ICampaignReadinessQuery query)
             {

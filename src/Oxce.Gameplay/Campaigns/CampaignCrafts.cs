@@ -95,7 +95,10 @@ public sealed partial class CampaignState
     private int AvailableHangars(BaseState state, int type) => state.Facilities.Where(f => f.BuildTime == 0)
         .Select(f => _content.RuntimeRules.Facilities[f.Rule].Value).Where(f => f.HangarType == type).Sum(f => f.Crafts);
 
+    // Base::getUsedHangars(type) also reserves one hangar per craft still to be manufactured.
     private int UsedHangars(BaseState state, int type) => state.Crafts.Count(c => _content.RuntimeRules.Crafts[c.Rule].Value.HangarType == type) +
         state.Transfers.Where(t => !t.Delivered && t.Craft is not null &&
-            _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(t.Craft.RuleId)].Value.HangarType == type).Sum(t => t.Quantity);
+            _content.RuntimeRules.Crafts[_content.RuntimeRules.Crafts.GetRequired(t.Craft.RuleId)].Value.HangarType == type).Sum(t => t.Quantity) +
+        state.Productions.Sum(p => ProducedCraft(_content.RuntimeRules.Manufacture[p.Rule].Value) is { } craft &&
+            _content.RuntimeRules.Crafts[craft].Value.HangarType == type ? Math.Max(0, p.Amount - Produced(p)) : 0);
 }

@@ -159,6 +159,10 @@ public sealed class EquipmentProductionRuleCatalog
                 }
                 if (rule.Value.NeedItem && rule.Value.NeededItem is { Length: > 0 } needed &&
                     !items.Items.TryGet(needed, out _)) Missing(rule, "neededItem", needed);
+                if (rule.Value.NeedItem && rule.Value.NeededItem is { Length: > 0 } explicitItem &&
+                    items.Items.TryGet(rule.Id, out _) && explicitItem != rule.Id)
+                    Invalid(rule, "neededItem", explicitItem,
+                        $"Conflict between researched item '{rule.Id}' and needed item '{explicitItem}'.");
             }
         }
 
@@ -171,7 +175,7 @@ public sealed class EquipmentProductionRuleCatalog
                     if (!Research.TryGet(research, out _)) Missing(rule, "requires", research);
                 if (rule.Value.Category == "STR_CRAFT")
                 {
-                    var produced = rule.Value.ProducedItems.FirstOrDefault();
+                    var produced = rule.Value.EffectiveProducedItems().FirstOrDefault();
                     if (produced.Key is null) Invalid(rule, "producedItems", null, "No craft is defined for production.");
                     else
                     {

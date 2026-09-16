@@ -205,4 +205,5 @@ public readonly struct SoldierTransformationRuleFamily;
 public readonly struct CommendationRuleFamily;
 public readonly struct SkillRuleFamily;
 public readonly struct ResearchRuleFamily;
+public readonly struct ManufactureRuleFamily;
 public readonly struct EventRuleFamily;

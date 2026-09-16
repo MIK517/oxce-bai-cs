@@ -2,10 +2,9 @@ using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Engine;
 using Oxce.Engine.Input;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Gameplay;
@@ -20,7 +19,7 @@ public sealed class CampaignFoundationTests
     public void ReadinessAdvancesDailyButStillBlocksAtMonthlyBoundary(int year, int month, int day, bool monthly)
     {
         var content = LoadFixture();
-        var original = CampaignFactory.Create(content, Request(), new SplitMix64RandomSource(42), new FixedClock());
+        var original = Create(content);
         var snapshot = original.Capture() with
         {
             Time = new CampaignTime(1, day, month, year, 23, 59, 55),
@@ -55,11 +54,7 @@ public sealed class CampaignFoundationTests
     public void NewCampaignCreatesLinkedWorldAndExecutesValidatedCommands()
     {
         var content = LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            Request(),
-            new SplitMix64RandomSource(42),
-            new FixedClock());
+        var campaign = Create(content);
 
         var initial = campaign.Capture();
         Assert.Equal(6_000_000, Assert.Single(initial.Funds));
@@ -207,18 +202,11 @@ public sealed class CampaignFoundationTests
         Assert.Equal(initialRevision + 2, client.PresentationRevision);
     }
 
-    internal static RuntimeContent LoadFixture()
-    {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
-        var discovery = ModDiscovery.ScanDirectory(fixture);
-        var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
-            [new ModActivation("runtime-master", true), new ModActivation("runtime-addon", true)],
-            "runtime-master",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-        return ContentSnapshotBuilder.Build(plan).Content;
-    }
+    internal static RuntimeContent LoadFixture() =>
+        ContentSnapshotBuilder.Build(TestFixtures.CreateRuntimeRuleLinkingPlan()).Content;
+
+    internal static CampaignState Create(RuntimeContent content, NewCampaignRequest? request = null) =>
+        CampaignFactory.Create(content, request ?? Request(), new SplitMix64RandomSource(42), new FixedClock());
 
     internal static NewCampaignRequest Request() => new(
         new CampaignId(Guid.Parse("11111111-2222-3333-4444-555555555555")),
@@ -226,7 +214,6 @@ public sealed class CampaignFoundationTests
         "runtime-master",
         ["runtime-master", "runtime-addon"],
         CampaignDifficulty.Beginner);
-
 
     internal sealed class FixedClock : ICampaignClock
     {

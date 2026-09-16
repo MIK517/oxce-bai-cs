@@ -36,5 +36,4 @@ public sealed class PrivatePaletteCorpusTests
             BinaryDataReader.FromFile(path),
             XcomPaletteCodec.ColorsPerPalette,
             XcomPaletteCodec.GetPaletteOffset(paletteIndex));
-
 }

@@ -207,6 +207,8 @@ public static class OxceSaveAdapter
         {
             Restrictions = ReadRestrictions(body),
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString).Order(StringComparer.Ordinal).ToArray()),
+            ResearchRuleStatus = ReadIntMap(body, "researchRuleStatus"),
+            ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
             Options = body.TryGet("oxcePortOptions", out var optionsNode)
@@ -225,12 +227,6 @@ public static class OxceSaveAdapter
         string[] worldKeys = ["ufos", "alienMissions", "missionSites", "alienBases", "geoscapeEvents"];
         foreach (var key in worldKeys)
             if (HasContents(body, key)) result.Add(new($"Live {key} requires world simulation.", null, false, true));
-        foreach (var identified in IdentifyBases(body))
-        {
-            var map = identified.Value;
-            if (HasContents(map, "research") || HasContents(map, "productions"))
-                result.Add(new("Active research/production needs staff and capacity accounting.", identified.Id, true, true));
-        }
         return Array.AsReadOnly(result.ToArray());
     }
 
@@ -296,16 +292,65 @@ public static class OxceSaveAdapter
                 return ReadSoldier(soldier, defaultSoldier);
             }).ToArray();
             var items = ReadIntMap(map, "items");
+            // Base::load skips projects whose rules are no longer defined and returns their staff.
+            var scientists = Integer(map, "scientists", 0);
+            var research = KnownProjects(Maps(map, "research").Select(project => new ResearchProjectSnapshot(
+                    RequiredString(project, "project"), Integer(project, "assigned", 0),
+                    Integer(project, "spent", 0), Integer(project, "cost", 0))),
+                project => content.RuntimeRules.Research.TryGet(project.RuleId, out _),
+                project => project.Assigned, ref scientists);
+            var engineers = Integer(map, "engineers", 0);
+            var productions = KnownProjects(Maps(map, "productions").Select(ReadProduction),
+                production => content.RuntimeRules.Manufacture.TryGet(production.RuleId, out _),
+                production => production.Assigned, ref engineers);
             return new BaseSnapshot(
                 identified.Id, String(map, "name", string.Empty), Double(map, "lon", 0),
                 Double(map, "lat", 0), Array.AsReadOnly(facilities), Array.AsReadOnly(crafts),
-                Array.AsReadOnly(soldiers), items, Integer(map, "scientists", 0), Integer(map, "engineers", 0))
+                Array.AsReadOnly(soldiers), items, scientists, engineers)
             {
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
                     ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
+                Research = research,
+                Productions = productions,
             };
         }).ToArray());
+    }
+
+    private static ReadOnlyCollection<T> KnownProjects<T>(
+        IEnumerable<T> projects, Func<T, bool> isKnown, Func<T, int> assigned, ref int releasedStaff)
+    {
+        var known = new List<T>();
+        foreach (var project in projects)
+        {
+            if (isKnown(project))
+            {
+                known.Add(project);
+                continue;
+            }
+            if (assigned(project) < 0)
+                throw new InvalidDataException("Assigned project staff cannot be negative.");
+            try { releasedStaff = checked(releasedStaff + assigned(project)); }
+            catch (OverflowException exception)
+            {
+                throw new InvalidDataException("Base staff released from unknown projects exceeds the supported range.",
+                    exception);
+            }
+        }
+        return Array.AsReadOnly(known.ToArray());
+    }
+
+    private static ProductionSnapshot ReadProduction(YamlMappingNode production)
+    {
+        var amount = Integer(production, "amount", 0);
+        var legacyInfinite = amount == int.MaxValue;
+        return new ProductionSnapshot(
+            RequiredString(production, "item"), Integer(production, "assigned", 0),
+            Integer(production, "spent", 0), legacyInfinite ? 999 : amount,
+            legacyInfinite || Boolean(production, "infinite", false),
+            legacyInfinite || Boolean(production, "sell", false),
+            Boolean(production, "isFallback", false),
+            ReadIntMap(production, "randomProductionInfo"));
     }
 
     private static ReadOnlyCollection<ScriptValueEntry> ReadScriptValues(
@@ -389,6 +434,10 @@ public static class OxceSaveAdapter
             Pair("bases", Sequence(bases)),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
+            Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
+                Mapping(snapshot.ResearchRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("manufactureRuleStatus", snapshot.ManufactureRuleStatus.Count == 0 ? null :
+                Mapping(snapshot.ManufactureRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
             Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : Mapping(snapshot.MonthlyPurchaseLog.Select(p => Pair(p.Key, Integer(p.Value))))),
             Pair("debug", snapshot.DebugMode ? Boolean(true) : null),
             Pair("oxcePortOptions", Mapping([
@@ -425,6 +474,10 @@ public static class OxceSaveAdapter
     {
         EnsureUnique(value.Facilities.Select(FacilityIdentity), "facility identity");
         var oldFacilities = Maps(source, "facilities").ToDictionary(FacilityIdentity);
+        EnsureUnique(value.Research.Select(static project => project.RuleId), "research project");
+        EnsureUnique(value.Productions.Select(static production => production.RuleId), "production project");
+        var oldResearch = FirstByKey(Maps(source, "research"), static project => RequiredString(project, "project"));
+        var oldProductions = FirstByKey(Maps(source, "productions"), static production => RequiredString(production, "item"));
         var facilities = value.Facilities.Select(facility => Overlay(
             oldFacilities.GetValueOrDefault(FacilityIdentity(facility)),
             [
@@ -449,6 +502,23 @@ public static class OxceSaveAdapter
             Pair("items", Mapping(value.Items.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
             Pair("scientists", Integer(value.Scientists)), Pair("engineers", Integer(value.Engineers)),
             Pair("transfers", value.Transfers.Count == 0 ? null : Sequence(value.Transfers.Select(t => BuildTransfer(t, entityIndex)))),
+            Pair("research", value.Research.Count == 0 ? null : Sequence(value.Research.Select(project => Overlay(
+                oldResearch.GetValueOrDefault(project.RuleId),
+            [
+                Pair("project", Scalar(project.RuleId)), Pair("assigned", Integer(project.Assigned)),
+                Pair("spent", Integer(project.Spent)), Pair("cost", Integer(project.Cost)),
+            ])))),
+            Pair("productions", value.Productions.Count == 0 ? null : Sequence(value.Productions.Select(production => Overlay(
+                oldProductions.GetValueOrDefault(production.RuleId),
+            [
+                Pair("item", Scalar(production.RuleId)), Pair("assigned", Integer(production.Assigned)),
+                Pair("spent", Integer(production.Spent)), Pair("amount", Integer(production.Amount)),
+                Pair("infinite", Boolean(production.Infinite)),
+                Pair("sell", production.Sell ? Boolean(true) : null),
+                Pair("isFallback", production.IsFallback ? Boolean(true) : null),
+                Pair("randomProductionInfo", production.RandomProductionInfo.Count == 0 ? null :
+                    Mapping(production.RandomProductionInfo.Select(p => Pair(p.Key, Integer(p.Value))))),
+            ])))),
         ]);
     }
 
@@ -800,6 +870,14 @@ public static class OxceSaveAdapter
         var seen = new HashSet<T>();
         foreach (var value in values)
             if (!seen.Add(value)) throw new InvalidDataException($"Duplicate {name} '{value}'.");
+    }
+
+    private static Dictionary<string, YamlMappingNode> FirstByKey(
+        IEnumerable<YamlMappingNode> nodes, Func<YamlMappingNode, string> key)
+    {
+        var result = new Dictionary<string, YamlMappingNode>(StringComparer.Ordinal);
+        foreach (var node in nodes) result.TryAdd(key(node), node);
+        return result;
     }
 
     private readonly record struct IdentifiedBase(int Id, YamlMappingNode Value);

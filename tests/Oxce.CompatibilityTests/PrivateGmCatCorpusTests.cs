@@ -23,5 +23,4 @@ public sealed class PrivateGmCatCorpusTests
             Assert.InRange(midi.Length, 26, GmCatMusicCodec.DefaultMaximumMidiBytes);
         }
     }
-
 }

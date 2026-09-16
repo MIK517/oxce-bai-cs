@@ -1,0 +1,134 @@
+items:
+  - type: SPECIMEN
+    size: 1
+  - type: MATERIAL
+    size: 1
+  - type: PRODUCT
+    costSell: 75
+    size: 1
+  - type: IMPLICIT_ITEM
+    size: 1
+facilities:
+  - type: STORES
+    labs: 10
+    workshops: 10
+    provideBaseFunc: [SCIENCE]
+research:
+  - name: UNLOCK
+    cost: 1
+  - name: THEORY
+    cost: 10
+    points: 3
+    neededItem: SPECIMEN
+    needItem: true
+    destroyItem: true
+    unlocks: [APPLICATION]
+    getOneFree: [BONUS]
+    sequentialGetOneFree: true
+    requiresBaseFunc: [SCIENCE]
+    spawnedItem: MATERIAL
+    spawnedItemCount: 2
+    increaseCounter: [RESEARCH_WINS]
+    decreaseCounter: [RESEARCH_LOSSES]
+  - name: BONUS
+    cost: 10
+    points: 5
+  - name: APPLICATION
+    cost: 0
+    points: 7
+    requires: [THEORY]
+  - name: TARGET
+    cost: 100
+  - name: DISABLER
+    cost: 1
+    disables: [TARGET]
+  - name: REENABLER
+    cost: 1
+    reenables: [TARGET]
+  - name: DUPLICATE_REWARD
+    cost: 1
+    spawnedItem: MATERIAL
+    spawnedItemCount: 1
+    increaseCounter: [DUPLICATE_REWARD_COUNT]
+  - name: ZERO_REWARD
+    cost: 1
+    spawnedItem: PRODUCT
+    spawnedItemCount: 0
+  - name: IMPLICIT_ITEM
+    cost: 1
+    needItem: true
+    destroyItem: true
+  - name: PROTECTED_SOURCE
+    cost: 1
+    getOneFreeProtected: {UNLOCK: [PROTECTED_REWARD]}
+  - name: PROTECTED_REWARD
+    cost: 1
+  - name: REPEATABLE_SOURCE
+    cost: 1
+    repeatable: true
+  - name: REPEATABLE_PREREQ
+    cost: 1
+  - name: REPEATABLE_ZERO
+    cost: 0
+    dependencies: [REPEATABLE_PREREQ]
+manufacture:
+  - name: PRODUCT
+    category: STR_WEAPON
+    requires: [APPLICATION]
+    requiresBaseFunc: [SCIENCE]
+    space: 1
+    time: 4
+    cost: 100
+    points: 11
+    requiredItems: {MATERIAL: 1}
+    producedItems: {PRODUCT: 1}
+  - name: RECYCLE_SHIP
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    requiredItems: {SHIP: 1}
+    producedItems: {PRODUCT: 1}
+  - name: MAKE_ENGINEER
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    spawnedPersonType: STR_ENGINEER
+    producedItems: {PRODUCT: 0}
+  - name: RANDOM_PRODUCT
+    category: STR_WEAPON
+    space: 1
+    time: 4
+    producedItems: {PRODUCT: 1}
+    randomProducedItems:
+      - [1, {MATERIAL: 1}]
+  - name: MAKE_AMMO
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    producedItems: {BULKY: 1}
+  - name: BUILD_SHIP
+    category: STR_CRAFT
+    space: 1
+    time: 1
+    producedItems: {SHIP: 1}
+  - name: REFUNDABLE
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    cost: 1
+    refund: true
+    producedItems: {PRODUCT: 1}
+  - name: OVERWEIGHT_RANDOM
+    category: STR_WEAPON
+    space: 1
+    time: 1
+    producedItems: {PRODUCT: 1}
+    randomProducedItems:
+      - [2147483647, {MATERIAL: 1}]
+      - [2147483647, {PRODUCT: 1}]
+startingBase:
+  facilities: [{type: STORES, x: 0, y: 0}]
+  items: {SPECIMEN: 1, IMPLICIT_ITEM: 1}
+  scientists: 3
+  engineers: 4
+sellPriceCoefficient: [50, 50, 50, 50, 50]

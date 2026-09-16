@@ -40,5 +40,4 @@ public sealed class PrivateTerrainDataCorpusTests
             Assert.InRange(voxelData.TrailingData.Length, 0, sizeof(ushort) - 1);
         }
     }
-
 }

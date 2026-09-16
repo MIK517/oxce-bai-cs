@@ -7,8 +7,11 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class PrivateWavePcmCorpusTests
 {
-    [Fact]
-    public void SuppliedModPcmWaveFilesDecodeWithinBounds()
+    [Theory]
+    [InlineData(1, 2_097, "PCM")]
+    [InlineData(2, 203, "Microsoft ADPCM")]
+    [InlineData(17, 3, "IMA ADPCM")]
+    public void SuppliedModWaveFilesDecodeWithinBounds(int encoding, int minimumCount, string description)
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var privateMods = Path.Combine(root, "fixtures", "private", "mods");
@@ -20,7 +23,7 @@ public sealed class PrivateWavePcmCorpusTests
         foreach (var path in Directory.EnumerateFiles(privateMods, "*.wav", SearchOption.AllDirectories))
         {
             var input = BinaryDataReader.FromFile(path);
-            if (ReadEncoding(input) != 1)
+            if (ReadEncoding(input) != encoding)
             {
                 continue;
             }
@@ -32,66 +35,8 @@ public sealed class PrivateWavePcmCorpusTests
         }
 
         Assert.True(
-            decodedCount >= 2_097,
-            $"Expected the supplied PCM WAV corpus; decoded {decodedCount} files.");
-    }
-
-    [Fact]
-    public void SuppliedModMicrosoftAdpcmWaveFilesDecodeWithinBounds()
-    {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var privateMods = Path.Combine(root, "fixtures", "private", "mods");
-        Assert.SkipUnless(
-            Directory.Exists(privateMods),
-            "Private mod assets are not available in this checkout.");
-
-        var decodedCount = 0;
-        foreach (var path in Directory.EnumerateFiles(privateMods, "*.wav", SearchOption.AllDirectories))
-        {
-            var input = BinaryDataReader.FromFile(path);
-            if (ReadEncoding(input) != 2)
-            {
-                continue;
-            }
-
-            input.Seek(0);
-            var audio = WavePcmCodec.Decode(input);
-            Assert.Equal(checked(audio.FrameCount * audio.Channels), audio.Samples.Length);
-            decodedCount++;
-        }
-
-        Assert.True(
-            decodedCount >= 203,
-            $"Expected the supplied Microsoft ADPCM WAV corpus; decoded {decodedCount} files.");
-    }
-
-    [Fact]
-    public void SuppliedModImaAdpcmWaveFilesDecodeWithinBounds()
-    {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var privateMods = Path.Combine(root, "fixtures", "private", "mods");
-        Assert.SkipUnless(
-            Directory.Exists(privateMods),
-            "Private mod assets are not available in this checkout.");
-
-        var decodedCount = 0;
-        foreach (var path in Directory.EnumerateFiles(privateMods, "*.wav", SearchOption.AllDirectories))
-        {
-            var input = BinaryDataReader.FromFile(path);
-            if (ReadEncoding(input) != 17)
-            {
-                continue;
-            }
-
-            input.Seek(0);
-            var audio = WavePcmCodec.Decode(input);
-            Assert.Equal(checked(audio.FrameCount * audio.Channels), audio.Samples.Length);
-            decodedCount++;
-        }
-
-        Assert.True(
-            decodedCount >= 3,
-            $"Expected the supplied IMA ADPCM WAV corpus; decoded {decodedCount} files.");
+            decodedCount >= minimumCount,
+            $"Expected the supplied {description} WAV corpus; decoded {decodedCount} files.");
     }
 
     private static ushort ReadEncoding(BinaryDataReader input)
@@ -116,5 +61,4 @@ public sealed class PrivateWavePcmCorpusTests
 
         throw new InvalidDataException("WAV input does not contain a fmt chunk.");
     }
-
 }

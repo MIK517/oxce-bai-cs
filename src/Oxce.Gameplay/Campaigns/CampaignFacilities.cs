@@ -181,6 +181,12 @@ public sealed partial class CampaignState
             return "STR_FACILITY_IN_USE_PSI_LABS";
         if (removedRules.Any(r => r.TrainingRooms > 0) && operational.Sum(r => r.TrainingRooms) + (replacement?.TrainingRooms ?? 0) < owner.Soldiers.Count(s => s.Personal?.Training == true))
             return "STR_FACILITY_IN_USE_GYMS";
+        if (removedRules.Any(r => r.Laboratories > 0) && operational.Sum(r => r.Laboratories) +
+            (replacement?.Laboratories ?? 0) < UsedLaboratories(owner))
+            return "STR_FACILITY_IN_USE_LABS";
+        if (removedRules.Any(r => r.Workshops > 0) && operational.Sum(r => r.Workshops) +
+            (replacement?.Workshops ?? 0) < UsedWorkshopSpace(owner))
+            return "STR_FACILITY_IN_USE_WORKSHOPS";
         return null;
     }
 
@@ -246,11 +252,6 @@ public sealed partial class CampaignState
         var value = checked(stock.GetValueOrDefault(item) + delta);
         if (value < 0) throw new InvalidDataException("Insufficient facility stock.");
         if (value == 0) stock.Remove(item); else stock[item] = value;
-    }
-    private static void Account(long delta, ref long funds, ref long income, ref long spending)
-    {
-        funds = checked(funds + delta);
-        if (delta > 0) income = checked(income + delta); else spending = checked(spending - delta);
     }
     private void PublishFacilityChange(BaseState owner, List<FacilityState> facilities,
         Dictionary<RuleHandle<ItemRuleFamily>, int> stock, long funds, long income, long spending)

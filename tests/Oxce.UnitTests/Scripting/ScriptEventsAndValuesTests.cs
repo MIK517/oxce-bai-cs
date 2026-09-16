@@ -66,6 +66,7 @@ public sealed class ScriptEventsAndValuesTests
             new ScriptEventMutation(ScriptEventMutationKind.Delete, "alsoMissing", 0, null, "probe.yml", 2),
         ]);
         Assert.True(warnings.Succeeded);
+        Assert.Equal(0, warnings.Plan!.Count);
         Assert.Equal(2, warnings.Diagnostics.Count(diagnostic => diagnostic.Severity == DiagnosticSeverity.Warning));
 
         var failure = ScriptEventComposer.Compose(
@@ -80,6 +81,7 @@ public sealed class ScriptEventsAndValuesTests
     {
         var composed = ScriptEventComposer.Compose(
             [Event(ScriptEventMutationKind.Append, "", -100, "return result;", 1)]);
+        Assert.True(composed.Succeeded);
 
         var result = ScriptEventRunner.Execute(
             composed.Plan!,
@@ -156,7 +158,7 @@ public sealed class ScriptEventsAndValuesTests
     private static ScriptProgram Program(string source)
     {
         var result = ScriptCompiler.Compile(source, new ScriptParserDefinition("Probe", ["result"]));
-        Assert.True(result.Succeeded);
+        Assert.True(result.Succeeded, source);
         return result.Program!;
     }
 

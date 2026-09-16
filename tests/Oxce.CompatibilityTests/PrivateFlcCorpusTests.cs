@@ -34,7 +34,6 @@ public sealed class PrivateFlcCorpusTests
         }
     }
 
-
     private sealed class CountingSink : IFlcFrameSink
     {
         public int Frames { get; private set; }

@@ -6,6 +6,10 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class PrivateIndexedPngCorpusTests
 {
+    private const byte IndexedColorType = 3;
+
+    private static ReadOnlySpan<byte> PngSignature => [0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A];
+
     [Fact]
     public void OwnedModIndexedPngFilesDecodeWithinBounds()
     {
@@ -19,11 +23,15 @@ public sealed class PrivateIndexedPngCorpusTests
         var header = new byte[26];
         foreach (var path in Directory.EnumerateFiles(privateMods, "*.png", SearchOption.AllDirectories))
         {
-            using var stream = File.OpenRead(path);
-            stream.ReadExactly(header);
-            if (header[25] != 3)
+            using (var stream = File.OpenRead(path))
             {
-                continue;
+                // Signature, IHDR length/type, width, height and bit depth precede the color type at offset 25.
+                var read = stream.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
+                if (read < header.Length || !header.AsSpan(0, 8).SequenceEqual(PngSignature) ||
+                    !header.AsSpan(12, 4).SequenceEqual("IHDR"u8) || header[25] != IndexedColorType)
+                {
+                    continue;
+                }
             }
 
             var image = IndexedPngCodec.Decode(BinaryDataReader.FromFile(path));
@@ -34,5 +42,4 @@ public sealed class PrivateIndexedPngCorpusTests
 
         Assert.True(decodedCount > 14_000, $"Expected the supplied indexed PNG corpus; decoded {decodedCount} files.");
     }
-
 }

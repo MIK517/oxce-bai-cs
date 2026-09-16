@@ -7,6 +7,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Mods.Bootstrap;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -20,9 +21,7 @@ public sealed class StrategicReadinessFixtureTests
     {
         var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var content = StrategicReadinessTestContent.Load(fromCache: fromCache);
-        var original = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Bases", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var original = TestFixtures.CreateLogisticsCampaign(content, "Bases");
         var funded = original.Capture() with { Funds = [20_000], Incomes = [0], Expenditures = [0] };
         var campaign = CampaignState.Restore(funded, content, new SplitMix64RandomSource(42));
         Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0)).Events));
@@ -53,8 +52,7 @@ public sealed class StrategicReadinessFixtureTests
             new BuildCampaignFacility(created.BaseId, "ROOM", 3, 2)).Events));
         var constructing = campaign.Capture();
         Assert.Equal(2, constructing.Bases.Single(b => b.Id == created.BaseId).Facilities.Single(f => f.RuleId == "ROOM").BuildTime);
-        var reload = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(constructing), "bases.sav", content,
-            new SplitMix64RandomSource(42), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var reload = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(constructing), content, seed: 42, name: "bases.sav");
         var midnight = constructing.Time with { Hour = 23, Minute = 59, Second = 55 };
         campaign = CampaignState.Restore(reload.Campaign.Capture() with { Time = midnight }, content, new SplitMix64RandomSource(42));
         campaign.Execute(new AdvanceCampaignTime(1));
@@ -104,8 +102,7 @@ public sealed class StrategicReadinessFixtureTests
         var queueYaml = OxceSaveAdapter.EmitNewCampaign(queueSnapshot).Replace(
             "oxcePortEntityKey: queue-middle", "futureFacility: retained\n        oxcePortEntityKey: queue-middle", StringComparison.Ordinal);
         Assert.Contains("futureFacility: retained", queueYaml, StringComparison.Ordinal);
-        var queueLoaded = OxceSaveAdapter.Load(queueYaml, "queue.sav", content, new SplitMix64RandomSource(42),
-            new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var queueLoaded = TestFixtures.LoadLogisticsSave(queueYaml, content, seed: 42, name: "queue.sav");
         Assert.IsType<CampaignFacilityChanged>(Assert.Single(queueLoaded.Campaign.Execute(
             new DismantleCampaignFacility(queueBase.Id, 5, 2)).Events));
         var recalculated = queueLoaded.Campaign.Capture().Bases.Single(b => b.Id == queueBase.Id).Facilities.Single(f => f.X == 4);
@@ -113,7 +110,6 @@ public sealed class StrategicReadinessFixtureTests
         Assert.Equal(3, recalculated.BuildTime);
         Assert.Contains("futureFacility: retained", OxceSaveAdapter.EmitLoadedCampaign(queueLoaded.Campaign.Capture(), queueLoaded.Source),
             StringComparison.Ordinal);
-
     }
 
     [Theory]
@@ -124,7 +120,6 @@ public sealed class StrategicReadinessFixtureTests
         var (content, _, facilityState, facilityBase) = CreateReadinessScenario(fromCache);
 
         var recruit = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
-        var stats = recruit.MinimumStats.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         var undertrainedStats = recruit.TrainingStatCaps.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         foreach (var key in new[] { "firing", "health", "melee", "throwing", "strength", "tu", "stamina" })
             undertrainedStats[key] = unchecked((short)(undertrainedStats.GetValueOrDefault(key) - 1));
@@ -164,7 +159,6 @@ public sealed class StrategicReadinessFixtureTests
         Assert.IsType<CampaignActionBlocked>(Assert.Single(trainingCampaign.Execute(
             new SetSoldierTraining(completedBase.Id, 4, true, false)).Events));
         Assert.Equivalent(beforeTraining, trainingCampaign.Capture(), strict: true);
-
     }
 
     [Theory]
@@ -240,7 +234,6 @@ public sealed class StrategicReadinessFixtureTests
         Assert.IsType<CampaignActionBlocked>(Assert.Single(capacityCampaign.Execute(
             new SubmitLogisticsOrder(saleQuote.Id, [new(launcher.Id, 2)])).Events));
         Assert.Equivalent(beforeWeaponRemoval, capacityCampaign.Capture(), strict: true);
-
     }
 
     [Theory]
@@ -299,10 +292,14 @@ public sealed class StrategicReadinessFixtureTests
             .Select(vehicle => vehicle.PreservationKey).ToArray();
         Assert.Equal(vehicleKeys.Length, vehicleKeys.Distinct(StringComparer.Ordinal).Count());
         var identityYaml = OxceSaveAdapter.EmitNewCampaign(identityCampaign.Capture());
-        var identityLoaded = OxceSaveAdapter.Load(identityYaml, "vehicle-identities.sav", content,
-            new SplitMix64RandomSource(42), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
-        _ = OxceSaveAdapter.EmitLoadedCampaign(identityLoaded.Campaign.Capture(), identityLoaded.Source);
-
+        var identityLoaded = TestFixtures.LoadLogisticsSave(identityYaml, content, seed: 42, name: "vehicle-identities.sav");
+        var identitySnapshot = identityLoaded.Campaign.Capture();
+        Assert.Equal(vehicleKeys, identitySnapshot.Bases.Single(b => b.Id == identityBase.Id).Crafts[0].Logistics!.Vehicles
+            .Select(vehicle => vehicle.PreservationKey));
+        var identityReloaded = TestFixtures.LoadLogisticsSave(
+            OxceSaveAdapter.EmitLoadedCampaign(identitySnapshot, identityLoaded.Source), content, seed: 42,
+            name: "vehicle-identities.sav");
+        Assert.Equivalent(identitySnapshot, identityReloaded.Campaign.Capture(), strict: true);
     }
 
     [Theory]
@@ -463,9 +460,7 @@ public sealed class StrategicReadinessFixtureTests
         BaseSnapshot Base) CreateReadinessScenario(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load(fromCache: fromCache);
-        var original = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Bases", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var original = TestFixtures.CreateLogisticsCampaign(content, "Bases");
         var initial = original.Capture();
         var prepared = initial.Bases[0] with
         {
@@ -493,8 +488,7 @@ public sealed class StrategicReadinessFixtureTests
     public void FreshAndCachedServicingPreserveShieldAndFacilityAmmunitionThroughSaveOverlays(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load("strategic-servicing.rul", fromCache);
-        var campaign = CampaignFactory.Create(content, new(new(Guid.NewGuid()), "Service", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance);
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Service");
         Assert.Equal(2, campaign.QueryReadiness(0).Crafts[0].Shield);
         Assert.Equal(15, campaign.QueryReadiness(0).Crafts[0].ShieldMaximum);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0));
@@ -506,8 +500,7 @@ public sealed class StrategicReadinessFixtureTests
         Assert.True(campaign.QueryReadiness(0).Defenses[0].Disabled); // Reference rearm does not test disabled.
         Assert.Equal(1, campaign.Capture().Bases[0].Items["SERVICE_AMMO"]);
         var snapshot = campaign.Capture();
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(snapshot), "readiness.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot), content, seed: 0, name: "readiness.sav");
         Assert.Equivalent(snapshot, loaded.Campaign.Capture(), strict: true);
         campaign = loaded.Campaign;
         var shortage = campaign.Execute(new AdvanceCampaignTime(720));
@@ -524,21 +517,16 @@ public sealed class StrategicReadinessFixtureTests
         Assert.Equal(100, ready.Fuel);
         Assert.Equal(15, ready.Shield);
         var final = campaign.Capture();
-        var reload = OxceSaveAdapter.Load(OxceSaveAdapter.EmitLoadedCampaign(final, loaded.Source), "readiness.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var reload = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitLoadedCampaign(final, loaded.Source), content, seed: 0, name: "readiness.sav");
         Assert.Equivalent(final, reload.Campaign.Capture(), strict: true);
     }
 
     [Fact]
     public void RearmingMatchesExtractedCppIncludingStatisticalBulletSaving()
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Oxce.slnx"))) root = root.Parent;
-        Assert.NotNull(root);
-        using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(root.FullName,
-            "fixtures/expected/savegames/strategic-readiness.expected.json")));
+        using var expected = TestFixtures.ReadExpected("savegames", "strategic-readiness.expected.json");
         Assert.Equal("4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15", expected.RootElement.GetProperty("referenceCommit").GetString());
-        foreach (var row in expected.RootElement.GetProperty("weapons").EnumerateArray())
+        foreach (var row in TestFixtures.Rows(expected.RootElement, "weapons"))
         {
             var rule = new RuntimeCraftWeaponRule(10, row[0].GetInt32(), "", "", new Dictionary<string, int>())
             { StatisticalBulletSaving = true };
@@ -553,12 +541,8 @@ public sealed class StrategicReadinessFixtureTests
     [Fact]
     public void RecoveryMatchesExtractedCppOrderingAndClamps()
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Oxce.slnx"))) root = root.Parent;
-        Assert.NotNull(root);
-        using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(root.FullName,
-            "fixtures/expected/savegames/strategic-readiness.expected.json")));
-        foreach (var row in expected.RootElement.GetProperty("recovery").EnumerateArray())
+        using var expected = TestFixtures.ReadExpected("savegames", "strategic-readiness.expected.json");
+        foreach (var row in TestFixtures.Rows(expected.RootElement, "recovery"))
         {
             var stats = new Dictionary<string, short>(StringComparer.Ordinal) { ["health"] = 40, ["mana"] = 30 };
             var soldier = new SoldierPersonalState("Fixture", "", 0, 0, 0, 0, "", stats, stats)
@@ -573,16 +557,10 @@ public sealed class StrategicReadinessFixtureTests
     [Fact]
     public void PhysicalTrainingCompletionMatchesExtractedCppStatComparison()
     {
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
-            "fixtures/expected/savegames/strategic-readiness.expected.json")));
-        var discovery = Oxce.Mods.Discovery.ModDiscovery.ScanDirectory(Path.Combine(repository,
-            "fixtures/public/mods/strategic-logistics"));
-        var plan = Oxce.Mods.Loading.ModLoadPlanner.Create(Oxce.Mods.Loading.ModCatalog.Create(discovery.Mods),
-            [new("logistics", true)], "logistics", new("Extended", "8.6.1.0"));
-        var content = Oxce.Mods.Rulesets.Content.ContentSnapshotBuilder.Build(plan).Content;
+        using var expected = TestFixtures.ReadExpected("savegames", "strategic-readiness.expected.json");
+        var content = TestFixtures.LoadStrategicLogistics();
         var rule = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("RECRUIT")].Value;
-        foreach (var row in expected.RootElement.GetProperty("training").EnumerateArray())
+        foreach (var row in TestFixtures.Rows(expected.RootElement, "training"))
         {
             var stats = rule.TrainingStatCaps.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
             stats["firing"] = checked((short)(stats.GetValueOrDefault("firing") + row[0].GetInt32()));
@@ -597,5 +575,4 @@ public sealed class StrategicReadinessFixtureTests
         public int NextExclusive(int exclusiveMaximum) => throw new InvalidOperationException();
         public double NextUnit() => throw new InvalidOperationException();
     }
-
 }

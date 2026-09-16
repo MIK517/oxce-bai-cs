@@ -24,5 +24,4 @@ public sealed class PrivateIndexedBmpCorpusTests
             Assert.Equal(256, image.Palette.Count);
         }
     }
-
 }

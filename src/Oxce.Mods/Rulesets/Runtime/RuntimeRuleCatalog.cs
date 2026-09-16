@@ -32,7 +32,8 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<SoldierTransformationRuleFamily, RuntimeSoldierTransformationRule> soldierTransformations,
         RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> commendations,
         RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> skills,
-        RuntimeRuleFamily<ResearchRuleFamily, RuntimeIdentityRule> research,
+        RuntimeRuleFamily<ResearchRuleFamily, RuntimeResearchRule> research,
+        RuntimeRuleFamily<ManufactureRuleFamily, RuntimeManufactureRule> manufacture,
         RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> events,
         RuntimeRuleFamily<RuntimeScriptFamily, RuntimeScriptRule> scripts,
         RuntimeCampaignSettings campaign)
@@ -51,6 +52,7 @@ public sealed class RuntimeRuleCatalog
         Commendations = commendations;
         Skills = skills;
         Research = research;
+        Manufacture = manufacture;
         Events = events;
         Scripts = scripts;
         Campaign = campaign;
@@ -69,7 +71,8 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<SoldierTransformationRuleFamily, RuntimeSoldierTransformationRule> SoldierTransformations { get; }
     public RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> Commendations { get; }
     public RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> Skills { get; }
-    public RuntimeRuleFamily<ResearchRuleFamily, RuntimeIdentityRule> Research { get; }
+    public RuntimeRuleFamily<ResearchRuleFamily, RuntimeResearchRule> Research { get; }
+    public RuntimeRuleFamily<ManufactureRuleFamily, RuntimeManufactureRule> Manufacture { get; }
     public RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> Events { get; }
     public RuntimeRuleFamily<RuntimeScriptFamily, RuntimeScriptRule> Scripts { get; }
     public RuntimeCampaignSettings Campaign { get; }

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Oxce.Engine.Audio;
 using Oxce.Engine.Input;
 using Oxce.FixtureSupport;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -12,10 +13,7 @@ public sealed class InputAudioFixtureTests
     [Fact]
     public void PointerCoordinatesAndVolumeCurveMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "input-audio-semantics.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("input-audio-semantics");
         var pointerCases = new List<object>();
         var volumes = new List<object>();
         foreach (var line in File.ReadLines(Path.GetFullPath(manifest.Inputs[0].Path, root)))
@@ -55,7 +53,7 @@ public sealed class InputAudioFixtureTests
 
         var actual = JsonSerializer.SerializeToUtf8Bytes(new { pointers = pointerCases, volumes });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static double ParseDouble(string value) =>
@@ -63,5 +61,4 @@ public sealed class InputAudioFixtureTests
 
     private static int ParseInt32(string value) =>
         int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture);
-
 }

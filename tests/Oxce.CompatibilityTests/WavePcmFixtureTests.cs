@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Audio;
 using Oxce.Formats.Binary;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,10 +12,7 @@ public sealed class WavePcmFixtureTests
     [Fact]
     public void PcmNormalizationMatchesCapturedSdlReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "wave-pcm.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("wave-pcm");
         var actual = JsonSerializer.SerializeToUtf8Bytes(new
         {
             s16 = Decode(Path.GetFullPath(manifest.Inputs[1].Path, root)),
@@ -22,7 +20,7 @@ public sealed class WavePcmFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static object Decode(string path)
@@ -37,5 +35,4 @@ public sealed class WavePcmFixtureTests
             samples = audio.Samples.ToArray(),
         };
     }
-
 }

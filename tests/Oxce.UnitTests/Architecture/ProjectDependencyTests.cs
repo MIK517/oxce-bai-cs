@@ -121,12 +121,12 @@ public sealed class ProjectDependencyTests
             .Descendants("ProjectReference")
             .Select(reference => reference.Attribute("Include")?.Value)
             .Where(static include => include is not null)
-            .Select(include => Path.GetFullPath(include!, projectDirectory))
+            // MSBuild accepts either separator; normalize so Windows-style paths resolve on every OS.
+            .Select(include => Path.GetFullPath(include!.Replace('\\', '/'), projectDirectory))
             .Select(path => Path.GetFileNameWithoutExtension(path)
                 ?? throw new InvalidOperationException($"Project reference '{path}' has no file name."))
             .ToHashSet(StringComparer.Ordinal);
     }
-
 
     private static HashSet<string> Set(params string[] values) =>
         new HashSet<string>(values, StringComparer.Ordinal);

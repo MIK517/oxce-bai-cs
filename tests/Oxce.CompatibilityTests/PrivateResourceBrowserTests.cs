@@ -30,5 +30,4 @@ public sealed class PrivateResourceBrowserTests
         ResourcePreviewBuilder.WritePortablePixmap(preview, output);
         Assert.True(output.Length > preview.Surface.Pixels.Length * 3);
     }
-
 }

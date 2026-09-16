@@ -1,6 +1,7 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Gameplay;
@@ -39,8 +40,7 @@ public sealed class CraftServicingTests
         void Reload()
         {
             var snapshot = campaign.Capture();
-            campaign = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(snapshot), "service.sav", content,
-                new SplitMix64RandomSource(7), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" })).Campaign;
+            campaign = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot), content, seed: 7, name: "service.sav").Campaign;
             Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
         }
     }
