@@ -327,11 +327,11 @@ public static partial class ScriptVm
                         out destinationValue);
                 case CoreScriptOperation.Power:
                     return WriteResult(operands[0],
-                        unchecked((int)Math.Pow(ReadScalar(operands[0]), Math.Max(0, ReadScalar(operands[1])))),
+                        TruncateToInt32(Math.Pow(ReadScalar(operands[0]), Math.Max(0, ReadScalar(operands[1])))),
                         out destinationValue);
                 case CoreScriptOperation.SquareRoot:
                     var squareValue = ReadScalar(operands[0]);
-                    return WriteResult(operands[0], squareValue > 0 ? (int)Math.Sqrt(squareValue) : 0,
+                    return WriteResult(operands[0], squareValue > 0 ? TruncateToInt32(Math.Sqrt(squareValue)) : 0,
                         out destinationValue);
                 case CoreScriptOperation.Absolute:
                     var absoluteValue = ReadScalar(operands[0]);
@@ -564,9 +564,9 @@ public static partial class ScriptVm
             if (operation is CoreScriptOperation.WaveSine or CoreScriptOperation.WaveCosine)
             {
                 var angle = 2.0 * Math.PI * value / period;
-                result = unchecked((int)(size * (operation == CoreScriptOperation.WaveSine
+                result = TruncateToInt32(size * (operation == CoreScriptOperation.WaveSine
                     ? Math.Sin(angle)
-                    : Math.Cos(angle))));
+                    : Math.Cos(angle)));
             }
             else
             {
@@ -657,6 +657,13 @@ public static partial class ScriptVm
             int instructionIndex) =>
             new(status, _steps, instructionIndex, code, message);
     }
+
+    /// <summary>
+    /// Reference double-to-int assignment (cvttsd2si on x64): NaN and out-of-range values
+    /// become <see cref="int.MinValue"/>. .NET conversions saturate instead.
+    /// </summary>
+    internal static int TruncateToInt32(double value) =>
+        value is > -2147483649.0 and < 2147483648.0 ? (int)value : int.MinValue;
 
     private static int RegisterIndex(ScriptProgram program, int offset)
     {
