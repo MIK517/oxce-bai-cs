@@ -80,9 +80,7 @@ public sealed class StrategicResearchProductionFixtureTests
     public void ProjectProgressAndProducedAmountMatchReferenceOracle()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
-        var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        using var oracle = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository,
-            "fixtures/expected/savegames/strategic-research-production.expected.json")));
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-production");
         var expected = oracle.RootElement;
         Assert.Equal(1, expected.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",

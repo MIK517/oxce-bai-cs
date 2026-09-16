@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "item-rules",
+  "description": "Pins every loaded item property after an ordered base/patch ruleset pair.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/RuleItem.cpp, Mod.cpp",
+      "probe": "fixtures/reference-probes/mods/item_rules_probe.cpp",
+      "capture": "tools/capture-item-rules-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20, rapidyaml from the reference checkout"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/item-rules/fixture/Ruleset/10-patch.rul", "size": 145, "sha256": "6dae3b465bba629c0d38d26db42c14e6eddc49a68b2f421bcb44c244d67595d7" },
+    { "path": "fixtures/public/mods/item-rules/fixture/Ruleset/20-base.rul", "size": 470, "sha256": "af94c0233b4ef1f52312db4b5f59019fc88168064c7fad54e3979990d99aae33" },
+    { "path": "fixtures/public/mods/item-rules/fixture/metadata.yml", "size": 85, "sha256": "6cfac6e4a28f87f7e994f72c481032ead2618fe00c79b17797ec254669a0cf9a" },
+    { "path": "fixtures/reference-probes/mods/item_rules_probe.cpp", "size": 5247, "sha256": "ad6de372c1978e8f72c8b1bfef052513eca30c14768d4c273a650c7d51e92561" }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/item-rules.expected.json"
+}

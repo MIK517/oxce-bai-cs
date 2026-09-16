@@ -14,6 +14,15 @@ per-mod ruleset order without containing original game or community-mod content.
 tests build complementary single-/multi-mod ZIP and external-resource layouts at runtime
 from synthetic text so binary archive artifacts do not need to be retained.
 
+Every file under `expected/` belongs to exactly one manifest, and tests read it only through
+`TestFixtures.ReadVerifiedExpected` or `VerifiedExpectedPath`, which first check the pinned
+input sizes and hashes (`FixturePipelineTests` enforces both rules). List every input the
+oracle or the comparing test depends on: fixture mods and overlays, the probe source, and,
+for probes whose method bodies a capture script inserts, that script. After intentionally
+changing an input, recapture the oracle if its meaning changed, then update the recorded
+size and hash with `dotnet run --project tools/Oxce.FixtureTool -- hash <path>`. Inputs are
+hashed with LF line endings; `.gitattributes` pins text fixture types to LF.
+
 Manifest schema version 1 is described by `manifest.schema.json`. A C++ oracle fixture
 uses reference kind `cpp-reference` and must record the full reference commit. Fixtures
 used to test the harness itself use `tool-self-test`; they do not claim C++ parity.

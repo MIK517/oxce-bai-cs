@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-time",
+  "description": "Pins the GeoscapeState::timeAdvance trigger fallthrough and pause behavior using the unmodified reference dispatch loop.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Geoscape/GeoscapeState.cpp (timeAdvance)",
+      "probe": "fixtures/reference-probes/savegames/strategic_time_probe.cpp",
+      "capture": "tools/capture-strategic-time-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20; method bodies inserted verbatim by the capture script"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/reference-probes/savegames/strategic_time_probe.cpp", "size": 1933, "sha256": "3980fde431ab8cdf1430afbd69e7b8d1674bc6db36ae32112c3ac161c68a4196" },
+    { "path": "tools/capture-strategic-time-reference.ps1", "size": 2435, "sha256": "c810bed64ccc697bdf5a5a37245f8ae0eb24ea42dc41b16e8b9c193794c50cfa" }
+  ],
+  "normalization": ["compact-json"],
+  "expected": "fixtures/expected/savegames/strategic-time.expected.json"
+}

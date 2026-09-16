@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "personnel-tactical-rules",
+  "description": "Pins armors, soldiers, bonuses, commendations, inventories, skills, transformations and units after an ordered base/patch ruleset pair.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/Armor.cpp, RuleSoldier.cpp, RuleSoldierBonus.cpp, RuleCommendations.cpp, RuleInventory.cpp, RuleSkill.cpp, RuleSoldierTransformation.cpp, Unit.cpp",
+      "probe": "fixtures/reference-probes/mods/personnel_tactical_rules_probe.cpp",
+      "capture": "tools/capture-personnel-tactical-rules-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20, rapidyaml from the reference checkout"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/personnel-tactical-rules/fixture/Ruleset/10-patch.rul", "size": 339, "sha256": "ab7ea6d289277bb40221ab3b8906fa5c0a15be6b051dad4b1a8376e0337613f3" },
+    { "path": "fixtures/public/mods/personnel-tactical-rules/fixture/Ruleset/20-base.rul", "size": 1859, "sha256": "a75da4206eba8facd9cce9a3f9e7df6f474a82b1b4dd50ea2065d5663993744a" },
+    { "path": "fixtures/public/mods/personnel-tactical-rules/fixture/metadata.yml", "size": 93, "sha256": "46a1a8bb05070253657d156f25e5b64dfb60f3ae7e3d75bad2798e5ecffcd78c" },
+    { "path": "fixtures/public/mods/personnel-tactical-rules/fixture/second.nam", "size": 40, "sha256": "23adba8d0cb775e01e8d7a959408d12e4760ebfddf2717618444858c3c426c2e" },
+    { "path": "fixtures/reference-probes/mods/personnel_tactical_rules_probe.cpp", "size": 6955, "sha256": "636070559d1821b351a275b1a285d0d7c90421115169d89e4a9a4d0c9391d09b" }
+  ],
+  "normalization": ["canonical-json-v1"],
+  "expected": "fixtures/expected/mods/personnel-tactical-rules.expected.json"
+}

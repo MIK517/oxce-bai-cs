@@ -74,8 +74,15 @@ internal static class TestFixtures
         string name = "logistics.sav") =>
         OxceSaveAdapter.Load(yaml, name, content, new SplitMix64RandomSource(seed), LogisticsSaveOptions());
 
-    internal static JsonDocument ReadExpected(params string[] segments) =>
-        JsonDocument.Parse(File.ReadAllText(RepositoryPath(["fixtures", "expected", .. segments])));
+    // Oracle outputs are only read through their manifest, so their pinned inputs are verified first.
+    internal static string VerifiedExpectedPath(string manifestId)
+    {
+        var (root, manifest) = LoadVerifiedManifest(manifestId);
+        return Path.GetFullPath(manifest.Expected, root);
+    }
+
+    internal static JsonDocument ReadVerifiedExpected(string manifestId) =>
+        JsonDocument.Parse(File.ReadAllText(VerifiedExpectedPath(manifestId)));
 
     internal static (string Root, FixtureManifest Manifest) LoadVerifiedManifest(string name)
     {
