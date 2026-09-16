@@ -85,6 +85,14 @@ research:
   - name: FREE_UNGATED
     cost: 0
     dependencies: [BASE_GATED_SOURCE]
+  - name: UNLOCK_GATE
+    cost: 1
+  - name: PROTECTED_UNLOCK_SOURCE
+    cost: 1
+    unlocks: [PROTECTED_CHILD]
+  - name: PROTECTED_CHILD
+    cost: 0
+    requires: [UNLOCK_GATE]
 manufacture:
   - name: PRODUCT
     category: STR_WEAPON

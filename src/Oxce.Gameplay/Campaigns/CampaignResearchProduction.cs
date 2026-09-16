@@ -393,7 +393,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             return "Research dependencies are incomplete.";
         if (!ignoreProgressRequirements && rule.Requirements.Any(required => !_completedResearch.Contains(required)))
             return "Research requirements are incomplete.";
-        return !rule.Repeatable && _completedResearch.Contains(id) && !HasRemainingResearchReward(rule)
+        // getAvailableResearchProjects keeps a discovered topic only while it can still yield a
+        // free topic or a protected unlock; repeatable topics are simply never marked discovered.
+        return _completedResearch.Contains(id) && !HasRemainingResearchReward(rule) && !HasProtectedUnlock(rule)
             ? "Research is already complete." : null;
     }
 

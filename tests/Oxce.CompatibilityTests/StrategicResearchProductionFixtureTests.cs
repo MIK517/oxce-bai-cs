@@ -385,6 +385,34 @@ public sealed class StrategicResearchProductionFixtureTests
     }
 
     [Fact]
+    public void CompletedTopicWithPendingProtectedUnlockStaysResearchable()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var campaign = NewCampaign(content, 43);
+        campaign.Execute(new ConfigureResearchProject(0, "PROTECTED_UNLOCK_SOURCE", 1));
+        campaign = PrimeResearch(campaign, content, "PROTECTED_UNLOCK_SOURCE");
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Contains("PROTECTED_UNLOCK_SOURCE", campaign.Capture().CompletedResearch);
+        Assert.DoesNotContain("PROTECTED_CHILD", campaign.Capture().CompletedResearch);
+        Assert.Null(Choice(campaign, "PROTECTED_UNLOCK_SOURCE").UnavailableReason);
+
+        campaign = CampaignState.Restore(campaign.Capture() with
+        {
+            CompletedResearch = ["PROTECTED_UNLOCK_SOURCE", "UNLOCK_GATE"],
+        }, content, new SplitMix64RandomSource(campaign.Capture().RandomState));
+        campaign.Execute(new ConfigureResearchProject(0, "PROTECTED_UNLOCK_SOURCE", 1));
+        campaign = PrimeResearch(campaign, content, "PROTECTED_UNLOCK_SOURCE");
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Contains("PROTECTED_CHILD", campaign.Capture().CompletedResearch);
+        Assert.Equal("Research is already complete.", Choice(campaign, "PROTECTED_UNLOCK_SOURCE").UnavailableReason);
+
+        static CampaignResearchChoice Choice(CampaignState state, string id) =>
+            state.QueryResearchProduction(0).ResearchChoices.Single(choice => choice.RuleId == id);
+    }
+
+    [Fact]
     public void DuplicateCrossBaseResearchAppliesPrimarySideEffectsOnce()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
