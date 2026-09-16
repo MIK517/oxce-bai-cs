@@ -67,31 +67,59 @@ Each fix has a test that fails without it. This was checked explicitly for #1 an
 - The script VM matches the reference semantics for division by zero, `muldiv`,
   `offsetmod`, waves and shades. `pow` was the only mismatch (#5).
 
-**Assumptions that did not hold, or still need a decision**
+**Assumptions that did not hold, and their decisions**
 
-1. *The port is stricter than the reference.* `VirtualPath` throws on `.`, `..` and empty
-   path segments, and it maps `\` to `/`. The reference only lowercases the path, so the
-   same lookups simply miss. `CatArchive` rejects entries outside the file, while
-   `CatFile` skips them, which shifts later indexes. Both divergences are safe, but mods
-   that load in OXCE can fail here. Decide per case, and record the decision in ADR 0024
-   or ADR 0010.
-2. *Invalid UTF-8 is decoded as Windows-1252* (the reader and `OxceSaveAdapter.Decode`),
-   and the writer then re-encodes it as UTF-8. The reference keeps the raw bytes, so
-   rewriting a Latin-1 save changes its bytes.
-3. *Extension state is not persisted.* `ExtensionStateJsonCodec` and
-   `ManagedExtensionHost.CaptureState` exist, but the save path in `CampaignSdlCommand`
-   does not call them. Extension state marked `RequiredForContinuation` is therefore lost
-   on save, which contradicts ADR 0021.
+The first four items below were raised for a decision. The decisions and their
+implementation are recorded under each item.
+
+1. *The port is stricter than the reference.* `VirtualPath` threw on `.`, `..` and empty
+   path segments, and it mapped `\` to `/`. The reference only lowercases the path, so
+   the same lookups simply miss. `CatArchive` rejected entries outside the file, while
+   `CatFile` skips them, which shifts later indexes. The shared-sound count read only the
+   first CAT offset, so a table whose first offset equals the file length counted
+   entries that the reference never maps.
+   **Decision:** keep strict as the default, and select reference-compatible behavior
+   with a launch flag. **Done:** added `InputValidationMode` and
+   `--input-mode=strict|compatibility` ([ADR 0026](decisions/0026-input-validation-modes.md)).
+   The mode applies to VFS lookups, CAT tables and shared CAT counts, and it is part of
+   the compiled-cache key. Shared CAT counts now read the whole offset table in both
+   modes.
+2. *Invalid UTF-8 is decoded as Windows-1252* (the YAML reader and the save adapter).
+   The writer then re-encodes it as UTF-8, while the reference keeps the raw bytes.
+   **Decision:** accepted, but every fallback must log a warning. **Done:** warning
+   `OXCE-YAML-0001` for rulesets, mod metadata, name pools, UI language files and saves
+   (through `OxceSaveLoadOptions.Diagnostics`). The warning survives compiled-cache hits,
+   and the application prints warnings to stderr. **Check:** the original UFO/TFTD data
+   contains no YAML, and the 19 supplied save and data text files are UTF-8, so original
+   game data never triggers the fallback. Four files in the private third-party mod
+   corpus do trigger it: three `layered-armors_40k.rul` files and the Imperial Fists
+   `metadata.yml`.
+3. *Extension state is not persisted yet.* ADR 0021 defers wiring the state envelope into
+   the save root, but the application loaded every extension, so state kept by an
+   extension would have been lost on save without any warning.
+   **Decision:** refuse such extensions until persistence is implemented. **Done:**
+   `ManagedExtensionHost` refuses extensions implementing `IManagedExtensionState` with
+   error `EXT1011`, before instantiating them, unless the host sets
+   `ManagedExtensionLoadOptions.HostPersistsExtensionState`. The application does not
+   set it.
 4. *`CampaignState` is becoming a monolith*: about 4.5k lines of partial classes behind one
-   lock and one command switch. The 2026-09-04 review already recommended per-capability
-   handlers, and world simulation (Phase 6 branch 4) is the last cheap point to introduce
-   them.
+   lock and one command switch.
+   **Decision:** address it in Phase 6 branch 4. **Done:** added as commit purpose 0 and
+   an acceptance item of branch 4 in `phase-6-plan.md`.
 5. *UI assets read `common/Language` from disk directly* (`CampaignUiAssets`) instead of
-   through the virtual file system, even though the architecture maps `common` into it.
+   through the virtual file system. **Done:** strings and the font now come only from
+   the layered catalog published with the content.
+   **New finding (not changed):** the port maps `common` only into mods that declare
+   external resource directories, placing it below each such mod's layers. The
+   reference maps `common` once, at the bottom of the stack, for every installation. A
+   master without external resources therefore has no `common` files, and an add-on that
+   declares external resources would place `common` above its master. Vanilla masters
+   are unaffected. Move `common` to a single plan-level base layer before relying on
+   such installations.
 6. *Loaded-save identity depends on port-only keys* (`oxcePortEntityKey`,
    `oxcePortTransferId`). When the reference engine rewrites a save, those keys disappear
-   and matching falls back to legacy keys. This is by design, but the save matrix does
-   not mention it.
+   and matching falls back to legacy keys. **Decision:** accepted as is. **Done:**
+   documented in the save matrix.
 
 ## Performance notes (not changed)
 
@@ -102,10 +130,18 @@ Each fix has a test that fails without it. This was checked explicitly for #1 an
 - `AddFinishedResearch` scans all research rules for each queued topic. This is fine
   today. Revisit it if monthly or world ticks start calling research availability often.
 
+## Windows validation
+
+After the decision follow-ups, the branch passed on Windows with the private corpus
+present: the 25 `Private*`, `Phase3ContentCorpusTests` and `ModLoadingFixtureTests` cases,
+and the full `dotnet test` run (733 cases, about 37 seconds). The corpus tests fail only on
+errors, so the expected `OXCE-YAML-0001` warnings are not printed.
+
 ## Suggested next steps
 
-1. Run the private corpus classes on Windows against this branch.
-2. Add manifests for the eleven oracles without one, and make
+1. Add manifests for the eleven oracles without one, and make
    `CampaignFoundationFixtureTests` use `LoadVerifiedManifest`.
-3. Decide items 1–3 above before Phase 6 branch 4. Item 3 blocks any extension that needs
-   to save state.
+2. Map `common` once as a plan-level base layer (item 5).
+3. Split `CampaignState` at the start of Phase 6 branch 4 (item 4).
+4. Keep `docs/code-map.md` current by running `python3 tools/generate-code-map.py`. CI
+   runs it with `--check`.

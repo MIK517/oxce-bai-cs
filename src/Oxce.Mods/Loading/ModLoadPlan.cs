@@ -1,3 +1,4 @@
+using Oxce.Core.Compatibility;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Files;
 
@@ -7,15 +8,19 @@ public sealed record ModLoadGroup(ModCandidate Mod, IReadOnlyList<VirtualFileEnt
 
 public sealed class ModLoadPlan
 {
-    internal ModLoadPlan(IEnumerable<ModLoadGroup> groups, bool isValid)
+    internal ModLoadPlan(IEnumerable<ModLoadGroup> groups, bool isValid, InputValidationMode validationMode)
     {
         Groups = Array.AsReadOnly(groups.ToArray());
         IsValid = isValid;
+        ValidationMode = validationMode.Validate();
     }
 
     public IReadOnlyList<ModLoadGroup> Groups { get; }
 
     public bool IsValid { get; }
+
+    /// <summary>The input validation mode applied to content built from this plan (ADR 0026).</summary>
+    public InputValidationMode ValidationMode { get; }
 
     private VirtualFileCatalog? _virtualFiles;
 
@@ -26,5 +31,5 @@ public sealed class ModLoadPlan
     public VirtualFileCatalog VirtualFiles =>
         LazyInitializer.EnsureInitialized(ref _virtualFiles, CreateVirtualFileCatalog);
 
-    public VirtualFileCatalog CreateVirtualFileCatalog() => new(Groups.SelectMany(group => group.Mod.Layers));
+    public VirtualFileCatalog CreateVirtualFileCatalog() => new(Groups.SelectMany(group => group.Mod.Layers), ValidationMode);
 }

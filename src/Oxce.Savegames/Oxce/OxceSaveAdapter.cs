@@ -37,7 +37,11 @@ public static class OxceSaveAdapter
         if (new FileInfo(fullPath).Length > maximumBytes)
             throw new InvalidDataException($"OXCE save exceeds the {maximumBytes}-byte YAML input limit.");
         var bytes = File.ReadAllBytes(fullPath);
-        return Load(Decode(bytes), fullPath, bytes, content, random, options);
+        var yaml = YamlCompatibilityReader.DecodeText(bytes, out var legacyEncoding);
+        var loaded = Load(yaml, fullPath, bytes, content, random, options);
+        // Reported only after a successful load so a rejected save leaves no partial output.
+        if (legacyEncoding) options.Diagnostics?.Report(YamlCompatibilityReader.LegacyEncodingWarning(fullPath));
+        return loaded;
     }
 
     public static LoadedOxceCampaign Load(
@@ -1014,31 +1018,6 @@ public static class OxceSaveAdapter
         Span<byte> hash = stackalloc byte[32];
         SHA256.HashData(data, hash);
         return new Guid(hash[..16]);
-    }
-
-    private static string Decode(byte[] bytes)
-    {
-        try
-        {
-            return new UTF8Encoding(false, true).GetString(bytes);
-        }
-        catch (DecoderFallbackException)
-        {
-            ReadOnlySpan<char> replacements =
-            [
-                '\u20AC', '\u0081', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',
-                '\u02C6', '\u2030', '\u0160', '\u2039', '\u0152', '\u008D', '\u017D', '\u008F',
-                '\u0090', '\u2018', '\u2019', '\u201C', '\u201D', '\u2022', '\u2013', '\u2014',
-                '\u02DC', '\u2122', '\u0161', '\u203A', '\u0153', '\u009D', '\u017E', '\u0178',
-            ];
-            var characters = new char[bytes.Length];
-            for (var index = 0; index < bytes.Length; index++)
-            {
-                var value = bytes[index];
-                characters[index] = value is >= 0x80 and <= 0x9F ? replacements[value - 0x80] : (char)value;
-            }
-            return new string(characters);
-        }
     }
 
     private static (string Key, YamlNode? Value) Pair(string key, YamlNode? value) => (key, value);

@@ -1,3 +1,4 @@
+using Oxce.Core.Compatibility;
 using Oxce.Core.Diagnostics;
 using Oxce.Core.Random;
 using Oxce.Engine;
@@ -10,14 +11,18 @@ using Oxce.Savegames.Oxce;
 
 internal static class CampaignSdlCommand
 {
-    public static int Run(string installationRoot, string masterId, string addOnId, string destination)
+    public static int Run(
+        string installationRoot, string masterId, string addOnId, string destination, InputValidationMode validationMode)
     {
         var request = InstallationLoadRequest.ForMasterAndAddOn(
-            installationRoot, masterId, addOnId, new ModEngineIdentity("Extended", "8.6.1.0"));
+            installationRoot, masterId, addOnId, new ModEngineIdentity("Extended", "8.6.1.0"), validationMode);
         var loaded = InstallationContentLoader.Load(request);
         if (!loaded.IsSuccess) throw new InvalidDataException(loaded.DescribeFailure());
         var content = loaded.Content!;
-        var assets = CampaignUiAssets.Load(loaded.VirtualFiles!, installationRoot, content.Presentation);
+        var startupDiagnostics = new DiagnosticCollector();
+        foreach (var diagnostic in loaded.Diagnostics) startupDiagnostics.Report(diagnostic);
+        var assets = CampaignUiAssets.Load(loaded.VirtualFiles!, content.Presentation, startupDiagnostics);
+        PrintWarnings(startupDiagnostics);
         loaded = null!;
         var activeMods = request.ActiveMods;
 
@@ -48,9 +53,7 @@ internal static class CampaignSdlCommand
             if (savePath is not null) Save();
         }
         finally { extensionSession.Dispose(); }
-        foreach (var diagnostic in extensionDiagnostics.Snapshot()
-                     .Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning))
-            Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
+        PrintWarnings(extensionDiagnostics);
         return result;
 
         void Save()
@@ -59,10 +62,19 @@ internal static class CampaignSdlCommand
             else OxceSaveAdapter.RewriteLoadedCampaignAtomic(savePath!, campaign.Capture(), source);
         }
 
+        static void PrintWarnings(DiagnosticCollector diagnostics)
+        {
+            foreach (var diagnostic in diagnostics.Snapshot()
+                         .Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning))
+                Console.Error.WriteLine($"{diagnostic.Code}: {diagnostic.Message}");
+        }
+
         CampaignUiSession Load()
         {
+            var saveDiagnostics = new DiagnosticCollector();
             var restored = OxceSaveAdapter.LoadFile(savePath!, content, new SplitMix64RandomSource(0),
-                new(masterId, activeMods.ToHashSet(StringComparer.Ordinal)));
+                new(masterId, activeMods.ToHashSet(StringComparer.Ordinal), Diagnostics: saveDiagnostics));
+            PrintWarnings(saveDiagnostics);
             extensionSession.Dispose();
             campaign = restored.Campaign;
             source = restored.Source;

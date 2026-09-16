@@ -13,7 +13,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | --- | ---: | --- |
 | [Oxce.Benchmarks](#oxcebenchmarks) | 12 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
-| [Oxce.Core](#oxcecore) | 7 | - |
+| [Oxce.Core](#oxcecore) | 8 | - |
 | [Oxce.Engine](#oxceengine) | 16 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
@@ -61,11 +61,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Core
 
-`src/Oxce.Core` - 7 files.
+`src/Oxce.Core` - 8 files.
 
 ### `Oxce.Core`
 
 - `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Core/AssemblyMarker.cs) - Locates the core assembly without relying on a gameplay type.
+
+### `Oxce.Core.Compatibility`
+
+- `InputValidationMode` (enum) [InputValidationMode.cs](../src/Oxce.Core/Compatibility/InputValidationMode.cs) - How game, mod and save input that the reference engine silently tolerates is handled.
+- `InputValidationModes` (class) [InputValidationMode.cs](../src/Oxce.Core/Compatibility/InputValidationMode.cs)
 
 ### `Oxce.Core.Diagnostics`
 

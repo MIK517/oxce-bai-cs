@@ -1,3 +1,5 @@
+using Oxce.Core.Diagnostics;
+using System.Text;
 using Oxce.Core.Random;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
@@ -159,6 +161,39 @@ public sealed class OxceSaveAdapterTests
         finally
         {
             Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LegacyEncodedSaveLoadsWithWarning()
+    {
+        var content = CampaignFoundationTests.LoadFixture();
+        var yaml = OxceSaveAdapter.EmitNewCampaign(CampaignFoundationTests.Create(content).Capture());
+        var marker = Encoding.UTF8.GetBytes("name: Campaign");
+        var bytes = Encoding.UTF8.GetBytes(yaml);
+        var index = bytes.AsSpan().IndexOf(marker);
+        Assert.True(index >= 0);
+        byte[] legacy = [.. bytes[..(index + marker.Length)], 0xE9, .. bytes[(index + marker.Length)..]];
+        var path = Path.Combine(Path.GetTempPath(), $"oxce-legacy-{Guid.NewGuid():N}.sav");
+        try
+        {
+            var diagnostics = new DiagnosticCollector();
+            File.WriteAllBytes(path, bytes);
+            OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(0), Options() with { Diagnostics = diagnostics });
+            Assert.Empty(diagnostics.Snapshot());
+
+            File.WriteAllBytes(path, legacy);
+            var loaded = OxceSaveAdapter.LoadFile(path, content, new SplitMix64RandomSource(0),
+                Options() with { Diagnostics = diagnostics });
+
+            Assert.Equal("Campaigné", loaded.Campaign.Capture().Identity.Name);
+            var warning = Assert.Single(diagnostics.Snapshot());
+            Assert.Equal(YamlCompatibilityReader.LegacyEncodingCode, warning.Code);
+            Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        }
+        finally
+        {
+            File.Delete(path);
         }
     }
 

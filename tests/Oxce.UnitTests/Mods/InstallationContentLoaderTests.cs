@@ -1,3 +1,4 @@
+using Oxce.Core.Compatibility;
 using Oxce.Mods.Bootstrap;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
@@ -153,6 +154,56 @@ public sealed class InstallationContentLoaderTests
         Assert.Equal(CompiledContentCacheStatus.Rejected, changed.CacheStatus);
         Assert.Equal(0, Assert.Single(changed.Content!.Resources.Indexes).RuntimeIndex);
         Assert.Equal(CompiledContentCacheStatus.Hit, InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken).CacheStatus);
+    }
+
+    [Fact]
+    public void ValidationModeControlsMalformedCatTablesAndCacheIdentity()
+    {
+        using var installation = new TemporaryInstallation();
+        var path = Path.Combine(installation.Root, "standard", "runtime-master", "SOUND", "SAMPLE.CAT");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        // Two entries; the second points past the end of the 17-byte file.
+        File.WriteAllBytes(path, Convert.FromHexString("1000000000000000FF00000000000000AA"));
+        var token = TestContext.Current.CancellationToken;
+
+        var strict = InstallationContentLoader.Load(installation.Request(addOnId: "runtime-addon"), cancellationToken: token);
+        var compatibilityRequest = InstallationLoadRequest.ForMasterAndAddOn(installation.Root, "runtime-master",
+            "runtime-addon", EngineIdentity(), InputValidationMode.Compatibility);
+        var compatibility = InstallationContentLoader.Load(compatibilityRequest, cancellationToken: token);
+        var cached = InstallationContentLoader.Load(compatibilityRequest, cancellationToken: token);
+
+        Assert.False(strict.IsSuccess);
+        Assert.True(compatibility.IsSuccess, compatibility.DescribeFailure());
+        Assert.Equal(InputValidationMode.Compatibility, compatibility.VirtualFiles!.ValidationMode);
+        Assert.NotEqual(CompiledContentCacheStatus.Hit, compatibility.CacheStatus);
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+
+        File.Delete(path);
+        var strictAfterRepair = InstallationContentLoader.Load(installation.Request(addOnId: "runtime-addon"), cancellationToken: token);
+        Assert.True(strictAfterRepair.IsSuccess, strictAfterRepair.DescribeFailure());
+        Assert.NotEqual(CompiledContentCacheStatus.Hit, strictAfterRepair.CacheStatus);
+        Assert.Equal(InputValidationMode.Strict, strictAfterRepair.VirtualFiles!.ValidationMode);
+    }
+
+    [Fact]
+    public void LegacyEncodedRulesetWarningSurvivesCompiledCache()
+    {
+        using var installation = new TemporaryInstallation();
+        File.AppendAllBytes(installation.FirstRuleset, [.. "\n# caf"u8, 0xE9, .. "\n"u8]);
+        var modId = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(installation.FirstRuleset)));
+        var request = installation.Request(addOnId: "runtime-addon");
+
+        var fresh = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+        var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(fresh.IsSuccess, fresh.DescribeFailure());
+        Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+        foreach (var result in new[] { fresh, cached })
+        {
+            var warning = Assert.Single(result.Diagnostics,
+                diagnostic => diagnostic.Code == Oxce.Formats.Yaml.YamlCompatibilityReader.LegacyEncodingCode);
+            Assert.Equal(modId, warning.Context.ModId);
+        }
     }
 
     [Fact]

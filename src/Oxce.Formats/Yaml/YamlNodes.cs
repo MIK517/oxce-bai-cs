@@ -173,4 +173,10 @@ public sealed class YamlDocumentSet
     public string SourceName { get; }
 
     public IReadOnlyList<YamlDocument> Documents { get; }
+
+    /// <summary>
+    /// True when the input was not valid UTF-8 and was decoded as Windows-1252, like legacy
+    /// OXCE files. Callers report <see cref="YamlCompatibilityReader.LegacyEncodingWarning"/>.
+    /// </summary>
+    public bool UsesLegacyEncoding { get; init; }
 }

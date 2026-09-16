@@ -85,7 +85,10 @@ dotnet run --project src\Oxce.App --configuration Release -- `
     --campaign-sdl artifacts\private-install xcom1 - artifacts\campaign-foundation\campaign.sav
 ```
 
-Replace `xcom1` and `-` with a master and add-on ID for a modded campaign. Pass `-` as
+Replace `xcom1` and `-` with a master and add-on ID for a modded campaign. Malformed mod
+input is rejected by default; put `--input-mode=compatibility` before `--campaign-sdl` to
+accept it the way OXCE does ([ADR 0026](docs/decisions/0026-input-validation-modes.md)).
+Warnings, for example about legacy-encoded (non-UTF-8) mod files, are printed to stderr. Pass `-` as
 the final argument to run without saving. See [logistics controls and current boundaries](docs/strategic-logistics-status.md).
 
 ## Resource browser

@@ -9,6 +9,30 @@ namespace Oxce.Formats.Yaml;
 
 public static class YamlCompatibilityReader
 {
+    public const string LegacyEncodingCode = "OXCE-YAML-0001";
+
+    /// <summary>The warning reported when a document had to be decoded as Windows-1252.</summary>
+    public static DiagnosticEvent LegacyEncodingWarning(string sourceName, DiagnosticContext context = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceName);
+        var position = new SourcePosition(1, 1, 0);
+        return new DiagnosticEvent(
+            LegacyEncodingCode,
+            DiagnosticSeverity.Warning,
+            $"'{sourceName}' is not valid UTF-8 and was decoded as Windows-1252.",
+            new SourceSpan(sourceName, position, position),
+            context);
+    }
+
+    /// <summary>Reports <see cref="LegacyEncodingWarning"/> when <paramref name="documents"/> needed it.</summary>
+    public static void ReportLegacyEncoding(
+        YamlDocumentSet documents, IDiagnosticSink? diagnostics, DiagnosticContext context = default)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+        if (documents.UsesLegacyEncoding)
+            diagnostics?.Report(LegacyEncodingWarning(documents.SourceName, context));
+    }
+
     public static YamlDocumentSet Parse(
         string yaml,
         string sourceName,
@@ -79,18 +103,28 @@ public static class YamlCompatibilityReader
             output.Write(buffer, 0, read);
         }
 
-        string yaml;
+        var yaml = DecodeText(output.GetBuffer().AsSpan(0, checked((int)output.Length)), out var legacy);
+        var result = ParseCore(yaml.Length > 0 && yaml[0] == '\uFEFF' ? yaml[1..] : yaml, sourceName, options);
+        return legacy ? new YamlDocumentSet(result.SourceName, result.Documents) { UsesLegacyEncoding = true } : result;
+    }
+
+    /// <summary>
+    /// Decodes UTF-8, falling back to Windows-1252 (with undefined bytes kept as C1 controls)
+    /// when the input is not valid UTF-8.
+    /// </summary>
+    public static string DecodeText(ReadOnlySpan<byte> bytes, out bool usedLegacyEncoding)
+    {
         try
         {
-            yaml = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
-                .GetString(output.GetBuffer(), 0, checked((int)output.Length));
+            usedLegacyEncoding = false;
+            return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+                .GetString(bytes);
         }
         catch (DecoderFallbackException)
         {
-            yaml = DecodeWindows1252(output.GetBuffer(), checked((int)output.Length));
+            usedLegacyEncoding = true;
+            return DecodeWindows1252(bytes);
         }
-
-        return ParseCore(yaml.Length > 0 && yaml[0] == '\uFEFF' ? yaml[1..] : yaml, sourceName, options);
     }
 
     private static YamlDocumentSet ParseCore(string yaml, string sourceName, YamlReadOptions options)
@@ -112,8 +146,9 @@ public static class YamlCompatibilityReader
         }
     }
 
-    private static string DecodeWindows1252(byte[] bytes, int count)
+    private static string DecodeWindows1252(ReadOnlySpan<byte> bytes)
     {
+        var count = bytes.Length;
         ReadOnlySpan<char> replacements =
         [
             '\u20AC', '\u0081', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',

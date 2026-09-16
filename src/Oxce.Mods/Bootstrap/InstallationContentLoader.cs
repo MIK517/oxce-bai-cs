@@ -1,3 +1,4 @@
+using Oxce.Core.Compatibility;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Discovery;
@@ -44,12 +45,14 @@ public sealed class InstallationLoadRequest
         string installationRoot,
         string masterId,
         IEnumerable<string> activeMods,
-        ModEngineIdentity engineIdentity)
+        ModEngineIdentity engineIdentity,
+        InputValidationMode validationMode = InputValidationMode.Strict)
     {
         InstallationRoot = installationRoot;
         MasterId = masterId;
         ActiveMods = Array.AsReadOnly(activeMods?.ToArray() ?? throw new ArgumentNullException(nameof(activeMods)));
         EngineIdentity = engineIdentity;
+        ValidationMode = validationMode;
     }
 
     public string InstallationRoot { get; }
@@ -57,21 +60,27 @@ public sealed class InstallationLoadRequest
     public IReadOnlyList<string> ActiveMods { get; }
     public ModEngineIdentity EngineIdentity { get; }
 
+    /// <summary>Strict (default) or reference-compatible handling of malformed input (ADR 0026).</summary>
+    public InputValidationMode ValidationMode { get; }
+
     public static InstallationLoadRequest ForMasterAndAddOn(
         string installationRoot,
         string masterId,
         string addOnId,
-        ModEngineIdentity engineIdentity) => new(
+        ModEngineIdentity engineIdentity,
+        InputValidationMode validationMode = InputValidationMode.Strict) => new(
             installationRoot,
             masterId,
             addOnId == "-" ? [masterId] : [masterId, addOnId],
-            engineIdentity);
+            engineIdentity,
+            validationMode);
 
     internal string ValidateAndGetRoot()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(InstallationRoot);
         ArgumentException.ThrowIfNullOrWhiteSpace(MasterId);
         ArgumentNullException.ThrowIfNull(EngineIdentity);
+        ValidationMode.Validate();
         if (ActiveMods.Count == 0 || !ActiveMods.Contains(MasterId, StringComparer.Ordinal))
             throw new ArgumentException("Active mods must contain the selected master.", nameof(ActiveMods));
         if (ActiveMods.Any(string.IsNullOrWhiteSpace) ||
@@ -179,7 +188,8 @@ public static class InstallationPlanBuilder
                 request.ActiveMods.Select(static id => new ModActivation(id, true)),
                 request.MasterId,
                 request.EngineIdentity,
-                sink);
+                sink,
+                request.ValidationMode);
             if (!plan.IsValid || collector.HasSeverityAtLeast(DiagnosticSeverity.Error))
                 return Failure(InstallationLoadFailureKind.Planning, stage,
                     "The selected mod set did not produce a valid load plan.");

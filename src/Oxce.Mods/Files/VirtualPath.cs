@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text;
+using Oxce.Core.Compatibility;
 
 namespace Oxce.Mods.Files;
 
@@ -22,6 +23,35 @@ public static class VirtualPath
         }
         var containsNonAscii = Validate(normalized, allowEmpty, nameof(path));
         return CanonicalizeCase(normalized, nameof(path), containsNonAscii);
+    }
+
+    /// <summary>
+    /// Canonicalizes a lookup path. Strict mode accepts <c>\</c> separators and throws for
+    /// malformed paths. Compatibility mode applies only the reference case mapping
+    /// (<c>FileMap::canonicalize</c>): a path that could never match an entry (a <c>\</c>
+    /// separator, a rooted path, or an empty, <c>.</c> or <c>..</c> segment) is a miss.
+    /// </summary>
+    public static bool TryNormalizeLookup(
+        string path, bool directory, InputValidationMode mode, out string canonicalPath)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        if (mode.Validate() == InputValidationMode.Strict)
+        {
+            canonicalPath = directory ? NormalizeDirectory(path) : NormalizeFile(path);
+            return true;
+        }
+
+        canonicalPath = string.Empty;
+        if (path.Contains('\\')) return false;
+        try
+        {
+            canonicalPath = directory ? NormalizeDirectory(path) : NormalizeFile(path);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     internal static string NormalizeFileSpelling(string path)
