@@ -681,6 +681,61 @@ public sealed class StrategicResearchProductionFixtureTests
     }
 
     [Fact]
+    public void FreeProductionContinuesWithNegativeFunds()
+    {
+        // RuleManufacture::haveEnoughMoneyForOneMoreUnit accepts any funds when the unit is free.
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var snapshot = NewCampaign(content, 83).Capture();
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Time = snapshot.Time with { Minute = 59, Second = 55 },
+            Funds = [-500],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        var started = Assert.IsType<CampaignProductionChanged>(Assert.Single(campaign.Execute(
+            new ConfigureProductionProject(0, "MAKE_AMMO", 1, 2)).Events));
+        Assert.False(started.Removed);
+        var progress = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events
+            .OfType<CampaignProductionProgress>());
+
+        Assert.Equal(1, progress.Produced);
+        Assert.Null(progress.StopReason);
+        var result = campaign.Capture();
+        Assert.Equal(1, Assert.Single(result.Bases[0].Productions).Spent);
+        Assert.Equal(-500, result.Funds[^1]);
+    }
+
+    [Fact]
+    public void ProducedTransfersSkipIdsAssignedToLoadedTransfers()
+    {
+        // OxceSaveAdapter numbers reference-save transfers from 1 without writing a port counter.
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var snapshot = NewCampaign(content, 89).Capture();
+        var pending = new TransferSnapshot(1, 5, CampaignTransferKind.Item, "PRODUCT", 1)
+        {
+            PreservationKey = "transfer:1",
+        };
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Time = snapshot.Time with { Minute = 59, Second = 55 },
+            NextIds = snapshot.NextIds.Where(pair => pair.Key != "oxcePortTransfer")
+                .ToDictionary(StringComparer.Ordinal),
+            Bases = [snapshot.Bases[0] with { Engineers = 1, Transfers = [pending] }],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+
+        campaign.Execute(new ConfigureProductionProject(0, "MAKE_ENGINEER", 1, 1));
+        campaign.Execute(new AdvanceCampaignTime(1));
+
+        var produced = campaign.Capture();
+        var transfers = produced.Bases[0].Transfers;
+        Assert.Equal(2, transfers.Count);
+        Assert.Equal(transfers.Count, transfers.Select(transfer => transfer.Id).Distinct().Count());
+        Assert.Contains(transfers, transfer => transfer.Kind == CampaignTransferKind.Engineer);
+        var restored = CampaignState.Restore(produced, content, new SplitMix64RandomSource(produced.RandomState));
+        Assert.Equivalent(produced, restored.Capture(), strict: true);
+    }
+
+    [Fact]
     public void UnknownSavedProjectsAreDroppedAndReleaseTheirStaff()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
