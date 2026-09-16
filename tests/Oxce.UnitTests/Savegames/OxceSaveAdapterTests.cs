@@ -196,6 +196,27 @@ public sealed class OxceSaveAdapterTests
     }
 
     [Fact]
+    public void CountedMapsAreWrittenInReferenceKeyOrder()
+    {
+        // ItemContainer::save and std::map fields write keys in byte order.
+        var content = CampaignFoundationTests.LoadFixture();
+        var snapshot = CampaignFoundationTests.Create(content).Capture();
+        var items = new Dictionary<string, int>(StringComparer.Ordinal) { ["zulu"] = 1, ["ALPHA"] = 2, ["Mike"] = 3 };
+        snapshot = snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { Items = items }],
+            ResearchRuleStatus = new Dictionary<string, int>(StringComparer.Ordinal) { ["b"] = 1, ["a"] = 2 },
+        };
+
+        var body = ReadBody(OxceSaveAdapter.EmitNewCampaign(snapshot));
+
+        var baseItems = Assert.IsType<YamlMappingNode>(Required(ReadMaps(body, "bases")[0], "items"));
+        Assert.Equal(["ALPHA", "Mike", "zulu"], baseItems.Entries.Select(static entry => entry.ScalarKey));
+        var status = Assert.IsType<YamlMappingNode>(Required(body, "researchRuleStatus"));
+        Assert.Equal(["a", "b"], status.Entries.Select(static entry => entry.ScalarKey));
+    }
+
+    [Fact]
     public void LoadedAtomicRewriteRequiresAndPreservesSourceDocument()
     {
         var content = CampaignFoundationTests.LoadFixture();
