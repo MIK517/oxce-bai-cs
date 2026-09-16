@@ -509,7 +509,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     private string? StartProductionUnit(
         BaseState owner, RuntimeManufactureRule rule, bool initial = false, bool checkLivingSpace = true)
     {
-        if (_funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
+        // RuleManufacture::haveEnoughMoneyForOneMoreUnit: free units start even with negative funds.
+        if (rule.Cost > 0 && _funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
         if (!TryStageAccounting(-rule.Cost, out var accounting))
             return "Production accounting exceeds the supported range.";
         if (rule.SpawnedPersonType.Length != 0 && checkLivingSpace)
@@ -731,7 +732,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         var transferHours = rule.TransferTimes.Count < 3 ? 0 : Math.Max(0, rule.TransferTimes[2]);
         for (var count = 0; count < quantity; count++)
         {
-            var craftId = NextId(id);
+            var craftId = NextCraftId(id);
+            _nextIds[id] = checked(craftId + 1);
             var key = FormattableString.Invariant($"created:{Identity.Id}:craft:{id}:{craftId}");
             var logistics = CraftLogistics.LoadStarting(_content.RuntimeRules.Crafts[craft].Value, null);
             var value = new CraftSnapshot(id, craftId) { PreservationKey = key, Logistics = logistics };
@@ -756,7 +758,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         {
             var handle = _content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType);
             var definition = _content.RuntimeRules.Soldiers[handle].Value;
-            var soldierId = NextId("STR_SOLDIER");
+            var soldierId = NextSoldierId();
+            _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
             var personal = SoldierGeneration.Generate(definition,
                 _content.RuntimeRules.Armors.GetExternalId(definition.Armor), -1,
                 _bases.SelectMany(baseState => baseState.Soldiers)
@@ -780,7 +783,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
     private void QueueTransfer(BaseState owner, int hours, CampaignTransferKind kind,
         string ruleId, int quantity, SoldierSnapshot? soldier = null, CraftSnapshot? craft = null)
     {
-        var transferId = NextId("oxcePortTransfer");
+        // Loaded reference saves assign transfer IDs without a matching counter, so allocation must
+        // skip every existing ID exactly like the logistics and transformation paths.
+        var transferId = NextTransferId();
+        _nextIds["oxcePortTransfer"] = checked(transferId + 1);
         owner.Transfers.Add(new(transferId, hours, kind, ruleId, quantity, soldier, craft)
         {
             PreservationKey = FormattableString.Invariant($"created:{Identity.Id}:transfer:{transferId}"),
