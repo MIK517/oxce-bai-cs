@@ -4,926 +4,927 @@
 
 Navigational index of projects, namespaces, public types, test helpers and fixture ownership.
 Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers or fixtures;
-`--check` reports a stale map. Types are listed with their first XML-doc sentence when present.
+`--check` reports a stale map. Types are listed with their first XML-doc sentence when present;
+line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Projects
 
-| Project | Files | Lines | References |
-| --- | ---: | ---: | --- |
-| [Oxce.Benchmarks](#oxcebenchmarks) | 12 | 938 | Engine, Formats, Mods, Rendering, Resources, Savegames |
-| [Oxce.App](#oxceapp) | 3 | 263 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
-| [Oxce.Core](#oxcecore) | 7 | 298 | - |
-| [Oxce.Engine](#oxceengine) | 16 | 1890 | Core, Gameplay, Rendering, Resources |
-| [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | 384 | - |
-| [Oxce.Extensions](#oxceextensions) | 3 | 918 | Core, Extensions.Abstractions, Gameplay |
-| [Oxce.Formats](#oxceformats) | 34 | 6187 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 31 | 5789 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 88 | 16724 | Core, Formats, Scripting |
-| [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | 1210 | Core, Engine, Rendering |
-| [Oxce.Rendering](#oxcerendering) | 5 | 699 | Core |
-| [Oxce.Resources](#oxceresources) | 1 | 281 | Core, Formats, Mods, Rendering |
-| [Oxce.Savegames](#oxcesavegames) | 3 | 1108 | Core, Formats, Gameplay, Mods |
-| [Oxce.Scripting](#oxcescripting) | 25 | 4778 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 67 | 6697 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
-| [Oxce.TestExtension](#oxcetestextension) | 1 | 87 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 74 | 10207 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
-| [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | 425 | - |
-| [Oxce.FixtureTool](#oxcefixturetool) | 1 | 602 | FixtureSupport, Formats, Mods, Savegames |
-| [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | 284 | Formats, Mods, Platform.Sdl, Rendering, Resources |
+| Project | Files | References |
+| --- | ---: | --- |
+| [Oxce.Benchmarks](#oxcebenchmarks) | 12 | Engine, Formats, Mods, Rendering, Resources, Savegames |
+| [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
+| [Oxce.Core](#oxcecore) | 7 | - |
+| [Oxce.Engine](#oxceengine) | 16 | Core, Gameplay, Rendering, Resources |
+| [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
+| [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
+| [Oxce.Formats](#oxceformats) | 34 | Core |
+| [Oxce.Gameplay](#oxcegameplay) | 31 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 88 | Core, Formats, Scripting |
+| [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
+| [Oxce.Rendering](#oxcerendering) | 5 | Core |
+| [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
+| [Oxce.Savegames](#oxcesavegames) | 3 | Core, Formats, Gameplay, Mods |
+| [Oxce.Scripting](#oxcescripting) | 25 | Core |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 67 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
+| [Oxce.UnitTests](#oxceunittests) | 74 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
+| [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
+| [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
 
 ## Oxce.Benchmarks
 
-`benchmarks/Oxce.Benchmarks` - 12 files, 938 lines.
+`benchmarks/Oxce.Benchmarks` - 12 files.
 
 ### `Oxce.Benchmarks`
 
-- `CampaignSaveBenchmarks` (class) [CampaignSaveBenchmarks.cs](../benchmarks/Oxce.Benchmarks/CampaignSaveBenchmarks.cs#L13)
-- `FrozenDictionaryBenchmarks` (class) [FrozenDictionaryBenchmarks.cs](../benchmarks/Oxce.Benchmarks/FrozenDictionaryBenchmarks.cs#L10)
-- `MixerBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs#L7)
-- `MixerContentionBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs#L66)
-- `Phase3ContentBenchmarks` (class) [Phase3ContentBenchmarks.cs](../benchmarks/Oxce.Benchmarks/Phase3ContentBenchmarks.cs#L12)
-- `Program` (class) [Program.cs](../benchmarks/Oxce.Benchmarks/Program.cs#L5)
-- `RenderingBenchmarks` (class) [RenderingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RenderingBenchmarks.cs#L7)
-- `ResourceRuntimeBenchmarks` (class) [ResourceRuntimeBenchmarks.cs](../benchmarks/Oxce.Benchmarks/ResourceRuntimeBenchmarks.cs#L12)
-- `RuntimeRuleLinkingBenchmarks` (class) [RuntimeRuleLinkingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RuntimeRuleLinkingBenchmarks.cs#L12)
-- `ScriptVmBenchmarks` (class) [ScriptVmBenchmarks.cs](../benchmarks/Oxce.Benchmarks/ScriptVmBenchmarks.cs#L12)
-- `VirtualFileCatalogBenchmarks` (class) [VirtualFileCatalogBenchmarks.cs](../benchmarks/Oxce.Benchmarks/VirtualFileCatalogBenchmarks.cs#L7)
-- `VirtualPathLookupBenchmarks` (class) [VirtualPathLookupBenchmarks.cs](../benchmarks/Oxce.Benchmarks/VirtualPathLookupBenchmarks.cs#L10)
-- `YamlBenchmarks` (class) [YamlBenchmarks.cs](../benchmarks/Oxce.Benchmarks/YamlBenchmarks.cs#L8)
+- `CampaignSaveBenchmarks` (class) [CampaignSaveBenchmarks.cs](../benchmarks/Oxce.Benchmarks/CampaignSaveBenchmarks.cs)
+- `FrozenDictionaryBenchmarks` (class) [FrozenDictionaryBenchmarks.cs](../benchmarks/Oxce.Benchmarks/FrozenDictionaryBenchmarks.cs)
+- `MixerBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
+- `MixerContentionBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
+- `Phase3ContentBenchmarks` (class) [Phase3ContentBenchmarks.cs](../benchmarks/Oxce.Benchmarks/Phase3ContentBenchmarks.cs)
+- `Program` (class) [Program.cs](../benchmarks/Oxce.Benchmarks/Program.cs)
+- `RenderingBenchmarks` (class) [RenderingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RenderingBenchmarks.cs)
+- `ResourceRuntimeBenchmarks` (class) [ResourceRuntimeBenchmarks.cs](../benchmarks/Oxce.Benchmarks/ResourceRuntimeBenchmarks.cs)
+- `RuntimeRuleLinkingBenchmarks` (class) [RuntimeRuleLinkingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RuntimeRuleLinkingBenchmarks.cs)
+- `ScriptVmBenchmarks` (class) [ScriptVmBenchmarks.cs](../benchmarks/Oxce.Benchmarks/ScriptVmBenchmarks.cs)
+- `VirtualFileCatalogBenchmarks` (class) [VirtualFileCatalogBenchmarks.cs](../benchmarks/Oxce.Benchmarks/VirtualFileCatalogBenchmarks.cs)
+- `VirtualPathLookupBenchmarks` (class) [VirtualPathLookupBenchmarks.cs](../benchmarks/Oxce.Benchmarks/VirtualPathLookupBenchmarks.cs)
+- `YamlBenchmarks` (class) [YamlBenchmarks.cs](../benchmarks/Oxce.Benchmarks/YamlBenchmarks.cs)
 
 ## Oxce.App
 
-`src/Oxce.App` - 3 files, 263 lines. No public API; top-level types:
+`src/Oxce.App` - 3 files. No public API; top-level types:
 
-- `CampaignSdlCommand` (internal class) [CampaignSdlCommand.cs](../src/Oxce.App/CampaignSdlCommand.cs#L11)
-- `CampaignUiAssets` (internal record) [CampaignUiAssets.cs](../src/Oxce.App/CampaignUiAssets.cs#L8)
+- `CampaignSdlCommand` (internal class) [CampaignSdlCommand.cs](../src/Oxce.App/CampaignSdlCommand.cs)
+- `CampaignUiAssets` (internal record) [CampaignUiAssets.cs](../src/Oxce.App/CampaignUiAssets.cs)
 
 ## Oxce.Core
 
-`src/Oxce.Core` - 7 files, 298 lines.
+`src/Oxce.Core` - 7 files.
 
 ### `Oxce.Core`
 
-- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Core/AssemblyMarker.cs#L4) - Locates the core assembly without relying on a gameplay type.
+- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Core/AssemblyMarker.cs) - Locates the core assembly without relying on a gameplay type.
 
 ### `Oxce.Core.Diagnostics`
 
-- `DiagnosticSeverity` (enum) [DiagnosticEvent.cs](../src/Oxce.Core/Diagnostics/DiagnosticEvent.cs#L3)
-- `DiagnosticContext` (record struct) [DiagnosticEvent.cs](../src/Oxce.Core/Diagnostics/DiagnosticEvent.cs#L12)
-- `DiagnosticEvent` (record) [DiagnosticEvent.cs](../src/Oxce.Core/Diagnostics/DiagnosticEvent.cs#L19)
-- `IDiagnosticSink` (interface) [IDiagnosticSink.cs](../src/Oxce.Core/Diagnostics/IDiagnosticSink.cs#L3)
-- `NullDiagnosticSink` (class) [IDiagnosticSink.cs](../src/Oxce.Core/Diagnostics/IDiagnosticSink.cs#L8)
-- `DiagnosticCollector` (class) [IDiagnosticSink.cs](../src/Oxce.Core/Diagnostics/IDiagnosticSink.cs#L22)
-- `SourcePosition` (record struct) [SourceSpan.cs](../src/Oxce.Core/Diagnostics/SourceSpan.cs#L3)
-- `SourceSpan` (record struct) [SourceSpan.cs](../src/Oxce.Core/Diagnostics/SourceSpan.cs#L9)
+- `DiagnosticSeverity` (enum) [DiagnosticEvent.cs](../src/Oxce.Core/Diagnostics/DiagnosticEvent.cs)
+- `DiagnosticContext` (record struct) [DiagnosticEvent.cs](../src/Oxce.Core/Diagnostics/DiagnosticEvent.cs)
+- `DiagnosticEvent` (record) [DiagnosticEvent.cs](../src/Oxce.Core/Diagnostics/DiagnosticEvent.cs)
+- `IDiagnosticSink` (interface) [IDiagnosticSink.cs](../src/Oxce.Core/Diagnostics/IDiagnosticSink.cs)
+- `NullDiagnosticSink` (class) [IDiagnosticSink.cs](../src/Oxce.Core/Diagnostics/IDiagnosticSink.cs)
+- `DiagnosticCollector` (class) [IDiagnosticSink.cs](../src/Oxce.Core/Diagnostics/IDiagnosticSink.cs)
+- `SourcePosition` (record struct) [SourceSpan.cs](../src/Oxce.Core/Diagnostics/SourceSpan.cs)
+- `SourceSpan` (record struct) [SourceSpan.cs](../src/Oxce.Core/Diagnostics/SourceSpan.cs)
 
 ### `Oxce.Core.Geometry`
 
-- `Position3` (record struct) [Position3.cs](../src/Oxce.Core/Geometry/Position3.cs#L7) - A three-dimensional coordinate with the signed 16-bit component storage used by the reference engine's battlescape Position type.
+- `Position3` (record struct) [Position3.cs](../src/Oxce.Core/Geometry/Position3.cs) - A three-dimensional coordinate with the signed 16-bit component storage used by the reference engine's battlescape Position type.
 
 ### `Oxce.Core.Graphics`
 
-- `Rgba32` (record struct) [Rgba32.cs](../src/Oxce.Core/Graphics/Rgba32.cs#L3)
+- `Rgba32` (record struct) [Rgba32.cs](../src/Oxce.Core/Graphics/Rgba32.cs)
 
 ### `Oxce.Core.Random`
 
-- `IRandomSource` (interface) [IRandomSource.cs](../src/Oxce.Core/Random/IRandomSource.cs#L7) - Supplies gameplay randomness.
-- `IStatefulRandomSource` (interface) [IRandomSource.cs](../src/Oxce.Core/Random/IRandomSource.cs#L20) - A reproducible source whose state can cross the save-neutral gameplay boundary.
-- `SplitMix64RandomSource` (class) [IRandomSource.cs](../src/Oxce.Core/Random/IRandomSource.cs#L30) - Small deterministic generator for campaign simulation and headless scenarios.
+- `IRandomSource` (interface) [IRandomSource.cs](../src/Oxce.Core/Random/IRandomSource.cs) - Supplies gameplay randomness.
+- `IStatefulRandomSource` (interface) [IRandomSource.cs](../src/Oxce.Core/Random/IRandomSource.cs) - A reproducible source whose state can cross the save-neutral gameplay boundary.
+- `SplitMix64RandomSource` (class) [IRandomSource.cs](../src/Oxce.Core/Random/IRandomSource.cs) - Small deterministic generator for campaign simulation and headless scenarios.
 
 ## Oxce.Engine
 
-`src/Oxce.Engine` - 16 files, 1890 lines.
+`src/Oxce.Engine` - 16 files.
 
 ### `Oxce.Engine`
 
-- `CampaignUiSession` (record) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs#L9)
-- `CampaignLogisticsClient` (class) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs#L12) - Keyboard-operated indexed logistics UI; persistence is supplied by App.
-- `CampaignLogisticsScreen` (class) [CampaignLogisticsScreen.cs](../src/Oxce.Engine/CampaignLogisticsScreen.cs#L6) - Paused logistics interaction.
-- `CampaignOverviewClient` (class) [CampaignOverviewClient.cs](../src/Oxce.Engine/CampaignOverviewClient.cs#L13) - Minimal indexed campaign view used to operate the headless foundation without making SDL or persistence part of gameplay.
-- `IGameHost` (interface) [IGameHost.cs](../src/Oxce.Engine/IGameHost.cs#L4) - Owns the application loop without exposing a specific windowing backend.
-- `IIndexedLoopClient` (interface) [IIndexedLoopClient.cs](../src/Oxce.Engine/IIndexedLoopClient.cs#L7) - Platform-neutral indexed-frame client driven by a window host.
-- `PresentationRevisionGate` (class) [PresentationRevisionGate.cs](../src/Oxce.Engine/PresentationRevisionGate.cs#L7) - Tracks the last frame revision accepted by a presenter so unchanged simulation ticks do not repeat conversion and upload work.
+- `CampaignUiSession` (record) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs)
+- `CampaignLogisticsClient` (class) [CampaignLogisticsClient.cs](../src/Oxce.Engine/CampaignLogisticsClient.cs) - Keyboard-operated indexed logistics UI; persistence is supplied by App.
+- `CampaignLogisticsScreen` (class) [CampaignLogisticsScreen.cs](../src/Oxce.Engine/CampaignLogisticsScreen.cs) - Paused logistics interaction.
+- `CampaignOverviewClient` (class) [CampaignOverviewClient.cs](../src/Oxce.Engine/CampaignOverviewClient.cs) - Minimal indexed campaign view used to operate the headless foundation without making SDL or persistence part of gameplay.
+- `IGameHost` (interface) [IGameHost.cs](../src/Oxce.Engine/IGameHost.cs) - Owns the application loop without exposing a specific windowing backend.
+- `IIndexedLoopClient` (interface) [IIndexedLoopClient.cs](../src/Oxce.Engine/IIndexedLoopClient.cs) - Platform-neutral indexed-frame client driven by a window host.
+- `PresentationRevisionGate` (class) [PresentationRevisionGate.cs](../src/Oxce.Engine/PresentationRevisionGate.cs) - Tracks the last frame revision accepted by a presenter so unchanged simulation ticks do not repeat conversion and upload work.
 
 ### `Oxce.Engine.Audio`
 
-- `AudioBus` (enum) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs#L3)
-- `AudioPlaybackOptions` (record struct) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs#L12)
-- `PcmAudioClip` (class) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs#L42)
-- `IAudioPlayback` (interface) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs#L82)
-- `IAudioOutput` (interface) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs#L89)
-- `IAudioSampleSource` (interface) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs#L108)
-- `AudioVolumeCurve` (class) [AudioVolumeCurve.cs](../src/Oxce.Engine/Audio/AudioVolumeCurve.cs#L3)
-- `ManagedAudioMixer` (class) [ManagedAudioMixer.cs](../src/Oxce.Engine/Audio/ManagedAudioMixer.cs#L3)
-- `NullAudioOutput` (class) [NullAudioOutput.cs](../src/Oxce.Engine/Audio/NullAudioOutput.cs#L3)
+- `AudioBus` (enum) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs)
+- `AudioPlaybackOptions` (record struct) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs)
+- `PcmAudioClip` (class) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs)
+- `IAudioPlayback` (interface) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs)
+- `IAudioOutput` (interface) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs)
+- `IAudioSampleSource` (interface) [AudioContracts.cs](../src/Oxce.Engine/Audio/AudioContracts.cs)
+- `AudioVolumeCurve` (class) [AudioVolumeCurve.cs](../src/Oxce.Engine/Audio/AudioVolumeCurve.cs)
+- `ManagedAudioMixer` (class) [ManagedAudioMixer.cs](../src/Oxce.Engine/Audio/ManagedAudioMixer.cs)
+- `NullAudioOutput` (class) [NullAudioOutput.cs](../src/Oxce.Engine/Audio/NullAudioOutput.cs)
 
 ### `Oxce.Engine.Diagnostics`
 
-- `LoggingDiagnosticSink` (class) [LoggingDiagnosticSink.cs](../src/Oxce.Engine/Diagnostics/LoggingDiagnosticSink.cs#L7)
+- `LoggingDiagnosticSink` (class) [LoggingDiagnosticSink.cs](../src/Oxce.Engine/Diagnostics/LoggingDiagnosticSink.cs)
 
 ### `Oxce.Engine.Input`
 
-- `DesktopPlatform` (enum) [DesktopQuitShortcut.cs](../src/Oxce.Engine/Input/DesktopQuitShortcut.cs#L3)
-- `DesktopQuitShortcut` (class) [DesktopQuitShortcut.cs](../src/Oxce.Engine/Input/DesktopQuitShortcut.cs#L10)
-- `GameInputEventKind` (enum) [GameInputEvent.cs](../src/Oxce.Engine/Input/GameInputEvent.cs#L3)
-- `InputKeyModifiers` (enum) [GameInputEvent.cs](../src/Oxce.Engine/Input/GameInputEvent.cs#L22)
-- `GameInputEvent` (record struct) [GameInputEvent.cs](../src/Oxce.Engine/Input/GameInputEvent.cs#L45)
-- `MappedPointerPosition` (record struct) [InputCoordinateMapper.cs](../src/Oxce.Engine/Input/InputCoordinateMapper.cs#L3)
-- `InputCoordinateMapper` (class) [InputCoordinateMapper.cs](../src/Oxce.Engine/Input/InputCoordinateMapper.cs#L11)
+- `DesktopPlatform` (enum) [DesktopQuitShortcut.cs](../src/Oxce.Engine/Input/DesktopQuitShortcut.cs)
+- `DesktopQuitShortcut` (class) [DesktopQuitShortcut.cs](../src/Oxce.Engine/Input/DesktopQuitShortcut.cs)
+- `GameInputEventKind` (enum) [GameInputEvent.cs](../src/Oxce.Engine/Input/GameInputEvent.cs)
+- `InputKeyModifiers` (enum) [GameInputEvent.cs](../src/Oxce.Engine/Input/GameInputEvent.cs)
+- `GameInputEvent` (record struct) [GameInputEvent.cs](../src/Oxce.Engine/Input/GameInputEvent.cs)
+- `MappedPointerPosition` (record struct) [InputCoordinateMapper.cs](../src/Oxce.Engine/Input/InputCoordinateMapper.cs)
+- `InputCoordinateMapper` (class) [InputCoordinateMapper.cs](../src/Oxce.Engine/Input/InputCoordinateMapper.cs)
 
 ### `Oxce.Engine.Timing`
 
-- `FixedStepAdvanceResult` (record struct) [FixedStepScheduler.cs](../src/Oxce.Engine/Timing/FixedStepScheduler.cs#L3)
-- `FixedStepScheduler` (class) [FixedStepScheduler.cs](../src/Oxce.Engine/Timing/FixedStepScheduler.cs#L5)
-- `IMonotonicClock` (interface) [IMonotonicClock.cs](../src/Oxce.Engine/Timing/IMonotonicClock.cs#L5)
-- `StopwatchMonotonicClock` (class) [IMonotonicClock.cs](../src/Oxce.Engine/Timing/IMonotonicClock.cs#L10)
+- `FixedStepAdvanceResult` (record struct) [FixedStepScheduler.cs](../src/Oxce.Engine/Timing/FixedStepScheduler.cs)
+- `FixedStepScheduler` (class) [FixedStepScheduler.cs](../src/Oxce.Engine/Timing/FixedStepScheduler.cs)
+- `IMonotonicClock` (interface) [IMonotonicClock.cs](../src/Oxce.Engine/Timing/IMonotonicClock.cs)
+- `StopwatchMonotonicClock` (class) [IMonotonicClock.cs](../src/Oxce.Engine/Timing/IMonotonicClock.cs)
 
 ## Oxce.Extensions.Abstractions
 
-`src/Oxce.Extensions.Abstractions` - 3 files, 384 lines.
+`src/Oxce.Extensions.Abstractions` - 3 files.
 
 ### `Oxce.Extensions.Abstractions`
 
-- `ICampaignExtension` (interface) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L3)
-- `IExtensionCampaignQueries` (interface) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L10)
-- `IExtensionCampaignCommands` (interface) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L15)
-- `ExtensionCampaignCapabilityContracts` (class) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L20)
-- `ExtensionCampaignCapabilities` (class) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L32)
-- `ExtensionCampaignOverview` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L52)
-- `ExtensionCampaignTime` (record struct) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L62)
-- `ExtensionCampaignBaseOverview` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L70)
-- `ExtensionCampaignFacilityOverview` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L85)
-- `ExtensionCampaignCommand` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L92)
-- `ExtensionAdvanceCampaignTime` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L94)
-- `ExtensionPlaceStartingBase` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L96)
-- `ExtensionCampaignEvent` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L102)
-- `ExtensionCampaignTimeAdvanced` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L104)
-- `ExtensionCampaignTimeTriggerSummary` (record struct) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L109)
-- `ExtensionStartingBasePlaced` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L118)
-- `ExtensionCampaignCommandResult` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs#L124)
-- `ExtensionApiVersion` (record struct) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L3)
-- `ExtensionApiRange` (record struct) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L59)
-- `ManagedExtensionApi` (class) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L73)
-- `ExtensionCapabilityVersion` (record struct) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L78)
-- `ExtensionCapabilityDescriptor` (record) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L96)
-- `ExtensionIdentity` (class) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L109)
-- `ExtensionDiagnosticSeverity` (enum) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L123)
-- `ExtensionDiagnostic` (record) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L132)
-- `IExtensionDiagnosticSink` (interface) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L137)
-- `IExtensionContext` (interface) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L142)
-- `IManagedExtension` (interface) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs#L149)
-- `ExtensionStateValueKind` (enum) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs#L5)
-- `ExtensionStateValue` (class) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs#L16)
-- `ExtensionStateSnapshot` (record) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs#L77)
-- `ExtensionStateRecord` (record) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs#L82)
-- `ExtensionStateDocument` (class) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs#L89)
-- `IManagedExtensionState` (interface) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs#L103)
+- `ICampaignExtension` (interface) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `IExtensionCampaignQueries` (interface) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `IExtensionCampaignCommands` (interface) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignCapabilityContracts` (class) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignCapabilities` (class) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignOverview` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignTime` (record struct) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignBaseOverview` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignFacilityOverview` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignCommand` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionAdvanceCampaignTime` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionPlaceStartingBase` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignEvent` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignTimeAdvanced` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignTimeTriggerSummary` (record struct) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionStartingBasePlaced` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionCampaignCommandResult` (record) [CampaignExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/CampaignExtensionContracts.cs)
+- `ExtensionApiVersion` (record struct) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ExtensionApiRange` (record struct) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ManagedExtensionApi` (class) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ExtensionCapabilityVersion` (record struct) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ExtensionCapabilityDescriptor` (record) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ExtensionIdentity` (class) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ExtensionDiagnosticSeverity` (enum) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ExtensionDiagnostic` (record) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `IExtensionDiagnosticSink` (interface) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `IExtensionContext` (interface) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `IManagedExtension` (interface) [ExtensionContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionContracts.cs)
+- `ExtensionStateValueKind` (enum) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs)
+- `ExtensionStateValue` (class) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs)
+- `ExtensionStateSnapshot` (record) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs)
+- `ExtensionStateRecord` (record) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs)
+- `ExtensionStateDocument` (class) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs)
+- `IManagedExtensionState` (interface) [ExtensionStateContracts.cs](../src/Oxce.Extensions.Abstractions/ExtensionStateContracts.cs)
 
 ## Oxce.Extensions
 
-`src/Oxce.Extensions` - 3 files, 918 lines.
+`src/Oxce.Extensions` - 3 files.
 
 ### `Oxce.Extensions`
 
-- `CampaignExtensionSession` (class) [CampaignExtensionSession.cs](../src/Oxce.Extensions/CampaignExtensionSession.cs#L6)
-- `ExtensionStateLimits` (class) [ExtensionStateJsonCodec.cs](../src/Oxce.Extensions/ExtensionStateJsonCodec.cs#L7)
-- `ExtensionStateValidator` (class) [ExtensionStateJsonCodec.cs](../src/Oxce.Extensions/ExtensionStateJsonCodec.cs#L27)
-- `ExtensionStateJsonCodec` (class) [ExtensionStateJsonCodec.cs](../src/Oxce.Extensions/ExtensionStateJsonCodec.cs#L126)
-- `ManagedExtensionLoadOptions` (class) [ManagedExtensionHost.cs](../src/Oxce.Extensions/ManagedExtensionHost.cs#L10)
-- `LoadedManagedExtension` (record) [ManagedExtensionHost.cs](../src/Oxce.Extensions/ManagedExtensionHost.cs#L22)
-- `ManagedExtensionHost` (class) [ManagedExtensionHost.cs](../src/Oxce.Extensions/ManagedExtensionHost.cs#L27)
+- `CampaignExtensionSession` (class) [CampaignExtensionSession.cs](../src/Oxce.Extensions/CampaignExtensionSession.cs)
+- `ExtensionStateLimits` (class) [ExtensionStateJsonCodec.cs](../src/Oxce.Extensions/ExtensionStateJsonCodec.cs)
+- `ExtensionStateValidator` (class) [ExtensionStateJsonCodec.cs](../src/Oxce.Extensions/ExtensionStateJsonCodec.cs)
+- `ExtensionStateJsonCodec` (class) [ExtensionStateJsonCodec.cs](../src/Oxce.Extensions/ExtensionStateJsonCodec.cs)
+- `ManagedExtensionLoadOptions` (class) [ManagedExtensionHost.cs](../src/Oxce.Extensions/ManagedExtensionHost.cs)
+- `LoadedManagedExtension` (record) [ManagedExtensionHost.cs](../src/Oxce.Extensions/ManagedExtensionHost.cs)
+- `ManagedExtensionHost` (class) [ManagedExtensionHost.cs](../src/Oxce.Extensions/ManagedExtensionHost.cs)
 
 ## Oxce.Formats
 
-`src/Oxce.Formats` - 34 files, 6187 lines.
+`src/Oxce.Formats` - 34 files.
 
 ### `Oxce.Formats`
 
-- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Formats/AssemblyMarker.cs#L4) - Marks the assembly containing YAML and original X-COM format codecs.
+- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Formats/AssemblyMarker.cs) - Marks the assembly containing YAML and original X-COM format codecs.
 
 ### `Oxce.Formats.Audio`
 
-- `XcomSoundVariant` (enum) [CatSoundCodec.cs](../src/Oxce.Formats/Audio/CatSoundCodec.cs#L6)
-- `CatSoundCodec` (class) [CatSoundCodec.cs](../src/Oxce.Formats/Audio/CatSoundCodec.cs#L12)
-- `GmCatMusicCodec` (class) [GmCatMusicCodec.cs](../src/Oxce.Formats/Audio/GmCatMusicCodec.cs#L5)
-- `PcmAudioData` (class) [PcmAudioData.cs](../src/Oxce.Formats/Audio/PcmAudioData.cs#L3)
-- `WavePcmCodec` (class) [WavePcmCodec.cs](../src/Oxce.Formats/Audio/WavePcmCodec.cs#L6)
+- `XcomSoundVariant` (enum) [CatSoundCodec.cs](../src/Oxce.Formats/Audio/CatSoundCodec.cs)
+- `CatSoundCodec` (class) [CatSoundCodec.cs](../src/Oxce.Formats/Audio/CatSoundCodec.cs)
+- `GmCatMusicCodec` (class) [GmCatMusicCodec.cs](../src/Oxce.Formats/Audio/GmCatMusicCodec.cs)
+- `PcmAudioData` (class) [PcmAudioData.cs](../src/Oxce.Formats/Audio/PcmAudioData.cs)
+- `WavePcmCodec` (class) [WavePcmCodec.cs](../src/Oxce.Formats/Audio/WavePcmCodec.cs)
 
 ### `Oxce.Formats.Binary`
 
-- `BinaryDataReader` (class) [BinaryDataReader.cs](../src/Oxce.Formats/Binary/BinaryDataReader.cs#L5)
-- `BinaryDataWriter` (class) [BinaryDataWriter.cs](../src/Oxce.Formats/Binary/BinaryDataWriter.cs#L6)
+- `BinaryDataReader` (class) [BinaryDataReader.cs](../src/Oxce.Formats/Binary/BinaryDataReader.cs)
+- `BinaryDataWriter` (class) [BinaryDataWriter.cs](../src/Oxce.Formats/Binary/BinaryDataWriter.cs)
 
 ### `Oxce.Formats.Containers`
 
-- `CatArchive` (class) [CatArchive.cs](../src/Oxce.Formats/Containers/CatArchive.cs#L6)
-- `CatArchiveEntry` (class) [CatArchive.cs](../src/Oxce.Formats/Containers/CatArchive.cs#L83)
+- `CatArchive` (class) [CatArchive.cs](../src/Oxce.Formats/Containers/CatArchive.cs)
+- `CatArchiveEntry` (class) [CatArchive.cs](../src/Oxce.Formats/Containers/CatArchive.cs)
 
 ### `Oxce.Formats.Images`
 
-- `BdyImageCodec` (class) [BdyImageCodec.cs](../src/Oxce.Formats/Images/BdyImageCodec.cs#L5)
-- `IndexedBmpCodec` (class) [IndexedBmpCodec.cs](../src/Oxce.Formats/Images/IndexedBmpCodec.cs#L7)
-- `IndexedGifCodec` (class) [IndexedGifCodec.cs](../src/Oxce.Formats/Images/IndexedGifCodec.cs#L7)
-- `IndexedImageCodec` (class) [IndexedImageCodec.cs](../src/Oxce.Formats/Images/IndexedImageCodec.cs#L5)
-- `IndexedImageData` (class) [IndexedImageData.cs](../src/Oxce.Formats/Images/IndexedImageData.cs#L5)
-- `IndexedLbmCodec` (class) [IndexedLbmCodec.cs](../src/Oxce.Formats/Images/IndexedLbmCodec.cs#L7)
-- `IndexedPngCodec` (class) [IndexedPngCodec.cs](../src/Oxce.Formats/Images/IndexedPngCodec.cs#L8)
-- `PckSpriteSetCodec` (class) [PckSpriteSetCodec.cs](../src/Oxce.Formats/Images/PckSpriteSetCodec.cs#L5)
-- `RawIndexedImageCodec` (class) [RawIndexedImageCodec.cs](../src/Oxce.Formats/Images/RawIndexedImageCodec.cs#L5)
-- `SpkImageCodec` (class) [SpkImageCodec.cs](../src/Oxce.Formats/Images/SpkImageCodec.cs#L5)
-- `XcomPaletteCodec` (class) [XcomPaletteCodec.cs](../src/Oxce.Formats/Images/XcomPaletteCodec.cs#L6)
+- `BdyImageCodec` (class) [BdyImageCodec.cs](../src/Oxce.Formats/Images/BdyImageCodec.cs)
+- `IndexedBmpCodec` (class) [IndexedBmpCodec.cs](../src/Oxce.Formats/Images/IndexedBmpCodec.cs)
+- `IndexedGifCodec` (class) [IndexedGifCodec.cs](../src/Oxce.Formats/Images/IndexedGifCodec.cs)
+- `IndexedImageCodec` (class) [IndexedImageCodec.cs](../src/Oxce.Formats/Images/IndexedImageCodec.cs)
+- `IndexedImageData` (class) [IndexedImageData.cs](../src/Oxce.Formats/Images/IndexedImageData.cs)
+- `IndexedLbmCodec` (class) [IndexedLbmCodec.cs](../src/Oxce.Formats/Images/IndexedLbmCodec.cs)
+- `IndexedPngCodec` (class) [IndexedPngCodec.cs](../src/Oxce.Formats/Images/IndexedPngCodec.cs)
+- `PckSpriteSetCodec` (class) [PckSpriteSetCodec.cs](../src/Oxce.Formats/Images/PckSpriteSetCodec.cs)
+- `RawIndexedImageCodec` (class) [RawIndexedImageCodec.cs](../src/Oxce.Formats/Images/RawIndexedImageCodec.cs)
+- `SpkImageCodec` (class) [SpkImageCodec.cs](../src/Oxce.Formats/Images/SpkImageCodec.cs)
+- `XcomPaletteCodec` (class) [XcomPaletteCodec.cs](../src/Oxce.Formats/Images/XcomPaletteCodec.cs)
 
 ### `Oxce.Formats.Terrain`
 
-- `LoftempsCodec` (class) [LoftempsCodec.cs](../src/Oxce.Formats/Terrain/LoftempsCodec.cs#L6)
-- `LoftempsData` (class) [LoftempsCodec.cs](../src/Oxce.Formats/Terrain/LoftempsCodec.cs#L33)
-- `McdTerrainCodec` (class) [McdTerrainCodec.cs](../src/Oxce.Formats/Terrain/McdTerrainCodec.cs#L6)
-- `McdTerrainData` (class) [McdTerrainCodec.cs](../src/Oxce.Formats/Terrain/McdTerrainCodec.cs#L34)
-- `McdTerrainRecord` (class) [McdTerrainCodec.cs](../src/Oxce.Formats/Terrain/McdTerrainCodec.cs#L47)
-- `RmpRouteCodec` (class) [RmpRouteCodec.cs](../src/Oxce.Formats/Terrain/RmpRouteCodec.cs#L6)
-- `RmpRouteMap` (class) [RmpRouteCodec.cs](../src/Oxce.Formats/Terrain/RmpRouteCodec.cs#L93)
-- `RmpRouteNode` (class) [RmpRouteCodec.cs](../src/Oxce.Formats/Terrain/RmpRouteCodec.cs#L106)
-- `WorldPoint` (record struct) [WorldMapCodec.cs](../src/Oxce.Formats/Terrain/WorldMapCodec.cs#L5)
-- `WorldPolygon` (record) [WorldMapCodec.cs](../src/Oxce.Formats/Terrain/WorldMapCodec.cs#L6)
-- `WorldMapCodec` (class) [WorldMapCodec.cs](../src/Oxce.Formats/Terrain/WorldMapCodec.cs#L9) - RuleGlobe::loadDat: ten signed little-endian shorts per triangle or quadrilateral.
-- `XcomMapCodec` (class) [XcomMapCodec.cs](../src/Oxce.Formats/Terrain/XcomMapCodec.cs#L5)
-- `XcomMapData` (class) [XcomMapCodec.cs](../src/Oxce.Formats/Terrain/XcomMapCodec.cs#L59)
-- `XcomMapTileRecord` (record struct) [XcomMapCodec.cs](../src/Oxce.Formats/Terrain/XcomMapCodec.cs#L101)
+- `LoftempsCodec` (class) [LoftempsCodec.cs](../src/Oxce.Formats/Terrain/LoftempsCodec.cs)
+- `LoftempsData` (class) [LoftempsCodec.cs](../src/Oxce.Formats/Terrain/LoftempsCodec.cs)
+- `McdTerrainCodec` (class) [McdTerrainCodec.cs](../src/Oxce.Formats/Terrain/McdTerrainCodec.cs)
+- `McdTerrainData` (class) [McdTerrainCodec.cs](../src/Oxce.Formats/Terrain/McdTerrainCodec.cs)
+- `McdTerrainRecord` (class) [McdTerrainCodec.cs](../src/Oxce.Formats/Terrain/McdTerrainCodec.cs)
+- `RmpRouteCodec` (class) [RmpRouteCodec.cs](../src/Oxce.Formats/Terrain/RmpRouteCodec.cs)
+- `RmpRouteMap` (class) [RmpRouteCodec.cs](../src/Oxce.Formats/Terrain/RmpRouteCodec.cs)
+- `RmpRouteNode` (class) [RmpRouteCodec.cs](../src/Oxce.Formats/Terrain/RmpRouteCodec.cs)
+- `WorldPoint` (record struct) [WorldMapCodec.cs](../src/Oxce.Formats/Terrain/WorldMapCodec.cs)
+- `WorldPolygon` (record) [WorldMapCodec.cs](../src/Oxce.Formats/Terrain/WorldMapCodec.cs)
+- `WorldMapCodec` (class) [WorldMapCodec.cs](../src/Oxce.Formats/Terrain/WorldMapCodec.cs) - RuleGlobe::loadDat: ten signed little-endian shorts per triangle or quadrilateral.
+- `XcomMapCodec` (class) [XcomMapCodec.cs](../src/Oxce.Formats/Terrain/XcomMapCodec.cs)
+- `XcomMapData` (class) [XcomMapCodec.cs](../src/Oxce.Formats/Terrain/XcomMapCodec.cs)
+- `XcomMapTileRecord` (record struct) [XcomMapCodec.cs](../src/Oxce.Formats/Terrain/XcomMapCodec.cs)
 
 ### `Oxce.Formats.Video`
 
-- `IFlcFrameSink` (interface) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs#L7)
-- `FlcHeader` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs#L14)
-- `FlcFrameInfo` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs#L28)
-- `FlcAudioInfo` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs#L30)
-- `FlcDecodeSummary` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs#L32)
-- `FlcDecoderLimits` (record) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs#L39)
-- `FlcDecoder` (class) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs#L56)
+- `IFlcFrameSink` (interface) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs)
+- `FlcHeader` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs)
+- `FlcFrameInfo` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs)
+- `FlcAudioInfo` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs)
+- `FlcDecodeSummary` (record struct) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs)
+- `FlcDecoderLimits` (record) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs)
+- `FlcDecoder` (class) [FlcDecoder.cs](../src/Oxce.Formats/Video/FlcDecoder.cs)
 
 ### `Oxce.Formats.Yaml`
 
-- `YamlCompatibilityReader` (class) [YamlCompatibilityReader.cs](../src/Oxce.Formats/Yaml/YamlCompatibilityReader.cs#L10)
-- `YamlCompatibilityWriter` (class) [YamlCompatibilityWriter.cs](../src/Oxce.Formats/Yaml/YamlCompatibilityWriter.cs#L5)
-- `YamlFormatException` (class) [YamlFormatException.cs](../src/Oxce.Formats/Yaml/YamlFormatException.cs#L5)
-- `YamlNodeKind` (enum) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L6)
-- `YamlScalarStyle` (enum) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L14)
-- `YamlNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L23)
-- `YamlNullNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L42)
-- `YamlScalarNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L53)
-- `YamlSequenceNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L72)
-- `YamlMappingEntry` (record) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L88)
-- `YamlMappingNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L93)
-- `YamlDocument` (record) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L161)
-- `YamlDocumentSet` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs#L163)
-- `YamlNormalizationOptions` (record) [YamlNormalizationOptions.cs](../src/Oxce.Formats/Yaml/YamlNormalizationOptions.cs#L3)
-- `YamlReadOptions` (record) [YamlReadOptions.cs](../src/Oxce.Formats/Yaml/YamlReadOptions.cs#L3)
-- `YamlSemanticNormalizer` (class) [YamlSemanticNormalizer.cs](../src/Oxce.Formats/Yaml/YamlSemanticNormalizer.cs#L7)
-- `YamlValueReader` (class) [YamlValueReader.cs](../src/Oxce.Formats/Yaml/YamlValueReader.cs#L5)
-- `YamlWriteOptions` (record) [YamlWriteOptions.cs](../src/Oxce.Formats/Yaml/YamlWriteOptions.cs#L3)
+- `YamlCompatibilityReader` (class) [YamlCompatibilityReader.cs](../src/Oxce.Formats/Yaml/YamlCompatibilityReader.cs)
+- `YamlCompatibilityWriter` (class) [YamlCompatibilityWriter.cs](../src/Oxce.Formats/Yaml/YamlCompatibilityWriter.cs)
+- `YamlFormatException` (class) [YamlFormatException.cs](../src/Oxce.Formats/Yaml/YamlFormatException.cs)
+- `YamlNodeKind` (enum) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlScalarStyle` (enum) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlNullNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlScalarNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlSequenceNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlMappingEntry` (record) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlMappingNode` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlDocument` (record) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlDocumentSet` (class) [YamlNodes.cs](../src/Oxce.Formats/Yaml/YamlNodes.cs)
+- `YamlNormalizationOptions` (record) [YamlNormalizationOptions.cs](../src/Oxce.Formats/Yaml/YamlNormalizationOptions.cs)
+- `YamlReadOptions` (record) [YamlReadOptions.cs](../src/Oxce.Formats/Yaml/YamlReadOptions.cs)
+- `YamlSemanticNormalizer` (class) [YamlSemanticNormalizer.cs](../src/Oxce.Formats/Yaml/YamlSemanticNormalizer.cs)
+- `YamlValueReader` (class) [YamlValueReader.cs](../src/Oxce.Formats/Yaml/YamlValueReader.cs)
+- `YamlWriteOptions` (record) [YamlWriteOptions.cs](../src/Oxce.Formats/Yaml/YamlWriteOptions.cs)
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 31 files, 5789 lines.
+`src/Oxce.Gameplay` - 31 files.
 
 ### `Oxce.Gameplay`
 
-- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Gameplay/AssemblyMarker.cs#L4) - Marks the assembly containing geoscape, bases, and battlescape rules.
+- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Gameplay/AssemblyMarker.cs) - Marks the assembly containing geoscape, bases, and battlescape rules.
 
 ### `Oxce.Gameplay.Campaigns`
 
-- `CampaignState` (class) [CampaignAccounting.cs](../src/Oxce.Gameplay/Campaigns/CampaignAccounting.cs#L3)
-- `CreateCampaignBase` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs#L5)
-- `CampaignBaseCreated` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs#L6)
-- `CampaignBaseSite` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs#L7)
-- `CampaignState` (class) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs#L9)
-- `ICampaignCommand` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L3)
-- `ICampaignCommandTarget` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L5)
-- `AdvanceCampaignTime` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L10)
-- `PlaceStartingBase` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L12)
-- `ICampaignEvent` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L14)
-- `CampaignActionBlocked` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L16)
-- `CampaignTimeTriggerSummary` (record struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L18)
-- `CampaignTimeTriggerSequence` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L39)
-- `CampaignTimeTriggerSequence.Enumerator` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L53)
-- `CampaignTimeAdvanced` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L78)
-- `StartingBasePlaced` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L86)
-- `CampaignCommandResult` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs#L92)
-- `CampaignDifficulty` (enum) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L6)
-- `CampaignOptions` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L15)
-- `CampaignId` (record struct) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L19)
-- `CampaignIdentity` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L32)
-- `CountrySnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L40)
-- `RegionSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L50)
-- `FacilitySnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L55)
-- `CraftSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L68)
-- `SoldierSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L74)
-- `CampaignTransferKind` (enum) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L80)
-- `TransferSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L82)
-- `CampaignRestriction` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L89)
-- `ResearchProjectSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L91)
-- `ProductionSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L93)
-- `BaseSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L97)
-- `CampaignSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L115)
-- `ICampaignClock` (interface) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L149)
-- `SystemCampaignClock` (class) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs#L154)
-- `CampaignState` (class) [CampaignCrafts.cs](../src/Oxce.Gameplay/Campaigns/CampaignCrafts.cs#L5)
-- `CampaignState` (class) [CampaignEntityValidation.cs](../src/Oxce.Gameplay/Campaigns/CampaignEntityValidation.cs#L6)
-- `BuildCampaignFacility` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs#L5)
-- `DismantleCampaignFacility` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs#L6)
-- `CampaignFacilityChanged` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs#L7)
-- `CampaignState` (class) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs#L9)
-- `NewCampaignRequest` (record) [CampaignFactory.cs](../src/Oxce.Gameplay/Campaigns/CampaignFactory.cs#L10)
-- `CampaignFactory` (class) [CampaignFactory.cs](../src/Oxce.Gameplay/Campaigns/CampaignFactory.cs#L21)
-- `CampaignState` (class) [CampaignLogistics.cs](../src/Oxce.Gameplay/Campaigns/CampaignLogistics.cs#L6)
-- `SetSoldierTraining` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L5)
-- `AssignSoldierToCraft` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L6)
-- `EquipSoldierArmor` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L7)
-- `EquipCraftWeapon` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L8)
-- `ChangeCraftVehicle` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L9)
-- `CampaignPersonnelChanged` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L10)
-- `CampaignConstructionCompleted` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L11)
-- `CampaignTrainingCompleted` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L12)
-- `CampaignState` (class) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs#L14)
-- `CampaignState` (class) [CampaignPriceScripts.cs](../src/Oxce.Gameplay/Campaigns/CampaignPriceScripts.cs#L9)
-- `CampaignState` (class) [CampaignProjectCapacity.cs](../src/Oxce.Gameplay/Campaigns/CampaignProjectCapacity.cs#L5)
-- `ICampaignQuery` (interface) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs#L3)
-- `CampaignStoreItem` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs#L9)
-- `CampaignIncomingTransfer` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs#L10)
-- `CampaignStores` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs#L11)
-- `CampaignOverview` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs#L17)
-- `CampaignBaseOverview` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs#L27)
-- `CampaignFacilityOverview` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs#L42)
-- `ICampaignReadinessQuery` (interface) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L5)
-- `CampaignWeaponReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L14)
-- `CampaignCraftReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L15)
-- `CampaignDefenseReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L18)
-- `CampaignBaseReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L19)
-- `CampaignFacilityChoice` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L21)
-- `CampaignSoldierReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L22)
-- `CampaignBaseManagement` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L24)
-- `CampaignMaintenance` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L27)
-- `CampaignState` (class) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs#L32)
-- `CampaignState` (class) [CampaignRecruitment.cs](../src/Oxce.Gameplay/Campaigns/CampaignRecruitment.cs#L5)
-- `ConfigureResearchProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L6)
-- `ConfigureProductionProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L8)
-- `CampaignResearchChanged` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L11)
-- `CampaignResearchCompleted` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L12)
-- `CampaignProductionChanged` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L14)
-- `CampaignProductionProgress` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L16)
-- `CampaignStrategicEventRequested` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L18)
-- `ICampaignResearchProductionQuery` (interface) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L20)
-- `CampaignResearchChoice` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L25)
-- `CampaignResearchProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L26)
-- `CampaignProductionChoice` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L27)
-- `CampaignProductionProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L28)
-- `CampaignResearchProduction` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L30)
-- `CampaignState` (class) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs#L35)
-- `CampaignState` (class) [CampaignSales.cs](../src/Oxce.Gameplay/Campaigns/CampaignSales.cs#L6)
-- `CampaignState` (class) [CampaignServicing.cs](../src/Oxce.Gameplay/Campaigns/CampaignServicing.cs#L5)
-- `FacilityServiceMessage` (record) [CampaignServicing.cs](../src/Oxce.Gameplay/Campaigns/CampaignServicing.cs#L104)
-- `CampaignState` (class) [CampaignState.cs](../src/Oxce.Gameplay/Campaigns/CampaignState.cs#L10)
-- `CampaignTimeTrigger` (enum) [CampaignTime.cs](../src/Oxce.Gameplay/Campaigns/CampaignTime.cs#L3)
-- `CampaignTime` (record struct) [CampaignTime.cs](../src/Oxce.Gameplay/Campaigns/CampaignTime.cs#L13)
-- `ICampaignTimeEffects` (interface) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs#L4) - Single-writer simulation effects.
-- `CampaignTimeDispatchResult` (record struct) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs#L12)
-- `CampaignTimeDispatcher` (class) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs#L22) - Executes GeoscapeState::timeAdvance fallthrough.
-- `TransformCampaignSoldier` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs#L6)
-- `CampaignSoldierTransformed` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs#L7)
-- `CampaignTransformationEventSelected` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs#L8)
-- `CampaignState` (class) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs#L10)
-- `CraftWeaponSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs#L6)
-- `CraftVehicleSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs#L7)
-- `CraftLogisticsState` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs#L13)
-- `CraftEffectiveStats` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs#L26)
-- `CraftUnitCapacities` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs#L28)
-- `CraftServiceCapacities` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs#L29)
-- `CraftLogistics` (class) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs#L31)
-- `CraftServicing` (class) [CraftServicing.cs](../src/Oxce.Gameplay/Campaigns/CraftServicing.cs#L7) - Hourly maintenance from Craft.cpp and CraftWeapon.cpp at reference 4df3a5e.
-- `CraftArrivalServiceMessage` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L3)
-- `LogisticsOperation` (enum) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L5)
-- `PrepareLogisticsQuote` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L7)
-- `LogisticsSelection` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L8)
-- `SubmitLogisticsOrder` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L9)
-- `LogisticsRow` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L10)
-- `LogisticsQuote` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L12)
-- `LogisticsQuoted` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L19)
-- `LogisticsOrderCompleted` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L20)
-- `SuppliesArrived` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs#L21)
-- `SoldierCommendation` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs#L7)
-- `SoldierPersonalState` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs#L9)
-- `SoldierGeneration` (class) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs#L39) - Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.
-- `SoldierDailyRecovery` (record struct) [SoldierReadiness.cs](../src/Oxce.Gameplay/Campaigns/SoldierReadiness.cs#L7)
-- `SoldierReadiness` (class) [SoldierReadiness.cs](../src/Oxce.Gameplay/Campaigns/SoldierReadiness.cs#L10) - Strategic Soldier.cpp recovery and training rules at reference 4df3a5e.
-- `SoldierPiloting` (class) [StartingCrewAssignment.cs](../src/Oxce.Gameplay/Campaigns/StartingCrewAssignment.cs#L68)
-- `StrategicGeography` (class) [StrategicGeography.cs](../src/Oxce.Gameplay/Campaigns/StrategicGeography.cs#L5)
-- `StrategicLogisticsMath` (class) [StrategicLogisticsMath.cs](../src/Oxce.Gameplay/Campaigns/StrategicLogisticsMath.cs#L4) - Arithmetic from RuleItem, Base and TransferItemsState at reference 4df3a5e.
+- `CampaignState` (class) [CampaignAccounting.cs](../src/Oxce.Gameplay/Campaigns/CampaignAccounting.cs)
+- `CreateCampaignBase` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
+- `CampaignBaseCreated` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
+- `CampaignBaseSite` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
+- `CampaignState` (class) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
+- `ICampaignCommand` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `ICampaignCommandTarget` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `AdvanceCampaignTime` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `PlaceStartingBase` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `ICampaignEvent` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignActionBlocked` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignTimeTriggerSummary` (record struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignTimeTriggerSequence` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignTimeTriggerSequence.Enumerator` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignTimeAdvanced` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `StartingBasePlaced` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignCommandResult` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `CampaignDifficulty` (enum) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignOptions` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignId` (record struct) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignIdentity` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CountrySnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `RegionSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `FacilitySnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CraftSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `SoldierSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignTransferKind` (enum) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `TransferSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignRestriction` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `ResearchProjectSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `ProductionSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `BaseSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignSnapshot` (record) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `ICampaignClock` (interface) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `SystemCampaignClock` (class) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
+- `CampaignState` (class) [CampaignCrafts.cs](../src/Oxce.Gameplay/Campaigns/CampaignCrafts.cs)
+- `CampaignState` (class) [CampaignEntityValidation.cs](../src/Oxce.Gameplay/Campaigns/CampaignEntityValidation.cs)
+- `BuildCampaignFacility` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs)
+- `DismantleCampaignFacility` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs)
+- `CampaignFacilityChanged` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs)
+- `CampaignState` (class) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs)
+- `NewCampaignRequest` (record) [CampaignFactory.cs](../src/Oxce.Gameplay/Campaigns/CampaignFactory.cs)
+- `CampaignFactory` (class) [CampaignFactory.cs](../src/Oxce.Gameplay/Campaigns/CampaignFactory.cs)
+- `CampaignState` (class) [CampaignLogistics.cs](../src/Oxce.Gameplay/Campaigns/CampaignLogistics.cs)
+- `SetSoldierTraining` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `AssignSoldierToCraft` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `EquipSoldierArmor` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `EquipCraftWeapon` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `ChangeCraftVehicle` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `CampaignPersonnelChanged` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `CampaignConstructionCompleted` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `CampaignTrainingCompleted` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `CampaignState` (class) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
+- `CampaignState` (class) [CampaignPriceScripts.cs](../src/Oxce.Gameplay/Campaigns/CampaignPriceScripts.cs)
+- `CampaignState` (class) [CampaignProjectCapacity.cs](../src/Oxce.Gameplay/Campaigns/CampaignProjectCapacity.cs)
+- `ICampaignQuery` (interface) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
+- `CampaignStoreItem` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
+- `CampaignIncomingTransfer` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
+- `CampaignStores` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
+- `CampaignOverview` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
+- `CampaignBaseOverview` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
+- `CampaignFacilityOverview` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
+- `ICampaignReadinessQuery` (interface) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignWeaponReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignCraftReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignDefenseReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignBaseReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignFacilityChoice` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignSoldierReadiness` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignBaseManagement` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignMaintenance` (record) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignState` (class) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
+- `CampaignState` (class) [CampaignRecruitment.cs](../src/Oxce.Gameplay/Campaigns/CampaignRecruitment.cs)
+- `ConfigureResearchProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `ConfigureProductionProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignResearchChanged` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignResearchCompleted` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignProductionChanged` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignProductionProgress` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignStrategicEventRequested` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `ICampaignResearchProductionQuery` (interface) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignResearchChoice` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignResearchProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignProductionChoice` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignProductionProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignResearchProduction` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignState` (class) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignState` (class) [CampaignSales.cs](../src/Oxce.Gameplay/Campaigns/CampaignSales.cs)
+- `CampaignState` (class) [CampaignServicing.cs](../src/Oxce.Gameplay/Campaigns/CampaignServicing.cs)
+- `FacilityServiceMessage` (record) [CampaignServicing.cs](../src/Oxce.Gameplay/Campaigns/CampaignServicing.cs)
+- `CampaignState` (class) [CampaignState.cs](../src/Oxce.Gameplay/Campaigns/CampaignState.cs)
+- `CampaignTimeTrigger` (enum) [CampaignTime.cs](../src/Oxce.Gameplay/Campaigns/CampaignTime.cs)
+- `CampaignTime` (record struct) [CampaignTime.cs](../src/Oxce.Gameplay/Campaigns/CampaignTime.cs)
+- `ICampaignTimeEffects` (interface) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs) - Single-writer simulation effects.
+- `CampaignTimeDispatchResult` (record struct) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs)
+- `CampaignTimeDispatcher` (class) [CampaignTimeDispatcher.cs](../src/Oxce.Gameplay/Campaigns/CampaignTimeDispatcher.cs) - Executes GeoscapeState::timeAdvance fallthrough.
+- `TransformCampaignSoldier` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
+- `CampaignSoldierTransformed` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
+- `CampaignTransformationEventSelected` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
+- `CampaignState` (class) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
+- `CraftWeaponSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftVehicleSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftLogisticsState` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftEffectiveStats` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftUnitCapacities` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftServiceCapacities` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftLogistics` (class) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
+- `CraftServicing` (class) [CraftServicing.cs](../src/Oxce.Gameplay/Campaigns/CraftServicing.cs) - Hourly maintenance from Craft.cpp and CraftWeapon.cpp at reference 4df3a5e.
+- `CraftArrivalServiceMessage` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `LogisticsOperation` (enum) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `PrepareLogisticsQuote` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `LogisticsSelection` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `SubmitLogisticsOrder` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `LogisticsRow` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `LogisticsQuote` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `LogisticsQuoted` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `LogisticsOrderCompleted` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `SuppliesArrived` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
+- `SoldierCommendation` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
+- `SoldierPersonalState` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
+- `SoldierGeneration` (class) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.
+- `SoldierDailyRecovery` (record struct) [SoldierReadiness.cs](../src/Oxce.Gameplay/Campaigns/SoldierReadiness.cs)
+- `SoldierReadiness` (class) [SoldierReadiness.cs](../src/Oxce.Gameplay/Campaigns/SoldierReadiness.cs) - Strategic Soldier.cpp recovery and training rules at reference 4df3a5e.
+- `SoldierPiloting` (class) [StartingCrewAssignment.cs](../src/Oxce.Gameplay/Campaigns/StartingCrewAssignment.cs)
+- `StrategicGeography` (class) [StrategicGeography.cs](../src/Oxce.Gameplay/Campaigns/StrategicGeography.cs)
+- `StrategicLogisticsMath` (class) [StrategicLogisticsMath.cs](../src/Oxce.Gameplay/Campaigns/StrategicLogisticsMath.cs) - Arithmetic from RuleItem, Base and TransferItemsState at reference 4df3a5e.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 88 files, 16724 lines.
+`src/Oxce.Mods` - 88 files.
 
 ### `Oxce.Mods`
 
-- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Mods/AssemblyMarker.cs#L4) - Marks the assembly containing mod discovery, merge logic, and rules.
-- `ModDiagnosticCodes` (class) [ModDiagnosticCodes.cs](../src/Oxce.Mods/ModDiagnosticCodes.cs#L3)
+- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Mods/AssemblyMarker.cs) - Marks the assembly containing mod discovery, merge logic, and rules.
+- `ModDiagnosticCodes` (class) [ModDiagnosticCodes.cs](../src/Oxce.Mods/ModDiagnosticCodes.cs)
 
 ### `Oxce.Mods.Bootstrap`
 
-- `CompiledContentCacheStatus` (enum) [CompiledContentCache.cs](../src/Oxce.Mods/Bootstrap/CompiledContentCache.cs#L23)
-- `CompiledContentCacheOptions` (record) [CompiledContentCache.cs](../src/Oxce.Mods/Bootstrap/CompiledContentCache.cs#L31)
-- `InstallationLoadStage` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L11)
-- `InstallationLoadFailureKind` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L25)
-- `InstallationLoadProgress` (record struct) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L34)
-- `InstallationLoadFailure` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L36)
-- `InstallationLoadRequest` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L41)
-- `InstallationContentLoadOptions` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L84)
-- `InstallationPlanResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L101)
-- `InstallationContentLoadResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L114)
-- `InstallationPlanBuilder` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L139)
-- `InstallationContentLoader` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L228)
-- `InstallationStartupStage` (enum) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs#L6)
-- `InstallationStartupStageMeasurement` (record struct) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs#L18)
-- `InstallationStartupMeasurements` (record) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs#L23) - Non-overlapping wall-clock and calling-thread allocation samples for one synchronous load.
+- `CompiledContentCacheStatus` (enum) [CompiledContentCache.cs](../src/Oxce.Mods/Bootstrap/CompiledContentCache.cs)
+- `CompiledContentCacheOptions` (record) [CompiledContentCache.cs](../src/Oxce.Mods/Bootstrap/CompiledContentCache.cs)
+- `InstallationLoadStage` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationLoadFailureKind` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationLoadProgress` (record struct) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationLoadFailure` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationLoadRequest` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationContentLoadOptions` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationPlanResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationContentLoadResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationPlanBuilder` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationContentLoader` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs)
+- `InstallationStartupStage` (enum) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs)
+- `InstallationStartupStageMeasurement` (record struct) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs)
+- `InstallationStartupMeasurements` (record) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs) - Non-overlapping wall-clock and calling-thread allocation samples for one synchronous load.
 
 ### `Oxce.Mods.Discovery`
 
-- `ModCandidate` (class) [ModCandidate.cs](../src/Oxce.Mods/Discovery/ModCandidate.cs#L6)
-- `ModDiscovery` (class) [ModDiscovery.cs](../src/Oxce.Mods/Discovery/ModDiscovery.cs#L8)
-- `ModDiscoveryOptions` (record) [ModDiscoveryOptions.cs](../src/Oxce.Mods/Discovery/ModDiscoveryOptions.cs#L6)
-- `ModDiscoveryResult` (class) [ModDiscoveryResult.cs](../src/Oxce.Mods/Discovery/ModDiscoveryResult.cs#L3)
+- `ModCandidate` (class) [ModCandidate.cs](../src/Oxce.Mods/Discovery/ModCandidate.cs)
+- `ModDiscovery` (class) [ModDiscovery.cs](../src/Oxce.Mods/Discovery/ModDiscovery.cs)
+- `ModDiscoveryOptions` (record) [ModDiscoveryOptions.cs](../src/Oxce.Mods/Discovery/ModDiscoveryOptions.cs)
+- `ModDiscoveryResult` (class) [ModDiscoveryResult.cs](../src/Oxce.Mods/Discovery/ModDiscoveryResult.cs)
 
 ### `Oxce.Mods.Files`
 
-- `VirtualFileCatalog` (class) [VirtualFileCatalog.cs](../src/Oxce.Mods/Files/VirtualFileCatalog.cs#L3)
-- `VirtualFileLayer` (class) [VirtualFileLayer.cs](../src/Oxce.Mods/Files/VirtualFileLayer.cs#L5)
-- `VirtualFileProvenance` (record) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs#L5)
-- `VirtualFileSource` (class) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs#L28)
-- `VirtualFileEntry` (class) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs#L183)
-- `DirectoryScanOptions` (class) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs#L233)
-- `VirtualPath` (class) [VirtualPath.cs](../src/Oxce.Mods/Files/VirtualPath.cs#L6)
-- `ZipArchiveScanOptions` (record) [ZipArchiveIndex.cs](../src/Oxce.Mods/Files/ZipArchiveIndex.cs#L192)
+- `VirtualFileCatalog` (class) [VirtualFileCatalog.cs](../src/Oxce.Mods/Files/VirtualFileCatalog.cs)
+- `VirtualFileLayer` (class) [VirtualFileLayer.cs](../src/Oxce.Mods/Files/VirtualFileLayer.cs)
+- `VirtualFileProvenance` (record) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs)
+- `VirtualFileSource` (class) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs)
+- `VirtualFileEntry` (class) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs)
+- `DirectoryScanOptions` (class) [VirtualFileModels.cs](../src/Oxce.Mods/Files/VirtualFileModels.cs)
+- `VirtualPath` (class) [VirtualPath.cs](../src/Oxce.Mods/Files/VirtualPath.cs)
+- `ZipArchiveScanOptions` (record) [ZipArchiveIndex.cs](../src/Oxce.Mods/Files/ZipArchiveIndex.cs)
 
 ### `Oxce.Mods.Loading`
 
-- `ModActivation` (record struct) [ModActivation.cs](../src/Oxce.Mods/Loading/ModActivation.cs#L3)
-- `ModActivationState` (class) [ModActivationReconciler.cs](../src/Oxce.Mods/Loading/ModActivationReconciler.cs#L6)
-- `ModActivationReconciler` (class) [ModActivationReconciler.cs](../src/Oxce.Mods/Loading/ModActivationReconciler.cs#L19)
-- `ModCatalog` (class) [ModCatalog.cs](../src/Oxce.Mods/Loading/ModCatalog.cs#L7)
-- `ModEngineIdentity` (class) [ModEngineIdentity.cs](../src/Oxce.Mods/Loading/ModEngineIdentity.cs#L5)
-- `ModLoadGroup` (record) [ModLoadPlan.cs](../src/Oxce.Mods/Loading/ModLoadPlan.cs#L6)
-- `ModLoadPlan` (class) [ModLoadPlan.cs](../src/Oxce.Mods/Loading/ModLoadPlan.cs#L8)
-- `ModLoadPlanner` (class) [ModLoadPlanner.cs](../src/Oxce.Mods/Loading/ModLoadPlanner.cs#L6)
+- `ModActivation` (record struct) [ModActivation.cs](../src/Oxce.Mods/Loading/ModActivation.cs)
+- `ModActivationState` (class) [ModActivationReconciler.cs](../src/Oxce.Mods/Loading/ModActivationReconciler.cs)
+- `ModActivationReconciler` (class) [ModActivationReconciler.cs](../src/Oxce.Mods/Loading/ModActivationReconciler.cs)
+- `ModCatalog` (class) [ModCatalog.cs](../src/Oxce.Mods/Loading/ModCatalog.cs)
+- `ModEngineIdentity` (class) [ModEngineIdentity.cs](../src/Oxce.Mods/Loading/ModEngineIdentity.cs)
+- `ModLoadGroup` (record) [ModLoadPlan.cs](../src/Oxce.Mods/Loading/ModLoadPlan.cs)
+- `ModLoadPlan` (class) [ModLoadPlan.cs](../src/Oxce.Mods/Loading/ModLoadPlan.cs)
+- `ModLoadPlanner` (class) [ModLoadPlanner.cs](../src/Oxce.Mods/Loading/ModLoadPlanner.cs)
 
 ### `Oxce.Mods.Metadata`
 
-- `ModMetadata` (record) [ModMetadata.cs](../src/Oxce.Mods/Metadata/ModMetadata.cs#L3)
-- `ModMetadataReader` (class) [ModMetadataReader.cs](../src/Oxce.Mods/Metadata/ModMetadataReader.cs#L6)
-- `ModVersion` (class) [ModVersion.cs](../src/Oxce.Mods/Metadata/ModVersion.cs#L3)
+- `ModMetadata` (record) [ModMetadata.cs](../src/Oxce.Mods/Metadata/ModMetadata.cs)
+- `ModMetadataReader` (class) [ModMetadataReader.cs](../src/Oxce.Mods/Metadata/ModMetadataReader.cs)
+- `ModVersion` (class) [ModVersion.cs](../src/Oxce.Mods/Metadata/ModVersion.cs)
 
 ### `Oxce.Mods.Resources`
 
-- `ResourceDescriptorResolver` (class) [ResourceDescriptorResolver.cs](../src/Oxce.Mods/Resources/ResourceDescriptorResolver.cs#L10)
-- `ContentGenerationId` (record struct) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L9)
-- `ResourceKind` (enum) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L24)
-- `ResourceLoadPolicy` (enum) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L37)
-- `ResourceHandle` (record struct) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L44)
-- `ResolvedResourceDescriptor` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L59)
-- `ResolvedResourceIndex` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L73)
-- `ResolvedResourceCatalog` (class) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L81)
-- `ResourceResolutionOptions` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L190)
-- `ResourceResolutionResult` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L215)
-- `ResolvedResourceIssue` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs#L222)
+- `ResourceDescriptorResolver` (class) [ResourceDescriptorResolver.cs](../src/Oxce.Mods/Resources/ResourceDescriptorResolver.cs)
+- `ContentGenerationId` (record struct) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResourceKind` (enum) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResourceLoadPolicy` (enum) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResourceHandle` (record struct) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResolvedResourceDescriptor` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResolvedResourceIndex` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResolvedResourceCatalog` (class) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResourceResolutionOptions` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResourceResolutionResult` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
+- `ResolvedResourceIssue` (record) [ResourceDescriptors.cs](../src/Oxce.Mods/Resources/ResourceDescriptors.cs)
 
 ### `Oxce.Mods.Rulesets`
 
-- `ContentBuildProgressStage` (enum) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs#L3)
-- `ContentBuildProgress` (record struct) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs#L14)
-- `ContentBuildStageMeasurement` (record struct) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs#L16)
-- `ContentBuildMeasurements` (record) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs#L23)
-- `ContentLoadStage` (enum) [ContentLoadCapabilities.cs](../src/Oxce.Mods/Rulesets/ContentLoadCapabilities.cs#L4)
-- `ContentLoadCapabilities` (record struct) [ContentLoadCapabilities.cs](../src/Oxce.Mods/Rulesets/ContentLoadCapabilities.cs#L15)
-- `RulePropertyReader` (class) [RulePropertyReader.cs](../src/Oxce.Mods/Rulesets/RulePropertyReader.cs#L6)
-- `DeferredRuleProperty` (record) [RulePropertyReader.cs](../src/Oxce.Mods/Rulesets/RulePropertyReader.cs#L273)
-- `RuleSectionDefinition` (record) [RuleSectionDefinition.cs](../src/Oxce.Mods/Rulesets/RuleSectionDefinition.cs#L3)
-- `SpecialRuleSectionBehavior` (enum) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs#L5)
-- `SpecialRuleSectionDefinition` (record) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs#L13)
-- `RuleSectionRegistry` (class) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs#L39)
-- `RulesetCatalogNormalizationOptions` (record) [RulesetCatalogNormalizationOptions.cs](../src/Oxce.Mods/Rulesets/RulesetCatalogNormalizationOptions.cs#L3)
-- `RulesetCatalogNormalizer` (class) [RulesetCatalogNormalizer.cs](../src/Oxce.Mods/Rulesets/RulesetCatalogNormalizer.cs#L8)
-- `RulesetComposer` (class) [RulesetComposer.cs](../src/Oxce.Mods/Rulesets/RulesetComposer.cs#L8)
-- `RulesetCompositionOptions` (record) [RulesetCompositionOptions.cs](../src/Oxce.Mods/Rulesets/RulesetCompositionOptions.cs#L5)
-- `RulesetDocumentCatalog` (class) [RulesetDocumentCatalog.cs](../src/Oxce.Mods/Rulesets/RulesetDocumentCatalog.cs#L8)
-- `TypedRuleFamilyLoader<TBuilder, TRule>` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs#L6)
-- `IdOnlyTypedRuleFamilyLoader<TBuilder, TRule>` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs#L77)
-- `RuleCompatibilityData` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs#L92)
-- `TypedRule<TRule>` (record) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs#L103)
-- `TypedRuleSection<TRule>` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs#L114)
-- `TypedRuleLoadOptions` (record) [TypedRuleLoadOptions.cs](../src/Oxce.Mods/Rulesets/TypedRuleLoadOptions.cs#L5)
-- `RuleOperationKind` (enum) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs#L7)
-- `RuleOperationSource` (record) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs#L15)
-- `UnresolvedRuleOperation` (record) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs#L22)
-- `UnresolvedRule` (class) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs#L27)
-- `UnresolvedRuleSection` (class) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs#L47)
-- `UnresolvedRuleCatalog` (class) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs#L71)
+- `ContentBuildProgressStage` (enum) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs)
+- `ContentBuildProgress` (record struct) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs)
+- `ContentBuildStageMeasurement` (record struct) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs)
+- `ContentBuildMeasurements` (record) [ContentBuildMeasurements.cs](../src/Oxce.Mods/Rulesets/ContentBuildMeasurements.cs)
+- `ContentLoadStage` (enum) [ContentLoadCapabilities.cs](../src/Oxce.Mods/Rulesets/ContentLoadCapabilities.cs)
+- `ContentLoadCapabilities` (record struct) [ContentLoadCapabilities.cs](../src/Oxce.Mods/Rulesets/ContentLoadCapabilities.cs)
+- `RulePropertyReader` (class) [RulePropertyReader.cs](../src/Oxce.Mods/Rulesets/RulePropertyReader.cs)
+- `DeferredRuleProperty` (record) [RulePropertyReader.cs](../src/Oxce.Mods/Rulesets/RulePropertyReader.cs)
+- `RuleSectionDefinition` (record) [RuleSectionDefinition.cs](../src/Oxce.Mods/Rulesets/RuleSectionDefinition.cs)
+- `SpecialRuleSectionBehavior` (enum) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
+- `SpecialRuleSectionDefinition` (record) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
+- `RuleSectionRegistry` (class) [RuleSectionRegistry.cs](../src/Oxce.Mods/Rulesets/RuleSectionRegistry.cs)
+- `RulesetCatalogNormalizationOptions` (record) [RulesetCatalogNormalizationOptions.cs](../src/Oxce.Mods/Rulesets/RulesetCatalogNormalizationOptions.cs)
+- `RulesetCatalogNormalizer` (class) [RulesetCatalogNormalizer.cs](../src/Oxce.Mods/Rulesets/RulesetCatalogNormalizer.cs)
+- `RulesetComposer` (class) [RulesetComposer.cs](../src/Oxce.Mods/Rulesets/RulesetComposer.cs)
+- `RulesetCompositionOptions` (record) [RulesetCompositionOptions.cs](../src/Oxce.Mods/Rulesets/RulesetCompositionOptions.cs)
+- `RulesetDocumentCatalog` (class) [RulesetDocumentCatalog.cs](../src/Oxce.Mods/Rulesets/RulesetDocumentCatalog.cs)
+- `TypedRuleFamilyLoader<TBuilder, TRule>` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs)
+- `IdOnlyTypedRuleFamilyLoader<TBuilder, TRule>` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs)
+- `RuleCompatibilityData` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs)
+- `TypedRule<TRule>` (record) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs)
+- `TypedRuleSection<TRule>` (class) [TypedRuleFamilyLoader.cs](../src/Oxce.Mods/Rulesets/TypedRuleFamilyLoader.cs)
+- `TypedRuleLoadOptions` (record) [TypedRuleLoadOptions.cs](../src/Oxce.Mods/Rulesets/TypedRuleLoadOptions.cs)
+- `RuleOperationKind` (enum) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs)
+- `RuleOperationSource` (record) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs)
+- `UnresolvedRuleOperation` (record) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs)
+- `UnresolvedRule` (class) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs)
+- `UnresolvedRuleSection` (class) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs)
+- `UnresolvedRuleCatalog` (class) [UnresolvedRuleCatalog.cs](../src/Oxce.Mods/Rulesets/UnresolvedRuleCatalog.cs)
 
 ### `Oxce.Mods.Rulesets.CampaignStart`
 
-- `CampaignStartRuleCatalog` (class) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs#L6)
-- `CampaignStartValidationIssue` (record) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs#L194)
-- `CampaignStartValidation` (record) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs#L195)
-- `GeographicArea` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L5)
-- `CountryRule` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L7)
-- `MissionArea` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L20)
-- `MissionZone` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L31)
-- `RegionRule` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L33)
-- `FacilityItemCost` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L43)
-- `FacilityPosition` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L44)
-- `BaseFacilityRule` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs#L46)
-- `StartingBaseVariant` (enum) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs#L6)
-- `CampaignStartTime` (record) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs#L16)
-- `CampaignStartSettings` (class) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs#L18)
+- `CampaignStartRuleCatalog` (class) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs)
+- `CampaignStartValidationIssue` (record) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs)
+- `CampaignStartValidation` (record) [CampaignStartRuleCatalog.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRuleCatalog.cs)
+- `GeographicArea` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `CountryRule` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `MissionArea` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `MissionZone` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `RegionRule` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `FacilityItemCost` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `FacilityPosition` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `BaseFacilityRule` (record) [CampaignStartRules.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartRules.cs)
+- `StartingBaseVariant` (enum) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
+- `CampaignStartTime` (record) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
+- `CampaignStartSettings` (class) [CampaignStartSettings.cs](../src/Oxce.Mods/Rulesets/CampaignStart/CampaignStartSettings.cs)
 
 ### `Oxce.Mods.Rulesets.Content`
 
-- `ContentSnapshotOptions` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L20)
-- `ContentScriptScope` (enum) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L37)
-- `ContentScriptArtifact` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L45)
-- `ContentScriptEventPlan` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L54)
-- `ContentInitialScriptValue` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L56)
-- `RuntimeContent` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L66)
-- `ContentCompatibilityData` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L101)
-- `ContentAuditArtifact` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L115)
-- `ContentSnapshot` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L139)
-- `ContentSnapshotBuilder` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs#L185)
+- `ContentSnapshotOptions` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentScriptScope` (enum) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentScriptArtifact` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentScriptEventPlan` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentInitialScriptValue` (record) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `RuntimeContent` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentCompatibilityData` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentAuditArtifact` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentSnapshot` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
+- `ContentSnapshotBuilder` (class) [ContentSnapshot.cs](../src/Oxce.Mods/Rulesets/Content/ContentSnapshot.cs)
 
 ### `Oxce.Mods.Rulesets.EquipmentProduction`
 
-- `EquipmentProductionRuleCatalog` (class) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs#L7)
-- `EquipmentProductionValidationIssue` (record) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs#L268)
-- `EquipmentProductionValidation` (record) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs#L274)
-- `ItemCategoryRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L7)
-- `WeaponSetRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L9)
-- `CraftStats` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L11)
-- `UfoStats` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L16)
-- `CraftWeaponRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L18)
-- `CraftRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L29)
-- `UfoRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L61)
-- `ResearchProtectedTopics` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L85)
-- `ResearchRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L87)
-- `RandomProducedItems` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L119)
-- `ManufactureRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L121)
-- `ManufactureShortcutRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs#L145)
+- `EquipmentProductionRuleCatalog` (class) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs)
+- `EquipmentProductionValidationIssue` (record) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs)
+- `EquipmentProductionValidation` (record) [EquipmentProductionRuleCatalog.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRuleCatalog.cs)
+- `ItemCategoryRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `WeaponSetRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `CraftStats` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `UfoStats` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `CraftWeaponRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `CraftRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `UfoRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `ResearchProtectedTopics` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `ResearchRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `RandomProducedItems` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `ManufactureRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
+- `ManufactureShortcutRule` (record) [EquipmentProductionRules.cs](../src/Oxce.Mods/Rulesets/EquipmentProduction/EquipmentProductionRules.cs)
 
 ### `Oxce.Mods.Rulesets.Items`
 
-- `ItemRuleCatalog` (class) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs#L6)
-- `ItemRuleValidationIssue` (record) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs#L122)
-- `ItemRuleValidation` (record) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs#L124)
-- `ItemScalarValues` (class) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs#L6)
-- `ItemUseValues<T>` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs#L53)
-- `ItemActionRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs#L55)
-- `ItemFuseTriggerRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs#L71)
-- `ItemDamageRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs#L78)
-- `ItemRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs#L84)
+- `ItemRuleCatalog` (class) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs)
+- `ItemRuleValidationIssue` (record) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs)
+- `ItemRuleValidation` (record) [ItemRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Items/ItemRuleCatalog.cs)
+- `ItemScalarValues` (class) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
+- `ItemUseValues<T>` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
+- `ItemActionRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
+- `ItemFuseTriggerRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
+- `ItemDamageRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
+- `ItemRule` (record) [ItemRules.cs](../src/Oxce.Mods/Rulesets/Items/ItemRules.cs)
 
 ### `Oxce.Mods.Rulesets.MissionEvents`
 
-- `MissionEventRuleCatalog` (class) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs#L11)
-- `MissionEventValidationIssue` (record) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs#L128)
-- `MissionEventValidation` (record) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs#L129)
-- `TrajectoryWaypointRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L6)
-- `UfoTrajectoryRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L7)
-- `MissionWaveRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L9)
-- `WeightedTimelineEntry` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L13)
-- `AlienMissionRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L15)
-- `StrategicScriptRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L20)
-- `EventRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L28)
-- `UfopaediaPageRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L37)
-- `UfopaediaArticleRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs#L38)
+- `MissionEventRuleCatalog` (class) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs)
+- `MissionEventValidationIssue` (record) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs)
+- `MissionEventValidation` (record) [MissionEventRuleCatalog.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRuleCatalog.cs)
+- `TrajectoryWaypointRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `UfoTrajectoryRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `MissionWaveRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `WeightedTimelineEntry` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `AlienMissionRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `StrategicScriptRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `EventRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `UfopaediaPageRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
+- `UfopaediaArticleRule` (record) [MissionEventRules.cs](../src/Oxce.Mods/Rulesets/MissionEvents/MissionEventRules.cs)
 
 ### `Oxce.Mods.Rulesets.PersonnelTactical`
 
-- `PersonnelTacticalRuleCatalog` (class) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs#L8)
-- `PersonnelTacticalValidationIssue` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs#L306)
-- `PersonnelDerivedCaches` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs#L312)
-- `PersonnelTacticalValidation` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs#L316)
-- `UnitStatsRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L8)
-- `InventorySlotRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L13)
-- `InventoryRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L15)
-- `ArmorMoveCostRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L24)
-- `ArmorRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L26)
-- `SkillRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L63)
-- `SoldierRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L74)
-- `UnitRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L93)
-- `SoldierBonusRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L105)
-- `SoldierTransformationRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L110)
-- `CommendationKillCriterion` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L125)
-- `CommendationRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs#L127)
+- `PersonnelTacticalRuleCatalog` (class) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
+- `PersonnelTacticalValidationIssue` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
+- `PersonnelDerivedCaches` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
+- `PersonnelTacticalValidation` (record) [PersonnelTacticalRuleCatalog.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRuleCatalog.cs)
+- `UnitStatsRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `InventorySlotRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `InventoryRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `ArmorMoveCostRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `ArmorRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `SkillRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `SoldierRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `UnitRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `SoldierBonusRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `SoldierTransformationRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `CommendationKillCriterion` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
+- `CommendationRule` (record) [PersonnelTacticalRules.cs](../src/Oxce.Mods/Rulesets/PersonnelTactical/PersonnelTacticalRules.cs)
 
 ### `Oxce.Mods.Rulesets.Phase3`
 
-- `Phase3ContentCatalog` (class) [Phase3ContentCatalog.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentCatalog.cs#L15)
-- `ContentBuildSession` (class) [Phase3ContentCatalog.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentCatalog.cs#L169)
-- `Phase3ContentValidation` (record) [Phase3ContentCatalog.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentCatalog.cs#L192)
-- `Phase3ContentClosureIssue` (record) [Phase3ContentClosureValidator.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentClosureValidator.cs#L198)
-- `Phase3ContentClosureValidation` (record) [Phase3ContentClosureValidator.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentClosureValidator.cs#L200)
-- `Phase3ContentManifestNormalizer` (class) [Phase3ContentManifestNormalizer.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentManifestNormalizer.cs#L11)
+- `Phase3ContentCatalog` (class) [Phase3ContentCatalog.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentCatalog.cs)
+- `ContentBuildSession` (class) [Phase3ContentCatalog.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentCatalog.cs)
+- `Phase3ContentValidation` (record) [Phase3ContentCatalog.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentCatalog.cs)
+- `Phase3ContentClosureIssue` (record) [Phase3ContentClosureValidator.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentClosureValidator.cs)
+- `Phase3ContentClosureValidation` (record) [Phase3ContentClosureValidator.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentClosureValidator.cs)
+- `Phase3ContentManifestNormalizer` (class) [Phase3ContentManifestNormalizer.cs](../src/Oxce.Mods/Rulesets/Phase3/Phase3ContentManifestNormalizer.cs)
 
 ### `Oxce.Mods.Rulesets.Presentation`
 
-- `PresentationRuleCatalog` (class) [PresentationRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRuleCatalog.cs#L7)
-- `DeclaredResourceReference` (record) [PresentationRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRuleCatalog.cs#L154)
-- `PresentationResourceValidation` (record) [PresentationRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRuleCatalog.cs#L160)
-- `RuleIndexReference` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L5)
-- `InterfaceElement` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L7)
-- `InterfaceRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L18)
-- `MusicRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L28)
-- `SoundDefinitionRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L33)
-- `PaletteColor` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L38)
-- `CustomPaletteRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L40)
-- `SlideshowHeader` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L45)
-- `SlideshowSlide` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L47)
-- `VideoRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs#L59)
-- `ExtraSpriteDeclaration` (record) [PresentationSpecialRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationSpecialRules.cs#L6)
-- `ExtraSoundDeclaration` (record) [PresentationSpecialRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationSpecialRules.cs#L16)
-- `PresentationSpecialRules` (class) [PresentationSpecialRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationSpecialRules.cs#L21)
+- `PresentationRuleCatalog` (class) [PresentationRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRuleCatalog.cs)
+- `DeclaredResourceReference` (record) [PresentationRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRuleCatalog.cs)
+- `PresentationResourceValidation` (record) [PresentationRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRuleCatalog.cs)
+- `RuleIndexReference` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `InterfaceElement` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `InterfaceRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `MusicRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `SoundDefinitionRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `PaletteColor` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `CustomPaletteRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `SlideshowHeader` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `SlideshowSlide` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `VideoRule` (record) [PresentationRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationRules.cs)
+- `ExtraSpriteDeclaration` (record) [PresentationSpecialRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationSpecialRules.cs)
+- `ExtraSoundDeclaration` (record) [PresentationSpecialRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationSpecialRules.cs)
+- `PresentationSpecialRules` (class) [PresentationSpecialRules.cs](../src/Oxce.Mods/Rulesets/Presentation/PresentationSpecialRules.cs)
 
 ### `Oxce.Mods.Rulesets.Runtime`
 
-- `RuleHandle<TFamily>` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L9)
-- `RuleHandleList<TFamily>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L35)
-- `RuntimeRuleReference<TFamily>` (record) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L53)
-- `RuntimeRuleReferenceList<TFamily>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L58)
-- `RuleHandleScratch<TFamily>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L75)
-- `RuntimeRule<TProjection>` (record) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L119)
-- `RuntimeRuleFamily<TFamily, TProjection>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L126)
-- `CountryRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L195)
-- `RegionRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L196)
-- `FacilityRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L197)
-- `CraftRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L198)
-- `CraftWeaponRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L199)
-- `ItemRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L200)
-- `SoldierRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L201)
-- `ArmorRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L202)
-- `SoldierBonusRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L203)
-- `SoldierTransformationRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L204)
-- `CommendationRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L205)
-- `SkillRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L206)
-- `ResearchRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L207)
-- `ManufactureRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L208)
-- `EventRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs#L209)
-- `RuntimeCraftTemplateWeapon` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs#L6)
-- `RuntimeCraftTemplateVehicle` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs#L7)
-- `RuntimeCraftTemplate` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs#L12)
-- `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs#L8)
-- `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs#L9)
-- `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs#L6)
-- `RuntimeRuleCompatibilityEntry` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs#L6)
-- `RuntimeRuleCompatibilitySidecar` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs#L11)
-- `RuntimeRuleCatalog` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs#L19)
-- `RuntimeRuleLinkIssue` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs#L81)
-- `RuntimeRuleLinkResult` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs#L89)
-- `RuntimeRuleLinkOptions` (record) [RuntimeRuleLinker.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleLinker.cs#L16)
-- `RuntimeRuleLinker` (class) [RuntimeRuleLinker.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleLinker.cs#L29) - Compiles compatibility-facing typed rules into the dense, generation-scoped form used by gameplay.
-- `RuntimeIdentityRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L9)
-- `RuntimeResearchRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L11)
-- `RuntimeManufactureMaterial` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L38)
-- `RuntimeManufactureRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L44)
-- `RuntimePurchaseRequirements` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L63)
-- `RuntimeCountryRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L67)
-- `RuntimeRegionRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L83)
-- `RuntimeIndexedResourceReference` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L94)
-- `RuntimeFacilityItemCost` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L100)
-- `RuntimeFacilityRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L106)
-- `RuntimeCraftRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L154)
-- `RuntimeCraftWeaponRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L199)
-- `RuntimeItemRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L205)
-- `RuntimeArmorRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L228)
-- `RuntimeSoldierRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L239)
-- `RuntimeSoldierBonusRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L264)
-- `RuntimeSoldierTransformationRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L265)
-- `RuntimeCommendationRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L279)
-- `RuntimeStartingFacility` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L281)
-- `RuntimeStartingCraft` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L293)
-- `RuntimeStartingSoldier` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L298)
-- `RuntimeStartingItem` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L305)
-- `RuntimeStartingSoldierBatch` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L307)
-- `RuntimeStartingBaseTemplate` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L309)
-- `RuntimeCampaignSettings` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L323)
-- `RuntimeScriptFamily` (struct) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L358)
-- `RuntimeScriptRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs#L360)
-- `RuntimeSoldierNamePool` (record) [RuntimeSoldierNamePool.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierNamePool.cs#L9)
-- `RuntimeSoldierTemplate` (record) [RuntimeSoldierTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierTemplate.cs#L6)
+- `RuleHandle<TFamily>` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuleHandleList<TFamily>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeRuleReference<TFamily>` (record) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeRuleReferenceList<TFamily>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuleHandleScratch<TFamily>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeRule<TProjection>` (record) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeRuleFamily<TFamily, TProjection>` (class) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `CountryRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RegionRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `FacilityRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `CraftRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `CraftWeaponRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `ItemRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `SoldierRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `ArmorRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `SoldierBonusRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `SoldierTransformationRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `CommendationRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `SkillRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `ResearchRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `ManufactureRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `EventRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `RuntimeCraftTemplateWeapon` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
+- `RuntimeCraftTemplateVehicle` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
+- `RuntimeCraftTemplate` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
+- `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
+- `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
+- `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs)
+- `RuntimeRuleCompatibilityEntry` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
+- `RuntimeRuleCompatibilitySidecar` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
+- `RuntimeRuleCatalog` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
+- `RuntimeRuleLinkIssue` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
+- `RuntimeRuleLinkResult` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
+- `RuntimeRuleLinkOptions` (record) [RuntimeRuleLinker.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleLinker.cs)
+- `RuntimeRuleLinker` (class) [RuntimeRuleLinker.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleLinker.cs) - Compiles compatibility-facing typed rules into the dense, generation-scoped form used by gameplay.
+- `RuntimeIdentityRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeResearchRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeManufactureMaterial` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeManufactureRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimePurchaseRequirements` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeCountryRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeRegionRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeIndexedResourceReference` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeFacilityItemCost` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeFacilityRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeCraftRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeCraftWeaponRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeItemRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeArmorRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeSoldierRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeSoldierBonusRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeSoldierTransformationRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeCommendationRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStartingFacility` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStartingCraft` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStartingSoldier` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStartingItem` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStartingSoldierBatch` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeStartingBaseTemplate` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeCampaignSettings` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeScriptFamily` (struct) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeScriptRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeSoldierNamePool` (record) [RuntimeSoldierNamePool.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierNamePool.cs)
+- `RuntimeSoldierTemplate` (record) [RuntimeSoldierTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierTemplate.cs)
 
 ### `Oxce.Mods.Rulesets.TerrainDeployment`
 
-- `TerrainDeploymentRuleCatalog` (class) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs#L9)
-- `TerrainDeploymentValidationIssue` (record) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs#L138)
-- `TerrainDeploymentValidation` (record) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs#L139)
-- `MapBlockRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L7)
-- `TerrainRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L12)
-- `MapScriptCommandType` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L19)
-- `MapDirection` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L24)
-- `MapRectangle` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L26)
-- `MapScriptCommand` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L28)
-- `MapScriptRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L37)
-- `McdPatchEntry` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L40)
-- `McdPatchRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L44)
-- `AlienRaceRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L47)
-- `EnvironmentalConditionRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L53)
-- `EnviroEffectsRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L57)
-- `StartingConditionRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L64)
-- `AlienDeploymentRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs#L71)
+- `TerrainDeploymentRuleCatalog` (class) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
+- `TerrainDeploymentValidationIssue` (record) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
+- `TerrainDeploymentValidation` (record) [TerrainDeploymentRuleCatalog.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRuleCatalog.cs)
+- `MapBlockRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `TerrainRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `MapScriptCommandType` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `MapDirection` (enum) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `MapRectangle` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `MapScriptCommand` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `MapScriptRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `McdPatchEntry` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `McdPatchRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `AlienRaceRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `EnvironmentalConditionRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `EnviroEffectsRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `StartingConditionRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
+- `AlienDeploymentRule` (record) [TerrainDeploymentRules.cs](../src/Oxce.Mods/Rulesets/TerrainDeployment/TerrainDeploymentRules.cs)
 
 ## Oxce.Platform.Sdl
 
-`src/Oxce.Platform.Sdl` - 11 files, 1210 lines.
+`src/Oxce.Platform.Sdl` - 11 files.
 
 ### `Oxce.Platform.Sdl`
 
-- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Platform.Sdl/AssemblyMarker.cs#L9) - Marks the assembly containing SDL3 window, input, audio, and presentation code.
-- `SdlAudioPlaybackDevice` (class) [SdlAudioPlaybackDevice.cs](../src/Oxce.Platform.Sdl/SdlAudioPlaybackDevice.cs#L175)
-- `SdlException` (class) [SdlException.cs](../src/Oxce.Platform.Sdl/SdlException.cs#L3)
-- `SdlIndexedFramePresenter` (class) [SdlIndexedFramePresenter.cs](../src/Oxce.Platform.Sdl/SdlIndexedFramePresenter.cs#L7)
-- `SdlIndexedWindowHost` (class) [SdlIndexedWindowHost.cs](../src/Oxce.Platform.Sdl/SdlIndexedWindowHost.cs#L10)
-- `SdlRunDiagnostics` (record) [SdlRunDiagnostics.cs](../src/Oxce.Platform.Sdl/SdlRunDiagnostics.cs#L3)
-- `SdlRuntimeInfo` (class) [SdlRuntimeInfo.cs](../src/Oxce.Platform.Sdl/SdlRuntimeInfo.cs#L5)
-- `SdlWindowOptions` (record) [SdlWindowOptions.cs](../src/Oxce.Platform.Sdl/SdlWindowOptions.cs#L3)
+- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Platform.Sdl/AssemblyMarker.cs) - Marks the assembly containing SDL3 window, input, audio, and presentation code.
+- `SdlAudioPlaybackDevice` (class) [SdlAudioPlaybackDevice.cs](../src/Oxce.Platform.Sdl/SdlAudioPlaybackDevice.cs)
+- `SdlException` (class) [SdlException.cs](../src/Oxce.Platform.Sdl/SdlException.cs)
+- `SdlIndexedFramePresenter` (class) [SdlIndexedFramePresenter.cs](../src/Oxce.Platform.Sdl/SdlIndexedFramePresenter.cs)
+- `SdlIndexedWindowHost` (class) [SdlIndexedWindowHost.cs](../src/Oxce.Platform.Sdl/SdlIndexedWindowHost.cs)
+- `SdlRunDiagnostics` (record) [SdlRunDiagnostics.cs](../src/Oxce.Platform.Sdl/SdlRunDiagnostics.cs)
+- `SdlRuntimeInfo` (class) [SdlRuntimeInfo.cs](../src/Oxce.Platform.Sdl/SdlRuntimeInfo.cs)
+- `SdlWindowOptions` (record) [SdlWindowOptions.cs](../src/Oxce.Platform.Sdl/SdlWindowOptions.cs)
 
 ## Oxce.Rendering
 
-`src/Oxce.Rendering` - 5 files, 699 lines.
+`src/Oxce.Rendering` - 5 files.
 
 ### `Oxce.Rendering`
 
-- `IndexedFrameConverter` (class) [IndexedFrameConverter.cs](../src/Oxce.Rendering/IndexedFrameConverter.cs#L3)
-- `IndexedInterfaceFont` (class) [IndexedInterfaceFont.cs](../src/Oxce.Rendering/IndexedInterfaceFont.cs#L4) - Small asset-independent interface font.
-- `IndexedPalette` (class) [IndexedPalette.cs](../src/Oxce.Rendering/IndexedPalette.cs#L5)
-- `IndexedSpriteFont` (class) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs#L5)
-- `IndexedSpriteFontImage` (record) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs#L168)
-- `IndexedGlyph` (record struct) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs#L199)
-- `IndexedTextSize` (record struct) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs#L201)
-- `IndexedSurface` (class) [IndexedSurface.cs](../src/Oxce.Rendering/IndexedSurface.cs#L9) - Managed representation of the engine's canonical 8-bit indexed surface.
-- `IndexedPoint` (record struct) [IndexedSurface.cs](../src/Oxce.Rendering/IndexedSurface.cs#L387)
+- `IndexedFrameConverter` (class) [IndexedFrameConverter.cs](../src/Oxce.Rendering/IndexedFrameConverter.cs)
+- `IndexedInterfaceFont` (class) [IndexedInterfaceFont.cs](../src/Oxce.Rendering/IndexedInterfaceFont.cs) - Small asset-independent interface font.
+- `IndexedPalette` (class) [IndexedPalette.cs](../src/Oxce.Rendering/IndexedPalette.cs)
+- `IndexedSpriteFont` (class) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs)
+- `IndexedSpriteFontImage` (record) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs)
+- `IndexedGlyph` (record struct) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs)
+- `IndexedTextSize` (record struct) [IndexedSpriteFont.cs](../src/Oxce.Rendering/IndexedSpriteFont.cs)
+- `IndexedSurface` (class) [IndexedSurface.cs](../src/Oxce.Rendering/IndexedSurface.cs) - Managed representation of the engine's canonical 8-bit indexed surface.
+- `IndexedPoint` (record struct) [IndexedSurface.cs](../src/Oxce.Rendering/IndexedSurface.cs)
 
 ## Oxce.Resources
 
-`src/Oxce.Resources` - 1 files, 281 lines.
+`src/Oxce.Resources` - 1 files.
 
 ### `Oxce.Resources`
 
-- `ResourceCacheOptions` (record) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs#L8)
-- `ResourceDecodeResult<T>` (record struct) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs#L28)
-- `ResourceCacheTelemetry` (record struct) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs#L38)
-- `ResourcePreloadGroup` (record) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs#L47)
-- `ResourceRuntime` (class) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs#L61)
+- `ResourceCacheOptions` (record) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs)
+- `ResourceDecodeResult<T>` (record struct) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs)
+- `ResourceCacheTelemetry` (record struct) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs)
+- `ResourcePreloadGroup` (record) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs)
+- `ResourceRuntime` (class) [ResourceCache.cs](../src/Oxce.Resources/ResourceCache.cs)
 
 ## Oxce.Savegames
 
-`src/Oxce.Savegames` - 3 files, 1108 lines.
+`src/Oxce.Savegames` - 3 files.
 
 ### `Oxce.Savegames`
 
-- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Savegames/AssemblyMarker.cs#L4) - Marks the assembly containing compatible campaign and battle persistence.
+- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Savegames/AssemblyMarker.cs) - Marks the assembly containing compatible campaign and battle persistence.
 
 ### `Oxce.Savegames.Oxce`
 
-- `OxceSaveAdapter` (class) [OxceSaveAdapter.cs](../src/Oxce.Savegames/Oxce/OxceSaveAdapter.cs#L20) - Reads and writes the strategic subset of the two-document OXCE save stream.
-- `OxceSaveLoadOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs#L6)
-- `OxceSaveWriteOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs#L20)
-- `OxceSaveDocument` (class) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs#L26)
-- `LoadedOxceCampaign` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs#L40)
+- `OxceSaveAdapter` (class) [OxceSaveAdapter.cs](../src/Oxce.Savegames/Oxce/OxceSaveAdapter.cs) - Reads and writes the strategic subset of the two-document OXCE save stream.
+- `OxceSaveLoadOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
+- `OxceSaveWriteOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
+- `OxceSaveDocument` (class) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
+- `LoadedOxceCampaign` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
 
 ## Oxce.Scripting
 
-`src/Oxce.Scripting` - 25 files, 4778 lines.
+`src/Oxce.Scripting` - 25 files.
 
 ### `Oxce.Scripting`
 
-- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Scripting/AssemblyMarker.cs#L4) - Marks the assembly implementing the OXCE scripting language and VM.
-- `ScriptLimits` (class) [ScriptLimits.cs](../src/Oxce.Scripting/ScriptLimits.cs#L3)
+- `AssemblyMarker` (class) [AssemblyMarker.cs](../src/Oxce.Scripting/AssemblyMarker.cs) - Marks the assembly implementing the OXCE scripting language and VM.
+- `ScriptLimits` (class) [ScriptLimits.cs](../src/Oxce.Scripting/ScriptLimits.cs)
 
 ### `Oxce.Scripting.Api`
 
-- `ReferenceScriptApiCatalog` (class) [ReferenceScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ReferenceScriptApiCatalog.cs#L6)
-- `ScriptBindingId` (record struct) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L6)
-- `ScriptReferenceLocation` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L17)
-- `ScriptBindingParameter` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L27)
-- `ScriptBindingDeclaration` (class) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L40)
-- `ScriptConstantDeclaration` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L74)
-- `ScriptNamedValueDeclaration` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L83)
-- `ScriptParserDeclaration` (class) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L85)
-- `ScriptApiCatalog` (class) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs#L137)
+- `ReferenceScriptApiCatalog` (class) [ReferenceScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ReferenceScriptApiCatalog.cs)
+- `ScriptBindingId` (record struct) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
+- `ScriptReferenceLocation` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
+- `ScriptBindingParameter` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
+- `ScriptBindingDeclaration` (class) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
+- `ScriptConstantDeclaration` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
+- `ScriptNamedValueDeclaration` (record) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
+- `ScriptParserDeclaration` (class) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
+- `ScriptApiCatalog` (class) [ScriptApiCatalog.cs](../src/Oxce.Scripting/Api/ScriptApiCatalog.cs)
 
 ### `Oxce.Scripting.Binding`
 
-- `ScriptDeclarationCatalog` (class) [ScriptDeclarationCatalog.cs](../src/Oxce.Scripting/Binding/ScriptDeclarationCatalog.cs#L6)
-- `ScriptDeclarationCatalogBuilder` (class) [ScriptDeclarationCatalog.cs](../src/Oxce.Scripting/Binding/ScriptDeclarationCatalog.cs#L49)
-- `ScriptOperationId` (record struct) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs#L5)
-- `ScriptOperationOverload` (class) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs#L16)
-- `ScriptOverloadResolutionKind` (enum) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs#L47)
-- `ScriptArgumentClassification` (enum) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs#L54)
-- `ScriptArgumentType` (record struct) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs#L62)
-- `ScriptOverloadResolution` (record) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs#L89)
-- `ScriptOverloadResolver` (class) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs#L94)
+- `ScriptDeclarationCatalog` (class) [ScriptDeclarationCatalog.cs](../src/Oxce.Scripting/Binding/ScriptDeclarationCatalog.cs)
+- `ScriptDeclarationCatalogBuilder` (class) [ScriptDeclarationCatalog.cs](../src/Oxce.Scripting/Binding/ScriptDeclarationCatalog.cs)
+- `ScriptOperationId` (record struct) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs)
+- `ScriptOperationOverload` (class) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs)
+- `ScriptOverloadResolutionKind` (enum) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs)
+- `ScriptArgumentClassification` (enum) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs)
+- `ScriptArgumentType` (record struct) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs)
+- `ScriptOverloadResolution` (record) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs)
+- `ScriptOverloadResolver` (class) [ScriptOverloads.cs](../src/Oxce.Scripting/Binding/ScriptOverloads.cs)
 
 ### `Oxce.Scripting.Compilation`
 
-- `CoreScriptOperation` (enum) [CoreScriptOperation.cs](../src/Oxce.Scripting/Compilation/CoreScriptOperation.cs#L3)
-- `ScriptConditionKind` (enum) [CoreScriptOperation.cs](../src/Oxce.Scripting/Compilation/CoreScriptOperation.cs#L47)
-- `ScriptCompiler` (class) [ScriptCompiler.cs](../src/Oxce.Scripting/Compilation/ScriptCompiler.cs#L12)
-- `ScriptCompilerOptions` (record) [ScriptCompilerOptions.cs](../src/Oxce.Scripting/Compilation/ScriptCompilerOptions.cs#L6)
-- `ScriptParserDefinition` (class) [ScriptCompilerOptions.cs](../src/Oxce.Scripting/Compilation/ScriptCompilerOptions.cs#L13)
-- `ScriptOperandKind` (enum) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs#L8)
-- `ScriptOperand` (record struct) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs#L17)
-- `ScriptInstruction` (class) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs#L63)
-- `ScriptProgram` (class) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs#L83)
-- `ScriptRegisterDefinition` (record) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs#L228)
-- `ScriptCompileResult` (class) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs#L244)
-- `ScriptRegisterLayout` (class) [ScriptRegisterLayout.cs](../src/Oxce.Scripting/Compilation/ScriptRegisterLayout.cs#L5)
+- `CoreScriptOperation` (enum) [CoreScriptOperation.cs](../src/Oxce.Scripting/Compilation/CoreScriptOperation.cs)
+- `ScriptConditionKind` (enum) [CoreScriptOperation.cs](../src/Oxce.Scripting/Compilation/CoreScriptOperation.cs)
+- `ScriptCompiler` (class) [ScriptCompiler.cs](../src/Oxce.Scripting/Compilation/ScriptCompiler.cs)
+- `ScriptCompilerOptions` (record) [ScriptCompilerOptions.cs](../src/Oxce.Scripting/Compilation/ScriptCompilerOptions.cs)
+- `ScriptParserDefinition` (class) [ScriptCompilerOptions.cs](../src/Oxce.Scripting/Compilation/ScriptCompilerOptions.cs)
+- `ScriptOperandKind` (enum) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs)
+- `ScriptOperand` (record struct) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs)
+- `ScriptInstruction` (class) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs)
+- `ScriptProgram` (class) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs)
+- `ScriptRegisterDefinition` (record) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs)
+- `ScriptCompileResult` (class) [ScriptIntermediateRepresentation.cs](../src/Oxce.Scripting/Compilation/ScriptIntermediateRepresentation.cs)
+- `ScriptRegisterLayout` (class) [ScriptRegisterLayout.cs](../src/Oxce.Scripting/Compilation/ScriptRegisterLayout.cs)
 
 ### `Oxce.Scripting.Diagnostics`
 
-- `ScriptDiagnosticCodes` (class) [ScriptDiagnosticCodes.cs](../src/Oxce.Scripting/Diagnostics/ScriptDiagnosticCodes.cs#L3)
+- `ScriptDiagnosticCodes` (class) [ScriptDiagnosticCodes.cs](../src/Oxce.Scripting/Diagnostics/ScriptDiagnosticCodes.cs)
 
 ### `Oxce.Scripting.Events`
 
-- `ScriptEventMutationKind` (enum) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L8)
-- `ScriptEventMutation` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L18)
-- `ScriptGlobalEvent` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L29)
-- `ScriptEventPlan` (class) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L31)
-- `ScriptEventCompositionResult` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L44)
-- `ScriptEventComposer` (class) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L54)
-- `ScriptEventExecutionResult` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L168)
-- `ScriptEventRunner` (class) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L177)
-- `ScriptEventExecutionOutcome` (record struct) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs#L334)
+- `ScriptEventMutationKind` (enum) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptEventMutation` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptGlobalEvent` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptEventPlan` (class) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptEventCompositionResult` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptEventComposer` (class) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptEventExecutionResult` (record) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptEventRunner` (class) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
+- `ScriptEventExecutionOutcome` (record struct) [ScriptEvents.cs](../src/Oxce.Scripting/Events/ScriptEvents.cs)
 
 ### `Oxce.Scripting.Globals`
 
-- `ScriptTagTypeId` (record struct) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs#L6)
-- `ScriptTagTypeDefinition` (record) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs#L17)
-- `ScriptTagDefinition` (record) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs#L19)
-- `ScriptTagCatalog` (class) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs#L26)
-- `ScriptTagCatalogBuilder` (class) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs#L60)
-- `ScriptValueEntry` (record) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs#L152)
-- `ScriptValueState` (class) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs#L154)
+- `ScriptTagTypeId` (record struct) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs)
+- `ScriptTagTypeDefinition` (record) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs)
+- `ScriptTagDefinition` (record) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs)
+- `ScriptTagCatalog` (class) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs)
+- `ScriptTagCatalogBuilder` (class) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs)
+- `ScriptValueEntry` (record) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs)
+- `ScriptValueState` (class) [ScriptTags.cs](../src/Oxce.Scripting/Globals/ScriptTags.cs)
 
 ### `Oxce.Scripting.Lexing`
 
-- `ScriptIntegerLiteral` (class) [ScriptIntegerLiteral.cs](../src/Oxce.Scripting/Lexing/ScriptIntegerLiteral.cs#L5)
-- `ScriptLexer` (class) [ScriptLexer.cs](../src/Oxce.Scripting/Lexing/ScriptLexer.cs#L7)
-- `ScriptTokenKind` (enum) [ScriptToken.cs](../src/Oxce.Scripting/Lexing/ScriptToken.cs#L5)
-- `ScriptToken` (record) [ScriptToken.cs](../src/Oxce.Scripting/Lexing/ScriptToken.cs#L16)
-- `ScriptLexResult` (class) [ScriptToken.cs](../src/Oxce.Scripting/Lexing/ScriptToken.cs#L23)
+- `ScriptIntegerLiteral` (class) [ScriptIntegerLiteral.cs](../src/Oxce.Scripting/Lexing/ScriptIntegerLiteral.cs)
+- `ScriptLexer` (class) [ScriptLexer.cs](../src/Oxce.Scripting/Lexing/ScriptLexer.cs)
+- `ScriptTokenKind` (enum) [ScriptToken.cs](../src/Oxce.Scripting/Lexing/ScriptToken.cs)
+- `ScriptToken` (record) [ScriptToken.cs](../src/Oxce.Scripting/Lexing/ScriptToken.cs)
+- `ScriptLexResult` (class) [ScriptToken.cs](../src/Oxce.Scripting/Lexing/ScriptToken.cs)
 
 ### `Oxce.Scripting.Runtime`
 
-- `ScriptRuntimeValueKind` (enum) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs#L6)
-- `ScriptRuntimeValue` (struct) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs#L13)
-- `ScriptExecutionOutcome` (record struct) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs#L45)
-- `ScriptTraceValue` (record struct) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs#L55)
-- `IScriptTraceSink` (interface) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs#L63)
-- `ScriptExecutionFrame` (class) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs#L68)
-- `ScriptBindingResult` (record struct) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs#L5)
-- `ScriptBindingHandler` (delegate) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs#L23)
-- `ScriptContextBindingHandler` (delegate) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs#L25)
-- `ScriptBindingContext` (struct) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs#L29)
-- `ScriptHostBindings` (class) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs#L67)
-- `ScriptHostBindingsBuilder` (class) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs#L83)
-- `ScriptExecutionOptions` (record) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs#L8)
-- `ScriptExecutionStatus` (enum) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs#L29)
-- `ScriptTraceEntry` (record) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs#L38)
-- `ScriptExecutionResult` (class) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs#L46)
-- `ScriptVm` (class) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs#L76)
-- `ScriptVm` (class) [ScriptVmCore.cs](../src/Oxce.Scripting/Runtime/ScriptVmCore.cs#L9)
+- `ScriptRuntimeValueKind` (enum) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs)
+- `ScriptRuntimeValue` (struct) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs)
+- `ScriptExecutionOutcome` (record struct) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs)
+- `ScriptTraceValue` (record struct) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs)
+- `IScriptTraceSink` (interface) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs)
+- `ScriptExecutionFrame` (class) [ScriptExecutionFrame.cs](../src/Oxce.Scripting/Runtime/ScriptExecutionFrame.cs)
+- `ScriptBindingResult` (record struct) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs)
+- `ScriptBindingHandler` (delegate) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs)
+- `ScriptContextBindingHandler` (delegate) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs)
+- `ScriptBindingContext` (struct) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs)
+- `ScriptHostBindings` (class) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs)
+- `ScriptHostBindingsBuilder` (class) [ScriptHostBindings.cs](../src/Oxce.Scripting/Runtime/ScriptHostBindings.cs)
+- `ScriptExecutionOptions` (record) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs)
+- `ScriptExecutionStatus` (enum) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs)
+- `ScriptTraceEntry` (record) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs)
+- `ScriptExecutionResult` (class) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs)
+- `ScriptVm` (class) [ScriptVm.cs](../src/Oxce.Scripting/Runtime/ScriptVm.cs)
+- `ScriptVm` (class) [ScriptVmCore.cs](../src/Oxce.Scripting/Runtime/ScriptVmCore.cs)
 
 ### `Oxce.Scripting.Symbols`
 
-- `ScriptSymbolKind` (enum) [ScriptSymbols.cs](../src/Oxce.Scripting/Symbols/ScriptSymbols.cs#L5)
-- `ScriptSymbol` (record) [ScriptSymbols.cs](../src/Oxce.Scripting/Symbols/ScriptSymbols.cs#L13)
-- `ScriptSymbolTable` (class) [ScriptSymbols.cs](../src/Oxce.Scripting/Symbols/ScriptSymbols.cs#L39)
+- `ScriptSymbolKind` (enum) [ScriptSymbols.cs](../src/Oxce.Scripting/Symbols/ScriptSymbols.cs)
+- `ScriptSymbol` (record) [ScriptSymbols.cs](../src/Oxce.Scripting/Symbols/ScriptSymbols.cs)
+- `ScriptSymbolTable` (class) [ScriptSymbols.cs](../src/Oxce.Scripting/Symbols/ScriptSymbols.cs)
 
 ### `Oxce.Scripting.Syntax`
 
-- `ScriptStatementSyntax` (class) [ScriptSyntax.cs](../src/Oxce.Scripting/Syntax/ScriptSyntax.cs#L6)
-- `ScriptSyntaxTree` (class) [ScriptSyntax.cs](../src/Oxce.Scripting/Syntax/ScriptSyntax.cs#L29)
-- `ScriptSyntaxParser` (class) [ScriptSyntaxParser.cs](../src/Oxce.Scripting/Syntax/ScriptSyntaxParser.cs#L7)
+- `ScriptStatementSyntax` (class) [ScriptSyntax.cs](../src/Oxce.Scripting/Syntax/ScriptSyntax.cs)
+- `ScriptSyntaxTree` (class) [ScriptSyntax.cs](../src/Oxce.Scripting/Syntax/ScriptSyntax.cs)
+- `ScriptSyntaxParser` (class) [ScriptSyntaxParser.cs](../src/Oxce.Scripting/Syntax/ScriptSyntaxParser.cs)
 
 ### `Oxce.Scripting.Types`
 
-- `ScriptTypeId` (record struct) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs#L3)
-- `ScriptPrimitiveTypes` (class) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs#L10)
-- `ScriptTypeModifier` (enum) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs#L22)
-- `ScriptTypeRef` (record struct) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs#L31)
-- `ScriptTypeDefinition` (record) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs#L72)
+- `ScriptTypeId` (record struct) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs)
+- `ScriptPrimitiveTypes` (class) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs)
+- `ScriptTypeModifier` (enum) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs)
+- `ScriptTypeRef` (record struct) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs)
+- `ScriptTypeDefinition` (record) [ScriptTypes.cs](../src/Oxce.Scripting/Types/ScriptTypes.cs)
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 67 files, 6697 lines.
+`tests/Oxce.CompatibilityTests` - 67 files.
 
 ### `Oxce.CompatibilityTests`
 
-- `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs#L8)
+- `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
 <details><summary>66 test classes</summary>
 
@@ -998,16 +999,16 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.TestExtension
 
-`tests/Oxce.TestExtension` - 1 files, 87 lines.
+`tests/Oxce.TestExtension` - 1 files.
 
 ### `Oxce.TestExtension`
 
-- `ProbeExtension` (class) [ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs#L5)
-- `ThrowOnEventExtension` (class) [ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs#L67)
+- `ProbeExtension` (class) [ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
+- `ThrowOnEventExtension` (class) [ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 74 files, 10207 lines.
+`tests/Oxce.UnitTests` - 74 files.
 
 <details><summary>74 test classes</summary>
 
@@ -1090,35 +1091,35 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.FixtureSupport
 
-`tools/Oxce.FixtureSupport` - 6 files, 425 lines.
+`tools/Oxce.FixtureSupport` - 6 files.
 
 ### `Oxce.FixtureSupport`
 
-- `CanonicalJson` (class) [CanonicalJson.cs](../tools/Oxce.FixtureSupport/CanonicalJson.cs#L7)
-- `FileDigest` (record) [FileDigest.cs](../tools/Oxce.FixtureSupport/FileDigest.cs#L5)
-- `FixtureFile` (class) [FixtureFile.cs](../tools/Oxce.FixtureSupport/FixtureFile.cs#L3)
-- `FixtureManifest` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs#L7)
-- `ReferenceMetadata` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs#L24)
-- `FixtureInput` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs#L36)
-- `FixtureManifestLoader` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs#L45)
-- `FixtureManifestVerifier` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs#L154)
-- `FixturePaths` (class) [FixturePaths.cs](../tools/Oxce.FixtureSupport/FixturePaths.cs#L3)
-- `TemporaryModFixture` (class) [TemporaryModFixture.cs](../tools/Oxce.FixtureSupport/TemporaryModFixture.cs#L3)
+- `CanonicalJson` (class) [CanonicalJson.cs](../tools/Oxce.FixtureSupport/CanonicalJson.cs)
+- `FileDigest` (record) [FileDigest.cs](../tools/Oxce.FixtureSupport/FileDigest.cs)
+- `FixtureFile` (class) [FixtureFile.cs](../tools/Oxce.FixtureSupport/FixtureFile.cs)
+- `FixtureManifest` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs)
+- `ReferenceMetadata` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs)
+- `FixtureInput` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs)
+- `FixtureManifestLoader` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs)
+- `FixtureManifestVerifier` (class) [FixtureManifest.cs](../tools/Oxce.FixtureSupport/FixtureManifest.cs)
+- `FixturePaths` (class) [FixturePaths.cs](../tools/Oxce.FixtureSupport/FixturePaths.cs)
+- `TemporaryModFixture` (class) [TemporaryModFixture.cs](../tools/Oxce.FixtureSupport/TemporaryModFixture.cs)
 
 ## Oxce.FixtureTool
 
-`tools/Oxce.FixtureTool` - 1 files, 602 lines. No public API; top-level types:
+`tools/Oxce.FixtureTool` - 1 files. No public API; top-level types:
 
-- `FixtureTool` (internal class) [Program.cs](../tools/Oxce.FixtureTool/Program.cs#L19)
+- `FixtureTool` (internal class) [Program.cs](../tools/Oxce.FixtureTool/Program.cs)
 
 ## Oxce.ResourceBrowser
 
-`tools/Oxce.ResourceBrowser` - 2 files, 284 lines.
+`tools/Oxce.ResourceBrowser` - 2 files.
 
 ### `Oxce.ResourceBrowser`
 
-- `ResourcePreviewBuilder` (class) [ResourcePreviewBuilder.cs](../tools/Oxce.ResourceBrowser/ResourcePreviewBuilder.cs#L10)
-- `ResourcePreview` (record) [ResourcePreviewBuilder.cs](../tools/Oxce.ResourceBrowser/ResourcePreviewBuilder.cs#L133)
+- `ResourcePreviewBuilder` (class) [ResourcePreviewBuilder.cs](../tools/Oxce.ResourceBrowser/ResourcePreviewBuilder.cs)
+- `ResourcePreview` (record) [ResourcePreviewBuilder.cs](../tools/Oxce.ResourceBrowser/ResourcePreviewBuilder.cs)
 
 ## Test helpers
 
@@ -1127,44 +1128,44 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 
 ### [tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
-- `StrategicReadinessTestContent` (class, line 8)
+- `StrategicReadinessTestContent` (class)
 - members: `Load`
 
 ### [tests/Oxce.TestExtension/ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 
-- `ProbeExtension` (class, line 5)
-- `ThrowOnEventExtension` (class, line 67)
+- `ProbeExtension` (class)
+- `ThrowOnEventExtension` (class)
 - members: `Initialize`, `Shutdown`, `Attach`, `OnEvent`, `Detach`, `CaptureState`, `RestoreState`, `Initialize`, `Shutdown`, `Attach`, `OnEvent`, `Detach`
 
 ### [tests/Shared/TestFixtures.cs](../tests/Shared/TestFixtures.cs) - linked into Oxce.CompatibilityTests, Oxce.UnitTests
 
-- `TestFixtures` (class, line 16)
-- `TestFixtures.FixedClock` (class, line 116)
+- `TestFixtures` (class)
+- `TestFixtures.FixedClock` (class)
 - members: `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `ReadExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `CopyDirectory`, `Instance`, `UtcNow`
 
 ### Helpers nested in test classes
 
-- `CampaignFoundationFixtureTests.FixedClock` (private class) [CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs#L54)
-- `FlcFixtureTests.CaptureSink` (private class) [FlcFixtureTests.cs](../tests/Oxce.CompatibilityTests/FlcFixtureTests.cs#L35)
-- `Phase3ContentCorpusTests.CorpusOutcome` (private record) [Phase3ContentCorpusTests.cs](../tests/Oxce.CompatibilityTests/Phase3ContentCorpusTests.cs#L206)
-- `StartingPersonnelFixtureTests.FixedClock` (private class) [StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs#L102)
-- `StartingPersonnelFixtureTests.Installation` (private class) [StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs#L107)
-- `StrategicLogisticsFixtureTests.MinimumRandom` (private class) [StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs#L68)
-- `StrategicReadinessFixtureTests.ChoiceRandom` (private class) [StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs#L572)
-- `StrategicTimeFixtureTests.Effects` (private class) [StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs#L25)
-- `TypedRuleReplayFixtureTests.ProbeLoader` (private class) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs#L64)
-- `TypedRuleReplayFixtureTests.ProbeBuilder` (private class) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs#L104)
-- `TypedRuleReplayFixtureTests.ProbeRule` (private record) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs#L119)
-- `VirtualFileCatalogFixtureTests.FixtureRow` (private record) [VirtualFileCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/VirtualFileCatalogFixtureTests.cs#L88)
-- `ContentSnapshotTests.TemporaryArchiveMod` (private class) [ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs#L237)
-- `InstallationContentLoaderTests.ProgressCollector` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L398)
-- `InstallationContentLoaderTests.CancellingProgress` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L407)
-- `InstallationContentLoaderTests.TemporaryInstallation` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L417)
-- `ModDiscoveryTests.TemporaryModDirectory` (private class) [ModDiscoveryTests.cs](../tests/Oxce.UnitTests/Mods/ModDiscoveryTests.cs#L303)
-- `ResourceDescriptorResolverTests.ResourceModFixture` (private class) [ResourceDescriptorResolverTests.cs](../tests/Oxce.UnitTests/Mods/ResourceDescriptorResolverTests.cs#L118)
-- `TypedRuleFamilyLoaderTests.ProbeBuilder` (private class) [TypedRuleFamilyLoaderTests.cs](../tests/Oxce.UnitTests/Mods/TypedRuleFamilyLoaderTests.cs#L198)
-- `VirtualFileCatalogTests.TemporaryDirectory` (private class) [VirtualFileCatalogTests.cs](../tests/Oxce.UnitTests/Mods/VirtualFileCatalogTests.cs#L159)
-- `ResourceRuntimeTests.ResourceFixture` (private class) [ResourceRuntimeTests.cs](../tests/Oxce.UnitTests/Resources/ResourceRuntimeTests.cs#L136)
+- `CampaignFoundationFixtureTests.FixedClock` (private class) [CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs)
+- `FlcFixtureTests.CaptureSink` (private class) [FlcFixtureTests.cs](../tests/Oxce.CompatibilityTests/FlcFixtureTests.cs)
+- `Phase3ContentCorpusTests.CorpusOutcome` (private record) [Phase3ContentCorpusTests.cs](../tests/Oxce.CompatibilityTests/Phase3ContentCorpusTests.cs)
+- `StartingPersonnelFixtureTests.FixedClock` (private class) [StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs)
+- `StartingPersonnelFixtureTests.Installation` (private class) [StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs)
+- `StrategicLogisticsFixtureTests.MinimumRandom` (private class) [StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs)
+- `StrategicReadinessFixtureTests.ChoiceRandom` (private class) [StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)
+- `StrategicTimeFixtureTests.Effects` (private class) [StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs)
+- `TypedRuleReplayFixtureTests.ProbeLoader` (private class) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)
+- `TypedRuleReplayFixtureTests.ProbeBuilder` (private class) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)
+- `TypedRuleReplayFixtureTests.ProbeRule` (private record) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)
+- `VirtualFileCatalogFixtureTests.FixtureRow` (private record) [VirtualFileCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/VirtualFileCatalogFixtureTests.cs)
+- `ContentSnapshotTests.TemporaryArchiveMod` (private class) [ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs)
+- `InstallationContentLoaderTests.ProgressCollector` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)
+- `InstallationContentLoaderTests.CancellingProgress` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)
+- `InstallationContentLoaderTests.TemporaryInstallation` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs)
+- `ModDiscoveryTests.TemporaryModDirectory` (private class) [ModDiscoveryTests.cs](../tests/Oxce.UnitTests/Mods/ModDiscoveryTests.cs)
+- `ResourceDescriptorResolverTests.ResourceModFixture` (private class) [ResourceDescriptorResolverTests.cs](../tests/Oxce.UnitTests/Mods/ResourceDescriptorResolverTests.cs)
+- `TypedRuleFamilyLoaderTests.ProbeBuilder` (private class) [TypedRuleFamilyLoaderTests.cs](../tests/Oxce.UnitTests/Mods/TypedRuleFamilyLoaderTests.cs)
+- `VirtualFileCatalogTests.TemporaryDirectory` (private class) [VirtualFileCatalogTests.cs](../tests/Oxce.UnitTests/Mods/VirtualFileCatalogTests.cs)
+- `ResourceRuntimeTests.ResourceFixture` (private class) [ResourceRuntimeTests.cs](../tests/Oxce.UnitTests/Resources/ResourceRuntimeTests.cs)
 
 ## Fixture manifests
 
