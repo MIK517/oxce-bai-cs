@@ -1,11 +1,10 @@
 using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -20,7 +19,7 @@ public sealed class RuntimeRuleLinkerTests
     public void StartingPersonnelProjectionPreservesIntCountsAndZeroDefaults(string yaml, int scientists, int engineers)
     {
         using var fixture = new TemporaryModFixture(yaml);
-        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root, "fixture", ["fixture"]));
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
         Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
         var template = Assert.Single(snapshot.Content.RuntimeRules.Campaign.StartingBases);
         Assert.Equal(scientists, template.Scientists);
@@ -30,7 +29,7 @@ public sealed class RuntimeRuleLinkerTests
     [Fact]
     public void StrategicRulesUseDenseGenerationScopedHandlesAndLinkedRelationships()
     {
-        var plan = CreateFixturePlan();
+        var plan = TestFixtures.CreateRuntimeRuleLinkingPlan();
         var first = ContentSnapshotBuilder.Build(plan);
         var second = ContentSnapshotBuilder.Build(plan);
         var rules = first.Content.RuntimeRules;
@@ -73,7 +72,7 @@ public sealed class RuntimeRuleLinkerTests
     [Fact]
     public void StartingBaseReferencesAreProjectedWithoutRuntimeStringLookup()
     {
-        var snapshot = ContentSnapshotBuilder.Build(CreateFixturePlan());
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreateRuntimeRuleLinkingPlan());
         var rules = snapshot.Content.RuntimeRules;
         var template = Assert.Single(rules.Campaign.StartingBases);
 
@@ -93,7 +92,7 @@ public sealed class RuntimeRuleLinkerTests
     {
         using var fixture = new TemporaryModFixture("crafts: [{type: CRAFT, refuelItem: MISSING}]");
 
-        var snapshot = ContentSnapshotBuilder.Build(CreatePlan(fixture.Root, "fixture", ["fixture"]));
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.False(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked));
         Assert.Contains(snapshot.Diagnostics, diagnostic =>
@@ -106,7 +105,7 @@ public sealed class RuntimeRuleLinkerTests
     public void EagerAndRuntimeResearchReferencesKeepReferenceTiming()
     {
         using var runtimeFixture = new TemporaryModFixture("crafts: [{type: CRAFT, requires: [MISSING]}]");
-        var runtime = ContentSnapshotBuilder.Build(CreatePlan(runtimeFixture.Root, "fixture", ["fixture"]));
+        var runtime = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(runtimeFixture.Root));
 
         Assert.True(runtime.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(runtime));
         var requirement = Assert.Single(runtime.Content.RuntimeRules.Crafts[
@@ -115,7 +114,7 @@ public sealed class RuntimeRuleLinkerTests
         Assert.False(requirement.IsResolved);
 
         using var eagerFixture = new TemporaryModFixture("items: [{type: ITEM, requires: [MISSING]}]");
-        var eager = ContentSnapshotBuilder.Build(CreatePlan(eagerFixture.Root, "fixture", ["fixture"]));
+        var eager = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(eagerFixture.Root));
 
         Assert.False(eager.Capabilities.Has(ContentLoadStage.RuntimeLinked));
         Assert.Contains(eager.Diagnostics, diagnostic =>
@@ -125,9 +124,50 @@ public sealed class RuntimeRuleLinkerTests
     }
 
     [Fact]
+    public void ResearchProjectionAppliesImplicitItemAndSelfLookupDefaults()
+    {
+        const string yaml = """
+            items: [{type: RESEARCH}]
+            research:
+              - name: RESEARCH
+                needItem: true
+                lookup: RESEARCH
+            """;
+        using var fixture = new TemporaryModFixture(yaml);
+
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var rule = snapshot.Content.RuntimeRules.Research[
+            snapshot.Content.RuntimeRules.Research.GetRequired("RESEARCH")].Value;
+        Assert.Equal(string.Empty, rule.Lookup);
+        Assert.Equal("RESEARCH", rule.NeededItem);
+    }
+
+    [Fact]
+    public void ResearchProjectionTreatsEmptyNeededItemAsImplicit()
+    {
+        const string yaml = """
+            items: [{type: RESEARCH}]
+            research:
+              - name: RESEARCH
+                needItem: true
+                neededItem: ""
+            """;
+        using var fixture = new TemporaryModFixture(yaml);
+
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var rule = snapshot.Content.RuntimeRules.Research[
+            snapshot.Content.RuntimeRules.Research.GetRequired("RESEARCH")].Value;
+        Assert.Equal("RESEARCH", rule.NeededItem);
+    }
+
+    [Fact]
     public void ScratchBufferCanBeReusedWithoutPublishingMutableStorage()
     {
-        var rules = ContentSnapshotBuilder.Build(CreateFixturePlan()).Content.RuntimeRules;
+        var rules = ContentSnapshotBuilder.Build(TestFixtures.CreateRuntimeRuleLinkingPlan()).Content.RuntimeRules;
         var country = rules.Countries.GetRequired("COUNTRY");
         using var scratch = new RuleHandleScratch<CountryRuleFamily>(1);
 
@@ -140,28 +180,7 @@ public sealed class RuntimeRuleLinkerTests
         Assert.Empty(scratch.AsSpan().ToArray());
     }
 
-    private static ModLoadPlan CreateFixturePlan()
-    {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        return CreatePlan(
-            Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking"),
-            "runtime-master",
-            ["runtime-master", "runtime-addon"]);
-    }
-
-    private static ModLoadPlan CreatePlan(string root, string master, IReadOnlyList<string> mods)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        return ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
-            mods.Select(static id => new ModActivation(id, true)).ToArray(),
-            master,
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
     private static string Diagnostics(ContentSnapshot snapshot) => string.Join(
         Environment.NewLine,
         snapshot.Diagnostics.Select(static diagnostic => diagnostic.Message));
-
-
 }

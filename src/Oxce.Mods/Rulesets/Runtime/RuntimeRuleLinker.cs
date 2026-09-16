@@ -56,6 +56,7 @@ public static class RuntimeRuleLinker
         var armorHandles = Handles<ArmorRuleFamily, ArmorRule>(generation, content.PersonnelTactical.Armors);
         var skillHandles = Handles<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills);
         var researchHandles = Handles<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research);
+        var manufactureHandles = Handles<ManufactureRuleFamily, ManufactureRule>(generation, content.EquipmentProduction.Manufacture);
         var eventHandles = Handles<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events);
         var scriptBuild = BuildScripts(generation, scripts, cancellationToken);
 
@@ -301,12 +302,50 @@ public static class RuntimeRuleLinker
             BuildFamily<CommendationRuleFamily, CommendationRule, RuntimeCommendationRule>(generation,
                 content.PersonnelTactical.Commendations, rule => new(rule.Value.SoldierBonusTypes)),
             IdentityFamily<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills),
-            IdentityFamily<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research),
+            BuildFamily<ResearchRuleFamily, ResearchRule, RuntimeResearchRule>(generation,
+                content.EquipmentProduction.Research, rule => new(
+                    rule.Value.EffectiveLookup(rule.Id), rule.Value.SpawnedItem, rule.Value.SpawnedItemCount,
+                    rule.Value.SpawnedItemList, rule.Value.DecreaseCounters,
+                    rule.Value.IncreaseCounters, rule.Value.SpawnedEvent,
+                    rule.Value.Cost, rule.Value.Points, rule.Value.Dependencies, rule.Value.Unlocks,
+                    rule.Value.Disables, rule.Value.Reenables, rule.Value.GetOneFree,
+                    rule.Value.SequentialGetOneFree,
+                    rule.Value.GetOneFreeProtected, rule.Value.Requirements,
+                    rule.Value.RequiredBaseFunctions,
+                    // RuleResearch::afterLoad treats an empty neededItem like a missing one.
+                    rule.Value.NeededItem is { Length: > 0 } neededItem ? neededItem
+                        : rule.Value.NeedItem && itemHandles.ContainsKey(rule.Id) ? rule.Id : null,
+                    rule.Value.NeedItem,
+                    rule.Value.DestroyItem, rule.Value.ReturnsItem, rule.Value.Repeatable,
+                    rule.Value.ListOrder, rule.Value.Events)),
+            BuildFamily<ManufactureRuleFamily, ManufactureRule, RuntimeManufactureRule>(generation,
+                content.EquipmentProduction.Manufacture, rule => new(
+                    rule.Value.Category, rule.Value.Requirements, rule.Value.RequiredBaseFunctions,
+                    rule.Value.Space, rule.Value.Time, rule.Value.Cost, rule.Value.Points,
+                    rule.Value.Refund,
+                    Array.AsReadOnly(rule.Value.RequiredItems.Select(pair => RequiredMaterial(pair.Key, pair.Value)).ToArray()),
+                    Array.AsReadOnly(rule.Value.EffectiveProducedItems().Select(pair => ProducedMaterial(
+                            pair.Key, pair.Value, rule.Value.Category == "STR_CRAFT")).ToArray()),
+                    rule.Value.RandomProducedItems, rule.Value.SpawnedPersonType,
+                    rule.Value.SpawnedPersonName,
+                    RuntimeSoldierTemplateLoader.Read(rule.Value.SpawnedSoldierTemplate),
+                    rule.Value.TransferTimes, rule.Value.ListOrder,
+                    rule.Value.Events)),
             IdentityFamily<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events),
             scriptBuild.Family,
             settings);
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
+
+        RuntimeManufactureMaterial RequiredMaterial(string id, int quantity)
+        {
+            var item = OptionalRuntime(itemHandles, id);
+            return new(id, quantity, item, item is null ? OptionalRuntime(craftHandles, id) : null);
+        }
+
+        RuntimeManufactureMaterial ProducedMaterial(string id, int quantity, bool craft) => craft
+            ? new(id, quantity, null, OptionalRuntime(craftHandles, id))
+            : new(id, quantity, OptionalRuntime(itemHandles, id), null);
 
         RuntimeCampaignSettings BuildCampaignSettings(CampaignStartSettings source)
         {

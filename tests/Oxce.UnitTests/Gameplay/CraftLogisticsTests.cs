@@ -1,6 +1,7 @@
 using Oxce.Gameplay.Campaigns;
 using Oxce.Core.Random;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Gameplay;
@@ -25,8 +26,7 @@ public sealed class CraftLogisticsTests
         Assert.Equal<string>(["INTERCEPTOR", "CARRIER", "CARRIER", ""], baseState.Soldiers.Select(s => s.Personal!.CraftType));
         Assert.All(baseState.Soldiers, soldier => Assert.Equal(
             new SoldierCommendation("STR_MEDAL_ORIGINAL8_NAME", "NoNoun", 0), Assert.Single(soldier.Personal!.Commendations)));
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(snapshot), "starting.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot), content, seed: 0, name: "starting.sav");
         Assert.Equivalent(snapshot, loaded.Campaign.Capture(), strict: true);
     }
 

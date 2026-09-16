@@ -27,6 +27,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private ScriptValueState? _scriptValues;
     private IReadOnlyList<CampaignRestriction> _restrictions = [];
     private HashSet<string> _completedResearch = new(StringComparer.Ordinal);
+    private Dictionary<string, int> _researchRuleStatus = new(StringComparer.Ordinal);
+    private Dictionary<string, int> _manufactureRuleStatus = new(StringComparer.Ordinal);
     private Dictionary<string, int> _monthlyPurchaseLog = new(StringComparer.Ordinal);
     private bool _debugMode;
 
@@ -100,6 +102,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 EquipCraftWeapon weapon => EquipWeapon(weapon),
                 ChangeCraftVehicle vehicle => ChangeVehicle(vehicle),
                 TransformCampaignSoldier transformation => TransformSoldier(transformation),
+                ConfigureResearchProject research => ConfigureResearch(research),
+                ConfigureProductionProject production => ConfigureProduction(production),
                 PrepareLogisticsQuote quote => QuoteLogistics(quote),
                 SubmitLogisticsOrder order => SubmitLogistics(order),
                 _ => throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
@@ -175,6 +179,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     {
         Restrictions = CampaignSnapshot.ReadOnly(_restrictions),
         CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
+        ResearchRuleStatus = CampaignSnapshot.ReadOnlyIds(_researchRuleStatus),
+        ManufactureRuleStatus = CampaignSnapshot.ReadOnlyIds(_manufactureRuleStatus),
         MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog),
         DebugMode = _debugMode,
         Options = Options,
@@ -250,6 +256,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             {
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
                 _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal),
+                _researchRuleStatus = new Dictionary<string, int>(snapshot.ResearchRuleStatus, StringComparer.Ordinal),
+                _manufactureRuleStatus = new Dictionary<string, int>(snapshot.ManufactureRuleStatus, StringComparer.Ordinal),
                 _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal),
                 _debugMode = snapshot.DebugMode,
                 Options = snapshot.Options,
@@ -304,6 +312,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 return "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.";
             if (highestTrigger >= CampaignTimeTrigger.ThirtyMinutes && campaign.PreflightServicing() is { } serviceReason)
                 return serviceReason;
+            if (campaign.PreflightResearchProduction(highestTrigger) is { } economyReason)
+                return economyReason;
             return highestTrigger >= CampaignTimeTrigger.OneHour ? campaign.PreflightTransfers() : null;
         }
 
@@ -324,6 +334,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             {
                 campaign.ServiceCraftsHourly(this);
                 campaign.AdvanceTransfers(this);
+                campaign.AdvanceProductionHourly(this);
             }
             if (trigger == CampaignTimeTrigger.ThirtyMinutes) campaign.RefuelCrafts(this);
             return Events is not null;
@@ -423,6 +434,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     {
         Transfers = CampaignSnapshot.ReadOnly(state.Transfers),
         FakeUnderwater = state.FakeUnderwater,
+        Research = CampaignSnapshot.ReadOnly(state.Research.Select(project => new ResearchProjectSnapshot(
+            _content.RuntimeRules.Research.GetExternalId(project.Rule), project.Assigned, project.Spent, project.Cost))),
+        Productions = CampaignSnapshot.ReadOnly(state.Productions.Select(production => new ProductionSnapshot(
+            _content.RuntimeRules.Manufacture.GetExternalId(production.Rule), production.Assigned,
+            production.Spent, production.Amount, production.Infinite, production.Sell, production.IsFallback,
+            new ReadOnlyDictionary<string, int>(new Dictionary<string, int>(production.RandomProductionInfo, StringComparer.Ordinal))))),
     };
 
     private CampaignBaseOverview QueryBase(BaseState state) => new(
@@ -465,6 +482,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         }
         var result = new BaseState(source.Id, source.Name, source.Longitude, source.Latitude, facilities, crafts,
             soldiers, items, source.Scientists, source.Engineers);
+        result.Research.AddRange(source.Research.Select(project => new ResearchProjectState(
+            rules.Research.GetRequired(project.RuleId), project.Assigned, project.Spent, project.Cost)));
+        result.Productions.AddRange(source.Productions.Select(production => new ProductionState(
+            rules.Manufacture.GetRequired(production.RuleId), production.Assigned, production.Spent,
+            production.Amount, production.Infinite, production.Sell, production.IsFallback,
+            new Dictionary<string, int>(production.RandomProductionInfo, StringComparer.Ordinal))));
         result.FakeUnderwater = source.FakeUnderwater;
         foreach (var transfer in source.Transfers)
         {
@@ -509,6 +532,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         if (state.Scientists < 0 || state.Engineers < 0)
             throw new InvalidDataException("Base personnel counts cannot be negative.");
         var usedQuarters = state.Soldiers.Count + (long)state.Scientists + state.Engineers;
+        usedQuarters += state.Research.Sum(project => (long)project.Assigned);
+        usedQuarters += state.Productions.Sum(project => (long)project.Assigned);
         var incomingItems = new Dictionary<RuleHandle<ItemRuleFamily>, long>();
         foreach (var transfer in state.Transfers.Where(transfer => !transfer.Delivered))
         {
@@ -533,6 +558,27 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             if (contained > int.MaxValue)
                 throw new InvalidDataException($"Alien containment usage for prison type {prisonType} exceeds the supported range.");
         }
+        foreach (var project in state.Research)
+        {
+            rules.Research.Validate(project.Rule);
+            if (project.Assigned < 0 || project.Spent < 0 || project.Cost < 0)
+                throw new InvalidDataException("Research project values cannot be negative.");
+        }
+        foreach (var production in state.Productions)
+        {
+            rules.Manufacture.Validate(production.Rule);
+            if (production.Assigned < 0 || production.Spent < 0 || production.Amount < 0 ||
+                production.RandomProductionInfo.Any(pair => pair.Key.Length == 0 || pair.Value < 0))
+                throw new InvalidDataException("Production values cannot be negative.");
+        }
+        if (state.Research.DistinctBy(project => project.Rule).Count() != state.Research.Count)
+            throw new InvalidDataException("A base cannot contain duplicate research projects.");
+        if (state.Productions.DistinctBy(production => production.Rule).Count() != state.Productions.Count)
+            throw new InvalidDataException("A base cannot contain duplicate production projects.");
+        if (UsedLaboratories(state) > AvailableLaboratories(state, rules))
+            throw new InvalidDataException("Assigned scientists exceed laboratory capacity.");
+        if (UsedWorkshopSpace(state, rules) > AvailableWorkshops(state, rules))
+            throw new InvalidDataException("Assigned production exceeds workshop capacity.");
         if (!double.IsFinite(state.Longitude) || state.Longitude < 0 || state.Longitude >= 2 * Math.PI)
             throw new InvalidDataException("Base longitude must be in [0, 2π).");
         if (!double.IsFinite(state.Latitude) || state.Latitude < -Math.PI / 2 || state.Latitude > Math.PI / 2)
@@ -673,9 +719,18 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public int Scientists { get; set; } = scientists;
         public int Engineers { get; set; } = engineers;
         public List<TransferSnapshot> Transfers { get; } = [];
+        public List<ResearchProjectState> Research { get; } = [];
+        public List<ProductionState> Productions { get; } = [];
         public bool IsPlaced => Name.Length != 0;
         public bool FakeUnderwater { get; set; }
     }
+
+    internal sealed record ResearchProjectState(
+        RuleHandle<ResearchRuleFamily> Rule, int Assigned, int Spent, int Cost);
+
+    internal sealed record ProductionState(
+        RuleHandle<ManufactureRuleFamily> Rule, int Assigned, int Spent, int Amount,
+        bool Infinite, bool Sell, bool IsFallback, Dictionary<string, int> RandomProductionInfo);
 
     internal sealed record FacilityState(
         RuleHandle<FacilityRuleFamily> Rule,

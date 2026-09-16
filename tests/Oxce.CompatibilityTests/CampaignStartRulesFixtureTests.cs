@@ -69,5 +69,4 @@ public sealed class CampaignStartRulesFixtureTests
         Assert.True(mapping.TryGet(key, out var node));
         return YamlValueReader.ReadString(Assert.Single(Assert.IsType<YamlSequenceNode>(node).Items));
     }
-
 }

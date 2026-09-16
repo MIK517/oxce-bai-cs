@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Oxce.Core.Geometry;
 using Oxce.FixtureSupport;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -29,10 +30,7 @@ public sealed class FixturePipelineTests
     [Fact]
     public void BootstrapFixtureNormalizesToExpectedOutput()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "bootstrap-json.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("bootstrap-json");
 
         var input = File.ReadAllBytes(Path.GetFullPath(manifest.Inputs[0].Path, root));
         var expected = File.ReadAllText(Path.GetFullPath(manifest.Expected, root));
@@ -43,10 +41,7 @@ public sealed class FixturePipelineTests
     [Fact]
     public void PositionRulesMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "core-position.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("core-position");
 
         var tile = new Position3(2, -3, 4);
         var clipped = new Position3(-17, 31, -25).ClipVoxel();
@@ -65,5 +60,4 @@ public sealed class FixturePipelineTests
 
         Assert.Equal(expected, CanonicalJson.Normalize(actual));
     }
-
 }

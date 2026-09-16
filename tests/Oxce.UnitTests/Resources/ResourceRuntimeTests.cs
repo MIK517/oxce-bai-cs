@@ -1,10 +1,9 @@
 using System.Text;
 using System.IO.Compression;
-using Oxce.Mods.Discovery;
 using Oxce.Mods.Files;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Resources;
 using Oxce.Resources;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Resources;
@@ -92,12 +91,7 @@ public sealed class ResourceRuntimeTests
                 WriteEntry(archive, "metadata.yml", "id: fixture\nname: fixture\nisMaster: true\n");
                 WriteEntry(archive, "payload.bin", "archive-payload");
             }
-            var discovery = ModDiscovery.ScanDirectory(root);
-            var plan = ModLoadPlanner.Create(
-                ModCatalog.Create(discovery.Mods),
-                [new ModActivation("fixture", true)],
-                "fixture",
-                new ModEngineIdentity("Extended", "8.6.1.0"));
+            var plan = TestFixtures.CreatePlan(root);
             var files = plan.CreateVirtualFileCatalog();
             var catalog = ResolvedResourceCatalog.FromPaths(files,
                 [("payload", "payload.bin", ResourceKind.Binary, ResourceLoadPolicy.Cache)]);

@@ -1,10 +1,9 @@
 using System.Text.Json;
 using Oxce.Core.Diagnostics;
 using Oxce.FixtureSupport;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -14,16 +13,8 @@ public sealed class RuntimeRuleLinkingFixtureTests
     [Fact]
     public void StrategicRuntimeProjectionMatchesPinnedReferenceFixture()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifest = FixtureManifestLoader.Load(
-            Path.Combine(root, "fixtures", "manifests", "runtime-rule-linking.json"));
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
-        var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
-        var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(ModDiscovery.ScanDirectory(fixture).Mods),
-            [new ModActivation("runtime-master", true), new ModActivation("runtime-addon", true)],
-            "runtime-master",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("runtime-rule-linking");
+        var plan = TestFixtures.CreateRuntimeRuleLinkingPlan();
         var diagnostics = new DiagnosticCollector();
         var snapshot = ContentSnapshotBuilder.Build(plan, diagnostics);
         var rules = snapshot.Content.RuntimeRules;
@@ -100,5 +91,4 @@ public sealed class RuntimeRuleLinkingFixtureTests
     private static string Join(DiagnosticCollector diagnostics) => string.Join(
         Environment.NewLine,
         diagnostics.Snapshot().Select(static diagnostic => diagnostic.Message));
-
 }

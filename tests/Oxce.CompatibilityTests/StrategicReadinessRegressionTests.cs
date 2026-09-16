@@ -1,6 +1,7 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -286,9 +287,7 @@ public sealed class StrategicReadinessRegressionTests
     private static CampaignState CreateCampaign(RuntimeContent content, SoldierPersonalState personal,
         IReadOnlyDictionary<string, int>? items = null, IReadOnlyList<CraftSnapshot>? crafts = null)
     {
-        var initial = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Readiness regressions", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var initial = TestFixtures.CreateLogisticsCampaign(content, "Readiness regressions").Capture();
         return CampaignState.Restore(initial with
         {
             Funds = [10_000],
@@ -313,5 +312,4 @@ public sealed class StrategicReadinessRegressionTests
         };
         return new("Regression", "", 0, 0, 0, 0, "ARMOR", stats, stats);
     }
-
 }

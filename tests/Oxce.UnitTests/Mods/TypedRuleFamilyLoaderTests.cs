@@ -2,9 +2,8 @@ using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -155,13 +154,7 @@ public sealed class TypedRuleFamilyLoaderTests
         RuleSectionDefinition section,
         IDiagnosticSink? diagnostics = null)
     {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
-        var plan = ModLoadPlanner.Create(
-            catalog,
-            [new ModActivation("fixture", true)],
-            "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
+        var plan = TestFixtures.CreatePlan(root);
         return RulesetComposer.Compose(plan, [section], diagnostics);
     }
 
@@ -244,5 +237,4 @@ public sealed class TypedRuleFamilyLoaderTests
         protected override ProbeRule Freeze(ProbeBuilder builder) =>
             new(builder.Id, builder.Label, builder.Value, builder.Enabled, builder.Values, builder.NestedValue);
     }
-
 }

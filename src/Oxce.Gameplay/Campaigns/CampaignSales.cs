@@ -29,7 +29,7 @@ public sealed partial class CampaignState
     }
 
     private CampaignCommandResult CompleteSale(BaseState origin, LogisticsQuote quote, LogisticsSelection[] selections,
-        long subtotal, long funds, long accounting)
+        long subtotal, AccountingState accounting)
     {
         var planned = new BaseState(origin.Id, origin.Name, origin.Longitude, origin.Latitude, origin.Facilities,
             origin.Crafts, origin.Soldiers, new(origin.Items), origin.Scientists, origin.Engineers);
@@ -70,8 +70,7 @@ public sealed partial class CampaignState
         origin.Soldiers.Clear(); origin.Soldiers.AddRange(planned.Soldiers);
         origin.Transfers.Clear(); origin.Transfers.AddRange(planned.Transfers);
         origin.Scientists = planned.Scientists; origin.Engineers = planned.Engineers;
-        _funds[^1] = funds;
-        if (subtotal > 0) _incomes[^1] = accounting; else _expenditures[^1] = accounting;
+        PublishAccounting(accounting);
         _logisticsQuote = null;
         return new([new LogisticsOrderCompleted(origin.Id, LogisticsOperation.Sell, subtotal)]);
     }

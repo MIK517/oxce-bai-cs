@@ -24,9 +24,9 @@ public sealed class PrivateCatCorpusTests
         foreach (var path in paths)
         {
             var archive = CatArchive.Parse(BinaryDataReader.FromFile(path));
+            var lastOffset = checked((int)new FileInfo(path).Length - 1);
             Assert.NotEmpty(archive.Entries);
-            Assert.All(archive.Entries, entry => Assert.InRange(entry.Offset, 0, checked((int)new FileInfo(path).Length - 1)));
+            Assert.All(archive.Entries, entry => Assert.InRange(entry.Offset, 0, lastOffset));
         }
     }
-
 }

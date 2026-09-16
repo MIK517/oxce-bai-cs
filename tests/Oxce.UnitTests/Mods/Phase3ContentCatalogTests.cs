@@ -1,10 +1,9 @@
 using Oxce.FixtureSupport;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Phase3;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -17,7 +16,7 @@ public sealed class Phase3ContentCatalogTests
         using var fixture = new TemporaryModFixture("{}");
         var diagnostics = new DiagnosticCollector();
 
-        var catalog = Phase3ContentCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var catalog = Phase3ContentCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         Assert.True(catalog.Capabilities.Has(ContentLoadStage.Linked));
         Assert.True(catalog.Validation.IsValid);
@@ -30,7 +29,7 @@ public sealed class Phase3ContentCatalogTests
         using var fixture = new TemporaryModFixture("events: [{name: EVENT, everyItemList: [MISSING]}]");
         var diagnostics = new DiagnosticCollector();
 
-        var catalog = Phase3ContentCatalog.Load(CreatePlan(fixture.Root), diagnostics);
+        var catalog = Phase3ContentCatalog.Load(TestFixtures.CreatePlan(fixture.Root), diagnostics);
 
         Assert.True(catalog.Capabilities.Has(ContentLoadStage.Typed));
         Assert.True(catalog.Capabilities.Has(ContentLoadStage.Linked));
@@ -44,7 +43,7 @@ public sealed class Phase3ContentCatalogTests
     {
         using var fixture = new TemporaryModFixture("countries: [{type: COUNTRY, signedPactEvent: MISSING_EVENT}]");
 
-        var catalog = Phase3ContentCatalog.Load(CreatePlan(fixture.Root));
+        var catalog = Phase3ContentCatalog.Load(TestFixtures.CreatePlan(fixture.Root));
 
         Assert.False(catalog.Capabilities.Has(ContentLoadStage.Linked));
         Assert.Contains(catalog.Validation.Closure.Issues,
@@ -56,7 +55,7 @@ public sealed class Phase3ContentCatalogTests
     public void ManifestIsDeterministicSourceNormalizedAndBounded()
     {
         using var fixture = new TemporaryModFixture("items: [{type: ITEM}]");
-        var plan = CreatePlan(fixture.Root);
+        var plan = TestFixtures.CreatePlan(fixture.Root);
         var build = Phase3ContentCatalog.Build(plan);
         var catalog = build.Catalog;
         Assert.Equal(1, build.ParsedFileCount);
@@ -76,15 +75,4 @@ public sealed class Phase3ContentCatalogTests
         Assert.Throws<InvalidOperationException>(() => Phase3ContentManifestNormalizer.NormalizeToUtf8Json(
             build, options with { MaximumOutputBytes = 100 }));
     }
-
-    private static ModLoadPlan CreatePlan(string root)
-    {
-        var discovery = ModDiscovery.ScanDirectory(root);
-        return ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
-            [new ModActivation("fixture", true)],
-            "fixture",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-    }
-
 }

@@ -1,10 +1,9 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Gameplay;
@@ -15,9 +14,7 @@ public sealed class CampaignLogisticsTests
     public void LogisticsAreBlockedUntilTheStartingBaseIsPlaced()
     {
         var content = LoadFixture();
-        var campaign = CampaignFactory.Create(content,
-            CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
-            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var campaign = CreateUnplaced(content);
         var before = campaign.Capture();
 
         var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
@@ -80,8 +77,7 @@ public sealed class CampaignLogisticsTests
         Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(new SubmitLogisticsOrder(recruitQuote.Id, [new(recruit.Id, 1)])).Events));
         var snapshot = campaign.Capture();
         Assert.False(snapshot.Bases[0].Transfers.Single(t => t.Kind == CampaignTransferKind.Soldier).Soldier!.Personal!.AllowAutoCombat);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(snapshot), "options.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot), content, seed: 0, name: "options.sav");
         Assert.Equal(snapshot.Options, loaded.Campaign.Options);
         Assert.Equivalent(snapshot, loaded.Campaign.Capture(), strict: true);
     }
@@ -121,8 +117,7 @@ public sealed class CampaignLogisticsTests
         Assert.Equal(CampaignTransferKind.Soldier, transit.Bases[1].Transfers[0].Kind);
         Assert.Equal(CampaignTransferKind.Craft, transit.Bases[1].Transfers[1].Kind);
         Assert.Equivalent(ship, transit.Bases[1].Transfers[1].Craft!.Logistics, strict: true);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "crew.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(transit), content, seed: 0, name: "crew.sav");
         Assert.Single(loaded.Campaign.Execute(new AdvanceCampaignTime(5 * 720 + 1)).Events.OfType<SuppliesArrived>());
         var arrived = loaded.Campaign.Capture();
         Assert.Equal(4, Assert.Single(arrived.Bases[1].Soldiers).Personal!.CraftId);
@@ -136,8 +131,7 @@ public sealed class CampaignLogisticsTests
         Assert.Equal(5, sold.Bases[1].Items["SUPPLY"]);
         Assert.Equal(1, sold.Bases[1].Items["BULKY"]);
         Assert.Equal(arrived.Funds[0] + 500, sold.Funds[0]);
-        var reloaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitLoadedCampaign(sold, loaded.Source), "unloaded.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitLoadedCampaign(sold, loaded.Source), content, seed: 0, name: "unloaded.sav");
         Assert.Equivalent(sold, reloaded.Campaign.Capture(), strict: true);
     }
 
@@ -165,8 +159,7 @@ public sealed class CampaignLogisticsTests
         Assert.False(incoming.Personal!.Training);
         Assert.False(incoming.Personal.PsiTraining);
         Assert.True(incoming.Personal.ReturnToTrainingWhenHealed);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "soldier-transit.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(transit), content, seed: 0, name: "soldier-transit.sav");
         Assert.Single(loaded.Campaign.Execute(new AdvanceCampaignTime(5 * 720 + 1)).Events.OfType<SuppliesArrived>());
         Assert.Equivalent(incoming, Assert.Single(loaded.Campaign.Capture().Bases[1].Soldiers), strict: true);
         quote = Assert.IsType<LogisticsQuoted>(Assert.Single(loaded.Campaign.Execute(new PrepareLogisticsQuote(2, LogisticsOperation.Sell)).Events)).Quote;
@@ -191,8 +184,7 @@ public sealed class CampaignLogisticsTests
             quote.Id, [new(ship.Id, 2)])).Events));
         Assert.Equal(0, Quote(campaign).Rows.Single(r => r.RuleId == "SHIP").MaximumQuantity);
         var transit = campaign.Capture();
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "craft-order.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(transit), content, seed: 0, name: "craft-order.sav");
         Assert.Equivalent(transit, loaded.Campaign.Capture(), strict: true);
         var events = loaded.Campaign.Execute(new AdvanceCampaignTime(10));
         Assert.Single(events.Events.OfType<SuppliesArrived>());
@@ -268,8 +260,7 @@ public sealed class CampaignLogisticsTests
             Assert.NotEqual(999, transit.Bases[0].Transfers[0].Soldier!.Id);
         }
         Assert.NotEqual(transit.Bases[0].Transfers[0].Soldier!.Id, transit.Bases[0].Transfers[1].Soldier!.Id);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "recruits.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(transit), content, seed: 0, name: "recruits.sav");
         Assert.Equivalent(transit, loaded.Campaign.Capture(), strict: true);
         var randomBefore = loaded.Campaign.Capture().RandomState;
         Assert.Single(loaded.Campaign.Execute(new AdvanceCampaignTime(10)).Events.OfType<SuppliesArrived>());
@@ -297,8 +288,7 @@ public sealed class CampaignLogisticsTests
         Assert.Equal(2, ordered.Bases[0].Items["SUPPLY"]);
         Assert.Equal(3, ordered.MonthlyPurchaseLog["SUPPLY"]);
         Assert.Equal(5, Quote(campaign).Rows.Single(r => r.RuleId == "SUPPLY").MaximumQuantity);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(ordered), "order.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(ordered), content, seed: 0, name: "order.sav");
         var restored = loaded.Campaign;
         Assert.Equivalent(ordered, restored.Capture(), strict: true);
         var arrival = restored.Execute(new AdvanceCampaignTime(100));
@@ -370,39 +360,27 @@ public sealed class CampaignLogisticsTests
         Assert.Equal(0, transit.Bases[0].Scientists);
         Assert.Empty(transit.Bases[0].Items);
         Assert.Equal(2, transit.Bases[1].Transfers.Count);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(transit), "transit.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(transit), content, seed: 0, name: "transit.sav");
         var result = loaded.Campaign.Execute(new AdvanceCampaignTime(5 * 720 + 1));
         Assert.Single(result.Events.OfType<SuppliesArrived>());
         var arrived = loaded.Campaign.Capture();
         Assert.Equal(1, arrived.Bases[1].Scientists);
         Assert.Equal(2, arrived.Bases[1].Items["SUPPLY"]);
         Assert.Empty(arrived.Bases[1].Transfers);
-        var reloaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitLoadedCampaign(arrived, loaded.Source), "arrived.sav", content,
-            new SplitMix64RandomSource(0), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitLoadedCampaign(arrived, loaded.Source), content, seed: 0, name: "arrived.sav");
         Assert.Equivalent(arrived, reloaded.Campaign.Capture(), strict: true);
     }
 
+    internal static CampaignState CreateUnplaced(RuntimeContent content) => CampaignFoundationTests.Create(
+        content,
+        CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] });
+
     internal static CampaignState Create(RuntimeContent content)
     {
-        var campaign = CampaignFactory.Create(content,
-            CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
-            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var campaign = CreateUnplaced(content);
         Assert.IsType<StartingBasePlaced>(Assert.Single(campaign.Execute(new PlaceStartingBase(0, "Alpha", 0, 0)).Events));
         return campaign;
     }
 
-    internal static RuntimeContent LoadFixture()
-    {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Oxce.slnx"))) root = root.Parent;
-        Assert.NotNull(root);
-        var discovery = ModDiscovery.ScanDirectory(Path.Combine(root.FullName, "fixtures", "public", "mods", "strategic-logistics"));
-        var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods), [new ModActivation("logistics", true)],
-            "logistics", new ModEngineIdentity("Extended", "8.6.1.0"));
-        var snapshot = ContentSnapshotBuilder.Build(plan);
-        Assert.True(snapshot.Content.Capabilities.Has(ContentLoadStage.RuntimeLinked),
-            string.Join(Environment.NewLine, snapshot.Diagnostics.Select(d => d.Message)));
-        return snapshot.Content;
-    }
+    internal static RuntimeContent LoadFixture() => TestFixtures.LoadStrategicLogistics();
 }

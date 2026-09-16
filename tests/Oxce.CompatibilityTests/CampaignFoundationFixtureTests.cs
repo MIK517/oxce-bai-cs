@@ -1,9 +1,8 @@
 using System.Text.Json;
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -16,13 +15,7 @@ public sealed class CampaignFoundationFixtureTests
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(
             root, "fixtures", "expected", "savegames", "campaign-foundation.expected.json")));
-        var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
-        var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(ModDiscovery.ScanDirectory(fixture).Mods),
-            [new ModActivation("runtime-master", true), new ModActivation("runtime-addon", true)],
-            "runtime-master",
-            new ModEngineIdentity("Extended", "8.6.1.0"));
-        var content = ContentSnapshotBuilder.Build(plan).Content;
+        var content = ContentSnapshotBuilder.Build(TestFixtures.CreateRuntimeRuleLinkingPlan()).Content;
         var campaign = CampaignFactory.Create(
             content,
             new NewCampaignRequest(
@@ -57,7 +50,6 @@ public sealed class CampaignFoundationFixtureTests
         Assert.Equal(expectedRoot.GetProperty("events")[0].GetString(), Assert.Single(placed.Events).GetType().Name);
         Assert.Equal(expectedRoot.GetProperty("events")[1].GetString(), Assert.Single(advanced.Events).GetType().Name);
     }
-
 
     private sealed class FixedClock : ICampaignClock
     {

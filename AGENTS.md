@@ -71,6 +71,26 @@ mechanical translations with no executable acceptance test.
   and compatibility implications have been reviewed.
 - Record consequential architectural choices in `docs/decisions/`.
 
+## Test conventions
+
+- Shared helpers live in `tests/Shared/TestFixtures.cs` (linked into both test
+  projects). Use them instead of local copies: `LoadVerifiedManifest`,
+  `CreatePlan`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`,
+  `CreateLogisticsCampaign`, `LoadLogisticsSave`, `CopyDirectory`.
+- Tests must be deterministic: fixed campaign IDs, `FixedClock`, explicit
+  `SplitMix64RandomSource` seeds; never `Guid.NewGuid()` or the system clock
+  for campaign identity.
+- Compare fixture output with
+  `Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual))`
+  so failures print the difference.
+- Iterate oracle arrays through `TestFixtures.Rows(...)`, which fails on an
+  empty array.
+- Private-asset tests must `Assert.SkipUnless` when `fixtures/private/` is absent.
+- Order file-system enumerations (`StringComparer.Ordinal`) before selecting
+  entries.
+- Verify with `dotnet test` from the repository root.
+- Private corpus tests (`Private*`, `Phase3ContentCorpusTests`, `ModLoadingFixtureTests`) need `fixtures/private/` and `data/` and are slow; the fast check is the unit tests plus the remaining compatibility tests.
+
 ## Completion standard
 
 A subsystem is not complete because it compiles. It is complete when its agreed

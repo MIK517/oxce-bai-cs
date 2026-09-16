@@ -1,10 +1,9 @@
 using Oxce.Core.Random;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -118,13 +117,6 @@ public sealed class CampaignSaveRegressionFixtureTests
     private static OxceSaveLoadOptions Options() => new("runtime-master",
         new HashSet<string>(["runtime-master", "runtime-addon"], StringComparer.Ordinal));
 
-    private static RuntimeContent LoadContent()
-    {
-        var fixture = Path.Combine(Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(), "fixtures", "public", "mods", "runtime-rule-linking");
-        var plan = ModLoadPlanner.Create(ModCatalog.Create(ModDiscovery.ScanDirectory(fixture).Mods),
-            [new ModActivation("runtime-master", true), new ModActivation("runtime-addon", true)],
-            "runtime-master", new ModEngineIdentity("Extended", "8.6.1.0"));
-        return ContentSnapshotBuilder.Build(plan).Content;
-    }
-
+    private static RuntimeContent LoadContent() =>
+        ContentSnapshotBuilder.Build(TestFixtures.CreateRuntimeRuleLinkingPlan()).Content;
 }

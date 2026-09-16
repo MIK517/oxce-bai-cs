@@ -1,10 +1,10 @@
 using System.Text;
 using Oxce.Mods;
-using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Resources;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -133,15 +133,8 @@ public sealed class ResourceDescriptorResolverTests
         public void WriteMaster(string path, string contents) => Write(Master, path, contents);
         public void WriteAddon(string path, string contents) => Write(Addon, path, contents);
 
-        public ModLoadPlan CreatePlan()
-        {
-            var discovery = ModDiscovery.ScanDirectory(Root);
-            return ModLoadPlanner.Create(
-                ModCatalog.Create(discovery.Mods),
-                [new ModActivation("resource-master", true), new ModActivation("resource-addon", true)],
-                "resource-master",
-                new ModEngineIdentity("Extended", "8.6.1.0"));
-        }
+        public ModLoadPlan CreatePlan() =>
+            TestFixtures.CreatePlan(Root, "resource-master", ["resource-master", "resource-addon"]);
 
         public void Dispose() => Directory.Delete(Root, recursive: true);
 

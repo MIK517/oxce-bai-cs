@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Mods.Files;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -10,10 +11,7 @@ public sealed class VirtualFileCatalogFixtureTests
     [Fact]
     public void UnicodeCanonicalizationMatchesCapturedWindowsCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "vfs-unicode-canonicalization.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("vfs-unicode-canonicalization");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var paths = File.ReadLines(fixturePath)
             .Where(static line => line.Length != 0)
@@ -36,16 +34,13 @@ public sealed class VirtualFileCatalogFixtureTests
         var actual = JsonSerializer.SerializeToUtf8Bytes(new { paths });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     [Fact]
     public void LayeredCatalogMatchesCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "vfs-layered-catalog.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("vfs-layered-catalog");
         var fixturePath = Path.GetFullPath(manifest.Inputs[0].Path, root);
         var rows = File.ReadLines(fixturePath)
             .Where(line => line.Length != 0)
@@ -76,7 +71,7 @@ public sealed class VirtualFileCatalogFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static FixtureRow ParseRow(string line)
@@ -89,7 +84,6 @@ public sealed class VirtualFileCatalogFixtureTests
 
         return new FixtureRow(values[0], values[1], values[2], values[3]);
     }
-
 
     private sealed record FixtureRow(string LayerId, string ModId, string RelativePath, string SourcePath);
 }

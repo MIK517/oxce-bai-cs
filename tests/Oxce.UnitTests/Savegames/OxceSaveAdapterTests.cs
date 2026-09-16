@@ -2,6 +2,7 @@ using Oxce.Core.Random;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Savegames.Oxce;
+using Oxce.TestSupport;
 using Oxce.UnitTests.Gameplay;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -21,10 +22,9 @@ public sealed class OxceSaveAdapterTests
     public void PresentSaveCollectionsRejectNonSequences(string field)
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content, CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
-        var pattern = new Regex($@"(?m)^(?<indent> *){field}:[^\r\n]*(?:\r?\n\k<indent> +[^\r\n]*)*");
+        var pattern = CollectionPattern(field);
         Assert.Single(pattern.Matches(yaml));
         foreach (var invalid in new[] { "malformed", "{}", "null" })
         {
@@ -47,8 +47,7 @@ public sealed class OxceSaveAdapterTests
     public void MissingOptionalCollectionsMatchExplicitEmptySequences(string field)
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content, CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var snapshot = campaign.Capture();
         // Removing craft must not turn this collection-default test into a dangling-crew test.
         if (field == "crafts") snapshot = snapshot with
@@ -62,7 +61,7 @@ public sealed class OxceSaveAdapterTests
             }).ToArray(),
         };
         var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot);
-        var pattern = new Regex($@"(?m)^(?<indent> *){field}:[^\r\n]*(?:\r?\n\k<indent> +[^\r\n]*)*");
+        var pattern = CollectionPattern(field);
         Assert.Single(pattern.Matches(yaml));
         var missing = pattern.Replace(yaml, string.Empty);
         var empty = pattern.Replace(yaml, match => $"{match.Groups["indent"].Value}{field}: []");
@@ -77,8 +76,7 @@ public sealed class OxceSaveAdapterTests
     public void SoldierOpaqueFieldsFollowIdsWithExplicitOrLegacyTypes(bool omitType)
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content, CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var initial = campaign.Capture();
         var yaml = OxceSaveAdapter.EmitNewCampaign(initial);
         foreach (var soldier in initial.Bases[0].Soldiers)
@@ -117,11 +115,7 @@ public sealed class OxceSaveAdapterTests
     public void NewCampaignSaveReloadsSemanticallyAndUsesTwoDocumentSchema()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 1.25, -0.5));
         var before = campaign.Capture();
 
@@ -142,11 +136,7 @@ public sealed class OxceSaveAdapterTests
     public void UnicodeSaveDirectoryAndFilenameRoundTrip()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var directory = Path.Combine(
             Path.GetTempPath(),
             "oxce-save-MÖD-Δ-" + Guid.NewGuid().ToString("N"));
@@ -176,11 +166,7 @@ public sealed class OxceSaveAdapterTests
     public void EligibleUnknownFieldsSurviveKnownFieldOverlay()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture())
             .Replace("name: Campaign", "futureHeader: retained\nname: Campaign", StringComparison.Ordinal)
             .Replace("difficulty: 0", "futureBody: {answer: 42}\ndifficulty: 0", StringComparison.Ordinal)
@@ -200,11 +186,7 @@ public sealed class OxceSaveAdapterTests
     public void LoadedAtomicRewriteRequiresAndPreservesSourceDocument()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture())
             .Replace("name: Campaign", "futureHeader: retained\nname: Campaign", StringComparison.Ordinal);
         var loaded = OxceSaveAdapter.Load(
@@ -234,11 +216,7 @@ public sealed class OxceSaveAdapterTests
     public void BaseAndFacilityOpaqueFieldsFollowSemanticIdentityAcrossMutations()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var snapshot = campaign.Capture();
         var templateBase = Assert.Single(snapshot.Bases);
         var templateFacility = Assert.Single(templateBase.Facilities);
@@ -318,11 +296,7 @@ public sealed class OxceSaveAdapterTests
     public void MissingReferenceBaseIdsBecomeStableAndDuplicateIdsAreRejected()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var snapshot = campaign.Capture();
         var original = Assert.Single(snapshot.Bases);
         var second = original with
@@ -361,11 +335,7 @@ public sealed class OxceSaveAdapterTests
     public void MissingModsAndIdentityCollisionsFailTransactionally()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var yaml = OxceSaveAdapter.EmitNewCampaign(campaign.Capture());
         var missing = new OxceSaveLoadOptions(
             "runtime-master", new HashSet<string>(["runtime-master"], StringComparer.Ordinal));
@@ -389,11 +359,7 @@ public sealed class OxceSaveAdapterTests
     public void CancelledAtomicWriteLeavesExistingSaveUntouched()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         var directory = Path.Combine(Path.GetTempPath(), "oxce-save-test-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
@@ -435,11 +401,7 @@ public sealed class OxceSaveAdapterTests
     public void RepeatedSaveCyclesRemainSemanticallyAndByteStable()
     {
         var content = CampaignFoundationTests.LoadFixture();
-        var campaign = CampaignFactory.Create(
-            content,
-            CampaignFoundationTests.Request(),
-            new SplitMix64RandomSource(42),
-            new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignFoundationTests.Create(content);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 1.25, -0.5));
         var expected = campaign.Capture();
         string? stable = null;
@@ -459,9 +421,7 @@ public sealed class OxceSaveAdapterTests
     public void VehicleOpaqueFieldsFollowStableIdentityAfterRemoval()
     {
         var content = CampaignLogisticsTests.LoadFixture();
-        var campaign = CampaignFactory.Create(content,
-            CampaignFoundationTests.Request() with { MasterId = "logistics", ActiveMods = ["logistics"] },
-            new SplitMix64RandomSource(42), new CampaignFoundationTests.FixedClock());
+        var campaign = CampaignLogisticsTests.CreateUnplaced(content);
         var snapshot = campaign.Capture();
         var baseState = Assert.Single(snapshot.Bases);
         var craft = new CraftSnapshot("SHIP", 1)
@@ -474,7 +434,7 @@ public sealed class OxceSaveAdapterTests
         var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot)
             .Replace("ammo: 11", "ammo: 11\n            futureVehicleField: first", StringComparison.Ordinal)
             .Replace("ammo: 22", "ammo: 22\n            futureVehicleField: second", StringComparison.Ordinal);
-        var options = new OxceSaveLoadOptions("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" });
+        var options = TestFixtures.LogisticsSaveOptions();
         var loaded = OxceSaveAdapter.Load(yaml, "vehicles.sav", content, new SplitMix64RandomSource(0), options);
         snapshot = loaded.Campaign.Capture();
         baseState = snapshot.Bases[0];
@@ -488,6 +448,10 @@ public sealed class OxceSaveAdapterTests
         Assert.Contains("futureVehicleField: second", rewritten, StringComparison.Ordinal);
         Assert.DoesNotContain("futureVehicleField: first", rewritten, StringComparison.Ordinal);
     }
+
+    // Matches a YAML collection key together with its more-indented body lines.
+    private static Regex CollectionPattern(string field) =>
+        new($@"(?m)^(?<indent> *){Regex.Escape(field)}:[^\r\n]*(?:\r?\n\k<indent> +[^\r\n]*)*");
 
     private static OxceSaveLoadOptions Options() => new(
         "runtime-master",

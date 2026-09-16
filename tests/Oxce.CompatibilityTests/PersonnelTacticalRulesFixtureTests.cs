@@ -89,5 +89,4 @@ public sealed class PersonnelTacticalRulesFixtureTests
         Assert.Equal(["ARMOR_ITEM"], validation.Caches.ArmorStorageItems);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Severity >= DiagnosticSeverity.Error);
     }
-
 }

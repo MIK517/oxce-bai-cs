@@ -35,6 +35,9 @@ public sealed class ScriptInventoryTests
         Assert.Equal(ScriptLimits.MaximumArguments, limits.GetProperty("ScriptMaxArg").GetInt32());
         Assert.Equal(ScriptLimits.RegisterPointerFactor,
             limits.GetProperty("ScriptMaxRegPointerFactor").GetInt32());
+        Assert.Equal(ScriptLimits.MaximumGlobalEvents, limits.GetProperty("EventsMax").GetInt32());
+        Assert.Equal(ScriptLimits.EventOffsetScale, limits.GetProperty("EventOffsetScale").GetInt32());
+        Assert.Equal(ScriptLimits.MaximumEventOffset, limits.GetProperty("EventOffsetMax").GetInt32());
 
         var encoding = inventory.GetProperty("core").GetProperty("typeEncoding");
         Assert.Equal(16, encoding.GetProperty("baseStep").GetInt32());
@@ -55,5 +58,4 @@ public sealed class ScriptInventoryTests
         JsonElement Registration(string name) =>
             inventory.GetProperty("registrations").GetProperty(name);
     }
-
 }

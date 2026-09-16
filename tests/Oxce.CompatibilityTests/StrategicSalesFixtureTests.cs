@@ -1,9 +1,7 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Savegames.Oxce;
-using Oxce.Mods.Discovery;
-using Oxce.Mods.Loading;
-using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -14,9 +12,7 @@ public sealed class StrategicSalesFixtureTests
     public void CriticalSaleCountsLauncherAndClipsWhenTheyUseTheSameItem()
     {
         var content = StrategicReadinessTestContent.Load();
-        var initial = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Overlapping sale inventory", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var initial = TestFixtures.CreateLogisticsCampaign(content, "Overlapping sale inventory").Capture();
         var rules = content.RuntimeRules;
         var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
         {
@@ -41,8 +37,7 @@ public sealed class StrategicSalesFixtureTests
         Assert.All(sold.Bases[0].Crafts[0].Logistics!.Weapons, Assert.Null);
         Assert.False(sold.Bases[0].Items.ContainsKey("SUPPLY"));
         Assert.Equal(checked(before.Funds[^1] + 13L * supply.UnitCost), sold.Funds[^1]);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(sold), "overlapping-sale.sav", content,
-            new SplitMix64RandomSource(1), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(sold), content, seed: 1, name: "overlapping-sale.sav");
         Assert.Equivalent(sold, loaded.Campaign.Capture(), strict: true);
     }
 
@@ -52,9 +47,7 @@ public sealed class StrategicSalesFixtureTests
     public void SaleBlocksAccountingOverflowAtomically(bool fundsOverflow, bool incomeOverflow)
     {
         var content = StrategicReadinessTestContent.Load();
-        var initial = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Sale overflow", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var initial = TestFixtures.CreateLogisticsCampaign(content, "Sale overflow").Capture();
         var campaign = CampaignState.Restore(initial with
         {
             Funds = [fundsOverflow ? long.MaxValue : 0],
@@ -76,9 +69,7 @@ public sealed class StrategicSalesFixtureTests
     public void CriticalSaleQuoteBlocksAggregateInventoryOverflowAtomically()
     {
         var content = StrategicReadinessTestContent.Load();
-        var initial = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Sale inventory overflow", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var initial = TestFixtures.CreateLogisticsCampaign(content, "Sale inventory overflow").Capture();
         var rules = content.RuntimeRules;
         var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
         {
@@ -111,15 +102,8 @@ public sealed class StrategicSalesFixtureTests
     [InlineData(false, true)]
     public void CriticalSaleConsumesBaseCargoLauncherThenTransitAndRefundsLoadedClips(bool incomingCraft, bool bonusWeapon)
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Oxce.slnx"))) root = root.Parent;
-        Assert.NotNull(root);
-        var discovery = ModDiscovery.ScanDirectory(Path.Combine(root.FullName, "fixtures/public/mods/strategic-logistics"));
-        var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods), [new("logistics", true)], "logistics", new("Extended", "8.6.1.0"));
-        var content = ContentSnapshotBuilder.Build(plan).Content;
-        var initial = CampaignFactory.Create(content,
-            new(new(Guid.NewGuid()), "Critical sale", "logistics", ["logistics"], CampaignDifficulty.Beginner),
-            new SplitMix64RandomSource(42), SystemCampaignClock.Instance).Capture();
+        var content = TestFixtures.LoadStrategicLogistics();
+        var initial = TestFixtures.CreateLogisticsCampaign(content, "Critical sale").Capture();
         var rules = content.RuntimeRules;
         var craft = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
         {
@@ -158,12 +142,10 @@ public sealed class StrategicSalesFixtureTests
         var transfer = Assert.Single(sold.Bases[0].Transfers, t => t.Kind == CampaignTransferKind.Item);
         Assert.Equal(3, transfer.Quantity);
         Assert.Equal("incoming-supplies", transfer.PreservationKey);
-        var loaded = OxceSaveAdapter.Load(OxceSaveAdapter.EmitNewCampaign(sold), "critical-sale.sav", content,
-            new SplitMix64RandomSource(1), new("logistics", new HashSet<string>(StringComparer.Ordinal) { "logistics" }));
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(sold), content, seed: 1, name: "critical-sale.sav");
         Assert.Equivalent(sold, loaded.Campaign.Capture(), strict: true);
         loaded.Campaign.Execute(new AdvanceCampaignTime(1));
         Assert.Equal(3, loaded.Campaign.Capture().Bases[0].Items["SUPPLY"]);
         Assert.Empty(loaded.Campaign.Capture().Bases[0].Transfers);
     }
-
 }

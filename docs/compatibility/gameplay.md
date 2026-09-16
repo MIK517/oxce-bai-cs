@@ -1,9 +1,10 @@
 # Gameplay compatibility
 
-Phase 6 branches 1 and 2 implement bounded strategic logistics and readiness through
+Phase 6 branches 1 through 3 implement bounded strategic logistics, readiness and economy through
 headless commands and an indexed keyboard UI. Supported daily readiness advances while
 monthly and preserved live-world state remain guarded.
 See [branch 1 acceptance and limitations](../strategic-logistics-status.md).
+See [branch 3 research and production status](../strategic-research-production-status.md).
 See [the ownership ledger](../phase-6-ownership.md) and
 [ADR 0025](../decisions/0025-strategic-time-and-mobile-save-ownership.md).
 
@@ -14,10 +15,10 @@ See [the ownership ledger](../phase-6-ownership.md) and
 | Time progression and calendar | compatible for bounded readiness | `GeoscapeState.cpp`, `GameTime.cpp` | `strategic-time`; readiness and dispatcher/calendar/soak tests | Hourly servicing/transfers, half-hour refuelling and daily construction/recovery/training run when preflight permits. Month boundaries and live world state remain guarded. |
 | Globe, countries, and regions | partial | `src/Mod/RuleCountry.cpp`, `RuleRegion.cpp`; `src/Savegame/Country.cpp`, `Region.cpp` | `campaign-foundation`; `runtime-rule-linking`; private UFO/TFTD/Rosigma saves | Dense linked rules create area-bearing countries/regions; mutable funding, activity, pact state, histories, and base coordinates persist. Globe rendering/rotation, region queries, activity generation, and strategic simulation are not implemented. |
 | Personnel and soldier progression | compatible for bounded strategic readiness | `RuleSoldier.cpp`, `Soldier.cpp`, training/transformation states | `strategic-logistics`; `strategic-readiness`; generation/piloting/recovery tests | Assignments, armor, recovery, physical/daily psi training and transformations are executable and saved. Monthly psi remains isolated; dead/memorial state and battle-earned changes remain deferred. |
-| Bases, facilities, inventory, and transfers | compatible for bounded readiness | base placement/facility states, `Base.cpp`, `BaseFacility.cpp` | `strategic-logistics`; `strategic-bases`; sale/UI tests | Additional bases, construction, queues, upgrades, connectivity, dismantling, capacity and maintenance queries are executable. Active project accounting remains guarded. |
+| Bases, facilities, inventory, and transfers | compatible for bounded readiness/economy | base placement/facility states, `Base.cpp`, `BaseFacility.cpp` | `strategic-logistics`; `strategic-bases`; `strategic-research-production`; sale/UI tests | Additional bases, construction, queues, upgrades, connectivity, dismantling, capacity, laboratories/workshops and maintenance queries are executable. |
 | Crafts and equipment | compatible for bounded strategic readiness | craft equipment states, `Craft.cpp`, `CraftWeapon.cpp`, `Vehicle.cpp`, `GeoscapeState.cpp` | logistics/readiness/service/loadout/sale tests | Weapon, vehicle and crew editing, mutable capacity/maxima and the service lifecycle are implemented. Airborne movement and auto-patrol require world simulation. |
-| Research | not started | `src/Basescape/`, `src/Savegame/ResearchProject.cpp` |  | Eligibility and unlock order are mod-visible. |
-| Manufacture | not started | `src/Basescape/`, `src/Savegame/Production.cpp` |  | Costs, materials, and completion timing. |
+| Research | compatible for bounded strategic economy | research states, `ResearchProject.cpp`, `SavedGame.cpp`, `GeoscapeState.cpp` | `strategic-research-production`; extracted C++ progression oracle | Eligibility, allocation/cancellation, randomized cost, held items, ordered completion/free/zero-cost chains, status changes, rewards and strategic event requests are executable. Live event creation and presentation follow their owning phases. |
+| Manufacture | compatible for bounded strategic economy | manufacture states, `Production.cpp`, `Base.cpp`, `GeoscapeState.cpp` | `strategic-research-production`; extracted C++ progression oracle | Queue allocation, prepayment/refund, material/craft consumption, repeated/infinite production, autosell, random/item/craft/person outputs, transfer timing and shortage/completion pauses are executable and persisted. |
 | Finance and monthly processing | partial histories and transactions | `GeoscapeState.cpp`, `SavedGame.cpp` | `campaign-foundation`; logistics/save tests | Initial funding and bounded histories persist. Purchases, sales and transfer fees update funds/accounting; monthly purchase-log reset is tested independently. Complete monthly funding, scoring, pacts and campaign failure remain guarded. |
 | Alien missions and UFO movement | not started | `src/Geoscape/`, `src/Savegame/AlienMission.cpp`, `Ufo.cpp` |  | Compare eligibility and weights around randomness. |
 | Detection and interception | not started | `src/Geoscape/` |  | Legal actions, ranges, and resolution. |

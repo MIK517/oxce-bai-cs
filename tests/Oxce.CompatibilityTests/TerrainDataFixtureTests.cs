@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Formats.Binary;
 using Oxce.Formats.Terrain;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -11,10 +12,7 @@ public sealed class TerrainDataFixtureTests
     [Fact]
     public void McdAndLoftempsSemanticsMatchCapturedCppReference()
     {
-        var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
-        var manifestPath = Path.Combine(root, "fixtures", "manifests", "terrain-data.json");
-        var manifest = FixtureManifestLoader.Load(manifestPath);
-        FixtureManifestVerifier.VerifyFiles(manifest, root);
+        var (root, manifest) = TestFixtures.LoadVerifiedManifest("terrain-data");
         var mcd = McdTerrainCodec.Decode(ReadHex(root, manifest.Inputs[0].Path));
         var loftemps = LoftempsCodec.Decode(ReadHex(root, manifest.Inputs[1].Path));
         var actual = JsonSerializer.SerializeToUtf8Bytes(new
@@ -69,10 +67,9 @@ public sealed class TerrainDataFixtureTests
         });
         var expected = File.ReadAllBytes(Path.GetFullPath(manifest.Expected, root));
 
-        Assert.True(CanonicalJson.SemanticallyEquals(expected, actual));
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
     }
 
     private static BinaryDataReader ReadHex(string root, string relativePath) =>
         new(Convert.FromHexString(File.ReadAllText(Path.GetFullPath(relativePath, root)).Trim()));
-
 }
