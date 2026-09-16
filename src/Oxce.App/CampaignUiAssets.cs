@@ -1,3 +1,4 @@
+using Oxce.Core.Diagnostics;
 using Oxce.Formats.Binary;
 using Oxce.Formats.Images;
 using Oxce.Formats.Yaml;
@@ -7,18 +8,16 @@ using Oxce.Rendering;
 
 internal sealed record CampaignUiAssets(IndexedSpriteFont Font, Func<string, string> Localize)
 {
-    public static CampaignUiAssets Load(VirtualFileCatalog files, string installationRoot,
-        RuntimePresentationContent special, string language = "en-US")
+    /// <summary>
+    /// Loads UI strings and the small font through the layered virtual files, which already
+    /// map <c>common</c> below the game data and mods (FileMap::getSlice/getYAML).
+    /// </summary>
+    public static CampaignUiAssets Load(VirtualFileCatalog files, RuntimePresentationContent special,
+        IDiagnosticSink? diagnostics = null, string language = "en-US")
     {
         var labels = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var locale in new[] { "en-US", language }.Distinct(StringComparer.Ordinal))
         {
-            var shared = Path.Combine(installationRoot, "common", "Language", locale + ".yml");
-            if (File.Exists(shared))
-            {
-                using var input = File.OpenRead(shared);
-                ReadLanguage(input, shared);
-            }
             foreach (var file in files.GetSlice("Language/" + locale + ".yml").OfType<VirtualFileEntry>())
             {
                 using var input = file.OpenRead();
@@ -32,7 +31,7 @@ internal sealed record CampaignUiAssets(IndexedSpriteFont Font, Func<string, str
 
         void ReadLanguage(Stream input, string name)
         {
-            var root = ReadMap(input, name);
+            var root = ReadMap(input, name, diagnostics);
             var map = root.Entries.Count > 0 && root.Entries[0].Value is YamlMappingNode wrapped ? wrapped : root;
             foreach (var entry in map.Entries)
             {
@@ -48,7 +47,7 @@ internal sealed record CampaignUiAssets(IndexedSpriteFont Font, Func<string, str
             var fontPath = "Language/" + special.FontName;
             using var input = Open(fontPath);
             if (input is null) return IndexedInterfaceFont.Create();
-            var root = ReadMap(input, fontPath);
+            var root = ReadMap(input, fontPath, diagnostics);
             if (!root.TryGet("fonts", out var node) || node is not YamlSequenceNode sequence)
                 throw new InvalidDataException("Font.dat requires a fonts sequence.");
             var definition = sequence.Items.OfType<YamlMappingNode>().FirstOrDefault(m => String(m, "id") == "FONT_SMALL");
@@ -78,18 +77,14 @@ internal sealed record CampaignUiAssets(IndexedSpriteFont Font, Func<string, str
 
         Stream? Open(string relativePath)
         {
-            if (files.TryGet(relativePath, out var file)) return file!.OpenRead();
-            var common = Path.GetFullPath(Path.Combine(installationRoot, "common"));
-            var path = Path.GetFullPath(Path.Combine(common, relativePath));
-            if (!path.StartsWith(common + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Font resource path escapes the common resource directory.");
-            return File.Exists(path) ? File.OpenRead(path) : null;
+            return files.TryGet(relativePath, out var file) ? file!.OpenRead() : null;
         }
     }
 
-    private static YamlMappingNode ReadMap(Stream input, string name)
+    private static YamlMappingNode ReadMap(Stream input, string name, IDiagnosticSink? diagnostics)
     {
         var document = YamlCompatibilityReader.Parse(input, name);
+        YamlCompatibilityReader.ReportLegacyEncoding(document, diagnostics);
         return document.Documents.Count == 1 && document.Documents[0].Root is YamlMappingNode map
             ? map : throw new InvalidDataException($"'{name}' requires one YAML mapping.");
     }

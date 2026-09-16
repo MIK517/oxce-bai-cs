@@ -1,4 +1,6 @@
 using System.Buffers.Binary;
+using Oxce.Core.Compatibility;
+using Oxce.Formats.Containers;
 using Oxce.Mods.Files;
 
 namespace Oxce.Mods.Resources;
@@ -36,6 +38,30 @@ internal static class SharedResourceInputs
         prefix.Clear();
         stream.ReadExactly(prefix[..(int)Math.Min(length, prefix.Length)]);
         return new SharedResourceHeader(length, BinaryPrimitives.ReadUInt32LittleEndian(prefix));
+    }
+
+    /// <summary>
+    /// Number of sounds <c>CatFile</c> maps from a CAT file. Only the offset table is read;
+    /// its validation follows <paramref name="mode"/>.
+    /// </summary>
+    internal static int ReadCatCount(VirtualFileEntry entry, InputValidationMode mode)
+    {
+        using var stream = entry.OpenRead();
+        var length = stream.Length;
+        Span<byte> prefix = stackalloc byte[sizeof(uint)];
+        prefix.Clear();
+        var prefixLength = (int)Math.Min(length, prefix.Length);
+        stream.ReadExactly(prefix[..prefixLength]);
+        var firstOffset = BinaryPrimitives.ReadUInt32LittleEndian(prefix);
+        var tableLength = firstOffset >= length || firstOffset / 8 > CatArchive.DefaultMaximumEntries
+            ? prefixLength
+            : (int)(firstOffset / 8 * 8);
+        if (tableLength <= prefixLength)
+            return CatArchive.ReadEntryOffsets(prefix[..prefixLength], length, validationMode: mode).Length;
+        var table = new byte[tableLength];
+        prefix.CopyTo(table);
+        stream.ReadExactly(table.AsSpan(prefix.Length));
+        return CatArchive.ReadEntryOffsets(table, length, validationMode: mode).Length;
     }
 }
 

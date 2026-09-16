@@ -268,7 +268,7 @@ public static class ContentSnapshotBuilder
             {
                 Files = plan.VirtualFiles,
                 CancellationToken = options.CancellationToken,
-                SoldierNamePools = RuntimeSoldierNamePoolLoader.Load(session.Catalog.PersonnelTactical.Soldiers, plan.VirtualFiles),
+                SoldierNamePools = RuntimeSoldierNamePoolLoader.Load(session.Catalog.PersonnelTactical.Soldiers, plan.VirtualFiles, sink),
             });
         runtimeLinkTimer.Stop();
         var runtimeLinkMeasurement = new ContentBuildStageMeasurement(

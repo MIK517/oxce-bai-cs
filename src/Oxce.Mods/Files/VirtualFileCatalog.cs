@@ -1,3 +1,5 @@
+using Oxce.Core.Compatibility;
+
 namespace Oxce.Mods.Files;
 
 public sealed class VirtualFileCatalog
@@ -6,9 +8,12 @@ public sealed class VirtualFileCatalog
     private readonly Dictionary<string, VirtualFileEntry> _resources;
     private readonly Dictionary<string, IReadOnlyList<string>> _directories;
 
-    public VirtualFileCatalog(IEnumerable<VirtualFileLayer> layers)
+    public VirtualFileCatalog(
+        IEnumerable<VirtualFileLayer> layers,
+        InputValidationMode validationMode = InputValidationMode.Strict)
     {
         ArgumentNullException.ThrowIfNull(layers);
+        ValidationMode = validationMode.Validate();
         var materialized = layers.ToArray();
         if (materialized.Any(layer => layer is null))
         {
@@ -60,10 +65,18 @@ public sealed class VirtualFileCatalog
 
     public IReadOnlyList<VirtualFileLayer> Layers => _layers;
 
+    /// <summary>How malformed lookup paths are treated; see <see cref="VirtualPath.TryNormalizeLookup"/>.</summary>
+    public InputValidationMode ValidationMode { get; }
+
     public IReadOnlyList<VirtualFileEntry> Rulesets { get; }
 
-    public bool TryGet(string relativePath, out VirtualFileEntry? entry) =>
-        _resources.TryGetValue(VirtualPath.NormalizeFile(relativePath), out entry);
+    public bool TryGet(string relativePath, out VirtualFileEntry? entry)
+    {
+        if (VirtualPath.TryNormalizeLookup(relativePath, directory: false, ValidationMode, out var canonicalPath))
+            return _resources.TryGetValue(canonicalPath, out entry);
+        entry = null;
+        return false;
+    }
 
     public VirtualFileEntry GetRequired(string relativePath) =>
         TryGet(relativePath, out var entry)
@@ -72,8 +85,9 @@ public sealed class VirtualFileCatalog
 
     public IReadOnlyList<VirtualFileEntry?> GetSlice(string relativePath)
     {
-        var canonicalPath = VirtualPath.NormalizeFile(relativePath);
         var result = new VirtualFileEntry?[_layers.Length];
+        if (!VirtualPath.TryNormalizeLookup(relativePath, directory: false, ValidationMode, out var canonicalPath))
+            return result;
         for (var index = 0; index < _layers.Length; ++index)
         {
             _layers[index].TryGetCanonical(canonicalPath, out result[index]);
@@ -84,8 +98,10 @@ public sealed class VirtualFileCatalog
 
     public IReadOnlyList<string> List(string relativeDirectory)
     {
-        var canonicalDirectory = VirtualPath.NormalizeDirectory(relativeDirectory);
-        return _directories.TryGetValue(canonicalDirectory, out var names) ? names : Array.Empty<string>();
+        return VirtualPath.TryNormalizeLookup(relativeDirectory, directory: true, ValidationMode, out var canonicalDirectory) &&
+            _directories.TryGetValue(canonicalDirectory, out var names)
+            ? names
+            : Array.Empty<string>();
     }
 
     public IReadOnlyList<string> List(string relativeDirectory, int layerIndex)

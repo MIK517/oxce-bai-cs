@@ -12,6 +12,14 @@ public sealed class ManagedExtensionLoadOptions
     public int MaximumExtensions { get; init; } = 256;
     public long MaximumManifestBytes { get; init; } = 64 * 1024;
 
+    /// <summary>
+    /// Set only by hosts that write <see cref="ManagedExtensionHost.CaptureState"/> into their
+    /// saves and restore it on load. Until the OXCE save root carries extension state
+    /// (ADR 0021), extensions implementing <see cref="IManagedExtensionState"/> are refused
+    /// by default so their state cannot be lost silently.
+    /// </summary>
+    public bool HostPersistsExtensionState { get; init; }
+
     internal void Validate()
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumExtensions);
@@ -106,6 +114,14 @@ public sealed class ManagedExtensionHost : IDisposable
                         $"Entry type '{manifest.EntryType}' does not implement {nameof(IManagedExtension)}.");
                 if (type.GetConstructor(Type.EmptyTypes) is null)
                     throw new InvalidDataException($"Entry type '{manifest.EntryType}' has no public parameterless constructor.");
+                if (!options.HostPersistsExtensionState && typeof(IManagedExtensionState).IsAssignableFrom(type))
+                {
+                    // Refused before instantiation: no extension code runs.
+                    Report(diagnostics, "EXT1011", DiagnosticSeverity.Error,
+                        $"Managed extension '{manifest.Id}' keeps save state, which this host cannot persist yet; " +
+                        "the extension was not loaded.", manifest.Id);
+                    continue;
+                }
                 var instance = (IManagedExtension)Activator.CreateInstance(type)!;
                 var extension = new ExtensionInstance(identity, directory, loadContext, instance);
                 var context = new ExtensionContext(identity, diagnostics);

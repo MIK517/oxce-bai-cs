@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 14;
+    internal const int CompilerRevision = 15;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -110,6 +110,7 @@ internal static class CompiledContentCache
         writer.Int32(BitConverter.IsLittleEndian ? 1 : 0);
         writer.String(RuntimeInformation.ProcessArchitecture.ToString());
         writer.String(request.MasterId);
+        writer.Int32((int)plan.ValidationMode);
         writer.Strings(request.ActiveMods);
         writer.Int32(contentOptions.MaximumScripts);
         writer.Int32(contentOptions.MaximumDiagnostics);
@@ -172,12 +173,12 @@ internal static class CompiledContentCache
             foreach (var (setId, path) in SharedResourceInputs.Sprites)
             {
                 if (contentOptions.ResourceResolution.SharedSpriteCounts.ContainsKey(setId)) continue;
-                ResourceInput(setId, FindResource(path));
+                ResourceInput(setId, FindResource(path), sound: false);
             }
             foreach (var (setId, preferred, fallback) in SharedResourceInputs.Sounds)
             {
                 if (contentOptions.ResourceResolution.SharedSoundCounts.ContainsKey(setId)) continue;
-                ResourceInput(setId, FindResource(preferred) ?? FindResource(fallback));
+                ResourceInput(setId, FindResource(preferred) ?? FindResource(fallback), sound: true);
             }
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -202,7 +203,7 @@ internal static class CompiledContentCache
             return null;
         }
 
-        void ResourceInput(string setId, VirtualFileEntry? entry)
+        void ResourceInput(string setId, VirtualFileEntry? entry, bool sound)
         {
             cancellationToken.ThrowIfCancellationRequested();
             writer.String(setId);
@@ -214,6 +215,8 @@ internal static class CompiledContentCache
             var header = SharedResourceInputs.ReadHeader(entry);
             writer.Int64(header.Length);
             writer.Int32(unchecked((int)header.FirstWord));
+            // CAT counts depend on the whole offset table and on the validation mode.
+            if (sound) writer.Int32(SharedResourceInputs.ReadCatCount(entry, plan.ValidationMode));
         }
     }
 

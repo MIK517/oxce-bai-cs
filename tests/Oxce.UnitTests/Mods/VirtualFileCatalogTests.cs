@@ -1,3 +1,4 @@
+using Oxce.Core.Compatibility;
 using System.Text;
 using Oxce.Mods.Files;
 using Xunit;
@@ -117,6 +118,40 @@ public sealed class VirtualFileCatalogTests
     public void FilePathNormalizationRejectsAmbiguousOrUnsafePaths(string path)
     {
         Assert.Throws<ArgumentException>(() => VirtualPath.NormalizeFile(path));
+    }
+
+    [Theory]
+    [InlineData("folder\\file.dat")]
+    [InlineData("/folder/file.dat")]
+    [InlineData("folder//file.dat")]
+    [InlineData("folder/./file.dat")]
+    [InlineData("other/../folder/file.dat")]
+    [InlineData("")]
+    public void CompatibilityModeTreatsNonCanonicalLookupsAsMisses(string path)
+    {
+        var layer = Layer("layer", "mod", ("folder/file.dat", "file"));
+        var strict = new VirtualFileCatalog([layer]);
+        var compatibility = new VirtualFileCatalog([layer], InputValidationMode.Compatibility);
+
+        // FileMap::at only lowercases the requested path, so these spellings never match.
+        Assert.False(compatibility.TryGet(path, out var entry));
+        Assert.Null(entry);
+        Assert.All(compatibility.GetSlice(path), Assert.Null);
+        Assert.True(compatibility.TryGet("FOLDER/File.DAT", out _));
+        if (path.Contains('\\')) Assert.True(strict.TryGet(path, out _));
+        else Assert.Throws<ArgumentException>(() => strict.TryGet(path, out _));
+    }
+
+    [Fact]
+    public void CompatibilityModeListsNothingForMalformedDirectories()
+    {
+        var catalog = new VirtualFileCatalog([Layer("layer", "mod", ("folder/file.dat", "file"))],
+            InputValidationMode.Compatibility);
+
+        Assert.Empty(catalog.List("/"));
+        Assert.Empty(catalog.List("folder\\"));
+        Assert.Equal(["file.dat"], catalog.List("FOLDER/"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new VirtualFileCatalog([], (InputValidationMode)7));
     }
 
     [Fact]

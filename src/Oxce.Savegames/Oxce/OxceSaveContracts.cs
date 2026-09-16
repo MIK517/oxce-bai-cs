@@ -1,3 +1,4 @@
+using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Gameplay.Campaigns;
 
@@ -6,7 +7,8 @@ namespace Oxce.Savegames.Oxce;
 public sealed record OxceSaveLoadOptions(
     string MasterId,
     IReadOnlySet<string> ActiveMods,
-    YamlReadOptions? Yaml = null)
+    YamlReadOptions? Yaml = null,
+    IDiagnosticSink? Diagnostics = null)
 {
     public void Validate()
     {

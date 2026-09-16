@@ -459,7 +459,7 @@ public static class ResourceDescriptorResolver
             {
                 if (sounds.ContainsKey(setId)) continue;
                 var entry = SharedResourceInputs.FindSound(files, preferred, fallback);
-                sounds[setId] = entry is null ? 0 : ReadCatCount(entry);
+                sounds[setId] = entry is null ? 0 : SharedResourceInputs.ReadCatCount(entry, files.ValidationMode);
             }
         }
         if (sounds.TryGetValue("BATTLE.CAT", out var battle)) sounds.TryAdd("BATTLE2.CAT", battle);
@@ -473,15 +473,6 @@ public static class ResourceDescriptorResolver
         var width = header.FirstWord == 0 ? sizeof(uint) : sizeof(ushort);
         if (header.Length % width != 0) throw new InvalidDataException($"TAB resource '{entry.SourcePath}' is malformed.");
         return checked((int)(header.Length / width));
-    }
-
-    private static int ReadCatCount(VirtualFileEntry entry)
-    {
-        var header = SharedResourceInputs.ReadHeader(entry);
-        if (header.Length < sizeof(uint)) throw new EndOfStreamException();
-        var offset = header.FirstWord;
-        if (offset % 8 != 0 || offset > header.Length) throw new InvalidDataException($"CAT resource '{entry.SourcePath}' is malformed.");
-        return checked((int)(offset / 8));
     }
 
     private readonly record struct ModAllocation(int Offset, int Size);

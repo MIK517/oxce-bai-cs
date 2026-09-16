@@ -1,3 +1,4 @@
+using Oxce.Core.Compatibility;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods.Discovery;
 
@@ -9,7 +10,8 @@ public static class ModLoadPlanner
         ModCatalog catalog,
         ModActivationState activationState,
         ModEngineIdentity engineIdentity,
-        IDiagnosticSink? diagnostics = null)
+        IDiagnosticSink? diagnostics = null,
+        InputValidationMode validationMode = InputValidationMode.Strict)
     {
         ArgumentNullException.ThrowIfNull(activationState);
         return Create(
@@ -17,7 +19,8 @@ public static class ModLoadPlanner
             activationState.Activations,
             activationState.ActiveMasterId,
             engineIdentity,
-            diagnostics);
+            diagnostics,
+            validationMode);
     }
 
     public static ModLoadPlan Create(
@@ -25,9 +28,11 @@ public static class ModLoadPlanner
         IEnumerable<ModActivation> activations,
         string activeMasterId,
         ModEngineIdentity engineIdentity,
-        IDiagnosticSink? diagnostics = null)
+        IDiagnosticSink? diagnostics = null,
+        InputValidationMode validationMode = InputValidationMode.Strict)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        validationMode.Validate();
         ArgumentNullException.ThrowIfNull(activations);
         ArgumentException.ThrowIfNullOrWhiteSpace(activeMasterId);
         ArgumentNullException.ThrowIfNull(engineIdentity);
@@ -125,7 +130,7 @@ public static class ModLoadPlanner
             Array.AsReadOnly(candidate.Layers.SelectMany(layer => layer.Rulesets)
                 .OrderByDescending(entry => entry.SourcePath, StringComparer.Ordinal)
                 .ToArray())));
-        return new ModLoadPlan(groups, valid);
+        return new ModLoadPlan(groups, valid, validationMode);
     }
 
     private static DiagnosticEvent Diagnostic(

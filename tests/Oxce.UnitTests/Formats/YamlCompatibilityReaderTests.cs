@@ -1,3 +1,4 @@
+using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Xunit;
 
@@ -129,6 +130,26 @@ public sealed class YamlCompatibilityReaderTests
         var mapping = Assert.IsType<YamlMappingNode>(documents.Documents[0].Root);
 
         Assert.Equal("Caf´e", YamlValueReader.ReadString(Required(mapping, "name")));
+    }
+
+    [Fact]
+    public void LegacyDecodingIsFlaggedAndReportedAsWarning()
+    {
+        using var legacy = new MemoryStream([.. "name: Caf"u8, 0xE9, .. "\n"u8]);
+        using var utf8 = new MemoryStream("name: Café\n"u8.ToArray());
+        var diagnostics = new DiagnosticCollector();
+
+        var legacyDocuments = YamlCompatibilityReader.Parse(legacy, "legacy.rul");
+        var utf8Documents = YamlCompatibilityReader.Parse(utf8, "utf8.rul");
+        YamlCompatibilityReader.ReportLegacyEncoding(legacyDocuments, diagnostics);
+        YamlCompatibilityReader.ReportLegacyEncoding(utf8Documents, diagnostics);
+
+        Assert.True(legacyDocuments.UsesLegacyEncoding);
+        Assert.False(utf8Documents.UsesLegacyEncoding);
+        var warning = Assert.Single(diagnostics.Snapshot());
+        Assert.Equal(YamlCompatibilityReader.LegacyEncodingCode, warning.Code);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        Assert.Equal("legacy.rul", warning.Source?.SourceName);
     }
 
     [Fact]

@@ -55,3 +55,11 @@ increment it and replace the reference fixture.
   Ryzen 9 7940HS comparison host, versus the prior 90.9 ns and 376 B result. Unicode
   normalization is 343.6 ns and 216 B. Both remain small relative to file discovery
   and content compilation, and the common ASCII path avoids rune processing.
+
+## Addendum, 2026-09-16
+
+Malformed lookup spellings (a `\` separator, rooted paths, or empty, `.` or `..`
+segments) follow the launch-time input validation mode of
+[ADR 0026](0026-input-validation-modes.md). In strict mode they are rejected, except that
+`\` is normalized to `/`. In compatibility mode they are misses, as with
+`FileMap::canonicalize`. The canonicalization of valid paths is identical in both modes.
