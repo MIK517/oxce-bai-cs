@@ -17,5 +17,14 @@ public sealed class ModLoadPlan
 
     public bool IsValid { get; }
 
+    private VirtualFileCatalog? _virtualFiles;
+
+    /// <summary>
+    /// The plan's immutable layered file catalog, built once and shared by every build stage
+    /// (indexing large installations is a measurable part of startup).
+    /// </summary>
+    public VirtualFileCatalog VirtualFiles =>
+        LazyInitializer.EnsureInitialized(ref _virtualFiles, CreateVirtualFileCatalog);
+
     public VirtualFileCatalog CreateVirtualFileCatalog() => new(Groups.SelectMany(group => group.Mod.Layers));
 }

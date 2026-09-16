@@ -1,6 +1,7 @@
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Discovery;
+using Oxce.Mods.Files;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
 using Oxce.Mods.Rulesets.Content;
@@ -122,6 +123,12 @@ public sealed record InstallationContentLoadResult(
     string? CacheRejectionReason = null)
 {
     public InstallationStartupMeasurements StartupMeasurements { get; init; } = InstallationStartupMeasurements.Empty;
+
+    /// <summary>
+    /// The layered virtual files the content was resolved against; runtime resource access
+    /// uses it instead of rediscovering the installation. Null when loading failed.
+    /// </summary>
+    public VirtualFileCatalog? VirtualFiles { get; init; }
 
     public bool IsSuccess => Content is not null && Failure is null;
 
@@ -282,7 +289,7 @@ public static class InstallationContentLoader
                     null,
                     cached.Status,
                     cached.RejectionReason)
-                { StartupMeasurements = measurements.Snapshot() };
+                { StartupMeasurements = measurements.Snapshot(), VirtualFiles = plan.Plan!.VirtualFiles };
             }
             ContentSnapshot snapshot;
             using (measurements.Measure(InstallationStartupStage.FreshBuild))
@@ -323,7 +330,7 @@ public static class InstallationContentLoader
                 null,
                 cached.Status,
                 cached.RejectionReason)
-            { StartupMeasurements = measurements.Snapshot() };
+            { StartupMeasurements = measurements.Snapshot(), VirtualFiles = plan.Plan!.VirtualFiles };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
