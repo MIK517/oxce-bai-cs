@@ -430,17 +430,17 @@ public static class OxceSaveAdapter
             Pair("incomes", Sequence(snapshot.Incomes.Select(Long))),
             Pair("expenditures", Sequence(snapshot.Expenditures.Select(Long))),
             Pair("researchScores", Sequence(snapshot.ResearchScores.Select(Integer))),
-            Pair("ids", Mapping(snapshot.NextIds.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
+            Pair("ids", IntMapping(snapshot.NextIds)),
             Pair("countries", Sequence(countries)),
             Pair("regions", Sequence(regions)),
             Pair("bases", Sequence(bases)),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
-                Mapping(snapshot.ResearchRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
+                IntMapping(snapshot.ResearchRuleStatus)),
             Pair("manufactureRuleStatus", snapshot.ManufactureRuleStatus.Count == 0 ? null :
-                Mapping(snapshot.ManufactureRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
-            Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : Mapping(snapshot.MonthlyPurchaseLog.Select(p => Pair(p.Key, Integer(p.Value))))),
+                IntMapping(snapshot.ManufactureRuleStatus)),
+            Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : IntMapping(snapshot.MonthlyPurchaseLog)),
             Pair("debug", snapshot.DebugMode ? Boolean(true) : null),
             Pair("oxcePortOptions", Mapping([
                 Pair("storageLimitsEnforced", Boolean(snapshot.Options.StorageLimitsEnforced)),
@@ -501,7 +501,7 @@ public static class OxceSaveAdapter
             Pair("fakeUnderwater", value.FakeUnderwater ? Boolean(true) : null),
             Pair("facilities", Sequence(facilities)), Pair("soldiers", Sequence(soldiers)),
             Pair("crafts", Sequence(crafts)),
-            Pair("items", Mapping(value.Items.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
+            Pair("items", IntMapping(value.Items)),
             Pair("scientists", Integer(value.Scientists)), Pair("engineers", Integer(value.Engineers)),
             Pair("transfers", value.Transfers.Count == 0 ? null : Sequence(value.Transfers.Select(t => BuildTransfer(t, entityIndex)))),
             Pair("research", value.Research.Count == 0 ? null : Sequence(value.Research.Select(project => Overlay(
@@ -519,7 +519,7 @@ public static class OxceSaveAdapter
                 Pair("sell", production.Sell ? Boolean(true) : null),
                 Pair("isFallback", production.IsFallback ? Boolean(true) : null),
                 Pair("randomProductionInfo", production.RandomProductionInfo.Count == 0 ? null :
-                    Mapping(production.RandomProductionInfo.Select(p => Pair(p.Key, Integer(p.Value))))),
+                    IntMapping(production.RandomProductionInfo)),
             ])))),
         ]);
     }
@@ -587,7 +587,7 @@ public static class OxceSaveAdapter
             Pair("shield", Integer(state.Shield)),
             Pair("lon", Scalar(state.Longitude.ToString("R", CultureInfo.InvariantCulture))),
             Pair("lat", Scalar(state.Latitude.ToString("R", CultureInfo.InvariantCulture))),
-            Pair("items", Mapping(state.Items.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("items", IntMapping(state.Items)),
             Pair("weapons", Sequence(state.Weapons.Select((weapon, slot) => weapon is null ? Mapping([Pair("type", Scalar("0"))]) :
                 Overlay(slot < originalWeapons.Length && String(originalWeapons[slot], "type", "") == weapon.RuleId ? originalWeapons[slot] : null,
                     [Pair("type", Scalar(weapon.RuleId)), Pair("ammo", Integer(weapon.Ammo)),
@@ -1050,6 +1050,11 @@ public static class OxceSaveAdapter
     private static YamlScalarNode Real(double value) => Scalar(value.ToString("R", CultureInfo.InvariantCulture));
     private static YamlScalarNode Boolean(bool value) => Scalar(value ? "true" : "false");
     private static YamlSequenceNode Sequence(IEnumerable<YamlNode> values) => new(GeneratedSpan, values);
+    // Reference containers (std::map, ItemContainer::save) write keys in byte order; sorting also
+    // keeps output independent of dictionary mutation history.
+    private static YamlMappingNode IntMapping(IEnumerable<KeyValuePair<string, int>> values) =>
+        Mapping(values.OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+            .Select(static pair => Pair(pair.Key, Integer(pair.Value))));
     private static YamlMappingNode Mapping(IEnumerable<(string Key, YamlNode? Value)> values) =>
         new(GeneratedSpan, values.Where(static pair => pair.Value is not null)
             .Select(static pair => PairNode(pair.Key, pair.Value!)));
