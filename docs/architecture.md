@@ -44,9 +44,12 @@ types to lower projects. See [ADR 0009](decisions/0009-structured-diagnostics-an
 
 ```text
 App -> Engine -> Gameplay -> Mods -> Scripting -> Core
+Gameplay -> Scripting
+Mods -> Formats -> Core
 App -> Extensions -> Gameplay
 Extensions -> Extensions.Abstractions
 App -> Engine -> Resources -> Mods
+Engine -> Rendering
 Resources -> Formats -> Core
 Resources -> Rendering -> Core
 App -> Savegames -> Gameplay
@@ -54,7 +57,12 @@ Savegames -> Formats -> Core
 Savegames -> Mods
 App -> Platform.Sdl -> Engine
 Platform.Sdl -> Rendering -> Core
+App -> Formats, Mods, Rendering
 ```
+
+`tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs` enforces this graph. For a
+per-project index of namespaces, public types, test helpers and fixture ownership see the
+generated [code map](code-map.md).
 
 `Gameplay` must not reference `Savegames`. `Savegames` is an external adapter that
 references gameplay-owned, save-neutral capture and restoration contracts. The

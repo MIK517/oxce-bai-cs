@@ -11,22 +11,22 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 | Project | Files | Lines | References |
 | --- | ---: | ---: | --- |
 | [Oxce.Benchmarks](#oxcebenchmarks) | 12 | 938 | Engine, Formats, Mods, Rendering, Resources, Savegames |
-| [Oxce.App](#oxceapp) | 3 | 266 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
+| [Oxce.App](#oxceapp) | 3 | 263 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 7 | 298 | - |
 | [Oxce.Engine](#oxceengine) | 16 | 1890 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | 384 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | 918 | Core, Extensions.Abstractions, Gameplay |
-| [Oxce.Formats](#oxceformats) | 34 | 6148 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 31 | 5764 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 88 | 16708 | Core, Formats, Scripting |
+| [Oxce.Formats](#oxceformats) | 34 | 6187 | Core |
+| [Oxce.Gameplay](#oxcegameplay) | 31 | 5789 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 88 | 16724 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | 1210 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | 699 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | 281 | Core, Formats, Mods, Rendering |
-| [Oxce.Savegames](#oxcesavegames) | 3 | 1101 | Core, Formats, Gameplay, Mods |
-| [Oxce.Scripting](#oxcescripting) | 25 | 4771 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 67 | 6580 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.Savegames](#oxcesavegames) | 3 | 1108 | Core, Formats, Gameplay, Mods |
+| [Oxce.Scripting](#oxcescripting) | 25 | 4778 | Core |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 67 | 6697 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | 87 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 74 | 10120 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 74 | 10207 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | 425 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | 602 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | 284 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -53,7 +53,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.App
 
-`src/Oxce.App` - 3 files, 266 lines. No public API; top-level types:
+`src/Oxce.App` - 3 files, 263 lines. No public API; top-level types:
 
 - `CampaignSdlCommand` (internal class) [CampaignSdlCommand.cs](../src/Oxce.App/CampaignSdlCommand.cs#L11)
 - `CampaignUiAssets` (internal record) [CampaignUiAssets.cs](../src/Oxce.App/CampaignUiAssets.cs#L8)
@@ -195,7 +195,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.Formats
 
-`src/Oxce.Formats` - 34 files, 6148 lines.
+`src/Oxce.Formats` - 34 files, 6187 lines.
 
 ### `Oxce.Formats`
 
@@ -283,7 +283,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 31 files, 5764 lines.
+`src/Oxce.Gameplay` - 31 files, 5789 lines.
 
 ### `Oxce.Gameplay`
 
@@ -420,7 +420,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 88 files, 16708 lines.
+`src/Oxce.Mods` - 88 files, 16724 lines.
 
 ### `Oxce.Mods`
 
@@ -431,16 +431,16 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 - `CompiledContentCacheStatus` (enum) [CompiledContentCache.cs](../src/Oxce.Mods/Bootstrap/CompiledContentCache.cs#L23)
 - `CompiledContentCacheOptions` (record) [CompiledContentCache.cs](../src/Oxce.Mods/Bootstrap/CompiledContentCache.cs#L31)
-- `InstallationLoadStage` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L10)
-- `InstallationLoadFailureKind` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L24)
-- `InstallationLoadProgress` (record struct) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L33)
-- `InstallationLoadFailure` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L35)
-- `InstallationLoadRequest` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L40)
-- `InstallationContentLoadOptions` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L83)
-- `InstallationPlanResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L100)
-- `InstallationContentLoadResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L113)
-- `InstallationPlanBuilder` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L132)
-- `InstallationContentLoader` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L221)
+- `InstallationLoadStage` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L11)
+- `InstallationLoadFailureKind` (enum) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L25)
+- `InstallationLoadProgress` (record struct) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L34)
+- `InstallationLoadFailure` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L36)
+- `InstallationLoadRequest` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L41)
+- `InstallationContentLoadOptions` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L84)
+- `InstallationPlanResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L101)
+- `InstallationContentLoadResult` (record) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L114)
+- `InstallationPlanBuilder` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L139)
+- `InstallationContentLoader` (class) [InstallationContentLoader.cs](../src/Oxce.Mods/Bootstrap/InstallationContentLoader.cs#L228)
 - `InstallationStartupStage` (enum) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs#L6)
 - `InstallationStartupStageMeasurement` (record struct) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs#L18)
 - `InstallationStartupMeasurements` (record) [InstallationStartupMeasurements.cs](../src/Oxce.Mods/Bootstrap/InstallationStartupMeasurements.cs#L23) - Non-overlapping wall-clock and calling-thread allocation samples for one synchronous load.
@@ -780,7 +780,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.Savegames
 
-`src/Oxce.Savegames` - 3 files, 1101 lines.
+`src/Oxce.Savegames` - 3 files, 1108 lines.
 
 ### `Oxce.Savegames`
 
@@ -796,7 +796,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.Scripting
 
-`src/Oxce.Scripting` - 25 files, 4771 lines.
+`src/Oxce.Scripting` - 25 files, 4778 lines.
 
 ### `Oxce.Scripting`
 
@@ -919,7 +919,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 67 files, 6580 lines.
+`tests/Oxce.CompatibilityTests` - 67 files, 6697 lines.
 
 ### `Oxce.CompatibilityTests`
 
@@ -1007,7 +1007,7 @@ Regenerate with `python3 tools/generate-code-map.py` after adding types, helpers
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 74 files, 10120 lines.
+`tests/Oxce.UnitTests` - 74 files, 10207 lines.
 
 <details><summary>74 test classes</summary>
 
@@ -1157,9 +1157,9 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `TypedRuleReplayFixtureTests.ProbeRule` (private record) [TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs#L119)
 - `VirtualFileCatalogFixtureTests.FixtureRow` (private record) [VirtualFileCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/VirtualFileCatalogFixtureTests.cs#L88)
 - `ContentSnapshotTests.TemporaryArchiveMod` (private class) [ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs#L237)
-- `InstallationContentLoaderTests.ProgressCollector` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L392)
-- `InstallationContentLoaderTests.CancellingProgress` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L401)
-- `InstallationContentLoaderTests.TemporaryInstallation` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L411)
+- `InstallationContentLoaderTests.ProgressCollector` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L398)
+- `InstallationContentLoaderTests.CancellingProgress` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L407)
+- `InstallationContentLoaderTests.TemporaryInstallation` (private class) [InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs#L417)
 - `ModDiscoveryTests.TemporaryModDirectory` (private class) [ModDiscoveryTests.cs](../tests/Oxce.UnitTests/Mods/ModDiscoveryTests.cs#L303)
 - `ResourceDescriptorResolverTests.ResourceModFixture` (private class) [ResourceDescriptorResolverTests.cs](../tests/Oxce.UnitTests/Mods/ResourceDescriptorResolverTests.cs#L118)
 - `TypedRuleFamilyLoaderTests.ProbeBuilder` (private class) [TypedRuleFamilyLoaderTests.cs](../tests/Oxce.UnitTests/Mods/TypedRuleFamilyLoaderTests.cs#L198)

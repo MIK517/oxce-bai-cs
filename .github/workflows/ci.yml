@@ -44,6 +44,10 @@ jobs:
       - name: Verify formatting
         run: dotnet format Oxce.slnx --verify-no-changes --no-restore
 
+      - name: Verify code map
+        if: runner.os == 'Linux'
+        run: python3 tools/generate-code-map.py --check
+
       - name: Build
         run: dotnet build Oxce.slnx --configuration Release --no-restore
 
