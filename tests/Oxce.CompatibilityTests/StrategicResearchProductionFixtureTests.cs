@@ -351,6 +351,40 @@ public sealed class StrategicResearchProductionFixtureTests
     }
 
     [Fact]
+    public void ZeroCostDiscoveriesUseTheCompletingBaseAvailability()
+    {
+        // SavedGame::addFinishedResearch scans getAvailableResearchProjects(..., base).
+        var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");
+        var campaign = NewCampaign(content, 37);
+        campaign.Execute(new ConfigureResearchProject(0, "BASE_GATED_SOURCE", 1));
+        campaign = PrimeResearch(campaign, content, "BASE_GATED_SOURCE");
+
+        var completed = Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events
+            .OfType<CampaignResearchCompleted>());
+
+        Assert.Equal(["BASE_GATED_SOURCE", "FREE_UNGATED"], completed.Discoveries);
+        var research = campaign.Capture().CompletedResearch;
+        Assert.DoesNotContain("FREE_NEEDS_FUNCTION", research);
+        Assert.DoesNotContain("FREE_NEEDS_ITEM", research);
+
+        // Once the item is in stores, the next qualifying completion discovers the gated topic.
+        var stocked = NewCampaign(content, 41);
+        var snapshot = stocked.Capture();
+        stocked = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Items = new Dictionary<string, int>(snapshot.Bases[0].Items, StringComparer.Ordinal) { ["MATERIAL"] = 1 },
+            }],
+        }, content, new SplitMix64RandomSource(snapshot.RandomState));
+        stocked.Execute(new ConfigureResearchProject(0, "BASE_GATED_SOURCE", 1));
+        stocked = PrimeResearch(stocked, content, "BASE_GATED_SOURCE");
+        stocked.Execute(new AdvanceCampaignTime(1));
+        Assert.Contains("FREE_NEEDS_ITEM", stocked.Capture().CompletedResearch);
+        Assert.DoesNotContain("FREE_NEEDS_FUNCTION", stocked.Capture().CompletedResearch);
+    }
+
+    [Fact]
     public void DuplicateCrossBaseResearchAppliesPrimarySideEffectsOnce()
     {
         var content = StrategicReadinessTestContent.Load("strategic-research-production.rul");

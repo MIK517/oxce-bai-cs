@@ -333,6 +333,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 _researchRuleStatus.GetValueOrDefault(id) == 2) continue;
             var rule = _content.RuntimeRules.Research[handle].Value;
             var wasComplete = _completedResearch.Contains(id);
+            // Captured before disables/re-enables, like SavedGame::addFinishedResearch step 1.
+            var hadProtectedUnlock = wasComplete && HasProtectedUnlock(rule);
             if (!wasComplete)
             {
                 if (markDiscovered)
@@ -349,19 +351,34 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             }
             foreach (var enabled in rule.Reenables)
                 if (_researchRuleStatus.GetValueOrDefault(enabled) == 2) _researchRuleStatus[enabled] = 0;
-            if (wasComplete && !HasProtectedUnlock(rule)) continue;
+            if (wasComplete && !hadProtectedUnlock) continue;
+            HashSet<string>? unlocked = null;
             foreach (var candidate in _content.RuntimeRules.Research.Rules)
             {
                 if (candidate.Value.Cost != 0 || queued.Contains(candidate.Id)) continue;
                 if ((candidate.Value.Requirements.Count == 0 || rule.Unlocks.Contains(candidate.Id, StringComparer.Ordinal)) &&
-                    ResearchAvailableWithoutBase(candidate.Id, candidate.Value) && queued.Add(candidate.Id))
+                    ZeroCostResearchAvailable(owner, candidate.Id, candidate.Value, ref unlocked) && queued.Add(candidate.Id))
                     queue.Add(candidate.Id);
             }
         }
     }
 
-    private bool ResearchAvailableWithoutBase(string id, RuntimeResearchRule rule) =>
-        CoreResearchUnavailable(id, rule, ResearchEligibilityOptions.None) is null;
+    /// <summary>
+    /// SavedGame::getAvailableResearchProjects for the completing base: besides the global
+    /// rules, a topic already running there, lacking its needed item, or lacking required
+    /// base functions is not auto-completed.
+    /// </summary>
+    private bool ZeroCostResearchAvailable(
+        BaseState owner, string id, RuntimeResearchRule rule, ref HashSet<string>? unlocked)
+    {
+        unlocked ??= ExplicitlyUnlockedResearch();
+        if (CoreResearchUnavailable(id, rule, ResearchEligibilityOptions.None, unlocked) is not null) return false;
+        var handle = _content.RuntimeRules.Research.GetRequired(id);
+        if (owner.Research.Any(project => project.Rule == handle)) return false;
+        if (rule.NeedItem && (rule.NeededItem is null || !_content.RuntimeRules.Items.TryGet(rule.NeededItem, out var item) ||
+            owner.Items.GetValueOrDefault(item) == 0)) return false;
+        return HasFunctions(owner, rule.RequiredBaseFunctions);
+    }
 
     private string? CoreResearchUnavailable(
         string id, RuntimeResearchRule rule, ResearchEligibilityOptions options, IReadOnlySet<string>? unlocked = null)
