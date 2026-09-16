@@ -141,8 +141,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         owner.Engineers = remainingEngineers;
         var updated = current with
         {
-            Assigned = command.AssignedEngineers, Amount = nextAmount,
-            Infinite = command.Infinite, Sell = command.Sell,
+            Assigned = command.AssignedEngineers,
+            Amount = nextAmount,
+            Infinite = command.Infinite,
+            Sell = command.Sell,
         };
         if (isNew) owner.Productions.Add(updated);
         else owner.Productions[index] = updated;
