@@ -79,6 +79,12 @@ contract. Integrating it into the OXCE save root and coordinating live extension
 capture is deferred until an extension owns meaningful state; doing that earlier would
 invent transaction and migration behavior without a consumer.
 
+Until that integration exists, `ManagedExtensionHost` refuses (diagnostic `EXT1011`,
+before instantiation) any extension that implements `IManagedExtensionState`. Only a host
+that writes and restores the state document sets
+`ManagedExtensionLoadOptions.HostPersistsExtensionState`. The application does not set
+it, so extension state cannot be lost silently on save (2026-09-16 decision).
+
 ## Deferred capabilities
 
 - Tactical AI is added with the tactical vertical slice. It will use a dedicated,

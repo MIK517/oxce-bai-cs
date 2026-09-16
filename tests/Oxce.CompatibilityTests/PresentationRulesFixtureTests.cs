@@ -4,6 +4,7 @@ using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.Presentation;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -15,7 +16,7 @@ public sealed class PresentationRulesFixtureTests
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "presentation-rules");
-        var expectedPath = Path.Combine(root, "fixtures", "expected", "mods", "presentation-rules.expected.json");
+        var expectedPath = TestFixtures.VerifiedExpectedPath("presentation-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var catalog = ModCatalog.Create(discovery.Mods, diagnostics);

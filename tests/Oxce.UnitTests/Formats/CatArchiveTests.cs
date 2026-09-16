@@ -1,3 +1,4 @@
+using Oxce.Core.Compatibility;
 using Oxce.Formats.Binary;
 using Oxce.Formats.Containers;
 using Xunit;
@@ -61,6 +62,45 @@ public sealed class CatArchiveTests
     public void ParseRejectsMalformedTables(string hex)
     {
         Assert.Throws<InvalidDataException>(() => Parse(hex));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("010203")]
+    [InlineData("0800000000000000")]
+    [InlineData("0700000000000000")]
+    public void CompatibilityModeTreatsUnparseableTablesAsEmpty(string hex)
+    {
+        // CatFile logs and maps no entries when the first offset is not inside the file.
+        var archive = CatArchive.Parse(Reader(hex), validationMode: InputValidationMode.Compatibility);
+
+        Assert.Empty(archive.Entries);
+    }
+
+    [Fact]
+    public void CompatibilityModeSkipsOutOfRangeEntriesAndShiftsLaterIndexes()
+    {
+        const string hex = "18000000000000004000000000000000190000000000000000AABB";
+
+        Assert.Throws<InvalidDataException>(() => Parse(hex));
+        var archive = CatArchive.Parse(Reader(hex), validationMode: InputValidationMode.Compatibility);
+
+        Assert.Equal(2, archive.Entries.Count);
+        Assert.Equal(24, archive[0].Offset);
+        Assert.Equal("00", Convert.ToHexString(archive[0].Data.Span));
+        Assert.Equal(25, archive[1].Offset);
+        Assert.Equal("AABB", Convert.ToHexString(archive[1].Data.Span));
+    }
+
+    [Fact]
+    public void CompatibilityModeStillRejectsDecreasingOffsetsAndEntryLimits()
+    {
+        const string decreasing = "10000000000000000F00000000000000AA";
+
+        Assert.Throws<InvalidDataException>(() =>
+            CatArchive.Parse(Reader(decreasing), validationMode: InputValidationMode.Compatibility));
+        Assert.Throws<InvalidDataException>(() => CatArchive.Parse(
+            Reader("10000000000000001000000000000000AA"), 1, InputValidationMode.Compatibility));
     }
 
     [Fact]

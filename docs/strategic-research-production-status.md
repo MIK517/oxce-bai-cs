@@ -21,6 +21,11 @@ Like `Base::load`, saves drop projects whose research or manufacture rule no lon
 return their assigned staff. Hourly preflight revalidates restored production rules so invalid
 random-output or event weights stop time instead of failing mid-tick.
 
+The [2026-09-16 audit](project-audit-2026-09-16.md) corrected the funds check for free units,
+ID allocation for produced transfers, craft and personnel after loading reference saves,
+completing-base availability for zero-cost discoveries, and availability of completed topics
+that still have pending protected unlocks.
+
 The indexed campaign client exposes research with `H` and manufacture with `M`; Enter
 starts the selected row and `X` cancels the first active project. Queries show staff,
 capacity, progress, costs, eligibility, active queues and completion state. Research

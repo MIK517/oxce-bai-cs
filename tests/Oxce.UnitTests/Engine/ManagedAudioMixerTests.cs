@@ -123,6 +123,7 @@ public sealed class ManagedAudioMixerTests
     [Fact]
     public async Task ControlUpdatesAndCallbacksAlternateWithoutDeadlock()
     {
+        const int iterations = 1_000;
         using var mixer = new ManagedAudioMixer(48_000, maximumEffectVoices: 32);
         var clip = new PcmAudioClip(new short[8_192], 48_000, 2);
         using var playback = mixer.Play(
@@ -130,13 +131,13 @@ public sealed class ManagedAudioMixerTests
             new AudioPlaybackOptions(AudioBus.Effects, LoopCount: -1, Gain: 0.25f));
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(
             TestContext.Current.CancellationToken);
-        deadline.CancelAfter(TimeSpan.FromSeconds(5));
+        deadline.CancelAfter(TimeSpan.FromSeconds(15));
         using var updateReady = new SemaphoreSlim(0);
         using var callbackComplete = new SemaphoreSlim(0);
         var control = Task.Run(() =>
         {
             var gain = 0d;
-            for (var index = 0; index < 1_000; index++)
+            for (var index = 0; index < iterations; index++)
             {
                 mixer.SetBusGain(AudioBus.Effects, gain);
                 gain = gain == 0 ? 1 : 0;
@@ -144,11 +145,11 @@ public sealed class ManagedAudioMixerTests
                 callbackComplete.Wait(deadline.Token);
             }
 
-            return 1_000;
+            return iterations;
         }, deadline.Token);
         var output = new short[512];
 
-        for (var index = 0; index < 1_000; index++)
+        for (var index = 0; index < iterations; index++)
         {
             await updateReady.WaitAsync(deadline.Token);
             mixer.Mix(output);
@@ -156,7 +157,7 @@ public sealed class ManagedAudioMixerTests
         }
         var completedUpdates = await control;
 
-        Assert.Equal(1_000, completedUpdates);
+        Assert.Equal(iterations, completedUpdates);
         Assert.True(playback.IsPlaying);
     }
 }

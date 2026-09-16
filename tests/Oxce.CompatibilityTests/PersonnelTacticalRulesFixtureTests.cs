@@ -6,6 +6,7 @@ using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.EquipmentProduction;
 using Oxce.Mods.Rulesets.Items;
 using Oxce.Mods.Rulesets.PersonnelTactical;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -17,8 +18,7 @@ public sealed class PersonnelTacticalRulesFixtureTests
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "personnel-tactical-rules");
-        var expectedPath = Path.Combine(
-            root, "fixtures", "expected", "mods", "personnel-tactical-rules.expected.json");
+        var expectedPath = TestFixtures.VerifiedExpectedPath("personnel-tactical-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var mods = ModCatalog.Create(discovery.Mods, diagnostics);

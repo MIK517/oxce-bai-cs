@@ -76,7 +76,7 @@ public sealed class Phase3ContentCatalog
         var timer = Stopwatch.StartNew();
         cancellationToken.ThrowIfCancellationRequested();
         progress?.Report(new ContentBuildProgress(ContentBuildProgressStage.Parsing));
-        var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions);
+        var documents = RulesetDocumentCatalog.Parse(plan, compositionOptions, sink);
         timer.Stop();
         var parse = new ContentBuildStageMeasurement(
             timer.Elapsed.TotalMilliseconds,

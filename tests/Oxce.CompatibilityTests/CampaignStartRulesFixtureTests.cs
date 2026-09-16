@@ -5,6 +5,7 @@ using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.CampaignStart;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -16,7 +17,7 @@ public sealed class CampaignStartRulesFixtureTests
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "campaign-start-rules");
-        var expectedPath = Path.Combine(root, "fixtures", "expected", "mods", "campaign-start-rules.expected.json");
+        var expectedPath = TestFixtures.VerifiedExpectedPath("campaign-start-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var catalog = ModCatalog.Create(discovery.Mods, diagnostics);

@@ -70,11 +70,15 @@ mechanical translations with no executable acceptance test.
 - Add external packages only when their license, maintenance status, Native AOT impact,
   and compatibility implications have been reviewed.
 - Record consequential architectural choices in `docs/decisions/`.
+- `docs/code-map.md` indexes projects, public types, test helpers and fixture ownership.
+  Regenerate it with `python3 tools/generate-code-map.py` after adding or moving types,
+  helpers or fixtures; CI runs the script with `--check`.
 
 ## Test conventions
 
 - Shared helpers live in `tests/Shared/TestFixtures.cs` (linked into both test
   projects). Use them instead of local copies: `LoadVerifiedManifest`,
+  `ReadVerifiedExpected`/`VerifiedExpectedPath` (the only way to read an oracle),
   `CreatePlan`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`,
   `CreateLogisticsCampaign`, `LoadLogisticsSave`, `CopyDirectory`.
 - Tests must be deterministic: fixed campaign IDs, `FixedClock`, explicit

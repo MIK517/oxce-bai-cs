@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-research-production",
+  "description": "Pins daily research progress, progress labels and produced-unit arithmetic extracted from the reference.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Savegame/ResearchProject.cpp (step, isFinished, getResearchProgress), Production.cpp (getAmountProduced, startItem), Base.cpp (removeResearch)",
+      "probe": "fixtures/reference-probes/savegames/strategic_research_production_probe.cpp",
+      "capture": "tools/capture-strategic-research-production-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20; method bodies inserted verbatim by the capture script"
+    }
+  },
+  "inputs": [
+    { "path": "fixtures/public/mods/strategic-logistics/logistics/Ruleset/logistics.rul", "size": 3352, "sha256": "d6dbc40250e4ea8e9b8c3857bde10ff5d160a061967a91137aad6b55a14b9397" },
+    { "path": "fixtures/public/mods/strategic-logistics/logistics/SoldierName/test.nam", "size": 140, "sha256": "327bf8baba548f2c71ac30b6c01f768b424c2c31681a89f64d850c60a76b4e2a" },
+    { "path": "fixtures/public/mods/strategic-logistics/logistics/metadata.yml", "size": 93, "sha256": "96541ca5d20767174f5c1dea04d5e42a6cb9f5d8a3ba9b4344def2e37026f478" },
+    { "path": "fixtures/public/savegames/strategic-research-production.rul", "size": 3392, "sha256": "0bfea7c355d34efc0275dd9cb1bfc764cb32a367e6b5771f2c73be69982872c4" },
+    { "path": "fixtures/reference-probes/savegames/strategic_research_production_probe.cpp", "size": 2263, "sha256": "aadad76923018071f1741226832985e0669c402d37ddfe0957c1e746e45c0580" },
+    { "path": "tools/capture-strategic-research-production-reference.ps1", "size": 3636, "sha256": "629ba97a41e303acac357a714c03f01596926db739d2c40c96c6d3ff78e65cc0" }
+  ],
+  "normalization": ["compact-json"],
+  "expected": "fixtures/expected/savegames/strategic-research-production.expected.json"
+}

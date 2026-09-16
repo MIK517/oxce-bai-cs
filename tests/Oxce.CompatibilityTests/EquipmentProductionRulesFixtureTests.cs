@@ -5,6 +5,7 @@ using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.EquipmentProduction;
 using Oxce.Mods.Rulesets.Items;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -16,8 +17,7 @@ public sealed class EquipmentProductionRulesFixtureTests
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "equipment-production-rules");
-        var expectedPath = Path.Combine(
-            root, "fixtures", "expected", "mods", "equipment-production-rules.expected.json");
+        var expectedPath = TestFixtures.VerifiedExpectedPath("equipment-production-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var mods = ModCatalog.Create(discovery.Mods, diagnostics);

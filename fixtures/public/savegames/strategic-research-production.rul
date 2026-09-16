@@ -71,6 +71,28 @@ research:
   - name: REPEATABLE_ZERO
     cost: 0
     dependencies: [REPEATABLE_PREREQ]
+  - name: BASE_GATED_SOURCE
+    cost: 1
+  - name: FREE_NEEDS_FUNCTION
+    cost: 0
+    dependencies: [BASE_GATED_SOURCE]
+    requiresBaseFunc: [ORBITAL]
+  - name: FREE_NEEDS_ITEM
+    cost: 0
+    dependencies: [BASE_GATED_SOURCE]
+    needItem: true
+    neededItem: MATERIAL
+  - name: FREE_UNGATED
+    cost: 0
+    dependencies: [BASE_GATED_SOURCE]
+  - name: UNLOCK_GATE
+    cost: 1
+  - name: PROTECTED_UNLOCK_SOURCE
+    cost: 1
+    unlocks: [PROTECTED_CHILD]
+  - name: PROTECTED_CHILD
+    cost: 0
+    requires: [UNLOCK_GATE]
 manufacture:
   - name: PRODUCT
     category: STR_WEAPON

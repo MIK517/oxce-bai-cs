@@ -31,7 +31,7 @@ public sealed class StrategicLogisticsFixtureTests
     [Fact]
     public void LogisticsArithmeticMatchesExtractedReferenceMethods()
     {
-        using var expected = TestFixtures.ReadExpected("savegames", "strategic-logistics.expected.json");
+        using var expected = TestFixtures.ReadVerifiedExpected("strategic-logistics");
         foreach (var row in TestFixtures.Rows(expected.RootElement, "prices"))
             Assert.Equal(row[2].GetInt32(), StrategicLogisticsMath.AdjustedItemPrice(row[0].GetInt32(), row[1].GetInt32()));
         foreach (var row in TestFixtures.Rows(expected.RootElement, "stores"))

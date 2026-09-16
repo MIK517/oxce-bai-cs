@@ -180,8 +180,18 @@ public sealed class CompiledResourceDependencyTests
 
         public byte[] Header(int sharedCount)
         {
-            var bytes = new byte[_sound ? 16 : 4];
-            BinaryPrimitives.WriteUInt32LittleEndian(bytes, _sound ? (uint)(sharedCount * 8) : sharedCount == 1 ? 0u : 1u);
+            if (!_sound)
+            {
+                var tab = new byte[4];
+                BinaryPrimitives.WriteUInt32LittleEndian(tab, sharedCount == 1 ? 0u : 1u);
+                return tab;
+            }
+
+            // A same-size (17-byte) CAT whose entries all point at the final data byte(s);
+            // CatFile maps no entries when the first offset is not inside the file.
+            var bytes = new byte[17];
+            for (var index = 0; index < sharedCount; index++)
+                BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(index * 8), (uint)(sharedCount * 8));
             return bytes;
         }
 

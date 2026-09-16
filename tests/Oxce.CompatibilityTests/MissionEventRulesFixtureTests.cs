@@ -5,6 +5,7 @@ using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.MissionEvents;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -15,7 +16,7 @@ public sealed class MissionEventRulesFixtureTests
     public void MissionEventRulesMatchPinnedReferenceFixture()
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(); var fixture = Path.Combine(root, "fixtures", "public", "mods", "mission-event-rules");
-        using var expected = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "fixtures", "expected", "mods", "mission-event-rules.expected.json")));
+        using var expected = TestFixtures.ReadVerifiedExpected("mission-event-rules");
         var diagnostics = new DiagnosticCollector(); var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods, diagnostics), [new ModActivation("fixture", true)], "fixture", new ModEngineIdentity("Extended", "8.6.1.0"), diagnostics);
         var actual = MissionEventRuleCatalog.Load(plan, diagnostics); var document = expected.RootElement;

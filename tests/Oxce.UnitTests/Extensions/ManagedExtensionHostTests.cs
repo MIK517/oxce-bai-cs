@@ -12,6 +12,9 @@ namespace Oxce.UnitTests.Extensions;
 
 public sealed class ManagedExtensionHostTests
 {
+    // The envelope tests act as a host that persists extension state.
+    private static readonly ManagedExtensionLoadOptions StatefulHost = new() { HostPersistsExtensionState = true };
+
     [Fact]
     public void ManualExtensionLoadsExercisesCampaignAndCapturesBoundedState()
     {
@@ -19,7 +22,7 @@ public sealed class ManagedExtensionHostTests
         installation.Add("example.probe", typeof(ProbeExtension));
         var diagnostics = new DiagnosticCollector();
         using var host = ManagedExtensionHost.LoadFromDirectory(
-            installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
+            installation.Root, diagnostics, StatefulHost, TestContext.Current.CancellationToken);
         var campaign = CampaignFoundationTests.Create(CampaignFoundationTests.LoadFixture());
 
         using var session = host.AttachCampaign(
@@ -40,13 +43,31 @@ public sealed class ManagedExtensionHostTests
     }
 
     [Fact]
+    public void StatefulExtensionIsRefusedUnlessTheHostPersistsState()
+    {
+        using var installation = new ExtensionInstallation();
+        installation.Add("example.probe", typeof(ProbeExtension));
+        installation.Add("example.stateless", typeof(ThrowOnEventExtension));
+        var diagnostics = new DiagnosticCollector();
+
+        using var host = ManagedExtensionHost.LoadFromDirectory(
+            installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("example.stateless", Assert.Single(host.Extensions).Identity.Id);
+        var refusal = Assert.Single(diagnostics.Snapshot(), diagnostic => diagnostic.Code == "EXT1011");
+        Assert.Equal(DiagnosticSeverity.Error, refusal.Severity);
+        Assert.DoesNotContain(diagnostics.Snapshot(), diagnostic => diagnostic.Code == "TESTEXT001");
+        Assert.Empty(host.CaptureState().Records);
+    }
+
+    [Fact]
     public void ThrowingCallbackIsContainedAndDisablesExtension()
     {
         using var installation = new ExtensionInstallation();
         installation.Add("example.throwing", typeof(ThrowOnEventExtension));
         var diagnostics = new DiagnosticCollector();
         using var host = ManagedExtensionHost.LoadFromDirectory(
-            installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
+            installation.Root, diagnostics, StatefulHost, TestContext.Current.CancellationToken);
         var campaign = CampaignFoundationTests.Create(CampaignFoundationTests.LoadFixture());
         using var session = host.AttachCampaign(
             campaign, campaign, TestContext.Current.CancellationToken);
@@ -69,7 +90,7 @@ public sealed class ManagedExtensionHostTests
         var diagnostics = new DiagnosticCollector();
 
         using var host = ManagedExtensionHost.LoadFromDirectory(
-            installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
+            installation.Root, diagnostics, StatefulHost, TestContext.Current.CancellationToken);
 
         Assert.Empty(host.Extensions);
         Assert.Equal(3, diagnostics.Snapshot().Count(diagnostic => diagnostic.Code == "EXT1001"));
@@ -84,7 +105,7 @@ public sealed class ManagedExtensionHostTests
         var diagnostics = new DiagnosticCollector();
 
         using var host = ManagedExtensionHost.LoadFromDirectory(
-            installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
+            installation.Root, diagnostics, StatefulHost, TestContext.Current.CancellationToken);
 
         Assert.Single(host.Extensions);
         Assert.Contains(diagnostics.Snapshot(), diagnostic =>
@@ -97,7 +118,7 @@ public sealed class ManagedExtensionHostTests
         using var installation = new ExtensionInstallation();
         var diagnostics = new DiagnosticCollector();
         using var host = ManagedExtensionHost.LoadFromDirectory(
-            installation.Root, diagnostics, cancellationToken: TestContext.Current.CancellationToken);
+            installation.Root, diagnostics, StatefulHost, TestContext.Current.CancellationToken);
         var required = StateRecord("missing.required", required: true);
         var optional = StateRecord("missing.optional", required: false);
 

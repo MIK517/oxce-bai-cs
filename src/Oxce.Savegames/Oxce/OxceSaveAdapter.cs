@@ -37,7 +37,11 @@ public static class OxceSaveAdapter
         if (new FileInfo(fullPath).Length > maximumBytes)
             throw new InvalidDataException($"OXCE save exceeds the {maximumBytes}-byte YAML input limit.");
         var bytes = File.ReadAllBytes(fullPath);
-        return Load(Decode(bytes), fullPath, bytes, content, random, options);
+        var yaml = YamlCompatibilityReader.DecodeText(bytes, out var legacyEncoding);
+        var loaded = Load(yaml, fullPath, bytes, content, random, options);
+        // Reported only after a successful load so a rejected save leaves no partial output.
+        if (legacyEncoding) options.Diagnostics?.Report(YamlCompatibilityReader.LegacyEncodingWarning(fullPath));
+        return loaded;
     }
 
     public static LoadedOxceCampaign Load(
@@ -206,7 +210,9 @@ public static class OxceSaveAdapter
             ReadScriptValues(body, content, "GeoscapeGame"))
         {
             Restrictions = ReadRestrictions(body),
-            CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString).Order(StringComparer.Ordinal).ToArray()),
+            // SavedGame::load accepts repeated topics; the port keeps one entry per topic.
+            CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
+                .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()),
             ResearchRuleStatus = ReadIntMap(body, "researchRuleStatus"),
             ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
@@ -428,17 +434,17 @@ public static class OxceSaveAdapter
             Pair("incomes", Sequence(snapshot.Incomes.Select(Long))),
             Pair("expenditures", Sequence(snapshot.Expenditures.Select(Long))),
             Pair("researchScores", Sequence(snapshot.ResearchScores.Select(Integer))),
-            Pair("ids", Mapping(snapshot.NextIds.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
+            Pair("ids", IntMapping(snapshot.NextIds)),
             Pair("countries", Sequence(countries)),
             Pair("regions", Sequence(regions)),
             Pair("bases", Sequence(bases)),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
-                Mapping(snapshot.ResearchRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
+                IntMapping(snapshot.ResearchRuleStatus)),
             Pair("manufactureRuleStatus", snapshot.ManufactureRuleStatus.Count == 0 ? null :
-                Mapping(snapshot.ManufactureRuleStatus.Select(p => Pair(p.Key, Integer(p.Value))))),
-            Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : Mapping(snapshot.MonthlyPurchaseLog.Select(p => Pair(p.Key, Integer(p.Value))))),
+                IntMapping(snapshot.ManufactureRuleStatus)),
+            Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : IntMapping(snapshot.MonthlyPurchaseLog)),
             Pair("debug", snapshot.DebugMode ? Boolean(true) : null),
             Pair("oxcePortOptions", Mapping([
                 Pair("storageLimitsEnforced", Boolean(snapshot.Options.StorageLimitsEnforced)),
@@ -499,7 +505,7 @@ public static class OxceSaveAdapter
             Pair("fakeUnderwater", value.FakeUnderwater ? Boolean(true) : null),
             Pair("facilities", Sequence(facilities)), Pair("soldiers", Sequence(soldiers)),
             Pair("crafts", Sequence(crafts)),
-            Pair("items", Mapping(value.Items.Select(pair => Pair(pair.Key, Integer(pair.Value))))),
+            Pair("items", IntMapping(value.Items)),
             Pair("scientists", Integer(value.Scientists)), Pair("engineers", Integer(value.Engineers)),
             Pair("transfers", value.Transfers.Count == 0 ? null : Sequence(value.Transfers.Select(t => BuildTransfer(t, entityIndex)))),
             Pair("research", value.Research.Count == 0 ? null : Sequence(value.Research.Select(project => Overlay(
@@ -517,7 +523,7 @@ public static class OxceSaveAdapter
                 Pair("sell", production.Sell ? Boolean(true) : null),
                 Pair("isFallback", production.IsFallback ? Boolean(true) : null),
                 Pair("randomProductionInfo", production.RandomProductionInfo.Count == 0 ? null :
-                    Mapping(production.RandomProductionInfo.Select(p => Pair(p.Key, Integer(p.Value))))),
+                    IntMapping(production.RandomProductionInfo)),
             ])))),
         ]);
     }
@@ -585,7 +591,7 @@ public static class OxceSaveAdapter
             Pair("shield", Integer(state.Shield)),
             Pair("lon", Scalar(state.Longitude.ToString("R", CultureInfo.InvariantCulture))),
             Pair("lat", Scalar(state.Latitude.ToString("R", CultureInfo.InvariantCulture))),
-            Pair("items", Mapping(state.Items.Select(p => Pair(p.Key, Integer(p.Value))))),
+            Pair("items", IntMapping(state.Items)),
             Pair("weapons", Sequence(state.Weapons.Select((weapon, slot) => weapon is null ? Mapping([Pair("type", Scalar("0"))]) :
                 Overlay(slot < originalWeapons.Length && String(originalWeapons[slot], "type", "") == weapon.RuleId ? originalWeapons[slot] : null,
                     [Pair("type", Scalar(weapon.RuleId)), Pair("ammo", Integer(weapon.Ammo)),
@@ -1014,31 +1020,6 @@ public static class OxceSaveAdapter
         return new Guid(hash[..16]);
     }
 
-    private static string Decode(byte[] bytes)
-    {
-        try
-        {
-            return new UTF8Encoding(false, true).GetString(bytes);
-        }
-        catch (DecoderFallbackException)
-        {
-            ReadOnlySpan<char> replacements =
-            [
-                '\u20AC', '\u0081', '\u201A', '\u0192', '\u201E', '\u2026', '\u2020', '\u2021',
-                '\u02C6', '\u2030', '\u0160', '\u2039', '\u0152', '\u008D', '\u017D', '\u008F',
-                '\u0090', '\u2018', '\u2019', '\u201C', '\u201D', '\u2022', '\u2013', '\u2014',
-                '\u02DC', '\u2122', '\u0161', '\u203A', '\u0153', '\u009D', '\u017E', '\u0178',
-            ];
-            var characters = new char[bytes.Length];
-            for (var index = 0; index < bytes.Length; index++)
-            {
-                var value = bytes[index];
-                characters[index] = value is >= 0x80 and <= 0x9F ? replacements[value - 0x80] : (char)value;
-            }
-            return new string(characters);
-        }
-    }
-
     private static (string Key, YamlNode? Value) Pair(string key, YamlNode? value) => (key, value);
     private static YamlMappingEntry PairNode(string key, YamlNode value) => new(Scalar(key), value);
     private static YamlScalarNode Scalar(string value) => new(GeneratedSpan, value, YamlScalarStyle.Plain);
@@ -1048,6 +1029,11 @@ public static class OxceSaveAdapter
     private static YamlScalarNode Real(double value) => Scalar(value.ToString("R", CultureInfo.InvariantCulture));
     private static YamlScalarNode Boolean(bool value) => Scalar(value ? "true" : "false");
     private static YamlSequenceNode Sequence(IEnumerable<YamlNode> values) => new(GeneratedSpan, values);
+    // Reference containers (std::map, ItemContainer::save) write keys in byte order; sorting also
+    // keeps output independent of dictionary mutation history.
+    private static YamlMappingNode IntMapping(IEnumerable<KeyValuePair<string, int>> values) =>
+        Mapping(values.OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+            .Select(static pair => Pair(pair.Key, Integer(pair.Value))));
     private static YamlMappingNode Mapping(IEnumerable<(string Key, YamlNode? Value)> values) =>
         new(GeneratedSpan, values.Where(static pair => pair.Value is not null)
             .Select(static pair => PairNode(pair.Key, pair.Value!)));

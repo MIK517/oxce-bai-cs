@@ -4,6 +4,7 @@ using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets.TerrainDeployment;
+using Oxce.TestSupport;
 using Xunit;
 
 namespace Oxce.CompatibilityTests;
@@ -15,7 +16,7 @@ public sealed class TerrainDeploymentRulesFixtureTests
     {
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "terrain-deployment-rules");
-        var expectedPath = Path.Combine(root, "fixtures", "expected", "mods", "terrain-deployment-rules.expected.json");
+        var expectedPath = TestFixtures.VerifiedExpectedPath("terrain-deployment-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
         var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods, diagnostics),
