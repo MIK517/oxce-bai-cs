@@ -253,6 +253,31 @@ public sealed class StrategicWorldPersistenceTests
     }
 
     [Fact]
+    public void PassiveUfoKeepsItsSavedDestinationAsAnAnonymousWaypoint()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var placed = PlacedCampaign(content, CampaignDifficulty.Veteran);
+        var world = SampleWorld();
+        var craft = placed.Bases[0].Crafts[0];
+        var ufo = world.Ufos[0] with
+        {
+            Destination = new WorldTargetReference(WorldTargetKind.Craft, craft.RuleId, craft.Id, 0.31, 0.12),
+        };
+        var snapshot = placed with { World = world with { Ufos = [ufo] } };
+
+        var captured = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(7)).Capture();
+        var destination = Assert.Single(captured.World.Ufos).Destination;
+        Assert.Equal(WorldTargetKind.Waypoint, destination!.Kind);
+        Assert.Equal(0, destination.Id);
+        Assert.Equal(0.31, destination.Longitude);
+        Assert.Equal(0.12, destination.Latitude);
+
+        var reloaded = TestFixtures.LoadLogisticsSave(
+            OxceSaveAdapter.EmitNewCampaign(snapshot), content, seed: 11, name: "passive-ufo.sav");
+        Assert.Equal(destination, Assert.Single(reloaded.Campaign.Capture().World.Ufos).Destination);
+    }
+
+    [Fact]
     public void LegacyTerrorSitesAndTheirCraftDestinationsAreImported()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
@@ -299,6 +324,17 @@ public sealed class StrategicWorldPersistenceTests
         Assert.Equivalent(restored.World,
             TestFixtures.LoadLogisticsSave(rewritten, content, seed: 9, name: "legacy.sav").Campaign.Capture().World,
             strict: true);
+    }
+
+    [Fact]
+    public void ModernMissionSiteStillRequiresItsType()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var yaml = OxceSaveAdapter.EmitNewCampaign(PlacedCampaign(content)) +
+            "missionSites:\n  - id: 6\n    lon: 0.14\n    lat: 0.03\n";
+
+        Assert.Throws<InvalidDataException>(() =>
+            TestFixtures.LoadLogisticsSave(yaml, content, seed: 10, name: "untyped-site.sav"));
     }
 
     private static CampaignState Restore(CampaignSnapshot placed, RuntimeContent content, WorldSnapshot world) =>

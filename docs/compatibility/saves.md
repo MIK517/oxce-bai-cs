@@ -42,3 +42,9 @@ serialization.
 | Original UFO/TFTD save import | not started | `src/Savegame/SaveConverter.cpp` |  | Binary input is untrusted. |
 | Semantic save round trip | compatible for campaign foundation | `src/Savegame/SavedGame.cpp`, `SavedBattleGame.cpp` | `campaign-foundation`; 100-cycle unit soak; private UFO/TFTD/Rosigma saves | Capture, adapter mapping, linked staged restoration, gameplay validation, re-emission, and semantic comparison pass for the implemented strategic subset. Emission is byte-stable across repeated generated-save cycles; YAML whitespace is not the compatibility oracle. |
 | Missing mods/rules and corrupt saves | compatible for implemented subset | `src/Savegame/SavedGame.cpp` | save-adapter and campaign-restoration unit tests | Missing active mods/rules, duplicate entity identities, invalid histories/coordinates/facility placement/script tags, non-sequence collection fields (including explicit null), oversized input, and cancelled writes fail intentionally without publishing a partial campaign or corrupting the existing file. |
+
+The world-save regression fixtures also pin two load details from `Ufo::load` and
+`SavedGame::load`: a UFO that is neither hunting nor escorting keeps an anonymous
+waypoint at the saved destination coordinates, and an ordinary `missionSites` entry
+must provide its `type`. The fixed legacy `STR_ALIEN_TERROR` type applies only to
+entries imported from `terrorSites`.

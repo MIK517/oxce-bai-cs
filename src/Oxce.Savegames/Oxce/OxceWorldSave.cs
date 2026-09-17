@@ -25,9 +25,8 @@ public static partial class OxceSaveAdapter
     {
         // SavedGame::load imports the legacy terrorSites node as ordinary mission sites, before missionSites.
         var sites = Maps(body, "terrorSites")
-            .Select(static map => ReadMissionSite(map) with
-            { MissionRuleId = LegacyTerrorMission, DeploymentId = LegacyTerrorDeployment })
-            .Concat(Maps(body, "missionSites").Select(ReadMissionSite)).ToArray();
+            .Select(static map => ReadMissionSite(map, legacy: true))
+            .Concat(Maps(body, "missionSites").Select(static map => ReadMissionSite(map, legacy: false))).ToArray();
         var alienBases = Maps(body, "alienBases").Select(ReadAlienBase).ToArray();
         var markers = new WorldMarkerIndex(sites, alienBases, content);
         return new WorldSnapshot
@@ -46,10 +45,10 @@ public static partial class OxceSaveAdapter
         };
     }
 
-    private static MissionSiteSnapshot ReadMissionSite(YamlMappingNode map) => new(
+    private static MissionSiteSnapshot ReadMissionSite(YamlMappingNode map, bool legacy) => new(
         Integer(map, "id", 0),
-        String(map, "type", LegacyTerrorMission),
-        String(map, "deployment", "STR_TERROR_MISSION"),
+        legacy ? LegacyTerrorMission : RequiredString(map, "type"),
+        legacy ? LegacyTerrorDeployment : String(map, "deployment", LegacyTerrorDeployment),
         String(map, "race", string.Empty),
         Double(map, "lon", 0),
         Double(map, "lat", 0),
