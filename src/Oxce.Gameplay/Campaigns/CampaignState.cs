@@ -106,6 +106,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     /// <summary>Returns a capability query; implementations take the transaction gate themselves.</summary>
     public TQuery? GetQuery<TQuery>() where TQuery : class => _handlers.Query<TQuery>();
 
+    internal RuntimeContent Content => _content;
+
+    internal IStatefulRandomSource Random => _random;
+
+    internal IReadOnlyList<BaseState> BaseStates => _bases;
+
     internal T Read<T>(Func<T> query)
     {
         lock (_transactionGate) return query();

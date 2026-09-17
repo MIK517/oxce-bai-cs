@@ -18,16 +18,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 33 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 43 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 89 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
-| [Oxce.Savegames](#oxcesavegames) | 3 | Core, Formats, Gameplay, Mods |
+| [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 68 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 69 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 75 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 76 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 33 files.
+`src/Oxce.Gameplay` - 43 files.
 
 ### `Oxce.Gameplay`
 
@@ -424,6 +424,35 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SoldierPiloting` (class) [StartingCrewAssignment.cs](../src/Oxce.Gameplay/Campaigns/StartingCrewAssignment.cs)
 - `StrategicGeography` (class) [StrategicGeography.cs](../src/Oxce.Gameplay/Campaigns/StrategicGeography.cs)
 - `StrategicLogisticsMath` (class) [StrategicLogisticsMath.cs](../src/Oxce.Gameplay/Campaigns/StrategicLogisticsMath.cs) - Arithmetic from RuleItem, Base and TransferItemsState at reference 4df3a5e.
+
+### `Oxce.Gameplay.Campaigns.World`
+
+- `AlienStrategyState` (class) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs) - The alien strategy table: which regions are still worth attacking, which missions remain available there, how often each mission-script v...
+- `AlienStrategyState.MissionLocation` (record struct) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs)
+- `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it.
+- `CampaignWorldOverview` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - The alien activity the player can act on plus the scheduled work behind it.
+- `ICampaignWorldQuery` (interface) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
+- `WorldAltitudes` (class) [WorldAltitudes.cs](../src/Oxce.Gameplay/Campaigns/World/WorldAltitudes.cs) - UFO altitude and heading vocabulary.
+- `WorldTargetKind` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The kinds of globe target a moving target can be sent to.
+- `WorldTargetReference` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - A saved reference to a globe target: the external type name plus the identity used by `Target::saveId`.
+- `UfoStatus` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Ufo::UfoStatus`.
+- `AlienMissionSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/AlienMission.cpp` save nodes.
+- `UfoSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/Ufo.cpp` save nodes.
+- `WaypointSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/Waypoint.cpp`; a bare globe marker crafts can be sent to.
+- `MissionSiteSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/MissionSite.cpp`.
+- `AlienBaseSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/AlienBase.cpp`.
+- `GeoscapeEventSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/GeoscapeEvent.cpp`.
+- `AlienStrategySnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/AlienStrategy.cpp` save nodes.
+- `WorldSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The strategic world graph: alien missions and the targets they created, the waypoints the player placed, and the alien strategy table.
+- `UfoDetectionResult` (enum) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - Detection outcome bits.
+- `WorldRadarFacility` (record struct) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - A completed radar facility as seen by `Base::detect`.
+- `WorldBaseFacility` (record struct) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - A completed facility as seen by `Base::getDetectionChance`.
+- `WorldDetection` (class) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - UFO detection arithmetic.
+- `WorldFlight` (class) [WorldFlight.cs](../src/Oxce.Gameplay/Campaigns/World/WorldFlight.cs) - Craft endurance arithmetic used by patrol, pursuit and return decisions.
+- `WorldPosition` (record struct) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - A point on the globe in reference units: longitude in [0, 2π), latitude in [-π/2, π/2].
+- `WorldGeometry` (class) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - Globe arithmetic shared by world simulation: distances, movement, region containment and land queries.
+- `WorldTrajectory` (class) [WorldTrajectory.cs](../src/Oxce.Gameplay/Campaigns/World/WorldTrajectory.cs) - Trajectory and wave timing arithmetic.
+- `WorldWeightedOptions` (class) [WorldWeightedOptions.cs](../src/Oxce.Gameplay/Campaigns/World/WorldWeightedOptions.cs) - An ordered weighted option set.
 
 ## Oxce.Mods
 
@@ -803,7 +832,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Savegames
 
-`src/Oxce.Savegames` - 3 files.
+`src/Oxce.Savegames` - 4 files.
 
 ### `Oxce.Savegames`
 
@@ -816,6 +845,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `OxceSaveWriteOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
 - `OxceSaveDocument` (class) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
 - `LoadedOxceCampaign` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
+- `OxceSaveAdapter` (class) [OxceWorldSave.cs](../src/Oxce.Savegames/Oxce/OxceWorldSave.cs) - The strategic world sections of the save: alien missions, UFOs, waypoints, mission sites, alien bases, scheduled events and the alien str...
 
 ## Oxce.Scripting
 
@@ -942,13 +972,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 68 files.
+`tests/Oxce.CompatibilityTests` - 69 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
-<details><summary>67 test classes</summary>
+<details><summary>68 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1007,6 +1037,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))
 - `StrategicSalesFixtureTests` ([StrategicSalesFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicSalesFixtureTests.cs))
 - `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs))
+- `StrategicWorldPersistenceTests` ([StrategicWorldPersistenceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldPersistenceTests.cs))
 - `StrategicWorldRuleProjectionTests` ([StrategicWorldRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRuleProjectionTests.cs))
 - `TerrainDataFixtureTests` ([TerrainDataFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDataFixtureTests.cs))
 - `TerrainDeploymentRulesFixtureTests` ([TerrainDeploymentRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDeploymentRulesFixtureTests.cs))
@@ -1031,9 +1062,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 75 files.
+`tests/Oxce.UnitTests` - 76 files.
 
-<details><summary>75 test classes</summary>
+<details><summary>76 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1073,6 +1104,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftServicingTests` ([CraftServicingTests.cs](../tests/Oxce.UnitTests/Gameplay/CraftServicingTests.cs))
 - `SoldierGenerationTests` ([SoldierGenerationTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierGenerationTests.cs))
 - `SoldierPilotingTests` ([SoldierPilotingTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierPilotingTests.cs))
+- `WorldGeometryTests` ([WorldGeometryTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldGeometryTests.cs))
 - `CampaignStartRuleCatalogTests` ([CampaignStartRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/CampaignStartRuleCatalogTests.cs))
 - `CommonResourceLayerTests` ([CommonResourceLayerTests.cs](../tests/Oxce.UnitTests/Mods/CommonResourceLayerTests.cs))
 - `ContentSnapshotTests` ([ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs))

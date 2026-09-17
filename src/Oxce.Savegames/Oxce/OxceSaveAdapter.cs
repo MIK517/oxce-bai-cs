@@ -17,7 +17,7 @@ namespace Oxce.Savegames.Oxce;
 /// Reference: SavedGame.cpp, GameTime.cpp, Country.cpp, Region.cpp, Base.cpp, and
 /// BaseFacility.cpp at OXCE commit 4df3a5e.
 /// </summary>
-public static class OxceSaveAdapter
+public static partial class OxceSaveAdapter
 {
     private static readonly string[] TransferPayloadKeys = ["soldier", "craft", "itemId", "scientists", "engineers"];
     private static readonly SourceSpan GeneratedSpan = new(
@@ -188,6 +188,8 @@ public static class OxceSaveAdapter
             Array.AsReadOnly(modIds),
             created,
             Boolean(header, "ironman", false));
+        var world = ReadWorld(body, content);
+        var markers = new WorldMarkerIndex(world.MissionSites, world.AlienBases, content);
         var difficultyValue = Integer(body, "difficulty", 0);
         if (difficultyValue is < 0 or > 4) throw new InvalidDataException("Save difficulty is outside 0..4.");
         var snapshot = new CampaignSnapshot(
@@ -206,9 +208,10 @@ public static class OxceSaveAdapter
             ReadIds(body),
             ReadCountries(body, content),
             ReadRegions(body),
-            ReadBases(body, content),
+            ReadBases(body, content, markers),
             ReadScriptValues(body, content, "GeoscapeGame"))
         {
+            World = world,
             Restrictions = ReadRestrictions(body),
             // SavedGame::load accepts repeated topics; the port keeps one entry per topic.
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
@@ -230,9 +233,7 @@ public static class OxceSaveAdapter
         var result = new List<CampaignRestriction>();
         if (body.TryGet("battleGame", out var battle) && battle is not YamlScalarNode)
             result.Add(new("Active tactical battle is preserved; tactical continuation is unavailable.", null, true, true));
-        string[] worldKeys = ["ufos", "alienMissions", "missionSites", "alienBases", "geoscapeEvents"];
-        foreach (var key in worldKeys)
-            if (HasContents(body, key)) result.Add(new($"Live {key} requires world simulation.", null, false, true));
+        // Live world entities are owned by the world capability, which decides when they block time.
         return Array.AsReadOnly(result.ToArray());
     }
 
@@ -268,7 +269,8 @@ public static class OxceSaveAdapter
                 IntHistory(map, "activityAlien", [0]));
         }).ToArray());
 
-    private static ReadOnlyCollection<BaseSnapshot> ReadBases(YamlMappingNode body, RuntimeContent content)
+    private static ReadOnlyCollection<BaseSnapshot> ReadBases(
+        YamlMappingNode body, RuntimeContent content, WorldMarkerIndex markers)
     {
         var entityIndex = IndexEntities(body);
         var defaultSoldier = content.RuntimeRules.Soldiers.Rules.Count == 0
@@ -290,7 +292,7 @@ public static class OxceSaveAdapter
             var crafts = Sequence(map, "crafts").Select(item =>
             {
                 var craft = RequireMap(item, "craft");
-                return ReadCraft(craft);
+                return ReadCraft(craft, markers);
             }).ToArray();
             var soldiers = Sequence(map, "soldiers").Select(item =>
             {
@@ -315,7 +317,7 @@ public static class OxceSaveAdapter
                 Array.AsReadOnly(soldiers), items, scientists, engineers)
             {
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
-                    ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier)).ToArray()),
+                    ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
                 Research = research,
                 Productions = productions,
@@ -438,6 +440,39 @@ public static class OxceSaveAdapter
             Pair("countries", Sequence(countries)),
             Pair("regions", Sequence(regions)),
             Pair("bases", Sequence(bases)),
+            Pair("alienMissions", BuildWorldSection(snapshot.World.Missions.Count,
+                snapshot.World.Missions.Select(mission => BuildAlienMission(mission,
+                    FirstByKey(Maps(source?.Body, "alienMissions"), static map => String(map, "uniqueID", string.Empty))
+                        .GetValueOrDefault(mission.Id.ToString(CultureInfo.InvariantCulture)))))),
+            Pair("ufos", BuildWorldSection(snapshot.World.Ufos.Count,
+                snapshot.World.Ufos.Select(ufo => BuildUfo(ufo,
+                    FirstByKey(Maps(source?.Body, "ufos"), static map => String(map, "uniqueId", string.Empty))
+                        .GetValueOrDefault(ufo.UniqueId.ToString(CultureInfo.InvariantCulture)))))),
+            Pair("waypoints", BuildWorldSection(snapshot.World.Waypoints.Count,
+                snapshot.World.Waypoints.Select(static waypoint => Mapping(
+                [
+                    Pair("lon", Real(waypoint.Longitude)), Pair("lat", Real(waypoint.Latitude)),
+                    Pair("id", waypoint.Id == 0 ? null : Integer(waypoint.Id)),
+                    Pair("name", waypoint.Name.Length == 0 ? null : Scalar(waypoint.Name)),
+                ])))),
+            Pair("missionSites", BuildWorldSection(snapshot.World.MissionSites.Count,
+                snapshot.World.MissionSites.Select(site => BuildMissionSite(site,
+                    FirstByKey(Maps(source?.Body, "missionSites"), static map =>
+                        $"{String(map, "deployment", "STR_TERROR_MISSION")}:{Integer(map, "id", 0)}")
+                        .GetValueOrDefault($"{site.DeploymentId}:{site.Id}"))))),
+            Pair("alienBases", BuildWorldSection(snapshot.World.AlienBases.Count,
+                snapshot.World.AlienBases.Select(alienBase => BuildAlienBase(alienBase,
+                    FirstByKey(Maps(source?.Body, "alienBases"), static map =>
+                        $"{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}")
+                        .GetValueOrDefault($"{alienBase.DeploymentId}:{alienBase.Id}"))))),
+            Pair("geoscapeEvents", BuildWorldSection(snapshot.World.Events.Count,
+                snapshot.World.Events.Select(static scheduled => Mapping(
+                [
+                    Pair("name", Scalar(scheduled.RuleId)),
+                    Pair("spawnCountdown", Integer(scheduled.SpawnCountdown)),
+                    Pair("over", scheduled.Over ? Boolean(true) : null),
+                ])))),
+            Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy)),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
@@ -589,6 +624,14 @@ public static class OxceSaveAdapter
             Pair("excessFuel", Integer(state.ExcessFuel)), Pair("lowFuel", state.LowFuel ? Boolean(true) : null),
             Pair("isAutoPatrolling", state.IsAutoPatrolling ? Boolean(true) : null),
             Pair("shield", Integer(state.Shield)),
+            Pair("dest", TargetReference(state.Destination)),
+            Pair("takeoff", state.Takeoff == 0 ? null : Integer(state.Takeoff)),
+            Pair("mission", state.MissionComplete ? Boolean(true) : null),
+            Pair("interceptionOrder", state.InterceptionOrder == 0 ? null : Integer(state.InterceptionOrder)),
+            Pair("lonAuto", Real(state.AutoPatrolLongitude)), Pair("latAuto", Real(state.AutoPatrolLatitude)),
+            Pair("speed", Integer(state.Speed)),
+            Pair("speedLon", Real(state.SpeedLongitude)), Pair("speedLat", Real(state.SpeedLatitude)),
+            Pair("speedRadian", Real(state.SpeedRadian)),
             Pair("lon", Scalar(state.Longitude.ToString("R", CultureInfo.InvariantCulture))),
             Pair("lat", Scalar(state.Latitude.ToString("R", CultureInfo.InvariantCulture))),
             Pair("items", IntMapping(state.Items)),
@@ -691,7 +734,7 @@ public static class OxceSaveAdapter
             p => p.Key, p => checked((short)p.Value), StringComparer.Ordinal));
     }
 
-    private static CraftSnapshot ReadCraft(YamlMappingNode map)
+    private static CraftSnapshot ReadCraft(YamlMappingNode map, WorldMarkerIndex markers)
     {
         var type = RequiredString(map, "type");
         var id = Integer(map, "id", 0);
@@ -699,7 +742,7 @@ public static class OxceSaveAdapter
         return new(type, id)
         {
             PreservationKey = preservationKey,
-            Logistics = ReadCraftLogistics(map, preservationKey),
+            Logistics = ReadCraftLogistics(map, preservationKey, markers),
         };
     }
 
@@ -712,7 +755,8 @@ public static class OxceSaveAdapter
             Boolean(map, "allowBuildingQueue", false));
     }
 
-    private static CraftLogisticsState? ReadCraftLogistics(YamlMappingNode map, string craftPreservationKey)
+    private static CraftLogisticsState? ReadCraftLogistics(
+        YamlMappingNode map, string craftPreservationKey, WorldMarkerIndex markers)
     {
         if (!map.TryGet("status", out _) && !map.TryGet("weapons", out _) && !map.TryGet("items", out _)) return null;
         return new(Integer(map, "fuel", 0), Integer(map, "damage", 0), String(map, "status", "STR_READY"),
@@ -733,10 +777,21 @@ public static class OxceSaveAdapter
             LowFuel = Boolean(map, "lowFuel", false),
             IsAutoPatrolling = Boolean(map, "isAutoPatrolling", false),
             Shield = Integer(map, "shield", 0),
+            Destination = ReadTargetReference(map, markers, Double(map, "lon", 0), Double(map, "lat", 0)),
+            Takeoff = Integer(map, "takeoff", 0),
+            MissionComplete = Boolean(map, "mission", false),
+            InterceptionOrder = Integer(map, "interceptionOrder", 0),
+            AutoPatrolLongitude = Double(map, "lonAuto", 0),
+            AutoPatrolLatitude = Double(map, "latAuto", 0),
+            Speed = Integer(map, "speed", 0),
+            SpeedLongitude = Double(map, "speedLon", 0),
+            SpeedLatitude = Double(map, "speedLat", 0),
+            SpeedRadian = Double(map, "speedRadian", 0),
         };
     }
 
-    private static TransferSnapshot ReadTransfer(YamlMappingNode map, int id, string defaultSoldier)
+    private static TransferSnapshot ReadTransfer(
+        YamlMappingNode map, int id, string defaultSoldier, WorldMarkerIndex markers)
     {
         RejectDuplicateKnownKeys(map, ["hours", "soldier", "craft", "itemId", "itemQty", "scientists", "engineers", "delivered", "oxcePortTransferId"]);
         var payloads = TransferPayloadKeys.Count(key => map.TryGet(key, out _));
@@ -752,7 +807,7 @@ public static class OxceSaveAdapter
         if (map.TryGet("craft", out var craftNode))
         {
             var craft = RequireMap(craftNode!, "transfer craft");
-            var value = ReadCraft(craft);
+            var value = ReadCraft(craft, markers);
             return Preserve(new(id, hours, CampaignTransferKind.Craft, value.RuleId, 1, Craft: value, Delivered: delivered));
         }
         if (map.TryGet("itemId", out _))
