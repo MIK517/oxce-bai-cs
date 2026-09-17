@@ -175,8 +175,8 @@ public sealed class StrategicWorldPersistenceTests
         Assert.Equal(760, state.Speed);
         Assert.Equal(0.0005, state.SpeedRadian);
 
-        // A destination whose target is gone is rejected rather than silently kept.
-        Assert.Throws<InvalidDataException>(() => CampaignState.Restore(
+        // Craft::load leaves a craft whose destination is gone without one instead of failing.
+        var stale = CampaignState.Restore(
             snapshot with
             {
                 Bases = [snapshot.Bases[0] with
@@ -184,10 +184,121 @@ public sealed class StrategicWorldPersistenceTests
                     Crafts = [flying with { Logistics = flying.Logistics! with
                     {
                         Destination = new WorldTargetReference(WorldTargetKind.Ufo, "STR_UFO", 1, 0, 0) { UniqueId = 404 },
-                    } }],
+                    } }, .. snapshot.Bases[0].Crafts.Skip(1)],
                 }],
             },
-            content, new SplitMix64RandomSource(7)));
+            content, new SplitMix64RandomSource(7));
+        Assert.Null(stale.Capture().Bases[0].Crafts[0].Logistics!.Destination);
+
+        // A craft bound for "STR_BASE" returns to its own base, whatever ID the save recorded.
+        var home = CampaignState.Restore(
+            snapshot with
+            {
+                Bases = [snapshot.Bases[0] with
+                {
+                    Crafts = [flying with { Logistics = flying.Logistics! with
+                    {
+                        Destination = new WorldTargetReference(WorldTargetKind.Base, WorldTargetReference.BaseType, 99, 0, 0),
+                    } }, .. snapshot.Bases[0].Crafts.Skip(1)],
+                }],
+            },
+            content, new SplitMix64RandomSource(7)).Capture().Bases[0].Crafts[0].Logistics!.Destination;
+        Assert.Equal(WorldTargetKind.Base, home!.Kind);
+        Assert.Equal(snapshot.Bases[0].Id, home.Id);
+        Assert.Equal(snapshot.Bases[0].Longitude, home.Longitude);
+    }
+
+    [Fact]
+    public void CraftTargetsSurviveTheSaveRoundTrip()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var placed = PlacedCampaign(content, CampaignDifficulty.Veteran);
+        var crafts = placed.Bases[0].Crafts;
+        var escorted = crafts[1];
+        var escort = crafts[0] with
+        {
+            Logistics = crafts[0].Logistics! with
+            {
+                Status = "STR_OUT",
+                // Craft::finishLoading resolves an escorting craft by craft type and ID.
+                Destination = new WorldTargetReference(WorldTargetKind.Craft, escorted.RuleId, escorted.Id, 0.2, 0.1),
+            },
+        };
+        var world = SampleWorld();
+        var hunter = world.Ufos[0] with
+        {
+            Hunting = true,
+            HunterKiller = true,
+            // Ufo::finishLoading resolves a hunting UFO's destination to the craft it chases.
+            Destination = new WorldTargetReference(WorldTargetKind.Craft, escort.RuleId, escort.Id, 0.2, 0.1),
+        };
+        var snapshot = placed with
+        {
+            World = world with { Ufos = [hunter] },
+            Bases = [placed.Bases[0] with { Crafts = [escort, .. crafts.Skip(1)] }],
+        };
+
+        var captured = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(7)).Capture();
+        var reloaded = TestFixtures.LoadLogisticsSave(
+            OxceSaveAdapter.EmitNewCampaign(captured), content, seed: 6, name: "hunt.sav").Campaign.Capture();
+
+        var reloadedEscort = reloaded.Bases[0].Crafts[0].Logistics!.Destination;
+        Assert.Equal(WorldTargetKind.Craft, reloadedEscort!.Kind);
+        Assert.Equal(escorted.RuleId, reloadedEscort.TypeId);
+        Assert.Equal(escorted.Id, reloadedEscort.Id);
+        var reloadedHunter = reloaded.World.Ufos[0].Destination;
+        Assert.Equal(WorldTargetKind.Craft, reloadedHunter!.Kind);
+        Assert.Equal(escort.RuleId, reloadedHunter.TypeId);
+        Assert.True(reloaded.World.Ufos[0].Hunting);
+    }
+
+    [Fact]
+    public void LegacyTerrorSitesAndTheirCraftDestinationsAreImported()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var placed = PlacedCampaign(content, CampaignDifficulty.Veteran);
+        var crafts = placed.Bases[0].Crafts;
+        var chasing = crafts[0] with
+        {
+            Logistics = crafts[0].Logistics! with
+            {
+                Status = "STR_OUT",
+                Destination = new WorldTargetReference(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 6, 0.14, 0.03),
+            },
+        };
+        var snapshot = placed with { Bases = [placed.Bases[0] with { Crafts = [chasing, .. crafts.Skip(1)] }] };
+        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot)
+            // A legacy save records the site under terrorSites and its destination under the old name.
+            .Replace("type: STR_TERROR_SITE", "type: STR_ALIEN_TERROR", StringComparison.Ordinal) +
+            """
+            terrorSites:
+              - lon: 0.14
+                lat: 0.03
+                id: 6
+                race: RACE_A
+                secondsRemaining: 3600
+            """ + "\n";
+
+        var loaded = TestFixtures.LoadLogisticsSave(yaml, content, seed: 8, name: "legacy.sav");
+        var restored = loaded.Campaign.Capture();
+
+        var site = Assert.Single(restored.World.MissionSites);
+        Assert.Equal(6, site.Id);
+        Assert.Equal("STR_ALIEN_TERROR", site.MissionRuleId);
+        Assert.Equal("STR_TERROR_MISSION", site.DeploymentId);
+        Assert.Equal(3600, site.SecondsRemaining);
+        var destination = restored.Bases[0].Crafts[0].Logistics!.Destination;
+        Assert.Equal(WorldTargetKind.MissionSite, destination!.Kind);
+        Assert.Equal("STR_TERROR_SITE", destination.TypeId);
+        Assert.Equal(6, destination.Id);
+
+        // The rewrite emits the site under missionSites and drops the legacy node.
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(restored, loaded.Source);
+        Assert.DoesNotContain("terrorSites:", rewritten, StringComparison.Ordinal);
+        Assert.Contains("missionSites:", rewritten, StringComparison.Ordinal);
+        Assert.Equivalent(restored.World,
+            TestFixtures.LoadLogisticsSave(rewritten, content, seed: 9, name: "legacy.sav").Campaign.Capture().World,
+            strict: true);
     }
 
     private static CampaignState Restore(CampaignSnapshot placed, RuntimeContent content, WorldSnapshot world) =>

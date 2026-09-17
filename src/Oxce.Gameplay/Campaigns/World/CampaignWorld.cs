@@ -138,6 +138,7 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
             if (rules.AlienMissions.TryGet(site.MissionRuleId, out _) &&
                 rules.AlienDeployments.TryGet(site.DeploymentId, out _)) _sites.Add(site);
         _waypoints.AddRange(snapshot.World.Waypoints);
+        NormalizeDestinations();
         _strategy = AlienStrategyState.Restore(
             snapshot.World.Strategy.RegionChances,
             snapshot.World.Strategy.RegionMissions,
@@ -169,6 +170,40 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
             result = result with { Interrupted = true, Race = rules.AlienRaces.Rules[0].Id };
         }
         return result;
+    }
+
+    /// <summary>
+    /// Resolves the destinations the save recorded. The reference tolerates a destination whose
+    /// target is gone: <c>Craft::load</c> simply leaves the craft without one, and <c>Ufo::load</c>
+    /// keeps the dummy waypoint it built from the saved coordinates. Structural references
+    /// (a UFO's mission, a mission's alien base, a site's UFO) still fail in <see cref="Validate"/>.
+    /// </summary>
+    private void NormalizeDestinations()
+    {
+        for (var index = 0; index < _ufos.Count; index++)
+        {
+            if (_ufos[index].Destination is not { } destination) continue;
+            _ufos[index] = _ufos[index] with
+            {
+                Destination = Resolve(destination) ??
+                    new WorldTargetReference(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0,
+                        destination.Longitude, destination.Latitude),
+            };
+        }
+        foreach (var owner in campaign.BaseStates)
+        {
+            for (var index = 0; index < owner.Crafts.Count; index++)
+            {
+                var craft = owner.Crafts[index];
+                if (craft.Logistics is not { Destination: { } destination } logistics) continue;
+                // Craft::load returns a craft bound for "STR_BASE" to its own base, whatever the saved ID.
+                var resolved = destination.Kind == WorldTargetKind.Base
+                    ? destination with { Id = owner.Id, Longitude = owner.Longitude, Latitude = owner.Latitude }
+                    : Resolve(destination);
+                if (resolved == destination) continue;
+                owner.Crafts[index] = craft with { Logistics = logistics with { Destination = resolved } };
+            }
+        }
     }
 
     private void Validate()
@@ -213,6 +248,7 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
             if (ufo.SecondsRemaining < 0 || ufo.Damage < 0)
                 throw new InvalidDataException("UFO counters cannot be negative.");
             ValidateReference(ufo.Destination, "UFO destination");
+            if (ufo.Destination is null) throw new InvalidDataException("A UFO must have a destination.");
         }
 
         foreach (var site in _sites)
@@ -297,16 +333,17 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
         }
     }
 
-    private void ValidateReference(WorldTargetReference? reference, string what)
+    /// <summary>
+    /// Checks a destination that survived <see cref="NormalizeDestinations"/>: its kind, identity and
+    /// position must be usable. A reference that no longer resolves was already dropped there.
+    /// </summary>
+    private static void ValidateReference(WorldTargetReference? reference, string what)
     {
         if (reference is null) return;
         if (!Enum.IsDefined(reference.Kind)) throw new InvalidDataException($"A {what} has an unsupported kind.");
-        if (reference.Kind != WorldTargetKind.Base && reference.Id <= 0 &&
-            reference.Kind != WorldTargetKind.Waypoint)
+        if (reference.Id <= 0 && reference.Kind is not (WorldTargetKind.Base or WorldTargetKind.Waypoint))
             throw new InvalidDataException($"A {what} must reference a positive identity.");
         ValidatePosition(reference.Position, what);
-        if (Resolve(reference) is null && reference.Kind is not WorldTargetKind.Waypoint)
-            throw new InvalidDataException($"A {what} references a target that no longer exists.");
     }
 
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
