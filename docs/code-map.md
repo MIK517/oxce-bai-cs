@@ -19,13 +19,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
 | [Oxce.Gameplay](#oxcegameplay) | 33 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 88 | Core, Formats, Scripting |
+| [Oxce.Mods](#oxcemods) | 89 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 3 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 67 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 68 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 75 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -427,7 +427,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 88 files.
+`src/Oxce.Mods` - 89 files.
 
 ### `Oxce.Mods`
 
@@ -679,10 +679,15 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ResearchRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `ManufactureRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `EventRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `UfoRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `UfoTrajectoryRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `AlienMissionRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `AlienDeploymentRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `AlienRaceRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `RuntimeCraftTemplateWeapon` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplateVehicle` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplate` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
-- `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
+- `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Reference: `Mod/Texture.cpp`.
 - `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs)
 - `RuntimeRuleCompatibilityEntry` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
@@ -721,6 +726,17 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeScriptRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeSoldierNamePool` (record) [RuntimeSoldierNamePool.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierNamePool.cs)
 - `RuntimeSoldierTemplate` (record) [RuntimeSoldierTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierTemplate.cs)
+- `RuntimeUfoStats` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Craft-shaped statistics of a UFO, including the race bonus applied when a mission assigns its race.
+- `RuntimeUfoRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The world-simulation projection of a UFO rule.
+- `RuntimeTrajectoryWaypoint` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - One trajectory waypoint.
+- `RuntimeUfoTrajectoryRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `Mod/UfoTrajectory.cpp`.
+- `RuntimeMissionWave` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - One wave of an alien mission.
+- `RuntimeMissionObjective` (enum) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Mission objectives.
+- `RuntimeMissionOperationType` (enum) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Where a mission's UFOs operate from.
+- `RuntimeAlienMissionRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `Mod/RuleAlienMission.cpp`.
+- `RuntimeWeightedTimeline` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - A month-keyed weighted table.
+- `RuntimeAlienDeploymentRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The strategic projection of an alien deployment: site and alien-base bookkeeping only.
+- `RuntimeAlienRaceEvolution` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Reference: `AlienDeployment::getAlienRaceEvolution` tuples.
 
 ### `Oxce.Mods.Rulesets.TerrainDeployment`
 
@@ -926,13 +942,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 67 files.
+`tests/Oxce.CompatibilityTests` - 68 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
-<details><summary>66 test classes</summary>
+<details><summary>67 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -991,6 +1007,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))
 - `StrategicSalesFixtureTests` ([StrategicSalesFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicSalesFixtureTests.cs))
 - `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs))
+- `StrategicWorldRuleProjectionTests` ([StrategicWorldRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRuleProjectionTests.cs))
 - `TerrainDataFixtureTests` ([TerrainDataFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDataFixtureTests.cs))
 - `TerrainDeploymentRulesFixtureTests` ([TerrainDeploymentRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDeploymentRulesFixtureTests.cs))
 - `TerrainMapRouteFixtureTests` ([TerrainMapRouteFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainMapRouteFixtureTests.cs))
@@ -1217,6 +1234,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
 | [strategic-time](../fixtures/manifests/strategic-time.json) | cpp-reference | `savegames/strategic-time.expected.json` | `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs)) |
+| [strategic-world](../fixtures/manifests/strategic-world.json) | cpp-reference | `savegames/strategic-world.expected.json` | **none** |
 | [terrain-data](../fixtures/manifests/terrain-data.json) | cpp-reference | `terrain/terrain-data.expected.json` | `TerrainDataFixtureTests` ([TerrainDataFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDataFixtureTests.cs)) |
 | [terrain-deployment-rules](../fixtures/manifests/terrain-deployment-rules.json) | cpp-reference | `mods/terrain-deployment-rules.expected.json` | `TerrainDeploymentRulesFixtureTests` ([TerrainDeploymentRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDeploymentRulesFixtureTests.cs)) |
 | [terrain-map-route](../fixtures/manifests/terrain-map-route.json) | cpp-reference | `terrain/map-route.expected.json` | `TerrainMapRouteFixtureTests` ([TerrainMapRouteFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainMapRouteFixtureTests.cs)) |
