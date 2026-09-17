@@ -49,6 +49,7 @@ internal static class CampaignTimeOrder
 internal static class CampaignPreflightOrder
 {
     public const int Restrictions = 100;
+    public const int WorldSimulation = 150;
     public const int CraftMovement = 200;
     public const int MonthBoundary = 300;
     public const int Servicing = 400;

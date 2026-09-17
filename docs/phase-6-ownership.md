@@ -17,7 +17,7 @@ Checkpoint notes below retain the scope and outstanding work at each implementat
 | Transfer quantities, cost/distance, time and mobile save fields | Branch 1 | `TransferItemsState`, `TransferConfirmState`, `Transfer` | Extracted arithmetic and two-base fixtures; mobile ownership |
 | Facility editing, training, recovery, transformations, servicing | Branch 2 | Base/personnel/craft states, timed handlers | Implemented with fresh/cache/save and indexed UI acceptance. See [readiness status](strategic-readiness-status.md). |
 | Research and production progression | Branch 3 | `ResearchProject`, `Production`, timed handlers | Implemented with extracted C++ progression oracle, fresh/cache economy chain, save/reload and indexed UI. See [branch 3 status](strategic-research-production-status.md). |
-| World entities, mission/arc/event scheduling and movement | Branch 4 | `GeoscapeState`, mission/target classes | Deferred; do not advance opaque entities |
+| World entities, mission/arc/event scheduling and movement | Branch 4 | `GeoscapeState`, mission/target classes | Entity rules and the persisted target graph are implemented (branch 4 commits 1-2); scheduling, movement and detection remain in progress and still stop time |
 | Interception and strategic deployment | Branch 5 | `DogfightState`, landing/deployment callers | Deferred |
 | Monthly ledger, event consequences, strategic endings | Branch 6 | `MonthlyReportState`, `GeoscapeEventState`, `SavedGame` | Deferred; earlier monthly hooks must not run twice |
 | Active battle, battle-derived personnel changes and debriefing | Phase 7 | Battlescape and debriefing | Preserve-only; tactical continuation unavailable |

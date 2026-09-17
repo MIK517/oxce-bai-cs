@@ -11,6 +11,7 @@ public sealed partial class CampaignState
         new DelegatedCampaignCapability(RegisterLogistics),
         new DelegatedCampaignCapability(RegisterCraftServicing),
         new DelegatedCampaignCapability(RegisterResearchProduction),
+        new World.CampaignWorld(this),
     ];
 
     private CampaignHandlerTable BuildHandlers()
