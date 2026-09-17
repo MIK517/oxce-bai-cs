@@ -182,12 +182,20 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
     {
         for (var index = 0; index < _ufos.Count; index++)
         {
-            if (_ufos[index].Destination is not { } destination) continue;
-            _ufos[index] = _ufos[index] with
+            var ufo = _ufos[index];
+            var destination = ufo.Destination;
+            // Ufo::load first creates an anonymous waypoint from dest coordinates.
+            // Ufo::finishLoading replaces it only for a hunted craft or an escorted UFO.
+            var resolved = destination is null ? null
+                : ufo.Hunting && destination.Kind == WorldTargetKind.Craft ? Resolve(destination)
+                : !ufo.Hunting && ufo.Escorting && destination.Kind == WorldTargetKind.Ufo &&
+                    destination.UniqueId > 0 ? Resolve(destination)
+                : null;
+            _ufos[index] = ufo with
             {
-                Destination = Resolve(destination) ??
+                Destination = resolved ??
                     new WorldTargetReference(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0,
-                        destination.Longitude, destination.Latitude),
+                        destination?.Longitude ?? ufo.Longitude, destination?.Latitude ?? ufo.Latitude),
             };
         }
         foreach (var owner in campaign.BaseStates)
