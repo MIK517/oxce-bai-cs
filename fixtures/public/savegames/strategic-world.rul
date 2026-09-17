@@ -1,0 +1,176 @@
+# World-simulation overlay for the strategic-logistics fixture master: a globe with land,
+# fake-underwater and ocean textures, a region with point and area mission zones, UFOs,
+# trajectories, alien missions and the deployments their sites and bases use.
+globe:
+  polygons:
+    - [10, 0, -10, 20, -10, 20, 10, 0, 10]
+    - [11, 20, -10, 30, -10, 30, 10, 20, 10]
+    - [12, 40, -10, 60, -10, 60, 10, 40, 10]
+  textures:
+    - {id: 10, deployments: {SITE_DEPLOY: 3, SITE_DEPLOY_B: 1}}
+    - {id: 11, fakeUnderwater: true, deployments: {SITE_DEPLOY: 1}}
+    - {id: 12, isOcean: true}
+regions:
+  - type: REGION
+    cost: 5000
+    regionWeight: 10
+    missionWeights:
+      MISSION_SCOUT: 4
+      MISSION_SITE: 2
+    missionZones:
+      - [[2, 28, -18, 18, 10]]
+      - [[8, 8, 2, 2, 10, CITY_ALPHA], [12, 12, -2, -2, 10, CITY_BETA]]
+      - [[22, 28, -8, 8, 11]]
+alienRaces:
+  - id: RACE_A
+    members: [SECTOID]
+  - id: RACE_B
+    members: [SECTOID]
+alienDeployments:
+  - type: SITE_DEPLOY
+    markerName: STR_TERROR_SITE
+    markerIcon: 8
+    duration: [3, 6]
+    points: 4
+    despawnPenalty: 9
+    race: RACE_A
+    unlockedResearchOnDespawn: UNLOCK
+    counterDespawn: sitesDespawned
+    counterAll: sitesAll
+    decreaseCounterFailure: sitesWon
+    despawnEvents:
+      EVENT_DESPAWN: 5
+  - type: SITE_DEPLOY_B
+    markerName: STR_TERROR_SITE
+    duration: [1, 1]
+    points: 1
+    race: RACE_B
+  - type: ALIEN_BASE_DEPLOY
+    markerName: STR_ALIEN_BASE
+    alienBase: true
+    points: 7
+    race: RACE_A
+    fakeUnderwaterSpawnChance: 25
+    baseDetectionRange: 600
+    baseDetectionChance: 40
+    huntMissionMaxFrequency: 90
+    genMissionFreq: 6
+    genMissionLimit: 3
+    genMission:
+      MISSION_SUPPLY: 10
+    huntMissionWeights:
+      0: {MISSION_SCOUT: 5}
+      4: {MISSION_SCOUT: 1, MISSION_SITE: 9}
+    alienBaseUpgrades:
+      0: {ALIEN_BASE_DEPLOY_UPGRADED: 100}
+    alienRaceEvolution:
+      - [6, RACE_A, RACE_B]
+    baseSelfDestructCode: UNLOCK
+  - type: ALIEN_BASE_DEPLOY_UPGRADED
+    markerName: STR_ALIEN_BASE
+    alienBase: true
+    points: 11
+    race: RACE_B
+    resetAlienBaseAge: true
+ufos:
+  - type: UFO_SCOUT
+    size: STR_SMALL
+    marker: 2
+    missionScore: 3
+    fakeWaterLandingChance: 20
+    speedMax: 2200
+    damageMax: 50
+    radarRange: 300
+    radarChance: 100
+    sightRange: 268
+    shieldCapacity: 0
+    raceBonus:
+      RACE_B:
+        speedMax: 300
+        damageMax: 10
+  - type: UFO_HUNTER
+    size: STR_LARGE
+    visibility: 22
+    hunterKillerPercentage: 100
+    huntMode: 1
+    huntBehavior: 0
+    huntSpeed: 80
+    unmanned: true
+    noAlert: true
+    speedMax: 4000
+    damageMax: 500
+    radarRange: 600
+    radarChance: 50
+    sightRange: 400
+ufoTrajectories:
+  - id: TRAJ_PATROL
+    groundTimer: 12
+    waypoints:
+      - [0, 3, 100]
+      - [1, 2, 80]
+      - [0, 0, 50]
+      - [0, 1, 100]
+  - id: TRAJ_SITE
+    groundTimer: 6
+    waypoints:
+      - [0, 3, 100]
+      - [1, 0, 60]
+      - [0, 4, 100]
+  - id: __RETALIATION_ASSAULT_RUN
+    groundTimer: 5
+    waypoints:
+      - [5, 3, 100]
+      - [5, 0, 100]
+alienMissions:
+  - type: MISSION_SCOUT
+    points: 2
+    objective: 0
+    raceWeights:
+      0: {RACE_A: 10}
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_PATROL, timer: 9000}
+      - {ufo: UFO_HUNTER, count: 1, trajectory: TRAJ_PATROL, timer: 12000, hunterKillerPercentage: 100, huntMode: 0, huntBehavior: 1, escort: true, interruptPercentage: 50}
+  - type: MISSION_SITE
+    points: 5
+    objective: 3
+    spawnZone: 1
+    siteType: SITE_DEPLOY
+    raceWeights:
+      0: {RACE_A: 5, RACE_B: 5}
+    regionWeights:
+      0: {REGION: 1}
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: 3000, objective: true}
+  - type: MISSION_BASE
+    points: 8
+    objective: 2
+    spawnZone: 2
+    siteType: ALIEN_BASE_DEPLOY
+    raceWeights:
+      0: {RACE_A: 1}
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: 3000, objectiveOnTheLandingSite: true}
+  - type: MISSION_RETALIATION
+    points: 6
+    objective: 4
+    spawnUfo: UFO_HUNTER
+    interruptResearch: UNLOCK
+    raceWeights:
+      0: {RACE_A: 1}
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 3000}
+  - type: MISSION_SUPPLY
+    points: 3
+    objective: 5
+    operationType: 1
+    operationSpawnZone: 0
+    operationBaseType: ALIEN_BASE_DEPLOY
+    raceWeights:
+      0: {RACE_A: 1}
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 3000, objective: true}
+events:
+  - name: EVENT_DESPAWN
+    description: STR_EVENT_DESPAWN
+    points: 3
+    timer: 30

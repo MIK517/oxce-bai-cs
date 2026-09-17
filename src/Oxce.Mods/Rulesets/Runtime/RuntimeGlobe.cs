@@ -5,7 +5,18 @@ using Oxce.Mods.Files;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
-public sealed record RuntimeGlobeTexture(bool IsOcean = false, bool FakeUnderwater = false);
+/// <summary>
+/// Reference: <c>Mod/Texture.cpp</c>. <c>Deployments</c> is the weighted alien-deployment table a
+/// mission site uses when its area has no explicit site type; terrain criteria stay in the typed
+/// catalog until battle generation needs them.
+/// </summary>
+public sealed record RuntimeGlobeTexture(bool IsOcean = false, bool FakeUnderwater = false)
+{
+    public IReadOnlyDictionary<string, ulong> Deployments { get; init; } = EmptyDeployments;
+
+    internal static readonly IReadOnlyDictionary<string, ulong> EmptyDeployments =
+        new ReadOnlyDictionary<string, ulong>(new Dictionary<string, ulong>(StringComparer.Ordinal));
+}
 public sealed record RuntimeGlobe(IReadOnlyList<WorldPolygon> Polygons, IReadOnlyDictionary<int, RuntimeGlobeTexture> Textures)
 {
     public static RuntimeGlobe Empty { get; } = new([], new ReadOnlyDictionary<int, RuntimeGlobeTexture>(new Dictionary<int, RuntimeGlobeTexture>()));
@@ -64,12 +75,28 @@ internal static class RuntimeGlobeLoader
                         var id = YamlValueReader.ReadInt32(idNode!);
                         var previous = textures.GetValueOrDefault(id) ?? new();
                         textures[id] = new(map.TryGet("isOcean", out var ocean) ? YamlValueReader.ReadBoolean(ocean!) : previous.IsOcean,
-                            map.TryGet("fakeUnderwater", out var water) ? YamlValueReader.ReadBoolean(water!) : previous.FakeUnderwater);
+                            map.TryGet("fakeUnderwater", out var water) ? YamlValueReader.ReadBoolean(water!) : previous.FakeUnderwater)
+                        {
+                            Deployments = map.TryGet("deployments", out var deployments)
+                                ? ReadDeployments(deployments!) : previous.Deployments,
+                        };
                     }
                     else if (map.TryGet("delete", out var deleted)) textures.Remove(YamlValueReader.ReadInt32(deleted!));
                 }
         }
         return new(polygons, new ReadOnlyDictionary<int, RuntimeGlobeTexture>(textures));
     }
+    private static ReadOnlyDictionary<string, ulong> ReadDeployments(YamlNode node)
+    {
+        var map = node as YamlMappingNode ?? throw new InvalidDataException("Globe texture deployments require a mapping.");
+        var result = new Dictionary<string, ulong>(StringComparer.Ordinal);
+        foreach (var entry in map.Entries)
+        {
+            var id = entry.ScalarKey ?? throw new InvalidDataException("Globe texture deployment requires an ID.");
+            result[id] = YamlValueReader.ReadUInt64(entry.Value);
+        }
+        return new ReadOnlyDictionary<string, ulong>(result);
+    }
+
     private static YamlSequenceNode Sequence(YamlNode node) => node as YamlSequenceNode ?? throw new InvalidDataException("Globe field requires a sequence.");
 }

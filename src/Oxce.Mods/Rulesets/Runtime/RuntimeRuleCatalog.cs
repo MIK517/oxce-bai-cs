@@ -35,6 +35,11 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<ResearchRuleFamily, RuntimeResearchRule> research,
         RuntimeRuleFamily<ManufactureRuleFamily, RuntimeManufactureRule> manufacture,
         RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> events,
+        RuntimeRuleFamily<UfoRuleFamily, RuntimeUfoRule> ufos,
+        RuntimeRuleFamily<UfoTrajectoryRuleFamily, RuntimeUfoTrajectoryRule> ufoTrajectories,
+        RuntimeRuleFamily<AlienMissionRuleFamily, RuntimeAlienMissionRule> alienMissions,
+        RuntimeRuleFamily<AlienDeploymentRuleFamily, RuntimeAlienDeploymentRule> alienDeployments,
+        RuntimeRuleFamily<AlienRaceRuleFamily, RuntimeIdentityRule> alienRaces,
         RuntimeRuleFamily<RuntimeScriptFamily, RuntimeScriptRule> scripts,
         RuntimeCampaignSettings campaign)
     {
@@ -54,6 +59,11 @@ public sealed class RuntimeRuleCatalog
         Research = research;
         Manufacture = manufacture;
         Events = events;
+        Ufos = ufos;
+        UfoTrajectories = ufoTrajectories;
+        AlienMissions = alienMissions;
+        AlienDeployments = alienDeployments;
+        AlienRaces = alienRaces;
         Scripts = scripts;
         Campaign = campaign;
     }
@@ -74,6 +84,11 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<ResearchRuleFamily, RuntimeResearchRule> Research { get; }
     public RuntimeRuleFamily<ManufactureRuleFamily, RuntimeManufactureRule> Manufacture { get; }
     public RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> Events { get; }
+    public RuntimeRuleFamily<UfoRuleFamily, RuntimeUfoRule> Ufos { get; }
+    public RuntimeRuleFamily<UfoTrajectoryRuleFamily, RuntimeUfoTrajectoryRule> UfoTrajectories { get; }
+    public RuntimeRuleFamily<AlienMissionRuleFamily, RuntimeAlienMissionRule> AlienMissions { get; }
+    public RuntimeRuleFamily<AlienDeploymentRuleFamily, RuntimeAlienDeploymentRule> AlienDeployments { get; }
+    public RuntimeRuleFamily<AlienRaceRuleFamily, RuntimeIdentityRule> AlienRaces { get; }
     public RuntimeRuleFamily<RuntimeScriptFamily, RuntimeScriptRule> Scripts { get; }
     public RuntimeCampaignSettings Campaign { get; }
 }
