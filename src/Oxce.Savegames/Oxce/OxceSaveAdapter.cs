@@ -473,6 +473,8 @@ public static partial class OxceSaveAdapter
                     Pair("over", scheduled.Over ? Boolean(true) : null),
                 ])))),
             Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy)),
+            // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
+            Pair("terrorSites", null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :

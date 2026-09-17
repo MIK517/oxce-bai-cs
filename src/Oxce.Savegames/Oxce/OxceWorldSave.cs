@@ -15,9 +15,19 @@ namespace Oxce.Savegames.Oxce;
 /// </summary>
 public static partial class OxceSaveAdapter
 {
+    /// <summary>The legacy pre-OXCE terror site type and deployment. Reference: SavedGame::load.</summary>
+    private const string LegacyTerrorMission = "STR_ALIEN_TERROR";
+    private const string LegacyTerrorDeployment = "STR_TERROR_MISSION";
+    /// <summary>The marker name legacy craft destinations used for a terror site. Reference: Craft::load.</summary>
+    private const string LegacyTerrorMarker = "STR_TERROR_SITE";
+
     private static WorldSnapshot ReadWorld(YamlMappingNode body, RuntimeContent content)
     {
-        var sites = Maps(body, "missionSites").Select(ReadMissionSite).ToArray();
+        // SavedGame::load imports the legacy terrorSites node as ordinary mission sites, before missionSites.
+        var sites = Maps(body, "terrorSites")
+            .Select(static map => ReadMissionSite(map) with
+            { MissionRuleId = LegacyTerrorMission, DeploymentId = LegacyTerrorDeployment })
+            .Concat(Maps(body, "missionSites").Select(ReadMissionSite)).ToArray();
         var alienBases = Maps(body, "alienBases").Select(ReadAlienBase).ToArray();
         var markers = new WorldMarkerIndex(sites, alienBases, content);
         return new WorldSnapshot
@@ -38,7 +48,7 @@ public static partial class OxceSaveAdapter
 
     private static MissionSiteSnapshot ReadMissionSite(YamlMappingNode map) => new(
         Integer(map, "id", 0),
-        RequiredString(map, "type"),
+        String(map, "type", LegacyTerrorMission),
         String(map, "deployment", "STR_TERROR_MISSION"),
         String(map, "race", string.Empty),
         Double(map, "lon", 0),
@@ -165,7 +175,7 @@ public static partial class OxceSaveAdapter
             WorldTargetReference.BaseType => WorldTargetKind.Base,
             WorldTargetReference.UfoType => WorldTargetKind.Ufo,
             WorldTargetReference.WaypointType => WorldTargetKind.Waypoint,
-            _ => markers.Classify(type, id),
+            _ => markers.Classify(ref type, id),
         };
         return new WorldTargetReference(kind, type, id, longitude, latitude) { UniqueId = uniqueId };
     }
@@ -224,6 +234,7 @@ public static partial class OxceSaveAdapter
     {
         private readonly HashSet<(string Marker, int Id)> _sites = [];
         private readonly Dictionary<(string Marker, int Id), (double Longitude, double Latitude, string Type)> _bases = [];
+        private readonly HashSet<string> _craftTypes;
 
         public WorldMarkerIndex(
             IEnumerable<MissionSiteSnapshot> sites,
@@ -234,11 +245,24 @@ public static partial class OxceSaveAdapter
             foreach (var alienBase in alienBases)
                 _bases[(MarkerName(content, alienBase.DeploymentId), alienBase.Id)] =
                     (alienBase.Longitude, alienBase.Latitude, alienBase.DeploymentId);
+            _craftTypes = content.RuntimeRules.Crafts.Rules.Select(static rule => rule.Id)
+                .ToHashSet(StringComparer.Ordinal);
         }
 
-        public WorldTargetKind Classify(string type, int id) => _sites.Contains((type, id))
-            ? WorldTargetKind.MissionSite
-            : _bases.ContainsKey((type, id)) ? WorldTargetKind.AlienBase : WorldTargetKind.MissionSite;
+        /// <summary>
+        /// Classifies a destination that is neither a base, a UFO nor a waypoint, in the order the
+        /// reference resolves them: an escorted or hunted craft (<c>Craft::finishLoading</c>,
+        /// <c>Ufo::finishLoading</c>), then a mission site, then an alien base
+        /// (<c>Craft::load</c>). The legacy <c>STR_ALIEN_TERROR</c> marker is renamed to
+        /// <c>STR_TERROR_SITE</c> exactly like <c>Craft::load</c> does.
+        /// </summary>
+        public WorldTargetKind Classify(ref string type, int id)
+        {
+            if (_craftTypes.Contains(type)) return WorldTargetKind.Craft;
+            if (type == LegacyTerrorMission) type = LegacyTerrorMarker;
+            if (_sites.Contains((type, id))) return WorldTargetKind.MissionSite;
+            return _bases.ContainsKey((type, id)) ? WorldTargetKind.AlienBase : WorldTargetKind.MissionSite;
+        }
 
         public WorldTargetReference? AlienBase(string type, int id) =>
             _bases.TryGetValue((type, id), out var found)

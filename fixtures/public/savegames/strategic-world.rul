@@ -27,6 +27,12 @@ alienRaces:
   - id: RACE_B
     members: [SECTOID]
 alienDeployments:
+  # The legacy terrorSites node is imported with this fixed mission type and deployment.
+  - type: STR_TERROR_MISSION
+    markerName: STR_TERROR_SITE
+    duration: [2, 4]
+    points: 3
+    race: RACE_A
   - type: SITE_DEPLOY
     markerName: STR_TERROR_SITE
     markerIcon: 8
@@ -122,6 +128,15 @@ ufoTrajectories:
       - [5, 3, 100]
       - [5, 0, 100]
 alienMissions:
+  - type: STR_ALIEN_TERROR
+    points: 4
+    objective: 3
+    spawnZone: 1
+    siteType: STR_TERROR_MISSION
+    raceWeights:
+      0: {RACE_A: 1}
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: 3000, objective: true}
   - type: MISSION_SCOUT
     points: 2
     objective: 0
