@@ -8,6 +8,13 @@ public sealed record CampaignFacilityChanged(int BaseId, int X, int Y, string Ru
 
 public sealed partial class CampaignState
 {
+    private void RegisterBaseConstruction(CampaignCapabilityRegistry registry)
+    {
+        registry.Command<CreateCampaignBase>(CreateBase);
+        registry.Command<BuildCampaignFacility>(BuildFacility);
+        registry.Command<DismantleCampaignFacility>(DismantleFacility);
+    }
+
     private RuntimeFacilityRule FacilityRule(FacilityState facility) => _content.RuntimeRules.Facilities[facility.Rule].Value;
     private static bool Overlaps(int x, int y, RuntimeFacilityRule a, int bx, int by, RuntimeFacilityRule b) =>
         x < bx + b.SizeX && bx < x + a.SizeX && y < by + b.SizeY && by < y + a.SizeY;

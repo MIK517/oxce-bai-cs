@@ -197,7 +197,7 @@ public static class CampaignFactory
             regions,
             [startingBase],
             EmptyScriptValues(content, "GeoscapeGame"))
-        { Options = request.Options };
+        { Options = request.Options }.InitializeNew();
     }
 
     private static int NextId(SortedDictionary<string, int> ids, string name)

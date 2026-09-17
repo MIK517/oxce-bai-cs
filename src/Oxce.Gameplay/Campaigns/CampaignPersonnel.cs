@@ -13,6 +13,18 @@ public sealed record CampaignTrainingCompleted(int BaseId, int SoldierId, bool P
 
 public sealed partial class CampaignState
 {
+    private void RegisterPersonnel(CampaignCapabilityRegistry registry)
+    {
+        registry.Command<SetSoldierTraining>(SetTraining);
+        registry.Command<AssignSoldierToCraft>(AssignSoldier);
+        registry.Command<EquipSoldierArmor>(EquipArmor);
+        registry.Command<EquipCraftWeapon>(EquipWeapon);
+        registry.Command<ChangeCraftVehicle>(ChangeVehicle);
+        registry.Command<TransformCampaignSoldier>(TransformSoldier);
+        // The reference base loop interleaves construction, research and soldier updates per base.
+        registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayBases, "base daily loop", AdvanceReadinessDaily);
+    }
+
     private CampaignCommandResult SetTraining(SetSoldierTraining command)
     {
         var owner = FindBase(command.BaseId);

@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 31 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 33 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 88 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 31 files.
+`src/Oxce.Gameplay` - 33 files.
 
 ### `Oxce.Gameplay`
 
@@ -302,6 +302,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignBaseCreated` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
 - `CampaignBaseSite` (record) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
 - `CampaignState` (class) [CampaignBasePlacement.cs](../src/Oxce.Gameplay/Campaigns/CampaignBasePlacement.cs)
+- `CampaignState` (class) [CampaignCapabilityCatalog.cs](../src/Oxce.Gameplay/Campaigns/CampaignCapabilityCatalog.cs)
 - `ICampaignCommand` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `ICampaignCommandTarget` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `AdvanceCampaignTime` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
@@ -1047,6 +1048,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `XcomPaletteCodecTests` ([XcomPaletteCodecTests.cs](../tests/Oxce.UnitTests/Formats/XcomPaletteCodecTests.cs))
 - `YamlCompatibilityReaderTests` ([YamlCompatibilityReaderTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityReaderTests.cs))
 - `YamlCompatibilityWriterTests` ([YamlCompatibilityWriterTests.cs](../tests/Oxce.UnitTests/Formats/YamlCompatibilityWriterTests.cs))
+- `CampaignCapabilityRegistryTests` ([CampaignCapabilityRegistryTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignCapabilityRegistryTests.cs))
 - `CampaignFoundationTests` ([CampaignFoundationTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignFoundationTests.cs))
 - `CampaignLogisticsTests` ([CampaignLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignLogisticsTests.cs))
 - `CampaignTimeDispatcherTests` ([CampaignTimeDispatcherTests.cs](../tests/Oxce.UnitTests/Gameplay/CampaignTimeDispatcherTests.cs))

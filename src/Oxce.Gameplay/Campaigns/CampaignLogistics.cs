@@ -5,6 +5,20 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
+    private void RegisterLogistics(CampaignCapabilityRegistry registry)
+    {
+        registry.Command<PrepareLogisticsQuote>(QuoteLogistics);
+        registry.Command<SubmitLogisticsOrder>(SubmitLogistics);
+        registry.Preflight(CampaignPreflightOrder.Transfers, "transfers", (_, highest) =>
+            highest >= CampaignTimeTrigger.OneHour ? PreflightTransfers() : null);
+        registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourTransfers, "transfers", AdvanceTransfers);
+        registry.Timed(CampaignTimeTrigger.OneMonth, CampaignTimeOrder.MonthPurchaseLimits, "purchase limits",
+            _ => _monthlyPurchaseLog.Clear());
+        registry.Capture(snapshot => snapshot with { MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog) });
+        registry.Restore(snapshot =>
+            _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal));
+    }
+
     public const int MaximumLogisticsLines = 10_000;
     private long _nextQuoteId;
     private LogisticsQuote? _logisticsQuote;
