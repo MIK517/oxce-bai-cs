@@ -34,6 +34,27 @@ public sealed record CampaignResearchProduction(
 
 public sealed partial class CampaignState : ICampaignResearchProductionQuery
 {
+    private void RegisterResearchProduction(CampaignCapabilityRegistry registry)
+    {
+        registry.Command<ConfigureResearchProject>(ConfigureResearch);
+        registry.Command<ConfigureProductionProject>(ConfigureProduction);
+        registry.Preflight(CampaignPreflightOrder.ResearchProduction, "research and production",
+            (_, highest) => PreflightResearchProduction(highest));
+        registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourProduction, "production", AdvanceProductionHourly);
+        registry.Capture(snapshot => snapshot with
+        {
+            CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
+            ResearchRuleStatus = CampaignSnapshot.ReadOnlyIds(_researchRuleStatus),
+            ManufactureRuleStatus = CampaignSnapshot.ReadOnlyIds(_manufactureRuleStatus),
+        });
+        registry.Restore(snapshot =>
+        {
+            _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal);
+            _researchRuleStatus = new Dictionary<string, int>(snapshot.ResearchRuleStatus, StringComparer.Ordinal);
+            _manufactureRuleStatus = new Dictionary<string, int>(snapshot.ManufactureRuleStatus, StringComparer.Ordinal);
+        });
+    }
+
     private bool? _researchEventWeightsFit;
 
     private CampaignCommandResult ConfigureResearch(ConfigureResearchProject command)

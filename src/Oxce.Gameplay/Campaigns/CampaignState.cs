@@ -24,6 +24,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private readonly List<long> _expenditures;
     private readonly List<int> _researchScores;
     private readonly object _transactionGate = new();
+    private readonly CampaignHandlerTable _handlers;
     private ScriptValueState? _scriptValues;
     private IReadOnlyList<CampaignRestriction> _restrictions = [];
     private HashSet<string> _completedResearch = new(StringComparer.Ordinal);
@@ -70,6 +71,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         _regions = regions.ToList();
         _bases = bases.ToList();
         _scriptValues = scriptValues;
+        _handlers = BuildHandlers();
         ValidateState();
     }
 
@@ -89,32 +91,24 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             var restriction = _restrictions.FirstOrDefault(r => r.BaseId is null && r.BlocksLogistics && r.BlocksTime);
             if (restriction is not null) return new CampaignCommandResult([new CampaignActionBlocked(restriction.Feature)]);
             if (Ending != 0) return new CampaignCommandResult([new CampaignActionBlocked("This campaign has ended.")]);
-            return command switch
-            {
-                AdvanceCampaignTime advance => Advance(advance),
-                PlaceStartingBase place => Place(place),
-                CreateCampaignBase create => CreateBase(create),
-                BuildCampaignFacility build => BuildFacility(build),
-                DismantleCampaignFacility dismantle => DismantleFacility(dismantle),
-                SetSoldierTraining training => SetTraining(training),
-                AssignSoldierToCraft assignment => AssignSoldier(assignment),
-                EquipSoldierArmor armor => EquipArmor(armor),
-                EquipCraftWeapon weapon => EquipWeapon(weapon),
-                ChangeCraftVehicle vehicle => ChangeVehicle(vehicle),
-                TransformCampaignSoldier transformation => TransformSoldier(transformation),
-                ConfigureResearchProject research => ConfigureResearch(research),
-                ConfigureProductionProject production => ConfigureProduction(production),
-                PrepareLogisticsQuote quote => QuoteLogistics(quote),
-                SubmitLogisticsOrder order => SubmitLogistics(order),
-                _ => throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
-                    nameof(command)),
-            };
+            if (!_handlers.TryGetCommand(command.GetType(), out var handler))
+                throw new ArgumentException($"Unsupported campaign command '{command.GetType().Name}'.",
+                    nameof(command));
+            return handler(command);
         }
     }
 
     public CampaignSnapshot Capture()
     {
         lock (_transactionGate) return CaptureCore();
+    }
+
+    /// <summary>Returns a capability query; implementations take the transaction gate themselves.</summary>
+    public TQuery? GetQuery<TQuery>() where TQuery : class => _handlers.Query<TQuery>();
+
+    internal T Read<T>(Func<T> query)
+    {
+        lock (_transactionGate) return query();
     }
 
     public CampaignOverview QueryOverview()
@@ -158,7 +152,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         }
     }
 
-    private CampaignSnapshot CaptureCore() => new(
+    private CampaignSnapshot CaptureCore() => _handlers.Capture(new(
             Identity with { ActiveMods = CampaignSnapshot.ReadOnly(Identity.ActiveMods) },
             Difficulty,
             Time,
@@ -178,13 +172,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             CampaignSnapshot.ReadOnly(_scriptValues?.Capture() ?? []))
     {
         Restrictions = CampaignSnapshot.ReadOnly(_restrictions),
-        CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
-        ResearchRuleStatus = CampaignSnapshot.ReadOnlyIds(_researchRuleStatus),
-        ManufactureRuleStatus = CampaignSnapshot.ReadOnlyIds(_manufactureRuleStatus),
-        MonthlyPurchaseLog = CampaignSnapshot.ReadOnlyIds(_monthlyPurchaseLog),
         DebugMode = _debugMode,
         Options = Options,
-    };
+    });
 
     public static CampaignState Restore(
         CampaignSnapshot snapshot,
@@ -234,7 +224,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         try
         {
             random.Restore(snapshot.RandomState);
-            return new CampaignState(
+            var campaign = new CampaignState(
                 content,
                 random,
                 snapshot.Identity,
@@ -255,19 +245,26 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
                 RestoreScriptValues(content, "GeoscapeGame", snapshot.ScriptValues))
             {
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
-                _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal),
-                _researchRuleStatus = new Dictionary<string, int>(snapshot.ResearchRuleStatus, StringComparer.Ordinal),
-                _manufactureRuleStatus = new Dictionary<string, int>(snapshot.ManufactureRuleStatus, StringComparer.Ordinal),
-                _monthlyPurchaseLog = new Dictionary<string, int>(snapshot.MonthlyPurchaseLog, StringComparer.Ordinal),
                 _debugMode = snapshot.DebugMode,
                 Options = snapshot.Options,
             };
+            campaign._handlers.Restore(snapshot);
+            campaign._handlers.Validate();
+            return campaign;
         }
         catch
         {
             random.Restore(previousRandomState);
             throw;
         }
+    }
+
+    /// <summary>Initializes capability state of a campaign created by <see cref="CampaignFactory"/>.</summary>
+    internal CampaignState InitializeNew()
+    {
+        _handlers.Initialize();
+        _handlers.Validate();
+        return this;
     }
 
     internal int NextId(string name)
@@ -297,48 +294,41 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             ? [advanced, new CampaignActionBlocked(reason)] : [advanced]);
     }
 
-    private sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
+    internal sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
     {
         public List<ICampaignEvent>? Events { get; private set; }
+        public CampaignTime Current => campaign.Time;
         public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
 
-        public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger)
-        {
-            foreach (var restriction in campaign._restrictions)
-                if (restriction.BlocksTime) return restriction.Feature;
-            if (campaign._bases.Any(b => b.Crafts.Any(c => c.Logistics is { Status: "STR_OUT" })))
-                return "Craft movement requires world simulation.";
-            if (highestTrigger >= CampaignTimeTrigger.OneMonth)
-                return "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.";
-            if (highestTrigger >= CampaignTimeTrigger.ThirtyMinutes && campaign.PreflightServicing() is { } serviceReason)
-                return serviceReason;
-            if (campaign.PreflightResearchProduction(highestTrigger) is { } economyReason)
-                return economyReason;
-            return highestTrigger >= CampaignTimeTrigger.OneHour ? campaign.PreflightTransfers() : null;
-        }
+        public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger) =>
+            campaign._handlers.Preflight(nextTime, highestTrigger);
 
         public bool Apply(CampaignTime current, CampaignTimeTrigger trigger)
         {
             campaign.Time = current;
-            if (trigger == CampaignTimeTrigger.OneMonth)
-            {
-                campaign.MonthsPassed++;
-                campaign._monthlyPurchaseLog.Clear();
-            }
-            if (trigger == CampaignTimeTrigger.OneDay)
-            {
-                campaign.DaysPassed++;
-                campaign.AdvanceReadinessDaily(this);
-            }
-            if (trigger == CampaignTimeTrigger.OneHour)
-            {
-                campaign.ServiceCraftsHourly(this);
-                campaign.AdvanceTransfers(this);
-                campaign.AdvanceProductionHourly(this);
-            }
-            if (trigger == CampaignTimeTrigger.ThirtyMinutes) campaign.RefuelCrafts(this);
+            campaign._handlers.Apply(trigger, this);
             return Events is not null;
         }
+    }
+
+    private void RegisterCalendar(CampaignCapabilityRegistry registry)
+    {
+        registry.Command<AdvanceCampaignTime>(Advance);
+        registry.Command<PlaceStartingBase>(Place);
+        registry.Preflight(CampaignPreflightOrder.Restrictions, "restrictions", (_, _) =>
+        {
+            foreach (var restriction in _restrictions)
+                if (restriction.BlocksTime) return restriction.Feature;
+            return null;
+        });
+        registry.Preflight(CampaignPreflightOrder.MonthBoundary, "month boundary", static (_, highest) =>
+            highest >= CampaignTimeTrigger.OneMonth
+                ? "Monthly campaign simulation is not implemented yet; time stopped before the month boundary."
+                : null);
+        registry.Timed(CampaignTimeTrigger.OneMonth, CampaignTimeOrder.MonthCalendar, "months passed",
+            _ => MonthsPassed++);
+        registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayCalendar, "days passed",
+            _ => DaysPassed++);
     }
 
     private CampaignCommandResult Place(PlaceStartingBase command)

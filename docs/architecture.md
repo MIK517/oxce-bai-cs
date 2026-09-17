@@ -177,6 +177,10 @@ parsing and composition. See
   overview copies only scalar totals and visible base/facility data. Time-advance
   events retain fixed-size trigger summaries with allocation-free ordered replay. See
   [ADR 0019](decisions/0019-bounded-time-events-and-campaign-queries.md).
+- Campaign features are registered capabilities: each one registers its commands,
+  ordered time handlers and preflight checks, queries and owned snapshot pieces, while
+  `CampaignState` keeps the single writer and whole-graph validation. See
+  [ADR 0027](decisions/0027-registered-campaign-capabilities.md).
 - OXCE save adapters overlay implemented fields onto an opaque parsed source document
   so later-strategy, tactical, and mod-owned nodes survive partial-model round trips;
   gameplay never sees that sidecar. See

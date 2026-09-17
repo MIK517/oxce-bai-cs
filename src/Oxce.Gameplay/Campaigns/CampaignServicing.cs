@@ -4,6 +4,17 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
+    private void RegisterCraftServicing(CampaignCapabilityRegistry registry)
+    {
+        registry.Preflight(CampaignPreflightOrder.CraftMovement, "craft movement", (_, _) =>
+            _bases.Any(b => b.Crafts.Any(c => c.Logistics is { Status: "STR_OUT" }))
+                ? "Craft movement requires world simulation." : null);
+        registry.Preflight(CampaignPreflightOrder.Servicing, "craft servicing", (_, highest) =>
+            highest >= CampaignTimeTrigger.ThirtyMinutes ? PreflightServicing() : null);
+        registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourCraftServicing, "craft servicing", ServiceCraftsHourly);
+        registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesRefuel, "craft refuelling", RefuelCrafts);
+    }
+
     private string? PreflightServicing()
     {
         foreach (var owner in _bases)
