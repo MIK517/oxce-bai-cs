@@ -11,12 +11,14 @@ public sealed class VirtualFileLayer
         VirtualFileProvenance provenance,
         Dictionary<string, VirtualFileEntry> resources,
         List<VirtualFileEntry> rulesets,
-        Dictionary<string, IReadOnlyList<string>> directories)
+        Dictionary<string, IReadOnlyList<string>> directories,
+        int mappedFileCount)
     {
         Provenance = provenance;
         _resources = new ReadOnlyDictionary<string, VirtualFileEntry>(resources);
         Rulesets = rulesets.AsReadOnly();
         _directories = new ReadOnlyDictionary<string, IReadOnlyList<string>>(directories);
+        MappedFileCount = mappedFileCount;
     }
 
     public VirtualFileProvenance Provenance { get; }
@@ -24,6 +26,9 @@ public sealed class VirtualFileLayer
     public IReadOnlyList<VirtualFileEntry> Rulesets { get; }
 
     internal IEnumerable<VirtualFileEntry> Entries => _resources.Values;
+
+    // The reference's mapZip/mapPlainDir threshold counts files before canonical keys collide.
+    internal int MappedFileCount { get; }
 
     public static VirtualFileLayer FromEntries(
         VirtualFileProvenance provenance,
@@ -34,6 +39,7 @@ public sealed class VirtualFileLayer
         ArgumentNullException.ThrowIfNull(sources);
         var resources = new Dictionary<string, VirtualFileEntry>(StringComparer.Ordinal);
         var rulesets = new List<VirtualFileEntry>();
+        var mappedFileCount = 0;
 
         foreach (var source in sources)
         {
@@ -46,12 +52,14 @@ public sealed class VirtualFileLayer
                 if (!ignoreRulesets)
                 {
                     rulesets.Add(entry);
+                    ++mappedFileCount;
                 }
 
                 continue;
             }
 
             resources[canonicalPath] = entry;
+            ++mappedFileCount;
         }
 
         var directorySets = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
@@ -73,7 +81,7 @@ public sealed class VirtualFileLayer
             pair => pair.Key,
             pair => (IReadOnlyList<string>)pair.Value.ToArray(),
             StringComparer.Ordinal);
-        return new VirtualFileLayer(provenance, resources, rulesets, directories);
+        return new VirtualFileLayer(provenance, resources, rulesets, directories, mappedFileCount);
     }
 
     public static VirtualFileLayer ScanDirectory(

@@ -23,7 +23,7 @@ public sealed class TypedRuleReplayFixtureTests
         var expectedPath = Path.GetFullPath(manifest.Expected, root);
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
-        var catalog = ModCatalog.Create(discovery.Mods, diagnostics);
+        var catalog = ModCatalog.Create(discovery, diagnostics);
         var plan = ModLoadPlanner.Create(
             catalog,
             [new ModActivation("fixture", true)],

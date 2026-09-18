@@ -24,15 +24,22 @@ public sealed class ModCatalog
     /// </summary>
     public IReadOnlyList<VirtualFileLayer> CommonLayers { get; }
 
+    public static ModCatalog Create(ModDiscoveryResult discovery, IDiagnosticSink? diagnostics = null)
+    {
+        ArgumentNullException.ThrowIfNull(discovery);
+        return Create(discovery.Mods, discovery.CommonLayers, diagnostics);
+    }
+
     public static ModCatalog Create(
         IEnumerable<ModCandidate> candidates,
-        IDiagnosticSink? diagnostics = null,
-        IEnumerable<VirtualFileLayer>? commonLayers = null)
+        IEnumerable<VirtualFileLayer> commonLayers,
+        IDiagnosticSink? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(commonLayers);
         // Discovering an installation scans several mod directories, each reporting the same
         // common layers; the catalog keeps one layer per ID because a catalog rejects duplicates.
-        var common = (commonLayers ?? []).ToArray();
+        var common = commonLayers.ToArray();
         if (common.Any(layer => layer is null))
         {
             throw new ArgumentException("Common layers cannot contain null values.", nameof(commonLayers));

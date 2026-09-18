@@ -56,8 +56,8 @@ public sealed class CommonResourceLayerTests
         var extra = ModDiscovery.ScanDirectory(installation.ExtraModsRoot, diagnostics, options);
         var catalog = ModCatalog.Create(
             mods.Mods.Concat(extra.Mods),
-            diagnostics,
-            mods.CommonLayers.Concat(extra.CommonLayers));
+            mods.CommonLayers.Concat(extra.CommonLayers),
+            diagnostics);
 
         Assert.Equal(["common:directory"], catalog.CommonLayers.Select(layer => layer.Provenance.LayerId));
         var plan = ModLoadPlanner.Create(
@@ -116,7 +116,7 @@ public sealed class CommonResourceLayerTests
         {
             var diagnostics = new DiagnosticCollector();
             var discovery = ModDiscovery.ScanDirectory(ModsRoot, diagnostics, DiscoveryOptions);
-            var catalog = ModCatalog.Create(discovery.Mods, diagnostics, discovery.CommonLayers);
+            var catalog = ModCatalog.Create(discovery, diagnostics);
             var activations = new[] { masterId }
                 .Concat(activeMods)
                 .Distinct(StringComparer.Ordinal)

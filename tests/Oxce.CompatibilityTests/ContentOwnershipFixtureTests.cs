@@ -21,7 +21,7 @@ public sealed class ContentOwnershipFixtureTests
         var expected = expectedDocument.RootElement;
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
+            ModCatalog.Create(discovery),
             [new ModActivation("ownership-master", true), new ModActivation("ownership-addon", true)],
             "ownership-master",
             new ModEngineIdentity("Extended", "8.6.1.0"));

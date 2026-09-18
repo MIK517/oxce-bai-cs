@@ -177,7 +177,7 @@ internal static class FixtureTool
     {
         var root = Path.GetFullPath(modsRoot);
         var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
+        var catalog = ModCatalog.Create(discovery);
         var activations = catalog.Mods.Values
             .OrderBy(mod => mod.Metadata.Id, StringComparer.Ordinal)
             .Select(mod => new ModActivation(mod.Metadata.Id, true));
@@ -212,7 +212,7 @@ internal static class FixtureTool
     {
         var root = Path.GetFullPath(modsRoot);
         var discovery = ModDiscovery.ScanDirectory(root);
-        var catalog = ModCatalog.Create(discovery.Mods);
+        var catalog = ModCatalog.Create(discovery);
         var activations = catalog.Mods.Values
             .OrderBy(mod => mod.Metadata.Id, StringComparer.Ordinal)
             .Select(mod => new ModActivation(mod.Metadata.Id, true));
@@ -256,7 +256,7 @@ internal static class FixtureTool
             root,
             diagnostics,
             new ModDiscoveryOptions { ExternalResourceRoots = [Path.GetFullPath(resourceRoot)] });
-        var catalog = ModCatalog.Create(discovery.Mods, diagnostics);
+        var catalog = ModCatalog.Create(discovery, diagnostics);
         var activations = catalog.Mods.Values
             .OrderBy(mod => mod.Metadata.Id, StringComparer.Ordinal)
             .Select(mod => new ModActivation(mod.Metadata.Id, true));

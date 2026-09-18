@@ -78,12 +78,12 @@ internal static class ExternalResourceMapper
                 modId,
                 archivePath);
             var layer = archive.CreateLayer(prefix, provenance, ignoreRulesets: true);
-            if (prefix.Length != 0 && layer.Entries.Count() <= 1)
+            if (prefix.Length != 0 && layer.MappedFileCount <= 1)
             {
                 layer = archive.CreateLayer(string.Empty, provenance, ignoreRulesets: true);
             }
 
-            if (layer.Entries.Count() > 1)
+            if (layer.MappedFileCount > 1)
             {
                 resourceLayers.Add(layer);
             }
@@ -105,7 +105,7 @@ internal static class ExternalResourceMapper
                     IgnoreRulesets = true,
                     CancellationToken = options.CancellationToken,
                 });
-            if (layer.Entries.Count() > 1)
+            if (layer.MappedFileCount > 1)
             {
                 resourceLayers.Add(layer);
             }

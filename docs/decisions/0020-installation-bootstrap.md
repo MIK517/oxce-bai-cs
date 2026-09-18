@@ -56,3 +56,6 @@ one layer per ID across the mod trees it was built from, and every plan created 
 catalog maps them below all mod layers, matching `FileMap::setup`, which calls
 `VFS::map_common` before pushing any mod. Masters that declare no `loadResources` therefore
 see `common` as well; previously only mods with external resources carried it.
+Catalogs built from a single discovery result carry those layers automatically. Combining
+mod candidates from several scans requires the caller to supply the installation's common
+layers explicitly, so omitting them cannot silently change the load plan.

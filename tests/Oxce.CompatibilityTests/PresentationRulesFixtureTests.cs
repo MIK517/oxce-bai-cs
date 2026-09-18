@@ -19,7 +19,7 @@ public sealed class PresentationRulesFixtureTests
         var expectedPath = TestFixtures.VerifiedExpectedPath("presentation-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
-        var catalog = ModCatalog.Create(discovery.Mods, diagnostics);
+        var catalog = ModCatalog.Create(discovery, diagnostics);
         var plan = ModLoadPlanner.Create(
             catalog,
             [new ModActivation("fixture", true)],
