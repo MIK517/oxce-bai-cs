@@ -87,8 +87,8 @@ public sealed class AlienStrategyState
     /// </summary>
     public void AddMissionLocation(string variableName, string region, int zone, int maximum)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(variableName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(region);
+        ArgumentNullException.ThrowIfNull(variableName);
+        ArgumentNullException.ThrowIfNull(region);
         if (maximum <= 0) return;
         if (!_missionLocations.TryGetValue(variableName, out var locations))
         {
@@ -127,7 +127,7 @@ public sealed class AlienStrategyState
         foreach (var entry in missionRuns) state._missionRuns[entry.Key] = entry.Value;
         foreach (var entry in missionLocations)
         {
-            foreach (var location in entry.Value) ArgumentException.ThrowIfNullOrWhiteSpace(location.Region);
+            foreach (var location in entry.Value) ArgumentNullException.ThrowIfNull(location.Region);
             state._missionLocations[entry.Key] = [.. entry.Value];
         }
         return state;

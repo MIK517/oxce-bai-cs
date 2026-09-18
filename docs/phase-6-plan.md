@@ -37,16 +37,19 @@ first generator consumes it. Keep that distinction in status reports and matrix 
 
 ## Delivery shape
 
-Use **six sequential feature branches**, each from the previous merged `main`.
-No separate prerequisite, serializer, scripting, UI, or final-audit branch is planned.
-Prerequisites lead branch 1; every branch carries its own integration and closure work.
+Use sequential feature branches, each from the previous merged `main`.
+Branch 4 is split at the world foundation boundary after its review grew beyond a
+coherent PR. The foundation branch retains the existing name; its successor starts
+from merged `main` and must meet the original branch 4 simulation acceptance.
+Every branch carries its own integration and closure work.
 
 | Order | Branch | Playable acceptance boundary | Planned commits |
 |---|---|---|---:|
 | 1 | `codex/strategic-base-logistics` | Inspect stores, buy/sell/hire, and deliver or transfer supplies and personnel safely | 7 |
 | 2 | `codex/strategic-base-readiness` | Build/manage bases, develop personnel, equip craft, and complete servicing | 7 |
 | 3 | `codex/strategic-research-production` | Complete research and production chains with compatible unlocks and staff allocation | 6 |
-| 4 | `codex/strategic-world-simulation` | Generate missions, move targets, detect activity, and dispatch/recall craft | 6 |
+| 4a | `codex/strategic-world-simulation` | Link world rules, preserve the target graph and alien strategy, pin world arithmetic, and keep live-world time guarded | 7 existing commits plus closure |
+| 4b | `codex/strategic-world-operations` | Generate missions, move targets, detect activity, and dispatch/recall craft | Scope by vertical slices |
 | 5 | `codex/strategic-interception-deployment` | Resolve interceptions and commit/reload a validated deployment handoff | 6 |
 | 6 | `codex/strategic-campaign-cycle` | Complete monthly evaluation, campaign events/endings, and integrated strategic closure | 6 |
 
@@ -54,9 +57,8 @@ Commit counts are review units, not quotas. Combine adjacent small commits, or s
 large one locally without adding PRs. Keep commits buildable; pair each behavior with
 its focused tests. A fixture-capture commit can introduce an oracle without checking in
 a failing test. Final UI/scenario commits integrate earlier tested commands rather than
-being the first time those commands are exercised. Split a branch only if an unforeseen
-subsystem cannot be reviewed coherently or requires an independently useful long delay;
-record the revised scope before starting another branch.
+being the first time those commands are exercised. Further splits require a reviewable
+vertical boundary and an update to this plan before the successor starts.
 
 Create branch 1 before committing changes. Its first commit records this reviewed
 implementation plan and the roadmap link; the seven implementation units below follow
@@ -293,6 +295,26 @@ Report unsupported cycles or values according to reference semantics rather than
 silently sorting them into a different order.
 
 ## Branch 4 — World simulation and mission generation
+
+The current `codex/strategic-world-simulation` branch closes as **branch 4a, world
+foundation**. Its acceptance is the registered capability seam, linked world rules,
+reference-pinned geometry/weighted arithmetic, player-visible target query, and
+reference-compatible save/load/rewrite of the world graph. It must preserve unknown
+owned-node fields, repeated scheduled events and new-battle UFO saves; optional site
+links must follow `SavedGame::load`. Bounded population and malformed-input fixtures
+must pass. Live world state continues to stop time. See
+[world foundation status](strategic-world-foundation-status.md).
+
+Branch 4a covers purpose 0 and the arithmetic, rule projection and persistence portions
+of purposes 1-2. Branch 4b starts from `main` after 4a merges. It owns the remaining
+numbered work below:
+mission/arc/event eligibility and scheduling with daily/monthly hooks, UFO/site/base
+generation, movement and detection, craft pursuit/return/patrol and dispatch/recall,
+player UI, scripting at event sites, and integrated multi-day/month-boundary scenarios.
+Complete headless behavior before the navigable globe/UI slice. If that successor again
+exceeds a coherent review unit, split at the headless/UI boundary and record the revised
+acceptance here before opening another branch. The original branch 4 acceptance below
+still gates the whole slice; 4a alone does not satisfy it.
 
 **Scope:** globe queries, strategic targets and movement, mission/arc/event scheduling,
 UFO/site/alien-base lifecycle, detection, and dispatch/recall. Interception combat follows

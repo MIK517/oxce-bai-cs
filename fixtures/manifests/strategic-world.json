@@ -16,8 +16,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
-      "size": 15846,
-      "sha256": "4fba91b58307fced5252e100a06e37c0cb7c08245ad682f3757e10451687508b"
+      "size": 16018,
+      "sha256": "7115b750f3c0d7f736f4addf56b8caf601108a93a315fa8e0a7225593533b3bd"
     },
     {
       "path": "tools/capture-strategic-world-reference.ps1",

@@ -277,6 +277,54 @@ public static partial class OxceSaveAdapter
     private static YamlSequenceNode? BuildWorldSection(int count, IEnumerable<YamlNode> values) =>
         count == 0 ? null : Sequence(values);
 
+    /// <summary>
+    /// A scheduled event has no save identity. Prefer its complete saved state, then use the
+    /// occurrence order within a rule when its countdown or completion flag has changed.
+    /// Each source occurrence is consumed once, so repeated rule IDs keep distinct sidecars.
+    /// </summary>
+    private static YamlMappingNode?[] MatchScheduledEvents(
+        IReadOnlyList<GeoscapeEventSnapshot> events, IEnumerable<YamlMappingNode> source)
+    {
+        var originals = source.ToArray();
+        var exact = new Dictionary<(string RuleId, int Countdown, bool Over), Queue<int>>();
+        var byRule = new Dictionary<string, Queue<int>>(StringComparer.Ordinal);
+        for (var index = 0; index < originals.Length; index++)
+        {
+            var map = originals[index];
+            var ruleId = String(map, "name", string.Empty);
+            var key = (ruleId, Integer(map, "spawnCountdown", 0), Boolean(map, "over", false));
+            if (!exact.TryGetValue(key, out var exactMatches)) exact[key] = exactMatches = new Queue<int>();
+            exactMatches.Enqueue(index);
+            if (!byRule.TryGetValue(ruleId, out var ruleMatches)) byRule[ruleId] = ruleMatches = new Queue<int>();
+            ruleMatches.Enqueue(index);
+        }
+
+        var used = new bool[originals.Length];
+        var matches = new YamlMappingNode?[events.Count];
+        for (var index = 0; index < events.Count; index++)
+        {
+            var scheduled = events[index];
+            var key = (scheduled.RuleId, scheduled.SpawnCountdown, scheduled.Over);
+            var match = exact.TryGetValue(key, out var exactMatches) ? TakeUnused(exactMatches, used) : -1;
+            if (match < 0 && byRule.TryGetValue(scheduled.RuleId, out var ruleMatches))
+                match = TakeUnused(ruleMatches, used);
+            if (match >= 0) matches[index] = originals[match];
+        }
+        return matches;
+
+        static int TakeUnused(Queue<int> candidates, bool[] consumed)
+        {
+            while (candidates.Count != 0)
+            {
+                var candidate = candidates.Dequeue();
+                if (consumed[candidate]) continue;
+                consumed[candidate] = true;
+                return candidate;
+            }
+            return -1;
+        }
+    }
+
     private static YamlMappingNode BuildAlienMission(AlienMissionSnapshot mission, YamlMappingNode? source) =>
         Overlay(source,
         [
@@ -297,7 +345,7 @@ public static partial class OxceSaveAdapter
             Pair("missionSiteZone", Integer(mission.MissionSiteZoneArea)),
         ]);
 
-    private static YamlMappingNode BuildUfo(UfoSnapshot ufo, YamlMappingNode? source) => Overlay(source,
+    private static YamlMappingNode BuildUfo(UfoSnapshot ufo, YamlMappingNode? source, bool newBattle) => Overlay(source,
     [
         Pair("lon", Real(ufo.Longitude)), Pair("lat", Real(ufo.Latitude)),
         Pair("id", ufo.Id == 0 ? null : Integer(ufo.Id)),
@@ -328,9 +376,9 @@ public static partial class OxceSaveAdapter
         Pair("softlockShotCounter", ufo.SoftlockShotCounter == 0 ? null : Integer(ufo.SoftlockShotCounter)),
         Pair("origWaypoint", ufo.OriginalWaypoint is { } waypoint
             ? Mapping([Pair("lon", Real(waypoint.Longitude)), Pair("lat", Real(waypoint.Latitude))]) : null),
-        Pair("mission", Integer(ufo.MissionId)),
-        Pair("trajectory", Scalar(ufo.TrajectoryId)),
-        Pair("trajectoryPoint", Integer(ufo.TrajectoryPoint)),
+        Pair("mission", newBattle ? null : Integer(ufo.MissionId)),
+        Pair("trajectory", newBattle ? null : Scalar(ufo.TrajectoryId)),
+        Pair("trajectoryPoint", newBattle ? null : Integer(ufo.TrajectoryPoint)),
         Pair("fireCountdown", Integer(ufo.FireCountdown)),
         Pair("escapeCountdown", Integer(ufo.EscapeCountdown)),
         Pair("tags", ScriptValues(ufo.ScriptValues)),
@@ -368,11 +416,16 @@ public static partial class OxceSaveAdapter
         Pair("genMissionCount", Integer(alienBase.GenMissionCount)),
     ]);
 
-    private static YamlMappingNode? BuildAlienStrategy(AlienStrategySnapshot strategy) => strategy.IsEmpty ? null : Mapping(
+    private static YamlMappingNode? BuildAlienStrategy(AlienStrategySnapshot strategy, YamlMappingNode? source)
+    {
+        if (strategy.IsEmpty && source is null) return null;
+        var originalRegions = FirstByKey(Maps(source, "possibleMissions"),
+            static region => String(region, "region", string.Empty));
+        return Overlay(source,
     [
         Pair("regions", WeightMapping(strategy.RegionChances)),
         Pair("possibleMissions", strategy.RegionMissions.Count == 0 ? null : Sequence(strategy.RegionMissions.Select(
-            static region => Mapping(
+            region => Overlay(originalRegions.GetValueOrDefault(region.Key),
             [
                 Pair("region", Scalar(region.Key)),
                 // WeightedOptions::save writes null for an empty table; the port keeps the key.
@@ -384,6 +437,7 @@ public static partial class OxceSaveAdapter
                 entry.Value.Select(static location => Sequence(
                     [Scalar(location.Region), Integer(location.Zone)]))))))),
     ]);
+    }
 
     private static YamlMappingNode? WeightMapping(IReadOnlyList<KeyValuePair<string, ulong>> weights) =>
         weights.Count == 0 ? null : Mapping(weights.Select(static weight => Pair(weight.Key, (YamlNode?)ULong(weight.Value))));

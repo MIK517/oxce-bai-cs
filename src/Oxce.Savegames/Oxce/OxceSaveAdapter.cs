@@ -413,6 +413,20 @@ public static partial class OxceSaveAdapter
         EnsureUnique(snapshot.Bases.Select(static item => item.Id), "base ID");
         var originalBases = IdentifyBases(source?.Body).ToDictionary(static item => item.Id, static item => item.Value);
         var entityIndex = IndexEntities(source?.Body);
+        var originalMissions = FirstByKey(Maps(source?.Body, "alienMissions"),
+            static map => String(map, "uniqueID", string.Empty));
+        var originalUfos = FirstByKey(Maps(source?.Body, "ufos"),
+            static map => String(map, "uniqueId", string.Empty));
+        var originalWaypoints = FirstByKey(Maps(source?.Body, "waypoints"),
+            static map => String(map, "id", string.Empty));
+        var originalSites = FirstByKey(Maps(source?.Body, "missionSites"), static map =>
+            $"{String(map, "deployment", "STR_TERROR_MISSION")}:{Integer(map, "id", 0)}");
+        var originalAlienBases = FirstByKey(Maps(source?.Body, "alienBases"), static map =>
+            $"{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}");
+        var originalEvents = MatchScheduledEvents(snapshot.World.Events, Maps(source?.Body, "geoscapeEvents"));
+        YamlMappingNode? originalStrategy = null;
+        if (source?.Body is { } sourceBody && sourceBody.TryGet("alienStrategy", out var strategyNode))
+            originalStrategy = strategyNode as YamlMappingNode;
         EnsureUnique(snapshot.Bases.SelectMany(b => b.Soldiers.Select(s => s.Id).Concat(
             b.Transfers.Where(t => !t.Delivered && t.Soldier is not null).Select(t => t.Soldier!.Id))), "soldier ID");
         EnsureUnique(snapshot.Bases.SelectMany(b => b.Crafts.Select(EntityIdentity).Concat(
@@ -442,14 +456,14 @@ public static partial class OxceSaveAdapter
             Pair("bases", Sequence(bases)),
             Pair("alienMissions", BuildWorldSection(snapshot.World.Missions.Count,
                 snapshot.World.Missions.Select(mission => BuildAlienMission(mission,
-                    FirstByKey(Maps(source?.Body, "alienMissions"), static map => String(map, "uniqueID", string.Empty))
-                        .GetValueOrDefault(mission.Id.ToString(CultureInfo.InvariantCulture)))))),
+                    originalMissions.GetValueOrDefault(mission.Id.ToString(CultureInfo.InvariantCulture)))))),
             Pair("ufos", BuildWorldSection(snapshot.World.Ufos.Count,
                 snapshot.World.Ufos.Select(ufo => BuildUfo(ufo,
-                    FirstByKey(Maps(source?.Body, "ufos"), static map => String(map, "uniqueId", string.Empty))
-                        .GetValueOrDefault(ufo.UniqueId.ToString(CultureInfo.InvariantCulture)))))),
+                    originalUfos.GetValueOrDefault(ufo.UniqueId.ToString(CultureInfo.InvariantCulture)),
+                    snapshot.MonthsPassed == -1)))),
             Pair("waypoints", BuildWorldSection(snapshot.World.Waypoints.Count,
-                snapshot.World.Waypoints.Select(static waypoint => Mapping(
+                snapshot.World.Waypoints.Select(waypoint => Overlay(
+                    originalWaypoints.GetValueOrDefault(waypoint.Id.ToString(CultureInfo.InvariantCulture)),
                 [
                     Pair("lon", Real(waypoint.Longitude)), Pair("lat", Real(waypoint.Latitude)),
                     Pair("id", waypoint.Id == 0 ? null : Integer(waypoint.Id)),
@@ -457,22 +471,18 @@ public static partial class OxceSaveAdapter
                 ])))),
             Pair("missionSites", BuildWorldSection(snapshot.World.MissionSites.Count,
                 snapshot.World.MissionSites.Select(site => BuildMissionSite(site,
-                    FirstByKey(Maps(source?.Body, "missionSites"), static map =>
-                        $"{String(map, "deployment", "STR_TERROR_MISSION")}:{Integer(map, "id", 0)}")
-                        .GetValueOrDefault($"{site.DeploymentId}:{site.Id}"))))),
+                    originalSites.GetValueOrDefault($"{site.DeploymentId}:{site.Id}"))))),
             Pair("alienBases", BuildWorldSection(snapshot.World.AlienBases.Count,
                 snapshot.World.AlienBases.Select(alienBase => BuildAlienBase(alienBase,
-                    FirstByKey(Maps(source?.Body, "alienBases"), static map =>
-                        $"{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}")
-                        .GetValueOrDefault($"{alienBase.DeploymentId}:{alienBase.Id}"))))),
+                    originalAlienBases.GetValueOrDefault($"{alienBase.DeploymentId}:{alienBase.Id}"))))),
             Pair("geoscapeEvents", BuildWorldSection(snapshot.World.Events.Count,
-                snapshot.World.Events.Select(static scheduled => Mapping(
+                snapshot.World.Events.Select((scheduled, index) => Overlay(originalEvents[index],
                 [
                     Pair("name", Scalar(scheduled.RuleId)),
                     Pair("spawnCountdown", Integer(scheduled.SpawnCountdown)),
                     Pair("over", scheduled.Over ? Boolean(true) : null),
                 ])))),
-            Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy)),
+            Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy, originalStrategy)),
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
             Pair("terrorSites", null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
