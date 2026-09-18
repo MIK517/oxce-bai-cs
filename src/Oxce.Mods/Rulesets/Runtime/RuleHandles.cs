@@ -207,3 +207,8 @@ public readonly struct SkillRuleFamily;
 public readonly struct ResearchRuleFamily;
 public readonly struct ManufactureRuleFamily;
 public readonly struct EventRuleFamily;
+public readonly struct UfoRuleFamily;
+public readonly struct UfoTrajectoryRuleFamily;
+public readonly struct AlienMissionRuleFamily;
+public readonly struct AlienDeploymentRuleFamily;
+public readonly struct AlienRaceRuleFamily;

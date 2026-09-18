@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Resources;
@@ -9,7 +10,11 @@ using Oxce.Mods.Rulesets.Items;
 using Oxce.Mods.Rulesets.Phase3;
 using Oxce.Mods.Rulesets.PersonnelTactical;
 using Oxce.Mods.Rulesets.Presentation;
+using Oxce.Mods.Rulesets.TerrainDeployment;
+using AlienMissionRule = Oxce.Mods.Rulesets.MissionEvents.AlienMissionRule;
 using EventRule = Oxce.Mods.Rulesets.MissionEvents.EventRule;
+using UfoTrajectoryRule = Oxce.Mods.Rulesets.MissionEvents.UfoTrajectoryRule;
+using WeightedTimelineEntry = Oxce.Mods.Rulesets.MissionEvents.WeightedTimelineEntry;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
@@ -58,6 +63,11 @@ public static class RuntimeRuleLinker
         var researchHandles = Handles<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research);
         var manufactureHandles = Handles<ManufactureRuleFamily, ManufactureRule>(generation, content.EquipmentProduction.Manufacture);
         var eventHandles = Handles<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events);
+        var ufoHandles = Handles<UfoRuleFamily, UfoRule>(generation, content.EquipmentProduction.Ufos);
+        var trajectoryHandles = Handles<UfoTrajectoryRuleFamily, UfoTrajectoryRule>(
+            generation, content.MissionEvents.UfoTrajectories);
+        var deploymentHandles = Handles<AlienDeploymentRuleFamily, AlienDeploymentRule>(
+            generation, content.TerrainDeployment.AlienDeployments);
         var scriptBuild = BuildScripts(generation, scripts, cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -332,10 +342,197 @@ public static class RuntimeRuleLinker
                     rule.Value.TransferTimes, rule.Value.ListOrder,
                     rule.Value.Events)),
             IdentityFamily<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events),
+            BuildFamily<UfoRuleFamily, UfoRule, RuntimeUfoRule>(generation, content.EquipmentProduction.Ufos,
+                rule => BuildUfo(rule.Id, rule.Value)),
+            BuildFamily<UfoTrajectoryRuleFamily, UfoTrajectoryRule, RuntimeUfoTrajectoryRule>(generation,
+                content.MissionEvents.UfoTrajectories, static rule => new(rule.Value.GroundTimer,
+                    Array.AsReadOnly(rule.Value.Waypoints.Select(static waypoint => new RuntimeTrajectoryWaypoint(
+                        waypoint.Zone, waypoint.Altitude, waypoint.Speed)).ToArray()))),
+            BuildFamily<AlienMissionRuleFamily, AlienMissionRule, RuntimeAlienMissionRule>(generation,
+                content.MissionEvents.AlienMissions, rule => BuildAlienMission(rule.Id, rule.Value)),
+            BuildFamily<AlienDeploymentRuleFamily, AlienDeploymentRule, RuntimeAlienDeploymentRule>(generation,
+                content.TerrainDeployment.AlienDeployments, rule => BuildAlienDeployment(rule.Id, rule.Value)),
+            IdentityFamily<AlienRaceRuleFamily, AlienRaceRule>(generation, content.TerrainDeployment.AlienRaces),
             scriptBuild.Family,
             settings);
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
+
+        RuntimeUfoRule BuildUfo(string id, UfoRule source)
+        {
+            var stats = UfoStats(source.Stats);
+            var bonuses = source.RaceBonuses.ToDictionary(
+                static pair => pair.Key, pair => UfoStats(pair.Value), StringComparer.Ordinal);
+            return new RuntimeUfoRule(
+                source.Size,
+                // RuleUfo::getDefaultVisibility falls back to the vanilla 15*(3-size) ladder.
+                source.Integers["visibility"] != 0 ? source.Integers["visibility"] : source.Size switch
+                {
+                    "STR_VERY_SMALL" => -30,
+                    "STR_SMALL" => -15,
+                    "STR_MEDIUM_UC" => 0,
+                    "STR_LARGE" => 15,
+                    "STR_VERY_LARGE" => 30,
+                    _ => 0,
+                },
+                source.Integers["missionScore"],
+                source.Integers["fakeWaterLandingChance"],
+                source.Integers["hunterKillerPercentage"],
+                source.Integers["huntMode"],
+                source.Integers["huntSpeed"],
+                source.Integers["huntBehavior"],
+                source.Booleans["unmanned"],
+                source.Booleans["instaHyper"],
+                source.Booleans["noAlert"],
+                source.Marker.Index,
+                source.LandedMarker.Index,
+                source.CrashedMarker.Index,
+                stats,
+                new ReadOnlyDictionary<string, RuntimeUfoStats>(bonuses),
+                ScriptsFor(scriptBuild.ByOwner, "ufos", id));
+        }
+
+        static RuntimeUfoStats UfoStats(UfoStats source) => new(
+            source.Craft.Get("speedMax"),
+            source.Craft.Get("accel"),
+            source.Craft.Get("damageMax"),
+            source.Craft.Get("radarRange"),
+            source.Craft.Get("radarChance"),
+            source.Craft.Get("sightRange"),
+            source.Craft.Get("shieldCapacity"),
+            source.Craft.Get("shieldRecharge"),
+            source.Craft.Get("shieldRechargeInGeoscape"),
+            source.MissionCustomDeployment);
+
+        RuntimeAlienMissionRule BuildAlienMission(string id, AlienMissionRule source)
+        {
+            var objective = source.Integers["objective"];
+            if (!Enum.IsDefined((RuntimeMissionObjective)objective))
+                issues.Add(new RuntimeRuleLinkIssue("alienMissions", id, "objective", objective.ToString(CultureInfo.InvariantCulture),
+                    $"Mission objective {objective} is not supported.", null));
+            var operation = source.Integers["operationType"];
+            if (!Enum.IsDefined((RuntimeMissionOperationType)operation))
+                issues.Add(new RuntimeRuleLinkIssue("alienMissions", id, "operationType", operation.ToString(CultureInfo.InvariantCulture),
+                    $"Mission operation type {operation} is not supported.", null));
+            var waves = source.Waves.Select(wave => new RuntimeMissionWave(
+                wave.Ufo,
+                OptionalRuntime(ufoHandles, wave.Ufo),
+                OptionalRuntime(deploymentHandles, wave.Ufo),
+                wave.Count,
+                wave.Trajectory,
+                OptionalRuntime(trajectoryHandles, wave.Trajectory),
+                wave.Timer,
+                wave.Objective,
+                wave.ObjectiveOnTheLandingSite,
+                wave.ObjectiveOnXcomBase,
+                wave.HunterKillerPercentage,
+                wave.HuntMode,
+                wave.HuntBehavior,
+                wave.Escort,
+                wave.InterruptPercentage)).ToArray();
+            return new RuntimeAlienMissionRule(
+                (RuntimeMissionObjective)objective,
+                source.Integers["points"],
+                source.Integers["spawnZone"],
+                source.Integers["retaliationOdds"],
+                source.Integers["targetBaseOdds"],
+                (RuntimeMissionOperationType)operation,
+                source.Integers["operationSpawnZone"],
+                source.Strings["operationBaseType"],
+                OptionalRuntime(deploymentHandles, source.Strings["operationBaseType"]),
+                source.Strings["spawnUfo"],
+                OptionalRuntime(ufoHandles, source.Strings["spawnUfo"]),
+                source.Strings["siteType"],
+                OptionalRuntime(deploymentHandles, source.Strings["siteType"]),
+                source.Strings["interruptResearch"],
+                OptionalRuntime(researchHandles, source.Strings["interruptResearch"]),
+                source.Booleans["skipScoutingPhase"],
+                source.Booleans["endlessInfiltration"],
+                source.Booleans["multiUfoRetaliation"],
+                source.Booleans["multiUfoRetaliationExtra"],
+                source.Booleans["ignoreBaseDefenses"],
+                source.Booleans["instaHyper"],
+                source.Booleans["despawnEvenIfTargeted"],
+                source.Booleans["respawnUfoAfterSiteDespawn"],
+                source.Booleans["showAlienBase"],
+                Array.AsReadOnly(waves),
+                source.MissionWeights,
+                Timeline(source.RaceWeights),
+                Timeline(source.RegionWeights));
+        }
+
+        RuntimeAlienDeploymentRule BuildAlienDeployment(string id, AlienDeploymentRule source)
+        {
+            var evolution = source.AlienRaceEvolution
+                .Select(node => ReadEvolution(id, node))
+                .Where(static entry => entry is not null)
+                .Select(static entry => entry!)
+                .ToArray();
+            return new RuntimeAlienDeploymentRule(
+                source.Strings["markerName"],
+                source.Integers["markerIcon"],
+                source.Duration.Count > 0 ? source.Duration[0] : 0,
+                source.Duration.Count > 1 ? source.Duration[1] : 0,
+                source.Integers["points"],
+                source.Integers["despawnPenalty"],
+                source.Booleans["alienBase"],
+                source.Booleans["finalDestination"],
+                source.Integers["fakeUnderwaterSpawnChance"],
+                source.Integers["baseDetectionRange"],
+                source.Integers["baseDetectionChance"],
+                source.Integers["huntMissionMaxFrequency"],
+                source.Integers["genMissionFreq"],
+                source.Integers["genMissionLimit"],
+                source.Booleans["genMissionRaceFromAlienBase"],
+                source.Booleans["huntMissionRaceFromAlienBase"],
+                source.Booleans["resetAlienBaseAgeAfterUpgrade"],
+                source.Booleans["resetAlienBaseAge"],
+                source.Strings["upgradeRace"],
+                source.Strings["baseSelfDestructCode"],
+                OptionalRuntime(researchHandles, source.Strings["baseSelfDestructCode"]),
+                source.Strings["unlockedResearchOnDespawn"],
+                OptionalRuntime(researchHandles, source.Strings["unlockedResearchOnDespawn"]),
+                source.Strings["counterDespawn"],
+                source.Strings["counterFailure"],
+                source.Strings["counterAll"],
+                source.Strings["decreaseCounterDespawn"],
+                source.Strings["decreaseCounterFailure"],
+                source.Strings["decreaseCounterAll"],
+                Weights(id, "genMission", source.GenMission),
+                Timeline(source.HuntMissionWeights),
+                Timeline(source.AlienBaseUpgrades),
+                Array.AsReadOnly(evolution),
+                Weights(id, "despawnEvents", source.DespawnEvents));
+        }
+
+        RuntimeAlienRaceEvolution? ReadEvolution(string id, YamlNode node)
+        {
+            if (node is not YamlSequenceNode sequence || sequence.Items.Count < 3)
+            {
+                issues.Add(new RuntimeRuleLinkIssue("alienDeployments", id, "alienRaceEvolution", string.Empty,
+                    "Alien race evolution requires [month, from race, to race].", null));
+                return null;
+            }
+            return new RuntimeAlienRaceEvolution(
+                YamlValueReader.ReadInt32(sequence.Items[0]),
+                YamlValueReader.ReadString(sequence.Items[1]),
+                YamlValueReader.ReadString(sequence.Items[2]));
+        }
+
+        IReadOnlyDictionary<string, ulong> Weights(string id, string property, YamlNode? node)
+        {
+            if (node is null) return EmptyWeights;
+            if (node is not YamlMappingNode mapping)
+            {
+                issues.Add(new RuntimeRuleLinkIssue("alienDeployments", id, property, string.Empty,
+                    $"{property} must be a mapping.", null));
+                return EmptyWeights;
+            }
+            var weights = new Dictionary<string, ulong>(StringComparer.Ordinal);
+            foreach (var entry in mapping.Entries)
+                weights[entry.ScalarKey ?? string.Empty] = YamlValueReader.ReadUInt64(entry.Value);
+            return new ReadOnlyDictionary<string, ulong>(weights);
+        }
 
         RuntimeManufactureMaterial RequiredMaterial(string id, int quantity)
         {
@@ -501,6 +698,17 @@ public static class RuntimeRuleLinker
             rule.Id,
             Handle = new RuleHandle<TFamily>(generation, index),
         }).ToDictionary(static pair => pair.Id, static pair => pair.Handle, StringComparer.Ordinal);
+
+    private static readonly IReadOnlyDictionary<string, ulong> EmptyWeights =
+        new ReadOnlyDictionary<string, ulong>(new Dictionary<string, ulong>(StringComparer.Ordinal));
+
+    private static ReadOnlyCollection<RuntimeWeightedTimeline> Timeline(
+        IEnumerable<WeightedTimelineEntry> source) =>
+        Array.AsReadOnly(source.Select(static entry => new RuntimeWeightedTimeline(entry.Month, entry.Weights)).ToArray());
+
+    private static ReadOnlyCollection<RuntimeWeightedTimeline> Timeline(
+        IEnumerable<KeyValuePair<ulong, IReadOnlyDictionary<string, ulong>>> source) =>
+        Array.AsReadOnly(source.Select(static entry => new RuntimeWeightedTimeline(entry.Key, entry.Value)).ToArray());
 
     private static RuntimeRuleFamily<TFamily, TProjection> BuildFamily<TFamily, TRule, TProjection>(
         ContentGenerationId generation,

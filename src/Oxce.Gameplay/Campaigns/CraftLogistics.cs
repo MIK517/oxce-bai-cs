@@ -21,6 +21,22 @@ public sealed record CraftLogisticsState(int Fuel, int Damage, string Status,
     public int ExcessFuel { get; init; }
     public bool IsAutoPatrolling { get; init; }
     public int Shield { get; init; }
+    /// <summary>Craft::_dest. Null means patrolling at the current position (or sitting in the base).</summary>
+    public World.WorldTargetReference? Destination { get; init; }
+    /// <summary>Craft::_takeoff: five-second ticks left before the craft actually leaves the base.</summary>
+    public int Takeoff { get; init; }
+    /// <summary>Craft::_mission: the craft completed its mission and is heading home.</summary>
+    public bool MissionComplete { get; init; }
+    /// <summary>Craft::_interceptionOrder, shown by the interception list.</summary>
+    public int InterceptionOrder { get; init; }
+    /// <summary>Craft::_lonAuto / _latAuto: the remembered auto-patrol point.</summary>
+    public double AutoPatrolLongitude { get; init; }
+    public double AutoPatrolLatitude { get; init; }
+    /// <summary>MovingTarget::_speed and its cached per-tick components.</summary>
+    public int Speed { get; init; }
+    public double SpeedLongitude { get; init; }
+    public double SpeedLatitude { get; init; }
+    public double SpeedRadian { get; init; }
 }
 
 public sealed record CraftEffectiveStats(int SoldierCapacity, int VehicleCapacity,
