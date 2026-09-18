@@ -17,7 +17,7 @@ public sealed class RulesetCompositionFixtureTests
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "rule-operations");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
-        var modCatalog = ModCatalog.Create(discovery.Mods, diagnostics);
+        var modCatalog = ModCatalog.Create(discovery, diagnostics);
         var plan = ModLoadPlanner.Create(
             modCatalog,
             [new ModActivation("fixture-master", true)],

@@ -182,7 +182,7 @@ public static class InstallationPlanBuilder
             stage = InstallationLoadStage.Planning;
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new InstallationLoadProgress(stage));
-            var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), sink, standard.CommonLayers);
+            var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), standard.CommonLayers, sink);
             var plan = ModLoadPlanner.Create(
                 catalog,
                 request.ActiveMods.Select(static id => new ModActivation(id, true)),

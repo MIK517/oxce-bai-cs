@@ -21,7 +21,7 @@ public class RuntimeRuleLinkingBenchmarks
         var root = FindRepositoryRoot();
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "runtime-rule-linking");
         var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(ModDiscovery.ScanDirectory(fixture).Mods),
+            ModCatalog.Create(ModDiscovery.ScanDirectory(fixture)),
             [new ModActivation("runtime-master", true), new ModActivation("runtime-addon", true)],
             "runtime-master",
             new ModEngineIdentity("Extended", "8.6.1.0"));

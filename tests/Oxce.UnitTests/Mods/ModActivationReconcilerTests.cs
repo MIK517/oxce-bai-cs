@@ -14,7 +14,7 @@ public sealed class ModActivationReconcilerTests
     public void ReconcilesMissingModsAndMultipleMastersWhilePreservingUserOrder()
     {
         var catalog = ModCatalog.Create(
-            [Candidate("xcom1", isMaster: true), Candidate("xcom2", isMaster: true), Candidate("addon", master: "xcom1")]);
+            [Candidate("xcom1", isMaster: true), Candidate("xcom2", isMaster: true), Candidate("addon", master: "xcom1")], []);
         var diagnostics = new DiagnosticCollector();
 
         var state = ModActivationReconciler.Reconcile(
@@ -38,7 +38,7 @@ public sealed class ModActivationReconcilerTests
     public void PreferredMasterOverridesPersistedFlagsAndNewModsDefaultDisabled()
     {
         var catalog = ModCatalog.Create(
-            [Candidate("xcom1", isMaster: true), Candidate("xcom2", isMaster: true), Candidate("new-addon", master: "xcom1")]);
+            [Candidate("xcom1", isMaster: true), Candidate("xcom2", isMaster: true), Candidate("new-addon", master: "xcom1")], []);
 
         var state = ModActivationReconciler.Reconcile(
             catalog,
@@ -80,7 +80,7 @@ public sealed class ModActivationReconcilerTests
     {
         var diagnostics = new DiagnosticCollector();
         var catalog = ModCatalog.Create(
-            [Candidate("xcom1", isMaster: true), Candidate("addon", master: "xcom1", requiredEngine: "Other")]);
+            [Candidate("xcom1", isMaster: true), Candidate("addon", master: "xcom1", requiredEngine: "Other")], []);
 
         var plan = ModLoadPlanner.Create(
             catalog,

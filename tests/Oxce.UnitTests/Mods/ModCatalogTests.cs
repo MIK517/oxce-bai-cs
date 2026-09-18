@@ -17,6 +17,7 @@ public sealed class ModCatalogTests
 
         var catalog = ModCatalog.Create(
             [Candidate("broken", "missing"), Candidate("child", "broken"), Candidate("standalone", "")],
+            [],
             diagnostics);
 
         Assert.Equal(["standalone"], catalog.Mods.Keys);
@@ -31,6 +32,7 @@ public sealed class ModCatalogTests
 
         var catalog = ModCatalog.Create(
             [Candidate("a", "b"), Candidate("b", "a"), Candidate("child", "a"), Candidate("ok", "")],
+            [],
             diagnostics);
 
         Assert.Equal(["ok"], catalog.Mods.Keys);
@@ -45,7 +47,7 @@ public sealed class ModCatalogTests
         var first = Candidate("same", "");
         var second = Candidate("same", "");
 
-        var catalog = ModCatalog.Create([first, second], diagnostics);
+        var catalog = ModCatalog.Create([first, second], [], diagnostics);
 
         Assert.Same(first, catalog.Mods["same"]);
         Assert.Contains(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.DuplicateId);
