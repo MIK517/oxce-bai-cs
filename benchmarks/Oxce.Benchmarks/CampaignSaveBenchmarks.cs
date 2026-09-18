@@ -32,7 +32,7 @@ public class CampaignSaveBenchmarks
         var standard = ModDiscovery.ScanDirectory(Path.Combine(installation, "standard"), options: discoveryOptions);
         var user = ModDiscovery.ScanDirectory(Path.Combine(installation, "user", "mods"), options: discoveryOptions);
         var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(standard.Mods.Concat(user.Mods)),
+            ModCatalog.Create(standard.Mods.Concat(user.Mods), standard.CommonLayers),
             [new ModActivation("40k", true), new ModActivation("40k_ROSIGMA_edits", true)],
             "40k",
             new ModEngineIdentity("Extended", "8.6.1.0"));

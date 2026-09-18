@@ -198,7 +198,10 @@ public static class ModDiscovery
             }
         }
 
-        return new ModDiscoveryResult(resolved, rejected);
+        return new ModDiscoveryResult(
+            resolved,
+            rejected,
+            () => ExternalResourceMapper.MapCommon(resourceRoots, options));
     }
 
     private static DirectoryScanOptions WithCancellation(

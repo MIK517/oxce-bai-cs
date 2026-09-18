@@ -87,7 +87,7 @@ public sealed class PrivateCampaignSaveTests
             discoveryOptions);
         var user = ModDiscovery.ScanDirectory(Path.Combine(installation, "user", "mods"), diagnostics,
             discoveryOptions);
-        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), diagnostics);
+        var catalog = ModCatalog.Create(standard.Mods.Concat(user.Mods), standard.CommonLayers, diagnostics);
         var plan = ModLoadPlanner.Create(
             catalog,
             activeMods.Select(static id => new ModActivation(id, true)),

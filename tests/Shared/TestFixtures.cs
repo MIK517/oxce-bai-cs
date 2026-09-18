@@ -36,7 +36,7 @@ internal static class TestFixtures
         var activations = (activeMods ?? new[] { master })
             .Select(static id => new ModActivation(id, true))
             .ToArray();
-        return ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods), activations, master, Engine);
+        return ModLoadPlanner.Create(ModCatalog.Create(discovery), activations, master, Engine);
     }
 
     internal static IReadOnlyList<string> RuntimeRuleLinkingMods { get; } = ["runtime-master", "runtime-addon"];

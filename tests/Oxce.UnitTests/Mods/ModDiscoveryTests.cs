@@ -3,6 +3,7 @@ using Oxce.Core.Diagnostics;
 using Oxce.Mods;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Files;
+using Oxce.Mods.Loading;
 using Xunit;
 
 namespace Oxce.UnitTests.Mods;
@@ -242,7 +243,7 @@ public sealed class ModDiscoveryTests
     }
 
     [Fact]
-    public void SharedCommonResourcesAreLowerPriorityThanGameAndModLayers()
+    public void SharedCommonResourcesAreMappedOnceOutsideTheModLayers()
     {
         using var fixture = new TemporaryModDirectory();
         using var resources = new TemporaryModDirectory();
@@ -261,10 +262,44 @@ public sealed class ModDiscoveryTests
         });
 
         var candidate = Assert.Single(result.Mods);
-        var catalog = new VirtualFileCatalog(candidate.Layers);
+        // The reference maps common once for the installation instead of into each mod, so a
+        // mod carries only its own layers and its own external resources.
+        Assert.DoesNotContain(
+            candidate.Layers,
+            layer => layer.Provenance.LayerId.StartsWith("common", StringComparison.Ordinal));
+        Assert.Equal(["common:directory"], result.CommonLayers.Select(layer => layer.Provenance.LayerId));
+        var catalog = new VirtualFileCatalog([.. result.CommonLayers, .. candidate.Layers]);
         Assert.Equal("mod", ReadText(catalog.GetRequired("Resources/shared.dat")));
         Assert.Equal("common", ReadText(catalog.GetRequired("Resources/common.dat")));
         Assert.Equal("game", ReadText(catalog.GetRequired("Resources/game.dat")));
+    }
+
+    [Fact]
+    public void CommonZipCountsMappedFilesBeforeCanonicalPathCollisions()
+    {
+        // FileMap.cpp mapZip increments mapped_count for both entries before insert
+        // replaces the first case-insensitive key. The resulting layer is still usable.
+        using var fixture = new TemporaryModDirectory();
+        using var resources = new TemporaryModDirectory();
+        fixture.Add("master", "id: master\nisMaster: true\n");
+        resources.AddArchive(
+            "common.zip",
+            ("common/Resources/DUP.DAT", "first"),
+            ("common/Resources/dup.dat", "last"));
+
+        var discovery = ModDiscovery.ScanDirectory(fixture.Path, options: new ModDiscoveryOptions
+        {
+            ExternalResourceRoots = [resources.Path],
+        });
+        var catalog = ModCatalog.Create(discovery);
+        var plan = ModLoadPlanner.Create(
+            catalog,
+            [new ModActivation("master", true)],
+            "master",
+            new ModEngineIdentity("Extended", "8.6.1.0"));
+
+        Assert.Equal(["common:zip"], plan.CommonLayers.Select(layer => layer.Provenance.LayerId));
+        Assert.Equal("last", ReadText(plan.VirtualFiles.GetRequired("Resources/dup.dat")));
     }
 
     [Fact]

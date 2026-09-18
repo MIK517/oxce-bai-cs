@@ -16,7 +16,7 @@ public sealed class ModLoadingFixtureTests
         var diagnostics = new DiagnosticCollector();
 
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
-        var catalog = ModCatalog.Create(discovery.Mods, diagnostics);
+        var catalog = ModCatalog.Create(discovery, diagnostics);
         var engine = new ModEngineIdentity("Extended", "8.6.1.0");
         var activationState = ModActivationReconciler.Reconcile(
             catalog,

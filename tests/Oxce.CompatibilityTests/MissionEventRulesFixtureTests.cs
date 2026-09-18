@@ -18,7 +18,7 @@ public sealed class MissionEventRulesFixtureTests
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot(); var fixture = Path.Combine(root, "fixtures", "public", "mods", "mission-event-rules");
         using var expected = TestFixtures.ReadVerifiedExpected("mission-event-rules");
         var diagnostics = new DiagnosticCollector(); var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
-        var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods, diagnostics), [new ModActivation("fixture", true)], "fixture", new ModEngineIdentity("Extended", "8.6.1.0"), diagnostics);
+        var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery, diagnostics), [new ModActivation("fixture", true)], "fixture", new ModEngineIdentity("Extended", "8.6.1.0"), diagnostics);
         var actual = MissionEventRuleCatalog.Load(plan, diagnostics); var document = expected.RootElement;
         var trajectory = Assert.Single(actual.UfoTrajectories.Rules).Value; var waypoint = Assert.Single(trajectory.Waypoints);
         Assert.Equal(document.GetProperty("trajectory").EnumerateArray().Select(x => x.GetInt32()), new[] { trajectory.GroundTimer, trajectory.Waypoints.Count, waypoint.Zone, waypoint.Altitude, waypoint.Speed });

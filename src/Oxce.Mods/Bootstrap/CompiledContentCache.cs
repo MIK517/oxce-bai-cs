@@ -75,7 +75,7 @@ internal sealed record CompiledContentCacheReadResult(
 internal static class CompiledContentCache
 {
     internal const int FormatVersion = 1;
-    internal const int CompilerRevision = 15;
+    internal const int CompilerRevision = 16;
     private const string FileName = "content-v1.json.gz";
     private const int CacheKeyLength = 64;
     private static ReadOnlySpan<byte> HeaderMagic => "OXCECC1\n"u8;
@@ -165,6 +165,27 @@ internal static class CompiledContentCache
                 }
             }
         }
+        writer.Int32(plan.CommonLayers.Count);
+        foreach (var layer in plan.CommonLayers)
+        {
+            writer.String(layer.Provenance.LayerId);
+            writer.String(layer.Provenance.Origin);
+            var entries = layer.Entries
+                .OrderBy(static entry => entry.CanonicalPath, StringComparer.Ordinal)
+                .ToArray();
+            writer.Int32(entries.Length);
+            foreach (var entry in entries)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                writer.String(entry.CanonicalPath);
+                writer.String(entry.SourcePath);
+                if (entry.CanonicalPath.EndsWith(".nam", StringComparison.OrdinalIgnoreCase))
+                {
+                    using var nameInput = entry.OpenRead();
+                    writer.Stream(nameInput, cancellationToken);
+                }
+            }
+        }
         // A conservative pre-composition inventory: configured soundDefs can suppress
         // CAT reads, but cannot introduce other asset inputs. Payload bytes beyond the
         // header are decoded lazily and do not affect the compiled graph.
@@ -200,6 +221,9 @@ internal static class CompiledContentCache
                 for (var layer = layers.Count - 1; layer >= 0; layer--)
                     if (layers[layer].TryGet(path, out var entry)) return entry;
             }
+
+            for (var layer = plan.CommonLayers.Count - 1; layer >= 0; layer--)
+                if (plan.CommonLayers[layer].TryGet(path, out var entry)) return entry;
             return null;
         }
 

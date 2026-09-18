@@ -103,9 +103,10 @@ into immutable, provenance-bearing descriptors and generation-scoped typed handl
 streaming media, and a bounded size-aware LRU. The application and resource browser
 must use that service rather than opening descriptor source paths. UI strings and fonts
 are also read through the layered catalog (`InstallationContentLoadResult.VirtualFiles`),
-never from the installation directory. Shared `common`
-assets are mapped below game-specific external data and mod layers so normal OXCE
-installation precedence is preserved.
+never from the installation directory. Shared `common` assets belong to the installation,
+not to a mod: they are mapped once as the load plan's base layer, below game-specific
+external data and every mod layer, whether or not a master declares `loadResources`
+(`FileMap::setup` maps `common` before pushing any mod).
 
 Input the reference engine tolerates but the port considers malformed is handled by the
 launch-time input validation mode: strict by default, reference-tolerant in
