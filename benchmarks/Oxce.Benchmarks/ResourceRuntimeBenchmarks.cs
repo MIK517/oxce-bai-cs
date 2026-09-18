@@ -93,7 +93,7 @@ public class ResourceRuntimeBenchmarks : IDisposable
     {
         var discovery = ModDiscovery.ScanDirectory(_root);
         var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
+            ModCatalog.Create(discovery),
             [new ModActivation(masterId, true)],
             masterId,
             new ModEngineIdentity("Extended", "8.6.1.0"));

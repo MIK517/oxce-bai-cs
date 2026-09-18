@@ -21,7 +21,7 @@ public sealed class PersonnelTacticalRulesFixtureTests
         var expectedPath = TestFixtures.VerifiedExpectedPath("personnel-tactical-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
-        var mods = ModCatalog.Create(discovery.Mods, diagnostics);
+        var mods = ModCatalog.Create(discovery, diagnostics);
         var plan = ModLoadPlanner.Create(mods, [new ModActivation("fixture", true)], "fixture",
             new ModEngineIdentity("Extended", "8.6.1.0"), diagnostics);
         var actual = PersonnelTacticalRuleCatalog.Load(plan, diagnostics);

@@ -19,7 +19,7 @@ public sealed class TerrainDeploymentRulesFixtureTests
         var expectedPath = TestFixtures.VerifiedExpectedPath("terrain-deployment-rules");
         var diagnostics = new DiagnosticCollector();
         var discovery = ModDiscovery.ScanDirectory(fixture, diagnostics);
-        var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery.Mods, diagnostics),
+        var plan = ModLoadPlanner.Create(ModCatalog.Create(discovery, diagnostics),
             [new ModActivation("fixture", true)], "fixture", new ModEngineIdentity("Extended", "8.6.1.0"), diagnostics);
         var actual = TerrainDeploymentRuleCatalog.Load(plan, diagnostics);
         using var expected = JsonDocument.Parse(File.ReadAllText(expectedPath));

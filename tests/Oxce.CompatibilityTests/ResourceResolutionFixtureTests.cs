@@ -19,7 +19,7 @@ public sealed class ResourceResolutionFixtureTests
         var fixture = Path.Combine(root, "fixtures", "public", "mods", "resource-resolution");
         var discovery = ModDiscovery.ScanDirectory(fixture);
         var plan = ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
+            ModCatalog.Create(discovery),
             [new ModActivation("resource-master", true), new ModActivation("resource-addon", true)],
             "resource-master",
             new ModEngineIdentity("Extended", "8.6.1.0"));

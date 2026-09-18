@@ -24,7 +24,7 @@ public class Phase3ContentBenchmarks
         _fixtureRoot = Path.Combine(root, "fixtures", "public", "mods", "script-content");
         var discovery = ModDiscovery.ScanDirectory(_fixtureRoot);
         _plan = ModLoadPlanner.Create(
-            ModCatalog.Create(discovery.Mods),
+            ModCatalog.Create(discovery),
             [new ModActivation("fixture", true)],
             "fixture",
             new ModEngineIdentity("Extended", "8.6.1.0"));
