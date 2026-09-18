@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-world",
+  "description": "Pins world-simulation arithmetic: target coordinates and distance, moving-target speed and movement, region containment and random points, UFO heading/altitude/visibility, craft fuel range, base detection chance, weighted selection and alien-strategy mission bookkeeping.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Savegame/Target.cpp (setLongitude, setLatitude, getDistance), MovingTarget.cpp (calculateRadianSpeed, setSpeed, calculateSpeed, calculateMeetPoint, reachedDestination, move), Ufo.cpp (calculateSpeed, getVisibility, getAltitudeInt), Craft.cpp (recalcSpeedMaxRadian, getFuelConsumption, getFuelLimit, getBaseRange), Base.cpp (getDetectionChance), WeightedOptions.cpp (choose, set), AlienStrategy.cpp (addMissionRun, addMissionLocation, validMissionLocation), Mod/RuleRegion.cpp (insideRegion, getRandomPoint), fmath.h (AreSame, Deg2Rad, Nautical, XcomDistance)",
+      "probe": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
+      "capture": "tools/capture-strategic-world-reference.ps1",
+      "compiler": "MSVC x64, /std:c++20; method bodies inserted verbatim by the capture script, randomness scripted by the probe"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
+      "size": 16018,
+      "sha256": "7115b750f3c0d7f736f4addf56b8caf601108a93a315fa8e0a7225593533b3bd"
+    },
+    {
+      "path": "tools/capture-strategic-world-reference.ps1",
+      "size": 7483,
+      "sha256": "197fb8140b961964d876102c54a3366f4ed800df70d792b1ef30f2041ce5128c"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-world.expected.json"
+}

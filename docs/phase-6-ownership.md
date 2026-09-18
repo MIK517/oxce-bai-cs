@@ -1,8 +1,9 @@
 # Phase 6 ownership and fixture ledger
 
 Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Implementation
-branches: `codex/strategic-base-logistics`, `codex/strategic-base-readiness`, and
-`codex/strategic-research-production`. This is
+branches: `codex/strategic-base-logistics`, `codex/strategic-base-readiness`,
+`codex/strategic-research-production`, and the branch 4a world foundation.
+This is
 an implementation/evidence ledger; bounded acceptance is recorded in their status files.
 Checkpoint notes below retain the scope and outstanding work at each implementation milestone.
 
@@ -17,7 +18,8 @@ Checkpoint notes below retain the scope and outstanding work at each implementat
 | Transfer quantities, cost/distance, time and mobile save fields | Branch 1 | `TransferItemsState`, `TransferConfirmState`, `Transfer` | Extracted arithmetic and two-base fixtures; mobile ownership |
 | Facility editing, training, recovery, transformations, servicing | Branch 2 | Base/personnel/craft states, timed handlers | Implemented with fresh/cache/save and indexed UI acceptance. See [readiness status](strategic-readiness-status.md). |
 | Research and production progression | Branch 3 | `ResearchProject`, `Production`, timed handlers | Implemented with extracted C++ progression oracle, fresh/cache economy chain, save/reload and indexed UI. See [branch 3 status](strategic-research-production-status.md). |
-| World entities, mission/arc/event scheduling and movement | Branch 4 | `GeoscapeState`, mission/target classes | Deferred; do not advance opaque entities |
+| World rule projection, geometry and target graph | Branch 4a | `Target`, `MovingTarget`, `SavedGame::load`, mission/target classes | Implemented as a bounded foundation with arithmetic oracle, save graph and rewrite fixtures; live world state still stops time. See [world foundation status](strategic-world-foundation-status.md). |
+| Mission/arc/event scheduling, movement, detection and craft dispatch | Branch 4b | `GeoscapeState`, mission/target classes | Deferred to `codex/strategic-world-operations`; original branch 4 acceptance still applies. |
 | Interception and strategic deployment | Branch 5 | `DogfightState`, landing/deployment callers | Deferred |
 | Monthly ledger, event consequences, strategic endings | Branch 6 | `MonthlyReportState`, `GeoscapeEventState`, `SavedGame` | Deferred; earlier monthly hooks must not run twice |
 | Active battle, battle-derived personnel changes and debriefing | Phase 7 | Battlescape and debriefing | Preserve-only; tactical continuation unavailable |

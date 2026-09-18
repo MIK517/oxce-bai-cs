@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.Scripting.Globals;
 
 namespace Oxce.Gameplay.Campaigns;
@@ -138,6 +139,7 @@ public sealed record CampaignSnapshot(
     public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public bool DebugMode { get; init; }
     public CampaignOptions Options { get; init; } = new();
+    public WorldSnapshot World { get; init; } = WorldSnapshot.Empty;
 
     internal static IReadOnlyList<T> ReadOnly<T>(IEnumerable<T> values) => Array.AsReadOnly(values.ToArray());
 
