@@ -55,6 +55,9 @@ public sealed partial class CampaignState
                     if (quantity == 0) owner.Items.Remove(item); else owner.Items[item] = quantity;
                 }
                 owner.Crafts[index] = craft with { Logistics = state };
+                if (!result.MissingFuel && state.Status == "STR_READY" &&
+                    state.IsAutoPatrolling && rule.AutoPatrol)
+                    effects.AutoPatrolCandidates.Add((owner, index));
                 if (result.MissingFuel) effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"));
                 else if (state.Status == "STR_READY" && rule.NotifyWhenRefueled)
                     effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_CRAFT_IS_READY"));

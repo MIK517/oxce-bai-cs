@@ -38,14 +38,18 @@ public sealed class StrategicWorldCraftOperationsTests
         Assert.Equal(0, Ship(loaded.Capture()).Logistics!.Takeoff);
 
         loaded.Execute(new AdvanceCampaignTime(1));
-        Assert.NotEqual(before.Logistics.Longitude, Ship(loaded.Capture()).Logistics!.Longitude);
+        var moved = Ship(loaded.Capture()).Logistics!;
+        var expected = WorldGeometry.Move(new WorldPosition(before.Logistics.Longitude, before.Logistics.Latitude),
+            new WorldPosition(0.2001, 0.1), WorldGeometry.RadianSpeed(moved.Speed));
+        Assert.Equal(expected.Longitude, moved.Longitude);
+        Assert.Equal(expected.Latitude, moved.Latitude);
         Assert.IsType<CraftDestinationChanged>(Assert.Single(
             loaded.Execute(new RecallCraft(baseId, "SHIP", 1)).Events));
         var returned = loaded.Execute(new AdvanceCampaignTime(1000));
-        Assert.Contains(returned.Events, notification => notification is CraftReturnedToBase);
+        Assert.Equal(1000, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(returned.Events)).Summary.TickCount);
         var final = Ship(loaded.Capture()).Logistics!;
         Assert.Null(final.Destination);
-        Assert.Equal("STR_REFUELLING", final.Status);
+        Assert.Equal("STR_READY", final.Status);
         Assert.Equal(before.Logistics.Longitude, final.Longitude);
         Assert.Equal(before.Logistics.Latitude, final.Latitude);
         Assert.Empty(loaded.Capture().World.Waypoints);
@@ -68,7 +72,6 @@ public sealed class StrategicWorldCraftOperationsTests
         campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.4, 0.1));
         var elapsed = campaign.Execute(new AdvanceCampaignTime(121));
         Assert.Contains(elapsed.Events, notification => notification is CraftLowFuel);
-        Assert.Contains(elapsed.Events, notification => notification is CraftReturnedToBase);
         var flight = Ship(campaign.Capture()).Logistics!;
         Assert.Equal(0, flight.Fuel);
         Assert.False(flight.LowFuel);
@@ -124,6 +127,138 @@ public sealed class StrategicWorldCraftOperationsTests
         Assert.Equal(WorldTargetKind.Waypoint, relaunched.Destination!.Kind);
         Assert.Equal(0.3, relaunched.Destination.Longitude);
         Assert.Equal(59, relaunched.Takeoff);
+    }
+
+    [Fact]
+    public void ReadyAutoPatrolFlagDoesNotLaunchWithoutRefuelling()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = ReadyCampaign(content);
+        var snapshot = campaign.Capture();
+        var ship = Ship(snapshot);
+        var flagged = ship with
+        {
+            Logistics = ship.Logistics! with
+            {
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.3,
+                AutoPatrolLatitude = 0.1,
+            }
+        };
+        var restored = CampaignState.Restore(snapshot with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
+                existing.RuleId == "SHIP" ? flagged : existing)] }],
+        }, content, new SplitMix64RandomSource(33));
+
+        var elapsed = restored.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+        Assert.Equal("STR_READY", Ship(restored.Capture()).Logistics!.Status);
+        Assert.Empty(restored.Capture().World.Waypoints);
+    }
+
+    [Fact]
+    public void UnsupportedCraftDestinationBlocksBeforeTimeAdvances()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = ReadyCampaign(content);
+        var snapshot = campaign.Capture();
+        var ship = Ship(snapshot);
+        var following = ship with
+        {
+            Logistics = ship.Logistics! with
+            {
+                Status = "STR_OUT",
+                Speed = 6000,
+                Destination = new WorldTargetReference(WorldTargetKind.Craft, "SHIP", ship.Id, 0.2, 0.1),
+            }
+        };
+        var restored = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
+                existing.RuleId == "SHIP" ? following : existing)] }],
+        }, content, new SplitMix64RandomSource(34));
+
+        var elapsed = restored.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(elapsed.Events[0]).Summary.TickCount);
+        Assert.Contains(elapsed.Events, notification => notification is CampaignActionBlocked);
+        Assert.Equal(snapshot.Time, restored.Capture().Time);
+    }
+
+    [Fact]
+    public void ZeroSpeedStationaryPatrolCanAdvanceTime()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world-slow.rul");
+        var campaign = ReadyCampaign(content);
+        var baseId = campaign.Capture().Bases[0].Id;
+        campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.3, 0.1));
+        var beforePatrol = Ship(campaign.Capture()).Logistics!;
+        campaign.Execute(new PatrolCraft(baseId, "SHIP", 1));
+        Assert.Equal(0, Ship(campaign.Capture()).Logistics!.Speed);
+        Assert.Equal(beforePatrol.AutoPatrolLongitude, Ship(campaign.Capture()).Logistics!.AutoPatrolLongitude);
+
+        var elapsed = campaign.Execute(new AdvanceCampaignTime(3));
+
+        Assert.Equal(3, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+        Assert.Equal("STR_OUT", Ship(campaign.Capture()).Logistics!.Status);
+    }
+
+    [Fact]
+    public void WaypointRemainsUntilItsLastCraftLeaves()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = ReadyCampaign(content);
+        var baseId = campaign.Capture().Bases[0].Id;
+        campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.4, 0.1));
+        var snapshot = campaign.Capture();
+        var first = Ship(snapshot);
+        var second = first with { Id = 2 };
+        var restored = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts, second] }],
+        }, content, new SplitMix64RandomSource(35));
+
+        restored.Execute(new RecallCraft(baseId, "SHIP", 1));
+        restored.Execute(new AdvanceCampaignTime(1));
+        Assert.Single(restored.Capture().World.Waypoints);
+
+        restored.Execute(new RecallCraft(baseId, "SHIP", 2));
+        restored.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(restored.Capture().World.Waypoints);
+    }
+
+    [Fact]
+    public void FlightAllocationsScaleWithCraftCount()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var four = FlightAllocations(4);
+        var sixteen = FlightAllocations(16);
+        Assert.True(sixteen < four * 5,
+            $"Four crafts allocated {four} bytes; sixteen allocated {sixteen} bytes.");
+
+        long FlightAllocations(int count)
+        {
+            var campaign = ReadyCampaign(content);
+            var baseId = campaign.Capture().Bases[0].Id;
+            campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.4, 0.1));
+            var snapshot = campaign.Capture();
+            var first = Ship(snapshot);
+            var crafts = snapshot.Bases[0].Crafts.Concat(Enumerable.Range(2, count - 1)
+                .Select(id => first with { Id = id })).ToArray();
+            var restored = CampaignState.Restore(snapshot with
+            {
+                Bases = [snapshot.Bases[0] with { Crafts = crafts }],
+            }, content, new SplitMix64RandomSource(36));
+            restored.Execute(new AdvanceCampaignTime(61)); // finish takeoff and warm the movement path
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var elapsed = restored.Execute(new AdvanceCampaignTime(10));
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            Assert.Equal(10, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+            return allocated;
+        }
     }
 
     private static CampaignState ReadyCampaign(RuntimeContent content, int fuel = 100)
