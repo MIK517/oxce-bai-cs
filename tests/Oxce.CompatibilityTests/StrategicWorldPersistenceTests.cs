@@ -96,10 +96,10 @@ public sealed class StrategicWorldPersistenceTests
         {
             Ufos = [world.Ufos[0] with { Altitude = "STR_ORBIT" }],
         }));
-        Assert.Throws<InvalidDataException>(() => Restore(placed, content, world with
+        Assert.Equal(0, Assert.Single(Restore(placed, content, world with
         {
             MissionSites = [world.MissionSites[0] with { UfoUniqueId = 4242 }],
-        }));
+        }).Capture().World.MissionSites).UfoUniqueId);
         Assert.Throws<InvalidDataException>(() => Restore(placed, content, world with
         {
             AlienBases = [world.AlienBases[0] with { Longitude = 42 }],
@@ -130,6 +130,177 @@ public sealed class StrategicWorldPersistenceTests
         Assert.Contains(overview.Targets, target => target.Kind == WorldTargetKind.MissionSite);
         Assert.Contains(overview.Targets, target => target.Kind == WorldTargetKind.AlienBase);
         Assert.Contains(overview.Targets, target => target.Kind == WorldTargetKind.Waypoint);
+    }
+
+    [Fact]
+    public void RepeatedScheduledEventRulesRemainSeparateAcrossSaveAndReload()
+    {
+        // SavedGame::spawnEvent appends a new instance even when another event has the same rule.
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var world = SampleWorld() with
+        {
+            Events = [new("EVENT_DESPAWN", 60), new("EVENT_DESPAWN", 120) { Over = true }],
+        };
+        var captured = Restore(PlacedCampaign(content), content, world).Capture();
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(captured),
+            content, seed: 13, name: "repeated-events.sav");
+
+        Assert.Equivalent(world.Events, loaded.Campaign.Capture().World.Events, strict: true);
+    }
+
+    [Fact]
+    public void NewBattleUfoDoesNotRequireOrWriteMissionAndTrajectory()
+    {
+        // Ufo::save omits these links and Ufo::load skips them when monthsPassed is -1.
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var world = SampleWorld();
+        var ufo = world.Ufos[0] with
+        {
+            MissionId = 0, TrajectoryId = string.Empty, TrajectoryPoint = 0, InBattlescape = true,
+        };
+        var snapshot = PlacedCampaign(content) with
+        {
+            MonthsPassed = -1,
+            World = world with { Missions = [], Ufos = [ufo], MissionSites = [], AlienBases = [] },
+        };
+        var captured = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(7)).Capture();
+        Assert.Equal(0, Assert.Single(captured.World.Ufos).Speed);
+        Assert.Equal(0, Assert.Single(captured.World.Ufos).SpeedRadian);
+        var yaml = OxceSaveAdapter.EmitNewCampaign(captured);
+        Assert.DoesNotContain("trajectory:", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("trajectoryPoint:", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("mission: 0", yaml, StringComparison.Ordinal);
+
+        var loaded = TestFixtures.LoadLogisticsSave(yaml, content, seed: 14, name: "new-battle-ufo.sav");
+        Assert.Equal(0, Assert.Single(loaded.Campaign.Capture().World.Ufos).MissionId);
+        Assert.DoesNotContain("trajectory:",
+            OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MissingOptionalSiteLinksAreClearedOnReferenceCompatibleRestore()
+    {
+        // SavedGame::load accepts an absent custom deployment and a UFO ID it cannot resolve.
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var world = SampleWorld();
+        var site = world.MissionSites[0] with
+        {
+            CustomDeploymentId = "REMOVED_DEPLOYMENT",
+            UfoUniqueId = 4242,
+        };
+        var restored = Restore(PlacedCampaign(content), content,
+            world with { MissionSites = [site] }).Capture();
+        var result = Assert.Single(restored.World.MissionSites);
+        Assert.Equal(string.Empty, result.CustomDeploymentId);
+        Assert.Equal(0, result.UfoUniqueId);
+        var yaml = OxceSaveAdapter.EmitNewCampaign(restored);
+        Assert.DoesNotContain("REMOVED_DEPLOYMENT", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("ufoUniqueId: 4242", yaml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PlayerWorldQueryExcludesUndetectedAlienTargets()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var world = SampleWorld();
+        var hidden = world with
+        {
+            Ufos = [world.Ufos[0] with { Detected = false }],
+            MissionSites = [world.MissionSites[0] with { Detected = false }],
+            AlienBases = [world.AlienBases[0] with { Discovered = false }],
+        };
+        var campaign = Restore(PlacedCampaign(content), content, hidden);
+        Assert.Single(campaign.GetQuery<ICampaignWorldQuery>()!.QueryWorld().Targets);
+        Assert.Equal(WorldTargetKind.Waypoint, campaign.GetQuery<ICampaignWorldQuery>()!.QueryWorld().Targets[0].Kind);
+        Assert.Single(campaign.Capture().World.Ufos);
+    }
+
+    [Fact]
+    public void LoadedRewritePreservesUnknownWorldFieldsAndMatchesRepeatedEventsByState()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var world = SampleWorld() with
+        {
+            Events = [new("EVENT_DESPAWN", 60), new("EVENT_DESPAWN", 120)],
+        };
+        var snapshot = Restore(PlacedCampaign(content), content, world).Capture();
+        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot);
+        yaml = AddItemField(yaml, "waypoints", 0, "futureWaypoint: waypoint-3");
+        yaml = AddItemField(yaml, "geoscapeEvents", 0, "futureEvent: first");
+        yaml = AddItemField(yaml, "geoscapeEvents", 1, "futureEvent: second");
+        yaml = yaml.Replace("alienStrategy:\n", "alienStrategy:\n  futureStrategy: retained\n", StringComparison.Ordinal);
+        var possibleMissions = yaml.IndexOf("possibleMissions:", StringComparison.Ordinal);
+        Assert.True(possibleMissions >= 0);
+        var regionLine = yaml.IndexOf("region: REGION\n", possibleMissions, StringComparison.Ordinal);
+        Assert.True(regionLine >= 0);
+        yaml = yaml.Insert(regionLine + "region: REGION\n".Length, "      futureRegion: retained\n");
+        var loaded = TestFixtures.LoadLogisticsSave(yaml, content, seed: 15, name: "world-sidecars.sav");
+
+        var events = loaded.Campaign.Capture().World.Events;
+        var reversed = loaded.Campaign.Capture() with
+        {
+            World = loaded.Campaign.Capture().World with { Events = [events[1], events[0]] },
+        };
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(reversed, loaded.Source);
+        Assert.Contains("futureWaypoint: waypoint-3", rewritten, StringComparison.Ordinal);
+        Assert.Contains("futureStrategy: retained", rewritten, StringComparison.Ordinal);
+        Assert.Contains("futureRegion: retained", rewritten, StringComparison.Ordinal);
+        Assert.Contains("futureEvent: first", rewritten, StringComparison.Ordinal);
+        Assert.Contains("futureEvent: second", rewritten, StringComparison.Ordinal);
+        var firstEvent = rewritten.IndexOf("futureEvent: first", StringComparison.Ordinal);
+        var secondEvent = rewritten.IndexOf("futureEvent: second", StringComparison.Ordinal);
+        Assert.True(secondEvent < firstEvent);
+        Assert.Equal(120, TestFixtures.LoadLogisticsSave(rewritten, content, seed: 16,
+            name: "world-sidecars.sav").Campaign.Capture().World.Events[0].SpawnCountdown);
+    }
+
+    [Fact]
+    public void LoadedRewriteHandlesBoundedWorldPopulation()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var world = SampleWorld() with
+        {
+            Waypoints = Enumerable.Range(1, 250).Select(index => new WaypointSnapshot(index, 0.2, 0.1)).ToArray(),
+            Events = Enumerable.Range(1, 250).Select(index => new GeoscapeEventSnapshot("EVENT_DESPAWN", index * 60)).ToArray(),
+        };
+        var snapshot = Restore(PlacedCampaign(content), content, world).Capture();
+        var loaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot),
+            content, seed: 17, name: "populated-world.sav");
+        var rewritten = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
+        var reloaded = TestFixtures.LoadLogisticsSave(rewritten, content, seed: 18, name: "populated-world.sav");
+        Assert.Equal(250, reloaded.Campaign.Capture().World.Waypoints.Count);
+        Assert.Equal(250, reloaded.Campaign.Capture().World.Events.Count);
+    }
+
+    [Fact]
+    public void LoadedWorldRewriteAllocationsGrowWithPopulationRatherThanItsSquare()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        _ = RewriteAllocation(5);
+        var smaller = RewriteAllocation(100);
+        var larger = RewriteAllocation(300);
+        Assert.True(larger < smaller * 4, $"100 UFOs allocated {smaller} bytes; 300 allocated {larger} bytes.");
+
+        long RewriteAllocation(int count)
+        {
+            var world = SampleWorld();
+            var populated = world with
+            {
+                Ufos = Enumerable.Range(0, count).Select(index => world.Ufos[0] with
+                {
+                    UniqueId = 9 + index,
+                    Id = 3 + index,
+                }).ToArray(),
+            };
+            var snapshot = Restore(PlacedCampaign(content), content, populated).Capture();
+            var source = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot),
+                content, seed: 19, name: "allocated-world.sav");
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var emitted = OxceSaveAdapter.EmitLoadedCampaign(source.Campaign.Capture(), source.Source);
+            var bytes = GC.GetAllocatedBytesForCurrentThread() - before;
+            GC.KeepAlive(emitted);
+            return bytes;
+        }
     }
 
     [Fact]
@@ -340,12 +511,32 @@ public sealed class StrategicWorldPersistenceTests
     private static CampaignState Restore(CampaignSnapshot placed, RuntimeContent content, WorldSnapshot world) =>
         CampaignState.Restore(placed with { World = world }, content, new SplitMix64RandomSource(7));
 
+    private static string AddItemField(string yaml, string section, int index, string field)
+    {
+        var header = yaml.IndexOf($"\n{section}:\n", StringComparison.Ordinal);
+        Assert.True(header >= 0);
+        var item = header;
+        var indent = 0;
+        for (var step = 0; step <= index; step++)
+        {
+            var indentless = yaml.IndexOf("\n-\n", item + 1, StringComparison.Ordinal);
+            var indented = yaml.IndexOf("\n  -\n", item + 1, StringComparison.Ordinal);
+            item = indentless < 0 ? indented : indented < 0 ? indentless : Math.Min(indentless, indented);
+            Assert.True(item >= 0, yaml.Substring(header, Math.Min(200, yaml.Length - header)));
+            indent = item == indented ? 2 : 0;
+            item += 1;
+        }
+        var lineEnd = yaml.IndexOf('\n', item);
+        Assert.True(lineEnd >= 0);
+        return yaml.Insert(lineEnd + 1, $"{new string(' ', indent + 2)}{field}\n");
+    }
+
     private static CampaignSnapshot PlacedCampaign(
         RuntimeContent content, CampaignDifficulty difficulty = CampaignDifficulty.Beginner)
     {
         var campaign = TestFixtures.CreateLogisticsCampaign(content, "World", difficulty);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
-        return campaign.Capture();
+        return campaign.Capture() with { MonthsPassed = 0 };
     }
 
     private static WorldSnapshot SampleWorld() => new()

@@ -401,6 +401,9 @@ int main()
 			<< (int)strategy._missionLocations["varA"].size() << ','
 			<< (int)strategy._missionLocations.count("varB") << ','
 			<< strategy.validMissionLocation("varA", "REGION_A", 1) << ']';
+		strategy.addMissionLocation("", "", 0, 2);
+		std::cout << ",[" << (int)strategy._missionLocations.count("") << ','
+			<< strategy.validMissionLocation("", "", 0) << ']';
 	}
 
 	// Trajectory speed percentage, spawn countdown and shot-down delay arithmetic.

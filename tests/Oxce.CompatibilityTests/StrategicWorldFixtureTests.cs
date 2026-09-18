@@ -217,6 +217,11 @@ public sealed class StrategicWorldFixtureTests
             strategy.MissionLocations.TryGetValue("varA", out var varA) ? varA.Count : 0);
         Assert.Equal(locations[2][2].GetInt32(), strategy.MissionLocations.Count(entry => entry.Key == "varB"));
         Assert.Equal(locations[2][3].GetInt32() == 1, strategy.ValidMissionLocation("varA", "REGION_A", 1));
+
+        strategy.AddMissionLocation(string.Empty, string.Empty, 0, 2);
+        Assert.Equal(locations[3][0].GetInt32(), strategy.MissionLocations.Count(entry => entry.Key.Length == 0));
+        Assert.Equal(locations[3][1].GetInt32() == 1,
+            strategy.ValidMissionLocation(string.Empty, string.Empty, 0));
     }
 
     [Fact]

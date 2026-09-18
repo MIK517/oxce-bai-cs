@@ -49,7 +49,7 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
     public CampaignWorldOverview QueryWorld() => campaign.Read(() =>
     {
         var targets = new List<CampaignWorldTarget>();
-        foreach (var ufo in _ufos.Where(static ufo => ufo.Status != UfoStatus.Destroyed))
+        foreach (var ufo in _ufos.Where(static ufo => ufo.Detected && ufo.Status != UfoStatus.Destroyed))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Ufo, ufo.Status switch
             {
                 UfoStatus.Landed => ufo.LandId,
@@ -62,7 +62,7 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
                 Detected = ufo.Detected,
                 SecondsRemaining = ufo.SecondsRemaining,
             });
-        foreach (var site in _sites)
+        foreach (var site in _sites.Where(static site => site.Detected))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.MissionSite, site.Id, site.DeploymentId,
                 site.Name.Length != 0 ? site.Name : MarkerName(site.DeploymentId), site.Longitude, site.Latitude)
             {
@@ -70,7 +70,7 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
                 SecondsRemaining = site.SecondsRemaining,
                 Status = site.City,
             });
-        foreach (var alienBase in _alienBases)
+        foreach (var alienBase in _alienBases.Where(static alienBase => alienBase.Discovered))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.AlienBase, alienBase.Id, alienBase.DeploymentId,
                 alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId),
                 alienBase.Longitude, alienBase.Latitude)
@@ -131,12 +131,25 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
         foreach (var mission in snapshot.World.Missions)
             if (rules.AlienMissions.TryGet(mission.RuleId, out _)) _missions.Add(RestoreMission(mission, rules));
         foreach (var ufo in snapshot.World.Ufos)
-            if (rules.Ufos.TryGet(ufo.RuleId, out _)) _ufos.Add(ufo);
+            if (rules.Ufos.TryGet(ufo.RuleId, out _))
+                _ufos.Add(ufo.InBattlescape ? ufo with
+                {
+                    Speed = 0,
+                    SpeedRadian = 0,
+                    SpeedLongitude = 0,
+                    SpeedLatitude = 0,
+                } : ufo);
         foreach (var scheduled in snapshot.World.Events)
             if (rules.Events.TryGet(scheduled.RuleId, out _)) _events.Add(scheduled);
         foreach (var site in snapshot.World.MissionSites)
             if (rules.AlienMissions.TryGet(site.MissionRuleId, out _) &&
-                rules.AlienDeployments.TryGet(site.DeploymentId, out _)) _sites.Add(site);
+                rules.AlienDeployments.TryGet(site.DeploymentId, out _))
+                _sites.Add(site with
+                {
+                    CustomDeploymentId = rules.AlienDeployments.TryGet(site.CustomDeploymentId, out _)
+                        ? site.CustomDeploymentId : string.Empty,
+                    UfoUniqueId = _ufos.Any(ufo => ufo.UniqueId == site.UfoUniqueId) ? site.UfoUniqueId : 0,
+                });
         _waypoints.AddRange(snapshot.World.Waypoints);
         NormalizeDestinations();
         _strategy = AlienStrategyState.Restore(
@@ -175,8 +188,9 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
     /// <summary>
     /// Resolves the destinations the save recorded. The reference tolerates a destination whose
     /// target is gone: <c>Craft::load</c> simply leaves the craft without one, and <c>Ufo::load</c>
-    /// keeps the dummy waypoint it built from the saved coordinates. Structural references
-    /// (a UFO's mission, a mission's alien base, a site's UFO) still fail in <see cref="Validate"/>.
+    /// keeps the dummy waypoint it built from the saved coordinates. Ordinary-campaign
+    /// UFO mission/trajectory links and alien mission/base links still fail in <see cref="Validate"/>.
+    /// A missing site/UFO link is optional and was cleared during restore.
     /// </summary>
     private void NormalizeDestinations()
     {
@@ -222,7 +236,6 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
         EnsureUnique(_waypoints.Select(static waypoint => waypoint.Id), "waypoint IDs");
         EnsureUnique(_sites.Select(static site => (site.DeploymentId, site.Id)), "mission site identities");
         EnsureUnique(_alienBases.Select(static item => (item.DeploymentId, item.Id)), "alien base identities");
-        EnsureUnique(_events.Select(static scheduled => scheduled.RuleId), "scheduled event IDs");
 
         foreach (var mission in _missions)
         {
@@ -245,14 +258,17 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
             if (!Enum.IsDefined(ufo.Status)) throw new InvalidDataException("UFO status is invalid.");
             if (WorldAltitudes.Index(ufo.Altitude) < 0)
                 throw new InvalidDataException($"UFO altitude '{ufo.Altitude}' is not a reference altitude.");
-            if (_missions.All(mission => mission.Id != ufo.MissionId))
-                throw new InvalidDataException("Unknown UFO mission; the save is corrupt.");
-            if (!rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectory))
-                throw new InvalidDataException("Unknown UFO trajectory; the save is corrupt.");
-            var waypoints = rules.UfoTrajectories[trajectory].Value.Waypoints;
-            if ((uint)ufo.TrajectoryPoint >= (uint)waypoints.Count)
-                throw new InvalidDataException(
-                    $"UFO trajectory '{ufo.TrajectoryId}' has no waypoint {ufo.TrajectoryPoint}.");
+            if (campaign.MonthsPassed != -1)
+            {
+                if (_missions.All(mission => mission.Id != ufo.MissionId))
+                    throw new InvalidDataException("Unknown UFO mission; the save is corrupt.");
+                if (!rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectory))
+                    throw new InvalidDataException("Unknown UFO trajectory; the save is corrupt.");
+                var waypoints = rules.UfoTrajectories[trajectory].Value.Waypoints;
+                if ((uint)ufo.TrajectoryPoint >= (uint)waypoints.Count)
+                    throw new InvalidDataException(
+                        $"UFO trajectory '{ufo.TrajectoryId}' has no waypoint {ufo.TrajectoryPoint}.");
+            }
             if (ufo.SecondsRemaining < 0 || ufo.Damage < 0)
                 throw new InvalidDataException("UFO counters cannot be negative.");
             ValidateReference(ufo.Destination, "UFO destination");
@@ -264,10 +280,6 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
             if (site.Id <= 0) throw new InvalidDataException("Mission site IDs must be positive.");
             ValidatePosition(site.Position, "mission site");
             if (site.SecondsRemaining < 0) throw new InvalidDataException("Mission site timers cannot be negative.");
-            if (site.CustomDeploymentId.Length != 0 && !rules.AlienDeployments.TryGet(site.CustomDeploymentId, out _))
-                throw new InvalidDataException($"Mission site deployment '{site.CustomDeploymentId}' is unknown.");
-            if (site.UfoUniqueId > 0 && _ufos.All(ufo => ufo.UniqueId != site.UfoUniqueId))
-                throw new InvalidDataException("A mission site references a missing UFO.");
         }
 
         foreach (var alienBase in _alienBases)
