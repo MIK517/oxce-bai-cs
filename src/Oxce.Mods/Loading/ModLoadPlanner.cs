@@ -130,7 +130,7 @@ public static class ModLoadPlanner
             Array.AsReadOnly(candidate.Layers.SelectMany(layer => layer.Rulesets)
                 .OrderByDescending(entry => entry.SourcePath, StringComparer.Ordinal)
                 .ToArray())));
-        return new ModLoadPlan(groups, valid, validationMode);
+        return new ModLoadPlan(groups, valid, validationMode, catalog.CommonLayers);
     }
 
     private static DiagnosticEvent Diagnostic(
