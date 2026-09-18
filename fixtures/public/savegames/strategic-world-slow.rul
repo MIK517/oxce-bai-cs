@@ -1,0 +1,3 @@
+crafts:
+  - type: SHIP
+    speedMax: 1

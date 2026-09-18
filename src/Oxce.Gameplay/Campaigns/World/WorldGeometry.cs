@@ -107,9 +107,14 @@ public static class WorldGeometry
     /// <summary>One MovingTarget::move step toward a stationary meeting point.</summary>
     public static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian)
     {
-        var (speedLongitude, speedLatitude) = SpeedVector(current, destination, speedRadian);
+        return Move(current, destination, speedRadian, SpeedVector(current, destination, speedRadian));
+    }
+
+    internal static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian,
+        (double Longitude, double Latitude) vector)
+    {
         if (Distance(current, destination) > speedRadian)
-            return current.WithLongitude(current.Longitude + speedLongitude).WithLatitude(current.Latitude + speedLatitude);
+            return current.WithLongitude(current.Longitude + vector.Longitude).WithLatitude(current.Latitude + vector.Latitude);
         return current.WithLongitude(destination.Longitude).WithLatitude(destination.Latitude);
     }
 

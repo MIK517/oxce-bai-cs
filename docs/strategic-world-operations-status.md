@@ -15,6 +15,11 @@ waypoint flight slice. This is a checkpoint, not branch 4b acceptance.
   runtime-linked craft properties. The compiled-content cache revision is 17.
 - In-flight craft, waypoints, and auto-patrol coordinates survive save/reload. Invalid
   dispatches leave the campaign unchanged.
+- Returning to base continues time silently. Automatic patrol relaunch requires a craft
+  that just became ready through refuelling; unsupported pursuit and landing targets
+  remain guarded. Stationary zero-speed patrols advance time.
+- The five-second handler resolves supported target positions without cloning target
+  records or recomputing speed vectors, and collects waypoint followers in one pass.
 
 Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestination`,
 `think`, `consumeFuel`, `checkup`), `src/Savegame/MovingTarget.cpp` (`setDestination`,

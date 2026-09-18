@@ -303,6 +303,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     internal sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
     {
         public List<ICampaignEvent>? Events { get; private set; }
+        internal List<(BaseState Owner, int CraftIndex)> AutoPatrolCandidates { get; } = [];
         public CampaignTime Current => campaign.Time;
         public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
 
