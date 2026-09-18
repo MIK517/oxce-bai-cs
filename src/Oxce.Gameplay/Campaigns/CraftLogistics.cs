@@ -82,6 +82,29 @@ public static class CraftLogistics
         IEnumerable<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
         => SupportedValue(RawEffectiveStats(rule, weapons, rules).Fuel);
 
+    /// <summary>Craft::getCraftStats speed, including installed craft-weapon bonuses.</summary>
+    public static int EffectiveSpeedMaximum(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
+    {
+        if (!TryEffectiveSpeedMaximum(rule, weapons, rules, out var speed))
+            throw new OverflowException("Craft weapon speed bonuses exceed the supported range.");
+        return speed;
+    }
+
+    public static bool TryEffectiveSpeedMaximum(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules, out int result)
+    {
+        long speed = rule.SpeedMaximum;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            speed += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+                .GetValueOrDefault("speedMax");
+        }
+        result = (int)Math.Clamp(speed, int.MinValue, int.MaxValue);
+        return IsSupportedValue(speed);
+    }
+
     public static int EffectiveShieldMaximum(RuntimeCraftRule rule,
         IEnumerable<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
         => SupportedValue(RawEffectiveStats(rule, weapons, rules).Shield);

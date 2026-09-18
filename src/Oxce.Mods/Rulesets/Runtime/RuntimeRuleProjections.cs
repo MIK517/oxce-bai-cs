@@ -178,6 +178,8 @@ public sealed record RuntimeCraftRule(
     public int ShieldCapacity { get; init; }
     public int ShieldRechargeAtBase { get; init; }
     public bool NotifyWhenRefueled { get; init; }
+    public bool PatrolWithoutFuel { get; init; }
+    public bool AutoPatrol { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
     public int Pilots { get; init; }
     public int MaximumSoldiers { get; init; } = -1;

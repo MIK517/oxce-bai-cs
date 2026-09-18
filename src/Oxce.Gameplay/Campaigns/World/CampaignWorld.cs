@@ -5,13 +5,13 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>
 /// The strategic world capability: alien missions, UFOs, mission sites, alien bases, player
 /// waypoints, scheduled events and the alien strategy table. This commit owns the graph, its
-/// identities and its persistence; scheduling and movement arrive with their own handlers, so
-/// a campaign carrying live world state still stops time with a diagnostic.
+/// identities and its persistence. Craft-only waypoint flight has timed handlers; alien mission,
+/// UFO, site, base and event state still stops time until its simulation handlers exist.
 /// Reference: <c>Savegame/SavedGame.cpp</c> load/save of the world sections, <c>AlienMission.cpp</c>,
 /// <c>Ufo.cpp</c>, <c>MissionSite.cpp</c>, <c>AlienBase.cpp</c>, <c>Waypoint.cpp</c>,
 /// <c>GeoscapeEvent.cpp</c> and <c>AlienStrategy.cpp</c> at 4df3a5e.
 /// </summary>
-internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapability, ICampaignWorldQuery
+internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignCapability, ICampaignWorldQuery
 {
     private readonly List<AlienMissionSnapshot> _missions = [];
     private readonly List<UfoSnapshot> _ufos = [];
@@ -30,6 +30,7 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
         registry.Validate(Validate);
         registry.Initialize(Initialize);
         registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, _) => LiveWorldReason());
+        RegisterCraftOperations(registry);
     }
 
     internal AlienStrategyState Strategy => _strategy;

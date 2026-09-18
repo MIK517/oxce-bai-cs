@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 43 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 44 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 89 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 70 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 71 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 77 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 43 files.
+`src/Oxce.Gameplay` - 44 files.
 
 ### `Oxce.Gameplay`
 
@@ -429,6 +429,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 - `AlienStrategyState` (class) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs) - The alien strategy table: which regions are still worth attacking, which missions remain available there, how often each mission-script v...
 - `AlienStrategyState.MissionLocation` (record struct) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs)
+- `DispatchCraftToWaypoint` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Send a ready craft to a new globe waypoint, as in GeoscapeCraftState.
+- `RecallCraft` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Recall an airborne craft to its owner base.
+- `PatrolCraft` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Patrol at the craft's current location and remember it for automatic relaunch.
+- `CraftDestinationChanged` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs)
+- `CraftArrivedAtWaypoint` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs)
+- `CraftReturnedToBase` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs)
+- `CraftLowFuel` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs)
 - `CampaignWorldTarget` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - A globe target as the player sees it.
 - `CampaignWorldOverview` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - The alien activity the player can act on plus the scheduled work behind it.
 - `ICampaignWorldQuery` (interface) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
@@ -972,13 +979,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 70 files.
+`tests/Oxce.CompatibilityTests` - 71 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
-<details><summary>69 test classes</summary>
+<details><summary>70 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1037,6 +1044,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))
 - `StrategicSalesFixtureTests` ([StrategicSalesFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicSalesFixtureTests.cs))
 - `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs))
+- `StrategicWorldCraftOperationsTests` ([StrategicWorldCraftOperationsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftOperationsTests.cs))
 - `StrategicWorldFixtureTests` ([StrategicWorldFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldFixtureTests.cs))
 - `StrategicWorldPersistenceTests` ([StrategicWorldPersistenceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldPersistenceTests.cs))
 - `StrategicWorldRuleProjectionTests` ([StrategicWorldRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRuleProjectionTests.cs))
