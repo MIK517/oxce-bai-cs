@@ -109,13 +109,17 @@ implementation are recorded under each item.
 5. *UI assets read `common/Language` from disk directly* (`CampaignUiAssets`) instead of
    through the virtual file system. **Done:** strings and the font now come only from
    the layered catalog published with the content.
-   **New finding (not changed):** the port maps `common` only into mods that declare
-   external resource directories, placing it below each such mod's layers. The
-   reference maps `common` once, at the bottom of the stack, for every installation. A
-   master without external resources therefore has no `common` files, and an add-on that
-   declares external resources would place `common` above its master. Vanilla masters
-   are unaffected. Move `common` to a single plan-level base layer before relying on
-   such installations.
+   **New finding, fixed:** the port mapped `common` only into mods that declare external
+   resource directories, placing it below each such mod's layers, while the reference maps
+   it once for the whole installation before any mod (`FileMap::setup`, `VFS::map_common`).
+   A master without `loadResources` therefore had no `common` files at all, which the move
+   of UI strings into the virtual file system made visible. `common` is now the load plan's
+   base layer: `ModDiscoveryResult.CommonLayers` maps it once from the external resource
+   roots, `ModCatalog` keeps one layer per ID across the scanned mod directories, and
+   `ModLoadPlan.CommonLayers` sits below every mod layer in the catalog and in the compiled
+   cache key (revision 16). The audit also assumed an add-on could declare external
+   resources and lift `common` above its master; it cannot, because only a top-level master
+   reads `loadResources` (`ModInfo::load`).
 6. *Loaded-save identity depends on port-only keys* (`oxcePortEntityKey`,
    `oxcePortTransferId`). When the reference engine rewrites a save, those keys disappear
    and matching falls back to legacy keys. **Decision:** accepted as is. **Done:**
@@ -149,7 +153,6 @@ errors, so the expected `OXCE-YAML-0001` warnings are not printed.
 
 ## Suggested next steps
 
-1. Map `common` once as a plan-level base layer (item 5).
-2. Split `CampaignState` at the start of Phase 6 branch 4 (item 4).
-3. Keep `docs/code-map.md` current by running `python3 tools/generate-code-map.py`. CI
+1. Split `CampaignState` at the start of Phase 6 branch 4 (item 4).
+2. Keep `docs/code-map.md` current by running `python3 tools/generate-code-map.py`. CI
    runs it with `--check`.

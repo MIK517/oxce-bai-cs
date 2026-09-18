@@ -242,7 +242,7 @@ public sealed class ModDiscoveryTests
     }
 
     [Fact]
-    public void SharedCommonResourcesAreLowerPriorityThanGameAndModLayers()
+    public void SharedCommonResourcesAreMappedOnceOutsideTheModLayers()
     {
         using var fixture = new TemporaryModDirectory();
         using var resources = new TemporaryModDirectory();
@@ -261,7 +261,13 @@ public sealed class ModDiscoveryTests
         });
 
         var candidate = Assert.Single(result.Mods);
-        var catalog = new VirtualFileCatalog(candidate.Layers);
+        // The reference maps common once for the installation instead of into each mod, so a
+        // mod carries only its own layers and its own external resources.
+        Assert.DoesNotContain(
+            candidate.Layers,
+            layer => layer.Provenance.LayerId.StartsWith("common", StringComparison.Ordinal));
+        Assert.Equal(["common:directory"], result.CommonLayers.Select(layer => layer.Provenance.LayerId));
+        var catalog = new VirtualFileCatalog([.. result.CommonLayers, .. candidate.Layers]);
         Assert.Equal("mod", ReadText(catalog.GetRequired("Resources/shared.dat")));
         Assert.Equal("common", ReadText(catalog.GetRequired("Resources/common.dat")));
         Assert.Equal("game", ReadText(catalog.GetRequired("Resources/game.dat")));

@@ -47,3 +47,12 @@ diagnostic release so the bootstrap abstraction does not invalidate their measur
   measured startup work provides dependable weighting.
 - Parallel parsing, persistent compiled-content caches, and hot reload remain separate
   performance work and are not implied by this extraction.
+
+## Addendum, 2026-09-18
+
+Shared `common` resources belong to the installation, not to a mod. Discovery maps them
+once from the external resource roots (`ModDiscoveryResult.CommonLayers`), a catalog keeps
+one layer per ID across the mod trees it was built from, and every plan created from that
+catalog maps them below all mod layers, matching `FileMap::setup`, which calls
+`VFS::map_common` before pushing any mod. Masters that declare no `loadResources` therefore
+see `common` as well; previously only mods with external resources carried it.

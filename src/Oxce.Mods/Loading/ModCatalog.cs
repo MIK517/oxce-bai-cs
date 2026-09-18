@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Oxce.Core.Diagnostics;
 using Oxce.Mods.Discovery;
+using Oxce.Mods.Files;
 
 namespace Oxce.Mods.Loading;
 
@@ -8,16 +9,39 @@ public sealed class ModCatalog
 {
     private readonly ReadOnlyDictionary<string, ModCandidate> _mods;
 
-    private ModCatalog(Dictionary<string, ModCandidate> mods)
+    private ModCatalog(Dictionary<string, ModCandidate> mods, IReadOnlyList<VirtualFileLayer> commonLayers)
     {
         _mods = new ReadOnlyDictionary<string, ModCandidate>(mods);
+        CommonLayers = commonLayers;
     }
 
     public IReadOnlyDictionary<string, ModCandidate> Mods => _mods;
 
-    public static ModCatalog Create(IEnumerable<ModCandidate> candidates, IDiagnosticSink? diagnostics = null)
+    /// <summary>
+    /// The installation-wide <c>common</c> layers, which every plan built from this catalog maps
+    /// below its mods (<c>FileMap::setup</c> calls <c>VFS::map_common</c> first). Empty when the
+    /// installation has no <c>common</c> directory or archive.
+    /// </summary>
+    public IReadOnlyList<VirtualFileLayer> CommonLayers { get; }
+
+    public static ModCatalog Create(
+        IEnumerable<ModCandidate> candidates,
+        IDiagnosticSink? diagnostics = null,
+        IEnumerable<VirtualFileLayer>? commonLayers = null)
     {
         ArgumentNullException.ThrowIfNull(candidates);
+        // Discovering an installation scans several mod directories, each reporting the same
+        // common layers; the catalog keeps one layer per ID because a catalog rejects duplicates.
+        var common = (commonLayers ?? []).ToArray();
+        if (common.Any(layer => layer is null))
+        {
+            throw new ArgumentException("Common layers cannot contain null values.", nameof(commonLayers));
+        }
+
+        var uniqueCommon = common
+            .GroupBy(layer => layer.Provenance.LayerId, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToArray();
         diagnostics ??= NullDiagnosticSink.Instance;
         var available = new Dictionary<string, ModCandidate>(StringComparer.Ordinal);
         foreach (var candidate in candidates)
@@ -106,7 +130,7 @@ public sealed class ModCatalog
             available.Remove(id);
         }
 
-        return new ModCatalog(available);
+        return new ModCatalog(available, Array.AsReadOnly(uniqueCommon));
     }
 
     public bool TryGet(string id, out ModCandidate? candidate) => _mods.TryGetValue(id, out candidate);

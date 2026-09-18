@@ -69,12 +69,14 @@ public sealed class Phase3ContentCorpusTests
         {
             ExternalResourceRoots = [installation, Path.Combine(root, "fixtures", "private")],
         };
-        var standardMaster = ModDiscovery.ScanDirectory(
-                Path.Combine(installation, "standard"),
-                options: discoveryOptions)
-            .Mods.Where(mod => mod.Metadata.Id == "xcom1");
+        var standard = ModDiscovery.ScanDirectory(
+            Path.Combine(installation, "standard"),
+            options: discoveryOptions);
+        var standardMaster = standard.Mods.Where(mod => mod.Metadata.Id == "xcom1");
         var addOns = ModDiscovery.ScanDirectory(privateMods, options: discoveryOptions).Mods;
-        var catalog = ModCatalog.Create(standardMaster.Concat(addOns));
+        var catalog = ModCatalog.Create(
+            standardMaster.Concat(addOns),
+            commonLayers: standard.CommonLayers);
         var plan = ModLoadPlanner.Create(
             catalog,
             [new("xcom1", true), new("final-mod-pack", true)],
@@ -113,7 +115,7 @@ public sealed class Phase3ContentCorpusTests
             candidates = candidates.Concat(ModDiscovery.ScanDirectory(supplementalModsRoot).Mods);
         }
 
-        var modCatalog = ModCatalog.Create(candidates);
+        var modCatalog = ModCatalog.Create(candidates, commonLayers: discovery.CommonLayers);
         var masters = modCatalog.Mods.Values.Where(mod => mod.Metadata.IsMaster).ToArray();
         foreach (var master in masters)
         {

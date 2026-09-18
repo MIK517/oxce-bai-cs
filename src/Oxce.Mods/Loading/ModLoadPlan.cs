@@ -8,14 +8,26 @@ public sealed record ModLoadGroup(ModCandidate Mod, IReadOnlyList<VirtualFileEnt
 
 public sealed class ModLoadPlan
 {
-    internal ModLoadPlan(IEnumerable<ModLoadGroup> groups, bool isValid, InputValidationMode validationMode)
+    internal ModLoadPlan(
+        IEnumerable<ModLoadGroup> groups,
+        bool isValid,
+        InputValidationMode validationMode,
+        IEnumerable<VirtualFileLayer>? commonLayers = null)
     {
         Groups = Array.AsReadOnly(groups.ToArray());
         IsValid = isValid;
         ValidationMode = validationMode.Validate();
+        CommonLayers = Array.AsReadOnly((commonLayers ?? []).ToArray());
     }
 
     public IReadOnlyList<ModLoadGroup> Groups { get; }
+
+    /// <summary>
+    /// The installation-wide <c>common</c> layers, mapped once below every mod layer. The
+    /// reference maps them in <c>FileMap::setup</c> before any mod, so they are the lowest
+    /// priority layers of the installation and belong to no single mod.
+    /// </summary>
+    public IReadOnlyList<VirtualFileLayer> CommonLayers { get; }
 
     public bool IsValid { get; }
 
@@ -31,5 +43,7 @@ public sealed class ModLoadPlan
     public VirtualFileCatalog VirtualFiles =>
         LazyInitializer.EnsureInitialized(ref _virtualFiles, CreateVirtualFileCatalog);
 
-    public VirtualFileCatalog CreateVirtualFileCatalog() => new(Groups.SelectMany(group => group.Mod.Layers), ValidationMode);
+    public VirtualFileCatalog CreateVirtualFileCatalog() => new(
+        CommonLayers.Concat(Groups.SelectMany(group => group.Mod.Layers)),
+        ValidationMode);
 }
