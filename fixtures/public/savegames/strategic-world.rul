@@ -1,6 +1,12 @@
 # World-simulation overlay for the strategic-logistics fixture master: a globe with land,
 # fake-underwater and ocean textures, a region with point and area mission zones, UFOs,
 # trajectories, alien missions and the deployments their sites and bases use.
+crafts:
+  - type: SHIP
+    speedMax: 6000
+    refuelRate: 100
+    autoPatrol: true
+    patrolWithoutFuel: true
 globe:
   polygons:
     - [10, 0, -10, 20, -10, 20, 10, 0, 10]

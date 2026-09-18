@@ -189,6 +189,8 @@ public static class RuntimeRuleLinker
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
+                PatrolWithoutFuel = rule.Value.Booleans["patrolWithoutFuel"],
+                AutoPatrol = rule.Value.Booleans["autoPatrol"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
                 Pilots = rule.Value.Integers["pilots"],
                 MaximumSoldiers = rule.Value.Integers["maxSoldiers"],
