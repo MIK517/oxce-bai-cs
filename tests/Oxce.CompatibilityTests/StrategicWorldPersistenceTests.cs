@@ -156,7 +156,10 @@ public sealed class StrategicWorldPersistenceTests
         var world = SampleWorld();
         var ufo = world.Ufos[0] with
         {
-            MissionId = 0, TrajectoryId = string.Empty, TrajectoryPoint = 0, InBattlescape = true,
+            MissionId = 0,
+            TrajectoryId = string.Empty,
+            TrajectoryPoint = 0,
+            InBattlescape = true,
         };
         var snapshot = PlacedCampaign(content) with
         {
@@ -463,9 +466,9 @@ public sealed class StrategicWorldPersistenceTests
             },
         };
         var snapshot = placed with { Bases = [placed.Bases[0] with { Crafts = [chasing, .. crafts.Skip(1)] }] };
-        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot)
-            // A legacy save records the site under terrorSites and its destination under the old name.
-            .Replace("type: STR_TERROR_SITE", "type: STR_ALIEN_TERROR", StringComparison.Ordinal) +
+        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot);
+        // A legacy save records the site under terrorSites and its destination under the old name.
+        yaml = yaml.Replace("type: STR_TERROR_SITE", "type: STR_ALIEN_TERROR", StringComparison.Ordinal) +
             """
             terrorSites:
               - lon: 0.14
