@@ -29,7 +29,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         registry.Restore(Restore);
         registry.Validate(Validate);
         registry.Initialize(Initialize);
-        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, _) => LiveWorldReason());
+        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest) => LiveWorldReason(highest));
+        RegisterUfoOperations(registry);
+        RegisterMissionOperations(registry);
         RegisterCraftOperations(registry);
     }
 
@@ -368,11 +370,12 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     }
 
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
-    private string? LiveWorldReason()
+    private string? LiveWorldReason(CampaignTimeTrigger highest)
     {
-        if (_ufos.Any(static ufo => ufo.Status != UfoStatus.Destroyed))
-            return "UFO movement requires world simulation.";
-        if (_missions.Count != 0) return "Alien mission scheduling requires world simulation.";
+        var ufoReason = UfoMovementReason(highest);
+        if (ufoReason is not null) return ufoReason;
+        var missionReason = MissionSchedulingReason(highest);
+        if (missionReason is not null) return missionReason;
         if (_sites.Count != 0) return "Mission site expiry requires world simulation.";
         if (_alienBases.Count != 0) return "Alien base activity requires world simulation.";
         if (_events.Count != 0) return "Strategic event scheduling requires world simulation.";
