@@ -1,0 +1,5 @@
+# A restored crew can violate a craft's armor rule even when assignment commands enforce it.
+crafts:
+  - type: SHIP
+    speedMax: 6000
+    allowedArmorGroups: [1]

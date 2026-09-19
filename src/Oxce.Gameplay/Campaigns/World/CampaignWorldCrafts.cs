@@ -59,7 +59,11 @@ internal sealed partial class CampaignWorld
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var speed))
             return Blocked(SpeedRangeReason);
-        // ConfirmDestinationState::btnOkClick refuses to launch a craft without enough pilots.
+        // ConfirmDestinationState::btnOkClick checks armor, cargo, then pilots.
+        if (!campaign.HasAllowedArmorsOnboard(owner, craft))
+            return Blocked("The craft carries armor forbidden by its rules.");
+        if (CraftLogistics.TooManyItemsOnboard(state, rule, campaign.Content.RuntimeRules))
+            return Blocked("The craft carries too many items.");
         if (!campaign.HasRequiredPilots(owner, craft)) return Blocked("The craft does not have enough pilots.");
         var id = campaign.NextId(WorldTargetReference.WaypointType);
         var waypoint = new WaypointSnapshot(id, position.Longitude, position.Latitude);
@@ -245,9 +249,11 @@ internal sealed partial class CampaignWorld
                             }
                             else if (destination.Kind == WorldTargetKind.Waypoint)
                             {
-                                var speed = CraftLogistics.TryEffectiveSpeedMaximum(
+                                if (!CraftLogistics.TryEffectiveSpeedMaximum(
                                     campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, state.Weapons,
-                                    campaign.Content.RuntimeRules, out var maximum) ? maximum / 2 : 0;
+                                    campaign.Content.RuntimeRules, out var maximum))
+                                    throw new InvalidOperationException("Craft speed changed after world preflight.");
+                                var speed = maximum / 2;
                                 state = state with
                                 {
                                     Destination = null,
@@ -338,14 +344,14 @@ internal sealed partial class CampaignWorld
                 var craft = owner.Crafts[index];
                 if (craft.Logistics is not { Status: "STR_OUT" } state) continue;
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                // Out-of-range speeds already stopped time in the preflight.
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                        campaign.Content.RuntimeRules, out var speedMaximum)) continue;
+                        campaign.Content.RuntimeRules, out var speedMaximum))
+                    throw new InvalidOperationException("Craft speed changed after world preflight.");
                 var consumption = state.Destination is null && rule.PatrolWithoutFuel ? 0 :
                     WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, 0);
                 if (consumption != 0) state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };
-                // Craft::getFuelLimit divides by the maximum speed: a craft that cannot fly has no
-                // threshold to cross and simply stays where it is, as it does in the reference.
+                // Craft::getFuelLimit divides by zero here, so its C++ result is undefined.
+                // Keep the craft stationary and recallable instead of inventing a low-fuel return.
                 if (speedMaximum > 0 && !state.LowFuel && state.Fuel <= WorldFlight.FuelLimit(
                         rule.RefuelItem is not null, speedMaximum,
                         WorldGeometry.Distance(new WorldPosition(state.Longitude, state.Latitude),
@@ -373,7 +379,8 @@ internal sealed partial class CampaignWorld
             if (craft.Logistics is not { Status: "STR_READY", IsAutoPatrolling: true } state) continue;
             var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
             if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                    campaign.Content.RuntimeRules, out var speed)) continue;
+                    campaign.Content.RuntimeRules, out var speed))
+                throw new InvalidOperationException("Craft speed changed after world preflight.");
             var waypointId = campaign.NextId(WorldTargetReference.WaypointType);
             var position = new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude);
             _waypoints.Add(new WaypointSnapshot(waypointId, position.Longitude, position.Latitude));

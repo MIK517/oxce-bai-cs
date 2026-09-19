@@ -105,6 +105,30 @@ public static class CraftLogistics
         return IsSupportedValue(speed);
     }
 
+    /// <summary>Craft::areTooManyItemsOnboard counts only the craft item container.</summary>
+    public static bool TooManyItemsOnboard(CraftLogisticsState state, RuntimeCraftRule rule,
+        RuntimeRuleCatalog rules)
+    {
+        long maximumItems = rule.MaximumItems;
+        double maximumStorage = rule.MaximumStorageSpace;
+        foreach (var weapon in state.Weapons)
+        {
+            if (weapon is null) continue;
+            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            maximumItems += bonus.BonusStats.GetValueOrDefault("maxItems");
+            maximumStorage += bonus.BonusStorageSpace;
+        }
+        long quantity = 0;
+        double size = 0;
+        foreach (var pair in state.Items)
+        {
+            quantity += pair.Value;
+            size += rules.Items[rules.Items.GetRequired(pair.Key)].Value.Size * pair.Value;
+        }
+        return quantity > Math.Max(0, maximumItems) ||
+            size > Math.Max(0, maximumStorage) + 0.05;
+    }
+
     public static int EffectiveShieldMaximum(RuntimeCraftRule rule,
         IEnumerable<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
         => SupportedValue(RawEffectiveStats(rule, weapons, rules).Shield);

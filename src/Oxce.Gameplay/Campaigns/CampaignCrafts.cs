@@ -10,6 +10,32 @@ public sealed partial class CampaignState
     private static IEnumerable<SoldierState> Crew(BaseState state, string type, int id) =>
         state.Soldiers.Where(s => s.Personal is { } p && p.CraftType == type && p.CraftId == id);
 
+    /// <summary>Craft::areBannedArmorsOnboard, including crew restored from a save.</summary>
+    internal bool HasAllowedArmorsOnboard(BaseState owner, CraftState craft)
+    {
+        var rules = _content.RuntimeRules;
+        var rule = rules.Crafts[craft.Rule].Value;
+        if (rule.AllowedArmorGroups.Count == 0 && rule.ArmorGroupLimits.Count == 0) return true;
+        var type = rules.Crafts.GetExternalId(craft.Rule);
+        foreach (var soldier in Crew(owner, type, craft.Id))
+        {
+            var armor = rules.Armors[rules.Armors.GetRequired(soldier.Personal!.Armor)].Value;
+            if (rule.AllowedArmorGroups.Count != 0 && !rule.AllowedArmorGroups.Contains(armor.Group))
+                return false;
+        }
+        foreach (var limit in rule.ArmorGroupLimits)
+        {
+            var count = 0;
+            foreach (var soldier in Crew(owner, type, craft.Id))
+            {
+                var armor = rules.Armors[rules.Armors.GetRequired(soldier.Personal!.Armor)].Value;
+                if (armor.Group == limit.Key) count++;
+            }
+            if (count > limit.Value) return false;
+        }
+        return true;
+    }
+
     /// <summary>
     /// Craft::arePilotsOnboard. A craft that needs pilots requires that many assigned soldiers who
     /// satisfy its piloting requirements; <c>Craft::getPilotList</c> fills the seats from the crew
@@ -75,7 +101,8 @@ public sealed partial class CampaignState
                     var quantity = checked(owner.Items.GetValueOrDefault(item) + result.FuelItemChange);
                     if (quantity == 0) owner.Items.Remove(item); else owner.Items[item] = quantity;
                 }
-                owner.Crafts[index] = craft with { Logistics = state };
+                if (!ReferenceEquals(state, craft.Logistics))
+                    owner.Crafts[index] = craft with { Logistics = state };
                 if (!result.MissingFuel && state.Status == "STR_READY" &&
                     state.IsAutoPatrolling && rule.AutoPatrol)
                     effects.AutoPatrolCandidates.Add((owner.Id, type, craft.Id));

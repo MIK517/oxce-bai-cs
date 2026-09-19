@@ -1,0 +1,9 @@
+# Dispatch capacity overlay for the strategic-logistics master.
+craftWeapons:
+  - type: FIXED
+    stats: {maxItems: 2, maxStorageSpace: 2}
+crafts:
+  - type: SHIP
+    speedMax: 6000
+    maxItems: 1
+    maxStorageSpace: 1
