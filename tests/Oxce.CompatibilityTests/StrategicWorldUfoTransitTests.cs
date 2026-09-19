@@ -61,6 +61,62 @@ public sealed class StrategicWorldUfoTransitTests
         AssertBlockedWithoutMutation(boundary, "UFO detection and retargeting require world simulation.");
     }
 
+    [Theory]
+    [InlineData("landed", "UFO state requires world simulation.")]
+    [InlineData("shield", "UFO shield handling requires world simulation.")]
+    [InlineData("speed", "UFO speed is invalid.")]
+    public void UnsupportedUfoStateReportsItsPreflightReason(string condition, string reason)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        ufo = condition switch
+        {
+            "landed" => ufo with { Status = UfoStatus.Landed },
+            "shield" => ufo with { Shield = 1 },
+            "speed" => ufo with { Speed = -1 },
+            _ => throw new ArgumentOutOfRangeException(nameof(condition)),
+        };
+        var restored = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with { Ufos = [ufo] },
+        }, content, new SplitMix64RandomSource(51));
+
+        AssertBlockedWithoutMutation(restored, reason);
+    }
+
+    [Fact]
+    public void MissingMissionLinkIsRejectedForOrdinarySave()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+
+        var error = Assert.Throws<InvalidDataException>(() => CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with { Ufos = [ufo with { MissionId = 999 }] },
+        }, content, new SplitMix64RandomSource(52)));
+        Assert.Equal("Unknown UFO mission; the save is corrupt.", error.Message);
+    }
+
+    [Fact]
+    public void MissingMissionLinkInPreCampaignStateReportsItsPreflightReason()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        var restored = CampaignState.Restore(snapshot with
+        {
+            MonthsPassed = -1,
+            World = snapshot.World with { Ufos = [ufo with { MissionId = 999 }] },
+        }, content, new SplitMix64RandomSource(53));
+
+        AssertBlockedWithoutMutation(restored, "UFO mission link requires world simulation.");
+    }
+
     [Fact]
     public void DestroyedUfoReleasesItsMissionAndCompletedMissionExpires()
     {

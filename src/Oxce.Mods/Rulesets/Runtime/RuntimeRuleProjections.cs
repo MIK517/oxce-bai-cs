@@ -177,6 +177,8 @@ public sealed record RuntimeCraftRule(
     public int RepairRate { get; init; }
     public int ShieldCapacity { get; init; }
     public int ShieldRechargeAtBase { get; init; }
+    public int MaximumItems { get; init; }
+    public double MaximumStorageSpace { get; init; }
     public bool NotifyWhenRefueled { get; init; }
     public bool PatrolWithoutFuel { get; init; }
     public bool AutoPatrol { get; init; }
@@ -202,6 +204,7 @@ public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, stri
     IReadOnlyDictionary<string, int> BonusStats)
 {
     public bool StatisticalBulletSaving { get; init; }
+    public double BonusStorageSpace { get; init; }
 }
 
 public sealed record RuntimeItemRule(

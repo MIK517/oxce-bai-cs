@@ -38,6 +38,8 @@ internal sealed partial class CampaignWorld
                 return "UFO state requires world simulation.";
             if (highest >= CampaignTimeTrigger.TenMinutes)
                 return "UFO detection and retargeting require world simulation.";
+            // Ufo::load and AlienMission::spawnUfo own this waypoint; unlike a player
+            // waypoint, it is never assigned a STR_WAY_POINT identity.
             if (ufo.Destination is not { Kind: WorldTargetKind.Waypoint, Id: 0 } destination)
                 return "UFO destination requires world simulation.";
             AlienMissionSnapshot? mission = null;

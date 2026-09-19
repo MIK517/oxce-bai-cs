@@ -188,6 +188,8 @@ public static class RuntimeRuleLinker
                 RepairRate = rule.Value.Integers["repairRate"],
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
+                MaximumItems = rule.Value.Stats.Get("maxItems"),
+                MaximumStorageSpace = rule.Value.Stats.MaximumStorageSpace,
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
                 PatrolWithoutFuel = rule.Value.Booleans["patrolWithoutFuel"],
                 AutoPatrol = rule.Value.Booleans["autoPatrol"],
@@ -297,7 +299,10 @@ public static class RuntimeRuleLinker
             BuildFamily<CraftWeaponRuleFamily, CraftWeaponRule, RuntimeCraftWeaponRule>(generation,
                 content.EquipmentProduction.CraftWeapons, rule => new RuntimeCraftWeaponRule(rule.Value.Integers["ammoMax"],
                     rule.Value.Integers["rearmRate"], rule.Value.Launcher, rule.Value.Clip, rule.Value.Stats.Integers)
-                { StatisticalBulletSaving = rule.Value.Booleans["bulletSaving"] }),
+                {
+                    StatisticalBulletSaving = rule.Value.Booleans["bulletSaving"],
+                    BonusStorageSpace = rule.Value.Stats.MaximumStorageSpace,
+                }),
             items,
             soldiers,
             armors,

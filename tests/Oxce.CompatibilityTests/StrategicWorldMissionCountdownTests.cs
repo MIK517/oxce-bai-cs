@@ -54,6 +54,34 @@ public sealed class StrategicWorldMissionCountdownTests
         Assert.Empty(interrupted.Capture().World.Missions);
     }
 
+    [Fact]
+    public void CompletedRetaliationMissionReportsPermanentCleanupGate()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateCampaign(content);
+        var snapshot = campaign.Capture();
+        var waves = content.RuntimeRules.AlienMissions[
+            content.RuntimeRules.AlienMissions.GetRequired("MISSION_RETALIATION")].Value.Waves.Count;
+        var mission = Assert.Single(snapshot.World.Missions) with
+        {
+            RuleId = "MISSION_RETALIATION",
+            NextWave = waves,
+            LiveUfos = 0,
+        };
+        var restored = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with { Missions = [mission] },
+        }, content, new SplitMix64RandomSource(54));
+        var before = restored.Capture();
+
+        var result = restored.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal("Retaliation mission cleanup requires base linkage.",
+            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
+        Assert.Equivalent(before, restored.Capture(), strict: true);
+    }
+
     private static CampaignState CreateCampaign(RuntimeContent content)
     {
         var campaign = TestFixtures.CreateLogisticsCampaign(content, "Mission countdown", CampaignDifficulty.Veteran);

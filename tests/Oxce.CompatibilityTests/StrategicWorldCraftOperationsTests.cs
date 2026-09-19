@@ -184,8 +184,121 @@ public sealed class StrategicWorldCraftOperationsTests
         var elapsed = restored.Execute(new AdvanceCampaignTime(1));
 
         Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(elapsed.Events[0]).Summary.TickCount);
-        Assert.Contains(elapsed.Events, notification => notification is CampaignActionBlocked);
+        Assert.Equal("Craft pursuit and landing require world simulation.",
+            Assert.IsType<CampaignActionBlocked>(elapsed.Events[^1]).Reason);
         Assert.Equal(snapshot.Time, restored.Capture().Time);
+    }
+
+    [Fact]
+    public void AirborneCraftAtUnplacedBaseReportsItsPreflightReason()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = ReadyCampaign(content);
+        var snapshot = campaign.Capture();
+        var craft = Ship(snapshot);
+        var unplaced = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Name = "",
+                Crafts = [.. snapshot.Bases[0].Crafts.Select(existing => existing.RuleId == "SHIP"
+                    ? craft with { Logistics = craft.Logistics! with { Status = "STR_OUT" } }
+                    : existing)],
+            }],
+        }, content, new SplitMix64RandomSource(49));
+
+        var before = unplaced.Capture();
+        var result = unplaced.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal("An airborne craft belongs to a base that is not placed.",
+            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
+        Assert.Equivalent(before, unplaced.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void DispatchRejectsItemCountAndStorageOveragesBeforeMakingWaypoint()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world-capacity.rul");
+        var rule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
+        Assert.Equal(1, rule.MaximumItems);
+        Assert.Equal(1, rule.MaximumStorageSpace);
+        var fixedWeapon = content.RuntimeRules.CraftWeapons[
+            content.RuntimeRules.CraftWeapons.GetRequired("FIXED")].Value;
+        Assert.Equal(2, fixedWeapon.BonusStats["maxItems"]);
+        Assert.Equal(2, fixedWeapon.BonusStorageSpace);
+        foreach (var (items, allowed) in new[]
+        {
+            (new Dictionary<string, int>(StringComparer.Ordinal) { ["SUPPLY"] = 4 }, false),
+            (new Dictionary<string, int>(StringComparer.Ordinal) { ["BULKY"] = 2 }, false),
+            (new Dictionary<string, int>(StringComparer.Ordinal) { ["SUPPLY"] = 3 }, true),
+        })
+        {
+            var ready = ReadyCampaign(content);
+            var snapshot = ready.Capture();
+            var ship = Ship(snapshot);
+            var restored = CampaignState.Restore(snapshot with
+            {
+                Bases = [snapshot.Bases[0] with
+                {
+                    Crafts = [.. snapshot.Bases[0].Crafts.Select(existing => existing.RuleId == "SHIP"
+                        ? ship with
+                        {
+                            Logistics = ship.Logistics! with
+                            {
+                                Items = items,
+                                Weapons = [new CraftWeaponSnapshot("FIXED", 0), null],
+                            },
+                        }
+                        : existing)],
+                }],
+            }, content, new SplitMix64RandomSource(50));
+            var before = restored.Capture();
+
+            var result = restored.Execute(new DispatchCraftToWaypoint(snapshot.Bases[0].Id,
+                "SHIP", ship.Id, 0.3, 0.1));
+
+            if (allowed)
+            {
+                Assert.True(Assert.Single(result.Events) is CraftDestinationChanged,
+                    $"Expected dispatch, got {Assert.Single(result.Events)}.");
+            }
+            else
+            {
+                Assert.Equal("The craft carries too many items.",
+                    Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events)).Reason);
+                Assert.Equivalent(before, restored.Capture(), strict: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void DispatchRechecksArmorOnRestoredCrew()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world-armor.rul");
+        var ready = ReadyCampaign(content);
+        var snapshot = ready.Capture();
+        var baseId = snapshot.Bases[0].Id;
+        var soldier = snapshot.Bases[0].Soldiers.First(s => s.Personal is not null);
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Soldiers = [.. snapshot.Bases[0].Soldiers.Select(existing => existing.Id == soldier.Id
+                    ? existing with { Personal = existing.Personal! with { CraftType = "SHIP", CraftId = 1 } }
+                    : existing)],
+            }],
+        }, content, new SplitMix64RandomSource(55));
+
+        var blocked = campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.3, 0.1));
+        Assert.Equal("The craft carries armor forbidden by its rules.",
+            Assert.IsType<CampaignActionBlocked>(Assert.Single(blocked.Events)).Reason);
+        Assert.Empty(campaign.Capture().World.Waypoints);
+
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(
+            campaign.Execute(new AssignSoldierToCraft(baseId, soldier.Id)).Events));
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(
+            campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.3, 0.1)).Events));
     }
 
     [Fact]
@@ -302,7 +415,7 @@ public sealed class StrategicWorldCraftOperationsTests
         Assert.IsType<CraftDestinationChanged>(Assert.Single(
             restored.Execute(new DispatchCraftToWaypoint(baseId, "INTERCEPTOR", 1, 0.3, 0.1)).Events));
 
-        // Craft::getFuelLimit divides by the maximum speed, so the reference never evaluates it here.
+        // Craft::getFuelLimit has undefined C++ behavior at zero speed; the port keeps this craft recallable.
         var elapsed = restored.Execute(new AdvanceCampaignTime(200));
 
         Assert.Equal(200, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
