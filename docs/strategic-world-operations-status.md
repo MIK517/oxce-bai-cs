@@ -15,19 +15,32 @@ waypoint flight slice. This is a checkpoint, not branch 4b acceptance.
   runtime-linked craft properties. The compiled-content cache revision is 17.
 - In-flight craft, waypoints, and auto-patrol coordinates survive save/reload. Invalid
   dispatches leave the campaign unchanged.
+- Dispatch follows `ConfirmDestinationState::btnOkClick`: a craft whose rule requires
+  pilots refuses to launch until enough assigned soldiers meet its piloting requirements.
+  Fuel is not a dispatch condition; the reference lets a craft leave and turn back.
 - Returning to base continues time silently. Automatic patrol relaunch requires a craft
   that just became ready through refuelling; unsupported pursuit and landing targets
-  remain guarded. Stationary zero-speed patrols advance time.
+  remain guarded.
+- A craft that cannot move is not a blocked campaign. Stationary zero-speed patrols and
+  zero-speed craft holding a destination both let time advance: `Craft::getFuelLimit`
+  divides by the maximum speed, so the reference never evaluates a low-fuel return for
+  them, and they stay recallable. Preflight stops time only for state this slice cannot
+  simulate or cannot trust, and reports which condition stopped it.
 - The five-second handler resolves supported target positions without cloning target
-  records or recomputing speed vectors, and collects waypoint followers in one pass.
+  records or recomputing speed vectors, writes a craft back only when its state changed,
+  and collects waypoint followers in one pass. Automatic patrol candidates are carried by
+  base, rule type and ID so a craft list that grows within a tick cannot misdirect them.
 
 Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestination`,
 `think`, `consumeFuel`, `checkup`), `src/Savegame/MovingTarget.cpp` (`setDestination`,
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
 `time30Minutes` and waypoint cleanup), and `src/Geoscape/GeoscapeCraftState.cpp`
-(`btnBaseClick`, `btnPatrolClick`). The public `strategic-world.rul` fixture supplies
-a moving craft and automatic patrol properties; `StrategicWorldCraftOperationsTests`
-exercise command, tick, save and relaunch behavior. The existing `strategic-world`
+(`btnBaseClick`, `btnPatrolClick`, `ConfirmDestinationState::btnOkClick`). The public
+`strategic-world.rul` fixture supplies a moving craft and automatic patrol properties,
+`strategic-world-slow.rul` a barely moving and a motionless craft, and
+`strategic-world-pilots.rul` a craft that needs a pilot;
+`StrategicWorldCraftOperationsTests` exercise command, tick, save, relaunch and
+per-tick allocation behavior. The existing `strategic-world`
 C++ oracle covers movement and fuel arithmetic, but the command/timing scenario is a
 reference-shaped test rather than an extracted C++ trace.
 

@@ -1,0 +1,6 @@
+# A craft that cannot depart without a qualified pilot on board.
+crafts:
+  - type: SHIP
+    speedMax: 6000
+    soldiers: 2
+    pilots: 1

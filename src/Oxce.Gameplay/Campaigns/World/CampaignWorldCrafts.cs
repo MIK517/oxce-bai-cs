@@ -57,15 +57,16 @@ internal sealed partial class CampaignWorld
             return Blocked("The craft is not ready to depart.");
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                campaign.Content.RuntimeRules, out var speed) || speed <= 0 ||
-            state.Fuel <= 0)
-            return Blocked("The craft needs positive speed and fuel to depart.");
+                campaign.Content.RuntimeRules, out var speed))
+            return Blocked(SpeedRangeReason);
+        // ConfirmDestinationState::btnOkClick refuses to launch a craft without enough pilots.
+        if (!campaign.HasRequiredPilots(owner, craft)) return Blocked("The craft does not have enough pilots.");
         var id = campaign.NextId(WorldTargetReference.WaypointType);
         var waypoint = new WaypointSnapshot(id, position.Longitude, position.Latitude);
         _waypoints.Add(waypoint);
         var destination = WorldTargetReference.ForWaypoint(id, position);
         owner.Crafts[index] = craft with
-        { Logistics = SetDestination(state with { IsAutoPatrolling = false }, rule, destination) };
+        { Logistics = SetDestination(state with { IsAutoPatrolling = false }, speed, destination) };
         return new CampaignCommandResult([new CraftDestinationChanged(owner.Id, command.CraftTypeId,
             craft.Id, destination)]);
     }
@@ -78,8 +79,9 @@ internal sealed partial class CampaignWorld
             return Blocked("The craft is not airborne.");
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                campaign.Content.RuntimeRules, out var speedMaximum) || speedMaximum <= 0)
-            return Blocked("The craft cannot patrol without a positive speed.");
+                campaign.Content.RuntimeRules, out var speedMaximum))
+            return Blocked(SpeedRangeReason);
+        // Craft::setDestination(0) halves the maximum speed, which can legally be zero.
         var speed = speedMaximum / 2;
         owner.Crafts[index] = craft with
         {
@@ -106,12 +108,13 @@ internal sealed partial class CampaignWorld
         var state = craft.Logistics;
         if (state is not { Status: "STR_OUT" }) return Blocked("The craft is not airborne.");
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+        // Craft::returnToBase has no speed condition, so recall always stays available.
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                campaign.Content.RuntimeRules, out var speed) || speed <= 0)
-            return Blocked("The craft cannot return without a positive speed.");
+                campaign.Content.RuntimeRules, out var speed))
+            return Blocked(SpeedRangeReason);
         var destination = BaseReference(owner);
         owner.Crafts[index] = craft with
-        { Logistics = SetDestination(state with { IsAutoPatrolling = false }, rule, destination) };
+        { Logistics = SetDestination(state with { IsAutoPatrolling = false }, speed, destination) };
         return new CampaignCommandResult([new CraftDestinationChanged(owner.Id, command.CraftTypeId,
             craft.Id, destination)]);
     }
@@ -119,14 +122,39 @@ internal sealed partial class CampaignWorld
     private (CampaignState.BaseState Owner, int Index) FindCraft(int baseId, string craftTypeId, int craftId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(craftTypeId);
-        var owner = campaign.BaseStates.FirstOrDefault(baseState => baseState.Id == baseId)
-            ?? throw new ArgumentOutOfRangeException(nameof(baseId));
-        var index = owner.Crafts.FindIndex(craft => craft.Id == craftId &&
-            campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule) == craftTypeId);
-        if (index < 0) throw new ArgumentOutOfRangeException(nameof(craftId));
+        if (!campaign.BaseStates.Any(baseState => baseState.Id == baseId))
+            throw new ArgumentOutOfRangeException(nameof(baseId));
+        if (!TryFindCraft(baseId, craftTypeId, craftId, out var owner, out var index))
+            throw new ArgumentOutOfRangeException(nameof(craftId));
         return (owner, index);
     }
 
+    private bool TryFindCraft(int baseId, string craftTypeId, int craftId,
+        out CampaignState.BaseState owner, out int index)
+    {
+        var bases = campaign.BaseStates;
+        for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
+        {
+            if (bases[baseIndex].Id != baseId) continue;
+            owner = bases[baseIndex];
+            for (index = 0; index < owner.Crafts.Count; index++)
+            {
+                var craft = owner.Crafts[index];
+                if (craft.Id == craftId &&
+                    campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule) == craftTypeId)
+                    return true;
+            }
+        }
+        owner = null!;
+        index = -1;
+        return false;
+    }
+
+    /// <summary>
+    /// A stationary craft is not a blocked campaign: the reference simply never reaches a
+    /// destination it cannot fly to. Time stops only for state this slice cannot simulate
+    /// (a pursuit or landing target) or cannot trust (out-of-range craft state).
+    /// </summary>
     private string? CraftMovementReason()
     {
         var bases = campaign.BaseStates;
@@ -137,42 +165,45 @@ internal sealed partial class CampaignWorld
             {
                 var craft = owner.Crafts[craftIndex];
                 if (craft.Logistics is not { } state) continue;
-                if (state.IsAutoPatrolling && !new WorldPosition(state.AutoPatrolLongitude,
-                        state.AutoPatrolLatitude).IsNormalized)
-                    return "Craft auto-patrol coordinates are invalid.";
-                if (state.IsAutoPatrolling && !CraftLogistics.TryEffectiveSpeedMaximum(
-                        campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, state.Weapons,
-                        campaign.Content.RuntimeRules, out _))
-                    return "Craft auto-patrol speed exceeds the supported range.";
-                if (state.Status != "STR_OUT") continue;
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                if (!owner.IsPlaced ||
-                    !CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                        campaign.Content.RuntimeRules, out var speed) || speed <= 0 ||
-                    (state.Destination is not null && state.Speed <= 0) || state.Fuel < 0 ||
-                    state.Takeoff < 0 || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized ||
-                    state.Destination is { } destination && !TryGetCraftDestinationPosition(destination, out _))
-                    return "Craft movement requires world simulation.";
+                if (state.IsAutoPatrolling)
+                {
+                    if (!new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude).IsNormalized)
+                        return "Craft auto-patrol coordinates are invalid.";
+                    if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
+                            campaign.Content.RuntimeRules, out _))
+                        return SpeedRangeReason;
+                }
+                if (state.Status != "STR_OUT") continue;
+                if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
+                if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
+                        campaign.Content.RuntimeRules, out _))
+                    return SpeedRangeReason;
+                if (state.Fuel < 0 || state.Takeoff < 0)
+                    return "Airborne craft fuel or takeoff state is out of range.";
+                if (!new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
+                    return "Airborne craft coordinates are invalid.";
+                if (state.Destination is { } destination && !TryGetCraftDestinationPosition(destination, out _))
+                    return "Craft pursuit and landing require world simulation.";
             }
         }
         return null;
     }
 
-    private CraftLogisticsState SetDestination(CraftLogisticsState state, RuntimeCraftRule rule,
-        WorldTargetReference destination)
-    {
-        var speed = CraftLogistics.EffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules);
-        return state with
+    /// <summary>Craft::setDestination: a craft leaving its base takes off for 60 five-second ticks.</summary>
+    private static CraftLogisticsState SetDestination(CraftLogisticsState state, int speedMaximum,
+        WorldTargetReference destination) => state with
         {
             Status = "STR_OUT",
             Destination = destination,
             Takeoff = state.Status == "STR_OUT" ? state.Takeoff : 60,
-            Speed = speed,
-            SpeedRadian = WorldGeometry.RadianSpeed(speed),
+            Speed = speedMaximum,
+            SpeedRadian = WorldGeometry.RadianSpeed(speedMaximum),
             SpeedLongitude = 0,
             SpeedLatitude = 0,
         };
-    }
+
+    private const string SpeedRangeReason = "Craft speed exceeds the supported range.";
 
     private void MoveCrafts(CampaignState.TimeEffects effects)
     {
@@ -214,9 +245,9 @@ internal sealed partial class CampaignWorld
                             }
                             else if (destination.Kind == WorldTargetKind.Waypoint)
                             {
-                                var speed = CraftLogistics.EffectiveSpeedMaximum(
-                                    campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
-                                    state.Weapons, campaign.Content.RuntimeRules) / 2;
+                                var speed = CraftLogistics.TryEffectiveSpeedMaximum(
+                                    campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, state.Weapons,
+                                    campaign.Content.RuntimeRules, out var maximum) ? maximum / 2 : 0;
                                 state = state with
                                 {
                                     Destination = null,
@@ -233,7 +264,8 @@ internal sealed partial class CampaignWorld
                         }
                     }
                 }
-                owner.Crafts[index] = craft with { Logistics = state };
+                // Nothing changed for a craft that is parked, patrolling or waiting out its takeoff.
+                if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
             }
         }
         // GeoscapeState::time5Seconds deletes waypoints without followers. Gather the
@@ -306,22 +338,25 @@ internal sealed partial class CampaignWorld
                 var craft = owner.Crafts[index];
                 if (craft.Logistics is not { Status: "STR_OUT" } state) continue;
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                var speedMaximum = CraftLogistics.EffectiveSpeedMaximum(rule, state.Weapons,
-                    campaign.Content.RuntimeRules);
+                // Out-of-range speeds already stopped time in the preflight.
+                if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
+                        campaign.Content.RuntimeRules, out var speedMaximum)) continue;
                 var consumption = state.Destination is null && rule.PatrolWithoutFuel ? 0 :
                     WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, 0);
-                state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };
-                var distance = WorldGeometry.Distance(new WorldPosition(state.Longitude, state.Latitude),
-                    new WorldPosition(owner.Longitude, owner.Latitude));
-                if (!state.LowFuel && state.Fuel <= WorldFlight.FuelLimit(
-                    rule.RefuelItem is not null, speedMaximum, distance))
+                if (consumption != 0) state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };
+                // Craft::getFuelLimit divides by the maximum speed: a craft that cannot fly has no
+                // threshold to cross and simply stays where it is, as it does in the reference.
+                if (speedMaximum > 0 && !state.LowFuel && state.Fuel <= WorldFlight.FuelLimit(
+                        rule.RefuelItem is not null, speedMaximum,
+                        WorldGeometry.Distance(new WorldPosition(state.Longitude, state.Latitude),
+                            new WorldPosition(owner.Longitude, owner.Latitude))))
                 {
-                    state = SetDestination(state with { LowFuel = true }, rule, BaseReference(owner));
+                    state = SetDestination(state with { LowFuel = true }, speedMaximum, BaseReference(owner));
                     if (!state.IsAutoPatrolling)
                         effects.Notify(new CraftLowFuel(owner.Id,
                             campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
                 }
-                owner.Crafts[index] = craft with { Logistics = state };
+                if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
             }
         }
     }
@@ -331,17 +366,20 @@ internal sealed partial class CampaignWorld
 
     private void RelaunchAutoPatrol(CampaignState.TimeEffects effects)
     {
-        foreach (var (owner, index) in effects.AutoPatrolCandidates)
+        foreach (var (baseId, craftTypeId, craftId) in effects.AutoPatrolCandidates)
         {
+            if (!TryFindCraft(baseId, craftTypeId, craftId, out var owner, out var index)) continue;
             var craft = owner.Crafts[index];
             if (craft.Logistics is not { Status: "STR_READY", IsAutoPatrolling: true } state) continue;
             var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+            if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
+                    campaign.Content.RuntimeRules, out var speed)) continue;
             var waypointId = campaign.NextId(WorldTargetReference.WaypointType);
             var position = new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude);
             _waypoints.Add(new WaypointSnapshot(waypointId, position.Longitude, position.Latitude));
             owner.Crafts[index] = craft with
             {
-                Logistics = SetDestination(state, rule, WorldTargetReference.ForWaypoint(waypointId, position)),
+                Logistics = SetDestination(state, speed, WorldTargetReference.ForWaypoint(waypointId, position)),
             };
         }
         effects.AutoPatrolCandidates.Clear();

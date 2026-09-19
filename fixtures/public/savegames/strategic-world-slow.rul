@@ -1,3 +1,8 @@
 crafts:
   - type: SHIP
     speedMax: 1
+  # A craft that cannot move at all; the reference lets it sit with its destination.
+  - type: INTERCEPTOR
+    speedMax: 0
+    fuelMax: 100
+    pilots: 0
