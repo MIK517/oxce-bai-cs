@@ -28,8 +28,10 @@ internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeT
 /// </summary>
 internal static class CampaignTimeOrder
 {
-    // time5Seconds: UFO processing precedes craft movement; the former remains guarded.
+    // time5Seconds: UFO processing precedes craft movement.
+    public const int FiveSecondsWorldUfos = 100;
     public const int FiveSecondsWorldCrafts = 200;
+    public const int FiveSecondsWorldUfoCleanup = 300;
 
     // time10Minutes: craft fuel consumption precedes detection and retargeting.
     public const int TenMinutesWorldCraftFuel = 100;
@@ -47,7 +49,8 @@ internal static class CampaignTimeOrder
     public const int HourTransfers = 200;
     public const int HourProduction = 300;
 
-    // time30Minutes: craft refuelling in the base loop.
+    // time30Minutes: alien mission countdowns precede craft refuelling in the base loop.
+    public const int ThirtyMinutesWorldMissions = 50;
     public const int ThirtyMinutesRefuel = 100;
     public const int ThirtyMinutesAutoPatrol = 200;
 }

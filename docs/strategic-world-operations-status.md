@@ -1,7 +1,8 @@
 # Phase 6 branch 4b: operations in progress
 
-The `codex/strategic-world-operations` branch currently implements the craft-only
-waypoint flight slice. This is a checkpoint, not branch 4b acceptance.
+The `codex/strategic-world-operations` branch implements bounded craft and UFO
+waypoint flight plus existing-mission countdowns. This is a checkpoint, not branch
+4b acceptance.
 
 ## Implemented
 
@@ -30,24 +31,38 @@ waypoint flight slice. This is a checkpoint, not branch 4b acceptance.
   records or recomputing speed vectors, writes a craft back only when its state changed,
   and collects waypoint followers in one pass. Automatic patrol candidates are carried by
   base, rule type and ID so a craft list that grows within a tick cannot misdirect them.
+- A restored ordinary flying UFO moves toward its anonymous waypoint every five seconds,
+  updates its cached speed and direction, and initializes a zero-capacity shield. The
+  three-step movement trace matches the pinned C++ oracle across save/reload. Arrival,
+  hunting/escorting, nonzero shields, and ten-minute detection/retargeting stop before
+  mutation until their handlers exist.
+- Existing alien missions decrement their wave countdown at half-hour boundaries, with
+  interruption and completed-wave cases preserved. Destroyed UFOs release their mission's
+  live count after craft handling, and completed missions expire on the next half-hour
+  boundary. The producing tick stops before an unsupported wave spawn. Countdown state
+  survives save/reload; retaliation mission cleanup stays guarded until its base link is owned.
 
 Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestination`,
 `think`, `consumeFuel`, `checkup`), `src/Savegame/MovingTarget.cpp` (`setDestination`,
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
-`time30Minutes` and waypoint cleanup), and `src/Geoscape/GeoscapeCraftState.cpp`
+`time30Minutes` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
+`calculateSpeed`), `src/Savegame/AlienMission.cpp` (`think`), and
+`src/Geoscape/GeoscapeCraftState.cpp`
 (`btnBaseClick`, `btnPatrolClick`, `ConfirmDestinationState::btnOkClick`). The public
 `strategic-world.rul` fixture supplies a moving craft and automatic patrol properties,
 `strategic-world-slow.rul` a barely moving and a motionless craft, and
 `strategic-world-pilots.rul` a craft that needs a pilot;
 `StrategicWorldCraftOperationsTests` exercise command, tick, save, relaunch and
-per-tick allocation behavior. The existing `strategic-world`
+per-tick allocation behavior. `StrategicWorldUfoTransitTests` and
+`StrategicWorldMissionCountdownTests` cover bounded alien-world time and persistence.
+The existing `strategic-world`
 C++ oracle covers movement and fuel arithmetic, but the command/timing scenario is a
 reference-shaped test rather than an extracted C++ trace.
 
 ## Still required for branch 4b
 
-Mission/arc/event script projection and scheduling, wave spawning, UFO/site/base
-lifecycle, detection, craft pursuit, navigable globe controls, event-site scripting,
+Mission/arc/event script projection and selection, wave spawning, UFO waypoint arrival,
+UFO/site/base lifecycle, detection, craft pursuit, navigable globe controls, event-site scripting,
 multi-day/month-boundary scenarios, and the corresponding compatibility fixtures and
-allocation checks. Live alien world state remains guarded, as does the monthly campaign
+allocation checks. Unsupported live alien world transitions remain guarded, as does the monthly campaign
 transition. Branch 4b acceptance in [the Phase 6 plan](phase-6-plan.md) is unchanged.

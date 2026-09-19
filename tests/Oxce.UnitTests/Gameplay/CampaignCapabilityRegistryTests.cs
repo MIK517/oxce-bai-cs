@@ -50,10 +50,11 @@ public sealed class CampaignCapabilityRegistryTests
         Assert.Equal<string>(["months passed", "purchase limits"], table.HandlerNames(CampaignTimeTrigger.OneMonth));
         Assert.Equal<string>(["days passed", "base daily loop"], table.HandlerNames(CampaignTimeTrigger.OneDay));
         Assert.Equal<string>(["craft servicing", "transfers", "production"], table.HandlerNames(CampaignTimeTrigger.OneHour));
-        Assert.Equal<string>(["craft refuelling", "world craft auto-patrol"],
+        Assert.Equal<string>(["alien mission countdown", "craft refuelling", "world craft auto-patrol"],
             table.HandlerNames(CampaignTimeTrigger.ThirtyMinutes));
         Assert.Equal<string>(["world craft fuel"], table.HandlerNames(CampaignTimeTrigger.TenMinutes));
-        Assert.Equal<string>(["world craft movement"], table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
+        Assert.Equal<string>(["world UFO movement", "world craft movement", "destroyed UFO cleanup"],
+            table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
         Assert.Equal<string>(
             ["restrictions", "world simulation", "craft movement", "month boundary", "craft servicing",
                 "research and production", "transfers"],
