@@ -261,7 +261,107 @@ public sealed class StrategicWorldCraftOperationsTests
         }
     }
 
-    private static CampaignState ReadyCampaign(RuntimeContent content, int fuel = 100)
+    [Fact]
+    public void DispatchRequiresPilotsOnBoard()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world-pilots.rul");
+        Assert.Equal(1, content.RuntimeRules.Crafts[
+            content.RuntimeRules.Crafts.GetRequired("SHIP")].Value.Pilots);
+        var campaign = ReadyCampaign(content, unarmed: true);
+        var baseId = campaign.Capture().Bases[0].Id;
+        var crew = campaign.Capture().Bases[0].Soldiers
+            .Where(soldier => soldier.Personal!.CraftType == "SHIP").Select(soldier => soldier.Id).ToArray();
+        Assert.NotEmpty(crew);
+        foreach (var soldier in crew) campaign.Execute(new AssignSoldierToCraft(baseId, soldier));
+        var snapshot = campaign.Capture();
+        Assert.All(snapshot.Bases[0].Soldiers, soldier => Assert.NotEqual("SHIP", soldier.Personal!.CraftType));
+
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(
+            campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.3, 0.1)).Events));
+
+        Assert.Equal("The craft does not have enough pilots.", blocked.Reason);
+        Assert.Empty(campaign.Capture().World.Waypoints);
+        Assert.Equal("STR_READY", Ship(campaign.Capture()).Logistics!.Status);
+
+        Assert.IsType<CampaignPersonnelChanged>(Assert.Single(campaign.Execute(
+            new AssignSoldierToCraft(baseId, crew[0], "SHIP", 1)).Events));
+
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(
+            campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.3, 0.1)).Events));
+        Assert.Equal("STR_OUT", Ship(campaign.Capture()).Logistics!.Status);
+    }
+
+    [Fact]
+    public void MotionlessCraftKeepsTimeMovingAndStaysRecallable()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world-slow.rul");
+        Assert.Equal(0, content.RuntimeRules.Crafts[
+            content.RuntimeRules.Crafts.GetRequired("INTERCEPTOR")].Value.SpeedMaximum);
+        var restored = ReadyInterceptor(content);
+        var baseId = restored.Capture().Bases[0].Id;
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(
+            restored.Execute(new DispatchCraftToWaypoint(baseId, "INTERCEPTOR", 1, 0.3, 0.1)).Events));
+
+        // Craft::getFuelLimit divides by the maximum speed, so the reference never evaluates it here.
+        var elapsed = restored.Execute(new AdvanceCampaignTime(200));
+
+        Assert.Equal(200, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+        var stuck = Interceptor(restored.Capture());
+        Assert.Equal("STR_OUT", stuck.Status);
+        Assert.Equal(0.2, stuck.Longitude);
+        Assert.Equal(0.1, stuck.Latitude);
+        Assert.Equal(100, stuck.Fuel);
+        Assert.False(stuck.LowFuel);
+        Assert.Equal(WorldTargetKind.Waypoint, stuck.Destination!.Kind);
+
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(
+            restored.Execute(new RecallCraft(baseId, "INTERCEPTOR", 1)).Events));
+        restored.Execute(new AdvanceCampaignTime(200));
+        // The craft never left its base, so Craft::think lands it the moment it is sent home.
+        var recalled = Interceptor(restored.Capture());
+        Assert.Null(recalled.Destination);
+        Assert.Equal("STR_READY", recalled.Status);
+        Assert.Equal(0.2, recalled.Longitude);
+        Assert.Empty(restored.Capture().World.Waypoints);
+    }
+
+    [Fact]
+    public void PatrollingCraftDoNotAllocatePerTick()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var two = PatrolAllocations(2);
+        var thirtyTwo = PatrolAllocations(32);
+        Assert.True(thirtyTwo < two * 2,
+            $"Two patrolling crafts allocated {two} bytes; thirty-two allocated {thirtyTwo} bytes.");
+
+        long PatrolAllocations(int count)
+        {
+            var campaign = ReadyCampaign(content);
+            var baseId = campaign.Capture().Bases[0].Id;
+            campaign.Execute(new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.4, 0.1));
+            campaign.Execute(new AdvanceCampaignTime(61));
+            campaign.Execute(new PatrolCraft(baseId, "SHIP", 1));
+            var snapshot = campaign.Capture();
+            var first = Ship(snapshot);
+            Assert.Null(first.Logistics!.Destination);
+            var crafts = snapshot.Bases[0].Crafts.Concat(Enumerable.Range(2, count - 1)
+                .Select(id => first with { Id = id })).ToArray();
+            var restored = CampaignState.Restore(snapshot with
+            {
+                Bases = [snapshot.Bases[0] with { Crafts = crafts }],
+            }, content, new SplitMix64RandomSource(38));
+            restored.Execute(new AdvanceCampaignTime(1)); // warm the movement path
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var elapsed = restored.Execute(new AdvanceCampaignTime(10));
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            Assert.Equal(10, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+            return allocated;
+        }
+    }
+
+    /// <summary>The veteran SHIP carries a negative-capacity weapon; <paramref name="unarmed"/>
+    /// strips it so crew assignment is about the pilot rule rather than craft capacity.</summary>
+    private static CampaignState ReadyCampaign(RuntimeContent content, int fuel = 100, bool unarmed = false)
     {
         var campaign = TestFixtures.CreateLogisticsCampaign(content, "World operations",
             CampaignDifficulty.Veteran);
@@ -277,6 +377,9 @@ public sealed class StrategicWorldCraftOperationsTests
                 Damage = 0,
                 Longitude = 0.2,
                 Latitude = 0.1,
+                Weapons = unarmed
+                    ? Array.AsReadOnly(new CraftWeaponSnapshot?[craft.Logistics!.Weapons.Count])
+                    : craft.Logistics!.Weapons,
             },
         };
         return CampaignState.Restore(snapshot with
@@ -289,6 +392,35 @@ public sealed class StrategicWorldCraftOperationsTests
             }],
         }, content, new SplitMix64RandomSource(19));
     }
+
+    private static CampaignState ReadyInterceptor(RuntimeContent content)
+    {
+        var campaign = ReadyCampaign(content);
+        var snapshot = campaign.Capture();
+        var craft = Assert.Single(snapshot.Bases[0].Crafts, existing => existing.RuleId == "INTERCEPTOR");
+        var ready = craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_READY",
+                Fuel = 100,
+                Damage = 0,
+                Longitude = 0.2,
+                Latitude = 0.1,
+            },
+        };
+        return CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
+                    existing.RuleId == "INTERCEPTOR" ? ready : existing)],
+            }],
+        }, content, new SplitMix64RandomSource(37));
+    }
+
+    private static CraftLogisticsState Interceptor(CampaignSnapshot snapshot) =>
+        Assert.Single(snapshot.Bases[0].Crafts, craft => craft.RuleId == "INTERCEPTOR").Logistics!;
 
     private static CraftSnapshot Ship(CampaignSnapshot snapshot) =>
         Assert.Single(snapshot.Bases[0].Crafts, craft => craft.RuleId == "SHIP");

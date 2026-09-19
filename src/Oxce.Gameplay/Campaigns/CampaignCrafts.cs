@@ -10,6 +10,27 @@ public sealed partial class CampaignState
     private static IEnumerable<SoldierState> Crew(BaseState state, string type, int id) =>
         state.Soldiers.Where(s => s.Personal is { } p && p.CraftType == type && p.CraftId == id);
 
+    /// <summary>
+    /// Craft::arePilotsOnboard. A craft that needs pilots requires that many assigned soldiers who
+    /// satisfy its piloting requirements; <c>Craft::getPilotList</c> fills the seats from the crew
+    /// automatically, so the manual pilot list only changes which soldiers fly, not how many.
+    /// </summary>
+    internal bool HasRequiredPilots(BaseState owner, CraftState craft)
+    {
+        var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
+        if (rule.Pilots <= 0) return true;
+        var type = _content.RuntimeRules.Crafts.GetExternalId(craft.Rule);
+        var pilots = 0;
+        foreach (var soldier in Crew(owner, type, craft.Id))
+        {
+            if (soldier.Personal is not { } personal) continue;
+            if (!SoldierPiloting.MeetsRequirements(personal, _content.RuntimeRules.Soldiers[soldier.Rule].Value,
+                    rule, _content.RuntimeRules)) continue;
+            if (++pilots >= rule.Pilots) return true;
+        }
+        return false;
+    }
+
     private void AddCraftRows(BaseState origin, BaseState destination, List<LogisticsRow> rows,
         LogisticsOperation operation, double distance, int hours)
     {
@@ -57,7 +78,7 @@ public sealed partial class CampaignState
                 owner.Crafts[index] = craft with { Logistics = state };
                 if (!result.MissingFuel && state.Status == "STR_READY" &&
                     state.IsAutoPatrolling && rule.AutoPatrol)
-                    effects.AutoPatrolCandidates.Add((owner, index));
+                    effects.AutoPatrolCandidates.Add((owner.Id, type, craft.Id));
                 if (result.MissingFuel) effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"));
                 else if (state.Status == "STR_READY" && rule.NotifyWhenRefueled)
                     effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_CRAFT_IS_READY"));
