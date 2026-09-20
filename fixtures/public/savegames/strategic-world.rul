@@ -154,6 +154,21 @@ alienMissions:
     waves:
       - {ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_PATROL, timer: 9000}
       - {ufo: UFO_HUNTER, count: 1, trajectory: TRAJ_PATROL, timer: 12000, hunterKillerPercentage: 100, huntMode: 0, huntBehavior: 1, escort: true, interruptPercentage: 50}
+  # A wave without a UFO or deployment still advances AlienMission's counters.
+  - type: MISSION_EMPTY_WAVE
+    objective: 0
+    waves:
+      - {count: 2, trajectory: TRAJ_PATROL, timer: 90}
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 3000}
+  - type: MISSION_EMPTY_FINAL
+    objective: 0
+    waves:
+      - {count: 1, trajectory: TRAJ_PATROL, timer: 90}
+  - type: MISSION_EMPTY_RECURSIVE
+    objective: 0
+    waves:
+      - {count: 1, trajectory: TRAJ_PATROL, timer: 90}
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 0}
   - type: MISSION_SITE
     points: 5
     objective: 3

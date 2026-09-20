@@ -52,6 +52,11 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   live count after craft handling, and completed missions expire on the next half-hour
   boundary. The producing tick stops before an unsupported wave spawn. Countdown state
   survives save/reload; retaliation mission cleanup stays guarded until its base link is owned.
+- A score mission with a wave that creates no UFO or site advances its wave counter and
+  rolls the next wave timer at the half-hour boundary. A final empty wave removes the
+  completed mission without consuming RNG. These transitions survive save/reload;
+  zero-timer follow-up waves remain guarded because the reference recursively processes
+  them in the same tick. The public fixture covers repeated and final empty waves.
 - An active flying UFO reaches the unsupported detection/retargeting boundary after ten
   minutes. Its transit cannot yet compose with the half-hour mission countdown.
   Restored ordinary-campaign UFOs reject a missing mission link before time advances.
@@ -81,7 +86,7 @@ extracted C++ traces.
 
 ## Still required for branch 4b
 
-Mission/arc/event script projection and selection, wave spawning, nonterminal UFO
+Mission/arc/event script projection and selection, UFO/deployment wave spawning, nonterminal UFO
 waypoint transitions and landing, UFO/site/base lifecycle, detection, craft pursuit,
 navigable globe controls, event-site scripting,
 multi-day/month-boundary scenarios, and the corresponding compatibility fixtures and
