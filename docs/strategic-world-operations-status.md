@@ -41,7 +41,11 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   the UFO destroyed and clears detection. The reference returns from the five-second
   handler at that point: later UFOs and craft do not move, and destroyed UFO cleanup
   waits until the next tick. This boundary survives save/reload. Nonterminal arrival,
-  hunting/escorting, nonzero shields, and ten-minute detection/retargeting remain guarded.
+  hunting/escorting, nonzero shields, and half-hour detection remain guarded.
+  Ordinary UFOs at trajectory points 0-1 cross ten-minute boundaries: the reference
+  base-detection predicate returns before scanning bases, and the other UFO ten-minute
+  handlers have no effect without hunter-killers or alien bases. Later trajectory points
+  remain guarded at that boundary.
   If a terminal UFO precedes a nonterminal arrival in the same tick, the global
   preflight stops time before either moves; the reference would return at the terminal UFO.
   Rule-derived shield capacity is cached when a save is restored. Destroyed-UFO counts
@@ -57,8 +61,8 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   completed mission without consuming RNG. These transitions survive save/reload;
   zero-timer follow-up waves remain guarded because the reference recursively processes
   them in the same tick. The public fixture covers repeated and final empty waves.
-- An active flying UFO reaches the unsupported detection/retargeting boundary after ten
-  minutes. Its transit cannot yet compose with the half-hour mission countdown.
+- An active flying UFO reaches the unsupported activity-scoring and detection boundary
+  after thirty minutes. Its transit cannot yet compose with the half-hour mission countdown.
   Restored ordinary-campaign UFOs reject a missing mission link before time advances.
   The pre-campaign state follows the reference's absent mission-link case. Restore
   normalizes an ordinary UFO destination to an owned waypoint, so the destination
