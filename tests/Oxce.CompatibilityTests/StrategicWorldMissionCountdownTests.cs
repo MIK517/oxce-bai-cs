@@ -37,6 +37,82 @@ public sealed class StrategicWorldMissionCountdownTests
     }
 
     [Fact]
+    public void NoObjectWaveAdvancesCountersAndNextTimerAcrossSave()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_EMPTY_WAVE");
+        var random = new SplitMix64RandomSource(campaign.Capture().RandomState);
+        var firstCountdown = WorldTrajectory.SpawnCountdown(90, random);
+
+        var first = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(first.Events)).Summary.TickCount);
+        var firstState = campaign.Capture();
+        var mission = Assert.Single(firstState.World.Missions);
+        Assert.Equal(0, mission.NextWave);
+        Assert.Equal(1, mission.NextUfoCounter);
+        Assert.Equal(firstCountdown, mission.SpawnCountdown);
+        Assert.Equal(random.State, firstState.RandomState);
+        Assert.Empty(firstState.World.Ufos);
+        Assert.Empty(firstState.World.MissionSites);
+
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(firstState),
+            content, seed: 65, name: "mission-empty-wave.sav").Campaign;
+        for (var boundary = 0; boundary < 3 &&
+            Assert.Single(reloaded.Capture().World.Missions).SpawnCountdown > 30; boundary++)
+        {
+            var countdown = Assert.Single(reloaded.Capture().World.Missions).SpawnCountdown;
+            var elapsed = reloaded.Execute(new AdvanceCampaignTime(360));
+            Assert.Equal(360, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+            Assert.Equal(countdown - 30, Assert.Single(reloaded.Capture().World.Missions).SpawnCountdown);
+        }
+        Assert.InRange(Assert.Single(reloaded.Capture().World.Missions).SpawnCountdown, 0, 30);
+        var secondCountdown = WorldTrajectory.SpawnCountdown(3000, random);
+        var second = reloaded.Execute(new AdvanceCampaignTime(360));
+
+        Assert.Equal(360, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(second.Events)).Summary.TickCount);
+        var after = reloaded.Capture();
+        mission = Assert.Single(after.World.Missions);
+        Assert.Equal(1, mission.NextWave);
+        Assert.Equal(0, mission.NextUfoCounter);
+        Assert.Equal(secondCountdown, mission.SpawnCountdown);
+        Assert.Equal(random.State, after.RandomState);
+        Assert.Empty(after.World.Ufos);
+        Assert.Empty(after.World.MissionSites);
+    }
+
+    [Fact]
+    public void FinalNoObjectWaveRemovesCompletedMissionWithoutRng()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_EMPTY_FINAL");
+        var before = campaign.Capture();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        Assert.Empty(campaign.Capture().World.Missions);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.Empty(campaign.Capture().World.MissionSites);
+        Assert.Equal(before.RandomState, campaign.Capture().RandomState);
+    }
+
+    [Fact]
+    public void ZeroTimerFollowUpWaveStopsBeforeTheRecursiveSpawn()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_EMPTY_RECURSIVE");
+        var before = campaign.Capture();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal("Alien mission wave spawning requires world simulation.",
+            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
     public void InterruptedMissionWithNoLiveUfosIsRemoved()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
@@ -97,5 +173,20 @@ public sealed class StrategicWorldMissionCountdownTests
                     0, 0, 90, 0, -1)],
             },
         }, content, new SplitMix64RandomSource(44));
+    }
+
+    private static CampaignState CreateWaveCampaign(RuntimeContent content, string ruleId)
+    {
+        var campaign = CreateCampaign(content);
+        var snapshot = campaign.Capture();
+        var mission = Assert.Single(snapshot.World.Missions) with
+        {
+            RuleId = ruleId,
+            SpawnCountdown = 0,
+        };
+        return CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with { Missions = [mission] },
+        }, content, new SplitMix64RandomSource(66));
     }
 }
