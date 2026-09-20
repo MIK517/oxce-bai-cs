@@ -6,6 +6,9 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
+    // GeoscapeState::time5Seconds returns when arrival destroys a UFO.
+    private bool _ufoArrivalEndedTick;
+
     private void RegisterUfoOperations(CampaignCapabilityRegistry registry)
     {
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsWorldUfos,
@@ -61,7 +64,12 @@ internal sealed partial class CampaignWorld
             // MovingTarget::move snaps to this stationary waypoint when distance is
             // not greater than one step, including the reference's NaN fallback.
             if (!(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
-                return "UFO waypoint arrival requires mission simulation.";
+            {
+                var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
+                    campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+                if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
+                    return "UFO waypoint arrival requires mission simulation.";
+            }
         }
         return null;
     }
@@ -76,6 +84,25 @@ internal sealed partial class CampaignWorld
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
             var vector = WorldGeometry.SpeedVector(ufo.Position, destination.Position, speedRadian);
             var moved = WorldGeometry.Move(ufo.Position, destination.Position, speedRadian, vector);
+            if (!(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
+            {
+                // Ufo::think stops at the waypoint; AlienMission::ufoReachedWaypoint
+                // destroys an interrupted UFO or one at the trajectory's last point.
+                _ufos[index] = ufo with
+                {
+                    Longitude = moved.Longitude,
+                    Latitude = moved.Latitude,
+                    Speed = 0,
+                    SpeedRadian = 0,
+                    SpeedLongitude = 0,
+                    SpeedLatitude = 0,
+                    Direction = "STR_NONE_UC",
+                    Detected = false,
+                    Status = UfoStatus.Destroyed,
+                };
+                _ufoArrivalEndedTick = true;
+                break;
+            }
             _ufos[index] = ufo with
             {
                 Longitude = moved.Longitude,
@@ -91,6 +118,11 @@ internal sealed partial class CampaignWorld
 
     private void RemoveDestroyedUfos(CampaignState.TimeEffects _)
     {
+        if (_ufoArrivalEndedTick)
+        {
+            _ufoArrivalEndedTick = false;
+            return;
+        }
         for (var index = _ufos.Count - 1; index >= 0; index--)
         {
             var ufo = _ufos[index];
