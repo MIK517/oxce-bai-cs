@@ -88,7 +88,11 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     });
 
     /// <summary>AlienStrategy::init for a newly created campaign.</summary>
-    private void Initialize() => _strategy.Initialize(StrategyRegions());
+    private void Initialize()
+    {
+        _strategy.Initialize(StrategyRegions());
+        CacheUfoShieldCapabilities();
+    }
 
     private IEnumerable<(string Region, ulong Weight, IEnumerable<KeyValuePair<string, ulong>> Missions)> StrategyRegions() =>
         campaign.Content.RuntimeRules.Regions.Rules.Select(static rule =>
@@ -155,6 +159,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 });
         _waypoints.AddRange(snapshot.World.Waypoints);
         NormalizeDestinations();
+        CacheUfoShieldCapabilities();
         _strategy = AlienStrategyState.Restore(
             snapshot.World.Strategy.RegionChances,
             snapshot.World.Strategy.RegionMissions,

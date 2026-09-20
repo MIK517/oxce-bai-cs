@@ -91,6 +91,8 @@ public sealed class StrategicWorldUfoTransitTests
                 Ufos = [arriving],
             },
         }, content, new SplitMix64RandomSource(56));
+        var continuous = CampaignState.Restore(restored.Capture(), content,
+            new SplitMix64RandomSource(59));
         var craftBefore = Assert.Single(restored.Capture().Bases[0].Crafts,
             craft => craft.RuleId == "SHIP").Logistics!;
 
@@ -119,6 +121,13 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Empty(reloaded.Capture().World.Ufos);
         Assert.Equal(0, Assert.Single(reloaded.Capture().World.Missions).LiveUfos);
         Assert.Equal(craftBefore.Takeoff - 1, Assert.Single(reloaded.Capture().Bases[0].Crafts,
+            craft => craft.RuleId == "SHIP").Logistics!.Takeoff);
+
+        var twoTicks = continuous.Execute(new AdvanceCampaignTime(2));
+        Assert.Equal(2, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(twoTicks.Events)).Summary.TickCount);
+        Assert.Empty(continuous.Capture().World.Ufos);
+        Assert.Equal(0, Assert.Single(continuous.Capture().World.Missions).LiveUfos);
+        Assert.Equal(craftBefore.Takeoff - 1, Assert.Single(continuous.Capture().Bases[0].Crafts,
             craft => craft.RuleId == "SHIP").Logistics!.Takeoff);
     }
 
@@ -150,6 +159,29 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Equal(2, Assert.Single(after.World.Missions).LiveUfos);
     }
 
+    [Fact]
+    public void LaterNonterminalArrivalBlocksBeforeAnEarlierTerminalArrival()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        var lastPoint = content.RuntimeRules.UfoTrajectories[
+            content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value.Waypoints.Count - 1;
+        var arriving = ufo with { Longitude = 0.99999, Latitude = 0.6, TrajectoryPoint = lastPoint };
+        var later = ufo with { UniqueId = 10, Id = 4, Longitude = 0.99999, Latitude = 0.6 };
+        var restored = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 2 }],
+                Ufos = [arriving, later],
+            },
+        }, content, new SplitMix64RandomSource(62));
+
+        AssertBlockedWithoutMutation(restored, "UFO waypoint arrival requires mission simulation.");
+    }
+
     [Theory]
     [InlineData("landed", "UFO state requires world simulation.")]
     [InlineData("shield", "UFO shield handling requires world simulation.")]
@@ -173,6 +205,21 @@ public sealed class StrategicWorldUfoTransitTests
         }, content, new SplitMix64RandomSource(51));
 
         AssertBlockedWithoutMutation(restored, reason);
+    }
+
+    [Fact]
+    public void RaceDerivedShieldCapacityReportsItsPreflightReason()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var snapshot = campaign.Capture();
+        var mission = Assert.Single(snapshot.World.Missions);
+        var restored = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with { Missions = [mission with { Race = "RACE_B" }] },
+        }, content, new SplitMix64RandomSource(63));
+
+        AssertBlockedWithoutMutation(restored, "UFO shield handling requires world simulation.");
     }
 
     [Fact]

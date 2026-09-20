@@ -114,6 +114,9 @@ ufos:
     radarRange: 600
     radarChance: 50
     sightRange: 400
+    raceBonus:
+      RACE_B:
+        shieldCapacity: 2
 ufoTrajectories:
   - id: TRAJ_PATROL
     groundTimer: 12

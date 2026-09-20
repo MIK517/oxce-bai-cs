@@ -211,6 +211,8 @@ internal sealed partial class CampaignWorld
 
     private void MoveCrafts(CampaignState.TimeEffects effects)
     {
+        // UFO movement runs at order 100; a terminal arrival returns from the reference
+        // handler before craft movement at order 200. Cleanup follows at order 300.
         if (_ufoArrivalEndedTick) return;
         var bases = campaign.BaseStates;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
