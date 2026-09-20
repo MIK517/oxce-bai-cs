@@ -8,6 +8,23 @@ internal sealed partial class CampaignWorld
 {
     // GeoscapeState::time5Seconds returns when arrival destroys a UFO.
     private bool _ufoArrivalEndedTick;
+    private readonly HashSet<int> _ufosWithShieldCapacity = [];
+
+    // Current time handlers neither create UFOs nor change a mission's race. Future
+    // handlers that do either must update this restore-time capability index.
+    private void CacheUfoShieldCapabilities()
+    {
+        _ufosWithShieldCapacity.Clear();
+        foreach (var ufo in _ufos)
+        {
+            var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId);
+            if (mission is null) continue; // Validate handles ordinary saves; pre-campaign links are optional.
+            var rules = campaign.Content.RuntimeRules.Ufos;
+            var rule = rules[rules.GetRequired(ufo.RuleId)].Value;
+            if ((long)rule.Stats.ShieldCapacity + rule.RaceBonus(mission.Race).ShieldCapacity != 0)
+                _ufosWithShieldCapacity.Add(ufo.UniqueId);
+        }
+    }
 
     private void RegisterUfoOperations(CampaignCapabilityRegistry registry)
     {
@@ -19,16 +36,20 @@ internal sealed partial class CampaignWorld
 
     private string? UfoMovementReason(CampaignTimeTrigger highest)
     {
+        // Destroyed UFOs normally survive one tick. Count them in one pass only when
+        // cleanup is pending, keeping the common flying path allocation-free.
         if (_ufos.Exists(static ufo => ufo.Status == UfoStatus.Destroyed))
         {
-            for (var missionIndex = 0; missionIndex < _missions.Count; missionIndex++)
+            var destroyedCounts = new Dictionary<int, int>();
+            foreach (var ufo in _ufos)
+                if (ufo.Status == UfoStatus.Destroyed)
+                {
+                    destroyedCounts.TryGetValue(ufo.MissionId, out var count);
+                    destroyedCounts[ufo.MissionId] = count + 1;
+                }
+            foreach (var mission in _missions)
             {
-                var mission = _missions[missionIndex];
-                var destroyed = 0;
-                for (var ufoIndex = 0; ufoIndex < _ufos.Count; ufoIndex++)
-                    if (_ufos[ufoIndex].Status == UfoStatus.Destroyed && _ufos[ufoIndex].MissionId == mission.Id)
-                        destroyed++;
-                if (destroyed > mission.LiveUfos)
+                if (destroyedCounts.GetValueOrDefault(mission.Id) > mission.LiveUfos)
                     return "Destroyed UFO count exceeds its mission's live count.";
             }
         }
@@ -45,18 +66,11 @@ internal sealed partial class CampaignWorld
             // waypoint, it is never assigned a STR_WAY_POINT identity.
             if (ufo.Destination is not { Kind: WorldTargetKind.Waypoint, Id: 0 } destination)
                 return "UFO destination requires world simulation.";
-            AlienMissionSnapshot? mission = null;
-            for (var missionIndex = 0; missionIndex < _missions.Count; missionIndex++)
-                if (_missions[missionIndex].Id == ufo.MissionId)
-                {
-                    mission = _missions[missionIndex];
-                    break;
-                }
-            if (mission is null) return "UFO mission link requires world simulation.";
-            var rule = campaign.Content.RuntimeRules.Ufos[
-                campaign.Content.RuntimeRules.Ufos.GetRequired(ufo.RuleId)].Value;
-            var shieldCapacity = (long)rule.Stats.ShieldCapacity + rule.RaceBonus(mission.Race).ShieldCapacity;
-            if (shieldCapacity != 0 || ufo.Shield is not (-1 or 0))
+            // Ordinary saves validate this link at restore, and supported time handlers
+            // cannot remove a mission while one of its UFOs is still flying.
+            if (campaign.MonthsPassed == -1 && _missions.All(mission => mission.Id != ufo.MissionId))
+                return "UFO mission link requires world simulation.";
+            if (_ufosWithShieldCapacity.Contains(ufo.UniqueId) || ufo.Shield is not (-1 or 0))
                 return "UFO shield handling requires world simulation.";
             if (ufo.Speed < 0)
                 return "UFO speed is invalid.";
@@ -65,6 +79,8 @@ internal sealed partial class CampaignWorld
             // not greater than one step, including the reference's NaN fallback.
             if (!(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
             {
+                var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId);
+                if (mission is null) return "UFO mission link requires world simulation.";
                 var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
                     campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
                 if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
@@ -76,6 +92,7 @@ internal sealed partial class CampaignWorld
 
     private void MoveUfos(CampaignState.TimeEffects _)
     {
+        _ufoArrivalEndedTick = false;
         for (var index = 0; index < _ufos.Count; index++)
         {
             var ufo = _ufos[index];
@@ -118,11 +135,7 @@ internal sealed partial class CampaignWorld
 
     private void RemoveDestroyedUfos(CampaignState.TimeEffects _)
     {
-        if (_ufoArrivalEndedTick)
-        {
-            _ufoArrivalEndedTick = false;
-            return;
-        }
+        if (_ufoArrivalEndedTick) return;
         for (var index = _ufos.Count - 1; index >= 0; index--)
         {
             var ufo = _ufos[index];
@@ -136,6 +149,7 @@ internal sealed partial class CampaignWorld
                 _missions[missionIndex] = mission with { LiveUfos = mission.LiveUfos - 1 };
                 break;
             }
+            _ufosWithShieldCapacity.Remove(ufo.UniqueId);
             _ufos.RemoveAt(index);
         }
     }

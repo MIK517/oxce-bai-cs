@@ -216,6 +216,51 @@ public sealed class StrategicWorldCraftOperationsTests
         Assert.Equivalent(before, unplaced.Capture(), strict: true);
     }
 
+    [Theory]
+    [InlineData("patrol", "Craft auto-patrol coordinates are invalid.")]
+    [InlineData("takeoff", "Airborne craft fuel or takeoff state is out of range.")]
+    [InlineData("position", "Airborne craft coordinates are invalid.")]
+    public void InvalidCraftFlightStateReportsItsPreflightReason(string condition, string reason)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = ReadyCampaign(content);
+        var snapshot = campaign.Capture();
+        var craft = Ship(snapshot);
+        var logistics = craft.Logistics! with { Status = "STR_OUT" };
+        logistics = condition switch
+        {
+            "patrol" => logistics with { IsAutoPatrolling = true, AutoPatrolLongitude = 7 },
+            "takeoff" => logistics with { Takeoff = -1 },
+            "position" => logistics with { Longitude = 7 },
+            _ => throw new ArgumentOutOfRangeException(nameof(condition)),
+        };
+        var restored = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
+                existing.RuleId == "SHIP" ? craft with { Logistics = logistics } : existing)] }],
+        }, content, new SplitMix64RandomSource(60));
+
+        AssertTimeBlocked(restored, reason);
+    }
+
+    [Fact]
+    public void CraftSpeedOverflowReportsItsPreflightReason()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world-speed-range.rul");
+        var campaign = ReadyCampaign(content);
+        var snapshot = campaign.Capture();
+        var craft = Ship(snapshot);
+        var restored = CampaignState.Restore(snapshot with
+        {
+            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
+                existing.RuleId == "SHIP" ? craft with
+                { Logistics = craft.Logistics! with
+                    { Status = "STR_OUT", Weapons = [new CraftWeaponSnapshot("FIXED", 0), null] } } : existing)] }],
+        }, content, new SplitMix64RandomSource(61));
+
+        AssertTimeBlocked(restored, "Craft speed exceeds the supported range.");
+    }
+
     [Fact]
     public void DispatchRejectsItemCountAndStorageOveragesBeforeMakingWaypoint()
     {
@@ -530,6 +575,15 @@ public sealed class StrategicWorldCraftOperationsTests
                     existing.RuleId == "INTERCEPTOR" ? ready : existing)],
             }],
         }, content, new SplitMix64RandomSource(37));
+    }
+
+    private static void AssertTimeBlocked(CampaignState campaign, string reason)
+    {
+        var before = campaign.Capture();
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal(reason, Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
     private static CraftLogisticsState Interceptor(CampaignSnapshot snapshot) =>
