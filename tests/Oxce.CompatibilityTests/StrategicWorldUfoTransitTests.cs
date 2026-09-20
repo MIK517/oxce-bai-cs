@@ -283,6 +283,30 @@ public sealed class StrategicWorldUfoTransitTests
         AssertBlockedWithoutMutation(malformed, "Destroyed UFO count exceeds its mission's live count.");
     }
 
+    [Fact]
+    public void TerminalArrivalRechecksRestoredMissionLiveCountBeforeCleanup()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        var lastPoint = content.RuntimeRules.UfoTrajectories[
+            content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value.Waypoints.Count - 1;
+        var restored = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 0 }],
+                Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, TrajectoryPoint = lastPoint }],
+            },
+        }, content, new SplitMix64RandomSource(64));
+
+        var arrival = restored.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(arrival.Events)).Summary.TickCount);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(restored.Capture().World.Ufos).Status);
+        AssertBlockedWithoutMutation(restored, "Destroyed UFO count exceeds its mission's live count.");
+    }
+
     private static void AssertBlockedWithoutMutation(CampaignState campaign, string reason)
     {
         var before = campaign.Capture();

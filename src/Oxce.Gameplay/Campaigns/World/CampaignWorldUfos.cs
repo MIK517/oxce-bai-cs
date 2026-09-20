@@ -36,20 +36,17 @@ internal sealed partial class CampaignWorld
 
     private string? UfoMovementReason(CampaignTimeTrigger highest)
     {
-        // Destroyed UFOs normally survive one tick. Count them in one pass only when
-        // cleanup is pending, keeping the common flying path allocation-free.
+        // A restored live count can become insufficient after another terminal arrival.
+        // Keep this guard live and allocation-free; destroyed UFOs normally survive one tick.
         if (_ufos.Exists(static ufo => ufo.Status == UfoStatus.Destroyed))
         {
-            var destroyedCounts = new Dictionary<int, int>();
-            foreach (var ufo in _ufos)
-                if (ufo.Status == UfoStatus.Destroyed)
-                {
-                    destroyedCounts.TryGetValue(ufo.MissionId, out var count);
-                    destroyedCounts[ufo.MissionId] = count + 1;
-                }
             foreach (var mission in _missions)
             {
-                if (destroyedCounts.GetValueOrDefault(mission.Id) > mission.LiveUfos)
+                var destroyed = 0;
+                foreach (var ufo in _ufos)
+                    if (ufo.Status == UfoStatus.Destroyed && ufo.MissionId == mission.Id)
+                        destroyed++;
+                if (destroyed > mission.LiveUfos)
                     return "Destroyed UFO count exceeds its mission's live count.";
             }
         }

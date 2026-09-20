@@ -44,8 +44,9 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   hunting/escorting, nonzero shields, and ten-minute detection/retargeting remain guarded.
   If a terminal UFO precedes a nonterminal arrival in the same tick, the global
   preflight stops time before either moves; the reference would return at the terminal UFO.
-  Rule-derived shield capacity is cached when a save is restored, while destroyed-UFO
-  counts are aggregated in one pass when they can change during simulation.
+  Rule-derived shield capacity is cached when a save is restored. Destroyed-UFO counts
+  remain guarded during cleanup ticks because a restored live count can become insufficient
+  after terminal arrival; this rare check does not allocate per tick.
 - Existing alien missions decrement their wave countdown at half-hour boundaries, with
   interruption and completed-wave cases preserved. Destroyed UFOs release their mission's
   live count after craft handling, and completed missions expire on the next half-hour
