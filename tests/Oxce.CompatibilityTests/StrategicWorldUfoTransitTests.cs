@@ -39,7 +39,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void ArrivalAndDetectionBoundariesStopBeforeMutation()
+    public void ArrivalAndHalfHourDetectionBoundariesStopBeforeMutation()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
@@ -56,9 +56,61 @@ public sealed class StrategicWorldUfoTransitTests
 
         var boundary = CampaignState.Restore(snapshot with
         {
-            Time = new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
         }, content, new SplitMix64RandomSource(43));
         AssertBlockedWithoutMutation(boundary, "UFO detection and retargeting require world simulation.");
+    }
+
+    [Fact]
+    public void OrdinaryUfoCrossesTwoTenMinuteBoundariesWithoutRetargeting()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55));
+        var restored = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
+            content, seed: 67, name: "ufo-ten-minute.sav").Campaign;
+        var before = restored.Capture();
+        var ufo = Assert.Single(before.World.Ufos);
+        var expected = WorldGeometry.Move(ufo.Position, ufo.Destination!.Position,
+            WorldGeometry.RadianSpeed(ufo.Speed));
+
+        var first = restored.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(first.Events)).Summary.TickCount);
+        Assert.Equal(new CampaignTime(1, 1, 1, 1999, 1, 10, 0), restored.Capture().Time);
+        Assert.Equal(expected, Assert.Single(restored.Capture().World.Ufos).Position);
+        Assert.Equal(before.World.Missions, restored.Capture().World.Missions);
+        Assert.Equal(before.RandomState, restored.Capture().RandomState);
+
+        var second = restored.Execute(new AdvanceCampaignTime(120));
+
+        Assert.Equal(120, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(second.Events)).Summary.TickCount);
+        Assert.Equal(new CampaignTime(1, 1, 1, 1999, 1, 20, 0), restored.Capture().Time);
+        Assert.False(Assert.Single(restored.Capture().World.Ufos).Detected);
+        Assert.Equal(before.RandomState, restored.Capture().RandomState);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LaterTrajectoryPointStillBlocksTenMinuteBaseDetection(bool destroyed)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55));
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        var restored = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [ufo with
+                {
+                    TrajectoryPoint = 2,
+                    Status = destroyed ? UfoStatus.Destroyed : UfoStatus.Flying,
+                }],
+            },
+        }, content, new SplitMix64RandomSource(68));
+
+        AssertBlockedWithoutMutation(restored, "UFO detection and retargeting require world simulation.");
     }
 
     [Theory]
