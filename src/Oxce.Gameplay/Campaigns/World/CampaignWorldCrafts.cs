@@ -211,6 +211,7 @@ internal sealed partial class CampaignWorld
 
     private void MoveCrafts(CampaignState.TimeEffects effects)
     {
+        if (_ufoArrivalEndedTick) return;
         var bases = campaign.BaseStates;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
         {

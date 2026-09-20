@@ -36,9 +36,12 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   base, rule type and ID so a craft list that grows within a tick cannot misdirect them.
 - A restored ordinary flying UFO moves toward its anonymous waypoint every five seconds,
   updates its cached speed and direction, and initializes a zero-capacity shield. The
-  three-step movement trace matches the pinned C++ oracle across save/reload. Arrival,
-  hunting/escorting, nonzero shields, and ten-minute detection/retargeting stop before
-  mutation until their handlers exist.
+  three-step movement trace matches the pinned C++ oracle across save/reload. Arrival
+  at the last trajectory waypoint, or at any waypoint on an interrupted mission, marks
+  the UFO destroyed and clears detection. The reference returns from the five-second
+  handler at that point: later UFOs and craft do not move, and destroyed UFO cleanup
+  waits until the next tick. This boundary survives save/reload. Nonterminal arrival,
+  hunting/escorting, nonzero shields, and ten-minute detection/retargeting remain guarded.
 - Existing alien missions decrement their wave countdown at half-hour boundaries, with
   interruption and completed-wave cases preserved. Destroyed UFOs release their mission's
   live count after craft handling, and completed missions expire on the next half-hour
@@ -55,7 +58,8 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `think`, `consumeFuel`, `checkup`), `src/Savegame/MovingTarget.cpp` (`setDestination`,
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
 `time30Minutes` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
-`calculateSpeed`), `src/Savegame/AlienMission.cpp` (`think`), and
+`calculateSpeed`, `think`), `src/Savegame/AlienMission.cpp` (`think`,
+`ufoReachedWaypoint`), and
 `src/Geoscape/GeoscapeCraftState.cpp`
 (`btnBaseClick`, `btnPatrolClick`, `ConfirmDestinationState::btnOkClick`). The public
 `strategic-world.rul` fixture supplies a moving craft and automatic patrol properties,
@@ -66,14 +70,15 @@ crew armor limits;
 `StrategicWorldCraftOperationsTests` exercise command, tick, save, relaunch and
 per-tick allocation behavior. `StrategicWorldUfoTransitTests` and
 `StrategicWorldMissionCountdownTests` cover bounded alien-world time and persistence.
-The existing `strategic-world`
-C++ oracle covers movement and fuel arithmetic, but the command/timing scenario is a
-reference-shaped test rather than an extracted C++ trace.
+The existing `strategic-world` C++ oracle covers movement and fuel arithmetic. The
+command/timing and terminal-arrival scenarios are reference-shaped tests rather than
+extracted C++ traces.
 
 ## Still required for branch 4b
 
-Mission/arc/event script projection and selection, wave spawning, UFO waypoint arrival,
-UFO/site/base lifecycle, detection, craft pursuit, navigable globe controls, event-site scripting,
+Mission/arc/event script projection and selection, wave spawning, nonterminal UFO
+waypoint transitions and landing, UFO/site/base lifecycle, detection, craft pursuit,
+navigable globe controls, event-site scripting,
 multi-day/month-boundary scenarios, and the corresponding compatibility fixtures and
 allocation checks. Unsupported live alien world transitions remain guarded, as does the monthly campaign
 transition. An over retaliation mission permanently blocks the next half-hour boundary
