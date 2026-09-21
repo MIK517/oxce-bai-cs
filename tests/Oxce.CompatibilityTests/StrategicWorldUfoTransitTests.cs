@@ -65,11 +65,14 @@ public sealed class StrategicWorldUfoTransitTests
     public void OrdinaryUfoCrossesTwoTenMinuteBoundariesWithoutRetargeting()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55));
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
+            ufoRuleId: "UFO_SCOUT", speed: 2200);
         var restored = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
             content, seed: 67, name: "ufo-ten-minute.sav").Campaign;
         var before = restored.Capture();
         var ufo = Assert.Single(before.World.Ufos);
+        Assert.Equal("UFO_SCOUT", ufo.RuleId);
+        Assert.False(ufo.HunterKiller);
         var expected = WorldGeometry.Move(ufo.Position, ufo.Destination!.Position,
             WorldGeometry.RadianSpeed(ufo.Speed));
 
@@ -80,12 +83,17 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Equal(expected, Assert.Single(restored.Capture().World.Ufos).Position);
         Assert.Equal(before.World.Missions, restored.Capture().World.Missions);
         Assert.Equal(before.RandomState, restored.Capture().RandomState);
+        var firstDistance = WorldGeometry.Distance(expected, ufo.Destination.Position);
 
         var second = restored.Execute(new AdvanceCampaignTime(120));
 
         Assert.Equal(120, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(second.Events)).Summary.TickCount);
         Assert.Equal(new CampaignTime(1, 1, 1, 1999, 1, 20, 0), restored.Capture().Time);
-        Assert.False(Assert.Single(restored.Capture().World.Ufos).Detected);
+        var after = Assert.Single(restored.Capture().World.Ufos);
+        Assert.False(after.Detected);
+        var distanceAdvanced = firstDistance - WorldGeometry.Distance(after.Position, ufo.Destination.Position);
+        var step = WorldGeometry.RadianSpeed(ufo.Speed);
+        Assert.InRange(distanceAdvanced, 119 * step, 121 * step);
         Assert.Equal(before.RandomState, restored.Capture().RandomState);
     }
 
@@ -236,6 +244,7 @@ public sealed class StrategicWorldUfoTransitTests
 
     [Theory]
     [InlineData("landed", "UFO state requires world simulation.")]
+    [InlineData("hunter", "UFO state requires world simulation.")]
     [InlineData("shield", "UFO shield handling requires world simulation.")]
     [InlineData("speed", "UFO speed is invalid.")]
     public void UnsupportedUfoStateReportsItsPreflightReason(string condition, string reason)
@@ -247,6 +256,7 @@ public sealed class StrategicWorldUfoTransitTests
         ufo = condition switch
         {
             "landed" => ufo with { Status = UfoStatus.Landed },
+            "hunter" => ufo with { HunterKiller = true },
             "shield" => ufo with { Shield = 1 },
             "speed" => ufo with { Speed = -1 },
             _ => throw new ArgumentOutOfRangeException(nameof(condition)),
@@ -368,17 +378,18 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
-    private static CampaignState CreateTransitCampaign(RuntimeContent content, CampaignTime time)
+    private static CampaignState CreateTransitCampaign(RuntimeContent content, CampaignTime time,
+        string ufoRuleId = "UFO_HUNTER", int speed = 3200)
     {
         var campaign = TestFixtures.CreateLogisticsCampaign(content, "UFO transit", CampaignDifficulty.Veteran);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
         var snapshot = campaign.Capture();
         var mission = new AlienMissionSnapshot(4, "MISSION_SCOUT", "REGION", "RACE_A", 2, 0, 1500, 1, -1);
-        var ufo = new UfoSnapshot(9, "UFO_HUNTER", 4, "TRAJ_PATROL", 0,
+        var ufo = new UfoSnapshot(9, ufoRuleId, 4, "TRAJ_PATROL", 0,
             0.4, 0.2, UfoStatus.Flying, "STR_HIGH_UC")
         {
             Id = 3,
-            Speed = 3200,
+            Speed = speed,
             MissionWaveNumber = 1,
             Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
                 WorldTargetReference.WaypointType, 0, 1.0, 0.6),
