@@ -268,8 +268,14 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 throw new InvalidDataException($"UFO altitude '{ufo.Altitude}' is not a reference altitude.");
             if (campaign.MonthsPassed != -1)
             {
-                if (_missions.All(mission => mission.Id != ufo.MissionId))
+                var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId);
+                if (mission is null)
                     throw new InvalidDataException("Unknown UFO mission; the save is corrupt.");
+                var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+                // Ufo::load accepts negative values for old saves and lets
+                // AlienMission::ufoReachedWaypoint derive the current wave.
+                if (ufo.MissionWaveNumber >= missionRule.Waves.Count)
+                    throw new InvalidDataException("UFO mission wave is outside its mission rule.");
                 if (!rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectory))
                     throw new InvalidDataException("Unknown UFO trajectory; the save is corrupt.");
                 var waypoints = rules.UfoTrajectories[trajectory].Value.Waypoints;
