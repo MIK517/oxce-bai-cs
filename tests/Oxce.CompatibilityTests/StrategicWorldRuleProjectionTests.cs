@@ -26,7 +26,7 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Empty(globe.Textures[12].Deployments);
 
         var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
-        Assert.Equal(3, region.MissionZones.Count);
+        Assert.Equal(4, region.MissionZones.Count);
         Assert.Equal(10UL, region.RegionWeight);
         Assert.Equal(4UL, region.MissionWeights["MISSION_SCOUT"]);
         Assert.False(region.MissionZones[0].Areas[0].IsPoint);
@@ -34,6 +34,9 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.All(cities, area => Assert.True(area.IsPoint));
         Assert.Equal<string>(["CITY_ALPHA", "CITY_BETA"], [.. cities.Select(area => area.Name)]);
         Assert.Equal(10, cities[0].Texture);
+        var wrappedCity = Assert.Single(region.MissionZones[3].Areas);
+        Assert.True(wrappedCity.IsPoint);
+        Assert.Equal(362 * Math.PI / 180.0, wrappedCity.LongitudeMinimum);
 
         var scout = rules.Ufos[rules.Ufos.GetRequired("UFO_SCOUT")].Value;
         Assert.Equal("STR_SMALL", scout.Size);
@@ -63,6 +66,9 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Equal(2, patrol.Altitude(1));
         Assert.Equal(1760, patrol.Speed(1, 2200));
         Assert.Equal(0, patrol.Altitude(2));
+        var airborne = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired("TRAJ_AIRBORNE")].Value;
+        Assert.Equal(3, airborne.Zone(1));
+        Assert.Equal(2, airborne.Altitude(1));
         Assert.True(rules.UfoTrajectories.TryGet(RuntimeUfoTrajectoryRule.RetaliationAssaultRun, out _));
 
         var scoutMission = rules.AlienMissions[rules.AlienMissions.GetRequired("MISSION_SCOUT")].Value;

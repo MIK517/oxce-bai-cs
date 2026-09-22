@@ -170,8 +170,7 @@ internal sealed partial class CampaignWorld
         var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
         if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
         var wave = missionRule.Waves[waveIndex];
-        if (wave.TrajectoryId != ufo.TrajectoryId || wave.Objective || wave.ObjectiveOnTheLandingSite ||
-            wave.ObjectiveOnXcomBase)
+        if (wave.Objective || wave.ObjectiveOnTheLandingSite || wave.ObjectiveOnXcomBase)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         _ = WorldGeometry.MissionAreas(region, trajectory.Zone(nextWaypoint));
@@ -185,7 +184,10 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var nextWaypoint = ufo.TrajectoryPoint + 1;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        var nextPosition = WorldGeometry.RandomPoint(region, trajectory.Zone(nextWaypoint), -1, campaign.Random);
+        var randomPosition = WorldGeometry.RandomPoint(region, trajectory.Zone(nextWaypoint), -1, campaign.Random);
+        // AlienMission::ufoReachedWaypoint assigns the raw regional point through
+        // Target::setLongitude/setLatitude, which wrap coordinates across the globe.
+        var nextPosition = WorldPosition.Create(randomPosition.Longitude, randomPosition.Latitude);
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         var speed = trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum);
         var speedRadian = WorldGeometry.RadianSpeed(speed);
