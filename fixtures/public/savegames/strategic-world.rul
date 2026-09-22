@@ -27,6 +27,8 @@ regions:
       - [[2, 28, -18, 18, 10]]
       - [[8, 8, 2, 2, 10, CITY_ALPHA], [12, 12, -2, -2, 10, CITY_BETA]]
       - [[22, 28, -8, 8, 11]]
+      # Target::setLongitude wraps this reference-valid range after selection.
+      - [[362, 362, 2, 2, 10, CITY_WRAPPED]]
 alienRaces:
   - id: RACE_A
     members: [SECTOID]
@@ -131,7 +133,7 @@ ufoTrajectories:
     groundTimer: 12
     waypoints:
       - [0, 3, 100]
-      - [1, 2, 80]
+      - [3, 2, 80]
       - [0, 3, 50]
   - id: TRAJ_SITE
     groundTimer: 6
@@ -162,10 +164,6 @@ alienMissions:
     waves:
       - {ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_PATROL, timer: 9000}
       - {ufo: UFO_HUNTER, count: 1, trajectory: TRAJ_PATROL, timer: 12000, hunterKillerPercentage: 100, huntMode: 0, huntBehavior: 1, escort: true, interruptPercentage: 50}
-  - type: MISSION_AIRBORNE
-    objective: 0
-    waves:
-      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_AIRBORNE, timer: 9000}
   # A wave without a UFO or deployment still advances AlienMission's counters.
   - type: MISSION_EMPTY_WAVE
     objective: 0

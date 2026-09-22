@@ -98,18 +98,21 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void AirborneWaypointArrivalRetargetsAndContinuesAfterReload()
+    public void AirborneWaypointArrivalUsesSavedTrajectoryAndContinuesAfterReload()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
-            ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_AIRBORNE",
-            trajectoryId: "TRAJ_AIRBORNE", missionWaveNumber: 0);
+            ufoRuleId: "UFO_SCOUT", speed: 2200, trajectoryId: "TRAJ_AIRBORNE", missionWaveNumber: 0);
         var baseId = campaign.Capture().Bases[0].Id;
         Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
             new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.5, 0.1)).Events));
         var snapshot = campaign.Capture();
         var source = Assert.Single(snapshot.World.Ufos);
         var sourceDestination = source.Destination!;
+        var mission = Assert.Single(snapshot.World.Missions);
+        var currentWave = content.RuntimeRules.AlienMissions[
+            content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value.Waves[source.MissionWaveNumber];
+        Assert.NotEqual(currentWave.TrajectoryId, source.TrajectoryId);
         var craftBefore = Assert.Single(snapshot.Bases[0].Crafts,
             craft => craft.RuleId == "SHIP").Logistics!;
         var arriving = CampaignState.Restore(snapshot with
@@ -126,7 +129,11 @@ public sealed class StrategicWorldUfoTransitTests
         var before = arriving.Capture();
         var expectedRandom = new SplitMix64RandomSource(before.RandomState);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
-        var expectedDestination = WorldGeometry.RandomPoint(region, 1, -1, expectedRandom);
+        var rawDestination = WorldGeometry.RandomPoint(region, 3, -1, expectedRandom);
+        var expectedDestination = WorldPosition.Create(rawDestination.Longitude, rawDestination.Latitude);
+        var expectedSpeedRadian = WorldGeometry.RadianSpeed(1760);
+        var expectedVector = WorldGeometry.SpeedVector(sourceDestination.Position,
+            expectedDestination, expectedSpeedRadian);
 
         var arrival = arriving.Execute(new AdvanceCampaignTime(1));
 
@@ -138,6 +145,12 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Equal(1760, ufo.Speed);
         Assert.Equal(sourceDestination.Position, ufo.Position);
         Assert.Equal(expectedDestination, ufo.Destination!.Position);
+        Assert.True(rawDestination.Longitude >= 2 * Math.PI);
+        Assert.True(ufo.Destination.Longitude < 2 * Math.PI);
+        Assert.Equal(expectedSpeedRadian, ufo.SpeedRadian);
+        Assert.Equal(expectedVector.Longitude, ufo.SpeedLongitude);
+        Assert.Equal(expectedVector.Latitude, ufo.SpeedLatitude);
+        Assert.Equal(WorldAltitudes.Direction(expectedVector.Longitude, expectedVector.Latitude), ufo.Direction);
         Assert.Equal(UfoStatus.Flying, ufo.Status);
         Assert.Equal(0, ufo.Shield);
         Assert.Equal(expectedRandom.State, afterArrival.RandomState);
