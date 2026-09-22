@@ -125,6 +125,14 @@ ufoTrajectories:
       - [1, 2, 80]
       - [0, 0, 50]
       - [0, 1, 100]
+  # Keeps the following waypoint airborne so transit tests isolate the ordinary
+  # regional retargeting path from land-point selection and UFO landing.
+  - id: TRAJ_AIRBORNE
+    groundTimer: 12
+    waypoints:
+      - [0, 3, 100]
+      - [1, 2, 80]
+      - [0, 3, 50]
   - id: TRAJ_SITE
     groundTimer: 6
     waypoints:
@@ -154,6 +162,10 @@ alienMissions:
     waves:
       - {ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_PATROL, timer: 9000}
       - {ufo: UFO_HUNTER, count: 1, trajectory: TRAJ_PATROL, timer: 12000, hunterKillerPercentage: 100, huntMode: 0, huntBehavior: 1, escort: true, interruptPercentage: 50}
+  - type: MISSION_AIRBORNE
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_AIRBORNE, timer: 9000}
   # A wave without a UFO or deployment still advances AlienMission's counters.
   - type: MISSION_EMPTY_WAVE
     objective: 0
