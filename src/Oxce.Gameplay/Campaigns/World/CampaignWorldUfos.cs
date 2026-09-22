@@ -165,17 +165,37 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
         if (missionRule.Objective != RuntimeMissionObjective.Score ||
-            missionRule.OperationType != RuntimeMissionOperationType.Space || mission.MissionSiteZoneArea != -1)
+            missionRule.OperationType != RuntimeMissionOperationType.Space)
             return false;
         var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
         if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
         var wave = missionRule.Waves[waveIndex];
-        if (wave.Objective || wave.ObjectiveOnTheLandingSite || wave.ObjectiveOnXcomBase)
+        var zone = trajectory.Zone(nextWaypoint);
+        // AlienMission::getWaypoint only takes its mission-site path for an objective
+        // wave in the mission's spawn zone. The other objective flags do not affect
+        // ordinary regional waypoint selection.
+        if (mission.MissionSiteZoneArea != -1 && wave.Objective && zone == missionRule.SpawnZone)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        _ = WorldGeometry.MissionAreas(region, trajectory.Zone(nextWaypoint));
+        ValidateWaypointAreas(region, zone);
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         return trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum) >= 0;
+    }
+
+    private static void ValidateWaypointAreas(RuntimeRegionRule region, int zone)
+    {
+        foreach (var area in WorldGeometry.MissionAreas(region, zone))
+        {
+            ValidateWaypointPosition(area.LongitudeMinimum, area.LatitudeMinimum);
+            ValidateWaypointPosition(area.LongitudeMaximum, area.LatitudeMaximum);
+        }
+    }
+
+    private static void ValidateWaypointPosition(double longitude, double latitude)
+    {
+        var position = WorldPosition.Create(longitude, latitude);
+        if (!position.IsNormalized)
+            throw new InvalidDataException("A mission area can generate an invalid UFO waypoint.");
     }
 
     private UfoSnapshot AdvanceAirborneWaypoint(

@@ -102,7 +102,8 @@ public sealed class StrategicWorldUfoTransitTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
-            ufoRuleId: "UFO_SCOUT", speed: 2200, trajectoryId: "TRAJ_AIRBORNE", missionWaveNumber: 0);
+            ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_AIRBORNE_FLAGS",
+            trajectoryId: "TRAJ_AIRBORNE", missionWaveNumber: 0);
         var baseId = campaign.Capture().Bases[0].Id;
         Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
             new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.5, 0.1)).Events));
@@ -110,19 +111,28 @@ public sealed class StrategicWorldUfoTransitTests
         var source = Assert.Single(snapshot.World.Ufos);
         var sourceDestination = source.Destination!;
         var mission = Assert.Single(snapshot.World.Missions);
-        var currentWave = content.RuntimeRules.AlienMissions[
-            content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value.Waves[source.MissionWaveNumber];
+        var missionRule = content.RuntimeRules.AlienMissions[
+            content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var currentWave = missionRule.Waves[source.MissionWaveNumber];
+        var savedTrajectory = content.RuntimeRules.UfoTrajectories[
+            content.RuntimeRules.UfoTrajectories.GetRequired(source.TrajectoryId)].Value;
+        Assert.True(currentWave.Objective);
+        Assert.True(currentWave.ObjectiveOnTheLandingSite);
+        Assert.True(currentWave.ObjectiveOnXcomBase);
         Assert.NotEqual(currentWave.TrajectoryId, source.TrajectoryId);
+        Assert.NotEqual(missionRule.SpawnZone, savedTrajectory.Zone(1));
         var craftBefore = Assert.Single(snapshot.Bases[0].Crafts,
             craft => craft.RuleId == "SHIP").Logistics!;
         var arriving = CampaignState.Restore(snapshot with
         {
             World = snapshot.World with
             {
+                Missions = [mission with { MissionSiteZoneArea = 0 }],
                 Ufos = [source with
                 {
                     Longitude = sourceDestination.Longitude,
                     Latitude = sourceDestination.Latitude,
+                    LandId = 7,
                 }],
             },
         }, content, new SplitMix64RandomSource(69));
@@ -143,6 +153,7 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Equal(1, ufo.TrajectoryPoint);
         Assert.Equal(WorldAltitudes.Low, ufo.Altitude);
         Assert.Equal(1760, ufo.Speed);
+        Assert.Equal(0, ufo.LandId);
         Assert.Equal(sourceDestination.Position, ufo.Position);
         Assert.Equal(expectedDestination, ufo.Destination!.Position);
         Assert.True(rawDestination.Longitude >= 2 * Math.PI);
@@ -167,6 +178,33 @@ public sealed class StrategicWorldUfoTransitTests
 
         Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(movement.Events)).Summary.TickCount);
         Assert.Equal(expectedPosition, Assert.Single(reloaded.Capture().World.Ufos).Position);
+    }
+
+    [Fact]
+    public void ObjectiveWaveArrivalInMissionSpawnZoneRemainsBlocked()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+            ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_AIRBORNE_FLAGS",
+            trajectoryId: "TRAJ_AIRBORNE_SPAWN", missionWaveNumber: 0);
+        var snapshot = campaign.Capture();
+        var mission = Assert.Single(snapshot.World.Missions);
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        var destination = ufo.Destination!;
+        var arriving = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [mission with { MissionSiteZoneArea = 0 }],
+                Ufos = [ufo with
+                {
+                    Longitude = destination.Longitude,
+                    Latitude = destination.Latitude,
+                }],
+            },
+        }, content, new SplitMix64RandomSource(73));
+
+        AssertBlockedWithoutMutation(arriving, "UFO waypoint arrival requires mission simulation.");
     }
 
     [Theory]
@@ -369,6 +407,54 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with { Ufos = [ufo with { MissionId = 999 }] },
         }, content, new SplitMix64RandomSource(52)));
         Assert.Equal("Unknown UFO mission; the save is corrupt.", error.Message);
+    }
+
+    [Fact]
+    public void MissionWaveOutsideRestoredRuleIsRejectedDuringRestore()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        var mission = Assert.Single(snapshot.World.Missions);
+        var waveCount = content.RuntimeRules.AlienMissions[
+            content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value.Waves.Count;
+
+        var error = Assert.Throws<InvalidDataException>(() => CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with { Ufos = [ufo with { MissionWaveNumber = waveCount }] },
+        }, content, new SplitMix64RandomSource(71)));
+
+        Assert.Equal("UFO mission wave is outside its mission rule.", error.Message);
+    }
+
+    [Fact]
+    public void InvalidRegionalWaypointIsRejectedBeforeTimeOrRandomStateChanges()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world-invalid-area.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+            ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_INVALID_AREA",
+            trajectoryId: "TRAJ_INVALID_AREA", missionWaveNumber: 0);
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        var destination = ufo.Destination!;
+        var arriving = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [ufo with
+                {
+                    Longitude = destination.Longitude,
+                    Latitude = destination.Latitude,
+                }],
+            },
+        }, content, new SplitMix64RandomSource(72));
+        var before = arriving.Capture();
+
+        var error = Assert.Throws<InvalidDataException>(() => arriving.Execute(new AdvanceCampaignTime(1)));
+
+        Assert.Equal("A mission area can generate an invalid UFO waypoint.", error.Message);
+        Assert.Equivalent(before, arriving.Capture(), strict: true);
     }
 
     [Fact]

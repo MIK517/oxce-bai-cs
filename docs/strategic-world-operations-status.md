@@ -43,7 +43,9 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   waits until the next tick. This boundary survives save/reload. An ordinary score-mission
   UFO can also reach a nonterminal airborne waypoint: it advances its trajectory point,
   chooses the next regional destination, applies the waypoint altitude and speed, and
-  resumes movement across save/reload. Arrival that needs land-point selection,
+  resumes movement across save/reload. This path follows `AlienMission::getWaypoint`'s
+  exact mission-site predicate, validates every possible regional coordinate before RNG
+  is consumed, and clears a retained landing ID. Arrival that needs land-point selection,
   hunting/escorting, nonzero shields, and half-hour detection remain guarded.
   Ordinary UFOs at trajectory points 0-1 cross ten-minute boundaries: the reference
   base-detection predicate returns before scanning bases, and the other UFO ten-minute
@@ -66,7 +68,8 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   them in the same tick. The public fixture covers repeated and final empty waves.
 - An active flying UFO reaches the unsupported activity-scoring and detection boundary
   after thirty minutes. Its transit cannot yet compose with the half-hour mission countdown.
-  Restored ordinary-campaign UFOs reject a missing mission link before time advances.
+  Restored ordinary-campaign UFOs reject a missing mission link or an out-of-range saved
+  mission wave before time advances.
   The pre-campaign state follows the reference's absent mission-link case. Restore
   normalizes an ordinary UFO destination to an owned waypoint, so the destination
   preflight guard is currently defensive rather than reachable from a restored save.
@@ -83,7 +86,8 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `strategic-world-slow.rul` a barely moving and a motionless craft, and
 `strategic-world-pilots.rul` a craft that needs a pilot,
 `strategic-world-capacity.rul` item limits, and `strategic-world-armor.rul` restored
-crew armor limits;
+crew armor limits, while `strategic-world-invalid-area.rul` isolates malformed
+regional waypoint coordinates;
 `StrategicWorldCraftOperationsTests` exercise command, tick, save, relaunch and
 per-tick allocation behavior. `StrategicWorldUfoTransitTests` and
 `StrategicWorldMissionCountdownTests` cover bounded alien-world time and persistence.

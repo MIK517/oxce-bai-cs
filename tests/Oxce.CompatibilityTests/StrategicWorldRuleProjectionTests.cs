@@ -69,6 +69,10 @@ public sealed class StrategicWorldRuleProjectionTests
         var airborne = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired("TRAJ_AIRBORNE")].Value;
         Assert.Equal(3, airborne.Zone(1));
         Assert.Equal(2, airborne.Altitude(1));
+        var airborneSpawn = rules.UfoTrajectories[
+            rules.UfoTrajectories.GetRequired("TRAJ_AIRBORNE_SPAWN")].Value;
+        Assert.Equal(0, airborneSpawn.Zone(1));
+        Assert.Equal(2, airborneSpawn.Altitude(1));
         Assert.True(rules.UfoTrajectories.TryGet(RuntimeUfoTrajectoryRule.RetaliationAssaultRun, out _));
 
         var scoutMission = rules.AlienMissions[rules.AlienMissions.GetRequired("MISSION_SCOUT")].Value;
@@ -85,6 +89,15 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Equal(10UL, scoutMission.RaceWeights[0].Weights["RACE_A"]);
         Assert.True(scoutMission.Waves[1].Escort);
         Assert.Equal(50, scoutMission.Waves[1].InterruptPercentage);
+
+        var airborneMission = rules.AlienMissions[
+            rules.AlienMissions.GetRequired("MISSION_AIRBORNE_FLAGS")].Value;
+        var airborneWave = Assert.Single(airborneMission.Waves);
+        Assert.Equal(RuntimeMissionObjective.Score, airborneMission.Objective);
+        Assert.Equal(0, airborneMission.SpawnZone);
+        Assert.True(airborneWave.Objective);
+        Assert.True(airborneWave.ObjectiveOnTheLandingSite);
+        Assert.True(airborneWave.ObjectiveOnXcomBase);
 
         var siteMission = rules.AlienMissions[rules.AlienMissions.GetRequired("MISSION_SITE")].Value;
         Assert.Equal(RuntimeMissionObjective.Site, siteMission.Objective);

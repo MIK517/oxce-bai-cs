@@ -135,6 +135,12 @@ ufoTrajectories:
       - [0, 3, 100]
       - [3, 2, 80]
       - [0, 3, 50]
+  - id: TRAJ_AIRBORNE_SPAWN
+    groundTimer: 12
+    waypoints:
+      - [0, 3, 100]
+      - [0, 2, 80]
+      - [0, 3, 50]
   - id: TRAJ_SITE
     groundTimer: 6
     waypoints:
@@ -164,6 +170,13 @@ alienMissions:
     waves:
       - {ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_PATROL, timer: 9000}
       - {ufo: UFO_HUNTER, count: 1, trajectory: TRAJ_PATROL, timer: 12000, hunterKillerPercentage: 100, huntMode: 0, huntBehavior: 1, escort: true, interruptPercentage: 50}
+  # All objective flags are deliberately present. Outside the mission's spawn
+  # zone, AlienMission::getWaypoint still chooses an ordinary regional point.
+  - type: MISSION_AIRBORNE_FLAGS
+    objective: 0
+    spawnZone: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
   # A wave without a UFO or deployment still advances AlienMission's counters.
   - type: MISSION_EMPTY_WAVE
     objective: 0
