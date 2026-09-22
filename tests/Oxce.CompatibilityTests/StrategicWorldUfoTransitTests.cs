@@ -97,6 +97,65 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Equal(before.RandomState, restored.Capture().RandomState);
     }
 
+    [Fact]
+    public void AirborneWaypointArrivalRetargetsAndContinuesAfterReload()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+            ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_AIRBORNE",
+            trajectoryId: "TRAJ_AIRBORNE", missionWaveNumber: 0);
+        var baseId = campaign.Capture().Bases[0].Id;
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
+            new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.5, 0.1)).Events));
+        var snapshot = campaign.Capture();
+        var source = Assert.Single(snapshot.World.Ufos);
+        var sourceDestination = source.Destination!;
+        var craftBefore = Assert.Single(snapshot.Bases[0].Crafts,
+            craft => craft.RuleId == "SHIP").Logistics!;
+        var arriving = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [source with
+                {
+                    Longitude = sourceDestination.Longitude,
+                    Latitude = sourceDestination.Latitude,
+                }],
+            },
+        }, content, new SplitMix64RandomSource(69));
+        var before = arriving.Capture();
+        var expectedRandom = new SplitMix64RandomSource(before.RandomState);
+        var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
+        var expectedDestination = WorldGeometry.RandomPoint(region, 1, -1, expectedRandom);
+
+        var arrival = arriving.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(arrival.Events)).Summary.TickCount);
+        var afterArrival = arriving.Capture();
+        var ufo = Assert.Single(afterArrival.World.Ufos);
+        Assert.Equal(1, ufo.TrajectoryPoint);
+        Assert.Equal(WorldAltitudes.Low, ufo.Altitude);
+        Assert.Equal(1760, ufo.Speed);
+        Assert.Equal(sourceDestination.Position, ufo.Position);
+        Assert.Equal(expectedDestination, ufo.Destination!.Position);
+        Assert.Equal(UfoStatus.Flying, ufo.Status);
+        Assert.Equal(0, ufo.Shield);
+        Assert.Equal(expectedRandom.State, afterArrival.RandomState);
+        Assert.Equal(before.World.Missions, afterArrival.World.Missions);
+        Assert.Equal(craftBefore.Takeoff - 1, Assert.Single(afterArrival.Bases[0].Crafts,
+            craft => craft.RuleId == "SHIP").Logistics!.Takeoff);
+
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(afterArrival),
+            content, seed: 70, name: "ufo-airborne-waypoint.sav").Campaign;
+        var expectedPosition = WorldGeometry.Move(ufo.Position, expectedDestination,
+            WorldGeometry.RadianSpeed(ufo.Speed));
+
+        var movement = reloaded.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(movement.Events)).Summary.TickCount);
+        Assert.Equal(expectedPosition, Assert.Single(reloaded.Capture().World.Ufos).Position);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -379,18 +438,20 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     private static CampaignState CreateTransitCampaign(RuntimeContent content, CampaignTime time,
-        string ufoRuleId = "UFO_HUNTER", int speed = 3200)
+        string ufoRuleId = "UFO_HUNTER", int speed = 3200, string missionRuleId = "MISSION_SCOUT",
+        string trajectoryId = "TRAJ_PATROL", int missionWaveNumber = 1)
     {
         var campaign = TestFixtures.CreateLogisticsCampaign(content, "UFO transit", CampaignDifficulty.Veteran);
         campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
         var snapshot = campaign.Capture();
-        var mission = new AlienMissionSnapshot(4, "MISSION_SCOUT", "REGION", "RACE_A", 2, 0, 1500, 1, -1);
-        var ufo = new UfoSnapshot(9, ufoRuleId, 4, "TRAJ_PATROL", 0,
+        var mission = new AlienMissionSnapshot(
+            4, missionRuleId, "REGION", "RACE_A", missionWaveNumber + 1, 0, 1500, 1, -1);
+        var ufo = new UfoSnapshot(9, ufoRuleId, 4, trajectoryId, 0,
             0.4, 0.2, UfoStatus.Flying, "STR_HIGH_UC")
         {
             Id = 3,
             Speed = speed,
-            MissionWaveNumber = 1,
+            MissionWaveNumber = missionWaveNumber,
             Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
                 WorldTargetReference.WaypointType, 0, 1.0, 0.6),
         };

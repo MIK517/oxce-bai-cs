@@ -40,7 +40,10 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   at the last trajectory waypoint, or at any waypoint on an interrupted mission, marks
   the UFO destroyed and clears detection. The reference returns from the five-second
   handler at that point: later UFOs and craft do not move, and destroyed UFO cleanup
-  waits until the next tick. This boundary survives save/reload. Nonterminal arrival,
+  waits until the next tick. This boundary survives save/reload. An ordinary score-mission
+  UFO can also reach a nonterminal airborne waypoint: it advances its trajectory point,
+  chooses the next regional destination, applies the waypoint altitude and speed, and
+  resumes movement across save/reload. Arrival that needs land-point selection,
   hunting/escorting, nonzero shields, and half-hour detection remain guarded.
   Ordinary UFOs at trajectory points 0-1 cross ten-minute boundaries: the reference
   base-detection predicate returns before scanning bases, and the other UFO ten-minute
@@ -73,7 +76,7 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
 `time30Minutes` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
 `calculateSpeed`, `think`), `src/Savegame/AlienMission.cpp` (`think`,
-`ufoReachedWaypoint`), and
+`ufoReachedWaypoint`, `getWaypoint`), and
 `src/Geoscape/GeoscapeCraftState.cpp`
 (`btnBaseClick`, `btnPatrolClick`, `ConfirmDestinationState::btnOkClick`). The public
 `strategic-world.rul` fixture supplies a moving craft and automatic patrol properties,
@@ -90,7 +93,7 @@ extracted C++ traces.
 
 ## Still required for branch 4b
 
-Mission/arc/event script projection and selection, UFO/deployment wave spawning, nonterminal UFO
+Mission/arc/event script projection and selection, UFO/deployment wave spawning, remaining UFO
 waypoint transitions and landing, UFO/site/base lifecycle, detection, craft pursuit,
 navigable globe controls, event-site scripting,
 multi-day/month-boundary scenarios, and the corresponding compatibility fixtures and

@@ -1,3 +1,5 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>
@@ -91,7 +93,8 @@ internal sealed partial class CampaignWorld
                 if (mission is null) return "UFO mission link requires world simulation.";
                 var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
                     campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
-                if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
+                if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
+                    !CanAdvanceAirborneWaypoint(ufo, mission, trajectory))
                     return "UFO waypoint arrival requires mission simulation.";
             }
         }
@@ -111,6 +114,16 @@ internal sealed partial class CampaignWorld
             var moved = WorldGeometry.Move(ufo.Position, destination.Position, speedRadian, vector);
             if (!(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
             {
+                var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId)!;
+                var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
+                    campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+                if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
+                {
+                    if (!CanAdvanceAirborneWaypoint(ufo, mission, trajectory))
+                        throw new InvalidOperationException("UFO arrival changed after world preflight.");
+                    _ufos[index] = AdvanceAirborneWaypoint(ufo, mission, trajectory, moved);
+                    continue;
+                }
                 // Ufo::think stops at the waypoint; AlienMission::ufoReachedWaypoint
                 // destroys an interrupted UFO or one at the trajectory's last point.
                 _ufos[index] = ufo with
@@ -139,6 +152,67 @@ internal sealed partial class CampaignWorld
                 Shield = ufo.Shield == -1 ? 0 : ufo.Shield,
             };
         }
+    }
+
+    private bool CanAdvanceAirborneWaypoint(
+        UfoSnapshot ufo, AlienMissionSnapshot mission, RuntimeUfoTrajectoryRule trajectory)
+    {
+        var nextWaypoint = ufo.TrajectoryPoint + 1;
+        var altitude = trajectory.Altitude(nextWaypoint);
+        if (altitude <= 0 || altitude >= WorldAltitudes.All.Count ||
+            nextWaypoint + 1 < trajectory.Waypoints.Count && trajectory.Altitude(nextWaypoint + 1) == 0)
+            return false;
+        var rules = campaign.Content.RuntimeRules;
+        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        if (missionRule.Objective != RuntimeMissionObjective.Score ||
+            missionRule.OperationType != RuntimeMissionOperationType.Space || mission.MissionSiteZoneArea != -1)
+            return false;
+        var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
+        if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
+        var wave = missionRule.Waves[waveIndex];
+        if (wave.TrajectoryId != ufo.TrajectoryId || wave.Objective || wave.ObjectiveOnTheLandingSite ||
+            wave.ObjectiveOnXcomBase)
+            return false;
+        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        _ = WorldGeometry.MissionAreas(region, trajectory.Zone(nextWaypoint));
+        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        return trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum) >= 0;
+    }
+
+    private UfoSnapshot AdvanceAirborneWaypoint(
+        UfoSnapshot ufo, AlienMissionSnapshot mission, RuntimeUfoTrajectoryRule trajectory, WorldPosition position)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var nextWaypoint = ufo.TrajectoryPoint + 1;
+        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var nextPosition = WorldGeometry.RandomPoint(region, trajectory.Zone(nextWaypoint), -1, campaign.Random);
+        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        var speed = trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum);
+        var speedRadian = WorldGeometry.RadianSpeed(speed);
+        var vector = WorldGeometry.SpeedVector(position, nextPosition, speedRadian);
+        return ufo with
+        {
+            TrajectoryPoint = nextWaypoint,
+            Longitude = position.Longitude,
+            Latitude = position.Latitude,
+            Altitude = WorldAltitudes.All[trajectory.Altitude(nextWaypoint)],
+            LandId = 0,
+            Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
+                WorldTargetReference.WaypointType, 0, nextPosition.Longitude, nextPosition.Latitude),
+            Speed = speed,
+            SpeedRadian = speedRadian,
+            SpeedLongitude = vector.Longitude,
+            SpeedLatitude = vector.Latitude,
+            Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
+            Shield = ufo.Shield == -1 ? 0 : ufo.Shield,
+        };
+    }
+
+    private static int MissionWaveIndex(
+        UfoSnapshot ufo, AlienMissionSnapshot mission, RuntimeAlienMissionRule missionRule)
+    {
+        var wave = ufo.MissionWaveNumber > -1 ? ufo.MissionWaveNumber : mission.NextWave - 1;
+        return wave < 0 ? missionRule.Waves.Count - 1 : wave;
     }
 
     private void RemoveDestroyedUfos(CampaignState.TimeEffects _)
