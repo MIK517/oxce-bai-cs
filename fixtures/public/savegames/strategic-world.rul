@@ -206,7 +206,7 @@ alienMissions:
   - type: MISSION_SPAWN_SCORED
     objective: 0
     waves:
-      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_AIRBORNE, timer: 9000}
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
   # A wave without a UFO or deployment still advances AlienMission's counters.
   - type: MISSION_EMPTY_WAVE
     objective: 0
