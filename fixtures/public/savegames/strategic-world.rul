@@ -7,6 +7,12 @@ crafts:
     refuelRate: 100
     autoPatrol: true
     patrolWithoutFuel: true
+  - type: SHIP_SLOW_REFUEL
+    speedMax: 6000
+    fuelMax: 300
+    refuelRate: 100
+    weapons: 2
+    autoPatrol: true
 facilities:
   - type: RADAR_TEST
     mapName: LOGISTICS
@@ -254,6 +260,10 @@ alienMissions:
     interruptResearch: UNLOCK
     raceWeights:
       0: {RACE_A: 1}
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 3000}
+  - type: MISSION_INSTANT_RETALIATION
+    objective: 6
     waves:
       - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 3000}
   - type: MISSION_SUPPLY

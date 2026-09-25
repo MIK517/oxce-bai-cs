@@ -70,6 +70,8 @@ waypoint flight, mission countdowns, activity scoring and base radar detection. 
   it through completed base radar, including a radar that finished construction earlier
   in the same daily boundary. First contact receives its reference visible marker ID and
   pauses time for an alert. Tracked contacts lose detection when coverage disappears.
+  Instant-retaliation UFOs skip this pass. A grounded auto-patrol flag does not count
+  as craft radar; preflight checks whether refuelling will relaunch the craft first.
   Preflight checks activity and marker-ID capacity before mission spawning mutates state.
   Detection scripts, airborne craft radar, and radar values outside the bounded range
   remain guarded.
