@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 46 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 47 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 89 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 46 files.
+`src/Oxce.Gameplay` - 47 files.
 
 ### `Oxce.Gameplay`
 
@@ -309,6 +309,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `PlaceStartingBase` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `ICampaignEvent` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `CampaignActionBlocked` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
+- `UfoContactDetected` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - A newly detected UFO contact; the reference pauses for its alert.
 - `CampaignTimeTriggerSummary` (record struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `CampaignTimeTriggerSequence` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `CampaignTimeTriggerSequence.Enumerator` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)

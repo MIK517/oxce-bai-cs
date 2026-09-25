@@ -15,6 +15,9 @@ public interface ICampaignEvent;
 
 public sealed record CampaignActionBlocked(string Reason) : ICampaignEvent;
 
+/// <summary>A newly detected UFO contact; the reference pauses for its alert.</summary>
+public sealed record UfoContactDetected(int UniqueId, bool Hyperwave) : ICampaignEvent;
+
 public readonly record struct CampaignTimeTriggerSummary(
     int TickCount,
     int FiveSeconds,

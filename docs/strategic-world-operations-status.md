@@ -1,7 +1,7 @@
 # Phase 6 branch 4b: operations in progress
 
 The `codex/strategic-world-operations` branch implements bounded craft and UFO
-waypoint flight plus existing-mission countdowns. This is a checkpoint, not branch
+waypoint flight, mission countdowns, activity scoring and base radar detection. This is a checkpoint, not branch
 4b acceptance.
 
 ## Implemented
@@ -47,7 +47,7 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   resumes movement across save/reload. This path follows `AlienMission::getWaypoint`'s
   exact mission-site predicate, validates every possible regional coordinate before RNG
   is consumed, and clears a retained landing ID. Arrival that needs land-point selection,
-  hunting/escorting, nonzero shields, and half-hour detection remain guarded.
+  hunting/escorting and nonzero shields remain guarded.
   Ordinary UFOs at trajectory points 0-1 cross ten-minute boundaries: the reference
   base-detection predicate returns before scanning bases, and the other UFO ten-minute
   handlers have no effect without hunter-killers or alien bases. Later trajectory points
@@ -62,20 +62,25 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   live count after craft handling, and completed missions expire on the next half-hour
   boundary. The producing tick stops before an unsupported wave spawn. Countdown state
   survives save/reload; retaliation mission cleanup stays guarded until its base link is owned.
-- A detection-neutral score mission can spawn an ordinary, zero-shield airborne UFO at
+- A score mission can spawn an ordinary, zero-shield airborne UFO at
   a half-hour boundary between fixed, separated regional points. The mission live count,
   wave counter, next timer and unique-ID counter advance together; the new UFO then moves
-  in that tick's five-second handler and continues after save/reload. Preflight requires
-  zero-score UFOs without detection scripts and rejects completed or immediately completing
-  positive-chance radars, active craft and auto-patrol craft, because reference scoring and
-  detection run later in the same half-hour handler.
+  in that tick's five-second handler and continues after save/reload. The subsequent
+  half-hour handler scores the UFO in its first matching region and country and detects
+  it through completed base radar, including a radar that finished construction earlier
+  in the same daily boundary. First contact receives its reference visible marker ID and
+  pauses time for an alert. Tracked contacts lose detection when coverage disappears.
+  Preflight checks activity and marker-ID capacity before mission spawning mutates state.
+  Detection scripts, airborne craft radar, and radar values outside the bounded range
+  remain guarded.
 - A score mission with a wave that creates no UFO or site advances its wave counter and
   rolls the next wave timer at the half-hour boundary. A final empty wave removes the
   completed mission without consuming RNG. These transitions survive save/reload;
   zero-timer follow-up waves remain guarded because the reference recursively processes
   them in the same tick. The public fixture covers repeated and final empty waves.
-- An active flying UFO reaches the unsupported activity-scoring and detection boundary
-  after thirty minutes. Its transit cannot yet compose with the half-hour mission countdown.
+- Ordinary flying UFO transit now composes with half-hour mission countdowns, activity
+  scoring and base radar detection. Later trajectory points still stop at their ten-minute
+  base-retargeting boundary, and craft radar and detection scripts remain pending.
   Restored ordinary-campaign UFOs reject a missing mission link or an out-of-range saved
   mission wave before time advances.
   The pre-campaign state follows the reference's absent mission-link case. Restore
@@ -87,7 +92,9 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
 `time30Minutes` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
 `calculateSpeed`, `think`), `src/Savegame/AlienMission.cpp` (`think`,
-`spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`), `src/Savegame/Base.cpp` (`detect`), and
+`spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`), `src/Savegame/Base.cpp` (`detect`),
+`src/Geoscape/UfoDetectedState.cpp` (marker identity),
+`src/Savegame/Region.cpp`/`Country.cpp` (activity histories), and
 `src/Geoscape/GeoscapeCraftState.cpp`
 (`btnBaseClick`, `btnPatrolClick`, `ConfirmDestinationState::btnOkClick`). The public
 `strategic-world.rul` fixture supplies a moving craft and automatic patrol properties,
@@ -99,14 +106,15 @@ regional waypoint coordinates;
 `StrategicWorldCraftOperationsTests` exercise command, tick, save, relaunch and
 per-tick allocation behavior. `StrategicWorldUfoTransitTests` and
 `StrategicWorldMissionCountdownTests` cover bounded alien-world time and persistence.
-The existing `strategic-world` C++ oracle covers movement and fuel arithmetic. The
-command/timing and terminal-arrival scenarios are reference-shaped tests rather than
-extracted C++ traces.
+The existing `strategic-world` C++ oracle covers movement, fuel and detection arithmetic.
+The command/timing, terminal-arrival and half-hour integration scenarios are
+reference-shaped tests rather than extracted C++ traces.
 
 ## Still required for branch 4b
 
-Mission/arc/event script projection and selection, UFO/deployment wave spawning, remaining UFO
-waypoint transitions and landing, UFO/site/base lifecycle, detection, craft pursuit,
+Mission/arc/event script projection and selection, general UFO/deployment wave spawning,
+remaining UFO waypoint transitions and landing, UFO/site/base lifecycle, craft radar,
+detection scripts and ignored-contact alerts, craft pursuit,
 navigable globe controls, event-site scripting,
 multi-day/month-boundary scenarios, and the corresponding compatibility fixtures and
 allocation checks. Unsupported live alien world transitions remain guarded, as does the monthly campaign

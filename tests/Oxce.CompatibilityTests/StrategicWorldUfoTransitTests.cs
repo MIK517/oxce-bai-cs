@@ -39,7 +39,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void ArrivalAndHalfHourDetectionBoundariesStopBeforeMutation()
+    public void UnsupportedArrivalStopsWhileOrdinaryHalfHourTransitScoresActivity()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
@@ -58,7 +58,15 @@ public sealed class StrategicWorldUfoTransitTests
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
         }, content, new SplitMix64RandomSource(43));
-        AssertBlockedWithoutMutation(boundary, "UFO detection and retargeting require world simulation.");
+        var before = boundary.Capture();
+
+        var elapsed = boundary.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+        Assert.Equal(0, Assert.Single(boundary.Capture().World.Ufos).TrajectoryPoint);
+        Assert.NotEqual(ufo.Position, Assert.Single(boundary.Capture().World.Ufos).Position);
+        Assert.Equal(before.World.Missions[0].SpawnCountdown,
+            Assert.Single(boundary.Capture().World.Missions).SpawnCountdown);
     }
 
     [Fact]
@@ -95,6 +103,37 @@ public sealed class StrategicWorldUfoTransitTests
         var step = WorldGeometry.RadianSpeed(ufo.Speed);
         Assert.InRange(distanceAdvanced, 119 * step, 121 * step);
         Assert.Equal(before.RandomState, restored.Capture().RandomState);
+    }
+
+    [Fact]
+    public void PreviouslyDetectedOrdinaryUfoLosesContactAndScoresAtHalfHour()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            ufoRuleId: "UFO_SCOUT", speed: 2200);
+        var snapshot = campaign.Capture();
+        var ufo = Assert.Single(snapshot.World.Ufos);
+        campaign = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [ufo with { Detected = true, HyperDetected = true, Id = 7 }],
+            },
+        }, content, new SplitMix64RandomSource(81));
+        var before = campaign.Capture();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        var after = campaign.Capture();
+        var moved = Assert.Single(after.World.Ufos);
+        Assert.False(moved.Detected);
+        Assert.False(moved.HyperDetected);
+        Assert.Equal(7, moved.Id);
+        Assert.Equal(3, Assert.Single(after.Regions).ActivityAlien[^1] -
+            Assert.Single(before.Regions).ActivityAlien[^1]);
+        Assert.Equal(3, Assert.Single(after.Countries).ActivityAlien[^1] -
+            Assert.Single(before.Countries).ActivityAlien[^1]);
     }
 
     [Fact]

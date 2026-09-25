@@ -33,7 +33,7 @@ internal sealed partial class CampaignWorld
                 continue;
             if (mission.SpawnCountdown > 30) continue;
             if (CanAdvanceNoObjectWave(mission, rule)) continue;
-            if (CanSpawnOrdinaryUfoWave(mission, rule, highest))
+            if (CanSpawnOrdinaryUfoWave(mission, rule))
             {
                 ufoSpawns++;
                 continue;
@@ -109,8 +109,7 @@ internal sealed partial class CampaignWorld
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
-    private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds)
+    private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         if (rule.Objective != RuntimeMissionObjective.Score ||
             rule.OperationType != RuntimeMissionOperationType.Space || mission.LiveUfos == int.MaxValue)
@@ -131,12 +130,10 @@ internal sealed partial class CampaignWorld
             return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
-        // GeoscapeState::time30Minutes scores and detects a newly spawned UFO later
-        // in the same handler. Until that slice exists, admit only cases where those
-        // passes cannot change campaign state.
-        if (ufoRule.MissionScore != 0 || ufoRule.Scripts.Count != 0 ||
+        // The half-hour UFO handler scores and detects this ship after spawning.
+        if (ufoRule.Scripts.Count != 0 ||
             stats.ShieldCapacity != 0 || speed < 0 ||
-            !SpawnBoundaryHasNoDetectionSources(rules, highest))
+            !SpawnBoundaryHasNoActiveCrafts())
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position) ||
@@ -170,18 +167,13 @@ internal sealed partial class CampaignWorld
         return true;
     }
 
-    private bool SpawnBoundaryHasNoDetectionSources(RuntimeRuleCatalog rules, CampaignTimeTrigger highest)
+    private bool SpawnBoundaryHasNoActiveCrafts()
     {
         foreach (var owner in campaign.BaseStates)
         {
             if (owner.Crafts.Any(static craft =>
                     craft.Logistics is { Status: "STR_OUT" } or { IsAutoPatrolling: true }))
                 return false;
-            foreach (var facility in owner.Facilities)
-                if ((facility.BuildTime == 0 ||
-                        highest >= CampaignTimeTrigger.OneDay && facility.BuildTime == 1) &&
-                    rules.Facilities[facility.Rule].Value.RadarChance > 0)
-                    return false;
         }
         return true;
     }

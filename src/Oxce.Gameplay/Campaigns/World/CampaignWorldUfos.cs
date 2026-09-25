@@ -69,8 +69,7 @@ internal sealed partial class CampaignWorld
                 return "UFO state requires world simulation.";
             // At points 0-1 DetectXCOMBase returns before scanning bases. Without a
             // hunter-killer or alien base, the remaining ten-minute UFO handlers do no work.
-            if (highest >= CampaignTimeTrigger.ThirtyMinutes ||
-                highest >= CampaignTimeTrigger.TenMinutes && ufo.TrajectoryPoint > 1)
+            if (highest >= CampaignTimeTrigger.TenMinutes && ufo.TrajectoryPoint > 1)
                 return "UFO detection and retargeting require world simulation.";
             // Ufo::load and AlienMission::spawnUfo own this waypoint; unlike a player
             // waypoint, it is never assigned a STR_WAY_POINT identity.

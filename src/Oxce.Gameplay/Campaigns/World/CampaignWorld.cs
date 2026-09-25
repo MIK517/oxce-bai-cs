@@ -32,6 +32,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest) => LiveWorldReason(highest));
         RegisterUfoOperations(registry);
         RegisterMissionOperations(registry);
+        RegisterUfoDetection(registry);
         RegisterCraftOperations(registry);
     }
 
@@ -387,6 +388,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest);
         if (missionReason is not null) return missionReason;
+        var detectionReason = UfoHalfHourReason(highest);
+        if (detectionReason is not null) return detectionReason;
         if (_sites.Count != 0) return "Mission site expiry requires world simulation.";
         if (_alienBases.Count != 0) return "Alien base activity requires world simulation.";
         if (_events.Count != 0) return "Strategic event scheduling requires world simulation.";
