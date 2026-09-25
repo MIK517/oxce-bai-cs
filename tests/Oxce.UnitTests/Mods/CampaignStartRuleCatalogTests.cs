@@ -50,6 +50,9 @@ public sealed class CampaignStartRuleCatalogTests
                 requires: !add [RESEARCH_B]
                 spriteShape: 5
                 mapName: MAP_A
+                radarRange: 1000
+                radarChance: 75
+                hyper: true
                 buildCostItems: {ITEM_A: {refund: 1}, ITEM_B: {build: 0, refund: 0}}
                 storageTiles: [[-1, -1, -1]]
               - delete: DELETED
@@ -92,6 +95,9 @@ public sealed class CampaignStartRuleCatalogTests
         Assert.Equal(new FacilityItemCost(2, 1), facility.BuildCostItems["ITEM_A"]);
         Assert.False(facility.BuildCostItems.ContainsKey("ITEM_B"));
         Assert.Equal(5, facility.SpriteShape.Index);
+        Assert.Equal(1000, facility.RadarRange);
+        Assert.Equal(75, facility.RadarChance);
+        Assert.True(facility.HyperWave);
         Assert.Equal(300, content.Facilities.Rules[1].Value.ListOrder);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.UnconsumedRuleProperty);
     }
