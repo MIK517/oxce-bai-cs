@@ -36,8 +36,12 @@ internal sealed partial class CampaignWorld
         foreach (var ufo in _ufos)
         {
             if (ufo.Status != UfoStatus.Flying) continue;
-            if (!_missions.Exists(mission => mission.Id == ufo.MissionId))
+            var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId);
+            if (mission is null)
                 return "UFO mission link requires world simulation.";
+            // GeoscapeState::time30Minutes skips instant retaliation UFOs before
+            // activity, detection, and hidden-contact accounting.
+            if (IsInstantRetaliation(mission)) continue;
             var reason = CheckHalfHourUfo(ufo.RuleId, ufo.Position, ufo.Altitude,
                 regionTotals, countryTotals, highest, out var canDetect);
             if (reason is not null) return reason;
@@ -91,7 +95,7 @@ internal sealed partial class CampaignWorld
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
         if (ufoRule.Scripts.Count != 0)
             return "UFO detection scripts require world simulation.";
-        if (!SpawnBoundaryHasNoActiveCrafts())
+        if (!SpawnBoundaryHasNoCraftDetectionSources())
             return "Craft UFO detection requires world simulation.";
         if (ufoRule.DefaultVisibility is < -100 or > 100)
             return "UFO detection visibility is outside the supported range.";
@@ -147,6 +151,9 @@ internal sealed partial class CampaignWorld
         {
             var ufo = _ufos[index];
             if (ufo.Status != UfoStatus.Flying) continue;
+            var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId) ??
+                throw new InvalidOperationException("UFO mission link changed after world preflight.");
+            if (IsInstantRetaliation(mission)) continue;
             var rules = campaign.Content.RuntimeRules;
             var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
             ScoreUfoActivity(ufo.Position, ufoRule.MissionScore, rules);
@@ -206,4 +213,11 @@ internal sealed partial class CampaignWorld
     }
 
     private bool Percent(int chance) => chance >= 100 || chance > 0 && campaign.Random.NextInclusive(0, 99) < chance;
+
+    private bool IsInstantRetaliation(AlienMissionSnapshot mission)
+    {
+        var rules = campaign.Content.RuntimeRules.AlienMissions;
+        return rules[rules.GetRequired(mission.RuleId)].Value.Objective ==
+            RuntimeMissionObjective.InstantRetaliation;
+    }
 }

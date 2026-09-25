@@ -137,6 +137,109 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
+    public void InstantRetaliationUfoSkipsHalfHourScoringAndDetection()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            ufoRuleId: "UFO_SCOUT", speed: 2200,
+            missionRuleId: "MISSION_INSTANT_RETALIATION", missionWaveNumber: 0);
+        var snapshot = campaign.Capture();
+        var owner = Assert.Single(snapshot.Bases);
+        campaign = CampaignState.Restore(snapshot with
+        {
+            Bases = [owner with
+            {
+                Facilities = [.. owner.Facilities,
+                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
+            }],
+        }, content, new SplitMix64RandomSource(83));
+        var before = campaign.Capture();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        var after = campaign.Capture();
+        Assert.NotEqual(Assert.Single(before.World.Ufos).Position, Assert.Single(after.World.Ufos).Position);
+        Assert.False(Assert.Single(after.World.Ufos).Detected);
+        Assert.Equal(Assert.Single(before.Regions).ActivityAlien, Assert.Single(after.Regions).ActivityAlien);
+        Assert.Equal(Assert.Single(before.Countries).ActivityAlien, Assert.Single(after.Countries).ActivityAlien);
+    }
+
+    [Theory]
+    [InlineData("STR_READY")]
+    [InlineData("STR_REFUELLING")]
+    public void GroundedAutoPatrolFlagDoesNotBlockUfoDetection(string status)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            ufoRuleId: "UFO_SCOUT", speed: 2200);
+        var snapshot = campaign.Capture();
+        var owner = Assert.Single(snapshot.Bases);
+        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
+        var craftRuleId = status == "STR_REFUELLING" ? "SHIP_SLOW_REFUEL" : "SHIP";
+        var flagged = craft with
+        {
+            RuleId = craftRuleId,
+            Logistics = craft.Logistics! with
+            {
+                Status = status,
+                Fuel = status == "STR_REFUELLING" ? 0 : craft.Logistics!.Fuel,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.3,
+                AutoPatrolLatitude = 0.1,
+            },
+        };
+        campaign = CampaignState.Restore(snapshot with
+        {
+            Bases = [owner with
+            {
+                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? flagged : candidate)],
+                Facilities = [.. owner.Facilities,
+                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
+            }],
+        }, content, new SplitMix64RandomSource(84));
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: true });
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Assert.NotEqual("STR_OUT", Assert.Single(campaign.Capture().Bases[0].Crafts,
+            candidate => candidate.RuleId == craftRuleId).Logistics!.Status);
+    }
+
+    [Fact]
+    public void ImminentAutoPatrolRelaunchStillGatesCraftDetection()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            ufoRuleId: "UFO_SCOUT", speed: 2200);
+        var snapshot = campaign.Capture();
+        var owner = Assert.Single(snapshot.Bases);
+        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
+        var flagged = craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 0,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.3,
+                AutoPatrolLatitude = 0.1,
+            },
+        };
+        campaign = CampaignState.Restore(snapshot with
+        {
+            Bases = [owner with
+            {
+                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? flagged : candidate)],
+            }],
+        }, content, new SplitMix64RandomSource(85));
+
+        AssertBlockedWithoutMutation(campaign, "Craft UFO detection requires world simulation.");
+    }
+
+    [Fact]
     public void AirborneWaypointArrivalUsesSavedTrajectoryAndContinuesAfterReload()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
