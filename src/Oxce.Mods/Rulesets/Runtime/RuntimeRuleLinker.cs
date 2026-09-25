@@ -156,6 +156,9 @@ public static class RuntimeRuleLinker
                 ForbiddenBaseFunctions = rule.Value.ForbiddenBaseFunctions,
                 HangarType = rule.Value.HangarType,
                 ProvidedBaseFunctions = rule.Value.ProvidedBaseFunctions,
+                RadarRange = rule.Value.RadarRange,
+                RadarChance = rule.Value.RadarChance,
+                Hyperwave = rule.Value.HyperWave,
             });
 
         cancellationToken.ThrowIfCancellationRequested();

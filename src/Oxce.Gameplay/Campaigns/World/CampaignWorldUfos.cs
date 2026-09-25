@@ -13,8 +13,8 @@ internal sealed partial class CampaignWorld
     private bool _ufoArrivalEndedTick;
     private readonly HashSet<int> _ufosWithShieldCapacity = [];
 
-    // Current time handlers neither create UFOs nor change a mission's race. Future
-    // handlers that do either must update this restore-time capability index.
+    // The bounded wave handler only creates zero-capacity UFOs. Future handlers that
+    // create shielded UFOs or change a mission's race must update this capability index.
     private void CacheUfoShieldCapabilities()
     {
         _ufosWithShieldCapacity.Clear();

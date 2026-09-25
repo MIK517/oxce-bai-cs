@@ -7,6 +7,11 @@ crafts:
     refuelRate: 100
     autoPatrol: true
     patrolWithoutFuel: true
+facilities:
+  - type: RADAR_TEST
+    mapName: LOGISTICS
+    radarRange: 1000
+    radarChance: 100
 globe:
   polygons:
     - [10, 0, -10, 20, -10, 20, 10, 0, 10]
@@ -29,6 +34,7 @@ regions:
       - [[22, 28, -8, 8, 11]]
       # Target::setLongitude wraps this reference-valid range after selection.
       - [[362, 362, 2, 2, 10, CITY_WRAPPED]]
+      - [[10, 10, 8, 8, 10, CITY_SPAWN]]
 alienRaces:
   - id: RACE_A
     members: [SECTOID]
@@ -102,6 +108,14 @@ ufos:
       RACE_B:
         speedMax: 300
         damageMax: 10
+  # Detection-neutral UFO for the bounded wave-spawn slice. A half-hour spawn
+  # is scored and detected later in the same reference handler.
+  - type: UFO_SPAWN
+    size: STR_SMALL
+    missionScore: 0
+    speedMax: 2200
+    damageMax: 50
+    shieldCapacity: 0
   - type: UFO_HUNTER
     size: STR_LARGE
     visibility: 22
@@ -141,6 +155,14 @@ ufoTrajectories:
       - [0, 3, 100]
       - [0, 2, 80]
       - [0, 3, 50]
+  # Fixed, separated initial points let preflight prove that a newly spawned UFO
+  # cannot also reach its first destination later in the same time tick.
+  - id: TRAJ_SPAWN_FIXED
+    groundTimer: 12
+    waypoints:
+      - [4, 3, 100]
+      - [3, 2, 80]
+      - [0, 3, 50]
   - id: TRAJ_SITE
     groundTimer: 6
     waypoints:
@@ -177,6 +199,14 @@ alienMissions:
     spawnZone: 0
     waves:
       - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: MISSION_SPAWN_AIRBORNE
+    objective: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: MISSION_SPAWN_SCORED
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_AIRBORNE, timer: 9000}
   # A wave without a UFO or deployment still advances AlienMission's counters.
   - type: MISSION_EMPTY_WAVE
     objective: 0

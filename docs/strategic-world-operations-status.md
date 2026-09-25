@@ -14,7 +14,8 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   follower leaves, arrival checkup, and automatic patrol relaunch after refuelling.
 - Speed includes installed weapon bonuses. `patrolWithoutFuel` and `autoPatrol` are
   runtime-linked craft properties. Item count and storage limits also reach the runtime
-  craft and installed-weapon rules. The compiled-content cache revision is 18.
+  craft and installed-weapon rules. Facility radar properties are projected for bounded
+  UFO-spawn preflight. The compiled-content cache revision is 19.
 - In-flight craft, waypoints, and auto-patrol coordinates survive save/reload. Invalid
   dispatches leave the campaign unchanged.
 - Dispatch applies `ConfirmDestinationState::btnOkClick`'s armor, onboard-item count,
@@ -61,6 +62,13 @@ waypoint flight plus existing-mission countdowns. This is a checkpoint, not bran
   live count after craft handling, and completed missions expire on the next half-hour
   boundary. The producing tick stops before an unsupported wave spawn. Countdown state
   survives save/reload; retaliation mission cleanup stays guarded until its base link is owned.
+- A detection-neutral score mission can spawn an ordinary, zero-shield airborne UFO at
+  a half-hour boundary between fixed, separated regional points. The mission live count,
+  wave counter, next timer and unique-ID counter advance together; the new UFO then moves
+  in that tick's five-second handler and continues after save/reload. Preflight requires
+  zero-score UFOs without detection scripts and rejects completed or immediately completing
+  positive-chance radars, active craft and auto-patrol craft, because reference scoring and
+  detection run later in the same half-hour handler.
 - A score mission with a wave that creates no UFO or site advances its wave counter and
   rolls the next wave timer at the half-hour boundary. A final empty wave removes the
   completed mission without consuming RNG. These transitions survive save/reload;
@@ -79,7 +87,7 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
 `time30Minutes` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
 `calculateSpeed`, `think`), `src/Savegame/AlienMission.cpp` (`think`,
-`ufoReachedWaypoint`, `getWaypoint`), and
+`spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`), `src/Savegame/Base.cpp` (`detect`), and
 `src/Geoscape/GeoscapeCraftState.cpp`
 (`btnBaseClick`, `btnPatrolClick`, `ConfirmDestinationState::btnOkClick`). The public
 `strategic-world.rul` fixture supplies a moving craft and automatic patrol properties,

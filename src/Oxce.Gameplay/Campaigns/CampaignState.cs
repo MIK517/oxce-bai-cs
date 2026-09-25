@@ -281,6 +281,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         return next;
     }
 
+    internal int PeekNextId(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return _nextIds.GetValueOrDefault(name, 1);
+    }
+
     private CampaignCommandResult Advance(AdvanceCampaignTime command)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(command.FiveSecondTicks);

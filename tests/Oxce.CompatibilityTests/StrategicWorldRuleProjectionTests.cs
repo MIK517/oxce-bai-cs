@@ -26,7 +26,7 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Empty(globe.Textures[12].Deployments);
 
         var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
-        Assert.Equal(4, region.MissionZones.Count);
+        Assert.Equal(5, region.MissionZones.Count);
         Assert.Equal(10UL, region.RegionWeight);
         Assert.Equal(4UL, region.MissionWeights["MISSION_SCOUT"]);
         Assert.False(region.MissionZones[0].Areas[0].IsPoint);
@@ -37,6 +37,9 @@ public sealed class StrategicWorldRuleProjectionTests
         var wrappedCity = Assert.Single(region.MissionZones[3].Areas);
         Assert.True(wrappedCity.IsPoint);
         Assert.Equal(362 * Math.PI / 180.0, wrappedCity.LongitudeMinimum);
+        var spawnCity = Assert.Single(region.MissionZones[4].Areas);
+        Assert.True(spawnCity.IsPoint);
+        Assert.Equal("CITY_SPAWN", spawnCity.Name);
 
         var scout = rules.Ufos[rules.Ufos.GetRequired("UFO_SCOUT")].Value;
         Assert.Equal("STR_SMALL", scout.Size);
@@ -49,6 +52,10 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Equal(60, scout.StatsForRace("RACE_B").DamageMaximum);
         Assert.Equal(2200, scout.StatsForRace("RACE_A").SpeedMaximum);
         Assert.Equal(0, scout.HunterKillerPercentage);
+
+        var spawnUfo = rules.Ufos[rules.Ufos.GetRequired("UFO_SPAWN")].Value;
+        Assert.Equal(0, spawnUfo.MissionScore);
+        Assert.Equal(2200, spawnUfo.Stats.SpeedMaximum);
 
         var hunter = rules.Ufos[rules.Ufos.GetRequired("UFO_HUNTER")].Value;
         Assert.Equal(22, hunter.DefaultVisibility);
@@ -73,6 +80,10 @@ public sealed class StrategicWorldRuleProjectionTests
             rules.UfoTrajectories.GetRequired("TRAJ_AIRBORNE_SPAWN")].Value;
         Assert.Equal(0, airborneSpawn.Zone(1));
         Assert.Equal(2, airborneSpawn.Altitude(1));
+        var fixedSpawn = rules.UfoTrajectories[
+            rules.UfoTrajectories.GetRequired("TRAJ_SPAWN_FIXED")].Value;
+        Assert.Equal(4, fixedSpawn.Zone(0));
+        Assert.Equal(3, fixedSpawn.Zone(1));
         Assert.True(rules.UfoTrajectories.TryGet(RuntimeUfoTrajectoryRule.RetaliationAssaultRun, out _));
 
         var scoutMission = rules.AlienMissions[rules.AlienMissions.GetRequired("MISSION_SCOUT")].Value;
@@ -98,6 +109,24 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.True(airborneWave.Objective);
         Assert.True(airborneWave.ObjectiveOnTheLandingSite);
         Assert.True(airborneWave.ObjectiveOnXcomBase);
+
+        var spawnMission = rules.AlienMissions[
+            rules.AlienMissions.GetRequired("MISSION_SPAWN_AIRBORNE")].Value;
+        var spawnWave = Assert.Single(spawnMission.Waves);
+        Assert.Equal("UFO_SPAWN", spawnWave.UfoType);
+        Assert.Equal("TRAJ_SPAWN_FIXED", spawnWave.TrajectoryId);
+        Assert.Equal(2UL, spawnWave.UfoCount);
+        Assert.NotNull(spawnWave.Ufo);
+        Assert.NotNull(spawnWave.Trajectory);
+
+        var stores = rules.Facilities[rules.Facilities.GetRequired("STORES")].Value;
+        Assert.Equal(0, stores.RadarRange);
+        Assert.Equal(0, stores.RadarChance);
+        Assert.False(stores.Hyperwave);
+        var radar = rules.Facilities[rules.Facilities.GetRequired("RADAR_TEST")].Value;
+        Assert.Equal(1000, radar.RadarRange);
+        Assert.Equal(100, radar.RadarChance);
+        Assert.False(radar.Hyperwave);
 
         var siteMission = rules.AlienMissions[rules.AlienMissions.GetRequired("MISSION_SITE")].Value;
         Assert.Equal(RuntimeMissionObjective.Site, siteMission.Objective);
