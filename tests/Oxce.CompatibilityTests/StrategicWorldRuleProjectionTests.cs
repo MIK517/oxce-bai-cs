@@ -57,6 +57,16 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Equal(0, spawnUfo.MissionScore);
         Assert.Equal(2200, spawnUfo.Stats.SpeedMaximum);
 
+        var craft = rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value;
+        Assert.Equal(672, craft.RadarRange);
+        Assert.Equal(100, craft.RadarChance);
+        var slowRefuel = rules.Crafts[rules.Crafts.GetRequired("SHIP_SLOW_REFUEL")].Value;
+        Assert.Equal(0, slowRefuel.RadarRange);
+        Assert.Equal(0, slowRefuel.RadarChance);
+        var radarBonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired("RADAR_BOOST")].Value;
+        Assert.Equal(1000, radarBonus.BonusStats["radarRange"]);
+        Assert.Equal(100, radarBonus.BonusStats["radarChance"]);
+
         var hunter = rules.Ufos[rules.Ufos.GetRequired("UFO_HUNTER")].Value;
         Assert.Equal(22, hunter.DefaultVisibility);
         Assert.Equal(100, hunter.HunterKillerPercentage);

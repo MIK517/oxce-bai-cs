@@ -1,7 +1,7 @@
 # Phase 6 branch 4b: operations in progress
 
 The `codex/strategic-world-operations` branch implements bounded craft and UFO
-waypoint flight, mission countdowns, activity scoring and base radar detection. This is a checkpoint, not branch
+waypoint flight, mission countdowns, activity scoring and base/craft radar detection. This is a checkpoint, not branch
 4b acceptance.
 
 ## Implemented
@@ -14,8 +14,8 @@ waypoint flight, mission countdowns, activity scoring and base radar detection. 
   follower leaves, arrival checkup, and automatic patrol relaunch after refuelling.
 - Speed includes installed weapon bonuses. `patrolWithoutFuel` and `autoPatrol` are
   runtime-linked craft properties. Item count and storage limits also reach the runtime
-  craft and installed-weapon rules. Facility radar properties are projected for bounded
-  UFO-spawn preflight. The compiled-content cache revision is 19.
+  craft and installed-weapon rules. Facility and craft radar properties are projected
+  for half-hour detection. The compiled-content cache revision is 20.
 - In-flight craft, waypoints, and auto-patrol coordinates survive save/reload. Invalid
   dispatches leave the campaign unchanged.
 - Dispatch applies `ConfirmDestinationState::btnOkClick`'s armor, onboard-item count,
@@ -67,22 +67,26 @@ waypoint flight, mission countdowns, activity scoring and base radar detection. 
   wave counter, next timer and unique-ID counter advance together; the new UFO then moves
   in that tick's five-second handler and continues after save/reload. The subsequent
   half-hour handler scores the UFO in its first matching region and country and detects
-  it through completed base radar, including a radar that finished construction earlier
+  it through completed base radar or airborne craft radar, including a facility that finished construction earlier
   in the same daily boundary. First contact receives its reference visible marker ID and
   pauses time for an alert. Tracked contacts lose detection when coverage disappears.
-  Instant-retaliation UFOs skip this pass. A grounded auto-patrol flag does not count
-  as craft radar; preflight checks whether refuelling will relaunch the craft first.
+  Instant-retaliation UFOs skip this pass. Craft detection uses effective radar stats
+  including installed-weapon bonuses, excludes destroyed crafts, and includes a craft
+  that refuels and relaunches auto-patrol earlier in the same half-hour handler. A
+  grounded auto-patrol flag alone does not count as airborne radar. The hourly rearming
+  transition into refuelling is projected before marker-ID preflight. On hourly
+  inventory or craft-transfer arrivals, preflight reserves capacity for any possible
+  auto-patrol launch; an exhausted marker counter may therefore stop time conservatively.
   Preflight checks activity and marker-ID capacity before mission spawning mutates state.
-  Detection scripts, airborne craft radar, and radar values outside the bounded range
-  remain guarded.
+  Detection scripts and radar values outside the bounded range remain guarded.
 - A score mission with a wave that creates no UFO or site advances its wave counter and
   rolls the next wave timer at the half-hour boundary. A final empty wave removes the
   completed mission without consuming RNG. These transitions survive save/reload;
   zero-timer follow-up waves remain guarded because the reference recursively processes
   them in the same tick. The public fixture covers repeated and final empty waves.
 - Ordinary flying UFO transit now composes with half-hour mission countdowns, activity
-  scoring and base radar detection. Later trajectory points still stop at their ten-minute
-  base-retargeting boundary, and craft radar and detection scripts remain pending.
+  scoring and base/craft radar detection. Later trajectory points still stop at their ten-minute
+  base-retargeting boundary; detection scripts remain pending.
   Restored ordinary-campaign UFOs reject a missing mission link or an out-of-range saved
   mission wave before time advances.
   The pre-campaign state follows the reference's absent mission-link case. Restore
@@ -92,9 +96,10 @@ waypoint flight, mission countdowns, activity scoring and base radar detection. 
 Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestination`,
 `think`, `consumeFuel`, `checkup`), `src/Savegame/MovingTarget.cpp` (`setDestination`,
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
-`time30Minutes` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
+`time30Minutes`, `updateActiveCrafts` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
 `calculateSpeed`, `think`), `src/Savegame/AlienMission.cpp` (`think`,
 `spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`), `src/Savegame/Base.cpp` (`detect`),
+`src/Savegame/Craft.cpp` (`detect`, effective weapon stats and `isDestroyed`),
 `src/Geoscape/UfoDetectedState.cpp` (marker identity),
 `src/Savegame/Region.cpp`/`Country.cpp` (activity histories), and
 `src/Geoscape/GeoscapeCraftState.cpp`
@@ -115,7 +120,7 @@ reference-shaped tests rather than extracted C++ traces.
 ## Still required for branch 4b
 
 Mission/arc/event script projection and selection, general UFO/deployment wave spawning,
-remaining UFO waypoint transitions and landing, UFO/site/base lifecycle, craft radar,
+remaining UFO waypoint transitions and landing, UFO/site/base lifecycle,
 detection scripts and ignored-contact alerts, craft pursuit,
 navigable globe controls, event-site scripting,
 multi-day/month-boundary scenarios, and the corresponding compatibility fixtures and

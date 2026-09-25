@@ -191,6 +191,8 @@ public static class RuntimeRuleLinker
                 RepairRate = rule.Value.Integers["repairRate"],
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
+                RadarRange = rule.Value.Stats.Get("radarRange"),
+                RadarChance = rule.Value.Stats.Get("radarChance"),
                 MaximumItems = rule.Value.Stats.Get("maxItems"),
                 MaximumStorageSpace = rule.Value.Stats.MaximumStorageSpace,
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
