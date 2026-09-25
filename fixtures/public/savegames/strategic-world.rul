@@ -4,15 +4,40 @@
 crafts:
   - type: SHIP
     speedMax: 6000
+    damageMax: 100
     refuelRate: 100
     autoPatrol: true
     patrolWithoutFuel: true
   - type: SHIP_SLOW_REFUEL
     speedMax: 6000
+    damageMax: 100
     fuelMax: 300
     refuelRate: 100
     weapons: 2
     autoPatrol: true
+    radarRange: 0
+    radarChance: 0
+  - type: SHIP_FUEL_ITEM
+    speedMax: 6000
+    damageMax: 100
+    fuelMax: 100
+    refuelRate: 100
+    refuelItem: SUPPLY
+    weapons: 2
+    autoPatrol: true
+    radarRange: 1000
+    radarChance: 100
+craftWeapons:
+  - type: RADAR_BOOST
+    ammoMax: 1
+    launcher: SUPPLY
+    clip: BULKY
+    stats: {radarRange: 1000, radarChance: 100}
+  - type: RADAR_EXCESS
+    ammoMax: 1
+    launcher: SUPPLY
+    clip: BULKY
+    stats: {radarRange: 1000, radarChance: 101}
 facilities:
   - type: RADAR_TEST
     mapName: LOGISTICS

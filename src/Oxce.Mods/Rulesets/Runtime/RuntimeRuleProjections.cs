@@ -180,6 +180,8 @@ public sealed record RuntimeCraftRule(
     public int RepairRate { get; init; }
     public int ShieldCapacity { get; init; }
     public int ShieldRechargeAtBase { get; init; }
+    public int RadarRange { get; init; }
+    public int RadarChance { get; init; }
     public int MaximumItems { get; init; }
     public double MaximumStorageSpace { get; init; }
     public bool NotifyWhenRefueled { get; init; }

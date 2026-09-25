@@ -260,21 +260,19 @@ public sealed class StrategicWorldMissionCountdownTests
     }
 
     [Fact]
-    public void ActiveCraftDetectionStopsBeforeMissionSpawn()
+    public void ActiveCraftDetectsNewMissionUfo()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
         var owner = Assert.Single(campaign.Capture().Bases);
         Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
             new DispatchCraftToWaypoint(owner.Id, "SHIP", 1, 0.3, 0.1)).Events));
-        var before = campaign.Capture();
-
         var result = campaign.Execute(new AdvanceCampaignTime(1));
 
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("Alien mission wave spawning requires world simulation.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: false });
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Assert.Equal(1, Assert.Single(campaign.Capture().World.Missions).LiveUfos);
     }
 
     [Fact]

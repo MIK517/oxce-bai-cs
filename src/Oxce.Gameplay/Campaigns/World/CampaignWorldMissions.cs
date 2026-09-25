@@ -131,9 +131,7 @@ internal sealed partial class CampaignWorld
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         // The half-hour UFO handler scores and detects this ship after spawning.
-        if (ufoRule.Scripts.Count != 0 ||
-            stats.ShieldCapacity != 0 || speed < 0 ||
-            !SpawnBoundaryHasNoCraftDetectionSources())
+        if (ufoRule.Scripts.Count != 0 || stats.ShieldCapacity != 0 || speed < 0)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position) ||
@@ -164,39 +162,6 @@ internal sealed partial class CampaignWorld
         foreach (var ufo in _ufos)
             if (ufo.UniqueId >= first && ufo.UniqueId < afterLast)
                 return false;
-        return true;
-    }
-
-    private bool SpawnBoundaryHasNoCraftDetectionSources()
-    {
-        foreach (var owner in campaign.BaseStates)
-        {
-            // RefuelCrafts and RelaunchAutoPatrol precede UFO detection in this
-            // half-hour handler. Mirror item consumption in craft order so a
-            // grounded patrol flag only gates when refuelling will launch it.
-            Dictionary<RuleHandle<ItemRuleFamily>, int>? remainingItems = null;
-            foreach (var craft in owner.Crafts)
-            {
-                var state = craft.Logistics;
-                if (state is null) continue;
-                if (state.Status == "STR_OUT") return false;
-                if (state.Status != "STR_REFUELLING") continue;
-                var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                var available = rule.RefuelItem is { } item
-                    ? (remainingItems ?? owner.Items).GetValueOrDefault(item) : 0;
-                var result = CraftLogistics.Refuel(state, rule, campaign.Content.RuntimeRules, available);
-                if (rule.RefuelItem is { } fuelItem && result.FuelItemChange != 0)
-                {
-                    remainingItems ??= new Dictionary<RuleHandle<ItemRuleFamily>, int>(owner.Items);
-                    var quantity = checked(remainingItems.GetValueOrDefault(fuelItem) + result.FuelItemChange);
-                    if (quantity == 0) remainingItems.Remove(fuelItem);
-                    else remainingItems[fuelItem] = quantity;
-                }
-                if (!result.MissingFuel && result.State.Status == "STR_READY" &&
-                    result.State.IsAutoPatrolling && rule.AutoPatrol)
-                    return false;
-            }
-        }
         return true;
     }
 
