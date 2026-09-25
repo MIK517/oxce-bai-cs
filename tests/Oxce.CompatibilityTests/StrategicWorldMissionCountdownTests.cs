@@ -141,26 +141,132 @@ public sealed class StrategicWorldMissionCountdownTests
         Assert.Equal(0, moved.Shield);
     }
 
-    [Theory]
-    [InlineData("MISSION_SPAWN_SCORED", false)]
-    [InlineData("MISSION_SPAWN_AIRBORNE", true)]
-    public void SpawnStopsBeforeUnsupportedScoringOrDetection(string missionRuleId, bool addRadar)
+    [Fact]
+    public void ScoredUfoSpawnAddsHalfHourActivity()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateWaveCampaign(content, missionRuleId);
-        if (addRadar)
+        var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_SCORED");
+        var before = campaign.Capture();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        var after = campaign.Capture();
+        Assert.Equal("UFO_SCOUT", Assert.Single(after.World.Ufos).RuleId);
+        Assert.False(Assert.Single(after.World.Ufos).Detected);
+        Assert.Equal(3, Assert.Single(after.Regions).ActivityAlien[^1] -
+            Assert.Single(before.Regions).ActivityAlien[^1]);
+        Assert.Equal(3, Assert.Single(after.Countries).ActivityAlien[^1] -
+            Assert.Single(before.Countries).ActivityAlien[^1]);
+    }
+
+    [Fact]
+    public void HyperwaveDetectsNewUfoAndPausesAfterItsFirstMovement()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
+        var snapshot = campaign.Capture();
+        var owner = Assert.Single(snapshot.Bases);
+        campaign = CampaignState.Restore(snapshot with
         {
-            var snapshot = campaign.Capture();
-            var owner = Assert.Single(snapshot.Bases);
-            campaign = CampaignState.Restore(snapshot with
+            Bases = [owner with
             {
-                Bases = [owner with
-                {
-                    Facilities = [.. owner.Facilities,
-                        new FacilitySnapshot("RADAR_TEST", 1, 0, 0, 0, false, false, false)],
-                }],
-            }, content, new SplitMix64RandomSource(75));
-        }
+                Facilities = [.. owner.Facilities,
+                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
+            }],
+        }, content, new SplitMix64RandomSource(75));
+
+        var result = campaign.Execute(new AdvanceCampaignTime(12));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        var contact = Assert.IsType<UfoContactDetected>(result.Events[1]);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal(ufo.UniqueId, contact.UniqueId);
+        Assert.True(contact.Hyperwave);
+        Assert.True(ufo.Detected);
+        Assert.True(ufo.HyperDetected);
+        Assert.Equal(1, ufo.Id);
+        Assert.Equal(2, campaign.Capture().NextIds["STR_UFO"]);
+        Assert.NotEqual(new WorldPosition(10 * Math.PI / 180.0, 8 * Math.PI / 180.0), ufo.Position);
+    }
+
+    [Fact]
+    public void ScoredWaveStopsBeforeActivityOverflowOrSpawn()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_SCORED");
+        var snapshot = campaign.Capture();
+        var region = Assert.Single(snapshot.Regions);
+        campaign = CampaignState.Restore(snapshot with
+        {
+            Regions = [region with { ActivityAlien = [int.MaxValue] }],
+        }, content, new SplitMix64RandomSource(79));
+        var before = campaign.Capture();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal("UFO alien activity exceeds the supported range.",
+            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void ContactMarkerExhaustionStopsBeforeSpawn()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
+        var snapshot = campaign.Capture();
+        var owner = Assert.Single(snapshot.Bases);
+        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
+            StringComparer.Ordinal);
+        ids["STR_UFO"] = int.MaxValue;
+        campaign = CampaignState.Restore(snapshot with
+        {
+            NextIds = ids,
+            Bases = [owner with
+            {
+                Facilities = [.. owner.Facilities,
+                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
+            }],
+        }, content, new SplitMix64RandomSource(80));
+        var before = campaign.Capture();
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal("UFO contact marker IDs are exhausted or collide with a saved UFO.",
+            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void UndetectableSpawnDoesNotReserveAContactMarker()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
+        var snapshot = campaign.Capture();
+        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
+            StringComparer.Ordinal);
+        ids["STR_UFO"] = int.MaxValue;
+        campaign = CampaignState.Restore(snapshot with { NextIds = ids }, content,
+            new SplitMix64RandomSource(82));
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        Assert.False(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Assert.Equal(int.MaxValue, campaign.Capture().NextIds["STR_UFO"]);
+    }
+
+    [Fact]
+    public void ActiveCraftDetectionStopsBeforeMissionSpawn()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
+        var owner = Assert.Single(campaign.Capture().Bases);
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
+            new DispatchCraftToWaypoint(owner.Id, "SHIP", 1, 0.3, 0.1)).Events));
         var before = campaign.Capture();
 
         var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -197,7 +303,7 @@ public sealed class StrategicWorldMissionCountdownTests
     }
 
     [Fact]
-    public void RadarCompletingBeforeSpawnDetectionStopsTheDailyBoundaryAtomically()
+    public void RadarCompletingBeforeSpawnDetectsAtTheDailyBoundary()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
@@ -209,17 +315,15 @@ public sealed class StrategicWorldMissionCountdownTests
             Bases = [owner with
             {
                 Facilities = [.. owner.Facilities,
-                    new FacilitySnapshot("RADAR_TEST", 1, 0, 1, 0, false, false, false)],
+                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 1, 0, false, false, false)],
             }],
         }, content, new SplitMix64RandomSource(78));
-        var before = campaign.Capture();
-
         var result = campaign.Execute(new AdvanceCampaignTime(1));
 
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("Alien mission wave spawning requires world simulation.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: true });
+        Assert.Equal(0, campaign.Capture().Bases[0].Facilities[^1].BuildTime);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
     }
 
     [Fact]

@@ -112,6 +112,10 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     internal IReadOnlyList<BaseState> BaseStates => _bases;
 
+    internal IReadOnlyList<CountryState> CountryStates => _countries;
+
+    internal IReadOnlyList<RegionState> RegionStates => _regions;
+
     internal T Read<T>(Func<T> query)
     {
         lock (_transactionGate) return query();

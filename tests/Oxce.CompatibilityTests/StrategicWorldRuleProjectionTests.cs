@@ -127,6 +127,10 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Equal(1000, radar.RadarRange);
         Assert.Equal(100, radar.RadarChance);
         Assert.False(radar.Hyperwave);
+        var hyperwave = rules.Facilities[rules.Facilities.GetRequired("RADAR_HYPER_TEST")].Value;
+        Assert.Equal(1000, hyperwave.RadarRange);
+        Assert.Equal(100, hyperwave.RadarChance);
+        Assert.True(hyperwave.Hyperwave);
 
         var siteMission = rules.AlienMissions[rules.AlienMissions.GetRequired("MISSION_SITE")].Value;
         Assert.Equal(RuntimeMissionObjective.Site, siteMission.Objective);

@@ -49,10 +49,11 @@ internal static class CampaignTimeOrder
     public const int HourTransfers = 200;
     public const int HourProduction = 300;
 
-    // time30Minutes: alien mission countdowns precede craft refuelling in the base loop.
+    // time30Minutes: missions, craft refuelling, then UFO activity and detection.
     public const int ThirtyMinutesWorldMissions = 50;
     public const int ThirtyMinutesRefuel = 100;
     public const int ThirtyMinutesAutoPatrol = 200;
+    public const int ThirtyMinutesWorldUfoDetection = 300;
 }
 
 /// <summary>Order of time preflight checks; the first non-null reason stops time.</summary>

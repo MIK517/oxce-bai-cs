@@ -12,6 +12,11 @@ facilities:
     mapName: LOGISTICS
     radarRange: 1000
     radarChance: 100
+  - type: RADAR_HYPER_TEST
+    mapName: LOGISTICS
+    radarRange: 1000
+    radarChance: 100
+    hyper: true
 globe:
   polygons:
     - [10, 0, -10, 20, -10, 20, 10, 0, 10]
