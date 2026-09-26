@@ -240,8 +240,10 @@ indexed UI actions. Branch 4a implements the bounded
 [ordinary UFO and craft operations](strategic-world-operations-status.md) and satisfies
 its supported UFO lifecycle closure gate with headless acceptance evidence. The
 2026-09-26 scope revision assigns remaining mission/arc/event scheduling, broader
-world lifecycles, scripts, pursuit and globe UI to branch 4c. Original combined branch
-4 acceptance gates 4c closure before branch 5; 4b is locally accepted and not yet merged.
+world lifecycles, scripts and pursuit to branch 4c; the approved
+[4c/4d split](phase-6-world-integration-plan.md) assigns globe UI and combined branch 4
+acceptance to 4d before branch 5. Branch 4b merged in `e10d96f`. Campaign-event payload
+effects remain guarded until branch 6; 4c owns scheduling and persistence.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
