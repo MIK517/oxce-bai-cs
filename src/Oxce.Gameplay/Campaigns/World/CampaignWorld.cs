@@ -4,9 +4,8 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>
 /// The strategic world capability: alien missions, UFOs, mission sites, alien bases, player
-/// waypoints, scheduled events and the alien strategy table. This commit owns the graph, its
-/// identities and its persistence. Craft-only waypoint flight has timed handlers; alien mission,
-/// UFO, site, base and event state still stops time until its simulation handlers exist.
+/// waypoints, scheduled events and the alien strategy table. Timed handlers own supported
+/// transitions; preflight prevents unavailable world and later-phase effects from mutating a tick.
 /// Reference: <c>Savegame/SavedGame.cpp</c> load/save of the world sections, <c>AlienMission.cpp</c>,
 /// <c>Ufo.cpp</c>, <c>MissionSite.cpp</c>, <c>AlienBase.cpp</c>, <c>Waypoint.cpp</c>,
 /// <c>GeoscapeEvent.cpp</c> and <c>AlienStrategy.cpp</c> at 4df3a5e.
@@ -25,7 +24,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     {
         ArgumentNullException.ThrowIfNull(registry);
         registry.Query<ICampaignWorldQuery>(this);
-        registry.Capture(snapshot => snapshot with { World = Capture() });
+        registry.Capture(CaptureWorldState);
         registry.Restore(Restore);
         registry.Validate(Validate);
         registry.Initialize(Initialize);
@@ -54,7 +53,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     public CampaignWorldOverview QueryWorld() => campaign.Read(() =>
     {
         var targets = new List<CampaignWorldTarget>();
-        foreach (var ufo in _ufos.Where(static ufo => ufo.Detected && ufo.Status != UfoStatus.Destroyed))
+        foreach (var ufo in _ufos.Where(static ufo => ufo.Detected && ufo.Status is not (UfoStatus.Destroyed or UfoStatus.IgnoreMe)))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Ufo, ufo.Status switch
             {
                 UfoStatus.Landed => ufo.LandId,
@@ -66,6 +65,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Altitude = ufo.Altitude,
                 Detected = ufo.Detected,
                 SecondsRemaining = ufo.SecondsRemaining,
+                Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
+                { UniqueId = ufo.UniqueId },
+                UnavailableActionReason = ufo.Status == UfoStatus.Flying ? InterceptionReason : LandingReason,
             });
         foreach (var site in _sites.Where(static site => site.Detected))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.MissionSite, site.Id, site.DeploymentId,
@@ -74,20 +76,54 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Detected = site.Detected,
                 SecondsRemaining = site.SecondsRemaining,
                 Status = site.City,
+                Reference = new(WorldTargetKind.MissionSite, MarkerName(site.DeploymentId), site.Id, site.Longitude, site.Latitude),
+                UnavailableActionReason = LandingReason,
             });
         foreach (var alienBase in _alienBases.Where(static alienBase => alienBase.Discovered))
             targets.Add(new CampaignWorldTarget(WorldTargetKind.AlienBase, alienBase.Id, alienBase.DeploymentId,
                 alienBase.Name.Length != 0 ? alienBase.Name : MarkerName(alienBase.DeploymentId),
                 alienBase.Longitude, alienBase.Latitude)
-            { Detected = alienBase.Discovered });
+            {
+                Detected = alienBase.Discovered,
+                Reference = new(WorldTargetKind.AlienBase, MarkerName(alienBase.DeploymentId), alienBase.Id,
+                    alienBase.Longitude, alienBase.Latitude),
+                UnavailableActionReason = LandingReason
+            });
         foreach (var waypoint in _waypoints)
             targets.Add(new CampaignWorldTarget(WorldTargetKind.Waypoint, waypoint.Id,
                 WorldTargetReference.WaypointType,
                 waypoint.Name.Length != 0 ? waypoint.Name : WorldTargetReference.WaypointType,
                 waypoint.Longitude, waypoint.Latitude)
             { Detected = true });
-        return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count);
+        return new CampaignWorldOverview(CampaignSnapshot.ReadOnly(targets), _missions.Count, _events.Count)
+        {
+            Bases = CampaignSnapshot.ReadOnly(campaign.BaseStates.Where(static owner => owner.IsPlaced)
+                .Select(owner => new CampaignWorldBase(owner.Id, owner.Name, owner.Longitude, owner.Latitude))),
+            Crafts = CampaignSnapshot.ReadOnly(campaign.BaseStates.SelectMany(owner => owner.Crafts.Select(craft =>
+            {
+                var state = craft.Logistics;
+                var airborneReason = state is not { Status: "STR_OUT" } ? "The craft is not airborne." :
+                    IsReturningHome(state) ? ReturningReason : null;
+                return new CampaignWorldCraft(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
+                    craft.Id, state?.Name ?? string.Empty, state?.Status ?? string.Empty,
+                    state?.Longitude ?? owner.Longitude, state?.Latitude ?? owner.Latitude,
+                    state?.Fuel ?? 0, Resolve(state?.Destination), DispatchReason(owner, craft), airborneReason);
+            }))),
+        };
     });
+
+    private CampaignSnapshot CaptureWorldState(CampaignSnapshot snapshot) => snapshot with
+    {
+        World = Capture(),
+        // Target::saveId writes the target's current coordinates, including craft moved later
+        // in the same pass. Resolve here without mutating live state or depending on list order.
+        Bases = CampaignSnapshot.ReadOnly(snapshot.Bases.Select(owner => owner with
+        {
+            Crafts = CampaignSnapshot.ReadOnly(owner.Crafts.Select(craft => craft.Logistics is { Destination: { } destination } state
+                && destination.Kind is WorldTargetKind.Ufo or WorldTargetKind.Craft
+                ? craft with { Logistics = state with { Destination = Resolve(destination) ?? destination } } : craft)),
+        })),
+    };
 
     /// <summary>AlienStrategy::init for a newly created campaign.</summary>
     private void Initialize() => _strategy.Initialize(StrategyRegions());

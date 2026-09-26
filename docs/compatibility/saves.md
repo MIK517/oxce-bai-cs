@@ -6,6 +6,10 @@ history. Imported/generated event instances preserve unknown fields through stab
 synthetic snapshots retain the earlier state/occurrence fallback described below. See
 `StrategicEventSchedulingTests` and [ADR 0028](../decisions/0028-world-event-scheduling-and-identity.md).
 
+Branch 4c pursuit snapshots resolve current target coordinates at capture, preserving UFO
+unique identity independently of landing markers. Escort targets, fuel, takeoff and the
+landing-suppression option survive reload. See `StrategicWorldPursuitTests`.
+
 Phase 6 branches 1 through 3: logistics, research and production snapshots preserve
 campaign-wide soldier/craft identity across base/transit containers, repeated rewrites
 and deletion/recreation. Session options and monthly purchase logs persist.

@@ -7,6 +7,10 @@ public sealed record DispatchCraftToWaypoint(int BaseId, string CraftTypeId, int
     double Longitude, double Latitude)
     : ICampaignCommand;
 
+/// <summary>Dispatch to a visible target using stable identity rather than marker coordinates.</summary>
+public sealed record DispatchCraftToTarget(int BaseId, string CraftTypeId, int CraftId,
+    WorldTargetReference Target) : ICampaignCommand;
+
 /// <summary>Recall an airborne craft to its owner base.</summary>
 public sealed record RecallCraft(int BaseId, string CraftTypeId, int CraftId) : ICampaignCommand;
 
@@ -22,6 +26,10 @@ public sealed record CraftArrivedAtWaypoint(int BaseId, string CraftTypeId, int 
 
 public sealed record CraftLowFuel(int BaseId, string CraftTypeId, int CraftId) : ICampaignEvent;
 
+/// <summary>The craft stopped pursuit; the last position can be confirmed as a new waypoint.</summary>
+public sealed record CraftTargetLost(int BaseId, string CraftTypeId, int CraftId,
+    WorldTargetReference Target, bool ReturningToBase) : ICampaignEvent;
+
 /// <summary>
 /// Craft-only world operations. Reference: Craft::setDestination, think, returnToBase,
 /// consumeFuel and GeoscapeState::time5Seconds/time10Minutes at 4df3a5e.
@@ -33,6 +41,7 @@ internal sealed partial class CampaignWorld
     private void RegisterCraftOperations(CampaignCapabilityRegistry registry)
     {
         registry.Command<DispatchCraftToWaypoint>(Dispatch);
+        registry.Command<DispatchCraftToTarget>(DispatchTarget);
         registry.Command<RecallCraft>(Recall);
         registry.Command<PatrolCraft>(Patrol);
         registry.Preflight(CampaignPreflightOrder.CraftMovement, "craft movement", (_, highest) => CraftMovementReason(highest));
@@ -51,27 +60,9 @@ internal sealed partial class CampaignWorld
         var (owner, index) = FindCraft(command.BaseId, command.CraftTypeId, command.CraftId);
         var craft = owner.Crafts[index];
         var state = craft.Logistics;
-        if (state is null) return Blocked("Craft dispatch requires resolved craft state.");
-        if (!owner.IsPlaced) return Blocked("A craft cannot depart from an unplaced base.");
-        // InterceptState::lstCraftsLeftClick: a READY craft always starts. An airborne craft,
-        // or any craft under craftLaunchAlways, starts only while it is not returning for
-        // fuel or after completing its mission.
-        if (state.Status != "STR_READY")
-        {
-            if (state.Status != "STR_OUT" && !campaign.Options.CraftLaunchAlways)
-                return Blocked("The craft is not ready to depart.");
-            if (IsReturningHome(state)) return Blocked(ReturningReason);
-        }
+        if (DispatchReason(owner, craft) is { } reason) return Blocked(reason);
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-        if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                campaign.Content.RuntimeRules, out var speed))
-            return Blocked(SpeedRangeReason);
-        // ConfirmDestinationState::btnOkClick checks armor, cargo, then pilots.
-        if (!campaign.HasAllowedArmorsOnboard(owner, craft))
-            return Blocked("The craft carries armor forbidden by its rules.");
-        if (CraftLogistics.TooManyItemsOnboard(state, rule, campaign.Content.RuntimeRules))
-            return Blocked("The craft carries too many items.");
-        if (!campaign.HasRequiredPilots(owner, craft)) return Blocked("The craft does not have enough pilots.");
+        CraftLogistics.TryEffectiveSpeedMaximum(rule, state!.Weapons, campaign.Content.RuntimeRules, out var speed);
         if (!CanAllocateWaypointIds(1)) return Blocked(WaypointIdReason);
         var id = campaign.NextId(WorldTargetReference.WaypointType);
         var waypoint = new WaypointSnapshot(id, position.Longitude, position.Latitude);
@@ -85,6 +76,32 @@ internal sealed partial class CampaignWorld
         };
         return new CampaignCommandResult([new CraftDestinationChanged(owner.Id, command.CraftTypeId,
             craft.Id, destination)]);
+    }
+
+    private string? DispatchReason(CampaignState.BaseState owner, CampaignState.CraftState craft)
+    {
+        if (craft.Logistics is not { } state) return "Craft dispatch requires resolved craft state.";
+        if (!owner.IsPlaced) return "A craft cannot depart from an unplaced base.";
+        // InterceptState::lstCraftsLeftClick: a READY craft always starts. An airborne craft,
+        // or any craft under craftLaunchAlways, starts only while it is not returning for
+        // fuel or after completing its mission.
+        if (state.Status != "STR_READY")
+        {
+            if (state.Status != "STR_OUT" && !campaign.Options.CraftLaunchAlways)
+                return "The craft is not ready to depart.";
+            if (IsReturningHome(state)) return ReturningReason;
+        }
+        var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+        if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
+                campaign.Content.RuntimeRules, out _))
+            return SpeedRangeReason;
+        // ConfirmDestinationState::btnOkClick checks armor, cargo, then pilots.
+        if (!campaign.HasAllowedArmorsOnboard(owner, craft))
+            return "The craft carries armor forbidden by its rules.";
+        if (CraftLogistics.TooManyItemsOnboard(state, rule, campaign.Content.RuntimeRules))
+            return "The craft carries too many items.";
+        if (!campaign.HasRequiredPilots(owner, craft)) return "The craft does not have enough pilots.";
+        return null;
     }
 
     /// <summary>Craft::getLowFuel or getMissionComplete: the craft is already heading home.</summary>
@@ -209,8 +226,7 @@ internal sealed partial class CampaignWorld
                     return "Airborne craft fuel or takeoff state is out of range.";
                 if (!new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
                     return "Airborne craft coordinates are invalid.";
-                if (state.Destination is { } destination && !TryGetCraftDestinationPosition(destination, out _))
-                    return "Craft pursuit and landing require world simulation.";
+                if (CraftArrivalReason(owner, craft, state, highest) is { } arrivalReason) return arrivalReason;
             }
             if (highest < CampaignTimeTrigger.OneHour) continue;
             // Transfer::advance/checkup precedes refuelling and auto-patrol relaunch.
@@ -294,6 +310,7 @@ internal sealed partial class CampaignWorld
                 if (craft.Logistics is not { } state) continue;
                 if (state.Status == "STR_OUT")
                 {
+                    state = RepairCraftPursuit(owner, craft, state, effects);
                     var takingOff = state.Takeoff > 0;
                     if (takingOff)
                         state = state with { Takeoff = state.Takeoff - 1 };
@@ -342,6 +359,10 @@ internal sealed partial class CampaignWorld
                                             campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
                                             destination.Id));
                                 }
+                                else
+                                {
+                                    state = ArriveAtWorldTarget(owner, craft, state, destination);
+                                }
                             }
                         }
                     }
@@ -373,13 +394,12 @@ internal sealed partial class CampaignWorld
 
     private bool TryGetCraftDestinationPosition(WorldTargetReference destination, out WorldPosition position)
     {
-        // Other target kinds need pursuit, interception or landing handlers before time can advance.
         if (destination.Kind == WorldTargetKind.Base)
         {
             foreach (var owner in campaign.BaseStates)
                 if (owner.Id == destination.Id)
                 {
-                    position = new WorldPosition(owner.Longitude, owner.Latitude);
+                    position = new(owner.Longitude, owner.Latitude);
                     return true;
                 }
         }
@@ -388,9 +408,25 @@ internal sealed partial class CampaignWorld
             foreach (var waypoint in _waypoints)
                 if (waypoint.Id == destination.Id)
                 {
-                    position = new WorldPosition(waypoint.Longitude, waypoint.Latitude);
+                    position = waypoint.Position;
                     return true;
                 }
+        }
+        else if (destination.Kind == WorldTargetKind.Ufo && TargetUfo(destination) is { } ufo)
+        {
+            position = ufo.Position;
+            return true;
+        }
+        else if (destination.Kind == WorldTargetKind.Craft && TargetCraft(destination)?.Logistics is { } craft)
+        {
+            position = new(craft.Longitude, craft.Latitude);
+            return true;
+        }
+        else if (destination.Kind is WorldTargetKind.MissionSite or WorldTargetKind.AlienBase &&
+            Resolve(destination) is { } site)
+        {
+            position = site.Position;
+            return true;
         }
         position = default;
         return false;
@@ -429,8 +465,13 @@ internal sealed partial class CampaignWorld
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                         campaign.Content.RuntimeRules, out var speedMaximum))
                     throw new InvalidOperationException("Craft speed changed after world preflight.");
+                var escortSpeed = 0;
+                if (state.Destination is { Kind: WorldTargetKind.Craft } escort && TargetCraft(escort)?.Logistics is { } leader &&
+                    WorldGeometry.Distance(new(state.Longitude, state.Latitude), new(leader.Longitude, leader.Latitude)) <
+                        WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
+                    escortSpeed = leader.Speed;
                 var consumption = state.Destination is null && rule.PatrolWithoutFuel ? 0 :
-                    WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, 0);
+                    WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, escortSpeed);
                 if (consumption != 0) state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };
                 // Craft::getFuelLimit divides by zero here, so its C++ result is undefined.
                 // Keep the craft stationary and recallable instead of inventing a low-fuel return.

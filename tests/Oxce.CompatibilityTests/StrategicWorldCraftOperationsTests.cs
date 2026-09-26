@@ -259,7 +259,7 @@ public sealed class StrategicWorldCraftOperationsTests
     }
 
     [Fact]
-    public void UnsupportedCraftDestinationBlocksBeforeTimeAdvances()
+    public void SelfEscortBlocksBeforeTimeAdvances()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = ReadyCampaign(content);
@@ -277,7 +277,7 @@ public sealed class StrategicWorldCraftOperationsTests
         var restored = CampaignState.Restore(snapshot.WithCraft("SHIP", _ => following), content,
             new SplitMix64RandomSource(34));
 
-        AssertTimeBlocked(restored, "Craft pursuit and landing require world simulation.");
+        AssertTimeBlocked(restored, "A craft cannot escort itself.");
     }
 
     [Fact]

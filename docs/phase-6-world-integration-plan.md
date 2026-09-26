@@ -82,6 +82,18 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   Early stops for mission-site lifecycle, and Beginning reaches the mission-spawn guard.
 - Shield/speed validation: root `dotnet test` passes 1,060 tests with zero skips;
   formatting, code-map and fixture checksum checks pass.
+- Pursuit slice: `DispatchCraftToTarget` validates visibility, stable UFO identity and
+  launch eligibility; queries expose player bases/craft, command availability and
+  target references. UFO pursuit follows the extracted C++ moving-target trace;
+  lost contacts patrol and destroyed targets return followers before deletion.
+  Craft escorts follow in base/craft order, use the mod's `escortRange` for fuel,
+  and return after their leader reaches base. Capture resolves live target coordinates.
+  Pure position/status preflight guards interception and landing before tick mutation,
+  including UFO takeoff and terminal-departure fallthrough. Deployment starting-condition
+  validation remains a precise branch 5 dispatch guard. The landing-suppression option
+  is saved and honors fixed mod options. Focused pursuit tests pass fresh/cache and reload.
+  Root validation passes 1,078 tests with zero skips; the private classification remains
+  eight executable, three blocked and eight tactical preservation-only.
 - Remaining mission/arc/adhoc/event-script selection, objectives, sites/bases, detection
-  scripts, pursuit/hunting/escorts and headless closure are still outstanding. Branch 4d
+  scripts, UFO hunting/escorts and headless closure are still outstanding. Branch 4d
   remains unstarted pending the 4c merge.

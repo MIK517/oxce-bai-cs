@@ -202,6 +202,8 @@ public sealed record RuntimeAlienDeploymentRule(
     IReadOnlyList<RuntimeAlienRaceEvolution> AlienRaceEvolution,
     IReadOnlyDictionary<string, ulong> DespawnEvents)
 {
+    public string StartingCondition { get; init; } = string.Empty;
+
     /// <summary>
     /// AlienDeployment::generateHuntMission / generateAlienBaseUpgrade: the timeline is stored in
     /// descending month order and the first entry at or below the given month wins.
