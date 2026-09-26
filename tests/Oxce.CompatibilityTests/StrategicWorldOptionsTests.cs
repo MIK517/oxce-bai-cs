@@ -52,6 +52,30 @@ public sealed class StrategicWorldOptionsTests
     }
 
     [Theory]
+    [InlineData(" true", true)]
+    [InlineData("true ", true)]
+    [InlineData("truegarbage", true)]
+    [InlineData("\t\r\n\f\vtrue tail", true)]
+    [InlineData("false tail", false)]
+    [InlineData("True", false)]
+    [InlineData("tru", false)]
+    [InlineData("1", false)]
+    [InlineData("\u00a0true", false)]
+    [InlineData(" \t", false)]
+    [InlineData("", false)]
+    public void FixedBooleanUsesClassicWhitespaceAndConsumesOnlyItsPrefix(string value, bool expected)
+    {
+        // OptionInfo::load uses formatted std::boolalpha extraction, verified with MSVC.
+        // Empty/whitespace-only input deliberately becomes false in the port.
+        foreach (var initial in new[] { false, true })
+        {
+            var options = new CampaignOptions(CraftLaunchAlways: initial).WithFixedUserOptions(
+                new Dictionary<string, string> { ["craftLaunchAlways"] = value });
+            Assert.Equal(expected, options.CraftLaunchAlways);
+        }
+    }
+
+    [Theory]
     [InlineData("false", "true", false, true)]
     [InlineData("true", "false", true, false)]
     [InlineData("[broken]", "7", true, false)]

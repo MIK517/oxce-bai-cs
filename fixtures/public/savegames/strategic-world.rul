@@ -28,6 +28,11 @@ crafts:
     radarRange: 1000
     radarChance: 100
 craftWeapons:
+  # A transferring auto-patrol craft must reject effective speed overflow before arrival.
+  - type: SPEED_EXCESS
+    ammoMax: 0
+    launcher: SUPPLY
+    stats: {speedMax: 2147483647}
   - type: RADAR_BOOST
     ammoMax: 1
     launcher: SUPPLY
@@ -60,7 +65,7 @@ facilities:
     mapName: LOGISTICS
     radarRange: 1000
     radarChance: 100
-  # Base::detect sums chances as ints; above 100 is legal and always detects.
+  # Base::detect accepts sums above 100; ordinary radar still applies UFO visibility.
   - type: RADAR_OVER_TEST
     mapName: LOGISTICS
     radarRange: 1000

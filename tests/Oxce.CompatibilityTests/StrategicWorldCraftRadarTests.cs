@@ -199,6 +199,48 @@ public sealed class StrategicWorldCraftRadarTests
         }, untracked: true), content, new SplitMix64RandomSource(89));
     }
 
+    [Theory]
+    [InlineData("longitude", "Craft auto-patrol coordinates are invalid.")]
+    [InlineData("latitude", "Craft auto-patrol coordinates are invalid.")]
+    [InlineData("speed", "Craft speed exceeds the supported range.")]
+    [InlineData("destroyed", "Destroyed craft removal requires world simulation.")]
+    public void IncomingCraftConditionsAreCheckedBeforeTheirArrivalTick(string condition, string reason)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = CreateSnapshot(content, "Incoming craft preflight");
+        var owner = snapshot.Bases[0];
+        var incoming = AutoPatrolling(Ship(snapshot), "STR_REFUELLING", 0) with { Id = 4 };
+        incoming = incoming with
+        {
+            Logistics = incoming.Logistics! with
+            {
+                Damage = condition == "destroyed" ? 100 : 0,
+                AutoPatrolLongitude = condition == "longitude" ? 7 : 0.3,
+                AutoPatrolLatitude = condition == "latitude" ? 2 : 0.1,
+                Weapons = condition == "speed" ? [new CraftWeaponSnapshot("SPEED_EXCESS", 0), null] : [null, null],
+            },
+        };
+        snapshot = snapshot with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 50),
+            Bases = [owner with { Transfers = [new TransferSnapshot(77, 1,
+                CampaignTransferKind.Craft, "SHIP", 1, Craft: incoming)] }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(90));
+        AdvanceOne(campaign); // No arrival at 1:59:55, so the invalid incoming state is still inert.
+        AssertTimeBlocked(campaign, reason); // No time, transfers, fuel, RNG or waypoints may change.
+
+        var delayed = CampaignState.Restore(snapshot with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+            Bases = [snapshot.Bases[0] with { Transfers = [snapshot.Bases[0].Transfers[0] with { Hours = 2 }] }],
+        }, content, new SplitMix64RandomSource(90));
+        AdvanceOne(delayed);
+        Assert.Equal(1, Assert.Single(delayed.Capture().Bases[0].Transfers).Hours);
+        Assert.DoesNotContain(delayed.Capture().Bases[0].Crafts, craft => craft.Id == 4);
+        Assert.Empty(delayed.Capture().World.Waypoints);
+    }
+
     [Fact]
     public void ArrivingAutoPatrolCraftRefuelsRelaunchesAndDetectsInTheSameHour()
     {
@@ -271,7 +313,7 @@ public sealed class StrategicWorldCraftRadarTests
         }
         var before = campaign.Capture();
 
-        // RNG::percent treats any chance of 100 or more as a certain detection.
+        // At high altitude the final chance exceeds 100, so RNG::percent always succeeds.
         var result = campaign.Execute(new AdvanceCampaignTime(1));
 
         Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
@@ -282,7 +324,7 @@ public sealed class StrategicWorldCraftRadarTests
     }
 
     [Fact]
-    public void BaseRadarChanceAboveHundredAlwaysDetects()
+    public void BaseRadarChanceAboveHundredDetectsAtHighAltitude()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),

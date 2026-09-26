@@ -35,7 +35,7 @@ internal sealed partial class CampaignWorld
         registry.Command<DispatchCraftToWaypoint>(Dispatch);
         registry.Command<RecallCraft>(Recall);
         registry.Command<PatrolCraft>(Patrol);
-        registry.Preflight(CampaignPreflightOrder.CraftMovement, "craft movement", (_, _) => CraftMovementReason());
+        registry.Preflight(CampaignPreflightOrder.CraftMovement, "craft movement", (_, highest) => CraftMovementReason(highest));
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsWorldCrafts,
             "world craft movement", MoveCrafts);
         registry.Timed(CampaignTimeTrigger.TenMinutes, CampaignTimeOrder.TenMinutesWorldCraftFuel,
@@ -182,7 +182,7 @@ internal sealed partial class CampaignWorld
     /// destination it cannot fly to. Time stops only for state this slice cannot simulate
     /// (a pursuit or landing target) or cannot trust (out-of-range craft state).
     /// </summary>
-    private string? CraftMovementReason()
+    private string? CraftMovementReason(CampaignTimeTrigger highest)
     {
         var bases = campaign.BaseStates;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
@@ -193,21 +193,7 @@ internal sealed partial class CampaignWorld
                 var craft = owner.Crafts[craftIndex];
                 if (craft.Logistics is not { } state) continue;
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                // GeoscapeState::time5Seconds removes a destroyed craft in any status, with
-                // activity, crew and statistics consequences that belong to the dogfight slice.
-                // A craft whose rules omit damageMax (default 0) would also count as destroyed
-                // there, damaged or not; such incomplete rules are deliberately treated as intact.
-                var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, rule, campaign.Content.RuntimeRules);
-                if (damageMaximum > 0 && state.Damage >= damageMaximum)
-                    return "Destroyed craft removal requires world simulation.";
-                if (state.IsAutoPatrolling)
-                {
-                    if (!new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude).IsNormalized)
-                        return "Craft auto-patrol coordinates are invalid.";
-                    if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                            campaign.Content.RuntimeRules, out _))
-                        return SpeedRangeReason;
-                }
+                if (CraftConditionReason(state, rule) is { } reason) return reason;
                 if (state.Status != "STR_OUT") continue;
                 if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
@@ -220,6 +206,34 @@ internal sealed partial class CampaignWorld
                 if (state.Destination is { } destination && !TryGetCraftDestinationPosition(destination, out _))
                     return "Craft pursuit and landing require world simulation.";
             }
+            if (highest < CampaignTimeTrigger.OneHour) continue;
+            // Transfer::advance/checkup precedes refuelling and auto-patrol relaunch.
+            // Check arriving craft before any of those handlers can mutate the campaign.
+            foreach (var transfer in owner.Transfers)
+            {
+                if (transfer.Delivered || transfer.Hours > 1 || transfer.Craft?.Logistics is not { } state) continue;
+                var rules = campaign.Content.RuntimeRules;
+                var rule = rules.Crafts[rules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
+                if (CraftConditionReason(state, rule) is { } reason) return reason;
+            }
+        }
+        return null;
+    }
+
+    private string? CraftConditionReason(CraftLogisticsState state, RuntimeCraftRule rule)
+    {
+        // GeoscapeState::time5Seconds removes a destroyed craft in any status, with
+        // activity, crew and statistics consequences owned by the dogfight slice.
+        // Retain the port's exception for incomplete rules with non-positive damageMax.
+        var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, rule, campaign.Content.RuntimeRules);
+        if (damageMaximum > 0 && state.Damage >= damageMaximum)
+            return "Destroyed craft removal requires world simulation.";
+        if (state.IsAutoPatrolling)
+        {
+            if (!new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude).IsNormalized)
+                return "Craft auto-patrol coordinates are invalid.";
+            if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out _))
+                return SpeedRangeReason;
         }
         return null;
     }
