@@ -291,16 +291,18 @@ internal sealed partial class CampaignWorld
                     active = !refuel.MissingFuel && refuel.State.Status == "STR_READY" &&
                         refuel.State.IsAutoPatrolling && refuelRule.AutoPatrol;
                 }
-                // Hourly transfers/production can add a refuel item before this
-                // handler. Reserve marker capacity for a possible launch without
-                // consuming RNG or changing the actual item balance in preflight.
+                // Reserve for a possible launch only when an earlier handler can
+                // supply this fuel item. A READY craft also needs reuseItem to
+                // move it back into REFUELLING.
                 if (forecastRefuelling && !active && highest >= CampaignTimeTrigger.OneHour &&
                     state.Status is "STR_READY" or "STR_REFUELLING" && state.IsAutoPatrolling)
                 {
                     var possibleRule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                    if (possibleRule.AutoPatrol && possibleRule.RefuelItem is not null &&
+                    if (possibleRule.AutoPatrol && possibleRule.RefuelItem is { } fuelItem &&
                         state.Fuel < CraftLogistics.EffectiveFuelMaximum(possibleRule, state.Weapons,
-                            campaign.Content.RuntimeRules))
+                            campaign.Content.RuntimeRules) &&
+                        campaign.MayReceiveRefuelItem(owner, fuelItem, highest,
+                            requiresReuse: state.Status == "STR_READY"))
                     {
                         var candidate = CraftLogistics.Refuel(state with { Status = "STR_REFUELLING" },
                             possibleRule, campaign.Content.RuntimeRules, 1);
@@ -311,19 +313,6 @@ internal sealed partial class CampaignWorld
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
                 var position = new WorldPosition(state.Longitude, state.Latitude);
                 if (AddCraftRadar(sources, rule, state, position) is { } reason) return reason;
-            }
-            if (!forecastRefuelling || highest < CampaignTimeTrigger.OneHour) continue;
-            foreach (var transfer in owner.Transfers)
-            {
-                if (transfer.Delivered || transfer.Hours > 1 ||
-                    transfer is not { Kind: CampaignTransferKind.Craft, Craft.Logistics: { IsAutoPatrolling: true } incoming })
-                    continue;
-                var rule = campaign.Content.RuntimeRules.Crafts[
-                    campaign.Content.RuntimeRules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
-                if (!rule.AutoPatrol) continue;
-                if (AddCraftRadar(sources, rule, incoming,
-                        new WorldPosition(owner.Longitude, owner.Latitude)) is { } reason)
-                    return reason;
             }
         }
         return null;

@@ -75,8 +75,12 @@ waypoint flight, mission countdowns, activity scoring and base/craft radar detec
   that refuels and relaunches auto-patrol earlier in the same half-hour handler. A
   grounded auto-patrol flag alone does not count as airborne radar. The hourly rearming
   transition into refuelling is projected before marker-ID preflight. On hourly
-  inventory or craft-transfer arrivals, preflight reserves capacity for any possible
-  auto-patrol launch; an exhausted marker counter may therefore stop time conservatively.
+  inventory arrivals, preflight reserves capacity only when a matching item transfer,
+  production completion, or daily research reward/return can supply fuel. It excludes
+  delayed and sold production and respects the item-reuse gate for grounded ready craft.
+  Random rewards and shared stock/staff/workshop constraints are bounded without drawing
+  RNG, so marker reservation can still be conservative when a delivery is possible.
+  Incoming auto-patrol crafts retain the transfer preflight gate and are not radar sources.
   Preflight checks activity and marker-ID capacity before mission spawning mutates state.
   Detection scripts and radar values outside the bounded range remain guarded.
 - A score mission with a wave that creates no UFO or site advances its wave counter and
@@ -100,6 +104,8 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `calculateSpeed`, `think`), `src/Savegame/AlienMission.cpp` (`think`,
 `spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`), `src/Savegame/Base.cpp` (`detect`),
 `src/Savegame/Craft.cpp` (`detect`, effective weapon stats and `isDestroyed`),
+`src/Savegame/Production.cpp` (`step`, immediate versus delayed item delivery),
+`src/Savegame/SavedGame.cpp` (research item rewards),
 `src/Geoscape/UfoDetectedState.cpp` (marker identity),
 `src/Savegame/Region.cpp`/`Country.cpp` (activity histories), and
 `src/Geoscape/GeoscapeCraftState.cpp`
