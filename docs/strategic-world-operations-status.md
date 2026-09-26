@@ -18,7 +18,8 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
 - Speed includes installed weapon bonuses. `patrolWithoutFuel` and `autoPatrol` are
   runtime-linked craft properties. Item count and storage limits also reach the runtime
   craft and installed-weapon rules. Facility and craft radar properties are projected
-  for half-hour detection. The compiled-content cache revision is 20.
+  for half-hour detection. Mind-shield flags and power are linked for UFO base scans.
+  The compiled-content cache revision is 21.
 - In-flight craft, waypoints, and auto-patrol coordinates survive save/reload. Invalid
   dispatches leave the campaign unchanged.
 - Dispatch applies `ConfirmDestinationState::btnOkClick`'s armor, onboard-item count,
@@ -51,10 +52,9 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   exact mission-site predicate, validates every possible regional coordinate before RNG
   is consumed, and clears a retained landing ID. Hunting/escorting and nonzero shields
   remain guarded.
-  Ordinary UFOs at trajectory points 0-1 cross ten-minute boundaries: the reference
-  base-detection predicate returns before scanning bases, and the other UFO ten-minute
-  handlers have no effect without hunter-killers or alien bases. Later trajectory points
-  remain guarded at that boundary.
+  Ordinary UFOs now cross ten-minute boundaries at later trajectory points as well.
+  The base-detection predicate skips points 0-1 and current zone 5; hunting, escorting
+  and alien-base handlers remain outside this ordinary path.
   If a terminal UFO precedes an unsupported nonterminal arrival in the same tick, the global
   preflight stops time before either moves; the reference would return at the terminal UFO.
   Rule-derived shield capacity is cached when a save is restored. Destroyed-UFO counts
@@ -80,9 +80,21 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   Ordinary five-second preflight avoids captured mission-lookup predicates and allocates
   no scoring arrays until a half-hour, takeoff or potential landing-marker arrival is pending.
   Terminal arrival still defers later ground timers to the next tick. A fresh/cache
-  fixture now completes spawn, detection, landing, takeoff, departure and mission expiry
-  between the guarded later-trajectory ten-minute boundaries; every transition of a
+  fixture completes spawn, detection, landing, takeoff, departure and mission expiry,
+  including a long ground stay across ten-minute and half-hour boundaries; every transition of a
   short restored lifecycle also survives save/reload and matches a batched command.
+- Ten-minute UFO scans follow `DetectXCOMBase`: strict sight-range comparison, race
+  bonuses, trajectory exclusions, crash-damage checks and base-list/UFO-list ordering.
+  Completed facility area raises detection chance; enabled mind shields reduce it.
+  Construction finishing earlier in the same daily boundary affects the scan. Preflight
+  checks the projected inputs before time or RNG advances. A healthy terminal-departure
+  UFO can still scan before five-second cleanup; damage-destroyed UFOs cannot.
+- A successful scan marks the gameplay-owned, saved base `retaliationTarget` flag without
+  a player alert. `aggressiveRetaliation` defaults true and persists in `oxcePortOptions`.
+  With it disabled, only retaliation UFOs scan and only the last successfully discovered
+  base in each region is newly marked, including the reference's outside-region group.
+  Previously marked bases still participate in scans and retain their flags. This owns
+  discovery only: retaliation mission selection, base-to-mission links and cleanup remain 4c.
 - Existing alien missions decrement their wave countdown at half-hour boundaries, with
   interruption and completed-wave cases preserved. Destroyed UFOs release their mission's
   live count after craft handling, and completed missions expire on the next half-hour
@@ -115,13 +127,15 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   zero-timer follow-up waves remain guarded because the reference recursively processes
   them in the same tick. The public fixture covers repeated and final empty waves.
 - Ordinary flying UFO transit now composes with half-hour mission countdowns, activity
-  scoring and base/craft radar detection. Later trajectory points still stop at their ten-minute
-  base-retargeting boundary; detection scripts remain pending.
+  scoring, base/craft radar detection and ten-minute UFO base scans. Detection scripts
+  and special hunting/escort retargeting remain pending.
   Restored ordinary-campaign UFOs reject a missing mission link or an out-of-range saved
   mission wave before time advances.
   The pre-campaign state follows the reference's absent mission-link case. Restore
   normalizes an ordinary UFO destination to an owned waypoint, so the destination
   preflight guard is currently defensive rather than reachable from a restored save.
+  A malformed live count cannot expire a mission while a UFO still references it;
+  preflight stops before half-hour deletion can break the later detection/movement handlers.
 
 Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestination`,
 `think`, `consumeFuel`, `checkup`), `src/Savegame/MovingTarget.cpp` (`setDestination`,
@@ -129,7 +143,8 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `time30Minutes`, `updateActiveCrafts` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
 `calculateSpeed`, `setAltitude`, `isCrashed`), `src/Savegame/AlienMission.cpp` (`think`,
 `spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`, `getLandPoint`, `ufoLifting`, `addScore`),
-`src/Engine/Options.cpp` (`oxceUfoLandingAlert` default), `src/Savegame/Base.cpp` (`detect`),
+`src/Engine/Options.cpp` (`oxceUfoLandingAlert` and `aggressiveRetaliation` defaults),
+`src/Savegame/Base.cpp` (`detect`, `getDetectionChance`, `setRetaliationTarget`, load/save),
 `src/Savegame/Craft.cpp` (`detect`, effective weapon stats and `isDestroyed`),
 `src/Savegame/Production.cpp` (`step`, immediate versus delayed item delivery),
 `src/Savegame/SavedGame.cpp` (research item rewards),
@@ -153,6 +168,10 @@ The area-landing scenario rejects a water candidate through the campaign handler
 then reloads and flies to the accepted land point with fresh/cache rules. Probability
 tests cover rolls 49 and 50 at a 50% fake-water chance. Temporary mutations confirmed
 that bypassing land selection and inverting the probability comparison fail these tests.
+`StrategicWorldBaseDetectionTests` covers scan exclusions, damage versus status, sight
+and probability boundaries, mind shields, daily completion, regional selection, RNG
+ordering, malformed inputs and saved discovery/options. The existing C++ base-detection
+chance oracle is also used by the new live handler's aggregate arithmetic.
 The existing `strategic-world` C++ oracle covers movement, fuel and detection arithmetic.
 The command/timing, terminal-arrival, landing and half-hour integration scenarios are
 reference-shaped tests rather than extracted C++ traces.
@@ -162,11 +181,14 @@ tests pass with no skips. Solution formatting, generated code-map validation and
 diff whitespace checks pass. The private content/save corpus was not rerun for this
 checkpoint; full lifecycle trace, corpus and population evidence remains a closure gate.
 
+Ten-minute base-discovery checkpoint (2026-09-26): 578 unit tests and 336 fast
+compatibility tests pass with no skips. The affected private campaign save round-trip
+test also passes across its 19-save corpus. Existing time-advancement allocation budgets
+remain unchanged and pass. Full lifecycle trace and population evidence remain closure
+gates; the full private content corpus was not rerun for this slice.
+
 ## Still required for branch 4b
 
-- Implement later-trajectory ten-minute behavior so ordinary flight and ground timers
-  can cross those boundaries without stopping. The short landing fixture completes
-  between them; it does not establish unrestricted lifecycle composition.
 - Complete UFO deletion, mission live-count/expiry handling and target-reference cleanup
   so the supported lifecycle does not become permanently blocked.
 - Add reference-backed full-lifecycle traces, save/reload at each transition, multi-day

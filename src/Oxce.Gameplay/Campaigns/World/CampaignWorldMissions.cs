@@ -24,6 +24,11 @@ internal sealed partial class CampaignWorld
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
             {
+                // A malformed saved count must not delete a mission that the later
+                // detection/movement handlers still need, after time has advanced.
+                foreach (var ufo in _ufos)
+                    if (ufo.MissionId == mission.Id)
+                        return "Alien mission cannot expire while UFOs still reference it.";
                 if (rule.Objective == RuntimeMissionObjective.Retaliation)
                     return "Retaliation mission cleanup requires base linkage.";
                 continue;

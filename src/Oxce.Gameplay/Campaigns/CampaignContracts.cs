@@ -15,7 +15,8 @@ public enum CampaignDifficulty
 
 public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
-    int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false);
+    int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
+    bool AggressiveRetaliation = true);
 
 public readonly record struct CampaignId
 {
@@ -108,6 +109,7 @@ public sealed record BaseSnapshot(
     int Engineers)
 {
     public bool FakeUnderwater { get; init; }
+    public bool RetaliationTarget { get; init; }
     public IReadOnlyList<TransferSnapshot> Transfers { get; init; } = [];
     public IReadOnlyList<ResearchProjectSnapshot> Research { get; init; } = [];
     public IReadOnlyList<ProductionSnapshot> Productions { get; init; } = [];

@@ -152,6 +152,8 @@ public sealed record RuntimeFacilityRule(
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }
     public bool Hyperwave { get; init; }
+    public bool MindShield { get; init; }
+    public int MindShieldPower { get; init; } = 1;
 }
 
 public sealed record RuntimeCraftRule(

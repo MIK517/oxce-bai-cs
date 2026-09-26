@@ -384,10 +384,12 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
     private string? LiveWorldReason(CampaignTimeTrigger highest)
     {
-        var ufoReason = UfoMovementReason(highest);
+        var ufoReason = UfoMovementReason();
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest);
         if (missionReason is not null) return missionReason;
+        var baseDetectionReason = UfoBaseDetectionReason(highest);
+        if (baseDetectionReason is not null) return baseDetectionReason;
         var detectionReason = UfoHalfHourReason(highest);
         if (detectionReason is not null) return detectionReason;
         if (_sites.Count != 0) return "Mission site expiry requires world simulation.";
