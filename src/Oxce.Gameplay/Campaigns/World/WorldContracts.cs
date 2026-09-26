@@ -168,6 +168,8 @@ public sealed record AlienBaseSnapshot(
 /// <summary>Reference: <c>Savegame/GeoscapeEvent.cpp</c>.</summary>
 public sealed record GeoscapeEventSnapshot(string RuleId, int SpawnCountdown)
 {
+    /// <summary>Port sidecar identity; never interpreted as a reference event ID.</summary>
+    public string PreservationKey { get; init; } = string.Empty;
     /// <summary>GeoscapeEvent::_over: the countdown finished and the event is awaiting cleanup.</summary>
     public bool Over { get; init; }
 }
@@ -200,11 +202,15 @@ public sealed record WorldSnapshot
     public IReadOnlyList<MissionSiteSnapshot> MissionSites { get; init; } = [];
     public IReadOnlyList<AlienBaseSnapshot> AlienBases { get; init; } = [];
     public IReadOnlyList<GeoscapeEventSnapshot> Events { get; init; } = [];
+    /// <summary>SavedGame::generatedEvents counts, including history for removed event rules.</summary>
+    public IReadOnlyDictionary<string, int> GeneratedEvents { get; init; } =
+        new System.Collections.ObjectModel.ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public AlienStrategySnapshot Strategy { get; init; } = AlienStrategySnapshot.Empty;
 
     public static WorldSnapshot Empty { get; } = new();
 
     public bool IsEmpty =>
         Missions.Count == 0 && Ufos.Count == 0 && Waypoints.Count == 0 &&
-        MissionSites.Count == 0 && AlienBases.Count == 0 && Events.Count == 0 && Strategy.IsEmpty;
+        MissionSites.Count == 0 && AlienBases.Count == 0 && Events.Count == 0 &&
+        GeneratedEvents.Count == 0 && Strategy.IsEmpty;
 }

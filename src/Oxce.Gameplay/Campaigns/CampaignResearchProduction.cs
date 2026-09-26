@@ -57,6 +57,14 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
 
     private bool? _researchEventWeightsFit;
 
+    internal bool HasCompletedResearch(string id) => _completedResearch.Contains(id);
+
+    private void ScheduleStrategicEvent(string ruleId, string source, TimeEffects effects)
+    {
+        _handlers.Operation<World.ICampaignEventScheduling>().Schedule(ruleId);
+        effects.Notify(new CampaignStrategicEventRequested(ruleId, source));
+    }
+
     private CampaignCommandResult ConfigureResearch(ConfigureResearchProject command)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(command.RuleId);
@@ -468,11 +476,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
             if (id.Length != 0)
                 _nextIds[id] = _nextIds.TryGetValue(id, out var value) ? Math.Max(1, value - 1) : 1;
         if (rule.SpawnedEvent.Length != 0)
-            effects.Notify(new CampaignStrategicEventRequested(rule.SpawnedEvent, source));
+            ScheduleStrategicEvent(rule.SpawnedEvent, source, effects);
         var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
             "Strategic event weights exceed the supported range.");
         if (selectedEvent.HasValue)
-            effects.Notify(new CampaignStrategicEventRequested(selectedEvent.Value.Key, source));
+            ScheduleStrategicEvent(selectedEvent.Value.Key, source, effects);
         if (!HasRemainingResearchReward(rule) && !HasProtectedUnlock(rule))
         {
             var sourceHandle = _content.RuntimeRules.Research.GetRequired(source);
@@ -686,8 +694,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
         var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,
             "Strategic event weights exceed the supported range.");
         if (selectedEvent.HasValue)
-            effects.Notify(new CampaignStrategicEventRequested(selectedEvent.Value.Key,
-                _content.RuntimeRules.Manufacture.GetExternalId(production.Rule)));
+            ScheduleStrategicEvent(selectedEvent.Value.Key,
+                _content.RuntimeRules.Manufacture.GetExternalId(production.Rule), effects);
         _researchScores[^1] = checked(_researchScores[^1] + rule.Points);
     }
 

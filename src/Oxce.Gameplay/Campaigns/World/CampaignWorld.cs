@@ -34,6 +34,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         RegisterMissionOperations(registry);
         RegisterUfoDetection(registry);
         RegisterCraftOperations(registry);
+        RegisterEventScheduling(registry);
     }
 
     internal AlienStrategyState Strategy => _strategy;
@@ -103,6 +104,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         MissionSites = CampaignSnapshot.ReadOnly(_sites),
         AlienBases = CampaignSnapshot.ReadOnly(_alienBases),
         Events = CampaignSnapshot.ReadOnly(_events),
+        GeneratedEvents = CampaignSnapshot.ReadOnlyIds(_generatedEvents),
         Strategy = CaptureStrategy(),
     };
 
@@ -128,6 +130,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _sites.Clear();
         _alienBases.Clear();
         _events.Clear();
+        _generatedEvents.Clear();
+        foreach (var pair in snapshot.World.GeneratedEvents) _generatedEvents.Add(pair.Key, pair.Value);
 
         // SavedGame::load drops entities whose rules are gone and keeps the rest.
         foreach (var alienBase in snapshot.World.AlienBases)
@@ -310,6 +314,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         foreach (var scheduled in _events)
             if (scheduled.SpawnCountdown < 0)
                 throw new InvalidDataException("Scheduled event countdowns cannot be negative.");
+        ValidateEventHistory();
 
         foreach (var state in campaign.BaseStates)
             foreach (var craft in state.Crafts)
@@ -387,8 +392,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (detectionReason is not null) return detectionReason;
         if (_sites.Count != 0) return "Mission site expiry requires world simulation.";
         if (_alienBases.Count != 0) return "Alien base activity requires world simulation.";
-        if (_events.Count != 0) return "Strategic event scheduling requires world simulation.";
-        return null;
+        return EventSchedulingReason(highest);
     }
 
     private string MarkerName(string deploymentId) =>

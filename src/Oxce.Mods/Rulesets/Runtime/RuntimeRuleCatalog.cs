@@ -34,7 +34,7 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> skills,
         RuntimeRuleFamily<ResearchRuleFamily, RuntimeResearchRule> research,
         RuntimeRuleFamily<ManufactureRuleFamily, RuntimeManufactureRule> manufacture,
-        RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> events,
+        RuntimeRuleFamily<EventRuleFamily, RuntimeEventRule> events,
         RuntimeRuleFamily<UfoRuleFamily, RuntimeUfoRule> ufos,
         RuntimeRuleFamily<UfoTrajectoryRuleFamily, RuntimeUfoTrajectoryRule> ufoTrajectories,
         RuntimeRuleFamily<AlienMissionRuleFamily, RuntimeAlienMissionRule> alienMissions,
@@ -83,7 +83,7 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> Skills { get; }
     public RuntimeRuleFamily<ResearchRuleFamily, RuntimeResearchRule> Research { get; }
     public RuntimeRuleFamily<ManufactureRuleFamily, RuntimeManufactureRule> Manufacture { get; }
-    public RuntimeRuleFamily<EventRuleFamily, RuntimeIdentityRule> Events { get; }
+    public RuntimeRuleFamily<EventRuleFamily, RuntimeEventRule> Events { get; }
     public RuntimeRuleFamily<UfoRuleFamily, RuntimeUfoRule> Ufos { get; }
     public RuntimeRuleFamily<UfoTrajectoryRuleFamily, RuntimeUfoTrajectoryRule> UfoTrajectories { get; }
     public RuntimeRuleFamily<AlienMissionRuleFamily, RuntimeAlienMissionRule> AlienMissions { get; }

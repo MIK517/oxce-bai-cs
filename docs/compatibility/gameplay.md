@@ -10,14 +10,16 @@ See [the ownership ledger](../phase-6-ownership.md) and
 
 The 2026-09-26 [world scope split](../phase-6-plan.md#branch-4--world-simulation-and-mission-generation)
 sets branch 4b closure at the supported ordinary UFO lifecycle and headless craft
-operations. That gate is satisfied locally; see the
+operations. That gate is satisfied and merged in `e10d96f`; see the
 [closure evidence](../strategic-world-operations-status.md#branch-4b-closure-evidence-2026-09-26). Branch 4c owns mission/arc/event scheduling,
-broader world lifecycles, remaining scripts, pursuit and globe UI, and must satisfy
-the original combined branch 4 acceptance. The partial statuses below describe
+broader world lifecycles, remaining scripts and pursuit. Branch 4d owns globe UI and
+combined branch 4 acceptance. Event payload effects remain guarded for branch 6.
+The partial statuses below describe
 implemented behavior, not planned acceptance.
 
 | Subsystem or scenario | Status | Reference source | Fixture | Notes |
 |---|---|---|---|---|
+| Strategic event scheduling | partial: producer scheduling/countdowns | `SavedGame::spawnEvent/addGeneratedEvent`, `GeoscapeEvent::think`, `GeoscapeState::time30Minutes` | `strategic-event`; `StrategicEventSchedulingTests`; `WorldEventTimingTests` | Research/manufacturing schedule inside gameplay transactions. Timer rounding/minimum, repeated history, countdown and research-interrupted deletion execute across fresh/cache/save paths. Due payloads stop time before mutation; event-script selection and branch 6 effects remain outstanding. |
 | Battlescape coordinate storage and basic conversions | partial | `src/Battlescape/Position.h` | `core-position` | Signed 16-bit storage, tile/voxel conversion, remainder, and distance rounding are covered. |
 | New campaign and starting base | compatible for foundation subset | `src/Mod/Mod.cpp` (`newSave`, `getStartingBase`), `src/Savegame/Base.cpp` | `campaign-foundation`; `runtime-rule-linking`; public and staged UFO/TFTD/40k scenarios | Deterministic campaign creation builds countries/regions and the difficulty-selected starting base from generation-linked rules, including initial funding, facilities, crafts, fixed/random soldiers, items, IDs, and script values. Starting-base placement is a validated command/event and the implemented state round-trips through OXCE YAML. |
 | Time progression and calendar | compatible for bounded readiness and world transit | `GeoscapeState.cpp`, `GameTime.cpp` | `strategic-time`; readiness, world transit/countdown and dispatcher/calendar/soak tests | Hourly servicing/transfers, half-hour refuelling, mission countdowns, UFO activity and base/craft radar detection, five-second UFO/craft transit and daily construction/recovery/training run when preflight permits. Ordinary UFO flight and ground timers cross ten-minute boundaries with base discovery scans; month boundaries and unsupported live-world transitions remain guarded. |

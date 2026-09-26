@@ -59,4 +59,16 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
 
 ## Progress
 
-- Opening plan/scope commit only; implementation and closure gates remain outstanding.
+- Opening plan/scope commit: `b06cb39`.
+- Event scheduling slice: runtime timer projections, transaction-owned research/manufacturing
+  scheduling, generated history, countdowns/interrupted cleanup and due-payload guards.
+  Extracted C++ fixture: `strategic-event`; public runtime/save tests:
+  `StrategicEventSchedulingTests`. Persistent event sidecar identity follows ADR 0028.
+  Validation: root `dotnet test` passes 1,043 tests with zero skips, including private
+  saves and fixture checksums; formatting and code-map checks pass. The early Rosigma
+  save advances 220 ticks to the mission-spawn guard instead of stopping at tick zero
+  for event scheduling. Corpus totals remain six executable, five blocked and eight
+  preservation-only over the existing thirty-minute horizon.
+- Remaining mission/arc/adhoc/event-script selection, objectives, sites/bases, detection
+  scripts, pursuit/special UFOs and headless closure are still outstanding. Branch 4d
+  remains unstarted pending the 4c merge.

@@ -481,10 +481,12 @@ public static partial class OxceSaveAdapter
                 snapshot.World.Events.Select((scheduled, index) => Overlay(originalEvents[index],
                 [
                     Pair("name", Scalar(scheduled.RuleId)),
+                    Pair("oxcePortEntityKey", Scalar(scheduled.PreservationKey)),
                     Pair("spawnCountdown", Integer(scheduled.SpawnCountdown)),
                     Pair("over", scheduled.Over ? Boolean(true) : null),
                 ])))),
             Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy, originalStrategy)),
+            Pair("generatedEvents", IntMapping(snapshot.World.GeneratedEvents)),
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
             Pair("terrorSites", null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),
