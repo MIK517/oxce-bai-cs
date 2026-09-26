@@ -181,6 +181,7 @@ public sealed record RuntimeCraftRule(
     public int RefuelRate { get; init; }
     public int RepairRate { get; init; }
     public int ShieldCapacity { get; init; }
+    public int ShieldRechargeInGeoscape { get; init; }
     public int ShieldRechargeAtBase { get; init; }
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }

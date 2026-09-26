@@ -192,6 +192,7 @@ public static class RuntimeRuleLinker
                 RefuelRate = rule.Value.Integers["refuelRate"],
                 RepairRate = rule.Value.Integers["repairRate"],
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
+                ShieldRechargeInGeoscape = rule.Value.Stats.Get("shieldRechargeInGeoscape"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
                 RadarRange = rule.Value.Stats.Get("radarRange"),
                 RadarChance = rule.Value.Stats.Get("radarChance"),

@@ -2,6 +2,15 @@
 # fake-underwater and ocean textures, a region with point and area mission zones, UFOs,
 # trajectories, alien missions and the deployments their sites and bases use.
 crafts:
+  # GeoscapeState::time5Seconds recharges these shields even while grounded.
+  - type: SHIELD_CRAFT
+    speedMax: 6000
+    damageMax: 100
+    fuelMax: 100
+    weapons: 2
+    shieldCapacity: 10
+    shieldRechargeInGeoscape: 125
+    shieldRechargedAtBase: 2
   - type: SHIP
     speedMax: 6000
     damageMax: 100
@@ -28,6 +37,14 @@ crafts:
     radarRange: 1000
     radarChance: 100
 craftWeapons:
+  - type: SHIELD_BOOST
+    ammoMax: 0
+    launcher: SUPPLY
+    stats: {shieldCapacity: 5, shieldRechargeInGeoscape: 25}
+  - type: SHIELD_EXCESS
+    ammoMax: 0
+    launcher: SUPPLY
+    stats: {shieldRechargeInGeoscape: 2147483647}
   # A transferring auto-patrol craft must reject effective speed overflow before arrival.
   - type: SPEED_EXCESS
     ammoMax: 0

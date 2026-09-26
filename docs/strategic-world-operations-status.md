@@ -19,7 +19,22 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   runtime-linked craft properties. Item count and storage limits also reach the runtime
   craft and installed-weapon rules. Facility and craft radar properties are projected
   for half-hour detection. Mind-shield flags and power are linked for UFO base scans.
-  The compiled-content cache revision is 22.
+  The compiled-content cache revision is 23.
+- Five-second craft shield recharge follows `GeoscapeState::time5Seconds` and
+  `Craft::setShield`, including grounded craft, weapon bonuses, instant recharge (-1),
+  fractional percent rolls and capacity clamping. Positive rates consume a roll even
+  when divisible by 100; full shields and disabled rates consume none. Hourly base
+  recharge runs first, and terminal UFO arrivals defer the whole craft pass.
+  Effective shield stat overflow blocks before time advances; shield addition uses a
+  wide intermediate before clamping instead of the reference's signed-overflow case.
+- Dispatch and auto-patrol validate waypoint ID capacity and collisions before changing
+  state. Half-hour preflight reserves an upper bound for possible relaunches, including
+  hourly servicing, due craft transfers and READY craft that may reuse arriving or
+  manufactured fuel. An invalid counter can therefore stop a
+  boundary even when missing fuel or unfinished servicing would prevent that relaunch;
+  ordinary ID ranges and ticks with no possible relaunch remain unaffected.
+  `StrategicWorldCraftShieldTests`, `StrategicWorldWaypointTests` and the local
+  `CraftServicingTests` cover these rules, atomic rejection and save/reload.
 - In-flight craft, waypoints, and auto-patrol coordinates survive save/reload. Invalid
   dispatches leave the campaign unchanged.
 - Dispatch applies `ConfirmDestinationState::btnOkClick`'s armor, onboard-item count,

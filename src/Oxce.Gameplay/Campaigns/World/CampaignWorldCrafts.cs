@@ -72,6 +72,7 @@ internal sealed partial class CampaignWorld
         if (CraftLogistics.TooManyItemsOnboard(state, rule, campaign.Content.RuntimeRules))
             return Blocked("The craft carries too many items.");
         if (!campaign.HasRequiredPilots(owner, craft)) return Blocked("The craft does not have enough pilots.");
+        if (!CanAllocateWaypointIds(1)) return Blocked(WaypointIdReason);
         var id = campaign.NextId(WorldTargetReference.WaypointType);
         var waypoint = new WaypointSnapshot(id, position.Longitude, position.Latitude);
         _waypoints.Add(waypoint);
@@ -185,6 +186,7 @@ internal sealed partial class CampaignWorld
     private string? CraftMovementReason(CampaignTimeTrigger highest)
     {
         var bases = campaign.BaseStates;
+        var possibleRelaunches = 0;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
         {
             var owner = bases[baseIndex];
@@ -194,6 +196,10 @@ internal sealed partial class CampaignWorld
                 if (craft.Logistics is not { } state) continue;
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
                 if (CraftConditionReason(state, rule) is { } reason) return reason;
+                if (highest >= CampaignTimeTrigger.ThirtyMinutes && state.IsAutoPatrolling && rule.AutoPatrol &&
+                    (state.Status == "STR_REFUELLING" || highest >= CampaignTimeTrigger.OneHour &&
+                        (state.Status == "STR_REARMING" || state.Status == "STR_READY" && rule.RefuelItem is not null)))
+                    possibleRelaunches++;
                 if (state.Status != "STR_OUT") continue;
                 if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
@@ -215,9 +221,26 @@ internal sealed partial class CampaignWorld
                 var rules = campaign.Content.RuntimeRules;
                 var rule = rules.Crafts[rules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
                 if (CraftConditionReason(state, rule) is { } reason) return reason;
+                if (state.IsAutoPatrolling && rule.AutoPatrol) possibleRelaunches++;
             }
         }
-        return null;
+        // Reserve an upper bound: hourly servicing, arrivals and produced fuel can
+        // enter refuelling before relaunch. ReuseItem also changes READY craft with
+        // missing fuel. No forecast mutates stocks or consumes RNG.
+        return CanAllocateWaypointIds(possibleRelaunches) ? null : WaypointIdReason;
+    }
+
+    private const string WaypointIdReason = "Waypoint IDs are exhausted or collide with a saved waypoint.";
+
+    private bool CanAllocateWaypointIds(int count)
+    {
+        if (count == 0) return true;
+        var first = campaign.PeekNextId(WorldTargetReference.WaypointType);
+        var afterLast = (long)first + count;
+        if (afterLast > int.MaxValue) return false;
+        foreach (var waypoint in _waypoints)
+            if (waypoint.Id >= first && waypoint.Id < afterLast) return false;
+        return true;
     }
 
     private string? CraftConditionReason(CraftLogisticsState state, RuntimeCraftRule rule)
@@ -228,6 +251,9 @@ internal sealed partial class CampaignWorld
         var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, rule, campaign.Content.RuntimeRules);
         if (damageMaximum > 0 && state.Damage >= damageMaximum)
             return "Destroyed craft removal requires world simulation.";
+        if (!CraftLogistics.TryEffectiveGeoscapeShields(rule, state.Weapons, campaign.Content.RuntimeRules,
+                out _, out _))
+            return "Craft geoscape shield stats exceed the supported range.";
         if (state.IsAutoPatrolling)
         {
             if (!new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude).IsNormalized)
@@ -265,59 +291,68 @@ internal sealed partial class CampaignWorld
             for (var index = 0; index < owner.Crafts.Count; index++)
             {
                 var craft = owner.Crafts[index];
-                if (craft.Logistics is not { Status: "STR_OUT" } state) continue;
-                var takingOff = state.Takeoff > 0;
-                if (takingOff)
-                    state = state with { Takeoff = state.Takeoff - 1 };
-                if (state.Destination is { } destination)
+                if (craft.Logistics is not { } state) continue;
+                if (state.Status == "STR_OUT")
                 {
-                    if (TryGetCraftDestinationPosition(destination, out var to))
+                    var takingOff = state.Takeoff > 0;
+                    if (takingOff)
+                        state = state with { Takeoff = state.Takeoff - 1 };
+                    if (state.Destination is { } destination)
                     {
-                        var from = new WorldPosition(state.Longitude, state.Latitude);
-                        if (!takingOff)
+                        if (TryGetCraftDestinationPosition(destination, out var to))
                         {
-                            var speedRadian = WorldGeometry.RadianSpeed(state.Speed);
-                            var vector = WorldGeometry.SpeedVector(from, to, speedRadian);
-                            var moved = WorldGeometry.Move(from, to, speedRadian, vector);
-                            state = state with
+                            var from = new WorldPosition(state.Longitude, state.Latitude);
+                            if (!takingOff)
                             {
-                                Longitude = moved.Longitude,
-                                Latitude = moved.Latitude,
-                                SpeedRadian = speedRadian,
-                                SpeedLongitude = vector.Longitude,
-                                SpeedLatitude = vector.Latitude,
-                            };
-                        }
-                        if (WorldGeometry.ReachedDestination(new WorldPosition(state.Longitude, state.Latitude), to))
-                        {
-                            if (destination.Kind == WorldTargetKind.Base)
-                            {
-                                state = CheckupOnReturn(state, craft, campaign.Content.RuntimeRules);
-                            }
-                            else if (destination.Kind == WorldTargetKind.Waypoint)
-                            {
-                                if (!CraftLogistics.TryEffectiveSpeedMaximum(
-                                    campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, state.Weapons,
-                                    campaign.Content.RuntimeRules, out var maximum))
-                                    throw new InvalidOperationException("Craft speed changed after world preflight.");
-                                var speed = maximum / 2;
+                                var speedRadian = WorldGeometry.RadianSpeed(state.Speed);
+                                var vector = WorldGeometry.SpeedVector(from, to, speedRadian);
+                                var moved = WorldGeometry.Move(from, to, speedRadian, vector);
                                 state = state with
                                 {
-                                    Destination = null,
-                                    Speed = speed,
-                                    SpeedRadian = WorldGeometry.RadianSpeed(speed),
-                                    SpeedLongitude = 0,
-                                    SpeedLatitude = 0,
+                                    Longitude = moved.Longitude,
+                                    Latitude = moved.Latitude,
+                                    SpeedRadian = speedRadian,
+                                    SpeedLongitude = vector.Longitude,
+                                    SpeedLatitude = vector.Latitude,
                                 };
-                                if (!state.IsAutoPatrolling)
-                                    effects.Notify(new CraftArrivedAtWaypoint(owner.Id,
-                                        campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
-                                        destination.Id));
+                            }
+                            if (WorldGeometry.ReachedDestination(new WorldPosition(state.Longitude, state.Latitude), to))
+                            {
+                                if (destination.Kind == WorldTargetKind.Base)
+                                {
+                                    state = CheckupOnReturn(state, craft, campaign.Content.RuntimeRules);
+                                }
+                                else if (destination.Kind == WorldTargetKind.Waypoint)
+                                {
+                                    if (!CraftLogistics.TryEffectiveSpeedMaximum(
+                                        campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, state.Weapons,
+                                        campaign.Content.RuntimeRules, out var maximum))
+                                        throw new InvalidOperationException("Craft speed changed after world preflight.");
+                                    var speed = maximum / 2;
+                                    state = state with
+                                    {
+                                        Destination = null,
+                                        Speed = speed,
+                                        SpeedRadian = WorldGeometry.RadianSpeed(speed),
+                                        SpeedLongitude = 0,
+                                        SpeedLatitude = 0,
+                                    };
+                                    if (!state.IsAutoPatrolling)
+                                        effects.Notify(new CraftArrivedAtWaypoint(owner.Id,
+                                            campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id,
+                                            destination.Id));
+                                }
                             }
                         }
                     }
                 }
-                // Nothing changed for a craft that is parked, patrolling or waiting out its takeoff.
+                // The reference recharges grounded craft too, after think/checkup and
+                // before the next craft. A terminal UFO arrival skips this whole pass.
+                var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+                if (!CraftLogistics.TryEffectiveGeoscapeShields(rule, state.Weapons, campaign.Content.RuntimeRules,
+                        out var capacity, out var recharge))
+                    throw new InvalidOperationException("Craft shield stats changed after world preflight.");
+                state = CraftServicing.RechargeGeoscapeShield(state, capacity, recharge, campaign.Random);
                 if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
             }
         }
@@ -428,6 +463,8 @@ internal sealed partial class CampaignWorld
             if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                     campaign.Content.RuntimeRules, out var speed))
                 throw new InvalidOperationException("Craft speed changed after world preflight.");
+            if (!CanAllocateWaypointIds(1))
+                throw new InvalidOperationException("Waypoint IDs changed after world preflight.");
             var waypointId = campaign.NextId(WorldTargetReference.WaypointType);
             var position = new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude);
             _waypoints.Add(new WaypointSnapshot(waypointId, position.Longitude, position.Latitude));
