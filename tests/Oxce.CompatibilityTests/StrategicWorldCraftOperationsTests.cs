@@ -168,6 +168,69 @@ public sealed class StrategicWorldCraftOperationsTests
             Assert.Single(snapshot.Bases[0].Crafts, craft => craft.RuleId == "SHIP_SLOW_REFUEL").Logistics!;
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CraftReturningHomeRejectsEveryFlightCommand(bool missionComplete)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = ReadyCampaign(content).Capture();
+        var baseId = snapshot.Bases[0].Id;
+        var campaign = CampaignState.Restore(snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                LowFuel = !missionComplete,
+                MissionComplete = missionComplete,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.3,
+                AutoPatrolLatitude = 0.1,
+                Destination = new WorldTargetReference(WorldTargetKind.Base,
+                    WorldTargetReference.BaseType, baseId, 0.2, 0.1),
+            },
+        }), content, new SplitMix64RandomSource(41));
+        var before = campaign.Capture();
+
+        // InterceptState and GeoscapeCraftState offer no command for a craft heading home.
+        foreach (ICampaignCommand command in new ICampaignCommand[]
+        {
+            new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.4, 0.1),
+            new PatrolCraft(baseId, "SHIP", 1),
+            new RecallCraft(baseId, "SHIP", 1),
+        })
+        {
+            Assert.Equal("The craft is returning to base.",
+                Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(command).Events)).Reason);
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+        }
+    }
+
+    [Theory]
+    [InlineData("STR_OUT")]
+    [InlineData("STR_REPAIRS")]
+    public void DestroyedCraftStopsTimeBeforeItsRemoval(string status)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = ReadyCampaign(content).Capture();
+        var rule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value;
+        Assert.Equal(100, rule.DamageMaximum);
+        var campaign = CampaignState.Restore(snapshot.WithCraft("SHIP", craft => craft with
+        {
+            // Every veteran SHIP weapon is removed so the rule's damageMax is the whole limit.
+            Logistics = craft.Logistics! with { Status = status, Damage = 100, Weapons = [null, null] },
+        }), content, new SplitMix64RandomSource(42));
+
+        AssertTimeBlocked(campaign, "Destroyed craft removal requires world simulation.");
+
+        var damaged = CampaignState.Restore(snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { Status = status, Damage = 99, Weapons = [null, null] },
+        }), content, new SplitMix64RandomSource(43));
+        Assert.DoesNotContain(damaged.Execute(new AdvanceCampaignTime(1)).Events,
+            item => item is CampaignActionBlocked);
+    }
+
     [Fact]
     public void ReadyAutoPatrolFlagDoesNotLaunchWithoutRefuelling()
     {

@@ -25,7 +25,16 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
 - Dispatch applies `ConfirmDestinationState::btnOkClick`'s armor, onboard-item count,
   onboard-item size, and pilot gates in that order. The armor check also covers crew
   restored from a save. Fuel is not a dispatch condition; the reference lets a craft
-  leave and turn back.
+  leave and turn back. A craft already heading home after low fuel or a completed
+  mission refuses dispatch, patrol and recall, as `InterceptState` and
+  `GeoscapeCraftState` offer no command for it; otherwise it would keep its low-fuel
+  flag and never turn back again. Dispatch and recall cancel auto-patrol, and patrol
+  starts it, only for crafts whose rules allow auto-patrol.
+- A destroyed craft (damage at or above damageMax including weapon bonuses), in any
+  status, stops time: `time5Seconds` deletes it with activity, crew and statistics
+  consequences that belong to the dogfight slice. Rules without `damageMax` (default 0)
+  would make every such craft destroyed in C++; the port deliberately treats those
+  crafts as intact.
 - Returning to base continues time silently. Automatic patrol relaunch requires a craft
   that just became ready through refuelling; unsupported pursuit and landing targets
   remain guarded.

@@ -53,8 +53,11 @@ internal sealed partial class CampaignWorld
         var state = craft.Logistics;
         if (state is null) return Blocked("Craft dispatch requires resolved craft state.");
         if (!owner.IsPlaced) return Blocked("A craft cannot depart from an unplaced base.");
+        // InterceptState::lstCraftsLeftClick: a READY craft always starts; an airborne one
+        // only while it is not returning for fuel or after completing its mission.
         if (state.Status != "STR_READY" && state.Status != "STR_OUT")
             return Blocked("The craft is not ready to depart.");
+        if (state.Status == "STR_OUT" && IsReturningHome(state)) return Blocked(ReturningReason);
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var speed))
@@ -69,11 +72,20 @@ internal sealed partial class CampaignWorld
         var waypoint = new WaypointSnapshot(id, position.Longitude, position.Latitude);
         _waypoints.Add(waypoint);
         var destination = WorldTargetReference.ForWaypoint(id, position);
+        // ConfirmDestinationState::btnOkClick cancels auto-patrol only for crafts that can use it.
         owner.Crafts[index] = craft with
-        { Logistics = SetDestination(state with { IsAutoPatrolling = false }, speed, destination) };
+        {
+            Logistics = SetDestination(state with { IsAutoPatrolling = state.IsAutoPatrolling && !rule.AutoPatrol },
+                speed, destination),
+        };
         return new CampaignCommandResult([new CraftDestinationChanged(owner.Id, command.CraftTypeId,
             craft.Id, destination)]);
     }
+
+    /// <summary>Craft::getLowFuel or getMissionComplete: the craft is already heading home.</summary>
+    private static bool IsReturningHome(CraftLogisticsState state) => state.LowFuel || state.MissionComplete;
+
+    private const string ReturningReason = "The craft is returning to base.";
 
     private CampaignCommandResult Patrol(PatrolCraft command)
     {
@@ -81,6 +93,7 @@ internal sealed partial class CampaignWorld
         var craft = owner.Crafts[index];
         if (craft.Logistics is not { Status: "STR_OUT" } state)
             return Blocked("The craft is not airborne.");
+        if (IsReturningHome(state)) return Blocked(ReturningReason);
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var speedMaximum))
@@ -96,7 +109,8 @@ internal sealed partial class CampaignWorld
                 SpeedRadian = WorldGeometry.RadianSpeed(speed),
                 SpeedLongitude = 0,
                 SpeedLatitude = 0,
-                IsAutoPatrolling = rule.AutoPatrol,
+                // GeoscapeCraftState::btnPatrolClick only touches auto-patrol when the rule allows it.
+                IsAutoPatrolling = rule.AutoPatrol || state.IsAutoPatrolling,
                 AutoPatrolLongitude = rule.AutoPatrol ? state.Longitude : state.AutoPatrolLongitude,
                 AutoPatrolLatitude = rule.AutoPatrol ? state.Latitude : state.AutoPatrolLatitude,
             },
@@ -111,14 +125,19 @@ internal sealed partial class CampaignWorld
         var craft = owner.Crafts[index];
         var state = craft.Logistics;
         if (state is not { Status: "STR_OUT" }) return Blocked("The craft is not airborne.");
+        // GeoscapeCraftState hides its commands while the craft is already heading home.
+        if (IsReturningHome(state)) return Blocked(ReturningReason);
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-        // Craft::returnToBase has no speed condition, so recall always stays available.
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var speed))
             return Blocked(SpeedRangeReason);
         var destination = BaseReference(owner);
+        // GeoscapeCraftState::btnBaseClick cancels auto-patrol only for crafts that can use it.
         owner.Crafts[index] = craft with
-        { Logistics = SetDestination(state with { IsAutoPatrolling = false }, speed, destination) };
+        {
+            Logistics = SetDestination(state with { IsAutoPatrolling = state.IsAutoPatrolling && !rule.AutoPatrol },
+                speed, destination),
+        };
         return new CampaignCommandResult([new CraftDestinationChanged(owner.Id, command.CraftTypeId,
             craft.Id, destination)]);
     }
@@ -170,6 +189,13 @@ internal sealed partial class CampaignWorld
                 var craft = owner.Crafts[craftIndex];
                 if (craft.Logistics is not { } state) continue;
                 var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+                // GeoscapeState::time5Seconds removes a destroyed craft in any status, with
+                // activity, crew and statistics consequences that belong to the dogfight slice.
+                // A craft whose rules omit damageMax (default 0) would also count as destroyed
+                // there, damaged or not; such incomplete rules are deliberately treated as intact.
+                var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, rule, campaign.Content.RuntimeRules);
+                if (damageMaximum > 0 && state.Damage >= damageMaximum)
+                    return "Destroyed craft removal requires world simulation.";
                 if (state.IsAutoPatrolling)
                 {
                     if (!new WorldPosition(state.AutoPatrolLongitude, state.AutoPatrolLatitude).IsNormalized)

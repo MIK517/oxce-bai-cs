@@ -105,6 +105,24 @@ public static class CraftLogistics
         return IsSupportedValue(speed);
     }
 
+    /// <summary>Craft::isDestroyed: damage reaches damageMax including installed-weapon bonuses.</summary>
+    public static bool IsDestroyed(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules) =>
+        state.Damage >= EffectiveDamageMaximum(state, rule, rules);
+
+    /// <summary>Craft::_stats.damageMax after installed-weapon bonuses, without allocating.</summary>
+    public static long EffectiveDamageMaximum(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules)
+    {
+        long damageMaximum = rule.DamageMaximum;
+        var weapons = state.Weapons;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            damageMaximum += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+                .GetValueOrDefault("damageMax");
+        }
+        return damageMaximum;
+    }
+
     /// <summary>Craft::_stats after installed-weapon bonuses, for updateActiveCrafts and Craft::detect.</summary>
     public static bool TryEffectiveDetectionStats(RuntimeCraftRule rule,
         IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules,

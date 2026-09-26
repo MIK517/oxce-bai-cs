@@ -241,19 +241,11 @@ public sealed class StrategicWorldCraftRadarTests
             return radarCraft with { Logistics = radarCraft.Logistics! with { Damage = destroyed ? 100 : 0 } };
         });
         campaign = CampaignState.Restore(UfoNearBase(snapshot), content, new SplitMix64RandomSource(87));
-        var before = campaign.Capture();
 
-        if (!destroyed)
-            AssertTimeBlocked(campaign, "Craft radar stats are outside the supported range.");
-        else
-        {
-            var result = campaign.Execute(new AdvanceCampaignTime(1));
-            Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-            Assert.DoesNotContain(result.Events, item => item is UfoContactDetected);
-            Assert.False(Assert.Single(campaign.Capture().World.Ufos).Detected);
-            Assert.Equal(3, Assert.Single(campaign.Capture().Regions).ActivityAlien[^1] -
-                Assert.Single(before.Regions).ActivityAlien[^1]);
-        }
+        // time5Seconds would delete a destroyed craft before it could fly again.
+        AssertTimeBlocked(campaign, destroyed
+            ? "Destroyed craft removal requires world simulation."
+            : "Craft radar stats are outside the supported range.");
     }
 
     private static CraftSnapshot Ship(CampaignSnapshot snapshot) =>
