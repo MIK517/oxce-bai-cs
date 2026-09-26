@@ -221,7 +221,7 @@ gates; the full private content corpus was not rerun for this slice.
 | Reference lifecycle | `StrategicWorldLifecycleTraceTests`: all 2,884 C++ trace rows agree with fresh/cached rules across ordinary, long-ground, interrupted and multiple-UFO cases. Positions, trajectory/status, ground time, mission counters/live counts, activity, detection/landing IDs, pause boundaries and random-choice counts are compared. Reloads bracket transitions; batched continuation reaches the identical complete snapshot. The half-hour activity amounts, contact-marker assignment, always-successful detection and handler order are written by the probe driver rather than extracted from the reference, so for those columns the trace checks consistency with the driver's model; their reference evidence is the separate radar, scoring and handler-order tests. See the oracle limitations above. |
 | Multi-day composition | `StrategicWorldEnduranceTests`: 72 hours (51,840 ticks), 36 finite-wave UFOs, 36 contacts and landing alerts, peak population two, followed by complete UFO/mission drainage. Dispatch/patrol/recall, low-fuel return, refuelling, automatic relaunch and daily facility completion run alongside flight/landing/takeoff. One-tick, batched and repeatedly reloaded runs agree with both fresh and cached rules. |
 | Terrain and malformed state | `StrategicWorldUfoLandingTests`: land selection, permitted/forbidden fake water and forced real ocean continue through takeoff, departure and mission expiry, including reload. Existing malformed timer, coordinate, mission-link, score/marker-capacity and damage tests retain their guards. Tactical depth and underwater deployment are not enabled by this strategic altitude path; those remain with deployment/tactical owners. |
-| Population and allocations | Flight, half-hour and destroyed-UFO cleanup samples with 8/32/128 UFOs and 1/8 bases, plus capture/emission/restore, record costs separately. The guard bounds the bytes per additional UFO between the 32- and 128-UFO samples (flight 256 B per UFO-tick, half-hour 2,048 B, cleanup 128 B), so fixed per-command costs cannot hide per-entity allocations. Moving crafts are bounded at 256 B per additional craft-tick and stationary patrols at zero. See measurements below. |
+| Population and allocations | Flight, half-hour and destroyed-UFO cleanup samples with 8/32/128 UFOs and 1/8 bases, plus capture/emission/restore, record costs separately. The guard bounds the bytes per additional UFO between the 32- and 128-UFO samples (flight 256 B per UFO-tick, half-hour 448 B, cleanup 128 B), so fixed per-command costs cannot hide per-entity allocations. Moving crafts are bounded at 256 B per additional craft-tick and stationary patrols at zero. See measurements below. |
 | Imported saves | `PrivateStrategicWorldTests`: all 19 staged saves classified unchanged under fresh/cache rules; pre-advance loaded rewrite/reload preserves continuation, guards are repeatable without mutation, and post-run rewrites preserve state and opaque content. See the horizon and classifications below. |
 
 Final local validation: `dotnet test --no-restore` passes **963 tests with zero failures
@@ -267,13 +267,15 @@ measurements use current-thread allocated bytes and elapsed time after a warm-up
 scenario. They are bounded regression samples, not statistical benchmarks. Flight is
 12 five-second ticks; half-hour and cleanup are one tick. Craft movement and immutable
 UFO updates are included; save capture/emission and restore are measured separately.
+The half-hour rows were re-measured on Linux x64 after the detection allocation fix;
+the 8-UFO warm-up sample is no longer recorded.
 
 | Workload | Bases | 8 UFOs (bytes) | 32 UFOs (bytes) | 128 UFOs (bytes) |
 |---|---:|---:|---:|---:|
 | Flight, 12 ticks | 1 | 22,816 | 82,720 | 322,336 |
 | Flight, 12 ticks | 8 | 40,784 | 100,688 | 340,304 |
-| Half-hour tick | 1 | 7,664 | 25,712 | 97,904 |
-| Half-hour tick | 8 | 19,064 | 55,928 | 203,384 |
+| Half-hour tick | 1 | — | 13,416 | 48,744 |
+| Half-hour tick | 8 | — | 18,720 | 54,048 |
 | Cleanup tick | 1 | 1,592 | 3,512 | 11,192 |
 | Cleanup tick | 8 | 6,288 | 8,208 | 15,888 |
 
@@ -282,9 +284,11 @@ about 4.79 MB. Across focused and full-suite runs, observed sample times were ro
 2-2.8 ms for 12 flight ticks, 2.3 ms for the half-hour tick, 16-37 ms for capture/emission
 and 102-116 ms for restore. Timings are
 informational and vary with concurrent workload; no elapsed-time CI assertion was
-added. The half-hour tick's cost per UFO grows with the number of bases (752 B with one
-base, 1,536 B with eight); this is recorded for the implementation audit rather than
-accepted as a target. The JSON artifact records the 32- and 128-UFO samples only. These measurements exclude durable disk writes and tactical data. Existing
+added. Half-hour detection projects each base's completed radars once per boundary, spans them
+without a delegate or boxed enumerator per base, and keeps world loops on concrete lists,
+so its cost per additional UFO (368 B, two immutable UFO record updates) no longer
+depends on the number of bases; it was 752 B with one base and 1,536 B with eight.
+The JSON artifact records the 32- and 128-UFO samples only. These measurements exclude durable disk writes and tactical data. Existing
 stationary-craft allocation checks remain stricter than these moving-population checks.
 
 ## Assigned to branch 4c

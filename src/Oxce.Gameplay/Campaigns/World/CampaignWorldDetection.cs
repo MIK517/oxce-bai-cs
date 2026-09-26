@@ -134,7 +134,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? CheckHalfHourUfo(string ruleId, WorldPosition position, string altitude,
-        long[] regionTotals, long[] countryTotals, IReadOnlyList<WorldCraftRadar> craftRadars,
+        long[] regionTotals, long[] countryTotals, List<WorldCraftRadar> craftRadars,
         CampaignTimeTrigger highest, out bool canDetect, int scoreMultiplier = 1)
     {
         canDetect = false;
@@ -182,9 +182,31 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
+    // Completed base radars, projected once per half-hour and reused across boundaries.
+    private readonly List<WorldRadarFacility> _baseRadars = [];
+    private readonly List<int> _baseRadarEnds = [];
+    private Func<int, bool>? _percent;
+
+    private void ProjectBaseRadars()
+    {
+        _baseRadars.Clear();
+        _baseRadarEnds.Clear();
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var owner in campaign.BaseStates)
+        {
+            foreach (var facility in owner.Facilities)
+            {
+                if (facility.BuildTime != 0) continue;
+                var rule = rules.Facilities[facility.Rule].Value;
+                _baseRadars.Add(new WorldRadarFacility(rule.RadarRange, rule.RadarChance, rule.Hyperwave));
+            }
+            _baseRadarEnds.Add(_baseRadars.Count);
+        }
+    }
+
     private void ProcessUfoHalfHour(CampaignState.TimeEffects effects)
     {
-        List<WorldRadarFacility>? radars = null;
+        var radarsProjected = false;
         List<WorldCraftRadar>? craftRadars = null;
         for (var index = 0; index < _ufos.Count; index++)
         {
@@ -203,8 +225,12 @@ internal sealed partial class CampaignWorld
             var rules = campaign.Content.RuntimeRules;
             var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
             ScoreUfoActivity(ufo.Position, checked(ufoRule.MissionScore * (ufo.Status == UfoStatus.Landed ? 2 : 1)), rules);
-            var detected = DetectUfoFromBases(ufo, ufoRule, rules,
-                radars ??= new List<WorldRadarFacility>());
+            if (!radarsProjected)
+            {
+                ProjectBaseRadars();
+                radarsProjected = true;
+            }
+            var detected = DetectUfoFromBases(ufo, ufoRule);
             detected |= DetectUfoFromCrafts(ufo, ufoRule, craftRadars);
             if (!ufo.Detected && (detected & UfoDetectionResult.Radar) != 0)
             {
@@ -262,31 +288,29 @@ internal sealed partial class CampaignWorld
             }
     }
 
-    private UfoDetectionResult DetectUfoFromBases(UfoSnapshot ufo, RuntimeUfoRule ufoRule,
-        RuntimeRuleCatalog rules, List<WorldRadarFacility> radars)
+    private UfoDetectionResult DetectUfoFromBases(UfoSnapshot ufo, RuntimeUfoRule ufoRule)
     {
         var detected = UfoDetectionResult.None;
         var visibility = WorldAltitudes.Visibility(ufoRule.DefaultVisibility, ufo.Altitude);
-        foreach (var owner in campaign.BaseStates)
+        var radars = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_baseRadars);
+        var percent = _percent ??= Percent;
+        var start = 0;
+        for (var index = 0; index < campaign.BaseStates.Count; index++)
         {
+            var owner = campaign.BaseStates[index];
+            var end = _baseRadarEnds[index];
             var distance = WorldGeometry.XcomDistance(WorldGeometry.Distance(
                 new WorldPosition(owner.Longitude, owner.Latitude), ufo.Position));
-            radars.Clear();
-            foreach (var facility in owner.Facilities)
-            {
-                if (facility.BuildTime != 0) continue;
-                var rule = rules.Facilities[facility.Rule].Value;
-                radars.Add(new WorldRadarFacility(rule.RadarRange, rule.RadarChance, rule.Hyperwave));
-            }
-            var (type, chance) = WorldDetection.BaseDetection(radars, distance, visibility,
-                ufo.Detected, Percent);
+            var (type, chance) = WorldDetection.BaseDetection(radars[start..end], distance, visibility,
+                ufo.Detected, percent);
             if (Percent(chance)) detected |= type;
+            start = end;
         }
         return detected;
     }
 
     private UfoDetectionResult DetectUfoFromCrafts(UfoSnapshot ufo, RuntimeUfoRule ufoRule,
-        IReadOnlyList<WorldCraftRadar> crafts)
+        List<WorldCraftRadar> crafts)
     {
         var detected = UfoDetectionResult.None;
         var visibility = WorldAltitudes.Visibility(ufoRule.DefaultVisibility, ufo.Altitude);
