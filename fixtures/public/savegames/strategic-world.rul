@@ -39,6 +39,11 @@ craftWeapons:
     clip: BULKY
     stats: {radarRange: 1000, radarChance: 101}
 facilities:
+  # Six tiles cross Base::getDetectionChance's area/6 threshold with the starting store.
+  - type: DETECTION_AREA_TEST
+    mapName: LOGISTICS
+    sizeX: 2
+    sizeY: 3
   - type: MIND_SCREEN_TEST
     mapName: LOGISTICS
     mind: true
