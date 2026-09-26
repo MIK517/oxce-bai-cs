@@ -194,8 +194,12 @@ gates; the full private content corpus was not rerun for this slice.
 
 ## Still required for branch 4b
 
-- Complete UFO deletion, mission live-count/expiry handling and target-reference cleanup
-  so the supported lifecycle does not become permanently blocked.
+- Cleanup checkpoint: multiple UFOs release their mission counts exactly once;
+  survivors and interrupted-mission expiry, consecutive departures across timing
+  boundaries, reload/batch equivalence, and repeated loaded rewrites of deleted
+  sidecars pass. Ordinary UFO waypoints are privately owned; craft pursuit remains
+  guarded before deletion. Reference-backed traces and endurance evidence below are
+  still required before this cleanup guarantee is accepted for branch closure.
 - Add reference-backed full-lifecycle traces, save/reload at each transition, multi-day
   composition with craft operations, relevant terrain/depth coverage, malformed-input
   and bounded-population tests, populated allocation measurements, fresh/cache and

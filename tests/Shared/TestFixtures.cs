@@ -2,6 +2,7 @@ using System.Text.Json;
 using Oxce.Core.Random;
 using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Discovery;
 using Oxce.Mods.Loading;
 using Oxce.Mods.Rulesets;
@@ -15,6 +16,29 @@ namespace Oxce.TestSupport;
 // stay consistent between unit and compatibility tests.
 internal static class TestFixtures
 {
+    internal static CampaignSnapshot CreateWorldLifecycleSnapshot(RuntimeContent content)
+    {
+        var campaign = CreateLogisticsCampaign(content, "World lifecycle", CampaignDifficulty.Veteran);
+        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
+        var snapshot = campaign.Capture();
+        return snapshot with
+        {
+            MonthsPassed = 0,
+            RandomState = 17,
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+            World = snapshot.World with
+            {
+                Missions = [new AlienMissionSnapshot(4, "MISSION_LANDING", "REGION", "RACE_A", 1, 0, 1500, 1, -1)],
+                Ufos = [new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_LANDING", 2,
+                    8 * Math.PI / 180, 2 * Math.PI / 180, UfoStatus.Landed, WorldAltitudes.Ground)
+                {
+                    Id = 3, MissionWaveNumber = 0, Shield = 0, SecondsRemaining = 10,
+                    Destination = WorldTargetReference.ForWaypoint(0, new(8.01 * Math.PI / 180, 2 * Math.PI / 180)),
+                }],
+            },
+        };
+    }
+
     internal const string LogisticsModId = "logistics";
 
     internal static readonly CampaignId DefaultCampaignId = new(Guid.Parse("0a4c5e6f-7b8d-4e9f-a0b1-c2d3e4f5a6b7"));

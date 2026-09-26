@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 75 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 76 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 78 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -980,13 +980,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 75 files.
+`tests/Oxce.CompatibilityTests` - 76 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
-<details><summary>74 test classes</summary>
+<details><summary>75 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1046,6 +1046,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicSalesFixtureTests` ([StrategicSalesFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicSalesFixtureTests.cs))
 - `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs))
 - `StrategicWorldBaseDetectionTests` ([StrategicWorldBaseDetectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldBaseDetectionTests.cs))
+- `StrategicWorldCleanupTests` ([StrategicWorldCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCleanupTests.cs))
 - `StrategicWorldCraftOperationsTests` ([StrategicWorldCraftOperationsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftOperationsTests.cs))
 - `StrategicWorldFixtureTests` ([StrategicWorldFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldFixtureTests.cs))
 - `StrategicWorldMissionCountdownTests` ([StrategicWorldMissionCountdownTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMissionCountdownTests.cs))
@@ -1213,7 +1214,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 
 - `TestFixtures` (class)
 - `TestFixtures.FixedClock` (class)
-- members: `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `CopyDirectory`, `Instance`, `UtcNow`
+- members: `CreateWorldLifecycleSnapshot`, `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `CopyDirectory`, `Instance`, `UtcNow`
 
 ### Helpers nested in test classes
 
