@@ -14,6 +14,62 @@ public sealed class StrategicWorldUfoLandingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void AreaLandingRejectsWaterAndFliesToTheSelectedLandAfterReload(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var rules = content.RuntimeRules;
+        var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
+        var globe = rules.Campaign.Globe;
+        Assert.False(Assert.Single(region.MissionZones[0].Areas).IsPoint);
+
+        // Controlled choices for AlienMission::getLandPoint: prefer real land,
+        // reject the first point north of the land polygon, then accept the second.
+        // Build the two raw candidates independently of the land-selection helper.
+        var choices = new SplitMix64RandomSource(604);
+        Assert.Equal(53, choices.NextInclusive(0, 99)); // UFO_SCOUT's fake-water chance is 20%.
+        var rejected = WorldGeometry.RandomPoint(region, 0, -1, choices);
+        var accepted = WorldGeometry.RandomPoint(region, 0, -1, choices);
+        Assert.False(WorldGeometry.InsideLand(globe, rejected));
+        Assert.True(WorldGeometry.InsideLand(globe, accepted));
+        Assert.False(WorldGeometry.InsideFakeUnderwaterTexture(globe, accepted));
+        Assert.True(WorldGeometry.InsideRegion(region, accepted));
+
+        var snapshot = CreateCampaign(content).Capture();
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            RandomState = 604,
+            World = snapshot.World with
+            {
+                Ufos = [Assert.Single(snapshot.World.Ufos) with { TrajectoryId = "TRAJ_LANDING_AREA" }],
+            },
+        }, content, new SplitMix64RandomSource(604));
+
+        AdvanceOne(campaign);
+
+        var selected = campaign.Capture();
+        var flying = Assert.Single(selected.World.Ufos);
+        Assert.Equal(1, flying.TrajectoryPoint);
+        Assert.Equal(UfoStatus.Flying, flying.Status);
+        Assert.Equal(accepted, flying.Destination!.Position);
+        Assert.Equal(choices.State, selected.RandomState);
+        campaign = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(selected),
+            content, seed: 605, name: "ufo-area-landing.sav").Campaign;
+        Assert.Equivalent(selected.World, campaign.Capture().World, strict: true);
+
+        // The selected point is close enough to reach before the still-guarded
+        // later-trajectory ten-minute boundary. Exercise the actual flight and landing.
+        for (var tick = 0; tick < 110 && campaign.Capture().World.Ufos[0].Status == UfoStatus.Flying; tick++)
+            AdvanceOne(campaign);
+        var landed = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal(UfoStatus.Landed, landed.Status);
+        Assert.Equal(accepted, landed.Position);
+        Assert.Equal(10, landed.SecondsRemaining);
+        Assert.Equal(40, landed.LandId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void FixedPointWaveSpawnsDetectsLandsDepartsAndExpires(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
