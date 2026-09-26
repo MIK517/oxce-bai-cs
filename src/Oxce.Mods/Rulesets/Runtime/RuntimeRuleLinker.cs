@@ -156,6 +156,11 @@ public static class RuntimeRuleLinker
                 ForbiddenBaseFunctions = rule.Value.ForbiddenBaseFunctions,
                 HangarType = rule.Value.HangarType,
                 ProvidedBaseFunctions = rule.Value.ProvidedBaseFunctions,
+                RadarRange = rule.Value.RadarRange,
+                RadarChance = rule.Value.RadarChance,
+                Hyperwave = rule.Value.HyperWave,
+                MindShield = rule.Value.MindShield,
+                MindShieldPower = rule.Value.MindPower,
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -187,8 +192,15 @@ public static class RuntimeRuleLinker
                 RefuelRate = rule.Value.Integers["refuelRate"],
                 RepairRate = rule.Value.Integers["repairRate"],
                 ShieldCapacity = rule.Value.Stats.Get("shieldCapacity"),
+                ShieldRechargeInGeoscape = rule.Value.Stats.Get("shieldRechargeInGeoscape"),
                 ShieldRechargeAtBase = rule.Value.Integers["shieldRechargedAtBase"],
+                RadarRange = rule.Value.Stats.Get("radarRange"),
+                RadarChance = rule.Value.Stats.Get("radarChance"),
+                MaximumItems = rule.Value.Stats.Get("maxItems"),
+                MaximumStorageSpace = rule.Value.Stats.MaximumStorageSpace,
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
+                PatrolWithoutFuel = rule.Value.Booleans["patrolWithoutFuel"],
+                AutoPatrol = rule.Value.Booleans["autoPatrol"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
                 Pilots = rule.Value.Integers["pilots"],
                 MaximumSoldiers = rule.Value.Integers["maxSoldiers"],
@@ -295,7 +307,10 @@ public static class RuntimeRuleLinker
             BuildFamily<CraftWeaponRuleFamily, CraftWeaponRule, RuntimeCraftWeaponRule>(generation,
                 content.EquipmentProduction.CraftWeapons, rule => new RuntimeCraftWeaponRule(rule.Value.Integers["ammoMax"],
                     rule.Value.Integers["rearmRate"], rule.Value.Launcher, rule.Value.Clip, rule.Value.Stats.Integers)
-                { StatisticalBulletSaving = rule.Value.Booleans["bulletSaving"] }),
+                {
+                    StatisticalBulletSaving = rule.Value.Booleans["bulletSaving"],
+                    BonusStorageSpace = rule.Value.Stats.MaximumStorageSpace,
+                }),
             items,
             soldiers,
             armors,
@@ -575,6 +590,7 @@ public static class RuntimeRuleLinker
                 HireEngineersBaseFunctions = source.HireEngineersRequiredBaseFunctions,
                 HireByCountryOdds = source.HireByCountryOdds,
                 HireByRegionOdds = source.HireByRegionOdds,
+                FixedUserOptions = source.FixedUserOptions,
             };
         }
 

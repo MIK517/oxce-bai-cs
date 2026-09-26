@@ -107,9 +107,14 @@ public static class WorldGeometry
     /// <summary>One MovingTarget::move step toward a stationary meeting point.</summary>
     public static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian)
     {
-        var (speedLongitude, speedLatitude) = SpeedVector(current, destination, speedRadian);
+        return Move(current, destination, speedRadian, SpeedVector(current, destination, speedRadian));
+    }
+
+    internal static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian,
+        (double Longitude, double Latitude) vector)
+    {
         if (Distance(current, destination) > speedRadian)
-            return current.WithLongitude(current.Longitude + speedLongitude).WithLatitude(current.Latitude + speedLatitude);
+            return current.WithLongitude(current.Longitude + vector.Longitude).WithLatitude(current.Latitude + vector.Latitude);
         return current.WithLongitude(destination.Longitude).WithLatitude(destination.Latitude);
     }
 
@@ -175,6 +180,26 @@ public static class WorldGeometry
         var areas = region.MissionZones[zone].Areas;
         if (areas.Count == 0) throw new InvalidDataException($"Mission zone {zone} has no areas.");
         return areas;
+    }
+
+    /// <summary>AlienMission::getLandPoint, including city bypass and bounded forced selection.</summary>
+    public static WorldPosition LandPoint(RuntimeRegionRule region, RuntimeGlobe globe, int zone,
+        int fakeWaterLandingChance, IRandomSource random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        var areas = MissionAreas(region, zone);
+        // AlienMission::getLandPoint tests the FIRST area's shape, then selects
+        // from the whole zone. City points bypass land and fake-water checks.
+        if (areas[0].IsPoint) return RandomPoint(region, zone, -1, random);
+        var fakeWater = RandomChance.Percent(random, fakeWaterLandingChance);
+        for (var attempt = 1; ; attempt++)
+        {
+            var point = RandomPoint(region, zone, -1, random);
+            // The reference accepts the hundredth candidate unconditionally.
+            if (attempt == 100 || InsideLand(globe, point) && InsideRegion(region, point) &&
+                InsideFakeUnderwaterTexture(globe, point) == fakeWater)
+                return point;
+        }
     }
 
     /// <summary>Globe::insideLand: a polygon whose texture is a cosmetic ocean is not land.</summary>

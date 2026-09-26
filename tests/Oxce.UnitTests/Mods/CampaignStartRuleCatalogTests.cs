@@ -50,6 +50,9 @@ public sealed class CampaignStartRuleCatalogTests
                 requires: !add [RESEARCH_B]
                 spriteShape: 5
                 mapName: MAP_A
+                radarRange: 1000
+                radarChance: 75
+                hyper: true
                 buildCostItems: {ITEM_A: {refund: 1}, ITEM_B: {build: 0, refund: 0}}
                 storageTiles: [[-1, -1, -1]]
               - delete: DELETED
@@ -92,6 +95,9 @@ public sealed class CampaignStartRuleCatalogTests
         Assert.Equal(new FacilityItemCost(2, 1), facility.BuildCostItems["ITEM_A"]);
         Assert.False(facility.BuildCostItems.ContainsKey("ITEM_B"));
         Assert.Equal(5, facility.SpriteShape.Index);
+        Assert.Equal(1000, facility.RadarRange);
+        Assert.Equal(75, facility.RadarChance);
+        Assert.True(facility.HyperWave);
         Assert.Equal(300, content.Facilities.Rules[1].Value.ListOrder);
         Assert.DoesNotContain(diagnostics.Snapshot(), item => item.Code == ModDiagnosticCodes.UnconsumedRuleProperty);
     }
@@ -135,6 +141,27 @@ public sealed class CampaignStartRuleCatalogTests
         Assert.Equal(6000, settings.InitialFunding);
         Assert.Equal((3, 2), (settings.GlobalTransferCostMultiplier, settings.GlobalTransferCostDivisor));
         Assert.Equal(["Alpha", "Beta"], settings.BaseNamesFirst);
+    }
+
+    [Theory]
+    [InlineData("!add {aggressiveRetaliation: 'true'}", "aggressiveRetaliation=true;craftLaunchAlways=true;oxceUfoLandingAlert=1")]
+    [InlineData("!remove [craftLaunchAlways]", "aggressiveRetaliation=false;oxceUfoLandingAlert=1")]
+    [InlineData("{canSellLiveAliens: true}", "canSellLiveAliens=true")]
+    public void ComposesFixedUserOptionsAsAnEditableNameMap(string patch, string expected)
+    {
+        // Mod::loadUnorderedNamesToNames: a plain map replaces, !add merges, !remove erases keys.
+        const string baseRules = """
+            fixedUserOptions:
+              aggressiveRetaliation: false
+              craftLaunchAlways: true
+              oxceUfoLandingAlert: 1
+            """;
+        using var fixture = new TemporaryModFixture(("20-base.rul", baseRules),
+            ("10-patch.rul", $"fixedUserOptions: {patch}\n"));
+
+        var settings = CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Settings;
+
+        Assert.Equal(expected, string.Join(';', settings.FixedUserOptions.Select(pair => $"{pair.Key}={pair.Value}")));
     }
 
     [Fact]

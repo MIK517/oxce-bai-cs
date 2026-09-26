@@ -238,5 +238,5 @@ public static class SoldierGeneration
         }
     }
 
-    private static bool Percent(int chance, IRandomSource random) => random.NextInclusive(0, 99) < chance;
+    private static bool Percent(int chance, IRandomSource random) => RandomChance.Percent(random, chance);
 }

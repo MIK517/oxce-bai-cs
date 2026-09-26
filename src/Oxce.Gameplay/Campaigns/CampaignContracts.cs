@@ -15,7 +15,45 @@ public enum CampaignDifficulty
 
 public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
-    int MaximumBases = 8, bool AllowBuildingQueue = false);
+    int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
+    bool AggressiveRetaliation = true, bool CraftLaunchAlways = false)
+{
+    /// <summary>
+    /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
+    /// campaign. OptionInfo::load uses std::boolalpha: skip leading classic-locale whitespace,
+    /// read the case-sensitive true/false prefix, and leave any trailing text unread.
+    /// </summary>
+    public CampaignOptions WithFixedUserOptions(IReadOnlyDictionary<string, string> fixedOptions)
+    {
+        ArgumentNullException.ThrowIfNull(fixedOptions);
+        if (fixedOptions.Count == 0) return this;
+        return this with
+        {
+            StorageLimitsEnforced = Fixed("storageLimitsEnforced", StorageLimitsEnforced),
+            CanSellLiveAliens = Fixed("canSellLiveAliens", CanSellLiveAliens),
+            AutoCombatDefaultSoldier = Fixed("autoCombatDefaultSoldier", AutoCombatDefaultSoldier),
+            AnytimePsiTraining = Fixed("anytimePsiTraining", AnytimePsiTraining),
+            AllowPsiStrengthImprovement = Fixed("allowPsiStrengthImprovement", AllowPsiStrengthImprovement),
+            AllowBuildingQueue = Fixed("allowBuildingQueue", AllowBuildingQueue),
+            UfoLandingAlert = Fixed("oxceUfoLandingAlert", UfoLandingAlert),
+            AggressiveRetaliation = Fixed("aggressiveRetaliation", AggressiveRetaliation),
+            CraftLaunchAlways = Fixed("craftLaunchAlways", CraftLaunchAlways),
+        };
+
+        bool Fixed(string id, bool current) =>
+            fixedOptions.TryGetValue(id, out var value) ? ReadFixedBoolean(value) : current;
+    }
+
+    private static bool ReadFixedBoolean(string value)
+    {
+        var text = value.AsSpan();
+        var start = 0;
+        while (start < text.Length && text[start] is ' ' or '\t' or '\n' or '\r' or '\f' or '\v') start++;
+        // Failed non-empty boolalpha extraction yields false. For empty/whitespace-only
+        // input, where the reference leaves an uninitialized bool, choose false deliberately.
+        return text[start..].StartsWith("true", StringComparison.Ordinal);
+    }
+}
 
 public readonly record struct CampaignId
 {
@@ -108,6 +146,7 @@ public sealed record BaseSnapshot(
     int Engineers)
 {
     public bool FakeUnderwater { get; init; }
+    public bool RetaliationTarget { get; init; }
     public IReadOnlyList<TransferSnapshot> Transfers { get; init; } = [];
     public IReadOnlyList<ResearchProjectSnapshot> Research { get; init; } = [];
     public IReadOnlyList<ProductionSnapshot> Productions { get; init; } = [];

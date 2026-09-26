@@ -28,6 +28,15 @@ internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeT
 /// </summary>
 internal static class CampaignTimeOrder
 {
+    // time5Seconds: UFO processing precedes craft movement.
+    public const int FiveSecondsWorldUfos = 100;
+    public const int FiveSecondsWorldCrafts = 200;
+    public const int FiveSecondsWorldUfoCleanup = 300;
+
+    // time10Minutes: craft fuel consumption precedes detection and retargeting.
+    public const int TenMinutesWorldCraftFuel = 100;
+    public const int TenMinutesWorldBaseDetection = 200;
+
     // time1Month: SavedGame::addMonth runs first.
     public const int MonthCalendar = 100;
     public const int MonthPurchaseLimits = 110;
@@ -41,8 +50,11 @@ internal static class CampaignTimeOrder
     public const int HourTransfers = 200;
     public const int HourProduction = 300;
 
-    // time30Minutes: craft refuelling in the base loop.
+    // time30Minutes: missions, craft refuelling, then UFO activity and detection.
+    public const int ThirtyMinutesWorldMissions = 50;
     public const int ThirtyMinutesRefuel = 100;
+    public const int ThirtyMinutesAutoPatrol = 200;
+    public const int ThirtyMinutesWorldUfoDetection = 300;
 }
 
 /// <summary>Order of time preflight checks; the first non-null reason stops time.</summary>

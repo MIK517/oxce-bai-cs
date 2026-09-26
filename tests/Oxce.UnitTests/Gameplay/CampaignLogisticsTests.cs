@@ -83,6 +83,46 @@ public sealed class CampaignLogisticsTests
     }
 
     [Fact]
+    public void AutoPatrollingCraftTransfersWithItsPatrolPoint()
+    {
+        // Transfer::advance only calls setBase and checkup; auto-patrol and its point survive.
+        var content = LoadFixture();
+        var initial = Create(content).Capture();
+        var rules = content.RuntimeRules;
+        var ship = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0) with
+        {
+            Status = "STR_READY",
+            Fuel = 100,
+            Weapons = [null, null],
+            IsAutoPatrolling = true,
+            AutoPatrolLongitude = 0.3,
+            AutoPatrolLatitude = 0.1,
+        };
+        var first = initial.Bases[0] with
+        {
+            Name = "Alpha",
+            Crafts = [new("SHIP", 4) { Logistics = ship, PreservationKey = "patrol-transfer-test" }],
+            Soldiers = [],
+        };
+        var second = first with { Name = "Beta", Id = 2, Crafts = [] };
+        var campaign = CampaignState.Restore(initial with { Bases = [first, second] }, content, new SplitMix64RandomSource(0));
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(0, LogisticsOperation.Transfer, 2)).Events)).Quote;
+        var row = quote.Rows.Single(r => r.Kind == CampaignTransferKind.Craft);
+        Assert.Null(row.UnavailableReason);
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(
+            new SubmitLogisticsOrder(quote.Id, [new(row.Id, 1)])).Events));
+
+        var elapsed = campaign.Execute(new AdvanceCampaignTime(5 * 720 + 1));
+
+        Assert.DoesNotContain(elapsed.Events, item => item is CampaignActionBlocked);
+        var arrived = Assert.Single(campaign.Capture().Bases[1].Crafts).Logistics!;
+        Assert.True(arrived.IsAutoPatrolling);
+        Assert.Equal(0.3, arrived.AutoPatrolLongitude);
+        Assert.Equal(0.1, arrived.AutoPatrolLatitude);
+    }
+
+    [Fact]
     public void CraftTransferKeepsCrewAndCargoAndSaleUnloadsWithoutDeletingCrew()
     {
         var content = LoadFixture();

@@ -5,13 +5,13 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>
 /// The strategic world capability: alien missions, UFOs, mission sites, alien bases, player
 /// waypoints, scheduled events and the alien strategy table. This commit owns the graph, its
-/// identities and its persistence; scheduling and movement arrive with their own handlers, so
-/// a campaign carrying live world state still stops time with a diagnostic.
+/// identities and its persistence. Craft-only waypoint flight has timed handlers; alien mission,
+/// UFO, site, base and event state still stops time until its simulation handlers exist.
 /// Reference: <c>Savegame/SavedGame.cpp</c> load/save of the world sections, <c>AlienMission.cpp</c>,
 /// <c>Ufo.cpp</c>, <c>MissionSite.cpp</c>, <c>AlienBase.cpp</c>, <c>Waypoint.cpp</c>,
 /// <c>GeoscapeEvent.cpp</c> and <c>AlienStrategy.cpp</c> at 4df3a5e.
 /// </summary>
-internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapability, ICampaignWorldQuery
+internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignCapability, ICampaignWorldQuery
 {
     private readonly List<AlienMissionSnapshot> _missions = [];
     private readonly List<UfoSnapshot> _ufos = [];
@@ -29,7 +29,11 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
         registry.Restore(Restore);
         registry.Validate(Validate);
         registry.Initialize(Initialize);
-        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, _) => LiveWorldReason());
+        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest) => LiveWorldReason(highest));
+        RegisterUfoOperations(registry);
+        RegisterMissionOperations(registry);
+        RegisterUfoDetection(registry);
+        RegisterCraftOperations(registry);
     }
 
     internal AlienStrategyState Strategy => _strategy;
@@ -260,8 +264,12 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
                 throw new InvalidDataException($"UFO altitude '{ufo.Altitude}' is not a reference altitude.");
             if (campaign.MonthsPassed != -1)
             {
-                if (_missions.All(mission => mission.Id != ufo.MissionId))
+                var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId);
+                if (mission is null)
                     throw new InvalidDataException("Unknown UFO mission; the save is corrupt.");
+                // Ufo::load accepts any wave number, including negative values from old saves;
+                // an out-of-range wave only matters when AlienMission::ufoReachedWaypoint reads
+                // it, and the arrival preflight stops time there instead of rejecting the save.
                 if (!rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectory))
                     throw new InvalidDataException("Unknown UFO trajectory; the save is corrupt.");
                 var waypoints = rules.UfoTrajectories[trajectory].Value.Waypoints;
@@ -367,11 +375,16 @@ internal sealed class CampaignWorld(CampaignState campaign) : ICampaignCapabilit
     }
 
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
-    private string? LiveWorldReason()
+    private string? LiveWorldReason(CampaignTimeTrigger highest)
     {
-        if (_ufos.Any(static ufo => ufo.Status != UfoStatus.Destroyed))
-            return "UFO movement requires world simulation.";
-        if (_missions.Count != 0) return "Alien mission scheduling requires world simulation.";
+        var ufoReason = UfoMovementReason();
+        if (ufoReason is not null) return ufoReason;
+        var missionReason = MissionSchedulingReason(highest);
+        if (missionReason is not null) return missionReason;
+        var baseDetectionReason = UfoBaseDetectionReason(highest);
+        if (baseDetectionReason is not null) return baseDetectionReason;
+        var detectionReason = UfoHalfHourReason(highest);
+        if (detectionReason is not null) return detectionReason;
         if (_sites.Count != 0) return "Mission site expiry requires world simulation.";
         if (_alienBases.Count != 0) return "Alien base activity requires world simulation.";
         if (_events.Count != 0) return "Strategic event scheduling requires world simulation.";

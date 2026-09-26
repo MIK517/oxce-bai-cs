@@ -34,8 +34,15 @@ public static class WorldDetection
             size += (long)facility.SizeX * facility.SizeY;
             if (facility.MindShield && !facility.Disabled) shields += facility.MindShieldPower;
         }
-        if (shields < 0 || size < 0) throw new InvalidDataException("Base detection inputs cannot be negative.");
-        return checked((int)((size / 6 + 15) / (shields + 1)));
+        return BaseDetectionChance(size, shields);
+    }
+
+    /// <summary>The same calculation for callers that accumulate without allocating facility projections.</summary>
+    public static int BaseDetectionChance(long completedSize, long mindShieldPower)
+    {
+        if (mindShieldPower < 0 || completedSize < 0)
+            throw new InvalidDataException("Base detection inputs cannot be negative.");
+        return checked((int)((completedSize / 6 + 15) / (mindShieldPower + 1)));
     }
 
     /// <summary>Base::detect without its script hook.</summary>
@@ -47,10 +54,21 @@ public static class WorldDetection
         Func<int, bool> percent)
     {
         ArgumentNullException.ThrowIfNull(completedFacilities);
+        return BaseDetection(completedFacilities.ToArray(), distance, visibility, alreadyTracked, percent);
+    }
+
+    /// <summary>Base::detect over a projected facility span, without allocating.</summary>
+    public static (UfoDetectionResult Type, int Chance) BaseDetection(
+        ReadOnlySpan<WorldRadarFacility> completedFacilities,
+        int distance,
+        int visibility,
+        bool alreadyTracked,
+        Func<int, bool> percent)
+    {
         ArgumentNullException.ThrowIfNull(percent);
         var hyperwave = false;
-        var hyperwaveChance = 0;
-        var radarChance = 0;
+        long hyperwaveSum = 0;
+        long radarSum = 0;
         foreach (var facility in completedFacilities)
         {
             if (facility.RadarRange >= distance)
@@ -58,14 +76,17 @@ public static class WorldDetection
                 if (facility.Hyperwave)
                 {
                     if (facility.RadarChance == 100 || percent(facility.RadarChance)) hyperwave = true;
-                    hyperwaveChance = checked(hyperwaveChance + facility.RadarChance);
+                    hyperwaveSum += facility.RadarChance;
                 }
                 else
                 {
-                    radarChance = checked(radarChance + facility.RadarChance);
+                    radarSum += facility.RadarChance;
                 }
             }
         }
+        // Base::detect accumulates ints; the port clamps instead of overflowing.
+        var hyperwaveChance = Clamp(hyperwaveSum);
+        var radarChance = Clamp(radarSum);
         if (alreadyTracked)
         {
             if (hyperwave || hyperwaveChance > 0)
@@ -85,7 +106,13 @@ public static class WorldDetection
         return (UfoDetectionResult.Radar, alreadyTracked ? 100 : DetectionChance(radarChance, visibility));
     }
 
-    /// <summary>The shared <c>chance * (100 + visibility) / 100</c> reduction.</summary>
+    /// <summary>
+    /// The shared <c>chance * (100 + visibility) / 100</c> reduction. The reference overflows
+    /// an int for extreme rule values; the port clamps, and RNG::percent treats every result
+    /// of 100 or more as a certain detection anyway.
+    /// </summary>
     public static int DetectionChance(int chance, int visibility) =>
-        checked((int)((long)chance * (100 + visibility) / 100));
+        Clamp((long)chance * (100L + visibility) / 100);
+
+    private static int Clamp(long value) => (int)Math.Clamp(value, int.MinValue, int.MaxValue);
 }

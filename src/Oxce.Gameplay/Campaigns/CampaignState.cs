@@ -110,7 +110,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     internal IStatefulRandomSource Random => _random;
 
-    internal IReadOnlyList<BaseState> BaseStates => _bases;
+    // Concrete lists keep per-tick world loops on struct enumerators.
+    internal List<BaseState> BaseStates => _bases;
+
+    internal List<CountryState> CountryStates => _countries;
+
+    internal List<RegionState> RegionStates => _regions;
 
     internal T Read<T>(Func<T> query)
     {
@@ -252,7 +257,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             {
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
                 _debugMode = snapshot.DebugMode,
-                Options = snapshot.Options,
+                // Mods that fix user options override the options a save was made with.
+                Options = snapshot.Options.WithFixedUserOptions(content.RuntimeRules.Campaign.FixedUserOptions),
             };
             campaign._handlers.Restore(snapshot);
             campaign._handlers.Validate();
@@ -281,6 +287,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         return next;
     }
 
+    internal int PeekNextId(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return _nextIds.GetValueOrDefault(name, 1);
+    }
+
     private CampaignCommandResult Advance(AdvanceCampaignTime command)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(command.FiveSecondTicks);
@@ -303,6 +315,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     internal sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
     {
         public List<ICampaignEvent>? Events { get; private set; }
+        /// <summary>Craft identified by base, rule type and ID; a craft list can grow within a tick.</summary>
+        internal List<(int BaseId, string CraftTypeId, int CraftId)> AutoPatrolCandidates { get; } = [];
         public CampaignTime Current => campaign.Time;
         public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
 
@@ -430,6 +444,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     {
         Transfers = CampaignSnapshot.ReadOnly(state.Transfers),
         FakeUnderwater = state.FakeUnderwater,
+        RetaliationTarget = state.RetaliationTarget,
         Research = CampaignSnapshot.ReadOnly(state.Research.Select(project => new ResearchProjectSnapshot(
             _content.RuntimeRules.Research.GetExternalId(project.Rule), project.Assigned, project.Spent, project.Cost))),
         Productions = CampaignSnapshot.ReadOnly(state.Productions.Select(production => new ProductionSnapshot(
@@ -485,6 +500,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             production.Amount, production.Infinite, production.Sell, production.IsFallback,
             new Dictionary<string, int>(production.RandomProductionInfo, StringComparer.Ordinal))));
         result.FakeUnderwater = source.FakeUnderwater;
+        result.RetaliationTarget = source.RetaliationTarget;
         foreach (var transfer in source.Transfers)
         {
             ValidateTransfer(transfer, rules);
@@ -719,6 +735,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public List<ProductionState> Productions { get; } = [];
         public bool IsPlaced => Name.Length != 0;
         public bool FakeUnderwater { get; set; }
+        public bool RetaliationTarget { get; set; }
     }
 
     internal sealed record ResearchProjectState(

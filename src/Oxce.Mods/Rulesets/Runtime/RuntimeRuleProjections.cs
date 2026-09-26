@@ -149,6 +149,11 @@ public sealed record RuntimeFacilityRule(
     public IReadOnlyList<string> ForbiddenBaseFunctions { get; init; } = [];
     public int HangarType { get; init; }
     public IReadOnlyList<string> ProvidedBaseFunctions { get; init; } = [];
+    public int RadarRange { get; init; }
+    public int RadarChance { get; init; }
+    public bool Hyperwave { get; init; }
+    public bool MindShield { get; init; }
+    public int MindShieldPower { get; init; } = 1;
 }
 
 public sealed record RuntimeCraftRule(
@@ -176,8 +181,15 @@ public sealed record RuntimeCraftRule(
     public int RefuelRate { get; init; }
     public int RepairRate { get; init; }
     public int ShieldCapacity { get; init; }
+    public int ShieldRechargeInGeoscape { get; init; }
     public int ShieldRechargeAtBase { get; init; }
+    public int RadarRange { get; init; }
+    public int RadarChance { get; init; }
+    public int MaximumItems { get; init; }
+    public double MaximumStorageSpace { get; init; }
     public bool NotifyWhenRefueled { get; init; }
+    public bool PatrolWithoutFuel { get; init; }
+    public bool AutoPatrol { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];
     public int Pilots { get; init; }
     public int MaximumSoldiers { get; init; } = -1;
@@ -200,6 +212,7 @@ public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, stri
     IReadOnlyDictionary<string, int> BonusStats)
 {
     public bool StatisticalBulletSaving { get; init; }
+    public double BonusStorageSpace { get; init; }
 }
 
 public sealed record RuntimeItemRule(
@@ -350,6 +363,9 @@ public sealed record RuntimeCampaignSettings(
     public IReadOnlyList<string> HireEngineersBaseFunctions { get; init; } = [];
     public int HireByCountryOdds { get; init; }
     public int HireByRegionOdds { get; init; }
+    /// <summary>Mod::getFixedUserOptions: options that the loaded mods force for every campaign.</summary>
+    public IReadOnlyDictionary<string, string> FixedUserOptions { get; init; } =
+        new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
     public RuntimeStartingBaseTemplate? GetStartingBase(StartingBaseVariant variant) =>
         StartingBases.FirstOrDefault(template => template.Variant == variant) ??
         StartingBases.FirstOrDefault(static template => template.Variant == StartingBaseVariant.Default);

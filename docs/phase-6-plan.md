@@ -1,9 +1,13 @@
 # Phase 6 — Playable strategic campaign implementation plan
 
 Plan date: 2026-09-05. Baseline: `752e976` on `main`.
-Status: branches 1 and 2 have bounded acceptance documented in
-[strategic logistics status](strategic-logistics-status.md) and
-[strategic readiness status](strategic-readiness-status.md); branches 3–6 remain planned.
+Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance documented in
+[strategic logistics status](strategic-logistics-status.md),
+[strategic readiness status](strategic-readiness-status.md), and
+[research and production status](strategic-research-production-status.md).
+Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
+ordinary-lifecycle closure gate locally (not yet merged).
+Branch 4c and branches 5–6 remain planned.
 This is not a Phase 6 completion claim.
 
 ## Goal and scope
@@ -38,9 +42,10 @@ first generator consumes it. Keep that distinction in status reports and matrix 
 ## Delivery shape
 
 Use sequential feature branches, each from the previous merged `main`.
-Branch 4 is split at the world foundation boundary after its review grew beyond a
-coherent PR. The foundation branch retains the existing name; its successor starts
-from merged `main` and must meet the original branch 4 simulation acceptance.
+Branch 4 is split into world foundation (4a), ordinary UFO and craft operations (4b),
+and remaining world simulation and UI integration (4c). The 2026-09-26 scope revision
+cuts 4b after ordinary UFO lifecycle completion to keep its review bounded. Branch 4c
+starts after 4b merges and must meet the original branch 4 simulation acceptance.
 Every branch carries its own integration and closure work.
 
 | Order | Branch | Playable acceptance boundary | Planned commits |
@@ -49,7 +54,8 @@ Every branch carries its own integration and closure work.
 | 2 | `codex/strategic-base-readiness` | Build/manage bases, develop personnel, equip craft, and complete servicing | 7 |
 | 3 | `codex/strategic-research-production` | Complete research and production chains with compatible unlocks and staff allocation | 6 |
 | 4a | `codex/strategic-world-simulation` | Link world rules, preserve the target graph and alien strategy, pin world arithmetic, and keep live-world time guarded | 7 existing commits plus closure |
-| 4b | `codex/strategic-world-operations` | Generate missions, move targets, detect activity, and dispatch/recall craft | Scope by vertical slices |
+| 4b | `codex/strategic-world-operations` | Complete the supported ordinary UFO lifecycle alongside headless craft operations and bounded spawning | Scope by vertical slices |
+| 4c | `codex/strategic-world-integration` (planned) | Complete mission/arc/event scheduling, broader world lifecycles, pursuit, scripts and globe UI; satisfy original branch 4 acceptance | Scope by vertical slices |
 | 5 | `codex/strategic-interception-deployment` | Resolve interceptions and commit/reload a validated deployment handoff | 6 |
 | 6 | `codex/strategic-campaign-cycle` | Complete monthly evaluation, campaign events/endings, and integrated strategic closure | 6 |
 
@@ -71,7 +77,7 @@ These are the opening commits of branch 1, not another preparatory phase.
 1. **Pin evidence and enumerate ownership.** Verify the reference checkout commit,
    retain existing backward-save fixtures, and capture small redistributable strategic
    scenarios. Inventory each affected rule property, save node, script binding/event,
-   option, and UI decision; assign every omission to one of the six branches or an
+   option, and UI decision; assign every omission to a named delivery branch or an
    explicit Phase 7/8 boundary. Track defaults, widths, ordering, errors, and fixture IDs.
    Expand the existing matrices; do not mark a typed property as executable gameplay.
 2. **Execute time effects during simulation.** `GeoscapeState::timeAdvance` dispatches
@@ -150,6 +156,8 @@ bounded state, and an operable campaign take precedence over that independent ta
   localized labels, quantities/status, unavailable-action reasons, confirmation where
   the action needs it, and completion/failure feedback. Include keyboard operation,
   simulation pause/speed behavior, and save/load access as they become relevant.
+  Branches 4a and 4b are explicit headless intermediate boundaries; branch 4c owns
+  their globe/UI integration and must satisfy the original branch 4 UI acceptance.
 - Extend managed capability contracts only for actual use, with versioning and no
   implementation types. Integrate live extension save state no later than branch 5,
   or earlier if a state-owning extension first participates; required missing extension
@@ -296,8 +304,10 @@ silently sorting them into a different order.
 
 ## Branch 4 — World simulation and mission generation
 
-The current `codex/strategic-world-simulation` branch closes as **branch 4a, world
-foundation**. Its acceptance is the registered capability seam, linked world rules,
+### Branch 4a — World foundation
+
+`codex/strategic-world-simulation` is **branch 4a, world foundation**.
+Its acceptance is the registered capability seam, linked world rules,
 reference-pinned geometry/weighted arithmetic, player-visible target query, and
 reference-compatible save/load/rewrite of the world graph. It must preserve unknown
 owned-node fields, repeated scheduled events and new-battle UFO saves; optional site
@@ -306,15 +316,69 @@ must pass. Live world state continues to stop time. See
 [world foundation status](strategic-world-foundation-status.md).
 
 Branch 4a covers purpose 0 and the arithmetic, rule projection and persistence portions
-of purposes 1-2. Branch 4b starts from `main` after 4a merges. It owns the remaining
-numbered work below:
-mission/arc/event eligibility and scheduling with daily/monthly hooks, UFO/site/base
-generation, movement and detection, craft pursuit/return/patrol and dispatch/recall,
-player UI, scripting at event sites, and integrated multi-day/month-boundary scenarios.
-Complete headless behavior before the navigable globe/UI slice. If that successor again
-exceeds a coherent review unit, split at the headless/UI boundary and record the revised
-acceptance here before opening another branch. The original branch 4 acceptance below
-still gates the whole slice; 4a alone does not satisfy it.
+of purposes 1-2 below.
+
+### Branch 4b — Ordinary UFO and craft operations
+
+`codex/strategic-world-operations` closes after the supported ordinary UFO lifecycle
+is complete. That revised gate is now satisfied locally; see the
+[closure evidence and retained limits](strategic-world-operations-status.md#branch-4b-closure-evidence-2026-09-26).
+Retain its implemented headless dispatch/recall/patrol, craft fuel/servicing integration,
+existing-mission countdowns, bounded airborne/no-object waves, activity and radar detection.
+Ordinary land-point selection, landing, timers, takeoff and departure now compose in
+fresh/cache scenarios, with transition save/reload and landed detection/scoring.
+Ten-minute UFO base scans and saved discovery now let later flight and long ground
+stays cross those boundaries; retaliation mission linkage remains in 4c.
+
+**Completed closure scope:** UFO deletion, mission live-count/expiry and target-reference
+cleanup cases; transition reloads; four pinned C++ lifecycle traces; 72-hour craft/UFO
+composition; terrain continuation; 8/32/128-UFO allocation samples; and fresh/cache
+continuation classification of all 19 staged saves. Private results are six executable
+for a 30-minute horizon, five blocked and eight tactical preservation-only. Full world
+and mod continuation remain outside this gate.
+
+**Acceptance scenario:** with controlled choices, a supported mission spawns a UFO,
+which flies, is detected, lands, takes off and departs; its mission then expires.
+Save/reload before and after each major transition preserves the resulting state and
+continuation. Craft dispatch, patrol, fuel use, recall and servicing continue alongside
+that lifecycle. No missing-capability gate permanently strands this supported scenario.
+
+Closure includes reference-backed lifecycle traces, multi-day headless composition,
+relevant land/terrain/depth cases, malformed-input and bounded-population tests,
+populated allocation measurements, fresh/cache and affected save-corpus evidence, and
+updated matrices/status. Existing guards remain for unsupported objectives, scripted
+paths, shielded/hunting/escort variants, sites, alien bases and campaign events. These
+limits must be explicit in fixtures and corpus classifications. Implement any script
+hook required by an enabled path; do not silently skip it to meet the new gate.
+
+### Branch 4c — World generation and integration
+
+Planned branch: `codex/strategic-world-integration`, from merged `main` after 4b
+acceptance and merge. It owns every remaining original branch 4 obligation:
+
+- Alien strategy and mission/arc/event rule projection, eligibility, selection and
+  scheduling, including reference-ordered daily/monthly mission-generation hooks.
+- General regional UFO/deployment spawning, deployment-only and recursive zero-timer
+  waves, and the remaining mission objectives and immediate consequences.
+- Mission-site and alien-base generation, activity, discovery, expiry and deletion;
+  retaliation base linkage/cleanup; shielded UFOs, hunting/escort behavior and remaining
+  special trajectory/retargeting paths.
+- Detection scripts and other deferred world script providers at their real call sites,
+  ignored-contact alerts, craft pursuit, and safe handling of lost/deleted targets.
+- Navigable globe, target information, dispatch/patrol/recall controls, notifications,
+  pause/speed and save/load flows using the headless commands.
+- Integrated multi-day and isolated month-boundary world scenarios, TFTD and modded
+  deployment cases, script/corpus/save/UI evidence and populated performance checks.
+
+Complete the remaining headless behavior before the globe/UI slice. Reassess review
+size at that boundary; any further split requires another explicit plan revision.
+The original branch 4 acceptance below gates 4c closure and the start of branch 5.
+Neither 4a nor 4b acceptance alone satisfies it. Interception/deployment remains branch
+5, full monthly evaluation and campaign-wide event consequences remain branch 6, and
+tactical execution remains Phase 7. Required immediate consequences of enabled world
+actions cannot be placeholders until those later branches.
+
+### Combined branch 4 scope and acceptance
 
 **Scope:** globe queries, strategic targets and movement, mission/arc/event scheduling,
 UFO/site/alien-base lifecycle, detection, and dispatch/recall. Interception combat follows
@@ -454,8 +518,9 @@ For each branch:
    pinned-reference saves for newly executable mid/late strategic state; preservation
    tests of older saves alone are insufficient. Try C++ reload of emitted ordinary
    saves where feasible and report any gap separately from C# round-trip success.
-5. Exercise the new UI flow and relevant indexed/native smoke checks. Preserve the
-   three-platform/coverage CI matrix and SDL path scope. Scenario comparisons should
+5. Exercise the new UI flow and relevant indexed/native smoke checks. The explicit
+   headless 4a/4b boundaries carry command/query evidence; 4c closes their UI evidence.
+   Preserve the three-platform/coverage CI matrix and SDL path scope. Scenario comparisons should
    be semantic and finite; long performance/soak work runs locally unless a short stable
    regression case belongs in CI.
 6. Push one completed candidate and open one PR. Do not use draft PRs or per-commit
@@ -463,8 +528,9 @@ For each branch:
    locally, then push the complete correction. Merge using Rebase and merge and verify
    resulting main checks before continuing. Never skip required checks to meet a count.
 
-Six successful first-candidate PRs imply approximately **12 main-CI workflow runs**
-(one per PR plus one per merge), currently four jobs each: about 48 job executions.
+Eight successful first-candidate PRs (including 4a, 4b and 4c) imply approximately
+**16 main-CI workflow runs**
+(one per PR plus one per merge), currently four jobs each: about 64 job executions.
 SDL-sensitive branches add their existing three-platform PR validation. This is a
 configuration-based planning floor, not a promise about hosted runs, failures or branch
 protection. Opening another planning-only PR would add a cycle; keep this plan with
@@ -473,7 +539,8 @@ is necessary for this plan.
 
 ## Phase 6 completion checklist
 
-- Six acceptance boundaries pass using shared gameplay commands in headless and UI paths.
+- The six original acceptance boundaries pass using shared gameplay commands in headless
+  and UI paths; the combined world boundary closes in 4c after intermediate 4a/4b gates.
 - Every strategic feature in the targeted reference inventory has an owner, fixture
   evidence and explicit status; typed/parsed/preserved-only state is not called compatible.
 - Each owning script provider executes at the real event site; no supported strategic

@@ -120,7 +120,7 @@ public sealed class StrategicWorldPersistenceTests
         var advanced = Assert.IsType<CampaignTimeAdvanced>(events[0]);
         Assert.Equal(0, advanced.Summary.TickCount);
         var blocked = Assert.IsType<CampaignActionBlocked>(events[^1]);
-        Assert.Equal("UFO movement requires world simulation.", blocked.Reason);
+        Assert.Equal("Mission site expiry requires world simulation.", blocked.Reason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
 
         var overview = campaign.GetQuery<ICampaignWorldQuery>()!.QueryWorld();

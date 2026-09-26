@@ -6,6 +6,23 @@ namespace Oxce.Gameplay.Campaigns;
 /// <summary>Hourly maintenance from Craft.cpp and CraftWeapon.cpp at reference 4df3a5e.</summary>
 public static class CraftServicing
 {
+    /// <summary>GeoscapeState::time5Seconds and Craft::setShield, after craft movement.</summary>
+    public static CraftLogisticsState RechargeGeoscapeShield(CraftLogisticsState state,
+        int capacity, int recharge, IRandomSource random)
+    {
+        if (state.Shield >= capacity || recharge != -1 && recharge <= 0) return state;
+        var shield = capacity;
+        if (recharge > 0)
+        {
+            var total = recharge / 100;
+            // The reference draws even when the fractional chance is zero.
+            if (RandomChance.Percent(random, recharge % 100)) total++;
+            // Avoid the reference's signed overflow for extreme values before clamping.
+            shield = (int)Math.Clamp((long)state.Shield + total, 0, capacity);
+        }
+        return shield == state.Shield ? state : state with { Shield = shield };
+    }
+
     public static CraftLogisticsState ReuseItem(CraftLogisticsState state, RuntimeCraftRule craftRule,
         RuntimeRuleCatalog rules, RuleHandle<ItemRuleFamily> item)
     {

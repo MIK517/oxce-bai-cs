@@ -1,0 +1,25 @@
+# Malformed world overlay used to prove that waypoint preflight rejects a
+# latitude which Target::setLatitude cannot normalize in one reference pass.
+regions:
+  - type: REGION
+    missionZones:
+      - [[2, 28, -18, 18, 10]]
+      - [[8, 8, 300, 300, 10]]
+alienRaces:
+  - id: RACE_A
+    members: [SECTOID]
+ufos:
+  - type: UFO_SCOUT
+    speedMax: 2200
+    damageMax: 50
+ufoTrajectories:
+  - id: TRAJ_INVALID_AREA
+    waypoints:
+      - [0, 3, 100]
+      - [1, 2, 80]
+      - [0, 3, 50]
+alienMissions:
+  - type: MISSION_INVALID_AREA
+    objective: 0
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_INVALID_AREA, timer: 9000}

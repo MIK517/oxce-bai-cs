@@ -94,6 +94,8 @@ mechanical translations with no executable acceptance test.
   entries.
 - Verify with `dotnet test` from the repository root.
 - Private corpus tests (`Private*`, `Phase3ContentCorpusTests`, `ModLoadingFixtureTests`) need `fixtures/private/` and `data/` and are slow; the fast check is the unit tests plus the remaining compatibility tests.
+- Do not lower test strictness just because they fail, consider wheter it weakens the coverage first
+- Run formatting and checksum tests before major branch push
 
 ## Completion standard
 

@@ -82,6 +82,109 @@ public static class CraftLogistics
         IEnumerable<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
         => SupportedValue(RawEffectiveStats(rule, weapons, rules).Fuel);
 
+    /// <summary>Craft::getCraftStats speed, including installed craft-weapon bonuses.</summary>
+    public static int EffectiveSpeedMaximum(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
+    {
+        if (!TryEffectiveSpeedMaximum(rule, weapons, rules, out var speed))
+            throw new OverflowException("Craft weapon speed bonuses exceed the supported range.");
+        return speed;
+    }
+
+    public static bool TryEffectiveSpeedMaximum(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules, out int result)
+    {
+        long speed = rule.SpeedMaximum;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            speed += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+                .GetValueOrDefault("speedMax");
+        }
+        result = (int)Math.Clamp(speed, int.MinValue, int.MaxValue);
+        return IsSupportedValue(speed);
+    }
+
+    /// <summary>Geoscape shield stats include every installed weapon, even a disabled one.</summary>
+    public static bool TryEffectiveGeoscapeShields(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules, out int capacity, out int recharge)
+    {
+        long maximum = rule.ShieldCapacity;
+        long rate = rule.ShieldRechargeInGeoscape;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            maximum += bonus.GetValueOrDefault("shieldCapacity");
+            rate += bonus.GetValueOrDefault("shieldRechargeInGeoscape");
+        }
+        capacity = (int)Math.Clamp(maximum, 0, int.MaxValue);
+        recharge = (int)Math.Clamp(rate, int.MinValue, int.MaxValue);
+        return maximum is >= 0 and <= int.MaxValue && rate is >= int.MinValue and <= int.MaxValue;
+    }
+
+    /// <summary>Craft::isDestroyed: damage reaches damageMax including installed-weapon bonuses.</summary>
+    public static bool IsDestroyed(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules) =>
+        state.Damage >= EffectiveDamageMaximum(state, rule, rules);
+
+    /// <summary>Craft::_stats.damageMax after installed-weapon bonuses, without allocating.</summary>
+    public static long EffectiveDamageMaximum(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules)
+    {
+        long damageMaximum = rule.DamageMaximum;
+        var weapons = state.Weapons;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            damageMaximum += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+                .GetValueOrDefault("damageMax");
+        }
+        return damageMaximum;
+    }
+
+    /// <summary>
+    /// Craft::_stats radar range and chance after installed-weapon bonuses, for Craft::detect.
+    /// The reference adds these as ints; the port clamps instead of overflowing.
+    /// </summary>
+    public static void EffectiveRadar(RuntimeCraftRule rule, IReadOnlyList<CraftWeaponSnapshot?> weapons,
+        RuntimeRuleCatalog rules, out int radarRange, out int radarChance)
+    {
+        long range = rule.RadarRange;
+        long chance = rule.RadarChance;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            range += bonus.GetValueOrDefault("radarRange");
+            chance += bonus.GetValueOrDefault("radarChance");
+        }
+        radarRange = ClampSupportedValue(range);
+        radarChance = ClampSupportedValue(chance);
+    }
+
+    /// <summary>Craft::areTooManyItemsOnboard counts only the craft item container.</summary>
+    public static bool TooManyItemsOnboard(CraftLogisticsState state, RuntimeCraftRule rule,
+        RuntimeRuleCatalog rules)
+    {
+        long maximumItems = rule.MaximumItems;
+        double maximumStorage = rule.MaximumStorageSpace;
+        foreach (var weapon in state.Weapons)
+        {
+            if (weapon is null) continue;
+            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
+            maximumItems += bonus.BonusStats.GetValueOrDefault("maxItems");
+            maximumStorage += bonus.BonusStorageSpace;
+        }
+        long quantity = 0;
+        double size = 0;
+        foreach (var pair in state.Items)
+        {
+            quantity += pair.Value;
+            size += rules.Items[rules.Items.GetRequired(pair.Key)].Value.Size * pair.Value;
+        }
+        return quantity > Math.Max(0, maximumItems) ||
+            size > Math.Max(0, maximumStorage) + 0.05;
+    }
+
     public static int EffectiveShieldMaximum(RuntimeCraftRule rule,
         IEnumerable<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
         => SupportedValue(RawEffectiveStats(rule, weapons, rules).Shield);

@@ -10,6 +10,53 @@ public sealed partial class CampaignState
     private static IEnumerable<SoldierState> Crew(BaseState state, string type, int id) =>
         state.Soldiers.Where(s => s.Personal is { } p && p.CraftType == type && p.CraftId == id);
 
+    /// <summary>Craft::areBannedArmorsOnboard, including crew restored from a save.</summary>
+    internal bool HasAllowedArmorsOnboard(BaseState owner, CraftState craft)
+    {
+        var rules = _content.RuntimeRules;
+        var rule = rules.Crafts[craft.Rule].Value;
+        if (rule.AllowedArmorGroups.Count == 0 && rule.ArmorGroupLimits.Count == 0) return true;
+        var type = rules.Crafts.GetExternalId(craft.Rule);
+        foreach (var soldier in Crew(owner, type, craft.Id))
+        {
+            var armor = rules.Armors[rules.Armors.GetRequired(soldier.Personal!.Armor)].Value;
+            if (rule.AllowedArmorGroups.Count != 0 && !rule.AllowedArmorGroups.Contains(armor.Group))
+                return false;
+        }
+        foreach (var limit in rule.ArmorGroupLimits)
+        {
+            var count = 0;
+            foreach (var soldier in Crew(owner, type, craft.Id))
+            {
+                var armor = rules.Armors[rules.Armors.GetRequired(soldier.Personal!.Armor)].Value;
+                if (armor.Group == limit.Key) count++;
+            }
+            if (count > limit.Value) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Craft::arePilotsOnboard. A craft that needs pilots requires that many assigned soldiers who
+    /// satisfy its piloting requirements; <c>Craft::getPilotList</c> fills the seats from the crew
+    /// automatically, so the manual pilot list only changes which soldiers fly, not how many.
+    /// </summary>
+    internal bool HasRequiredPilots(BaseState owner, CraftState craft)
+    {
+        var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
+        if (rule.Pilots <= 0) return true;
+        var type = _content.RuntimeRules.Crafts.GetExternalId(craft.Rule);
+        var pilots = 0;
+        foreach (var soldier in Crew(owner, type, craft.Id))
+        {
+            if (soldier.Personal is not { } personal) continue;
+            if (!SoldierPiloting.MeetsRequirements(personal, _content.RuntimeRules.Soldiers[soldier.Rule].Value,
+                    rule, _content.RuntimeRules)) continue;
+            if (++pilots >= rule.Pilots) return true;
+        }
+        return false;
+    }
+
     private void AddCraftRows(BaseState origin, BaseState destination, List<LogisticsRow> rows,
         LogisticsOperation operation, double distance, int hours)
     {
@@ -23,7 +70,6 @@ public sealed partial class CampaignState
             if (state is { Status: "STR_OUT" }) reason ??= "Airborne craft require world simulation before sale or transfer.";
             if (operation == LogisticsOperation.Transfer)
             {
-                if (state is { IsAutoPatrolling: true }) reason ??= "Craft auto-patrol requires world simulation.";
                 if (UsedHangars(destination, rule.HangarType) >= AvailableHangars(destination, rule.HangarType)) reason ??= "No compatible destination hangar.";
                 if (Crew(origin, type, craft.Id).Count() > AvailableQuarters(destination) - UsedQuarters(destination)) reason ??= "No living space for the crew.";
                 if (Options.StorageLimitsEnforced && state is not null && StrategicLogisticsMath.StoresOverfull(AvailableStores(destination), UsedStores(destination), CraftLogistics.StoredSize(state, _content.RuntimeRules)))
@@ -54,7 +100,11 @@ public sealed partial class CampaignState
                     var quantity = checked(owner.Items.GetValueOrDefault(item) + result.FuelItemChange);
                     if (quantity == 0) owner.Items.Remove(item); else owner.Items[item] = quantity;
                 }
-                owner.Crafts[index] = craft with { Logistics = state };
+                if (!ReferenceEquals(state, craft.Logistics))
+                    owner.Crafts[index] = craft with { Logistics = state };
+                if (!result.MissingFuel && state.Status == "STR_READY" &&
+                    state.IsAutoPatrolling && rule.AutoPatrol)
+                    effects.AutoPatrolCandidates.Add((owner.Id, type, craft.Id));
                 if (result.MissingFuel) effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"));
                 else if (state.Status == "STR_READY" && rule.NotifyWhenRefueled)
                     effects.Notify(new CraftArrivalServiceMessage(owner.Id, type, craft.Id, "STR_CRAFT_IS_READY"));

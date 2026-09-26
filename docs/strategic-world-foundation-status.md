@@ -46,13 +46,16 @@ lifecycle, UFO or craft movement, detection decisions, dispatch/recall, or globe
 executable here. The tests and compatibility matrices must continue to report that
 boundary explicitly.
 
-## Next branch
+## Successor branches (scope revised 2026-09-26)
 
-After this foundation merges, start `codex/strategic-world-operations` from merged
-`main`. Implement reference-ordered mission/arc/event scheduling and daily/monthly
-hooks, then UFO/site/base lifecycle, movement/detection and craft dispatch/recall.
-Close with headless multi-day and month-boundary scenarios, TFTD depth/terrain and
-modded deployment waves, scripting at real event sites, and player UI. Stop at the
-branch 5 interception and branch 6 campaign-evaluation boundaries as the plan says.
-If the successor becomes too large, split at the headless simulation/UI boundary and
-revise the plan before creating another branch.
+`codex/strategic-world-operations` (4b) follows this foundation and closes after the
+supported ordinary UFO lifecycle is complete alongside headless craft operations,
+bounded spawning, detection and save/reload evidence. Its landing/timers/takeoff and
+full lifecycle acceptance remain in progress; see [operations status](strategic-world-operations-status.md).
+
+The planned `codex/strategic-world-integration` (4c) follows accepted and merged 4b.
+It owns mission/arc/event scheduling and daily/monthly hooks, general spawning and
+special UFO/site/base lifecycles, remaining script providers, craft pursuit and globe UI.
+It also closes integrated multi-day/month-boundary scenarios and TFTD/modded coverage.
+Original combined branch 4 acceptance gates 4c closure. Branch 5 interception and
+branch 6 full campaign evaluation retain their boundaries; see [the plan](phase-6-plan.md).
