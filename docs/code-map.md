@@ -18,16 +18,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 49 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 89 | Core, Formats, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 51 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 90 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 84 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 85 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 78 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 79 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 49 files.
+`src/Oxce.Gameplay` - 51 files.
 
 ### `Oxce.Gameplay`
 
@@ -456,6 +456,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldRadarFacility` (record struct) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - A completed radar facility as seen by `Base::detect`.
 - `WorldBaseFacility` (record struct) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - A completed facility as seen by `Base::getDetectionChance`.
 - `WorldDetection` (class) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - UFO detection arithmetic.
+- `WorldEventTiming` (class) [WorldEventTiming.cs](../src/Oxce.Gameplay/Campaigns/World/WorldEventTiming.cs) - SavedGame::spawnEvent and GeoscapeEvent::think at reference revision 4df3a5e.
 - `WorldFlight` (class) [WorldFlight.cs](../src/Oxce.Gameplay/Campaigns/World/WorldFlight.cs) - Craft endurance arithmetic used by patrol, pursuit and return decisions.
 - `WorldPosition` (record struct) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - A point on the globe in reference units: longitude in [0, 2π), latitude in [-π/2, π/2].
 - `WorldGeometry` (class) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - Globe arithmetic shared by world simulation: distances, movement, region containment and land queries.
@@ -464,7 +465,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 89 files.
+`src/Oxce.Mods` - 90 files.
 
 ### `Oxce.Mods`
 
@@ -724,6 +725,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeCraftTemplateWeapon` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplateVehicle` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplate` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
+- `RuntimeEventRule` (record) [RuntimeEventRule.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeEventRule.cs) - Scheduling inputs from RuleEvent.
 - `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Reference: `Mod/Texture.cpp`.
 - `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
 - `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs)
@@ -980,14 +982,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 84 files.
+`tests/Oxce.CompatibilityTests` - 85 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>82 test classes</summary>
+<details><summary>83 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1041,6 +1043,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ScriptEventFixtureTests` ([ScriptEventFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptEventFixtureTests.cs))
 - `SpriteFontFixtureTests` ([SpriteFontFixtureTests.cs](../tests/Oxce.CompatibilityTests/SpriteFontFixtureTests.cs))
 - `StartingPersonnelFixtureTests` ([StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs))
+- `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))
 - `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))
 - `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs))
 - `StrategicReadinessRegressionTests` ([StrategicReadinessRegressionTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessRegressionTests.cs))
@@ -1085,9 +1088,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 78 files.
+`tests/Oxce.UnitTests` - 79 files.
 
-<details><summary>78 test classes</summary>
+<details><summary>79 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1127,6 +1130,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftServicingTests` ([CraftServicingTests.cs](../tests/Oxce.UnitTests/Gameplay/CraftServicingTests.cs))
 - `SoldierGenerationTests` ([SoldierGenerationTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierGenerationTests.cs))
 - `SoldierPilotingTests` ([SoldierPilotingTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierPilotingTests.cs))
+- `WorldEventTimingTests` ([WorldEventTimingTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldEventTimingTests.cs))
 - `WorldGeometryTests` ([WorldGeometryTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldGeometryTests.cs))
 - `WorldLandPointTests` ([WorldLandPointTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldLandPointTests.cs))
 - `CampaignStartRuleCatalogTests` ([CampaignStartRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/CampaignStartRuleCatalogTests.cs))
@@ -1292,6 +1296,7 @@ A test is listed when it names the manifest id or its expected file.
 | [script-core](../fixtures/manifests/script-core.json) | cpp-reference | `scripting/script-core.expected.json` | `ScriptCoreFixtureTests` ([ScriptCoreFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptCoreFixtureTests.cs)) |
 | [script-events](../fixtures/manifests/script-events.json) | cpp-reference | `scripting/script-events.expected.json` | `ScriptEventFixtureTests` ([ScriptEventFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptEventFixtureTests.cs)) |
 | [sprite-font](../fixtures/manifests/sprite-font.json) | cpp-reference | `rendering/sprite-font.expected.json` | `SpriteFontFixtureTests` ([SpriteFontFixtureTests.cs](../tests/Oxce.CompatibilityTests/SpriteFontFixtureTests.cs)) |
+| [strategic-event](../fixtures/manifests/strategic-event.json) | cpp-reference | `savegames/strategic-event.expected.json` | `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs)) |
 | [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |

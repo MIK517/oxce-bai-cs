@@ -55,6 +55,7 @@ internal static class CampaignTimeOrder
     public const int ThirtyMinutesRefuel = 100;
     public const int ThirtyMinutesAutoPatrol = 200;
     public const int ThirtyMinutesWorldUfoDetection = 300;
+    public const int ThirtyMinutesWorldEvents = 500;
 }
 
 /// <summary>Order of time preflight checks; the first non-null reason stops time.</summary>
@@ -80,6 +81,7 @@ internal sealed class CampaignCapabilityRegistry
     private readonly List<Action> _validators = [];
     private readonly List<Action> _initializers = [];
     private readonly Dictionary<Type, object> _queries = [];
+    private readonly Dictionary<Type, object> _operations = [];
 
     internal const int TriggerCount = (int)CampaignTimeTrigger.OneMonth + 1;
 
@@ -150,7 +152,16 @@ internal sealed class CampaignCapabilityRegistry
         [.. _restores],
         [.. _validators],
         [.. _initializers],
-        _queries.ToFrozenDictionary());
+        _queries.ToFrozenDictionary(),
+        _operations.ToFrozenDictionary());
+
+    /// <summary>Internal operations run only within the caller's existing campaign transaction.</summary>
+    public void Operation<TOperation>(TOperation implementation) where TOperation : class
+    {
+        ArgumentNullException.ThrowIfNull(implementation);
+        if (!typeof(TOperation).IsInterface || !_operations.TryAdd(typeof(TOperation), implementation))
+            throw new InvalidOperationException("An operation must have a unique interface registration.");
+    }
 
     private static void Add<T>(List<Ordered<T>> target, Ordered<T> entry, string scope)
     {
@@ -176,7 +187,8 @@ internal sealed class CampaignHandlerTable(
     Action<CampaignSnapshot>[] restores,
     Action[] validators,
     Action[] initializers,
-    FrozenDictionary<Type, object> queries)
+    FrozenDictionary<Type, object> queries,
+    FrozenDictionary<Type, object> operations)
 {
     public bool TryGetCommand(Type type, out Func<ICampaignCommand, CampaignCommandResult> handler) =>
         commands.TryGetValue(type, out handler!);
@@ -223,4 +235,7 @@ internal sealed class CampaignHandlerTable(
 
     public TQuery? Query<TQuery>() where TQuery : class =>
         queries.TryGetValue(typeof(TQuery), out var query) ? (TQuery)query : null;
+
+    internal TOperation Operation<TOperation>() where TOperation : class =>
+        (TOperation)operations[typeof(TOperation)];
 }

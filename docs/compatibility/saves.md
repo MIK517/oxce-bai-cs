@@ -1,5 +1,11 @@
 # Save compatibility
 
+Branch 4c event scheduling now owns the `generatedEvents` count map, including removed-rule
+history. Imported/generated event instances preserve unknown fields through stable
+`oxcePortEntityKey` metadata when countdowns change or other instances expire. Unkeyed
+synthetic snapshots retain the earlier state/occurrence fallback described below. See
+`StrategicEventSchedulingTests` and [ADR 0028](../decisions/0028-world-event-scheduling-and-identity.md).
+
 Phase 6 branches 1 through 3: logistics, research and production snapshots preserve
 campaign-wide soldier/craft identity across base/transit containers, repeated rewrites
 and deletion/recreation. Session options and monthly purchase logs persist.

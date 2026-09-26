@@ -157,7 +157,7 @@ bounded state, and an operable campaign take precedence over that independent ta
   localized labels, quantities/status, unavailable-action reasons, confirmation where
   the action needs it, and completion/failure feedback. Include keyboard operation,
   simulation pause/speed behavior, and save/load access as they become relevant.
-  Branches 4a and 4b are explicit headless intermediate boundaries; branch 4c owns
+  Branches 4a–4c are explicit headless intermediate boundaries; branch 4d owns
   their globe/UI integration and must satisfy the original branch 4 UI acceptance.
 - Extend managed capability contracts only for actual use, with versioning and no
   implementation types. Integrate live extension save state no later than branch 5,
@@ -527,7 +527,7 @@ For each branch:
    tests of older saves alone are insufficient. Try C++ reload of emitted ordinary
    saves where feasible and report any gap separately from C# round-trip success.
 5. Exercise the new UI flow and relevant indexed/native smoke checks. The explicit
-   headless 4a/4b boundaries carry command/query evidence; 4c closes their UI evidence.
+   headless 4a–4c boundaries carry command/query evidence; 4d closes their UI evidence.
    Preserve the three-platform/coverage CI matrix and SDL path scope. Scenario comparisons should
    be semantic and finite; long performance/soak work runs locally unless a short stable
    regression case belongs in CI.
@@ -536,9 +536,9 @@ For each branch:
    locally, then push the complete correction. Merge using Rebase and merge and verify
    resulting main checks before continuing. Never skip required checks to meet a count.
 
-Eight successful first-candidate PRs (including 4a, 4b and 4c) imply approximately
-**16 main-CI workflow runs**
-(one per PR plus one per merge), currently four jobs each: about 64 job executions.
+Nine successful first-candidate PRs (including 4a, 4b, 4c and 4d) imply approximately
+**18 main-CI workflow runs**
+(one per PR plus one per merge), currently four jobs each: about 72 job executions.
 SDL-sensitive branches add their existing three-platform PR validation. This is a
 configuration-based planning floor, not a promise about hosted runs, failures or branch
 protection. Opening another planning-only PR would add a cycle; keep this plan with
@@ -548,7 +548,7 @@ is necessary for this plan.
 ## Phase 6 completion checklist
 
 - The six original acceptance boundaries pass using shared gameplay commands in headless
-  and UI paths; the combined world boundary closes in 4c after intermediate 4a/4b gates.
+  and UI paths; the combined world boundary closes in 4d after intermediate 4a–4c gates.
 - Every strategic feature in the targeted reference inventory has an owner, fixture
   evidence and explicit status; typed/parsed/preserved-only state is not called compatible.
 - Each owning script provider executes at the real event site; no supported strategic

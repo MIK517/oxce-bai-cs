@@ -38,10 +38,14 @@ public static partial class OxceSaveAdapter
             { Name = String(map, "name", string.Empty) }).ToArray()),
             MissionSites = Array.AsReadOnly(sites),
             AlienBases = Array.AsReadOnly(alienBases),
-            Events = Array.AsReadOnly(Maps(body, "geoscapeEvents").Select(static map => new GeoscapeEventSnapshot(
+            Events = Array.AsReadOnly(Maps(body, "geoscapeEvents").Select(static (map, index) => new GeoscapeEventSnapshot(
                 RequiredString(map, "name"), Integer(map, "spawnCountdown", 0))
-            { Over = Boolean(map, "over", false) }).ToArray()),
+            {
+                Over = Boolean(map, "over", false),
+                PreservationKey = String(map, "oxcePortEntityKey", $"event:legacy:{index}"),
+            }).ToArray()),
             Strategy = ReadAlienStrategy(body),
+            GeneratedEvents = ReadIntMap(body, "generatedEvents"),
         };
     }
 
@@ -278,7 +282,8 @@ public static partial class OxceSaveAdapter
         count == 0 ? null : Sequence(values);
 
     /// <summary>
-    /// A scheduled event has no save identity. Prefer its complete saved state, then use the
+    /// Imported and newly scheduled events have a persistent sidecar key. Unkeyed synthetic
+    /// snapshots retain the legacy matching behavior: prefer complete saved state, then use the
     /// occurrence order within a rule when its countdown or completion flag has changed.
     /// Each source occurrence is consumed once, so repeated rule IDs keep distinct sidecars.
     /// </summary>
@@ -286,11 +291,15 @@ public static partial class OxceSaveAdapter
         IReadOnlyList<GeoscapeEventSnapshot> events, IEnumerable<YamlMappingNode> source)
     {
         var originals = source.ToArray();
+        var byKey = new Dictionary<string, int>(StringComparer.Ordinal);
         var exact = new Dictionary<(string RuleId, int Countdown, bool Over), Queue<int>>();
         var byRule = new Dictionary<string, Queue<int>>(StringComparer.Ordinal);
         for (var index = 0; index < originals.Length; index++)
         {
             var map = originals[index];
+            var preservationKey = String(map, "oxcePortEntityKey", $"event:legacy:{index}");
+            if (preservationKey.Length != 0 && !byKey.TryAdd(preservationKey, index))
+                throw new InvalidDataException("Duplicate scheduled event preservation keys.");
             var ruleId = String(map, "name", string.Empty);
             var key = (ruleId, Integer(map, "spawnCountdown", 0), Boolean(map, "over", false));
             if (!exact.TryGetValue(key, out var exactMatches)) exact[key] = exactMatches = new Queue<int>();
@@ -304,6 +313,16 @@ public static partial class OxceSaveAdapter
         for (var index = 0; index < events.Count; index++)
         {
             var scheduled = events[index];
+            if (scheduled.PreservationKey.Length != 0)
+            {
+                if (byKey.TryGetValue(scheduled.PreservationKey, out var original) && !used[original] &&
+                    String(originals[original], "name", string.Empty) == scheduled.RuleId)
+                {
+                    matches[index] = originals[original];
+                    used[original] = true;
+                }
+                continue; // A new keyed event must never inherit an old occurrence's sidecar.
+            }
             var key = (scheduled.RuleId, scheduled.SpawnCountdown, scheduled.Over);
             var match = exact.TryGetValue(key, out var exactMatches) ? TakeUnused(exactMatches, used) : -1;
             if (match < 0 && byRule.TryGetValue(scheduled.RuleId, out var ruleMatches))

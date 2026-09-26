@@ -47,7 +47,7 @@ public sealed class PrivateStrategicWorldTests
             var expected = (result.Family, result.Name) switch
             {
                 ("vanilla-ufo", "early/Begining.sav") => (125, "Alien mission wave spawning requires world simulation."),
-                ("modded/rosigma", "early/Begining.sav") => (0, "Strategic event scheduling requires world simulation."),
+                ("modded/rosigma", "early/Begining.sav") => (220, "Alien mission wave spawning requires world simulation."),
                 ("modded/rosigma", "early/Early.sav" or "early/Middle.sav" or "early/_autogeo_.asav") =>
                     (0, "UFO shield handling requires world simulation."),
                 (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
