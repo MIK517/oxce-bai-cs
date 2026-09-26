@@ -5,6 +5,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -109,14 +110,9 @@ public sealed class StrategicWorldCraftOperationsTests
                 AutoPatrolLatitude = 0.1,
             },
         };
-        var atBoundary = saved with
+        var atBoundary = saved.WithCraft("SHIP", _ => refuelling) with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
-            Bases = [saved.Bases[0] with
-            {
-                Crafts = [.. saved.Bases[0].Crafts.Select(existing =>
-                    existing.RuleId == "SHIP" ? refuelling : existing)],
-            }],
         };
         var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(atBoundary),
             content, seed: 32, name: "auto-patrol.sav").Campaign;
@@ -127,6 +123,49 @@ public sealed class StrategicWorldCraftOperationsTests
         Assert.Equal(WorldTargetKind.Waypoint, relaunched.Destination!.Kind);
         Assert.Equal(0.3, relaunched.Destination.Longitude);
         Assert.Equal(59, relaunched.Takeoff);
+    }
+
+    [Fact]
+    public void PatrolWithFuelFliesAtHalfSpeedAndBurnsFuelEveryTenMinutes()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = ReadyCampaign(content).Capture();
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "SHIP_SLOW_REFUEL",
+            Logistics = craft.Logistics! with
+            {
+                Fuel = 300,
+                Weapons = [null, null],
+                Items = new Dictionary<string, int>(),
+                Vehicles = [],
+            },
+        });
+        var campaign = CampaignState.Restore(snapshot with { Bases = [snapshot.Bases[0] with { Soldiers = [] }] },
+            content, new SplitMix64RandomSource(39));
+        var rule = content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP_SLOW_REFUEL")].Value;
+        Assert.False(rule.PatrolWithoutFuel);
+        var baseId = snapshot.Bases[0].Id;
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
+            new DispatchCraftToWaypoint(baseId, "SHIP_SLOW_REFUEL", 1, 0.4, 0.1)).Events));
+        Assert.Equal(6000, Craft(campaign.Capture()).Speed);
+        campaign.Execute(new AdvanceCampaignTime(61));
+
+        // Craft::setDestination(0) halves speedMax; consumeFuel then burns floor(speed / 100).
+        Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
+            new PatrolCraft(baseId, "SHIP_SLOW_REFUEL", 1)).Events));
+        var patrolling = Craft(campaign.Capture());
+        Assert.Null(patrolling.Destination);
+        Assert.Equal(3000, patrolling.Speed);
+
+        // Exactly one ten-minute boundary falls inside any 120 consecutive ticks.
+        AdvanceUnblocked(campaign, 120);
+        var after = Craft(campaign.Capture());
+        Assert.Equal("STR_OUT", after.Status);
+        Assert.Equal(patrolling.Fuel - 30, after.Fuel);
+
+        static CraftLogisticsState Craft(CampaignSnapshot snapshot) =>
+            Assert.Single(snapshot.Bases[0].Crafts, craft => craft.RuleId == "SHIP_SLOW_REFUEL").Logistics!;
     }
 
     [Fact]
@@ -145,16 +184,13 @@ public sealed class StrategicWorldCraftOperationsTests
                 AutoPatrolLatitude = 0.1,
             }
         };
-        var restored = CampaignState.Restore(snapshot with
+        var restored = CampaignState.Restore(snapshot.WithCraft("SHIP", _ => flagged) with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
-            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
-                existing.RuleId == "SHIP" ? flagged : existing)] }],
         }, content, new SplitMix64RandomSource(33));
 
-        var elapsed = restored.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(restored);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
         Assert.Equal("STR_READY", Ship(restored.Capture()).Logistics!.Status);
         Assert.Empty(restored.Capture().World.Waypoints);
     }
@@ -175,18 +211,10 @@ public sealed class StrategicWorldCraftOperationsTests
                 Destination = new WorldTargetReference(WorldTargetKind.Craft, "SHIP", ship.Id, 0.2, 0.1),
             }
         };
-        var restored = CampaignState.Restore(snapshot with
-        {
-            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
-                existing.RuleId == "SHIP" ? following : existing)] }],
-        }, content, new SplitMix64RandomSource(34));
+        var restored = CampaignState.Restore(snapshot.WithCraft("SHIP", _ => following), content,
+            new SplitMix64RandomSource(34));
 
-        var elapsed = restored.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(elapsed.Events[0]).Summary.TickCount);
-        Assert.Equal("Craft pursuit and landing require world simulation.",
-            Assert.IsType<CampaignActionBlocked>(elapsed.Events[^1]).Reason);
-        Assert.Equal(snapshot.Time, restored.Capture().Time);
+        AssertTimeBlocked(restored, "Craft pursuit and landing require world simulation.");
     }
 
     [Fact]
@@ -196,24 +224,11 @@ public sealed class StrategicWorldCraftOperationsTests
         var campaign = ReadyCampaign(content);
         var snapshot = campaign.Capture();
         var craft = Ship(snapshot);
-        var unplaced = CampaignState.Restore(snapshot with
-        {
-            Bases = [snapshot.Bases[0] with
-            {
-                Name = "",
-                Crafts = [.. snapshot.Bases[0].Crafts.Select(existing => existing.RuleId == "SHIP"
-                    ? craft with { Logistics = craft.Logistics! with { Status = "STR_OUT" } }
-                    : existing)],
-            }],
-        }, content, new SplitMix64RandomSource(49));
+        var airborne = snapshot.WithCraft("SHIP", _ => craft with { Logistics = craft.Logistics! with { Status = "STR_OUT" } });
+        var unplaced = CampaignState.Restore(airborne with { Bases = [airborne.Bases[0] with { Name = "" }] },
+            content, new SplitMix64RandomSource(49));
 
-        var before = unplaced.Capture();
-        var result = unplaced.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("An airborne craft belongs to a base that is not placed.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, unplaced.Capture(), strict: true);
+        AssertTimeBlocked(unplaced, "An airborne craft belongs to a base that is not placed.");
     }
 
     [Theory]
@@ -234,11 +249,8 @@ public sealed class StrategicWorldCraftOperationsTests
             "position" => logistics with { Longitude = 7 },
             _ => throw new ArgumentOutOfRangeException(nameof(condition)),
         };
-        var restored = CampaignState.Restore(snapshot with
-        {
-            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
-                existing.RuleId == "SHIP" ? craft with { Logistics = logistics } : existing)] }],
-        }, content, new SplitMix64RandomSource(60));
+        var restored = CampaignState.Restore(snapshot.WithCraft("SHIP", _ => craft with { Logistics = logistics }),
+            content, new SplitMix64RandomSource(60));
 
         AssertTimeBlocked(restored, reason);
     }
@@ -250,13 +262,11 @@ public sealed class StrategicWorldCraftOperationsTests
         var campaign = ReadyCampaign(content);
         var snapshot = campaign.Capture();
         var craft = Ship(snapshot);
-        var restored = CampaignState.Restore(snapshot with
+        var restored = CampaignState.Restore(snapshot.WithCraft("SHIP", _ => craft with
         {
-            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
-                existing.RuleId == "SHIP" ? craft with
-                { Logistics = craft.Logistics! with
-                    { Status = "STR_OUT", Weapons = [new CraftWeaponSnapshot("FIXED", 0), null] } } : existing)] }],
-        }, content, new SplitMix64RandomSource(61));
+            Logistics = craft.Logistics! with
+            { Status = "STR_OUT", Weapons = [new CraftWeaponSnapshot("FIXED", 0), null] },
+        }), content, new SplitMix64RandomSource(61));
 
         AssertTimeBlocked(restored, "Craft speed exceeds the supported range.");
     }
@@ -282,22 +292,14 @@ public sealed class StrategicWorldCraftOperationsTests
             var ready = ReadyCampaign(content);
             var snapshot = ready.Capture();
             var ship = Ship(snapshot);
-            var restored = CampaignState.Restore(snapshot with
+            var restored = CampaignState.Restore(snapshot.WithCraft("SHIP", _ => ship with
             {
-                Bases = [snapshot.Bases[0] with
+                Logistics = ship.Logistics! with
                 {
-                    Crafts = [.. snapshot.Bases[0].Crafts.Select(existing => existing.RuleId == "SHIP"
-                        ? ship with
-                        {
-                            Logistics = ship.Logistics! with
-                            {
-                                Items = items,
-                                Weapons = [new CraftWeaponSnapshot("FIXED", 0), null],
-                            },
-                        }
-                        : existing)],
-                }],
-            }, content, new SplitMix64RandomSource(50));
+                    Items = items,
+                    Weapons = [new CraftWeaponSnapshot("FIXED", 0), null],
+                },
+            }), content, new SplitMix64RandomSource(50));
             var before = restored.Capture();
 
             var result = restored.Execute(new DispatchCraftToWaypoint(snapshot.Bases[0].Id,
@@ -389,13 +391,16 @@ public sealed class StrategicWorldCraftOperationsTests
     }
 
     [Fact]
-    public void FlightAllocationsScaleWithCraftCount()
+    public void FlightAllocationPerAdditionalCraftIsBounded()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var four = FlightAllocations(4);
         var sixteen = FlightAllocations(16);
-        Assert.True(sixteen < four * 5,
-            $"Four crafts allocated {four} bytes; sixteen allocated {sixteen} bytes.");
+        // Fixed per-command costs cancel. A moving craft replaces its immutable state
+        // once per tick; anything beyond that is a per-craft inner-loop allocation.
+        var perCraftTick = (sixteen - four) / (12 * 10.0);
+        Assert.True(perCraftTick <= MaximumFlightBytesPerCraftTick,
+            $"{perCraftTick:F1} B per additional craft and tick ({four} B for 4 crafts, {sixteen} B for 16).");
 
         long FlightAllocations(int count)
         {
@@ -411,10 +416,11 @@ public sealed class StrategicWorldCraftOperationsTests
                 Bases = [snapshot.Bases[0] with { Crafts = crafts }],
             }, content, new SplitMix64RandomSource(36));
             restored.Execute(new AdvanceCampaignTime(61)); // finish takeoff and warm the movement path
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            var elapsed = restored.Execute(new AdvanceCampaignTime(10));
-            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-            Assert.Equal(10, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+            CampaignCommandResult? elapsed = null;
+            var allocated = AllocatedBytes(() => elapsed = restored.Execute(new AdvanceCampaignTime(10)));
+            Assert.Equal(10, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed!.Events)).Summary.TickCount);
+            Assert.All(restored.Capture().Bases[0].Crafts.Where(craft => craft.RuleId == "SHIP"),
+                craft => Assert.NotEqual(0.2, craft.Logistics!.Longitude));
             return allocated;
         }
     }
@@ -489,8 +495,9 @@ public sealed class StrategicWorldCraftOperationsTests
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var two = PatrolAllocations(2);
         var thirtyTwo = PatrolAllocations(32);
-        Assert.True(thirtyTwo < two * 2,
-            $"Two patrolling crafts allocated {two} bytes; thirty-two allocated {thirtyTwo} bytes.");
+        // Fixed per-command costs cancel; a stationary patrol must not allocate per craft.
+        Assert.True(thirtyTwo - two <= 0,
+            $"Two patrolling crafts allocated {two} B over ten ticks; thirty-two allocated {thirtyTwo} B.");
 
         long PatrolAllocations(int count)
         {
@@ -509,22 +516,21 @@ public sealed class StrategicWorldCraftOperationsTests
                 Bases = [snapshot.Bases[0] with { Crafts = crafts }],
             }, content, new SplitMix64RandomSource(38));
             restored.Execute(new AdvanceCampaignTime(1)); // warm the movement path
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            var elapsed = restored.Execute(new AdvanceCampaignTime(10));
-            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-            Assert.Equal(10, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
+            CampaignCommandResult? elapsed = null;
+            var allocated = AllocatedBytes(() => elapsed = restored.Execute(new AdvanceCampaignTime(10)));
+            Assert.Equal(10, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed!.Events)).Summary.TickCount);
             return allocated;
         }
     }
+
+    // One CraftSnapshot and one CraftLogisticsState record per moving craft and tick (208 B measured).
+    private const double MaximumFlightBytesPerCraftTick = 256;
 
     /// <summary>The veteran SHIP carries a negative-capacity weapon; <paramref name="unarmed"/>
     /// strips it so crew assignment is about the pilot rule rather than craft capacity.</summary>
     private static CampaignState ReadyCampaign(RuntimeContent content, int fuel = 100, bool unarmed = false)
     {
-        var campaign = TestFixtures.CreateLogisticsCampaign(content, "World operations",
-            CampaignDifficulty.Veteran);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
-        var snapshot = campaign.Capture();
+        var snapshot = CreateSnapshot(content, "World operations");
         var craft = Ship(snapshot);
         var ready = craft with
         {
@@ -540,15 +546,8 @@ public sealed class StrategicWorldCraftOperationsTests
                     : craft.Logistics!.Weapons,
             },
         };
-        return CampaignState.Restore(snapshot with
-        {
-            MonthsPassed = 0,
-            Bases = [snapshot.Bases[0] with
-            {
-                Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
-                    existing.RuleId == "SHIP" ? ready : existing)],
-            }],
-        }, content, new SplitMix64RandomSource(19));
+        return CampaignState.Restore(snapshot.WithCraft("SHIP", _ => ready), content,
+            new SplitMix64RandomSource(19));
     }
 
     private static CampaignState ReadyInterceptor(RuntimeContent content)
@@ -567,23 +566,8 @@ public sealed class StrategicWorldCraftOperationsTests
                 Latitude = 0.1,
             },
         };
-        return CampaignState.Restore(snapshot with
-        {
-            Bases = [snapshot.Bases[0] with
-            {
-                Crafts = [.. snapshot.Bases[0].Crafts.Select(existing =>
-                    existing.RuleId == "INTERCEPTOR" ? ready : existing)],
-            }],
-        }, content, new SplitMix64RandomSource(37));
-    }
-
-    private static void AssertTimeBlocked(CampaignState campaign, string reason)
-    {
-        var before = campaign.Capture();
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal(reason, Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        return CampaignState.Restore(snapshot.WithCraft("INTERCEPTOR", _ => ready), content,
+            new SplitMix64RandomSource(37));
     }
 
     private static CraftLogisticsState Interceptor(CampaignSnapshot snapshot) =>

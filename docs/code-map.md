@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 79 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 81 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 78 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -980,13 +980,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 79 files.
+`tests/Oxce.CompatibilityTests` - 81 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
+- `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>78 test classes</summary>
+<details><summary>79 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1049,6 +1050,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldBaseDetectionTests` ([StrategicWorldBaseDetectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldBaseDetectionTests.cs))
 - `StrategicWorldCleanupTests` ([StrategicWorldCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCleanupTests.cs))
 - `StrategicWorldCraftOperationsTests` ([StrategicWorldCraftOperationsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftOperationsTests.cs))
+- `StrategicWorldCraftRadarTests` ([StrategicWorldCraftRadarTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftRadarTests.cs))
 - `StrategicWorldEnduranceTests` ([StrategicWorldEnduranceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEnduranceTests.cs))
 - `StrategicWorldFixtureTests` ([StrategicWorldFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldFixtureTests.cs))
 - `StrategicWorldLifecycleTraceTests` ([StrategicWorldLifecycleTraceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldLifecycleTraceTests.cs))
@@ -1207,6 +1209,11 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 - `StrategicReadinessTestContent` (class)
 - members: `Load`
 
+### [tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs)
+
+- `StrategicWorldTestSupport` (class) - Shared setup and assertions for the strategic-world compatibility tests.
+- members: `CreateSnapshot`, `CreateLifecycleSnapshot`, `CreateUfoTransitCampaign`, `Degrees`, `WithCraft`, `WithFacility`, `WithNextId`, `AdvanceOne`, `AdvanceUnblocked`, `AssertTimeBlocked`, `Reload`, `AllocatedBytes`
+
 ### [tests/Oxce.TestExtension/ProbeExtension.cs](../tests/Oxce.TestExtension/ProbeExtension.cs)
 
 - `ProbeExtension` (class)
@@ -1217,7 +1224,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 
 - `TestFixtures` (class)
 - `TestFixtures.FixedClock` (class)
-- members: `CreateWorldLifecycleSnapshot`, `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `CopyDirectory`, `Instance`, `UtcNow`
+- members: `LogisticsModId`, `DefaultCampaignId`, `Engine`, `RepositoryPath`, `PublicModsPath`, `CreatePlan`, `RuntimeRuleLinkingMods`, `CreateRuntimeRuleLinkingPlan`, `LoadStrategicLogistics`, `CreateLogisticsCampaign`, `LogisticsSaveOptions`, `LoadLogisticsSave`, `VerifiedExpectedPath`, `ReadVerifiedExpected`, `LoadVerifiedManifest`, `ReadKeyValues`, `Rows`, `CopyDirectory`, `Instance`, `UtcNow`
 
 ### Helpers nested in test classes
 

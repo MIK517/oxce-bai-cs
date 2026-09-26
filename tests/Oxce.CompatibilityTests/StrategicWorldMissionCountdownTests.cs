@@ -5,6 +5,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -17,8 +18,7 @@ public sealed class StrategicWorldMissionCountdownTests
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateCampaign(content);
 
-        var first = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(first.Events)).Summary.TickCount);
+        AdvanceOne(campaign);
         Assert.Equal(60, Assert.Single(campaign.Capture().World.Missions).SpawnCountdown);
 
         var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
@@ -44,9 +44,8 @@ public sealed class StrategicWorldMissionCountdownTests
         var random = new SplitMix64RandomSource(campaign.Capture().RandomState);
         var firstCountdown = WorldTrajectory.SpawnCountdown(90, random);
 
-        var first = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(first.Events)).Summary.TickCount);
         var firstState = campaign.Capture();
         var mission = Assert.Single(firstState.World.Missions);
         Assert.Equal(0, mission.NextWave);
@@ -99,9 +98,8 @@ public sealed class StrategicWorldMissionCountdownTests
         var firstPosition = WorldGeometry.Move(position, destination, speedRadian);
         var expectedUniqueId = before.NextIds.GetValueOrDefault("STR_UFO_UNIQUE", 1);
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
         var spawned = campaign.Capture();
         var mission = Assert.Single(spawned.World.Missions);
         Assert.Equal(0, mission.NextWave);
@@ -133,9 +131,8 @@ public sealed class StrategicWorldMissionCountdownTests
             content, seed: 74, name: "mission-ufo-wave.sav").Campaign;
         var expectedPosition = WorldGeometry.Move(firstPosition, destination, speedRadian);
 
-        var movement = reloaded.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(reloaded);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(movement.Events)).Summary.TickCount);
         var moved = Assert.Single(reloaded.Capture().World.Ufos);
         Assert.Equal(expectedPosition, moved.Position);
         Assert.Equal(0, moved.Shield);
@@ -148,9 +145,8 @@ public sealed class StrategicWorldMissionCountdownTests
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_SCORED");
         var before = campaign.Capture();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
         var after = campaign.Capture();
         Assert.Equal("UFO_SCOUT", Assert.Single(after.World.Ufos).RuleId);
         Assert.False(Assert.Single(after.World.Ufos).Detected);
@@ -165,16 +161,8 @@ public sealed class StrategicWorldMissionCountdownTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        campaign = CampaignState.Restore(snapshot with
-        {
-            Bases = [owner with
-            {
-                Facilities = [.. owner.Facilities,
-                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
-            }],
-        }, content, new SplitMix64RandomSource(75));
+        campaign = CampaignState.Restore(campaign.Capture().WithFacility("RADAR_HYPER_TEST"), content,
+            new SplitMix64RandomSource(75));
 
         var result = campaign.Execute(new AdvanceCampaignTime(12));
 
@@ -201,14 +189,8 @@ public sealed class StrategicWorldMissionCountdownTests
         {
             Regions = [region with { ActivityAlien = [int.MaxValue] }],
         }, content, new SplitMix64RandomSource(79));
-        var before = campaign.Capture();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("UFO alien activity exceeds the supported range.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
     }
 
     [Fact]
@@ -216,28 +198,10 @@ public sealed class StrategicWorldMissionCountdownTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
-            StringComparer.Ordinal);
-        ids["STR_UFO"] = int.MaxValue;
-        campaign = CampaignState.Restore(snapshot with
-        {
-            NextIds = ids,
-            Bases = [owner with
-            {
-                Facilities = [.. owner.Facilities,
-                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
-            }],
-        }, content, new SplitMix64RandomSource(80));
-        var before = campaign.Capture();
+        campaign = CampaignState.Restore(campaign.Capture().WithNextId("STR_UFO", int.MaxValue)
+            .WithFacility("RADAR_HYPER_TEST"), content, new SplitMix64RandomSource(80));
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("UFO contact marker IDs are exhausted or collide with a saved UFO.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AssertTimeBlocked(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
     }
 
     [Fact]
@@ -245,16 +209,11 @@ public sealed class StrategicWorldMissionCountdownTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
-        var snapshot = campaign.Capture();
-        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
-            StringComparer.Ordinal);
-        ids["STR_UFO"] = int.MaxValue;
-        campaign = CampaignState.Restore(snapshot with { NextIds = ids }, content,
+        campaign = CampaignState.Restore(campaign.Capture().WithNextId("STR_UFO", int.MaxValue), content,
             new SplitMix64RandomSource(82));
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
         Assert.False(Assert.Single(campaign.Capture().World.Ufos).Detected);
         Assert.Equal(int.MaxValue, campaign.Capture().NextIds["STR_UFO"]);
     }
@@ -287,9 +246,8 @@ public sealed class StrategicWorldMissionCountdownTests
             World = snapshot.World with { Missions = [mission, mission with { Id = 5 }] },
         }, content, new SplitMix64RandomSource(76));
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
         var after = campaign.Capture();
         Assert.Equal<int>([1, 2], [.. after.World.Ufos.Select(static ufo => ufo.UniqueId)]);
         Assert.Equal(3, after.NextIds["STR_UFO_UNIQUE"]);
@@ -305,16 +263,9 @@ public sealed class StrategicWorldMissionCountdownTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        campaign = CampaignState.Restore(snapshot with
+        campaign = CampaignState.Restore(campaign.Capture().WithFacility("RADAR_HYPER_TEST", buildTime: 1) with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 23, 59, 55),
-            Bases = [owner with
-            {
-                Facilities = [.. owner.Facilities,
-                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 1, 0, false, false, false)],
-            }],
         }, content, new SplitMix64RandomSource(78));
         var result = campaign.Execute(new AdvanceCampaignTime(1));
 
@@ -329,24 +280,15 @@ public sealed class StrategicWorldMissionCountdownTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
-        var snapshot = campaign.Capture();
+        var snapshot = campaign.Capture().WithNextId("STR_UFO_UNIQUE", int.MaxValue - 1);
         var mission = Assert.Single(snapshot.World.Missions);
-        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
-            StringComparer.Ordinal);
-        ids["STR_UFO_UNIQUE"] = int.MaxValue - 1;
         campaign = CampaignState.Restore(snapshot with
         {
-            NextIds = ids,
             World = snapshot.World with { Missions = [mission, mission with { Id = 5 }] },
         }, content, new SplitMix64RandomSource(77));
-        var before = campaign.Capture();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("Alien mission wave spawning requires world simulation.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        // One ID remains, but both missions spawn in the same boundary.
+        AssertTimeBlocked(campaign, "UFO unique IDs are exhausted or collide with a saved UFO.");
     }
 
     [Fact]
@@ -356,9 +298,8 @@ public sealed class StrategicWorldMissionCountdownTests
         var campaign = CreateWaveCampaign(content, "MISSION_EMPTY_FINAL");
         var before = campaign.Capture();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
         Assert.Empty(campaign.Capture().World.Missions);
         Assert.Empty(campaign.Capture().World.Ufos);
         Assert.Empty(campaign.Capture().World.MissionSites);
@@ -370,14 +311,8 @@ public sealed class StrategicWorldMissionCountdownTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_EMPTY_RECURSIVE");
-        var before = campaign.Capture();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("Alien mission wave spawning requires world simulation.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
     }
 
     [Fact]
@@ -392,9 +327,8 @@ public sealed class StrategicWorldMissionCountdownTests
             World = snapshot.World with { Missions = [mission with { SpawnCountdown = 0, Interrupted = true }] },
         }, content, new SplitMix64RandomSource(46));
 
-        var elapsed = interrupted.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(interrupted);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
         Assert.Empty(interrupted.Capture().World.Missions);
     }
 
@@ -416,24 +350,15 @@ public sealed class StrategicWorldMissionCountdownTests
         {
             World = snapshot.World with { Missions = [mission] },
         }, content, new SplitMix64RandomSource(54));
-        var before = restored.Capture();
 
-        var result = restored.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal("Retaliation mission cleanup requires base linkage.",
-            Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, restored.Capture(), strict: true);
+        AssertTimeBlocked(restored, "Retaliation mission cleanup requires base linkage.");
     }
 
     private static CampaignState CreateCampaign(RuntimeContent content)
     {
-        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Mission countdown", CampaignDifficulty.Veteran);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
-        var snapshot = campaign.Capture();
+        var snapshot = CreateSnapshot(content, "Mission countdown");
         return CampaignState.Restore(snapshot with
         {
-            MonthsPassed = 0,
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
             World = snapshot.World with
             {

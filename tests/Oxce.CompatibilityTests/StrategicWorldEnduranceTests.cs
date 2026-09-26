@@ -7,6 +7,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -18,7 +19,7 @@ public sealed class StrategicWorldEnduranceTests
     public void SeventyTwoHoursComposeFiniteMissionsCraftOperationsAndReloads(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
-        var snapshot = TestFixtures.CreateWorldLifecycleSnapshot(content);
+        var snapshot = CreateLifecycleSnapshot(content);
         var owner = snapshot.Bases[0];
         var craft = owner.Crafts.Single(item => item.RuleId == "SHIP");
         snapshot = snapshot with
@@ -90,7 +91,10 @@ public sealed class StrategicWorldEnduranceTests
                     Assert.Equal(current.World.Ufos.Count(ufo => ufo.MissionId == mission.Id), mission.LiveUfos);
                 var state = current.Bases[0].Crafts[0].Logistics!;
                 serviced |= state.Status == "STR_REFUELLING";
-                lowFuelReturn |= state.LowFuel || state.IsAutoPatrolling && state.Status == "STR_REFUELLING";
+                // No command recalls the craft after the second patrol order, so a patrolling
+                // craft that is low on fuel or refuelling must have made a low-fuel return.
+                lowFuelReturn |= ticks > commands[4] && state.IsAutoPatrolling &&
+                    (state.LowFuel || state.Status == "STR_REFUELLING");
                 relaunched |= lastStatus == "STR_REFUELLING" && state.Status == "STR_OUT" && state.IsAutoPatrolling;
                 lastStatus = state.Status;
                 if (reload)
@@ -110,7 +114,8 @@ public sealed class StrategicWorldEnduranceTests
             Assert.Empty(after.World.Ufos);
             Assert.Empty(after.World.Missions);
             Assert.Equal(snapshot.DaysPassed + 3, after.DaysPassed);
-            Assert.Equal(0, after.Bases[0].Facilities[2].BuildTime);
+            Assert.Equal(0, Assert.Single(after.Bases[0].Facilities,
+                facility => facility.RuleId == "MIND_SCREEN_TEST").BuildTime);
             Assert.Equal(snapshot.NextIds.GetValueOrDefault("STR_UFO_UNIQUE", 1) + 36, after.NextIds["STR_UFO_UNIQUE"]);
             return after;
         }
@@ -124,23 +129,33 @@ public sealed class StrategicWorldEnduranceTests
         foreach (var bases in new[] { 1, 8 })
             foreach (var operation in new[] { "flight", "boundary", "cleanup" })
             {
-                _ = Measure(8, bases, operation); // JIT and shared caches outside the measurement samples
-                long previous = 0;
-                foreach (var count in new[] { 8, 32, 128 })
-                {
-                    var bytes = Measure(count, bases, operation);
-                    if (previous != 0) Assert.True(bytes <= previous * 5 + 16_384,
-                        $"{operation}/{bases} bases: {count} UFOs used {bytes} B; prior sample {previous} B.");
-                    previous = bytes;
-                }
+                _ = Measure(8, bases, operation, record: false); // JIT and shared caches
+                var small = Measure(32, bases, operation, record: true);
+                var large = Measure(128, bases, operation, record: true);
+                // Fixed per-command costs cancel; what remains is the cost of each additional UFO.
+                var perUfo = (large - small) / 96.0;
+                Assert.True(perUfo <= MaximumBytesPerUfo(operation),
+                    $"{operation}/{bases} bases: {perUfo:F1} B per additional UFO ({small} B for 32, {large} B for 128).");
             }
         var path = TestFixtures.RepositoryPath("artifacts", "world-closure-measurements.json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(measurements));
 
-        long Measure(int count, int bases, string operation)
+        // Regression bounds per additional UFO, measured 2026-09-26 with 1 and 8 bases:
+        // flight replaces one immutable UFO record per tick (208 B/tick measured over 12 ticks);
+        // the half-hour boundary scores and scans every base (752 B with 1 base, 1536 B with 8);
+        // cleanup removes the destroyed UFO (80 B).
+        static double MaximumBytesPerUfo(string operation) => operation switch
         {
-            var snapshot = TestFixtures.CreateWorldLifecycleSnapshot(content);
+            "flight" => 12 * 256,
+            "boundary" => 2048,
+            "cleanup" => 128,
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
+
+        long Measure(int count, int bases, string operation, bool record)
+        {
+            var snapshot = CreateLifecycleSnapshot(content);
             var owner = snapshot.Bases[0];
             var ship = owner.Crafts.Single(item => item.RuleId == "SHIP");
             var ufo = snapshot.World.Ufos[0] with
@@ -197,7 +212,8 @@ public sealed class StrategicWorldEnduranceTests
             var loadBytes = GC.GetAllocatedBytesForCurrentThread() - before;
             var loadMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
             Assert.Equivalent(captured, loaded.Capture(), strict: true);
-            measurements.Add(new { count, bases, operation, ticks, bytes, elapsed, writeBytes, writeMs, loadBytes, loadMs });
+            if (record)
+                measurements.Add(new { count, bases, operation, ticks, bytes, elapsed, writeBytes, writeMs, loadBytes, loadMs });
             return bytes;
         }
     }
