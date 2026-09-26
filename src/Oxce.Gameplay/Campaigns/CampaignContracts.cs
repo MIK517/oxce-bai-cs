@@ -16,7 +16,7 @@ public enum CampaignDifficulty
 public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
     int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
-    bool AggressiveRetaliation = true, bool CraftLaunchAlways = false)
+    bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false)
 {
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
@@ -38,6 +38,7 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
             UfoLandingAlert = Fixed("oxceUfoLandingAlert", UfoLandingAlert),
             AggressiveRetaliation = Fixed("aggressiveRetaliation", AggressiveRetaliation),
             CraftLaunchAlways = Fixed("craftLaunchAlways", CraftLaunchAlways),
+            SuppressLandingWithoutEquipment = Fixed("oxceGeoSuppressLandingWithoutEquipment", SuppressLandingWithoutEquipment),
         };
 
         bool Fixed(string id, bool current) =>

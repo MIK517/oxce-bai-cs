@@ -16,13 +16,18 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
-      "size": 16018,
-      "sha256": "7115b750f3c0d7f736f4addf56b8caf601108a93a315fa8e0a7225593533b3bd"
+      "size": 16593,
+      "sha256": "7a7075f2a4b302baf04e0710d7bd9d9ba8bc021223f1c5985862a5c2f7f4b89d"
     },
     {
       "path": "tools/capture-strategic-world-reference.ps1",
       "size": 7483,
       "sha256": "197fb8140b961964d876102c54a3366f4ed800df70d792b1ef30f2041ce5128c"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-escort.rul",
+      "size": 192,
+      "sha256": "f8a4d742a14098cd1a209a3d35c867c3ddbfdfc921617b84e0d3eabb66841aae"
     }
   ],
   "normalization": [

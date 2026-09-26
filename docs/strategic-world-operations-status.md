@@ -2,10 +2,10 @@
 
 The `codex/strategic-world-operations` branch implements bounded craft and UFO
 waypoint flight, ordinary UFO landing/takeoff, mission countdowns, activity scoring and
-base/craft radar detection. The bounded 4b closure gate is satisfied locally; this is
-not a merge or full world-simulation acceptance claim. The 2026-09-26 scope revision
+base/craft radar detection. Its bounded closure gate passed and 4b merged in `e10d96f`;
+full world-simulation acceptance remains separate. The 2026-09-26 scope revision
 closes 4b after ordinary UFO lifecycle completion; branch 4c owns remaining world generation, special behavior, scripts,
-pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--ordinary-ufo-and-craft-operations).
+pursuit; 4d owns globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--ordinary-ufo-and-craft-operations).
 
 ## Implemented
 

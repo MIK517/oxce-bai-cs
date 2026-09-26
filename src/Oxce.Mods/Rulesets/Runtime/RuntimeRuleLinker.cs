@@ -296,6 +296,7 @@ public static class RuntimeRuleLinker
             CustomTrainingFactor = content.CampaignStart.Settings.CustomTrainingFactor,
             ManaWoundThreshold = content.CampaignStart.Settings.ManaWoundThreshold,
             HealthWoundThreshold = content.CampaignStart.Settings.HealthWoundThreshold,
+            EscortRange = content.CampaignStart.Settings.EscortRange,
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(
@@ -519,7 +520,8 @@ public static class RuntimeRuleLinker
                 Timeline(source.HuntMissionWeights),
                 Timeline(source.AlienBaseUpgrades),
                 Array.AsReadOnly(evolution),
-                Weights(id, "despawnEvents", source.DespawnEvents));
+                Weights(id, "despawnEvents", source.DespawnEvents))
+            { StartingCondition = source.Strings["startingCondition"] };
         }
 
         RuntimeAlienRaceEvolution? ReadEvolution(string id, YamlNode node)

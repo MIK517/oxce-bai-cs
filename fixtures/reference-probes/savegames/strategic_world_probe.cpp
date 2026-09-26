@@ -425,6 +425,21 @@ int main()
 			if (!first) std::cout << ','; first = false;
 			std::cout << '[' << (int)spawnTimer << ',' << (int)roll << ',' << (int)scaled << ',' << (int)countdown << ']';
 		}
+	std::cout << "],\"pursuit\":[";
+	{
+		Target destination; destination._lon = 1.0; destination._lat = 0.6;
+		MovingTarget target; target._lon = 0.4; target._lat = 0.2;
+		target._dest = &destination; target.setSpeed(2200);
+		MovingTarget follower; follower._lon = 0.2; follower._lat = 0.1;
+		follower._dest = &target; follower.setSpeed(6000);
+		for (int tick = 0; tick < 12; ++tick)
+		{
+			target.move(); follower.move();
+			if (tick) std::cout << ',';
+			std::cout << '[' << target._lon << ',' << target._lat << ','
+				<< follower._lon << ',' << follower._lat << ']';
+		}
+	}
 	std::cout << "]}" << std::endl;
 	return 0;
 }
