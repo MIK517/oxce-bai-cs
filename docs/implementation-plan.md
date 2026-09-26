@@ -237,11 +237,11 @@ servicing, save reload and indexed UI actions. Branch 3 satisfies its
 ordered unlocks, active projects and queues, resource/fund accounting, save reload and
 indexed UI actions. Branch 4a implements the bounded
 [world foundation](strategic-world-foundation-status.md); branch 4b implements bounded
-[ordinary UFO and craft operations](strategic-world-operations-status.md) and closes
-after supported UFO lifecycle completion and its headless acceptance evidence. The
+[ordinary UFO and craft operations](strategic-world-operations-status.md) and satisfies
+its supported UFO lifecycle closure gate with headless acceptance evidence. The
 2026-09-26 scope revision assigns remaining mission/arc/event scheduling, broader
 world lifecycles, scripts, pursuit and globe UI to branch 4c. Original combined branch
-4 acceptance gates 4c closure before branch 5; 4b is not yet accepted.
+4 acceptance gates 4c closure before branch 5; 4b is locally accepted and not yet merged.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate

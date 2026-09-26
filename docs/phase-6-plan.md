@@ -5,7 +5,8 @@ Status (scope revised 2026-09-26): branches 1–3 have bounded acceptance docume
 [strategic logistics status](strategic-logistics-status.md),
 [strategic readiness status](strategic-readiness-status.md), and
 [research and production status](strategic-research-production-status.md).
-Branch 4a supplies the bounded world foundation; branch 4b is in progress.
+Branch 4a supplies the bounded world foundation; branch 4b satisfies its revised
+ordinary-lifecycle closure gate locally (not yet merged).
 Branch 4c and branches 5–6 remain planned.
 This is not a Phase 6 completion claim.
 
@@ -320,7 +321,8 @@ of purposes 1-2 below.
 ### Branch 4b — Ordinary UFO and craft operations
 
 `codex/strategic-world-operations` closes after the supported ordinary UFO lifecycle
-is complete. This revised boundary is a plan, not a claim that the branch is accepted.
+is complete. That revised gate is now satisfied locally; see the
+[closure evidence and retained limits](strategic-world-operations-status.md#branch-4b-closure-evidence-2026-09-26).
 Retain its implemented headless dispatch/recall/patrol, craft fuel/servicing integration,
 existing-mission countdowns, bounded airborne/no-object waves, activity and radar detection.
 Ordinary land-point selection, landing, timers, takeoff and departure now compose in
@@ -328,9 +330,12 @@ fresh/cache scenarios, with transition save/reload and landed detection/scoring.
 Ten-minute UFO base scans and saved discovery now let later flight and long ground
 stays cross those boundaries; retaliation mission linkage remains in 4c.
 
-**Remaining closure scope:** remaining UFO deletion, mission live-count/expiry and
-target-reference cleanup cases. Complete save ownership and
-required semantics for each enabled transition.
+**Completed closure scope:** UFO deletion, mission live-count/expiry and target-reference
+cleanup cases; transition reloads; four pinned C++ lifecycle traces; 72-hour craft/UFO
+composition; terrain continuation; 8/32/128-UFO allocation samples; and fresh/cache
+continuation classification of all 19 staged saves. Private results are six executable
+for a 30-minute horizon, five blocked and eight tactical preservation-only. Full world
+and mod continuation remain outside this gate.
 
 **Acceptance scenario:** with controlled choices, a supported mission spawns a UFO,
 which flies, is detected, lands, takes off and departs; its mission then expires.

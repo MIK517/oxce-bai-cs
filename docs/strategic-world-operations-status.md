@@ -1,10 +1,10 @@
-# Phase 6 branch 4b: ordinary UFO and craft operations in progress
+# Phase 6 branch 4b: ordinary UFO and craft operations acceptance
 
 The `codex/strategic-world-operations` branch implements bounded craft and UFO
 waypoint flight, ordinary UFO landing/takeoff, mission countdowns, activity scoring and
-base/craft radar detection. This is a checkpoint, not branch
-4b acceptance. The 2026-09-26 scope revision closes 4b after ordinary UFO lifecycle
-completion; branch 4c owns the remaining world generation, special behavior, scripts,
+base/craft radar detection. The bounded 4b closure gate is satisfied locally; this is
+not a merge or full world-simulation acceptance claim. The 2026-09-26 scope revision
+closes 4b after ordinary UFO lifecycle completion; branch 4c owns remaining world generation, special behavior, scripts,
 pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--ordinary-ufo-and-craft-operations).
 
 ## Implemented
@@ -201,24 +201,77 @@ test also passes across its 19-save corpus. Existing time-advancement allocation
 remain unchanged and pass. Full lifecycle trace and population evidence remain closure
 gates; the full private content corpus was not rerun for this slice.
 
-## Still required for branch 4b
+## Branch 4b closure evidence (2026-09-26)
 
-- Cleanup checkpoint: multiple UFOs release their mission counts exactly once;
-  survivors and interrupted-mission expiry, consecutive departures across timing
-  boundaries, reload/batch equivalence, and repeated loaded rewrites of deleted
-  sidecars pass. Ordinary UFO waypoints are privately owned; craft pursuit remains
-  guarded before deletion. Reference-backed traces and endurance evidence below are
-  still required before this cleanup guarantee is accepted for branch closure.
-- Add reference-backed full-lifecycle traces, save/reload at each transition, multi-day
-  composition with craft operations, relevant terrain/depth coverage, malformed-input
-  and bounded-population tests, populated allocation measurements, fresh/cache and
-  affected save-corpus checks. Publish the actual closure evidence in this document.
+| Gate | Evidence |
+|---|---|
+| Cleanup and ownership | `StrategicWorldCleanupTests`: several destroyed UFOs across missions, a surviving UFO, interrupted expiry, consecutive terminal arrivals across ten-minute/half-hour boundaries, deferred craft movement and cleanup, reload/batch equivalence, deleted opaque sidecars staying deleted through repeated loaded rewrites, and guarded pursuit before deletion. |
+| Reference lifecycle | `StrategicWorldLifecycleTraceTests`: all 2,884 C++ trace rows agree with fresh/cached rules across ordinary, long-ground, interrupted and multiple-UFO cases. Positions, trajectory/status, ground time, mission counters/live counts, activity, detection/landing IDs, pause boundaries and random-choice counts are compared. Reloads bracket transitions; batched continuation reaches the identical complete snapshot. See the oracle limitations above. |
+| Multi-day composition | `StrategicWorldEnduranceTests`: 72 hours (51,840 ticks), 36 finite-wave UFOs, 36 contacts and landing alerts, peak population two, followed by complete UFO/mission drainage. Dispatch/patrol/recall, low-fuel return, refuelling, automatic relaunch and daily facility completion run alongside flight/landing/takeoff. One-tick, batched and repeatedly reloaded runs agree with both fresh and cached rules. |
+| Terrain and malformed state | `StrategicWorldUfoLandingTests`: land selection, permitted/forbidden fake water and forced real ocean continue through takeoff, departure and mission expiry, including reload. Existing malformed timer, coordinate, mission-link, score/marker-capacity and damage tests retain their guards. Tactical depth and underwater deployment are not enabled by this strategic altitude path; those remain with deployment/tactical owners. |
+| Population and allocations | Flight, half-hour and destroyed-UFO cleanup samples with 8/32/128 UFOs and 1/8 bases, plus capture/emission/restore, record costs separately. Fourfold population growth has a deterministic allocation-scaling guard; existing per-tick allocation budgets are unchanged. See measurements below. |
+| Imported saves | `PrivateStrategicWorldTests`: all 19 staged saves classified unchanged under fresh/cache rules; pre-advance loaded rewrite/reload preserves continuation, guards are repeatable without mutation, and post-run rewrites preserve state and opaque content. See the horizon and classifications below. |
 
-**Closure scenario:** a supported mission spawns a UFO, which flies, is detected, lands,
-takes off and departs; its mission then expires. Controlled choices and reloads before
-and after the major transitions preserve the resulting state and continuation. Craft
-dispatch/patrol/recall, fuel use and servicing continue alongside it. Required semantics
-and script hooks of enabled paths must be implemented; unsupported paths remain guarded.
+Final local validation: `dotnet test --no-restore` passes **963 tests with zero failures
+or skips**, including the full staged private corpus. Solution formatting verification,
+generated code-map validation, fixture checksum tests and `git diff --check` pass.
+No native/platform or UI code changed; the existing three-platform CI and SDL gates
+remain required when their normal branch/path conditions apply. No push was performed.
+
+No further implementation slice is required for the revised 4b scope. The supported
+scenario completes spawn, detection, landing, takeoff, departure, cleanup and mission
+expiry alongside craft operations. Unsupported script/event paths remain explicit
+guards; local acceptance does not remove them.
+
+### Private continuation classification
+
+The horizon is **30 minutes**, resuming ordinary contact/landing notifications. An
+executable classification establishes that horizon only; it does not establish full
+world, month-boundary, tactical or mod completion. Original saves and rules were not
+edited to bypass guards. Each result agrees before/after loaded-save rewrite and
+between fresh and cached content.
+
+| Corpus | Executable | Blocked | Preservation only |
+|---|---:|---:|---:|
+| UFO (7 saves) | 3 | 1 | 3 |
+| TFTD (5 saves) | 3 | 0 | 2 |
+| Rosigma (7 saves) | 0 | 4 | 3 |
+| Total | 6 | 5 | 8 |
+
+UFO `early/Begining.sav` advances 125 ticks, then stops before unsupported wave
+spawning. Rosigma `early/Begining.sav` stops on strategic event scheduling; its
+`Early.sav`, `Middle.sav` and `_autogeo_.asav` stop on UFO shield handling. These four
+stop without advancing. All eight tactical saves retain their battle data and stop
+without advancing. Exact reasons/tick counts are regression assertions. The ignored
+`artifacts/world-closure-corpus.json` records the per-save results. This is C# adapter
+continuation evidence; emitted ordinary saves were not loaded into the complete C++
+engine as part of this closure run.
+
+### Populated cost measurements
+
+`StrategicWorldEnduranceTests.PopulatedTicksScaleAndRecordSimulationAndPersistenceCosts`
+writes ignored `artifacts/world-closure-measurements.json`. Windows x64 .NET 10 Debug
+measurements use current-thread allocated bytes and elapsed time after a warm-up per
+scenario. They are bounded regression samples, not statistical benchmarks. Flight is
+12 five-second ticks; half-hour and cleanup are one tick. Craft movement and immutable
+UFO updates are included; save capture/emission and restore are measured separately.
+
+| Workload | Bases | 8 UFOs (bytes) | 32 UFOs (bytes) | 128 UFOs (bytes) |
+|---|---:|---:|---:|---:|
+| Flight, 12 ticks | 1 | 22,816 | 82,720 | 322,336 |
+| Flight, 12 ticks | 8 | 40,784 | 100,688 | 340,304 |
+| Half-hour tick | 1 | 7,664 | 25,712 | 97,904 |
+| Half-hour tick | 8 | 19,064 | 55,928 | 203,384 |
+| Cleanup tick | 1 | 1,592 | 3,512 | 11,192 |
+| Cleanup tick | 8 | 6,288 | 8,208 | 15,888 |
+
+At 128 UFOs/eight bases, capture plus YAML emission allocates about 2.67 MB and restore
+about 4.79 MB. Across focused and full-suite runs, observed sample times were roughly
+2-2.8 ms for 12 flight ticks, 2.3 ms for the half-hour tick, 16-37 ms for capture/emission
+and 102-116 ms for restore. Timings are
+informational and vary with concurrent workload; no elapsed-time CI assertion was
+added. These measurements exclude durable disk writes and tactical data. Existing
+stationary-craft allocation checks remain stricter than these moving-population checks.
 
 ## Assigned to branch 4c
 
