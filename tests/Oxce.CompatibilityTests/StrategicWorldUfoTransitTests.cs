@@ -681,10 +681,11 @@ public sealed class StrategicWorldUfoTransitTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void LaterTrajectoryPointStillBlocksTenMinuteBaseDetection(bool destroyed)
+    public void LaterTrajectoryPointCrossesTenMinuteBoundaryOutsideBaseSightRange(bool destroyed)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55));
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
+            ufoRuleId: "UFO_SCOUT", speed: 2200);
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var restored = CampaignState.Restore(snapshot with
@@ -699,7 +700,17 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(68));
 
-        AssertBlockedWithoutMutation(restored, "UFO detection and retargeting require world simulation.");
+        var result = restored.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        var after = restored.Capture();
+        Assert.False(after.Bases[0].RetaliationTarget);
+        Assert.Equal(snapshot.RandomState, after.RandomState);
+        if (destroyed)
+        {
+            Assert.Empty(after.World.Ufos);
+            Assert.Equal(0, Assert.Single(after.World.Missions).LiveUfos);
+        }
+        else Assert.NotEqual(ufo.Position, Assert.Single(after.World.Ufos).Position);
     }
 
     [Theory]

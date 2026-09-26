@@ -159,6 +159,8 @@ public static class RuntimeRuleLinker
                 RadarRange = rule.Value.RadarRange,
                 RadarChance = rule.Value.RadarChance,
                 Hyperwave = rule.Value.HyperWave,
+                MindShield = rule.Value.MindShield,
+                MindShieldPower = rule.Value.MindPower,
             });
 
         cancellationToken.ThrowIfCancellationRequested();

@@ -35,6 +35,7 @@ internal static class CampaignTimeOrder
 
     // time10Minutes: craft fuel consumption precedes detection and retargeting.
     public const int TenMinutesWorldCraftFuel = 100;
+    public const int TenMinutesWorldBaseDetection = 200;
 
     // time1Month: SavedGame::addMonth runs first.
     public const int MonthCalendar = 100;

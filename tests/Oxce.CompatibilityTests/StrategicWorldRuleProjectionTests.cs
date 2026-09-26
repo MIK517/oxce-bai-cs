@@ -24,6 +24,12 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.True(globe.Textures[11].FakeUnderwater);
         Assert.True(globe.Textures[12].IsOcean);
         Assert.Empty(globe.Textures[12].Deployments);
+        var mindScreen = rules.Facilities[rules.Facilities.GetRequired("MIND_SCREEN_TEST")].Value;
+        Assert.True(mindScreen.MindShield);
+        Assert.Equal(99, mindScreen.MindShieldPower);
+        var ordinaryFacility = rules.Facilities[rules.Facilities.GetRequired("STORES")].Value;
+        Assert.False(ordinaryFacility.MindShield);
+        Assert.Equal(1, ordinaryFacility.MindShieldPower);
 
         var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
         Assert.Equal(7, region.MissionZones.Count);

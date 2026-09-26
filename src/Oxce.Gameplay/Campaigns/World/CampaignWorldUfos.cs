@@ -5,7 +5,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>
 /// Ordinary UFO flight, landing and takeoff. Reference: Ufo::think/calculateSpeed,
 /// AlienMission::ufoReachedWaypoint/ufoLifting and GeoscapeState::time5Seconds.
-/// Special arrivals and later-trajectory ten-minute retargeting remain guarded.
+/// Special arrivals and hunting/escort retargeting remain guarded.
 /// </summary>
 internal sealed partial class CampaignWorld
 {
@@ -35,9 +35,11 @@ internal sealed partial class CampaignWorld
             "world UFO movement", MoveUfos);
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsWorldUfoCleanup,
             "destroyed UFO cleanup", RemoveDestroyedUfos);
+        registry.Timed(CampaignTimeTrigger.TenMinutes, CampaignTimeOrder.TenMinutesWorldBaseDetection,
+            "UFO detection of XCOM bases", DetectXcomBases);
     }
 
-    private string? UfoMovementReason(CampaignTimeTrigger highest)
+    private string? UfoMovementReason()
     {
         // A restored live count can become insufficient after another terminal arrival.
         // Keep this guard live and allocation-free; destroyed UFOs normally survive one tick.
@@ -58,19 +60,12 @@ internal sealed partial class CampaignWorld
             var ufo = _ufos[index];
             if (ufo.Status == UfoStatus.Destroyed)
             {
-                // DetectXCOMBase inspects the list before five-second cleanup, even for
-                // a UFO already marked destroyed.
-                if (highest >= CampaignTimeTrigger.TenMinutes && ufo.TrajectoryPoint > 1)
-                    return "UFO detection and retargeting require world simulation.";
+                // The ten-minute scan also inspects these before five-second cleanup.
                 continue;
             }
             if (ufo.Status is not (UfoStatus.Flying or UfoStatus.Landed) || ufo.InBattlescape || ufo.Hunting ||
                 ufo.Escorting || ufo.HunterKiller || ufo.Escort)
                 return "UFO state requires world simulation.";
-            // At points 0-1 DetectXCOMBase returns before scanning bases. Without a
-            // hunter-killer or alien base, the remaining ten-minute UFO handlers do no work.
-            if (highest >= CampaignTimeTrigger.TenMinutes && ufo.TrajectoryPoint > 1)
-                return "UFO detection and retargeting require world simulation.";
             // Ufo::load and AlienMission::spawnUfo own this waypoint; unlike a player
             // waypoint, it is never assigned a STR_WAY_POINT identity.
             if (ufo.Destination is not { Kind: WorldTargetKind.Waypoint, Id: 0 } destination)

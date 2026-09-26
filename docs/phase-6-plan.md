@@ -324,11 +324,12 @@ is complete. This revised boundary is a plan, not a claim that the branch is acc
 Retain its implemented headless dispatch/recall/patrol, craft fuel/servicing integration,
 existing-mission countdowns, bounded airborne/no-object waves, activity and radar detection.
 Ordinary land-point selection, landing, timers, takeoff and departure now compose in
-a short fresh/cache scenario, with transition save/reload and landed detection/scoring.
+fresh/cache scenarios, with transition save/reload and landed detection/scoring.
+Ten-minute UFO base scans and saved discovery now let later flight and long ground
+stays cross those boundaries; retaliation mission linkage remains in 4c.
 
-**Remaining closure scope:** later-trajectory ten-minute behavior so ordinary flight
-and ground timers can cross those boundaries; remaining UFO deletion, mission
-live-count/expiry and target-reference cleanup cases. Complete save ownership and
+**Remaining closure scope:** remaining UFO deletion, mission live-count/expiry and
+target-reference cleanup cases. Complete save ownership and
 required semantics for each enabled transition.
 
 **Acceptance scenario:** with controlled choices, a supported mission spawns a UFO,

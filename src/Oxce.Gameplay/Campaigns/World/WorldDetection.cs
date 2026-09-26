@@ -34,8 +34,15 @@ public static class WorldDetection
             size += (long)facility.SizeX * facility.SizeY;
             if (facility.MindShield && !facility.Disabled) shields += facility.MindShieldPower;
         }
-        if (shields < 0 || size < 0) throw new InvalidDataException("Base detection inputs cannot be negative.");
-        return checked((int)((size / 6 + 15) / (shields + 1)));
+        return BaseDetectionChance(size, shields);
+    }
+
+    /// <summary>The same calculation for callers that accumulate without allocating facility projections.</summary>
+    public static int BaseDetectionChance(long completedSize, long mindShieldPower)
+    {
+        if (mindShieldPower < 0 || completedSize < 0)
+            throw new InvalidDataException("Base detection inputs cannot be negative.");
+        return checked((int)((completedSize / 6 + 15) / (mindShieldPower + 1)));
     }
 
     /// <summary>Base::detect without its script hook.</summary>

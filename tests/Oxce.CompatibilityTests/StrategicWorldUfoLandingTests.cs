@@ -56,8 +56,8 @@ public sealed class StrategicWorldUfoLandingTests
             content, seed: 605, name: "ufo-area-landing.sav").Campaign;
         Assert.Equivalent(selected.World, campaign.Capture().World, strict: true);
 
-        // The selected point is close enough to reach before the still-guarded
-        // later-trajectory ten-minute boundary. Exercise the actual flight and landing.
+        // The selected point is close enough for a short bounded flight.
+        // Exercise actual movement and landing after reloading the selected destination.
         for (var tick = 0; tick < 110 && campaign.Capture().World.Ufos[0].Status == UfoStatus.Flying; tick++)
             AdvanceOne(campaign);
         var landed = Assert.Single(campaign.Capture().World.Ufos);
@@ -68,9 +68,11 @@ public sealed class StrategicWorldUfoLandingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FixedPointWaveSpawnsDetectsLandsDepartsAndExpires(bool fromCache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void FixedPointWaveSpawnsDetectsLandsDepartsAndExpires(bool fromCache, bool longLanding)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
         var snapshot = CreateCampaign(content, halfHour: true, radar: true).Capture();
@@ -80,14 +82,15 @@ public sealed class StrategicWorldUfoLandingTests
             {
                 Ufos = [],
                 Missions = [Assert.Single(snapshot.World.Missions) with
-                    { NextWave = 0, SpawnCountdown = 30, LiveUfos = 0 }],
+                    { RuleId = longLanding ? "MISSION_LONG_LANDING" : "MISSION_LANDING",
+                        NextWave = 0, SpawnCountdown = 30, LiveUfos = 0 }],
             },
         }, content, new SplitMix64RandomSource(97));
         var contactSeen = false;
         var landingSeen = false;
         var takeoffSeen = false;
         var departureSeen = false;
-        for (var tick = 0; tick < 361; tick++)
+        for (var tick = 0; tick < (longLanding ? 721 : 361); tick++)
         {
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
@@ -109,7 +112,7 @@ public sealed class StrategicWorldUfoLandingTests
         Assert.True(departureSeen);
         Assert.Empty(campaign.Capture().World.Ufos);
         Assert.Empty(campaign.Capture().World.Missions);
-        Assert.Equal(10, Assert.Single(campaign.Capture().Regions).ActivityAlien[^1]);
+        Assert.Equal(longLanding ? 16 : 10, Assert.Single(campaign.Capture().Regions).ActivityAlien[^1]);
     }
 
     [Fact]
