@@ -34,6 +34,7 @@ public static class CampaignFactory
         if (!content.Capabilities.Has(ContentLoadStage.RuntimeLinked))
             throw new InvalidOperationException("Campaign creation requires runtime-linked content.");
         if (!Enum.IsDefined(request.Difficulty)) throw new ArgumentOutOfRangeException(nameof(request));
+        request = request with { Options = request.Options.WithFixedUserOptions(content.RuntimeRules.Campaign.FixedUserOptions) };
 
         var rules = content.RuntimeRules;
         var countries = rules.Countries.Rules

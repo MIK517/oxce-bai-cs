@@ -16,7 +16,34 @@ public enum CampaignDifficulty
 public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
     int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
-    bool AggressiveRetaliation = true);
+    bool AggressiveRetaliation = true, bool CraftLaunchAlways = false)
+{
+    /// <summary>
+    /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
+    /// campaign. OptionInfo::load reads booleans with std::boolalpha, so only the exact text
+    /// <c>true</c> enables an option and any other value disables it.
+    /// </summary>
+    public CampaignOptions WithFixedUserOptions(IReadOnlyDictionary<string, string> fixedOptions)
+    {
+        ArgumentNullException.ThrowIfNull(fixedOptions);
+        if (fixedOptions.Count == 0) return this;
+        return this with
+        {
+            StorageLimitsEnforced = Fixed("storageLimitsEnforced", StorageLimitsEnforced),
+            CanSellLiveAliens = Fixed("canSellLiveAliens", CanSellLiveAliens),
+            AutoCombatDefaultSoldier = Fixed("autoCombatDefaultSoldier", AutoCombatDefaultSoldier),
+            AnytimePsiTraining = Fixed("anytimePsiTraining", AnytimePsiTraining),
+            AllowPsiStrengthImprovement = Fixed("allowPsiStrengthImprovement", AllowPsiStrengthImprovement),
+            AllowBuildingQueue = Fixed("allowBuildingQueue", AllowBuildingQueue),
+            UfoLandingAlert = Fixed("oxceUfoLandingAlert", UfoLandingAlert),
+            AggressiveRetaliation = Fixed("aggressiveRetaliation", AggressiveRetaliation),
+            CraftLaunchAlways = Fixed("craftLaunchAlways", CraftLaunchAlways),
+        };
+
+        bool Fixed(string id, bool current) =>
+            fixedOptions.TryGetValue(id, out var value) ? string.Equals(value, "true", StringComparison.Ordinal) : current;
+    }
+}
 
 public readonly record struct CampaignId
 {

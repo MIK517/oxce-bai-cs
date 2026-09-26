@@ -19,7 +19,7 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   runtime-linked craft properties. Item count and storage limits also reach the runtime
   craft and installed-weapon rules. Facility and craft radar properties are projected
   for half-hour detection. Mind-shield flags and power are linked for UFO base scans.
-  The compiled-content cache revision is 21.
+  The compiled-content cache revision is 22.
 - In-flight craft, waypoints, and auto-patrol coordinates survive save/reload. Invalid
   dispatches leave the campaign unchanged.
 - Dispatch applies `ConfirmDestinationState::btnOkClick`'s armor, onboard-item count,
@@ -29,7 +29,11 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   mission refuses dispatch, patrol and recall, as `InterceptState` and
   `GeoscapeCraftState` offer no command for it; otherwise it would keep its low-fuel
   flag and never turn back again. Dispatch and recall cancel auto-patrol, and patrol
-  starts it, only for crafts whose rules allow auto-patrol.
+  starts it, only for crafts whose rules allow auto-patrol. With the `craftLaunchAlways`
+  option a craft still being serviced can depart too, as in `InterceptState`.
+- Campaign options follow the player's reference options: a reference save's `options`
+  snapshot seeds them, `oxcePortOptions` persists them, and mod `fixedUserOptions`
+  override both. BrutalAI fixes `aggressiveRetaliation: true`.
 - A destroyed craft (damage at or above damageMax including weapon bonuses), in any
   status, stops time: `time5Seconds` deletes it with activity, crew and statistics
   consequences that belong to the dogfight slice. Rules without `damageMax` (default 0)

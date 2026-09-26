@@ -362,6 +362,9 @@ public sealed record RuntimeCampaignSettings(
     public IReadOnlyList<string> HireEngineersBaseFunctions { get; init; } = [];
     public int HireByCountryOdds { get; init; }
     public int HireByRegionOdds { get; init; }
+    /// <summary>Mod::getFixedUserOptions: options that the loaded mods force for every campaign.</summary>
+    public IReadOnlyDictionary<string, string> FixedUserOptions { get; init; } =
+        new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
     public RuntimeStartingBaseTemplate? GetStartingBase(StartingBaseVariant variant) =>
         StartingBases.FirstOrDefault(template => template.Variant == variant) ??
         StartingBases.FirstOrDefault(static template => template.Variant == StartingBaseVariant.Default);
