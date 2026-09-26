@@ -485,7 +485,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void MissionWaveOutsideRestoredRuleIsRejectedDuringRestore()
+    public void MissionWaveOutsideRestoredRuleLoadsAndStopsAtArrival()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
@@ -495,12 +495,33 @@ public sealed class StrategicWorldUfoTransitTests
         var waveCount = content.RuntimeRules.AlienMissions[
             content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value.Waves.Count;
 
-        var error = Assert.Throws<InvalidDataException>(() => CampaignState.Restore(snapshot with
+        // Ufo::load accepts the stale wave; only ufoReachedWaypoint would read it.
+        var outside = ufo with { MissionWaveNumber = waveCount };
+        var flying = CampaignState.Restore(snapshot with
         {
-            World = snapshot.World with { Ufos = [ufo with { MissionWaveNumber = waveCount }] },
-        }, content, new SplitMix64RandomSource(71)));
+            World = snapshot.World with { Ufos = [outside] },
+        }, content, new SplitMix64RandomSource(71));
+        AdvanceOne(flying);
 
-        Assert.Equal("UFO mission wave is outside its mission rule.", error.Message);
+        var arriving = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [outside with { Longitude = outside.Destination!.Longitude, Latitude = outside.Destination.Latitude }],
+            },
+        }, content, new SplitMix64RandomSource(72));
+        AssertTimeBlocked(arriving, "UFO waypoint arrival requires mission simulation.");
+
+        // Control: the same arrival with the UFO's own wave advances to its next point.
+        var control = CampaignState.Restore(arriving.Capture() with
+        {
+            World = arriving.Capture().World with
+            {
+                Ufos = [Assert.Single(arriving.Capture().World.Ufos) with { MissionWaveNumber = ufo.MissionWaveNumber }],
+            },
+        }, content, new SplitMix64RandomSource(73));
+        AdvanceOne(control);
+        Assert.Equal(1, Assert.Single(control.Capture().World.Ufos).TrajectoryPoint);
     }
 
     [Fact]

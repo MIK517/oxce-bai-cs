@@ -68,7 +68,10 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   and alien-base handlers remain outside this ordinary path.
   If a terminal UFO precedes an unsupported nonterminal arrival in the same tick, the global
   preflight stops time before either moves; the reference would return at the terminal UFO.
-  Rule-derived shield capacity is cached when a save is restored. Destroyed-UFO counts
+  Rule-derived shield capacity, including the mission race bonus, is evaluated per UFO in
+  preflight, so UFOs created or re-raced by later handlers cannot slip past the guard.
+  A saved wave number beyond the mission's waves loads, as in `Ufo::load`; only the
+  arrival that would read it stops time. Destroyed-UFO counts
   remain guarded during cleanup ticks because a restored live count can become insufficient
   after terminal arrival; this rare check does not allocate per tick.
 - Ordinary score-mission UFOs select landing points using the reference first-area city

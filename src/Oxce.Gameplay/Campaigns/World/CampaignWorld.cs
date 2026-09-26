@@ -89,11 +89,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     });
 
     /// <summary>AlienStrategy::init for a newly created campaign.</summary>
-    private void Initialize()
-    {
-        _strategy.Initialize(StrategyRegions());
-        CacheUfoShieldCapabilities();
-    }
+    private void Initialize() => _strategy.Initialize(StrategyRegions());
 
     private IEnumerable<(string Region, ulong Weight, IEnumerable<KeyValuePair<string, ulong>> Missions)> StrategyRegions() =>
         campaign.Content.RuntimeRules.Regions.Rules.Select(static rule =>
@@ -160,7 +156,6 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 });
         _waypoints.AddRange(snapshot.World.Waypoints);
         NormalizeDestinations();
-        CacheUfoShieldCapabilities();
         _strategy = AlienStrategyState.Restore(
             snapshot.World.Strategy.RegionChances,
             snapshot.World.Strategy.RegionMissions,
@@ -272,11 +267,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId);
                 if (mission is null)
                     throw new InvalidDataException("Unknown UFO mission; the save is corrupt.");
-                var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-                // Ufo::load accepts negative values for old saves and lets
-                // AlienMission::ufoReachedWaypoint derive the current wave.
-                if (ufo.MissionWaveNumber >= missionRule.Waves.Count)
-                    throw new InvalidDataException("UFO mission wave is outside its mission rule.");
+                // Ufo::load accepts any wave number, including negative values from old saves;
+                // an out-of-range wave only matters when AlienMission::ufoReachedWaypoint reads
+                // it, and the arrival preflight stops time there instead of rejecting the save.
                 if (!rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectory))
                     throw new InvalidDataException("Unknown UFO trajectory; the save is corrupt.");
                 var waypoints = rules.UfoTrajectories[trajectory].Value.Waypoints;
