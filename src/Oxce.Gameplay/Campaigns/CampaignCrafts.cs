@@ -70,7 +70,6 @@ public sealed partial class CampaignState
             if (state is { Status: "STR_OUT" }) reason ??= "Airborne craft require world simulation before sale or transfer.";
             if (operation == LogisticsOperation.Transfer)
             {
-                if (state is { IsAutoPatrolling: true }) reason ??= "Craft auto-patrol requires world simulation.";
                 if (UsedHangars(destination, rule.HangarType) >= AvailableHangars(destination, rule.HangarType)) reason ??= "No compatible destination hangar.";
                 if (Crew(origin, type, craft.Id).Count() > AvailableQuarters(destination) - UsedQuarters(destination)) reason ??= "No living space for the crew.";
                 if (Options.StorageLimitsEnforced && state is not null && StrategicLogisticsMath.StoresOverfull(AvailableStores(destination), UsedStores(destination), CraftLogistics.StoredSize(state, _content.RuntimeRules)))

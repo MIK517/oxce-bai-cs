@@ -499,7 +499,6 @@ public sealed partial class CampaignState
                         break;
                     case CampaignTransferKind.Craft:
                         if (transfer.Craft?.Logistics is null) return "Craft arrival requires complete logistics state.";
-                        if (transfer.Craft.Logistics.IsAutoPatrolling) return "Craft auto-patrol requires world simulation.";
                         break;
                 }
             }
