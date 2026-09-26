@@ -10,7 +10,7 @@
       "sources": "AlienMission.cpp think/spawnUfo ordinary fragments, ufoReachedWaypoint with unsupported bodies aborting, ufoLifting/isOver/getWaypoint/getLandPoint; Ufo.cpp think/setAltitude/isCrashed/isDestroyed/calculateSpeed; Target/MovingTarget/RuleRegion geometry. Driver controls time and radar success; see probe exclusions.",
       "probe": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
       "capture": "tools/capture-strategic-world-lifecycle-reference.ps1",
-      "compiler": "GCC 11.4 x64 -std=c++20 via a local port of the capture script; the previous probe's GCC output was byte-identical to its MSVC x64 /std:c++20 capture. Recapture with the PowerShell script and MSVC to restore the MSVC provenance."
+      "compiler": "MSVC x64 /std:c++20"
     }
   },
   "inputs": [
