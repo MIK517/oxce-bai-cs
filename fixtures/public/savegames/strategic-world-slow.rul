@@ -1,0 +1,8 @@
+crafts:
+  - type: SHIP
+    speedMax: 1
+  # Zero-speed fuel limit is undefined in C++; the port deliberately leaves it recallable.
+  - type: INTERCEPTOR
+    speedMax: 0
+    fuelMax: 100
+    pilots: 0 # Isolate zero-speed movement from the dispatch pilot gate.

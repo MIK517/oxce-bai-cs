@@ -95,6 +95,8 @@ internal static class CampaignStartSettingsComposer
         ApplyNames(root, "baseNamesLast", b.BaseNamesLast, false);
         ApplyNames(root, "operationNamesFirst", b.OperationNamesFirst, false);
         ApplyNames(root, "operationNamesLast", b.OperationNamesLast, false);
+        if (root.TryGet("fixedUserOptions", out var fixedOptions))
+            CampaignStartYaml.ApplyEditableNameMap(b.FixedUserOptions, fixedOptions!, "fixedUserOptions");
     }
 
     private static YamlMappingNode Overlay(YamlMappingNode current, YamlMappingNode defaults)

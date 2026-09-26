@@ -221,7 +221,8 @@ public static partial class OxceSaveAdapter
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
             Options = body.TryGet("oxcePortOptions", out var optionsNode)
-                ? ReadOptions(RequireMap(optionsNode!, "oxcePortOptions")) : new(),
+                ? ReadOptions(RequireMap(optionsNode!, "oxcePortOptions"))
+                : ReadReferenceOptions(body),
         };
         var campaign = CampaignState.Restore(snapshot, content, random);
         return new LoadedOxceCampaign(campaign,
@@ -319,6 +320,7 @@ public static partial class OxceSaveAdapter
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
                     ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
+                RetaliationTarget = Boolean(map, "retaliationTarget", false),
                 Research = research,
                 Productions = productions,
             };
@@ -500,7 +502,10 @@ public static partial class OxceSaveAdapter
                 Pair("anytimePsiTraining", Boolean(snapshot.Options.AnytimePsiTraining)),
                 Pair("allowPsiStrengthImprovement", Boolean(snapshot.Options.AllowPsiStrengthImprovement)),
                 Pair("maximumBases", Integer(snapshot.Options.MaximumBases)),
-                Pair("allowBuildingQueue", Boolean(snapshot.Options.AllowBuildingQueue))])),
+                Pair("allowBuildingQueue", Boolean(snapshot.Options.AllowBuildingQueue)),
+                Pair("oxceUfoLandingAlert", Boolean(snapshot.Options.UfoLandingAlert)),
+                Pair("aggressiveRetaliation", Boolean(snapshot.Options.AggressiveRetaliation)),
+                Pair("craftLaunchAlways", Boolean(snapshot.Options.CraftLaunchAlways))])),
         ]);
     }
 
@@ -550,6 +555,7 @@ public static partial class OxceSaveAdapter
             Pair("id", Integer(value.Id)),
             Pair("name", value.Name.Length == 0 ? null : Scalar(value.Name)),
             Pair("fakeUnderwater", value.FakeUnderwater ? Boolean(true) : null),
+            Pair("retaliationTarget", value.RetaliationTarget ? Boolean(true) : null),
             Pair("facilities", Sequence(facilities)), Pair("soldiers", Sequence(soldiers)),
             Pair("crafts", Sequence(crafts)),
             Pair("items", IntMapping(value.Items)),
@@ -760,11 +766,40 @@ public static partial class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
-            Boolean(map, "allowBuildingQueue", false));
+            Boolean(map, "allowBuildingQueue", false), Boolean(map, "oxceUfoLandingAlert", false),
+            Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false));
+    }
+
+    /// <summary>
+    /// A reference save has no port options, but SavedGame::save writes a debugging snapshot of
+    /// the player's options. The reference never reads it back; it is the best record of the
+    /// options the campaign was played with, so matching boolean entries seed the session
+    /// options. Anything unreadable falls back to the defaults instead of rejecting the save.
+    /// </summary>
+    private static CampaignOptions ReadReferenceOptions(YamlMappingNode body)
+    {
+        var defaults = new CampaignOptions();
+        if (!body.TryGet("options", out var node) || node is not YamlMappingNode map) return defaults;
+        return defaults with
+        {
+            StorageLimitsEnforced = Snapshot("storageLimitsEnforced", defaults.StorageLimitsEnforced),
+            CanSellLiveAliens = Snapshot("canSellLiveAliens", defaults.CanSellLiveAliens),
+            AutoCombatDefaultSoldier = Snapshot("autoCombatDefaultSoldier", defaults.AutoCombatDefaultSoldier),
+            AnytimePsiTraining = Snapshot("anytimePsiTraining", defaults.AnytimePsiTraining),
+            AllowPsiStrengthImprovement = Snapshot("allowPsiStrengthImprovement", defaults.AllowPsiStrengthImprovement),
+            AllowBuildingQueue = Snapshot("allowBuildingQueue", defaults.AllowBuildingQueue),
+            UfoLandingAlert = Snapshot("oxceUfoLandingAlert", defaults.UfoLandingAlert),
+            AggressiveRetaliation = Snapshot("aggressiveRetaliation", defaults.AggressiveRetaliation),
+            CraftLaunchAlways = Snapshot("craftLaunchAlways", defaults.CraftLaunchAlways),
+        };
+
+        bool Snapshot(string key, bool fallback) =>
+            map.TryGet(key, out var value) && value is YamlScalarNode { Value: "true" or "false" } scalar
+                ? scalar.Value == "true" : fallback;
     }
 
     private static CraftLogisticsState? ReadCraftLogistics(

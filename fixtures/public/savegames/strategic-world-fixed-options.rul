@@ -1,0 +1,7 @@
+# Mod-fixed user options override every campaign's own options (Mod::loadAll).
+# std::boolalpha skips leading classic whitespace and reads a case-sensitive prefix.
+fixedUserOptions:
+  aggressiveRetaliation: false
+  oxceUfoLandingAlert: true
+  craftLaunchAlways: " \ttrue trailing text"
+  canSellLiveAliens: 1

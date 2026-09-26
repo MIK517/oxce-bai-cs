@@ -2,8 +2,10 @@
 
 Reference: `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`. Implementation
 branches: `codex/strategic-base-logistics`, `codex/strategic-base-readiness`,
-`codex/strategic-research-production`, and the branch 4a world foundation.
-This is
+`codex/strategic-research-production`, the branch 4a world foundation, and
+`codex/strategic-world-operations` (4b, locally accepted; not yet merged). The planned
+`codex/strategic-world-integration` (4c) owns remaining world simulation and UI closure
+under the 2026-09-26 scope revision. This is
 an implementation/evidence ledger; bounded acceptance is recorded in their status files.
 Checkpoint notes below retain the scope and outstanding work at each implementation milestone.
 
@@ -19,7 +21,8 @@ Checkpoint notes below retain the scope and outstanding work at each implementat
 | Facility editing, training, recovery, transformations, servicing | Branch 2 | Base/personnel/craft states, timed handlers | Implemented with fresh/cache/save and indexed UI acceptance. See [readiness status](strategic-readiness-status.md). |
 | Research and production progression | Branch 3 | `ResearchProject`, `Production`, timed handlers | Implemented with extracted C++ progression oracle, fresh/cache economy chain, save/reload and indexed UI. See [branch 3 status](strategic-research-production-status.md). |
 | World rule projection, geometry and target graph | Branch 4a | `Target`, `MovingTarget`, `SavedGame::load`, mission/target classes | Implemented as a bounded foundation with arithmetic oracle, save graph and rewrite fixtures; live world state still stops time. See [world foundation status](strategic-world-foundation-status.md). |
-| Mission/arc/event scheduling, movement, detection and craft dispatch | Branch 4b | `GeoscapeState`, mission/target classes | Deferred to `codex/strategic-world-operations`; original branch 4 acceptance still applies. |
+| Ordinary UFO lifecycle and headless craft operations | Branch 4b | `GeoscapeState`, `AlienMission`, `Ufo`, `Craft` and target classes | Headless dispatch/patrol/recall and relaunch; bounded UFO transit, existing-mission countdown, ordinary airborne spawning, landing/timers/takeoff/departure, activity scoring and base/craft radar detection implemented. Later-trajectory ten-minute base scans and saved discovery are implemented. Cleanup/persistence cases, four reference lifecycle traces, 72-hour composition, terrain continuation, population/allocation measurements and fresh/cache classifications of 19 private saves satisfy the revised closure gate. See [operations status](strategic-world-operations-status.md). This accepts the bounded ordinary lifecycle locally; full world integration remains with 4c. |
+| Mission/arc/event scheduling, broader world lifecycles, pursuit, scripts and globe UI | Branch 4c | `GeoscapeState`, `AlienStrategy`, mission/site/base/event classes and world script/UI callers | Planned: daily/monthly selection, general/deployment-only/zero-timer waves, sites/alien bases, retaliation linkage, shielded/hunting/escort variants, remaining script hooks, ignored alerts, pursuit and globe UI. Owns integrated world scenarios and original combined branch 4 acceptance. Unsupported paths remain guarded until their owner is implemented. |
 | Interception and strategic deployment | Branch 5 | `DogfightState`, landing/deployment callers | Deferred |
 | Monthly ledger, event consequences, strategic endings | Branch 6 | `MonthlyReportState`, `GeoscapeEventState`, `SavedGame` | Deferred; earlier monthly hooks must not run twice |
 | Active battle, battle-derived personnel changes and debriefing | Phase 7 | Battlescape and debriefing | Preserve-only; tactical continuation unavailable |

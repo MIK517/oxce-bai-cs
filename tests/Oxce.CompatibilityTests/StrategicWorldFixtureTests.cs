@@ -171,6 +171,21 @@ public sealed class StrategicWorldFixtureTests
         }
     }
 
+    [Theory]
+    [InlineData(100, 100, 70)]
+    [InlineData(101, 70, 70)]
+    [InlineData(150, 105, 105)]
+    public void OrdinaryRadarAppliesGroundVisibilityAboveOneHundred(int rawChance, int craftChance, int baseChance)
+    {
+        // Craft::detect special-cases exactly 100; otherwise it and Base::detect
+        // reduce untracked ground contacts by 30% before RNG::percent sees the chance.
+        var visibility = WorldAltitudes.Visibility(0, WorldAltitudes.Ground);
+        Assert.Equal((UfoDetectionResult.Radar, craftChance),
+            WorldDetection.CraftDetection(100, rawChance, 10, visibility, false));
+        Assert.Equal((UfoDetectionResult.Radar, baseChance), WorldDetection.BaseDetection(
+            [new WorldRadarFacility(100, rawChance, false)], 10, visibility, false, static _ => false));
+    }
+
     [Fact]
     public void WeightedSelectionAndMissionBookkeepingMatchTheReference()
     {

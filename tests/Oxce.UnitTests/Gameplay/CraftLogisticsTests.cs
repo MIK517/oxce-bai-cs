@@ -9,6 +9,25 @@ namespace Oxce.UnitTests.Gameplay;
 public sealed class CraftLogisticsTests
 {
     [Fact]
+    public void OnboardItemLimitChecksContainerQuantityAndSizeSeparately()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var rule = rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value with
+        {
+            MaximumItems = 1,
+            MaximumStorageSpace = 1,
+        };
+        var state = CraftLogistics.LoadStarting(rule, null);
+
+        Assert.False(CraftLogistics.TooManyItemsOnboard(state with
+        { Items = new Dictionary<string, int> { ["SUPPLY"] = 1 } }, rule, rules));
+        Assert.True(CraftLogistics.TooManyItemsOnboard(state with
+        { Items = new Dictionary<string, int> { ["SUPPLY"] = 2 } }, rule, rules));
+        Assert.True(CraftLogistics.TooManyItemsOnboard(state with
+        { Items = new Dictionary<string, int> { ["BULKY"] = 1 } }, rule, rules));
+    }
+
+    [Fact]
     public void StartingNegativeCapacityReturnsEveryWeaponAndLoadedClipsOnce()
     {
         var content = CampaignLogisticsTests.LoadFixture();

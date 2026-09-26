@@ -6,9 +6,6 @@ public sealed partial class CampaignState
 {
     private void RegisterCraftServicing(CampaignCapabilityRegistry registry)
     {
-        registry.Preflight(CampaignPreflightOrder.CraftMovement, "craft movement", (_, _) =>
-            _bases.Any(b => b.Crafts.Any(c => c.Logistics is { Status: "STR_OUT" }))
-                ? "Craft movement requires world simulation." : null);
         registry.Preflight(CampaignPreflightOrder.Servicing, "craft servicing", (_, highest) =>
             highest >= CampaignTimeTrigger.ThirtyMinutes ? PreflightServicing() : null);
         registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourCraftServicing, "craft servicing", ServiceCraftsHourly);
@@ -22,7 +19,6 @@ public sealed partial class CampaignState
             foreach (var craft in owner.Crafts)
             {
                 if (craft.Logistics is not { } state) return "Craft servicing requires resolved craft state.";
-                if (state.IsAutoPatrolling) return "Craft auto-patrol requires world simulation.";
                 var rule = _content.RuntimeRules.Crafts[craft.Rule].Value;
                 if (rule.RepairRate < 0 || rule.RefuelRate < 0 || (long)state.Fuel + rule.RefuelRate > int.MaxValue)
                     return "Craft service rate exceeds the supported range.";
