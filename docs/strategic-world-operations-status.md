@@ -37,7 +37,9 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   crafts as intact.
 - Returning to base continues time silently. Automatic patrol relaunch requires a craft
   that just became ready through refuelling; unsupported pursuit and landing targets
-  remain guarded.
+  remain guarded. Grounded auto-patrolling crafts can be transferred: like
+  `Transfer::advance`, arrival only checks the craft up, so it keeps its patrol point and
+  relaunches there after refuelling at the new base.
 - A craft that cannot move is not a blocked campaign. Stationary zero-speed patrols and
   zero-speed craft holding a destination both let time advance and remain recallable.
   `Craft::getFuelLimit` evaluates a division by zero for the latter case, leaving its

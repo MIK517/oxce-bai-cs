@@ -200,7 +200,7 @@ public sealed class StrategicWorldCraftRadarTests
     }
 
     [Fact]
-    public void ArrivingAutoPatrolCraftRetainsTransferGateBeforeMutation()
+    public void ArrivingAutoPatrolCraftRefuelsRelaunchesAndDetectsInTheSameHour()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
@@ -217,7 +217,16 @@ public sealed class StrategicWorldCraftRadarTests
             }],
         }, untracked: true), content, new SplitMix64RandomSource(90));
 
-        AssertTimeBlocked(campaign, "Craft auto-patrol requires world simulation.");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        // Transfer::advance checks the craft up at the hour; time30Minutes refuels and
+        // relaunches it before updateActiveCrafts, so its radar sees the UFO immediately.
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: false });
+        var arrived = Assert.Single(campaign.Capture().Bases[0].Crafts, craft => craft.Id == 4).Logistics!;
+        Assert.Equal("STR_OUT", arrived.Status);
+        Assert.True(arrived.IsAutoPatrolling);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
     }
 
     [Theory]
