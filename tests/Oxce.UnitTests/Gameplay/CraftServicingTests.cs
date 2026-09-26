@@ -8,6 +8,44 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class CraftServicingTests
 {
+    [Theory]
+    [InlineData(0, 10, -1, 10, false)]
+    [InlineData(0, 10, 0, 0, false)]
+    [InlineData(0, 10, -2, 0, false)]
+    [InlineData(10, 10, 125, 10, false)]
+    [InlineData(0, 10, 100, 1, true)]
+    [InlineData(9, 10, 250, 10, true)]
+    [InlineData(2147483646, 2147483647, 1000, 2147483647, true)]
+    public void GeoscapeShieldRechargeClampsAndOnlyDrawsForPositiveRates(
+        int shield, int capacity, int rate, int expected, bool draws)
+    {
+        var state = new CraftLogisticsState(100, 0, "STR_OUT", [], new Dictionary<string, int>(), [])
+        { Shield = shield };
+        var random = new SplitMix64RandomSource(17);
+        var control = new SplitMix64RandomSource(17);
+        if (draws) control.NextInclusive(0, 99);
+        var actual = CraftServicing.RechargeGeoscapeShield(state, capacity, rate, random);
+        Assert.Equal(expected, actual.Shield);
+        Assert.Equal(control.State, random.State);
+        if (expected == shield) Assert.Same(state, actual);
+    }
+
+    [Fact]
+    public void GeoscapeShieldFractionUsesTheReferenceStrictPercentComparison()
+    {
+        var state = new CraftLogisticsState(100, 0, "STR_OUT", [], new Dictionary<string, int>(), []);
+        for (ulong seed = 0; seed < 30; seed++)
+        {
+            var roll = new SplitMix64RandomSource(seed).NextInclusive(0, 99);
+            // A roll equal to the remainder fails; one below it succeeds.
+            Assert.Equal(1, CraftServicing.RechargeGeoscapeShield(state, 10, 100 + roll,
+                new SplitMix64RandomSource(seed)).Shield);
+            if (roll < 99)
+                Assert.Equal(2, CraftServicing.RechargeGeoscapeShield(state, 10, 101 + roll,
+                    new SplitMix64RandomSource(seed)).Shield);
+        }
+    }
+
     [Fact]
     public void HourlyRepairRearmAndHalfHourlyRefuelSurviveEveryReload()
     {

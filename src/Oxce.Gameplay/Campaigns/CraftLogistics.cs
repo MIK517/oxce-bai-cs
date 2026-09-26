@@ -105,6 +105,24 @@ public static class CraftLogistics
         return IsSupportedValue(speed);
     }
 
+    /// <summary>Geoscape shield stats include every installed weapon, even a disabled one.</summary>
+    public static bool TryEffectiveGeoscapeShields(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules, out int capacity, out int recharge)
+    {
+        long maximum = rule.ShieldCapacity;
+        long rate = rule.ShieldRechargeInGeoscape;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
+            maximum += bonus.GetValueOrDefault("shieldCapacity");
+            rate += bonus.GetValueOrDefault("shieldRechargeInGeoscape");
+        }
+        capacity = (int)Math.Clamp(maximum, 0, int.MaxValue);
+        recharge = (int)Math.Clamp(rate, int.MinValue, int.MaxValue);
+        return maximum is >= 0 and <= int.MaxValue && rate is >= int.MinValue and <= int.MaxValue;
+    }
+
     /// <summary>Craft::isDestroyed: damage reaches damageMax including installed-weapon bonuses.</summary>
     public static bool IsDestroyed(CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules) =>
         state.Damage >= EffectiveDamageMaximum(state, rule, rules);
