@@ -20,8 +20,8 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
 {
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
-    /// campaign. OptionInfo::load reads booleans with std::boolalpha, so only the exact text
-    /// <c>true</c> enables an option and any other value disables it.
+    /// campaign. OptionInfo::load uses std::boolalpha: skip leading classic-locale whitespace,
+    /// read the case-sensitive true/false prefix, and leave any trailing text unread.
     /// </summary>
     public CampaignOptions WithFixedUserOptions(IReadOnlyDictionary<string, string> fixedOptions)
     {
@@ -41,7 +41,17 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
         };
 
         bool Fixed(string id, bool current) =>
-            fixedOptions.TryGetValue(id, out var value) ? string.Equals(value, "true", StringComparison.Ordinal) : current;
+            fixedOptions.TryGetValue(id, out var value) ? ReadFixedBoolean(value) : current;
+    }
+
+    private static bool ReadFixedBoolean(string value)
+    {
+        var text = value.AsSpan();
+        var start = 0;
+        while (start < text.Length && text[start] is ' ' or '\t' or '\n' or '\r' or '\f' or '\v') start++;
+        // Failed non-empty boolalpha extraction yields false. For empty/whitespace-only
+        // input, where the reference leaves an uninitialized bool, choose false deliberately.
+        return text[start..].StartsWith("true", StringComparison.Ordinal);
     }
 }
 

@@ -33,7 +33,10 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   option a craft still being serviced can depart too, as in `InterceptState`.
 - Campaign options follow the player's reference options: a reference save's `options`
   snapshot seeds them, `oxcePortOptions` persists them, and mod `fixedUserOptions`
-  override both. BrutalAI fixes `aggressiveRetaliation: true`.
+  override both. Fixed booleans follow `OptionInfo::load`'s case-sensitive
+  `std::boolalpha` prefix parsing, including leading classic-locale whitespace and
+  unread trailing text. Empty/whitespace-only values deliberately become false rather
+  than reproducing the reference's uninitialized result. BrutalAI fixes `aggressiveRetaliation: true`.
 - A destroyed craft (damage at or above damageMax including weapon bonuses), in any
   status, stops time: `time5Seconds` deletes it with activity, crew and statistics
   consequences that belong to the dogfight slice. Rules without `damageMax` (default 0)
@@ -43,7 +46,10 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   that just became ready through refuelling; unsupported pursuit and landing targets
   remain guarded. Grounded auto-patrolling crafts can be transferred: like
   `Transfer::advance`, arrival only checks the craft up, so it keeps its patrol point and
-  relaunches there after refuelling at the new base.
+  relaunches there after refuelling at the new base. Incoming craft share the owned-craft
+  condition checks on their arrival tick: invalid patrol coordinates, effective speed
+  overflow and destroyed craft stop before time, transfers or servicing mutate state.
+  Non-hourly ticks and transfers due in a later hour remain unaffected.
 - A craft that cannot move is not a blocked campaign. Stationary zero-speed patrols and
   zero-speed craft holding a destination both let time advance and remain recallable.
   `Craft::getFuelLimit` evaluates a division by zero for the latter case, leaving its
@@ -130,8 +136,10 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   including installed-weapon bonuses, excludes destroyed crafts, and includes a craft
   that refuels and relaunches auto-patrol earlier in the same half-hour handler (including
   after an hourly rearm or an item-fuel delivery). A grounded auto-patrol flag alone does
-  not count as airborne radar. Radar chances above 100 are legal and always detect; the
-  reference's int arithmetic for extreme values is clamped instead of overflowing.
+  not count as airborne radar. Radar chances above 100 are legal, but ordinary radar
+  still applies UFO visibility: 101 becomes 70 for an untracked ground contact. Craft
+  radar's exactly-100 compatibility shortcut is retained. A final chance of at least
+  100 always succeeds; extreme arithmetic is clamped instead of overflowing.
   Preflight checks activity and marker-ID capacity before mission spawning mutates state.
   It reserves a contact marker for every undetected alerting UFO and spawn, whatever the
   radar coverage, instead of forecasting which grounded crafts earlier handlers could
@@ -163,6 +171,8 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `src/Savegame/Base.cpp` (`detect`, `getDetectionChance`, `setRetaliationTarget`, load/save),
 `src/Savegame/Craft.cpp` (`detect`, effective weapon stats and `isDestroyed`),
 `src/Savegame/Production.cpp` (`step`, immediate versus delayed item delivery),
+`src/Savegame/Transfer.cpp` (`advance`, craft arrival/checkup),
+`src/Engine/OptionInfo.cpp` (`load`, fixed-option boolalpha extraction),
 `src/Savegame/SavedGame.cpp` (research item rewards),
 `src/Geoscape/UfoDetectedState.cpp` (marker identity),
 `src/Savegame/Region.cpp`/`Country.cpp` (activity histories), and
@@ -236,7 +246,7 @@ gates; the full private content corpus was not rerun for this slice.
 | Population and allocations | Flight, half-hour and destroyed-UFO cleanup samples with 8/32/128 UFOs and 1/8 bases, plus capture/emission/restore, record costs separately. The guard bounds the bytes per additional UFO between the 32- and 128-UFO samples (flight 256 B per UFO-tick, half-hour 448 B, cleanup 128 B), so fixed per-command costs cannot hide per-entity allocations. Moving crafts are bounded at 256 B per additional craft-tick and stationary patrols at zero. See measurements below. |
 | Imported saves | `PrivateStrategicWorldTests`: all 19 staged saves classified unchanged under fresh/cache rules; pre-advance loaded rewrite/reload preserves continuation, guards are repeatable without mutation, and post-run rewrites preserve state and opaque content. See the horizon and classifications below. |
 
-Final local validation: `dotnet test --no-restore` passes **963 tests with zero failures
+Local validation after the audit fixes: `dotnet test --no-restore` passes **1,001 tests with zero failures
 or skips**, including the full staged private corpus. Solution formatting verification,
 generated code-map validation, fixture checksum tests and `git diff --check` pass.
 No native/platform or UI code changed; the existing three-platform CI and SDL gates
