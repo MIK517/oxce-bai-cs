@@ -1,8 +1,10 @@
-# Phase 6 branch 4b: operations in progress
+# Phase 6 branch 4b: ordinary UFO and craft operations in progress
 
 The `codex/strategic-world-operations` branch implements bounded craft and UFO
 waypoint flight, mission countdowns, activity scoring and base/craft radar detection. This is a checkpoint, not branch
-4b acceptance.
+4b acceptance. The 2026-09-26 scope revision closes 4b after ordinary UFO lifecycle
+completion; branch 4c owns the remaining world generation, special behavior, scripts,
+pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--ordinary-ufo-and-craft-operations).
 
 ## Implemented
 
@@ -125,12 +127,39 @@ reference-shaped tests rather than extracted C++ traces.
 
 ## Still required for branch 4b
 
-Mission/arc/event script projection and selection, general UFO/deployment wave spawning,
-remaining UFO waypoint transitions and landing, UFO/site/base lifecycle,
-detection scripts and ignored-contact alerts, craft pursuit,
-navigable globe controls, event-site scripting,
-multi-day/month-boundary scenarios, and the corresponding compatibility fixtures and
-allocation checks. Unsupported live alien world transitions remain guarded, as does the monthly campaign
-transition. An over retaliation mission permanently blocks the next half-hour boundary
-until base-linked cleanup is implemented. Branch 4b acceptance in
-[the Phase 6 plan](phase-6-plan.md) is unchanged.
+- Complete ordinary trajectory transitions and land-point selection, landing, ground
+  timers, takeoff and departure.
+- Apply detection/loss and activity accounting to those supported states. Implement the
+  later-trajectory ten-minute behavior needed to finish the supported ordinary mission.
+- Complete UFO deletion, mission live-count/expiry handling and target-reference cleanup
+  so the supported lifecycle does not become permanently blocked.
+- Add reference-backed full-lifecycle traces, save/reload at each transition, multi-day
+  composition with craft operations, relevant terrain/depth coverage, malformed-input
+  and bounded-population tests, populated allocation measurements, fresh/cache and
+  affected save-corpus checks. Publish the actual closure evidence in this document.
+
+**Closure scenario:** a supported mission spawns a UFO, which flies, is detected, lands,
+takes off and departs; its mission then expires. Controlled choices and reloads before
+and after the major transitions preserve the resulting state and continuation. Craft
+dispatch/patrol/recall, fuel use and servicing continue alongside it. Required semantics
+and script hooks of enabled paths must be implemented; unsupported paths remain guarded.
+
+## Assigned to branch 4c
+
+- Alien strategy, mission/arc/event projection, selection and daily/monthly scheduling.
+- General regional UFO/deployment waves, deployment-only and zero-timer follow-up waves,
+  broader mission objectives and their immediate consequences.
+- Mission-site/alien-base lifecycle, retaliation base linkage/cleanup, shielded UFOs,
+  hunting/escort behavior and remaining special trajectory/retargeting paths.
+- Remaining world/detection/event-site script providers, ignored-contact alerts,
+  craft pursuit and lost/deleted-target responses.
+- Navigable globe and command controls, target information, notifications, pause/speed,
+  save/load UI, and integrated world/TFTD/modded/month-boundary acceptance evidence.
+
+The planned `codex/strategic-world-integration` branch starts after 4b is accepted and
+merged. An over retaliation mission remains a permanent half-hour stop until 4c owns
+its base-linked cleanup. Sites, alien bases, events and other unsupported world paths
+remain explicitly guarded. Branch 5 still owns interception/deployment, branch 6 owns
+full monthly evaluation and campaign-wide event consequences, and Phase 7 owns tactical
+execution. The original combined branch 4 acceptance gates 4c closure; the revised 4b
+gate does not establish full world simulation or remove the playable month-boundary guard.

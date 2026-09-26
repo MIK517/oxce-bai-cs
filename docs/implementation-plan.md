@@ -222,7 +222,7 @@ SDL view now creates and operates this slice without coupling gameplay to SDL.
 ## Phase 6 — Playable strategic vertical slice
 
 The detailed [Phase 6 delivery plan](phase-6-plan.md) defines sequential feature
-branches, including the branch 4 world-foundation split, their commit purposes,
+branches, including the branch 4 foundation/ordinary-operations/integration split, their commit purposes,
 prerequisites, reference entry points and
 acceptance gates. Prerequisite time-dispatch and mobile save-ownership work belongs in
 the first logistics branch. The strategic deployment request closes this phase's side
@@ -236,8 +236,12 @@ servicing, save reload and indexed UI actions. Branch 3 satisfies its
 [research and production acceptance](strategic-research-production-status.md), including
 ordered unlocks, active projects and queues, resource/fund accounting, save reload and
 indexed UI actions. Branch 4a implements the bounded
-[world foundation](strategic-world-foundation-status.md); branch 4b continues mission
-scheduling, movement, detection and dispatch after 4a merges.
+[world foundation](strategic-world-foundation-status.md); branch 4b implements bounded
+[ordinary UFO and craft operations](strategic-world-operations-status.md) and closes
+after supported UFO lifecycle completion and its headless acceptance evidence. The
+2026-09-26 scope revision assigns remaining mission/arc/event scheduling, broader
+world lifecycles, scripts, pursuit and globe UI to branch 4c. Original combined branch
+4 acceptance gates 4c closure before branch 5; 4b is not yet accepted.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate
