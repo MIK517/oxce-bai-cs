@@ -291,11 +291,78 @@ public sealed class StrategicWorldUfoTransitTests
         AssertBlockedWithoutMutation(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
     }
 
-    [Fact]
-    public void ArrivingFuelItemRelaunchReservesContactMarkerBeforeTransfer()
+    [Theory]
+    [InlineData("transfer", false)]
+    [InlineData("transfer", true)]
+    [InlineData("production", false)]
+    [InlineData("production", true)]
+    [InlineData("random-production", false)]
+    [InlineData("random-production", true)]
+    [InlineData("fallback-production", false)]
+    [InlineData("fallback-production", true)]
+    [InlineData("research", false)]
+    [InlineData("research", true)]
+    [InlineData("research-reward", false)]
+    [InlineData("research-reward", true)]
+    [InlineData("returned-research", false)]
+    [InlineData("returned-research", true)]
+    public void FuelDeliveryReservesContactMarkerAndRelaunchesWhenAvailable(string source, bool exhausted)
+    {
+        var campaign = CreateItemFuelPatrolCampaign(source, exhausted);
+        if (exhausted)
+        {
+            AssertBlockedWithoutMutation(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+            return;
+        }
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: false });
+        var after = campaign.Capture();
+        var craft = Assert.Single(after.Bases[0].Crafts, candidate => candidate.RuleId == "SHIP_FUEL_ITEM");
+        Assert.Equal("STR_OUT", craft.Logistics!.Status);
+        // The same tick's ten-minute handler consumes one unit of item-based fuel after launch.
+        Assert.Equal(99, craft.Logistics.Fuel);
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.True(ufo.Detected);
+        Assert.True(ufo.Id > 0);
+    }
+
+    [Theory]
+    [InlineData("none")]
+    [InlineData("late-transfer")]
+    [InlineData("unrelated-transfer")]
+    [InlineData("unfinished-production")]
+    [InlineData("sold-production")]
+    [InlineData("delayed-production")]
+    [InlineData("unrelated-production")]
+    [InlineData("unfinished-research")]
+    [InlineData("returned-research-ready")]
+    public void GroundedCraftDoesNotGateRadarWhenFuelCannotRelaunchIt(string source)
+    {
+        foreach (var invalidRadar in new[] { false, true })
+        {
+            var campaign = CreateItemFuelPatrolCampaign(source, exhausted: true, invalidRadar);
+
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+            Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+            Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked or UfoContactDetected);
+            var after = campaign.Capture();
+            Assert.Equal("STR_READY", Assert.Single(after.Bases[0].Crafts,
+                candidate => candidate.RuleId == "SHIP_FUEL_ITEM").Logistics!.Status);
+            Assert.False(Assert.Single(after.World.Ufos).Detected);
+            Assert.Equal(int.MaxValue, after.NextIds["STR_UFO"]);
+        }
+    }
+
+    private static CampaignState CreateItemFuelPatrolCampaign(string source, bool exhausted, bool invalidRadar = false)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+        var daily = source.Contains("research", StringComparison.Ordinal);
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, daily ? 23 : 1, 59, 55),
             ufoRuleId: "UFO_SCOUT", speed: 2200);
         var snapshot = campaign.Capture();
         var owner = Assert.Single(snapshot.Bases);
@@ -305,17 +372,33 @@ public sealed class StrategicWorldUfoTransitTests
             RuleId = "SHIP_FUEL_ITEM",
             Logistics = craft.Logistics! with
             {
-                Status = "STR_READY",
+                Status = source == "returned-research" ? "STR_REFUELLING" : "STR_READY",
                 Fuel = 0,
                 IsAutoPatrolling = true,
                 AutoPatrolLongitude = 0.3,
                 AutoPatrolLatitude = 0.1,
+                Weapons = invalidRadar ? [new CraftWeaponSnapshot("RADAR_EXCESS", 1), null] : [null, null],
             },
         };
         var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
             StringComparer.Ordinal);
-        ids["STR_UFO"] = int.MaxValue;
-        campaign = CampaignState.Restore(snapshot with
+        if (exhausted) ids["STR_UFO"] = int.MaxValue;
+        var productionRule = source switch
+        {
+            "production" or "unfinished-production" or "sold-production" or "fallback-production" => "FUEL_PRODUCTION",
+            "random-production" => "FUEL_RANDOM_PRODUCTION",
+            "delayed-production" => "FUEL_DELAYED_PRODUCTION",
+            "unrelated-production" => "OTHER_PRODUCTION",
+            _ => null,
+        };
+        var researchRule = source switch
+        {
+            "research" or "unfinished-research" => "FUEL_RESEARCH",
+            "research-reward" => "FUEL_RESEARCH_REWARD",
+            "returned-research" or "returned-research-ready" => "FUEL_RESEARCH_RETURN",
+            _ => null,
+        };
+        return CampaignState.Restore(snapshot with
         {
             NextIds = ids,
             Bases = [owner with
@@ -323,7 +406,16 @@ public sealed class StrategicWorldUfoTransitTests
                 Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? flagged : candidate)],
                 Items = owner.Items.Where(static pair => pair.Key != "SUPPLY")
                     .ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal),
-                Transfers = [new TransferSnapshot(77, 1, CampaignTransferKind.Item, "SUPPLY", 1)],
+                Transfers = source is "transfer" or "late-transfer" or "unrelated-transfer"
+                    ? [new TransferSnapshot(77, source == "late-transfer" ? 2 : 1,
+                        CampaignTransferKind.Item, source == "unrelated-transfer" ? "BULKY" : "SUPPLY", 1)] : [],
+                Productions = productionRule is null ? [] : [new ProductionSnapshot(productionRule,
+                    source == "fallback-production" ? 0 : 1, source == "unfinished-production" ? 0 : 1,
+                    1, false, source == "sold-production", source == "fallback-production", new Dictionary<string, int>())],
+                Engineers = source == "fallback-production" ? 1 : 0,
+                Facilities = [.. owner.Facilities, new FacilitySnapshot("FUEL_WORKSHOP", 1, 0, 0, 0, false, false, false)],
+                Research = researchRule is null ? [] : [new ResearchProjectSnapshot(researchRule,
+                    1, 0, source == "unfinished-research" ? 2 : 1)],
             }],
             World = snapshot.World with
             {
@@ -333,12 +425,10 @@ public sealed class StrategicWorldUfoTransitTests
                 }],
             },
         }, content, new SplitMix64RandomSource(89));
-
-        AssertBlockedWithoutMutation(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
     }
 
     [Fact]
-    public void ArrivingAutoPatrolCraftReservesContactMarkerBeforeTransfer()
+    public void ArrivingAutoPatrolCraftRetainsTransferGateBeforeMutation()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
@@ -378,7 +468,7 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(90));
 
-        AssertBlockedWithoutMutation(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        AssertBlockedWithoutMutation(campaign, "Craft auto-patrol requires world simulation.");
     }
 
     [Theory]

@@ -39,6 +39,10 @@ craftWeapons:
     clip: BULKY
     stats: {radarRange: 1000, radarChance: 101}
 facilities:
+  - type: FUEL_WORKSHOP
+    mapName: LOGISTICS
+    workshops: 1
+    labs: 1
   - type: RADAR_TEST
     mapName: LOGISTICS
     radarRange: 1000
@@ -301,6 +305,35 @@ alienMissions:
       0: {RACE_A: 1}
     waves:
       - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 3000, objective: true}
+# Small deterministic deliveries exercise the order before half-hour craft refuelling.
+manufacture:
+  - name: FUEL_PRODUCTION
+    time: 2
+    producedItems: {SUPPLY: 1}
+  - name: FUEL_RANDOM_PRODUCTION
+    time: 2
+    producedItems: {SUPPLY: 0}
+    randomProducedItems:
+      - [1, {SUPPLY: 1}]
+  - name: FUEL_DELAYED_PRODUCTION
+    time: 2
+    transferTimes: [1]
+    producedItems: {SUPPLY: 1}
+  - name: OTHER_PRODUCTION
+    time: 2
+    producedItems: {BULKY: 1}
+research:
+  - name: FUEL_RESEARCH
+    cost: 1
+    spawnedItem: SUPPLY
+  - name: FUEL_RESEARCH_REWARD
+    cost: 1
+    getOneFree: [FUEL_RESEARCH]
+  - name: FUEL_RESEARCH_RETURN
+    cost: 1
+    needItem: true
+    neededItem: SUPPLY
+    returnsItem: true
 events:
   - name: EVENT_DESPAWN
     description: STR_EVENT_DESPAWN
