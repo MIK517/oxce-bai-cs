@@ -93,6 +93,9 @@ public sealed class StrategicWorldMissionCountdownTests
         var rawDestination = WorldGeometry.RandomPoint(region, 3, -1, random);
         var destination = WorldPosition.Create(rawDestination.Longitude, rawDestination.Latitude);
         var nextCountdown = WorldTrajectory.SpawnCountdown(9000, random);
+        // time30Minutes then runs Base::detect for the new UFO; its final RNG::percent
+        // draws even though base Alpha has no radar and the chance is 0%.
+        _ = random.NextInclusive(0, 99);
         var speedRadian = WorldGeometry.RadianSpeed(2200);
         var vector = WorldGeometry.SpeedVector(position, destination, speedRadian);
         var firstPosition = WorldGeometry.Move(position, destination, speedRadian);

@@ -210,7 +210,8 @@ public sealed class StrategicWorldBaseDetectionTests
         var campaign = Restore(content, snapshot);
         AdvanceOne(campaign);
         Assert.Equal(scans, campaign.Capture().Bases[0].RetaliationTarget);
-        Assert.Equal(scans ? StateAfterRolls(2, 1) : snapshot.RandomState, campaign.Capture().RandomState);
+        // RNG::percent draws even for the 0% chance of a fully shielded base.
+        Assert.Equal(StateAfterRolls(2, 1), campaign.Capture().RandomState);
     }
 
     [Theory]
@@ -305,7 +306,9 @@ public sealed class StrategicWorldBaseDetectionTests
         var after = campaign.Capture();
         Assert.Equal(0, after.Bases[0].Facilities[1].BuildTime);
         Assert.False(after.Bases[0].RetaliationTarget);
-        Assert.Equal(snapshot.RandomState, after.RandomState);
+        // Midnight also runs the half-hour Base::detect for the UFO (no radar, 0%), then the
+        // ten-minute scan whose completed shield makes its chance 0%. RNG::percent rolls both.
+        Assert.Equal(StateAfterRolls(2, 2), after.RandomState);
     }
 
     [Theory]

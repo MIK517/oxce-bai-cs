@@ -38,8 +38,8 @@ public sealed class WorldLandPointTests
     }
 
     [Theory]
-    [InlineData(0, -1, 1, 0.15)]
-    [InlineData(100, -1, 0, 0.45)]
+    [InlineData(0, 0, 1, 0.15)]
+    [InlineData(100, 99, 0, 0.45)]
     [InlineData(50, 49, 0, 0.45)]
     [InlineData(50, 50, 1, 0.15)]
     public void FakeWaterPreferenceRejectsTheWrongTexture(int chance, int roll, int firstArea, double expectedLongitude)
@@ -48,14 +48,14 @@ public sealed class WorldLandPointTests
             new MissionArea(0.4, 0.5, -0.1, 0.1, 1, ""));
         var globe = new RuntimeGlobe([Polygon(0, 0, 0.3), Polygon(1, 0.3, 0.6)],
             new Dictionary<int, RuntimeGlobeTexture> { [0] = new(), [1] = new(FakeUnderwater: true) });
-        // RNG::percent accepts rolls below the percentage, excluding equality.
-        // Each case offers the wrong texture first, then the requested texture.
-        var random = new LandingRandom(roll < 0 ? [firstArea, 1 - firstArea] : [roll, firstArea, 1 - firstArea]);
+        // RNG::percent always draws and accepts rolls below the percentage, excluding equality,
+        // so 0% and 100% still consume a roll. Each case offers the wrong texture first.
+        var random = new LandingRandom([roll, firstArea, 1 - firstArea]);
 
         var point = WorldGeometry.LandPoint(region, globe, 0, chance, random);
 
         Assert.Equal(expectedLongitude, point.Longitude, 12);
-        Assert.Equal(roll < 0 ? 2 : 3, random.IntegerCalls);
+        Assert.Equal(3, random.IntegerCalls);
         Assert.Equal(4, random.UnitCalls);
     }
 
