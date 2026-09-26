@@ -94,6 +94,16 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   is saved and honors fixed mod options. Focused pursuit tests pass fresh/cache and reload.
   Root validation passes 1,078 tests with zero skips; the private classification remains
   eight executable, three blocked and eight tactical preservation-only.
+- Immediate-wave slice: the entire finite chain is preflighted before counters or RNG
+  change. Supported no-object and ordinary UFO waves execute in reference order,
+  including zero-count waves and the RNG draw for a zero timer. Positive timers that
+  round to zero wait for the next half-hour call. All resulting UFO IDs, contact IDs,
+  activity increments and live counts are reserved together. Work is bounded to 4,096
+  wave steps per half-hour and a 100,000-UFO population. Reference: `strategic-wave-chain`;
+  fresh/cache, reload, malformed-work and ID-limit tests: `StrategicWorldWaveChainTests`.
+  Root validation passes 1,084 tests with zero failures or skips. Fixture checksum,
+  formatting and regenerated code-map verification pass. This is an incremental
+  implementation checkpoint; the branch 4c headless acceptance gate has not closed.
 - Remaining mission/arc/adhoc/event-script selection, objectives, sites/bases, detection
   scripts, UFO hunting/escorts and headless closure are still outstanding. Branch 4d
   remains unstarted pending the 4c merge.

@@ -17,6 +17,7 @@ internal sealed partial class CampaignWorld
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var ufoSpawns = 0;
+        var work = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = _missions[index];
@@ -37,14 +38,19 @@ internal sealed partial class CampaignWorld
                 mission.NextWave >= rule.Waves.Count)
                 continue;
             if (mission.SpawnCountdown > 30) continue;
-            if (CanAdvanceNoObjectWave(mission, rule)) continue;
-            if (CanSpawnOrdinaryUfoWave(mission, rule))
+            foreach (var step in DueWaveSteps(mission, rule))
             {
-                ufoSpawns++;
-                continue;
+                if (++work > MaximumImmediateWaveSteps) return WaveWorkReason;
+                if (CanAdvanceNoObjectWave(step, rule)) continue;
+                if (CanSpawnOrdinaryUfoWave(step, rule))
+                {
+                    ufoSpawns++;
+                    continue;
+                }
+                return "Alien mission wave spawning requires world simulation.";
             }
-            return "Alien mission wave spawning requires world simulation.";
         }
+        if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
         return CanAllocateUfoIds(ufoSpawns) ? null : "UFO unique IDs are exhausted or collide with a saved UFO.";
     }
 
@@ -62,28 +68,36 @@ internal sealed partial class CampaignWorld
                 _missions[index] = mission with { SpawnCountdown = mission.SpawnCountdown - 30 };
             else
             {
-                var spawnsUfo = CanSpawnOrdinaryUfoWave(mission, rule);
-                if (!spawnsUfo && !CanAdvanceNoObjectWave(mission, rule))
-                    throw new InvalidOperationException("Alien mission wave changed after world preflight.");
-                var wave = rule.Waves[mission.NextWave];
-                if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
-                var counter = (ulong)mission.NextUfoCounter + 1;
-                var nextWave = mission.NextWave;
-                if (counter >= wave.UfoCount)
+                for (var work = 0; ; work++)
                 {
-                    counter = 0;
-                    nextWave++;
+                    if (work >= MaximumImmediateWaveSteps)
+                        throw new InvalidOperationException("Mission wave work changed after preflight.");
+                    var spawnsUfo = CanSpawnOrdinaryUfoWave(mission, rule);
+                    if (!spawnsUfo && !CanAdvanceNoObjectWave(mission, rule))
+                        throw new InvalidOperationException("Alien mission wave changed after world preflight.");
+                    var wave = rule.Waves[mission.NextWave];
+                    if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
+                    var counter = (ulong)mission.NextUfoCounter + 1;
+                    var nextWave = mission.NextWave;
+                    if (counter >= wave.UfoCount)
+                    {
+                        counter = 0;
+                        nextWave++;
+                    }
+                    var countdown = nextWave < rule.Waves.Count
+                        ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[nextWave].SpawnTimer), campaign.Random)
+                        : mission.SpawnCountdown;
+                    mission = mission with
+                    {
+                        NextWave = nextWave,
+                        NextUfoCounter = checked((int)counter),
+                        SpawnCountdown = countdown,
+                        LiveUfos = spawnsUfo ? checked(mission.LiveUfos + 1) : mission.LiveUfos,
+                    };
+                    _missions[index] = mission;
+                    // Recursion tests the original timer, not the rounded countdown.
+                    if (nextWave == rule.Waves.Count || rule.Waves[nextWave].SpawnTimer != 0) break;
                 }
-                var countdown = nextWave < rule.Waves.Count
-                    ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[nextWave].SpawnTimer), campaign.Random)
-                    : mission.SpawnCountdown;
-                _missions[index] = mission with
-                {
-                    NextWave = nextWave,
-                    NextUfoCounter = checked((int)counter),
-                    SpawnCountdown = countdown,
-                    LiveUfos = spawnsUfo ? checked(mission.LiveUfos + 1) : mission.LiveUfos,
-                };
             }
         }
         for (var index = _missions.Count - 1; index >= 0; index--)
@@ -211,10 +225,34 @@ internal sealed partial class CampaignWorld
         var nextWave = counter >= wave.UfoCount ? mission.NextWave + 1 : mission.NextWave;
         if (nextWave == rule.Waves.Count) return true;
         var timer = rule.Waves[nextWave].SpawnTimer;
-        // AlienMission::think recurses when this next timer is zero. A recursive wave
-        // needs a preflight of the entire chain before any state or RNG changes.
-        if (timer == 0 || timer > int.MaxValue) return false;
+        // DueWaveSteps validates the entire immediate chain before any mutation/RNG.
+        if (timer > int.MaxValue) return false;
         var steps = (long)(timer / 30);
         return (steps / 2 + steps) * 30 <= int.MaxValue;
+    }
+
+    private const int MaximumImmediateWaveSteps = 4096;
+    private const string WaveWorkReason = "Immediate mission waves exceed the supported work limit.";
+
+    /// <summary>Forecasts only counters, never object creation, scripts or random choices.</summary>
+    private static IEnumerable<AlienMissionSnapshot> DueWaveSteps(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    {
+        for (var work = 0; ; work++)
+        {
+            if (work >= MaximumImmediateWaveSteps) throw new InvalidDataException(WaveWorkReason);
+            yield return mission;
+            var wave = rule.Waves[mission.NextWave];
+            var counter = (ulong)mission.NextUfoCounter + 1;
+            var nextWave = mission.NextWave;
+            if (counter >= wave.UfoCount) { counter = 0; nextWave++; }
+            if (nextWave == rule.Waves.Count || rule.Waves[nextWave].SpawnTimer != 0) yield break;
+            mission = mission with
+            {
+                NextWave = nextWave,
+                NextUfoCounter = checked((int)counter),
+                SpawnCountdown = 0,
+                LiveUfos = wave.Ufo is not null ? checked(mission.LiveUfos + 1) : mission.LiveUfos
+            };
+        }
     }
 }

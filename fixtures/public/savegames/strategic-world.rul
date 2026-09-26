@@ -396,6 +396,29 @@ alienMissions:
     waves:
       - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
   # A wave without a UFO or deployment still advances AlienMission's counters.
+  - type: CHAIN_mixed
+    waves:
+      - {count: 2, trajectory: TRAJ_PATROL, timer: 90}
+      - {count: 3, trajectory: TRAJ_PATROL, timer: 0}
+      - {count: 1, trajectory: TRAJ_PATROL, timer: 1}
+  - type: CHAIN_zero
+    waves:
+      - {count: 2, trajectory: TRAJ_PATROL, timer: 0}
+      - {count: 3, trajectory: TRAJ_PATROL, timer: 0}
+  - type: CHAIN_rounded
+    waves: [{count: 3, trajectory: TRAJ_PATROL, timer: 29}]
+  - type: CHAIN_empty-count
+    waves:
+      - {count: 0, trajectory: TRAJ_PATROL, timer: 0}
+      - {count: 0, trajectory: TRAJ_PATROL, timer: 0}
+  - type: CHAIN_pending
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 90}]
+  - type: CHAIN_excessive
+    waves: [{count: 1000000, trajectory: TRAJ_PATROL, timer: 0}]
+  - type: CHAIN_ufos
+    waves:
+      - {count: 1, trajectory: TRAJ_PATROL, timer: 90}
+      - {ufo: UFO_SPAWN, count: 3, trajectory: TRAJ_SPAWN_FIXED, timer: 0}
   - type: MISSION_EMPTY_WAVE
     objective: 0
     waves:

@@ -25,9 +25,9 @@
       "sha256": "93e45439ac09040834bfa1aa6eb4d6261756636eaa7e8239adb58f2ba832c346"
     },
     {
-      "size": 13386,
+      "size": 14290,
       "path": "fixtures/public/savegames/strategic-world.rul",
-      "sha256": "4f02015b31c68a22501c3a858407cb62d409e8bba60f6c8ee54dbb40186f3f45"
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
     }
   ],
   "normalization": [
