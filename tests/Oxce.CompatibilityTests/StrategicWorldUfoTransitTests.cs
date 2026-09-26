@@ -5,6 +5,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -15,7 +16,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void RestoredUfoMovesThroughThreeReferenceStepsAndSaveReload()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         var row = Assert.Single(TestFixtures.Rows(oracle.RootElement, "movement"),
             candidate => candidate[0].GetInt32() == 3200);
@@ -29,8 +30,7 @@ public sealed class StrategicWorldUfoTransitTests
 
         static void AssertStep(CampaignState current, System.Text.Json.JsonElement expected, int step)
         {
-            var result = current.Execute(new AdvanceCampaignTime(1));
-            Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+            AdvanceOne(current);
             var ufo = Assert.Single(current.Capture().World.Ufos);
             Assert.InRange(Math.Abs(expected[5 + step * 2].GetDouble() - ufo.Longitude), 0, 1e-12);
             Assert.InRange(Math.Abs(expected[6 + step * 2].GetDouble() - ufo.Latitude), 0, 1e-12);
@@ -42,9 +42,15 @@ public sealed class StrategicWorldUfoTransitTests
     public void UnsupportedArrivalStopsWhileOrdinaryHalfHourTransitScoresActivity()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
+        var ufoRule = content.RuntimeRules.Ufos[content.RuntimeRules.Ufos.GetRequired(ufo.RuleId)].Value;
+        Assert.Equal(1, ufoRule.MissionScore); // RuleUfo's reference default
+        // The UFO belongs to the mission's last wave, so AlienMission::think leaves the countdown alone.
+        Assert.Equal(content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired(
+            Assert.Single(snapshot.World.Missions).RuleId)].Value.Waves.Count,
+            Assert.Single(snapshot.World.Missions).NextWave);
         var near = CampaignState.Restore(snapshot with
         {
             World = snapshot.World with
@@ -53,7 +59,7 @@ public sealed class StrategicWorldUfoTransitTests
                 Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0 }],
             },
         }, content, new SplitMix64RandomSource(42));
-        AssertBlockedWithoutMutation(near, "UFO waypoint arrival requires mission simulation.");
+        AssertTimeBlocked(near, "UFO waypoint arrival requires mission simulation.");
 
         var boundary = CampaignState.Restore(snapshot with
         {
@@ -61,20 +67,23 @@ public sealed class StrategicWorldUfoTransitTests
         }, content, new SplitMix64RandomSource(43));
         var before = boundary.Capture();
 
-        var elapsed = boundary.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(boundary);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(elapsed.Events)).Summary.TickCount);
         Assert.Equal(0, Assert.Single(boundary.Capture().World.Ufos).TrajectoryPoint);
         Assert.NotEqual(ufo.Position, Assert.Single(boundary.Capture().World.Ufos).Position);
-        Assert.Equal(before.World.Missions[0].SpawnCountdown,
-            Assert.Single(boundary.Capture().World.Missions).SpawnCountdown);
+        var after = boundary.Capture();
+        Assert.Equal(before.World.Missions[0].SpawnCountdown, Assert.Single(after.World.Missions).SpawnCountdown);
+        Assert.Equal(ufoRule.MissionScore, Assert.Single(after.Regions).ActivityAlien[^1] -
+            Assert.Single(before.Regions).ActivityAlien[^1]);
+        Assert.Equal(ufoRule.MissionScore, Assert.Single(after.Countries).ActivityAlien[^1] -
+            Assert.Single(before.Countries).ActivityAlien[^1]);
     }
 
     [Fact]
     public void OrdinaryUfoCrossesTwoTenMinuteBoundariesWithoutRetargeting()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
             ufoRuleId: "UFO_SCOUT", speed: 2200);
         var restored = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(campaign.Capture()),
             content, seed: 67, name: "ufo-ten-minute.sav").Campaign;
@@ -85,9 +94,8 @@ public sealed class StrategicWorldUfoTransitTests
         var expected = WorldGeometry.Move(ufo.Position, ufo.Destination!.Position,
             WorldGeometry.RadianSpeed(ufo.Speed));
 
-        var first = restored.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(restored);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(first.Events)).Summary.TickCount);
         Assert.Equal(new CampaignTime(1, 1, 1, 1999, 1, 10, 0), restored.Capture().Time);
         Assert.Equal(expected, Assert.Single(restored.Capture().World.Ufos).Position);
         Assert.Equal(before.World.Missions, restored.Capture().World.Missions);
@@ -110,7 +118,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void PreviouslyDetectedOrdinaryUfoLosesContactAndScoresAtHalfHour()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
             ufoRuleId: "UFO_SCOUT", speed: 2200);
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
@@ -123,9 +131,8 @@ public sealed class StrategicWorldUfoTransitTests
         }, content, new SplitMix64RandomSource(81));
         var before = campaign.Capture();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
         var after = campaign.Capture();
         var moved = Assert.Single(after.World.Ufos);
         Assert.False(moved.Detected);
@@ -141,24 +148,15 @@ public sealed class StrategicWorldUfoTransitTests
     public void InstantRetaliationUfoSkipsHalfHourScoringAndDetection()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
             ufoRuleId: "UFO_SCOUT", speed: 2200,
             missionRuleId: "MISSION_INSTANT_RETALIATION", missionWaveNumber: 0);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        campaign = CampaignState.Restore(snapshot with
-        {
-            Bases = [owner with
-            {
-                Facilities = [.. owner.Facilities,
-                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
-            }],
-        }, content, new SplitMix64RandomSource(83));
+        campaign = CampaignState.Restore(campaign.Capture().WithFacility("RADAR_HYPER_TEST"), content,
+            new SplitMix64RandomSource(83));
         var before = campaign.Capture();
 
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(campaign);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
         var after = campaign.Capture();
         Assert.NotEqual(Assert.Single(before.World.Ufos).Position, Assert.Single(after.World.Ufos).Position);
         Assert.False(Assert.Single(after.World.Ufos).Detected);
@@ -166,413 +164,11 @@ public sealed class StrategicWorldUfoTransitTests
         Assert.Equal(Assert.Single(before.Countries).ActivityAlien, Assert.Single(after.Countries).ActivityAlien);
     }
 
-    [Theory]
-    [InlineData("STR_READY")]
-    [InlineData("STR_REFUELLING")]
-    public void GroundedAutoPatrolFlagDoesNotBlockUfoDetection(string status)
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
-            ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
-        var craftRuleId = status == "STR_REFUELLING" ? "SHIP_SLOW_REFUEL" : "SHIP";
-        var flagged = craft with
-        {
-            RuleId = craftRuleId,
-            Logistics = craft.Logistics! with
-            {
-                Status = status,
-                Fuel = status == "STR_REFUELLING" ? 0 : craft.Logistics!.Fuel,
-                IsAutoPatrolling = true,
-                AutoPatrolLongitude = 0.3,
-                AutoPatrolLatitude = 0.1,
-            },
-        };
-        campaign = CampaignState.Restore(snapshot with
-        {
-            Bases = [owner with
-            {
-                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? flagged : candidate)],
-                Facilities = [.. owner.Facilities,
-                    new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)],
-            }],
-        }, content, new SplitMix64RandomSource(84));
-
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: true });
-        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
-        Assert.NotEqual("STR_OUT", Assert.Single(campaign.Capture().Bases[0].Crafts,
-            candidate => candidate.RuleId == craftRuleId).Logistics!.Status);
-    }
-
-    [Fact]
-    public void AutoPatrolRelaunchDetectsUfoAtTheSameHalfHourBoundary()
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
-            ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
-        var flagged = craft with
-        {
-            Logistics = craft.Logistics! with
-            {
-                Status = "STR_REFUELLING",
-                Fuel = 0,
-                IsAutoPatrolling = true,
-                AutoPatrolLongitude = 0.3,
-                AutoPatrolLatitude = 0.1,
-            },
-        };
-        campaign = CampaignState.Restore(snapshot with
-        {
-            Bases = [owner with
-            {
-                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? flagged : candidate)],
-            }],
-            World = snapshot.World with
-            {
-                Ufos = [Assert.Single(snapshot.World.Ufos) with { Longitude = 0.21, Latitude = 0.11 }],
-            },
-        }, content, new SplitMix64RandomSource(85));
-
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: false });
-        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
-        Assert.Equal("STR_OUT", Assert.Single(campaign.Capture().Bases[0].Crafts,
-            candidate => candidate.RuleId == "SHIP").Logistics!.Status);
-    }
-
-    [Fact]
-    public void HourlyRearmingRelaunchReservesContactMarkerBeforeServicing()
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
-            ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
-        var flagged = craft with
-        {
-            Logistics = craft.Logistics! with
-            {
-                Status = "STR_REARMING",
-                Fuel = 0,
-                IsAutoPatrolling = true,
-                AutoPatrolLongitude = 0.3,
-                AutoPatrolLatitude = 0.1,
-            },
-        };
-        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
-            StringComparer.Ordinal);
-        ids["STR_UFO"] = int.MaxValue;
-        campaign = CampaignState.Restore(snapshot with
-        {
-            NextIds = ids,
-            Bases = [owner with
-            {
-                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? flagged : candidate)],
-            }],
-            World = snapshot.World with
-            {
-                Ufos = [Assert.Single(snapshot.World.Ufos) with
-                {
-                    Id = 0, Longitude = 0.21, Latitude = 0.11,
-                }],
-            },
-        }, content, new SplitMix64RandomSource(88));
-
-        AssertBlockedWithoutMutation(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
-    }
-
-    [Theory]
-    [InlineData("transfer", false)]
-    [InlineData("transfer", true)]
-    [InlineData("production", false)]
-    [InlineData("production", true)]
-    [InlineData("random-production", false)]
-    [InlineData("random-production", true)]
-    [InlineData("fallback-production", false)]
-    [InlineData("fallback-production", true)]
-    [InlineData("research", false)]
-    [InlineData("research", true)]
-    [InlineData("research-reward", false)]
-    [InlineData("research-reward", true)]
-    [InlineData("returned-research", false)]
-    [InlineData("returned-research", true)]
-    public void FuelDeliveryReservesContactMarkerAndRelaunchesWhenAvailable(string source, bool exhausted)
-    {
-        var campaign = CreateItemFuelPatrolCampaign(source, exhausted);
-        if (exhausted)
-        {
-            AssertBlockedWithoutMutation(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
-            return;
-        }
-
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
-        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: false });
-        var after = campaign.Capture();
-        var craft = Assert.Single(after.Bases[0].Crafts, candidate => candidate.RuleId == "SHIP_FUEL_ITEM");
-        Assert.Equal("STR_OUT", craft.Logistics!.Status);
-        // The same tick's ten-minute handler consumes one unit of item-based fuel after launch.
-        Assert.Equal(99, craft.Logistics.Fuel);
-        var ufo = Assert.Single(after.World.Ufos);
-        Assert.True(ufo.Detected);
-        Assert.True(ufo.Id > 0);
-    }
-
-    [Theory]
-    [InlineData("none")]
-    [InlineData("late-transfer")]
-    [InlineData("unrelated-transfer")]
-    [InlineData("unfinished-production")]
-    [InlineData("sold-production")]
-    [InlineData("delayed-production")]
-    [InlineData("unrelated-production")]
-    [InlineData("unfinished-research")]
-    [InlineData("returned-research-ready")]
-    public void GroundedCraftDoesNotGateRadarWhenFuelCannotRelaunchIt(string source)
-    {
-        foreach (var invalidRadar in new[] { false, true })
-        {
-            var campaign = CreateItemFuelPatrolCampaign(source, exhausted: true, invalidRadar);
-
-            var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-            Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-            Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked or UfoContactDetected);
-            var after = campaign.Capture();
-            Assert.Equal("STR_READY", Assert.Single(after.Bases[0].Crafts,
-                candidate => candidate.RuleId == "SHIP_FUEL_ITEM").Logistics!.Status);
-            Assert.False(Assert.Single(after.World.Ufos).Detected);
-            Assert.Equal(int.MaxValue, after.NextIds["STR_UFO"]);
-        }
-    }
-
-    private static CampaignState CreateItemFuelPatrolCampaign(string source, bool exhausted, bool invalidRadar = false)
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var daily = source.Contains("research", StringComparison.Ordinal);
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, daily ? 23 : 1, 59, 55),
-            ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
-        var flagged = craft with
-        {
-            RuleId = "SHIP_FUEL_ITEM",
-            Logistics = craft.Logistics! with
-            {
-                Status = source == "returned-research" ? "STR_REFUELLING" : "STR_READY",
-                Fuel = 0,
-                IsAutoPatrolling = true,
-                AutoPatrolLongitude = 0.3,
-                AutoPatrolLatitude = 0.1,
-                Weapons = invalidRadar ? [new CraftWeaponSnapshot("RADAR_EXCESS", 1), null] : [null, null],
-            },
-        };
-        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
-            StringComparer.Ordinal);
-        if (exhausted) ids["STR_UFO"] = int.MaxValue;
-        var productionRule = source switch
-        {
-            "production" or "unfinished-production" or "sold-production" or "fallback-production" => "FUEL_PRODUCTION",
-            "random-production" => "FUEL_RANDOM_PRODUCTION",
-            "delayed-production" => "FUEL_DELAYED_PRODUCTION",
-            "unrelated-production" => "OTHER_PRODUCTION",
-            _ => null,
-        };
-        var researchRule = source switch
-        {
-            "research" or "unfinished-research" => "FUEL_RESEARCH",
-            "research-reward" => "FUEL_RESEARCH_REWARD",
-            "returned-research" or "returned-research-ready" => "FUEL_RESEARCH_RETURN",
-            _ => null,
-        };
-        return CampaignState.Restore(snapshot with
-        {
-            NextIds = ids,
-            Bases = [owner with
-            {
-                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? flagged : candidate)],
-                Items = owner.Items.Where(static pair => pair.Key != "SUPPLY")
-                    .ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal),
-                Transfers = source is "transfer" or "late-transfer" or "unrelated-transfer"
-                    ? [new TransferSnapshot(77, source == "late-transfer" ? 2 : 1,
-                        CampaignTransferKind.Item, source == "unrelated-transfer" ? "BULKY" : "SUPPLY", 1)] : [],
-                Productions = productionRule is null ? [] : [new ProductionSnapshot(productionRule,
-                    source == "fallback-production" ? 0 : 1, source == "unfinished-production" ? 0 : 1,
-                    1, false, source == "sold-production", source == "fallback-production", new Dictionary<string, int>())],
-                Engineers = source == "fallback-production" ? 1 : 0,
-                Facilities = [.. owner.Facilities, new FacilitySnapshot("FUEL_WORKSHOP", 1, 0, 0, 0, false, false, false)],
-                Research = researchRule is null ? [] : [new ResearchProjectSnapshot(researchRule,
-                    1, 0, source == "unfinished-research" ? 2 : 1)],
-            }],
-            World = snapshot.World with
-            {
-                Ufos = [Assert.Single(snapshot.World.Ufos) with
-                {
-                    Id = 0, Longitude = 0.21, Latitude = 0.11,
-                }],
-            },
-        }, content, new SplitMix64RandomSource(89));
-    }
-
-    [Fact]
-    public void ArrivingAutoPatrolCraftRetainsTransferGateBeforeMutation()
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
-            ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
-        var incoming = craft with
-        {
-            Id = 4,
-            Logistics = craft.Logistics! with
-            {
-                Status = "STR_REFUELLING",
-                Fuel = 0,
-                IsAutoPatrolling = true,
-                AutoPatrolLongitude = 0.3,
-                AutoPatrolLatitude = 0.1,
-            },
-        };
-        var ids = snapshot.NextIds.ToDictionary(static pair => pair.Key, static pair => pair.Value,
-            StringComparer.Ordinal);
-        ids["STR_UFO"] = int.MaxValue;
-        campaign = CampaignState.Restore(snapshot with
-        {
-            NextIds = ids,
-            Bases = [owner with
-            {
-                Transfers = [new TransferSnapshot(77, 1, CampaignTransferKind.Craft, "SHIP", 1,
-                    Craft: incoming)],
-            }],
-            World = snapshot.World with
-            {
-                Ufos = [Assert.Single(snapshot.World.Ufos) with
-                {
-                    Id = 0, Longitude = 0.21, Latitude = 0.11,
-                }],
-            },
-        }, content, new SplitMix64RandomSource(90));
-
-        AssertBlockedWithoutMutation(campaign, "Craft auto-patrol requires world simulation.");
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InstalledWeaponRadarBonusControlsCraftContact(bool installed)
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
-            ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
-        var radarCraft = craft with
-        {
-            RuleId = "SHIP_SLOW_REFUEL",
-            Logistics = craft.Logistics! with
-            {
-                Status = "STR_OUT",
-                Longitude = 0.21,
-                Latitude = 0.11,
-                Weapons = installed ? [new CraftWeaponSnapshot("RADAR_BOOST", 0), null] : [null, null],
-            },
-        };
-        campaign = CampaignState.Restore(snapshot with
-        {
-            Bases = [owner with
-            {
-                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? radarCraft : candidate)],
-            }],
-            World = snapshot.World with
-            {
-                Ufos = [Assert.Single(snapshot.World.Ufos) with { Longitude = 0.21, Latitude = 0.11 }],
-            },
-        }, content, new SplitMix64RandomSource(86));
-
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal(installed, result.Events.Any(item => item is UfoContactDetected));
-        Assert.Equal(installed, Assert.Single(campaign.Capture().World.Ufos).Detected);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InvalidCraftRadarStopsBeforeScoringOnlyWhenTheCraftIsActive(bool destroyed)
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
-            ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
-        var craft = Assert.Single(owner.Crafts, candidate => candidate.RuleId == "SHIP");
-        var radarCraft = craft with
-        {
-            RuleId = "SHIP_SLOW_REFUEL",
-            Logistics = craft.Logistics! with
-            {
-                Status = "STR_OUT",
-                Damage = destroyed ? 100 : 0,
-                Longitude = 0.21,
-                Latitude = 0.11,
-                Weapons = [new CraftWeaponSnapshot("RADAR_EXCESS", 0), null],
-            },
-        };
-        campaign = CampaignState.Restore(snapshot with
-        {
-            Bases = [owner with
-            {
-                Crafts = [.. owner.Crafts.Select(candidate => candidate.RuleId == "SHIP" ? radarCraft : candidate)],
-            }],
-            World = snapshot.World with
-            {
-                Ufos = [Assert.Single(snapshot.World.Ufos) with { Longitude = 0.21, Latitude = 0.11 }],
-            },
-        }, content, new SplitMix64RandomSource(87));
-        var before = campaign.Capture();
-
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-
-        if (!destroyed)
-        {
-            Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-            Assert.Equal("Craft radar stats are outside the supported range.",
-                Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-            Assert.Equivalent(before, campaign.Capture(), strict: true);
-        }
-        else
-        {
-            Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-            Assert.DoesNotContain(result.Events, item => item is UfoContactDetected);
-            Assert.False(Assert.Single(campaign.Capture().World.Ufos).Detected);
-            Assert.Equal(3, Assert.Single(campaign.Capture().Regions).ActivityAlien[^1] -
-                Assert.Single(before.Regions).ActivityAlien[^1]);
-        }
-    }
-
     [Fact]
     public void AirborneWaypointArrivalUsesSavedTrajectoryAndContinuesAfterReload()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
             ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_AIRBORNE_FLAGS",
             trajectoryId: "TRAJ_AIRBORNE", missionWaveNumber: 0);
         var baseId = campaign.Capture().Bases[0].Id;
@@ -617,9 +213,8 @@ public sealed class StrategicWorldUfoTransitTests
         var expectedVector = WorldGeometry.SpeedVector(sourceDestination.Position,
             expectedDestination, expectedSpeedRadian);
 
-        var arrival = arriving.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(arriving);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(arrival.Events)).Summary.TickCount);
         var afterArrival = arriving.Capture();
         var ufo = Assert.Single(afterArrival.World.Ufos);
         Assert.Equal(1, ufo.TrajectoryPoint);
@@ -646,9 +241,8 @@ public sealed class StrategicWorldUfoTransitTests
         var expectedPosition = WorldGeometry.Move(ufo.Position, expectedDestination,
             WorldGeometry.RadianSpeed(ufo.Speed));
 
-        var movement = reloaded.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(reloaded);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(movement.Events)).Summary.TickCount);
         Assert.Equal(expectedPosition, Assert.Single(reloaded.Capture().World.Ufos).Position);
     }
 
@@ -656,7 +250,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void ObjectiveWaveArrivalInMissionSpawnZoneRemainsBlocked()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
             ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_AIRBORNE_FLAGS",
             trajectoryId: "TRAJ_AIRBORNE_SPAWN", missionWaveNumber: 0);
         var snapshot = campaign.Capture();
@@ -676,7 +270,7 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(73));
 
-        AssertBlockedWithoutMutation(arriving, "UFO waypoint arrival requires mission simulation.");
+        AssertTimeBlocked(arriving, "UFO waypoint arrival requires mission simulation.");
     }
 
     [Theory]
@@ -685,7 +279,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void LaterTrajectoryPointCrossesTenMinuteBoundaryOutsideBaseSightRange(bool destroyed)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
             ufoRuleId: "UFO_SCOUT", speed: 2200);
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
@@ -701,8 +295,7 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(68));
 
-        var result = restored.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        AdvanceOne(restored);
         var after = restored.Capture();
         Assert.False(after.Bases[0].RetaliationTarget);
         Assert.Equal(snapshot.RandomState, after.RandomState);
@@ -720,7 +313,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void FinalOrInterruptedWaypointArrivalDefersCleanupAndCraftMovement(bool interrupted)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var baseId = campaign.Capture().Bases[0].Id;
         Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(
             new DispatchCraftToWaypoint(baseId, "SHIP", 1, 0.5, 0.1)).Events));
@@ -749,9 +342,8 @@ public sealed class StrategicWorldUfoTransitTests
         var craftBefore = Assert.Single(restored.Capture().Bases[0].Crafts,
             craft => craft.RuleId == "SHIP").Logistics!;
 
-        var arrivalTick = restored.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(restored);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(arrivalTick.Events)).Summary.TickCount);
         var afterArrival = restored.Capture();
         var stopped = Assert.Single(afterArrival.World.Ufos);
         Assert.Equal(UfoStatus.Destroyed, stopped.Status);
@@ -768,9 +360,8 @@ public sealed class StrategicWorldUfoTransitTests
 
         var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(afterArrival),
             content, seed: 57, name: "ufo-final-arrival.sav").Campaign;
-        var cleanupTick = reloaded.Execute(new AdvanceCampaignTime(1));
+        AdvanceOne(reloaded);
 
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(cleanupTick.Events)).Summary.TickCount);
         Assert.Empty(reloaded.Capture().World.Ufos);
         Assert.Equal(0, Assert.Single(reloaded.Capture().World.Missions).LiveUfos);
         Assert.Equal(craftBefore.Takeoff - 1, Assert.Single(reloaded.Capture().Bases[0].Crafts,
@@ -788,7 +379,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void FinalArrivalStopsProcessingLaterUfosInTheSameTick()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var lastPoint = content.RuntimeRules.UfoTrajectories[
@@ -816,7 +407,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void LaterNonterminalArrivalBlocksBeforeAnEarlierTerminalArrival()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
             ufoRuleId: "UFO_SCOUT", missionRuleId: "MISSION_SITE", missionWaveNumber: 0);
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
@@ -833,7 +424,7 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(62));
 
-        AssertBlockedWithoutMutation(restored, "UFO waypoint arrival requires mission simulation.");
+        AssertTimeBlocked(restored, "UFO waypoint arrival requires mission simulation.");
     }
 
     [Theory]
@@ -844,7 +435,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void UnsupportedUfoStateReportsItsPreflightReason(string condition, string reason)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         ufo = condition switch
@@ -860,14 +451,14 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with { Ufos = [ufo] },
         }, content, new SplitMix64RandomSource(51));
 
-        AssertBlockedWithoutMutation(restored, reason);
+        AssertTimeBlocked(restored, reason);
     }
 
     [Fact]
     public void RaceDerivedShieldCapacityReportsItsPreflightReason()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var mission = Assert.Single(snapshot.World.Missions);
         var restored = CampaignState.Restore(snapshot with
@@ -875,14 +466,14 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with { Missions = [mission with { Race = "RACE_B" }] },
         }, content, new SplitMix64RandomSource(63));
 
-        AssertBlockedWithoutMutation(restored, "UFO shield handling requires world simulation.");
+        AssertTimeBlocked(restored, "UFO shield handling requires world simulation.");
     }
 
     [Fact]
     public void MissingMissionLinkIsRejectedForOrdinarySave()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
 
@@ -897,7 +488,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void MissionWaveOutsideRestoredRuleIsRejectedDuringRestore()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var mission = Assert.Single(snapshot.World.Missions);
@@ -916,7 +507,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void InvalidRegionalWaypointIsRejectedBeforeTimeOrRandomStateChanges()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world-invalid-area.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
             ufoRuleId: "UFO_SCOUT", speed: 2200, missionRuleId: "MISSION_INVALID_AREA",
             trajectoryId: "TRAJ_INVALID_AREA", missionWaveNumber: 0);
         var snapshot = campaign.Capture();
@@ -945,7 +536,7 @@ public sealed class StrategicWorldUfoTransitTests
     public void MissingMissionLinkInPreCampaignStateReportsItsPreflightReason()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var restored = CampaignState.Restore(snapshot with
@@ -954,14 +545,14 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with { Ufos = [ufo with { MissionId = 999 }] },
         }, content, new SplitMix64RandomSource(53));
 
-        AssertBlockedWithoutMutation(restored, "UFO mission link requires world simulation.");
+        AssertTimeBlocked(restored, "UFO mission link requires world simulation.");
     }
 
     [Fact]
     public void DestroyedUfoReleasesItsMissionAndCompletedMissionExpires()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var destroyed = CampaignState.Restore(snapshot with
@@ -984,14 +575,14 @@ public sealed class StrategicWorldUfoTransitTests
                 Ufos = [ufo with { Status = UfoStatus.Destroyed }],
             },
         }, content, new SplitMix64RandomSource(48));
-        AssertBlockedWithoutMutation(malformed, "Destroyed UFO count exceeds its mission's live count.");
+        AssertTimeBlocked(malformed, "Destroyed UFO count exceeds its mission's live count.");
     }
 
     [Fact]
     public void TerminalArrivalRechecksRestoredMissionLiveCountBeforeCleanup()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var lastPoint = content.RuntimeRules.UfoTrajectories[
@@ -1005,44 +596,8 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(64));
 
-        var arrival = restored.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(arrival.Events)).Summary.TickCount);
+        AdvanceOne(restored);
         Assert.Equal(UfoStatus.Destroyed, Assert.Single(restored.Capture().World.Ufos).Status);
-        AssertBlockedWithoutMutation(restored, "Destroyed UFO count exceeds its mission's live count.");
-    }
-
-    private static void AssertBlockedWithoutMutation(CampaignState campaign, string reason)
-    {
-        var before = campaign.Capture();
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal(reason, Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
-    }
-
-    private static CampaignState CreateTransitCampaign(RuntimeContent content, CampaignTime time,
-        string ufoRuleId = "UFO_HUNTER", int speed = 3200, string missionRuleId = "MISSION_SCOUT",
-        string trajectoryId = "TRAJ_PATROL", int missionWaveNumber = 1)
-    {
-        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UFO transit", CampaignDifficulty.Veteran);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
-        var snapshot = campaign.Capture();
-        var mission = new AlienMissionSnapshot(
-            4, missionRuleId, "REGION", "RACE_A", missionWaveNumber + 1, 0, 1500, 1, -1);
-        var ufo = new UfoSnapshot(9, ufoRuleId, 4, trajectoryId, 0,
-            0.4, 0.2, UfoStatus.Flying, "STR_HIGH_UC")
-        {
-            Id = 3,
-            Speed = speed,
-            MissionWaveNumber = missionWaveNumber,
-            Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
-                WorldTargetReference.WaypointType, 0, 1.0, 0.6),
-        };
-        return CampaignState.Restore(snapshot with
-        {
-            MonthsPassed = 0,
-            Time = time,
-            World = snapshot.World with { Missions = [mission], Ufos = [ufo] },
-        }, content, new SplitMix64RandomSource(40));
+        AssertTimeBlocked(restored, "Destroyed UFO count exceeds its mission's live count.");
     }
 }

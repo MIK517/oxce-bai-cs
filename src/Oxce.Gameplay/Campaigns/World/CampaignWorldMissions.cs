@@ -45,7 +45,7 @@ internal sealed partial class CampaignWorld
             }
             return "Alien mission wave spawning requires world simulation.";
         }
-        return CanAllocateUfoIds(ufoSpawns) ? null : "Alien mission wave spawning requires world simulation.";
+        return CanAllocateUfoIds(ufoSpawns) ? null : "UFO unique IDs are exhausted or collide with a saved UFO.";
     }
 
     private void AdvanceMissionCountdowns(CampaignState.TimeEffects _)

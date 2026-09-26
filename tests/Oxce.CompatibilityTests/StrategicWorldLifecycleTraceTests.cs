@@ -77,7 +77,7 @@ public sealed class StrategicWorldLifecycleTraceTests
 
     private static CampaignSnapshot Initial(RuntimeContent content, string name)
     {
-        var snapshot = TestFixtures.CreateWorldLifecycleSnapshot(content);
+        var snapshot = StrategicWorldTestSupport.CreateLifecycleSnapshot(content);
         var multiple = name == "multiple";
         var mission = snapshot.World.Missions[0] with
         {

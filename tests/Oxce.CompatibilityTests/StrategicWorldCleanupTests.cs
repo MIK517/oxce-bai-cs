@@ -5,6 +5,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -17,7 +18,7 @@ public sealed class StrategicWorldCleanupTests
     public void CleanupReleasesEachMissionOnceAndKeepsSurvivors(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
-        var snapshot = TestFixtures.CreateWorldLifecycleSnapshot(content);
+        var snapshot = CreateLifecycleSnapshot(content);
         var mission = snapshot.World.Missions[0];
         var ufo = snapshot.World.Ufos[0];
         var campaign = Restore(content, snapshot with
@@ -32,12 +33,12 @@ public sealed class StrategicWorldCleanupTests
                     ufo with { UniqueId = 12, Id = 6, MissionId = 5, Status = UfoStatus.Destroyed }],
             },
         });
-        Advance(campaign, 1);
+        AdvanceUnblocked(campaign, 1);
         var cleaned = campaign.Capture();
         Assert.Equal(11, Assert.Single(cleaned.World.Ufos).UniqueId);
         Assert.Equal<int>([1, 0], cleaned.World.Missions.Select(item => item.LiveUfos));
-        campaign = Reload(content, campaign);
-        Advance(campaign, 1);
+        campaign = Reload(content, campaign, 17, "cleanup.sav");
+        AdvanceUnblocked(campaign, 1);
         Assert.Equal(4, Assert.Single(campaign.Capture().World.Missions).Id);
         Assert.Equal(1, campaign.Capture().World.Missions[0].LiveUfos);
         Assert.Equal(11, Assert.Single(campaign.Capture().World.Ufos).UniqueId);
@@ -49,15 +50,8 @@ public sealed class StrategicWorldCleanupTests
     public void ConsecutiveDeparturesDeferCraftsThenDrainAcrossBoundaries(int minute, int second)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var snapshot = TestFixtures.CreateWorldLifecycleSnapshot(content);
-        snapshot = snapshot with
-        {
-            Bases = [snapshot.Bases[0] with
-        {
-            Crafts = snapshot.Bases[0].Crafts.Select(craft => craft.RuleId == "SHIP"
-                ? craft with { Logistics = craft.Logistics! with { Fuel = 100 } } : craft).ToArray(),
-        }]
-        };
+        var snapshot = CreateLifecycleSnapshot(content);
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Fuel = 100 } });
         var ufo = snapshot.World.Ufos[0];
         var arrived = ufo with
         {
@@ -83,19 +77,19 @@ public sealed class StrategicWorldCleanupTests
         var takeoff = Ship(campaign.Capture()).Takeoff;
         for (var index = 0; index < 2; index++)
         {
-            Advance(campaign, 1);
+            AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
             Assert.Equal(index + 1, after.World.Ufos.Count(item => item.Status == UfoStatus.Destroyed));
             Assert.Equal(2, Assert.Single(after.World.Missions).LiveUfos);
             Assert.Equal(takeoff, Ship(after).Takeoff);
-            campaign = Reload(content, campaign);
+            campaign = Reload(content, campaign, 17, "cleanup.sav");
         }
-        Advance(campaign, 1);
+        AdvanceUnblocked(campaign, 1);
         Assert.Empty(campaign.Capture().World.Ufos);
         Assert.Equal(0, Assert.Single(campaign.Capture().World.Missions).LiveUfos);
         Assert.Equal(takeoff - 1, Ship(campaign.Capture()).Takeoff);
         Assert.Single(campaign.Capture().World.Waypoints);
-        Advance(batched, 3);
+        AdvanceUnblocked(batched, 3);
         Assert.Equivalent(batched.Capture(), campaign.Capture(), strict: true);
     }
 
@@ -103,7 +97,7 @@ public sealed class StrategicWorldCleanupTests
     public void DeletedWorldSidecarsStayDeletedAcrossRepeatedLoadedRewrites()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var snapshot = TestFixtures.CreateWorldLifecycleSnapshot(content);
+        var snapshot = CreateLifecycleSnapshot(content);
         snapshot = snapshot with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 50),
@@ -115,7 +109,7 @@ public sealed class StrategicWorldCleanupTests
         yaml = yaml.Replace("uniqueId: 9\n", "uniqueId: 9\n    futureUfo: departed\n", StringComparison.Ordinal)
             .Replace("uniqueID: 4\n", "uniqueID: 4\n    futureMission: expired\n", StringComparison.Ordinal);
         var loaded = TestFixtures.LoadLogisticsSave(yaml, content, seed: 17, name: "cleanup-sidecars.sav");
-        Advance(loaded.Campaign, 2);
+        AdvanceUnblocked(loaded.Campaign, 2);
         for (var cycle = 0; cycle < 3; cycle++)
         {
             var rewritten = OxceSaveAdapter.EmitLoadedCampaign(loaded.Campaign.Capture(), loaded.Source);
@@ -144,7 +138,7 @@ public sealed class StrategicWorldCleanupTests
     public void PursuitGuardPreventsDeletingAReferencedUfo()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var snapshot = TestFixtures.CreateWorldLifecycleSnapshot(content);
+        var snapshot = CreateLifecycleSnapshot(content);
         var ufo = snapshot.World.Ufos[0] with { Status = UfoStatus.Destroyed };
         var owner = snapshot.Bases[0];
         var craft = owner.Crafts.Single(item => item.RuleId == "SHIP");
@@ -163,11 +157,7 @@ public sealed class StrategicWorldCleanupTests
             Bases = [owner with { Crafts = owner.Crafts.Select(item => item == craft ? follower : item).ToArray() }],
             World = snapshot.World with { Ufos = [ufo] },
         });
-        var before = campaign.Capture();
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal("Craft pursuit and landing require world simulation.",
-            Assert.Single(result.Events.OfType<CampaignActionBlocked>()).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AssertTimeBlocked(campaign, "Craft pursuit and landing require world simulation.");
     }
 
     private static CraftLogisticsState Ship(CampaignSnapshot snapshot) =>
@@ -175,25 +165,4 @@ public sealed class StrategicWorldCleanupTests
 
     private static CampaignState Restore(RuntimeContent content, CampaignSnapshot snapshot) =>
         CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-
-    private static CampaignState Reload(RuntimeContent content, CampaignState campaign)
-    {
-        var snapshot = campaign.Capture();
-        var restored = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot), content,
-            seed: 17, name: "cleanup.sav").Campaign;
-        Assert.Equivalent(snapshot, restored.Capture(), strict: true);
-        return restored;
-    }
-
-    private static void Advance(CampaignState campaign, int ticks)
-    {
-        while (ticks > 0)
-        {
-            var result = campaign.Execute(new AdvanceCampaignTime(ticks));
-            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
-            var advanced = Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount;
-            Assert.InRange(advanced, 1, ticks);
-            ticks -= advanced; // A contact alert pauses the batch after its producing tick.
-        }
-    }
 }

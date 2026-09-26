@@ -5,6 +5,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -266,7 +267,7 @@ public sealed class StrategicWorldUfoLandingTests
             ? RestoreUfos(content, snapshot, ufo, ufo with { UniqueId = 10, LandId = 40 })
             : RestoreUfos(content, snapshot, ufo);
 
-        AssertBlocked(campaign, "UFO landing marker IDs are exhausted or collide with a saved UFO.");
+        AssertTimeBlocked(campaign, "UFO landing marker IDs are exhausted or collide with a saved UFO.");
     }
 
     [Theory]
@@ -286,7 +287,7 @@ public sealed class StrategicWorldUfoLandingTests
             Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1, Detected = false });
 
         if (!alreadyLanded)
-            AssertBlocked(campaign, "UFO landing marker IDs are exhausted or collide with a saved UFO.");
+            AssertTimeBlocked(campaign, "UFO landing marker IDs are exhausted or collide with a saved UFO.");
         else
         {
             AdvanceOne(campaign);
@@ -311,7 +312,7 @@ public sealed class StrategicWorldUfoLandingTests
         var campaign = RestoreUfos(content, snapshot,
             [.. Enumerable.Range(0, count).Select(index => ufo with { UniqueId = 9 + index })]);
 
-        AssertBlocked(campaign, "UFO alien activity exceeds the supported range.");
+        AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
     }
 
     [Theory]
@@ -326,7 +327,7 @@ public sealed class StrategicWorldUfoLandingTests
         var campaign = RestoreUfos(content, snapshot,
             Assert.Single(snapshot.World.Ufos) with { SecondsRemaining = seconds, Altitude = altitude });
 
-        AssertBlocked(campaign, "Landed UFO timer or altitude is invalid.");
+        AssertTimeBlocked(campaign, "Landed UFO timer or altitude is invalid.");
     }
 
     [Fact]
@@ -340,7 +341,7 @@ public sealed class StrategicWorldUfoLandingTests
             { Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE" }] },
         }, content, new SplitMix64RandomSource(94));
 
-        AssertBlocked(campaign, "UFO takeoff requires mission simulation.");
+        AssertTimeBlocked(campaign, "UFO takeoff requires mission simulation.");
     }
 
     [Theory]
@@ -353,7 +354,23 @@ public sealed class StrategicWorldUfoLandingTests
         var campaign = RestoreUfos(content, snapshot,
             Assert.Single(snapshot.World.Ufos) with { TrajectoryId = trajectory });
 
-        AssertBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+        AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+    }
+
+    [Fact]
+    public void GroundArrivalAtHalfDamageLandsNormally()
+    {
+        // Ufo::isCrashed requires damage above damageMax / 2 (UFO_SCOUT: 50).
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = CreateCampaign(content).Capture();
+        var campaign = RestoreUfos(content, snapshot,
+            Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1, Damage = 25 });
+
+        AdvanceOne(campaign);
+
+        var landed = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal(UfoStatus.Landed, landed.Status);
+        Assert.Equal(25, landed.Damage);
     }
 
     [Theory]
@@ -366,7 +383,7 @@ public sealed class StrategicWorldUfoLandingTests
         var campaign = RestoreUfos(content, snapshot,
             Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1, Damage = damage });
 
-        AssertBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+        AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
     }
 
     [Fact]
@@ -446,10 +463,7 @@ public sealed class StrategicWorldUfoLandingTests
     private static CampaignState CreateCampaign(RuntimeContent content, bool landed = false,
         bool halfHour = false, bool radar = false, bool noAlert = false)
     {
-        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UFO landing", CampaignDifficulty.Veteran);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
-        var snapshot = campaign.Capture();
-        var owner = Assert.Single(snapshot.Bases);
+        var snapshot = CreateSnapshot(content, "UFO landing");
         var longitude = Degrees(landed ? 8 : 8.02);
         var latitude = Degrees(2);
         var ufo = new UfoSnapshot(9, noAlert ? "UFO_LANDING_SILENT" : "UFO_SCOUT", 4,
@@ -465,13 +479,10 @@ public sealed class StrategicWorldUfoLandingTests
             Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
                 WorldTargetReference.WaypointType, 0, landed ? Degrees(8.01) : longitude, latitude),
         };
-        return CampaignState.Restore(snapshot with
+        if (radar) snapshot = snapshot.WithFacility("RADAR_HYPER_TEST");
+        return CampaignState.Restore(snapshot.WithNextId("STR_UFO", 30).WithNextId("STR_LANDING_SITE", 40) with
         {
-            MonthsPassed = 0,
             Time = new CampaignTime(1, 1, 1, 1999, 1, halfHour ? 29 : 0, halfHour ? 55 : 0),
-            NextIds = new Dictionary<string, int>(snapshot.NextIds) { ["STR_UFO"] = 30, ["STR_LANDING_SITE"] = 40 },
-            Bases = [radar ? owner with { Facilities = [.. owner.Facilities,
-                new FacilitySnapshot("RADAR_HYPER_TEST", 1, 0, 0, 0, false, false, false)] } : owner],
             World = snapshot.World with
             {
                 Missions = [new AlienMissionSnapshot(4, "MISSION_LANDING", "REGION", "RACE_A", 1, 0, 1500, 1, -1)],
@@ -490,17 +501,4 @@ public sealed class StrategicWorldUfoLandingTests
             },
         }, content, new SplitMix64RandomSource(96));
 
-    private static double Degrees(double value) => value * Math.PI / 180;
-
-    private static void AdvanceOne(CampaignState campaign) => Assert.Equal(1,
-        Assert.IsType<CampaignTimeAdvanced>(Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events)).Summary.TickCount);
-
-    private static void AssertBlocked(CampaignState campaign, string reason)
-    {
-        var before = campaign.Capture();
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal(reason, Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
-    }
 }

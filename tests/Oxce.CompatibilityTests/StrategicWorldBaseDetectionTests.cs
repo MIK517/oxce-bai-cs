@@ -5,6 +5,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
@@ -20,13 +21,15 @@ public sealed class StrategicWorldBaseDetectionTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
         var snapshot = CreateSnapshot(content, landed);
+        // Base Alpha's one-tile store gives Base::getDetectionChance (1 / 6 + 15) / 1 = 15%.
+        Assert.True(new SplitMix64RandomSource(snapshot.RandomState).NextInclusive(0, 99) < 15);
         var campaign = Restore(content, snapshot);
         Assert.True(campaign.Options.AggressiveRetaliation); // reference default
         AdvanceOne(campaign);
 
         var after = campaign.Capture();
         Assert.True(Assert.Single(after.Bases).RetaliationTarget);
-        Assert.Equal(StateAfterRolls(2, 1), after.RandomState); // 10 < 15
+        Assert.Equal(StateAfterRolls(2, 1), after.RandomState);
         var ufo = Assert.Single(after.World.Ufos);
         if (landed) Assert.Equal(1795, ufo.SecondsRemaining);
         else Assert.NotEqual(snapshot.World.Ufos[0].Position, ufo.Position);
@@ -170,10 +173,13 @@ public sealed class StrategicWorldBaseDetectionTests
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateSnapshot(content);
         var first = snapshot.Bases[0] with { Longitude = outsideRegion ? 1 : 0.2 };
+        var choices = new SplitMix64RandomSource(30);
+        Assert.True(choices.NextInclusive(0, 99) < 15);
+        Assert.True(choices.NextInclusive(0, 99) < 15);
         var second = first with { Id = first.Id + 1, Name = "Beta", Crafts = [], Soldiers = [] };
         var campaign = Restore(content, snapshot with
         {
-            RandomState = 30, // successive rolls 10 and 8 both detect a 15%-chance base
+            RandomState = 30, // both successive rolls detect a 15%-chance base
             Options = snapshot.Options with { AggressiveRetaliation = aggressive },
             Bases = [first, second],
             World = snapshot.World with
@@ -200,7 +206,7 @@ public sealed class StrategicWorldBaseDetectionTests
     public void OnlyCompletedEnabledMindShieldsReduceDetection(int buildTime, bool disabled, bool scans)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var snapshot = WithShield(CreateSnapshot(content), "MIND_SCREEN_TEST", buildTime, disabled);
+        var snapshot = CreateSnapshot(content).WithFacility("MIND_SCREEN_TEST", buildTime, disabled);
         var campaign = Restore(content, snapshot);
         AdvanceOne(campaign);
         Assert.Equal(scans, campaign.Capture().Bases[0].RetaliationTarget);
@@ -225,14 +231,9 @@ public sealed class StrategicWorldBaseDetectionTests
         // Base::getDetectionChance: the 1-tile store plus a completed 2x3 facility
         // gives 7/6 + 15 = 16%. An unfinished facility leaves 1/6 + 15 = 15%.
         // Roll 15 distinguishes area from facility count, either dimension, or zero.
-        var campaign = Restore(content, snapshot with
+        var campaign = Restore(content, snapshot.WithFacility("DETECTION_AREA_TEST", buildTime, disabled) with
         {
             RandomState = seed,
-            Bases = [snapshot.Bases[0] with
-            {
-                Facilities = [.. snapshot.Bases[0].Facilities,
-                    new FacilitySnapshot("DETECTION_AREA_TEST", 1, 0, buildTime, 0, false, disabled, false)],
-            }],
         });
         AdvanceOne(campaign);
         var after = campaign.Capture();
@@ -296,7 +297,7 @@ public sealed class StrategicWorldBaseDetectionTests
     public void MidnightConstructionCompletionAppliesBeforeTheScan()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var snapshot = WithShield(CreateSnapshot(content), "MIND_SCREEN_TEST", 1, false) with
+        var snapshot = CreateSnapshot(content).WithFacility("MIND_SCREEN_TEST", buildTime: 1) with
         { Time = new CampaignTime(1, 1, 1, 1999, 23, 59, 55) };
         var campaign = Restore(content, snapshot);
         var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -313,9 +314,9 @@ public sealed class StrategicWorldBaseDetectionTests
     public void InvalidMindShieldPowerStopsBeforeAnyTimeOrRandomChanges(bool midnight)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var snapshot = WithShield(CreateSnapshot(content), "MIND_SCREEN_INVALID", midnight ? 1 : 0, false);
+        var snapshot = CreateSnapshot(content).WithFacility("MIND_SCREEN_INVALID", buildTime: midnight ? 1 : 0);
         if (midnight) snapshot = snapshot with { Time = new CampaignTime(1, 1, 1, 1999, 23, 59, 55) };
-        AssertBlocked(Restore(content, snapshot), "Base detection inputs are outside the supported range.");
+        AssertTimeBlocked(Restore(content, snapshot), "Base detection inputs are outside the supported range.");
     }
 
     [Fact]
@@ -338,24 +339,14 @@ public sealed class StrategicWorldBaseDetectionTests
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
             World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { LiveUfos = 0 }] },
         });
-        AssertBlocked(campaign, "Alien mission cannot expire while UFOs still reference it.");
+        AssertTimeBlocked(campaign, "Alien mission cannot expire while UFOs still reference it.");
     }
-
-    private static CampaignSnapshot WithShield(CampaignSnapshot snapshot, string rule, int buildTime, bool disabled) =>
-        snapshot with
-        {
-            Bases = [snapshot.Bases[0] with { Facilities = [.. snapshot.Bases[0].Facilities,
-            new FacilitySnapshot(rule, 1, 0, buildTime, 0, false, disabled, false)] }]
-        };
 
     private static CampaignSnapshot CreateSnapshot(RuntimeContent content, bool landed = false)
     {
-        var campaign = TestFixtures.CreateLogisticsCampaign(content, "UFO base detection", CampaignDifficulty.Veteran);
-        campaign.Execute(new PlaceStartingBase(0, "Alpha", 0.2, 0.1));
-        var snapshot = campaign.Capture();
+        var snapshot = StrategicWorldTestSupport.CreateSnapshot(content, "UFO base detection");
         return snapshot with
         {
-            MonthsPassed = 0,
             RandomState = 2,
             Time = new CampaignTime(1, 1, 1, 1999, 1, 9, 55),
             World = snapshot.World with
@@ -384,15 +375,4 @@ public sealed class StrategicWorldBaseDetectionTests
         return random.State;
     }
 
-    private static void AdvanceOne(CampaignState campaign) => Assert.Equal(1,
-        Assert.IsType<CampaignTimeAdvanced>(Assert.Single(campaign.Execute(new AdvanceCampaignTime(1)).Events)).Summary.TickCount);
-
-    private static void AssertBlocked(CampaignState campaign, string reason)
-    {
-        var before = campaign.Capture();
-        var result = campaign.Execute(new AdvanceCampaignTime(1));
-        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
-        Assert.Equal(reason, Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
-    }
 }
