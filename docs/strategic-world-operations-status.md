@@ -119,17 +119,15 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   pauses time for an alert. Tracked contacts lose detection when coverage disappears.
   Instant-retaliation UFOs skip this pass. Craft detection uses effective radar stats
   including installed-weapon bonuses, excludes destroyed crafts, and includes a craft
-  that refuels and relaunches auto-patrol earlier in the same half-hour handler. A
-  grounded auto-patrol flag alone does not count as airborne radar. The hourly rearming
-  transition into refuelling is projected before marker-ID preflight. On hourly
-  inventory arrivals, preflight reserves capacity only when a matching item transfer,
-  production completion, or daily research reward/return can supply fuel. It excludes
-  delayed and sold production and respects the item-reuse gate for grounded ready craft.
-  Random rewards and shared stock/staff/workshop constraints are bounded without drawing
-  RNG, so marker reservation can still be conservative when a delivery is possible.
-  Incoming auto-patrol crafts retain the transfer preflight gate and are not radar sources.
+  that refuels and relaunches auto-patrol earlier in the same half-hour handler (including
+  after an hourly rearm or an item-fuel delivery). A grounded auto-patrol flag alone does
+  not count as airborne radar. Radar chances above 100 are legal and always detect; the
+  reference's int arithmetic for extreme values is clamped instead of overflowing.
   Preflight checks activity and marker-ID capacity before mission spawning mutates state.
-  Detection scripts and radar values outside the bounded range remain guarded.
+  It reserves a contact marker for every undetected alerting UFO and spawn, whatever the
+  radar coverage, instead of forecasting which grounded crafts earlier handlers could
+  relaunch; only an exhausted ID range can make that reservation block time.
+  Detection scripts remain guarded.
 - A score mission with a wave that creates no UFO or site advances its wave counter and
   rolls the next wave timer at the half-hour boundary. A final empty wave removes the
   completed mission without consuming RNG. These transitions survive save/reload;
@@ -170,8 +168,8 @@ regional waypoint coordinates;
 `StrategicWorldCraftOperationsTests` exercise command, tick, save, relaunch and
 per-tick allocation behavior. `StrategicWorldUfoTransitTests` and
 `StrategicWorldMissionCountdownTests` cover bounded alien-world time and persistence;
-`StrategicWorldCraftRadarTests` covers craft radar contact and the rearm/refuel/auto-patrol
-forecast that decides which crafts are active before half-hour detection.
+`StrategicWorldCraftRadarTests` covers craft and base radar contact, and the rearm, refuel and
+auto-patrol handlers that decide which crafts are airborne before half-hour detection.
 `StrategicWorldTestSupport` holds the shared campaign setup and blocked-tick assertions.
 `StrategicWorldUfoLandingTests` covers the ordinary ground cycle, contact/landing alerts,
 aggregate score and marker bounds, fake-water/ocean outcomes, timer guards and fresh/cache

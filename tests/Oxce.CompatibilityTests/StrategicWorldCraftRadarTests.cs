@@ -113,11 +113,12 @@ public sealed class StrategicWorldCraftRadarTests
     [InlineData("unrelated-production")]
     [InlineData("unfinished-research")]
     [InlineData("returned-research-ready")]
-    public void GroundedCraftDoesNotGateRadarWhenFuelCannotRelaunchIt(string source)
+    public void GroundedCraftStaysDownWhenNoEarlierHandlerDeliversItsFuel(string source)
     {
-        foreach (var invalidRadar in new[] { false, true })
+        foreach (var boostedRadar in new[] { false, true })
         {
-            var campaign = CreateItemFuelPatrolCampaign(source, exhausted: true, invalidRadar);
+            var campaign = CreateItemFuelPatrolCampaign(source, exhausted: false, boostedRadar);
+            var before = campaign.Capture();
 
             var result = campaign.Execute(new AdvanceCampaignTime(1));
 
@@ -127,11 +128,23 @@ public sealed class StrategicWorldCraftRadarTests
             Assert.Equal("STR_READY", Assert.Single(after.Bases[0].Crafts,
                 candidate => candidate.RuleId == "SHIP_FUEL_ITEM").Logistics!.Status);
             Assert.False(Assert.Single(after.World.Ufos).Detected);
-            Assert.Equal(int.MaxValue, after.NextIds["STR_UFO"]);
+            Assert.Equal(before.NextIds.GetValueOrDefault("STR_UFO"), after.NextIds.GetValueOrDefault("STR_UFO"));
+            Assert.Equal(0, Assert.Single(after.World.Ufos).Id);
         }
     }
 
-    private static CampaignState CreateItemFuelPatrolCampaign(string source, bool exhausted, bool invalidRadar = false)
+    [Fact]
+    public void ExhaustedContactMarkersBlockWheneverAnUndetectedUfoIsScanned()
+    {
+        // Preflight reserves a marker for every undetected alerting UFO instead of
+        // forecasting radar coverage; only an exhausted ID range can make this block.
+        var campaign = CreateItemFuelPatrolCampaign("none", exhausted: true);
+
+        AssertTimeBlocked(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+    }
+
+    /// <summary><paramref name="boostedRadar"/> installs RADAR_EXCESS, whose 101% chance is legal.</summary>
+    private static CampaignState CreateItemFuelPatrolCampaign(string source, bool exhausted, bool boostedRadar = false)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var daily = source.Contains("research", StringComparison.Ordinal);
@@ -145,7 +158,7 @@ public sealed class StrategicWorldCraftRadarTests
                 RuleId = "SHIP_FUEL_ITEM",
                 Logistics = flagged.Logistics! with
                 {
-                    Weapons = invalidRadar ? [new CraftWeaponSnapshot("RADAR_EXCESS", 1), null] : [null, null],
+                    Weapons = boostedRadar ? [new CraftWeaponSnapshot("RADAR_EXCESS", 1), null] : [null, null],
                 },
             };
         });
@@ -192,7 +205,7 @@ public sealed class StrategicWorldCraftRadarTests
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
             ufoRuleId: "UFO_SCOUT", speed: 2200);
-        var snapshot = campaign.Capture().WithNextId("STR_UFO", int.MaxValue);
+        var snapshot = campaign.Capture();
         var owner = snapshot.Bases[0];
         var incoming = AutoPatrolling(Ship(snapshot), "STR_REFUELLING", 0) with { Id = 4 };
         campaign = CampaignState.Restore(UfoNearBase(snapshot with
@@ -230,7 +243,7 @@ public sealed class StrategicWorldCraftRadarTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void InvalidCraftRadarStopsBeforeScoringOnlyWhenTheCraftIsActive(bool destroyed)
+    public void RadarChanceAboveHundredDetectsUnlessTheCraftIsDestroyed(bool destroyed)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
@@ -241,11 +254,38 @@ public sealed class StrategicWorldCraftRadarTests
             return radarCraft with { Logistics = radarCraft.Logistics! with { Damage = destroyed ? 100 : 0 } };
         });
         campaign = CampaignState.Restore(UfoNearBase(snapshot), content, new SplitMix64RandomSource(87));
+        if (destroyed)
+        {
+            // time5Seconds would delete a destroyed craft before it could fly again.
+            AssertTimeBlocked(campaign, "Destroyed craft removal requires world simulation.");
+            return;
+        }
+        var before = campaign.Capture();
 
-        // time5Seconds would delete a destroyed craft before it could fly again.
-        AssertTimeBlocked(campaign, destroyed
-            ? "Destroyed craft removal requires world simulation."
-            : "Craft radar stats are outside the supported range.");
+        // RNG::percent treats any chance of 100 or more as a certain detection.
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: false });
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Assert.Equal(3, Assert.Single(campaign.Capture().Regions).ActivityAlien[^1] -
+            Assert.Single(before.Regions).ActivityAlien[^1]);
+    }
+
+    [Fact]
+    public void BaseRadarChanceAboveHundredAlwaysDetects()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            ufoRuleId: "UFO_SCOUT", speed: 2200);
+        campaign = CampaignState.Restore(UfoNearBase(campaign.Capture().WithFacility("RADAR_OVER_TEST")), content,
+            new SplitMix64RandomSource(91));
+
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: false });
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
     }
 
     private static CraftSnapshot Ship(CampaignSnapshot snapshot) =>

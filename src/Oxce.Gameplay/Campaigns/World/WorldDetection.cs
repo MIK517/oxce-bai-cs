@@ -67,8 +67,8 @@ public static class WorldDetection
     {
         ArgumentNullException.ThrowIfNull(percent);
         var hyperwave = false;
-        var hyperwaveChance = 0;
-        var radarChance = 0;
+        long hyperwaveSum = 0;
+        long radarSum = 0;
         foreach (var facility in completedFacilities)
         {
             if (facility.RadarRange >= distance)
@@ -76,14 +76,17 @@ public static class WorldDetection
                 if (facility.Hyperwave)
                 {
                     if (facility.RadarChance == 100 || percent(facility.RadarChance)) hyperwave = true;
-                    hyperwaveChance = checked(hyperwaveChance + facility.RadarChance);
+                    hyperwaveSum += facility.RadarChance;
                 }
                 else
                 {
-                    radarChance = checked(radarChance + facility.RadarChance);
+                    radarSum += facility.RadarChance;
                 }
             }
         }
+        // Base::detect accumulates ints; the port clamps instead of overflowing.
+        var hyperwaveChance = Clamp(hyperwaveSum);
+        var radarChance = Clamp(radarSum);
         if (alreadyTracked)
         {
             if (hyperwave || hyperwaveChance > 0)
@@ -103,7 +106,13 @@ public static class WorldDetection
         return (UfoDetectionResult.Radar, alreadyTracked ? 100 : DetectionChance(radarChance, visibility));
     }
 
-    /// <summary>The shared <c>chance * (100 + visibility) / 100</c> reduction.</summary>
+    /// <summary>
+    /// The shared <c>chance * (100 + visibility) / 100</c> reduction. The reference overflows
+    /// an int for extreme rule values; the port clamps, and RNG::percent treats every result
+    /// of 100 or more as a certain detection anyway.
+    /// </summary>
     public static int DetectionChance(int chance, int visibility) =>
-        checked((int)((long)chance * (100 + visibility) / 100));
+        Clamp((long)chance * (100L + visibility) / 100);
+
+    private static int Clamp(long value) => (int)Math.Clamp(value, int.MinValue, int.MaxValue);
 }

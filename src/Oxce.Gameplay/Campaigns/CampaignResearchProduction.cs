@@ -491,68 +491,6 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery
                 RemoveResearchProject(owner, project);
     }
 
-    /// <summary>
-    /// Possible fuel deliveries before the half-hour refuel pass. GeoscapeState processes
-    /// daily research, hourly transfers, then production. This does not draw reward RNG;
-    /// shared stock/workshop constraints can still prevent a possible delivery or launch.
-    /// </summary>
-    internal bool MayReceiveRefuelItem(BaseState owner, RuleHandle<ItemRuleFamily> item,
-        CampaignTimeTrigger highest, bool requiresReuse)
-    {
-        if (highest < CampaignTimeTrigger.OneHour) return false;
-        // Transfer::advance and Production::step only call Craft::reuseItem for BT_NONE.
-        if (requiresReuse && _content.RuntimeRules.Items[item].Value.BattleType != 0) return false;
-        var id = _content.RuntimeRules.Items.GetExternalId(item);
-        foreach (var transfer in owner.Transfers)
-            if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Quantity > 0 &&
-                transfer.Kind == CampaignTransferKind.Item && transfer.RuleId == id)
-                return true;
-        foreach (var production in owner.Productions)
-        {
-            var rule = _content.RuntimeRules.Manufacture[production.Rule].Value;
-            if (rule.Time <= 0 || rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0) continue;
-            var before = production.Spent / rule.Time;
-            if (!production.Infinite && before >= production.Amount) continue;
-            long assigned = production.Assigned;
-            if (production.IsFallback)
-            {
-                // Earlier queues can release staff, and transfers can add engineers.
-                // Bound the workforce without simulating their random outputs.
-                assigned = owner.Engineers;
-                foreach (var queue in owner.Productions) assigned += queue.Assigned;
-                foreach (var transfer in owner.Transfers)
-                    if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Kind == CampaignTransferKind.Engineer)
-                        assigned += transfer.Quantity;
-            }
-            if (((long)production.Spent + assigned) / rule.Time <= before) continue;
-            if (!production.Sell && rule.ProducedMaterials.Any(output => output.Item == item && output.Quantity > 0) ||
-                rule.RandomProducedItems.Any(output => output.Weight > 0 && output.Items.GetValueOrDefault(id) > 0))
-                return true;
-        }
-        if (highest < CampaignTimeTrigger.OneDay) return false;
-        foreach (var project in owner.Research)
-        {
-            if ((long)project.Spent + project.Assigned < project.Cost) continue;
-            var rule = _content.RuntimeRules.Research[project.Rule].Value;
-            if (SpawnsItem(rule)) return true;
-            // Earlier discoveries can change reward eligibility during the same day.
-            // Include every listed free reward without selecting one or consuming RNG.
-            foreach (var reward in rule.GetOneFree.Concat(rule.GetOneFreeProtected.SelectMany(group => group.Topics)))
-                if (_content.RuntimeRules.Research.TryGet(reward, out var handle) &&
-                    SpawnsItem(_content.RuntimeRules.Research[handle].Value)) return true;
-        }
-        // Research completion can remove held-item projects at other bases too.
-        // Returning an item changes stock, but does not call reuseItem on READY craft.
-        return !requiresReuse && owner.Research.Any(project =>
-        {
-            var rule = _content.RuntimeRules.Research[project.Rule].Value;
-            return HoldsResearchItem(rule) && rule.NeededItem == id;
-        }) && _bases.Any(baseState => baseState.Research.Any(project =>
-            (long)project.Spent + project.Assigned >= project.Cost));
-
-        bool SpawnsItem(RuntimeResearchRule rule) => rule.SpawnedItem == id || rule.SpawnedItemList.Contains(id);
-    }
-
     private void AdvanceProductionHourly(TimeEffects effects)
     {
         foreach (var owner in _bases)
