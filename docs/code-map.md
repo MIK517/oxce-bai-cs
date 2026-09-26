@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 77 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 79 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 78 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -980,13 +980,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 77 files.
+`tests/Oxce.CompatibilityTests` - 79 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
-<details><summary>76 test classes</summary>
+<details><summary>78 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1028,6 +1028,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `PrivatePckCorpusTests` ([PrivatePckCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivatePckCorpusTests.cs))
 - `PrivateResourceBrowserTests` ([PrivateResourceBrowserTests.cs](../tests/Oxce.CompatibilityTests/PrivateResourceBrowserTests.cs))
 - `PrivateStrategicLogisticsTests` ([PrivateStrategicLogisticsTests.cs](../tests/Oxce.CompatibilityTests/PrivateStrategicLogisticsTests.cs))
+- `PrivateStrategicWorldTests` ([PrivateStrategicWorldTests.cs](../tests/Oxce.CompatibilityTests/PrivateStrategicWorldTests.cs))
 - `PrivateTerrainDataCorpusTests` ([PrivateTerrainDataCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateTerrainDataCorpusTests.cs))
 - `PrivateTerrainMapRouteCorpusTests` ([PrivateTerrainMapRouteCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateTerrainMapRouteCorpusTests.cs))
 - `PrivateWavePcmCorpusTests` ([PrivateWavePcmCorpusTests.cs](../tests/Oxce.CompatibilityTests/PrivateWavePcmCorpusTests.cs))
@@ -1048,6 +1049,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldBaseDetectionTests` ([StrategicWorldBaseDetectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldBaseDetectionTests.cs))
 - `StrategicWorldCleanupTests` ([StrategicWorldCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCleanupTests.cs))
 - `StrategicWorldCraftOperationsTests` ([StrategicWorldCraftOperationsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftOperationsTests.cs))
+- `StrategicWorldEnduranceTests` ([StrategicWorldEnduranceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEnduranceTests.cs))
 - `StrategicWorldFixtureTests` ([StrategicWorldFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldFixtureTests.cs))
 - `StrategicWorldLifecycleTraceTests` ([StrategicWorldLifecycleTraceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldLifecycleTraceTests.cs))
 - `StrategicWorldMissionCountdownTests` ([StrategicWorldMissionCountdownTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMissionCountdownTests.cs))

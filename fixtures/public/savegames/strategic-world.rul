@@ -306,6 +306,12 @@ ufoTrajectories:
       - [5, 3, 100]
       - [5, 0, 100]
 alienMissions:
+  # Finite endurance workload: each following UFO is 30-90 minutes away.
+  - type: MISSION_ENDURANCE
+    objective: 0
+    points: 7
+    waves:
+      - {ufo: UFO_SCOUT, count: 36, trajectory: TRAJ_LONG_LANDING, timer: 60}
   - type: MISSION_LONG_LANDING
     objective: 0
     points: 7
