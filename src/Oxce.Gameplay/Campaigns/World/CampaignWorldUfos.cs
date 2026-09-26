@@ -11,22 +11,16 @@ internal sealed partial class CampaignWorld
 {
     // GeoscapeState::time5Seconds returns when arrival destroys a UFO.
     private bool _ufoArrivalEndedTick;
-    private readonly HashSet<int> _ufosWithShieldCapacity = [];
 
-    // The bounded wave handler only creates zero-capacity UFOs. Future handlers that
-    // create shielded UFOs or change a mission's race must update this capability index.
-    private void CacheUfoShieldCapabilities()
+    /// <summary>
+    /// Ufo::getCraftStats().shieldCapacity, including the mission race bonus. Evaluated on
+    /// demand so UFOs created or re-raced by later handlers can never be missed.
+    /// </summary>
+    private bool HasShieldCapacity(UfoSnapshot ufo, AlienMissionSnapshot mission)
     {
-        _ufosWithShieldCapacity.Clear();
-        foreach (var ufo in _ufos)
-        {
-            var mission = FindMission(ufo.MissionId);
-            if (mission is null) continue; // Validate handles ordinary saves; pre-campaign links are optional.
-            var rules = campaign.Content.RuntimeRules.Ufos;
-            var rule = rules[rules.GetRequired(ufo.RuleId)].Value;
-            if ((long)rule.Stats.ShieldCapacity + rule.RaceBonus(mission.Race).ShieldCapacity != 0)
-                _ufosWithShieldCapacity.Add(ufo.UniqueId);
-        }
+        var rules = campaign.Content.RuntimeRules.Ufos;
+        var rule = rules[rules.GetRequired(ufo.RuleId)].Value;
+        return (long)rule.Stats.ShieldCapacity + rule.RaceBonus(mission.Race).ShieldCapacity != 0;
     }
 
     private void RegisterUfoOperations(CampaignCapabilityRegistry registry)
@@ -74,7 +68,8 @@ internal sealed partial class CampaignWorld
             // cannot remove a mission while one of its UFOs is still flying.
             if (campaign.MonthsPassed == -1 && FindMission(ufo.MissionId) is null)
                 return "UFO mission link requires world simulation.";
-            if (_ufosWithShieldCapacity.Contains(ufo.UniqueId) || ufo.Shield is not (-1 or 0))
+            if (ufo.Shield is not (-1 or 0) ||
+                FindMission(ufo.MissionId) is { } shieldMission && HasShieldCapacity(ufo, shieldMission))
                 return "UFO shield handling requires world simulation.";
             if (ufo.Speed < 0)
                 return "UFO speed is invalid.";
@@ -350,7 +345,6 @@ internal sealed partial class CampaignWorld
                 _missions[missionIndex] = mission with { LiveUfos = mission.LiveUfos - 1 };
                 break;
             }
-            _ufosWithShieldCapacity.Remove(ufo.UniqueId);
             _ufos.RemoveAt(index);
         }
     }
