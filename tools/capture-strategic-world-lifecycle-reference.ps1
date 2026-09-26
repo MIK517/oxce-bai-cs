@@ -68,7 +68,7 @@ $geometry = $geometry.Replace('int intValue = 0;', 'int calls = 0; int intValue 
 $geometry = $geometry.Replace('return std::min(max, min + intValue);', 'assert(min <= max); ++calls; return std::min(max, min + intValue);')
 $geometry = $geometry.Replace('return min + fraction * (max - min);', 'assert(min <= max); ++calls; return min + fraction * (max - min);')
 $geometry = $geometry.Replace('std::vector<MissionZone> _missionZones;', 'std::vector<MissionZone> _missionZones; const std::vector<MissionZone>& getMissionZones() const { return _missionZones; } std::string getType() const { return "REGION"; }')
-$collaborators = 'namespace RNG { bool percent(int chance) { return chance > 0; } size_t generate(int minimum, size_t maximum) { assert(minimum >= 0 && (size_t)minimum <= maximum); ++calls; return minimum; } }' + "`n#define LOG_WARNING 0`n#define Log(level) std::cerr`n" + 'using Exception = std::runtime_error; namespace OpenXcom {'
+$collaborators = 'namespace RNG { size_t generate(int minimum, size_t maximum) { assert(minimum >= 0 && (size_t)minimum <= maximum); ++calls; return minimum; } bool percent(int chance) { return (int)generate(0, 99) < chance; } }' + "`n#define LOG_WARNING 0`n#define Log(level) std::cerr`n" + 'using Exception = std::runtime_error; namespace OpenXcom {'
 $geometry = $geometry.Replace('namespace OpenXcom {', $collaborators)
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp'))
 $template = $template.Replace('// GEOMETRY', $geometry)

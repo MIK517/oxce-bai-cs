@@ -126,6 +126,8 @@ void run(const std::string& name,int timer,bool interrupted,bool multiple){
    for(auto* u:game.save.ufos)if(u->_status==Ufo::FLYING || u->_status==Ufo::LANDED){
     game.save.activity+=u->_status==Ufo::LANDED?6:3;
     // Controlled successful radar collaborator; production detection has separate fixtures.
+    // Base::detect still ends with RNG::percent for the hyperwave base's certain chance.
+    RNG::percent(100);
     if(!u->_detected){u->_detected=true;u->id=11+(u->unique-9);if(u->_status==Ufo::LANDED && !u->land)u->land=game.save.getId("STR_LANDING_SITE");pause=true;}
    }
   }

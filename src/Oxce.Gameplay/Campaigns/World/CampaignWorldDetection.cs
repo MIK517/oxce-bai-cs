@@ -292,7 +292,7 @@ internal sealed partial class CampaignWorld
 
     private readonly record struct WorldCraftRadar(WorldPosition Position, int Range, int Chance);
 
-    private bool Percent(int chance) => chance >= 100 || chance > 0 && campaign.Random.NextInclusive(0, 99) < chance;
+    private bool Percent(int chance) => RandomChance.Percent(campaign.Random, chance);
 
     private bool IsInstantRetaliation(AlienMissionSnapshot mission)
     {

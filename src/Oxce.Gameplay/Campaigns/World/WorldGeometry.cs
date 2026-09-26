@@ -191,8 +191,7 @@ public static class WorldGeometry
         // AlienMission::getLandPoint tests the FIRST area's shape, then selects
         // from the whole zone. City points bypass land and fake-water checks.
         if (areas[0].IsPoint) return RandomPoint(region, zone, -1, random);
-        var fakeWater = fakeWaterLandingChance >= 100 ||
-            fakeWaterLandingChance > 0 && random.NextInclusive(0, 99) < fakeWaterLandingChance;
+        var fakeWater = RandomChance.Percent(random, fakeWaterLandingChance);
         for (var attempt = 1; ; attempt++)
         {
             var point = RandomPoint(region, zone, -1, random);
