@@ -58,6 +58,7 @@ public sealed class CampaignStartSettings
         OperationNamesLast = builder.OperationNamesLast.AsReadOnly();
         BuyPriceCoefficients = Array.AsReadOnly((int[])builder.BuyPriceCoefficients.Clone());
         SellPriceCoefficients = Array.AsReadOnly((int[])builder.SellPriceCoefficients.Clone());
+        FixedUserOptions = Sorted(builder.FixedUserOptions);
     }
 
     [System.Text.Json.Serialization.JsonConstructor]
@@ -94,8 +95,10 @@ public sealed class CampaignStartSettings
         IReadOnlyList<int> buyPriceCoefficients,
         IReadOnlyList<int> sellPriceCoefficients,
         IReadOnlyList<YamlMappingNode> globeLayers,
-        int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold)
+        int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
+        IReadOnlyDictionary<string, string>? fixedUserOptions = null)
     {
+        FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
         CustomTrainingFactor = customTrainingFactor;
         ManaWoundThreshold = manaWoundThreshold;
@@ -172,6 +175,14 @@ public sealed class CampaignStartSettings
     public IReadOnlyList<string> OperationNamesFirst { get; }
     public IReadOnlyList<string> OperationNamesLast { get; }
 
+    /// <summary>Mod::_fixedUserOptions: option IDs forced to these textual values by the loaded mods.</summary>
+    public IReadOnlyDictionary<string, string> FixedUserOptions { get; }
+
+    private static ReadOnlyDictionary<string, string> Sorted(IEnumerable<KeyValuePair<string, string>> values) =>
+        new ReadOnlyDictionary<string, string>(new SortedDictionary<string, string>(
+            values.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal),
+            StringComparer.Ordinal));
+
     public YamlMappingNode? GetStartingBase(StartingBaseVariant variant) =>
         variant != StartingBaseVariant.Default && StartingBases.TryGetValue(variant, out var specific)
             ? specific
@@ -222,4 +233,5 @@ internal sealed class CampaignStartSettingsBuilder
     public List<string> BaseNamesLast { get; } = [];
     public List<string> OperationNamesFirst { get; } = [];
     public List<string> OperationNamesLast { get; } = [];
+    public Dictionary<string, string> FixedUserOptions { get; } = new(StringComparer.Ordinal);
 }

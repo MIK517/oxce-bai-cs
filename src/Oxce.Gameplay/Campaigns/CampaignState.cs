@@ -257,7 +257,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             {
                 _restrictions = CampaignSnapshot.ReadOnly(snapshot.Restrictions),
                 _debugMode = snapshot.DebugMode,
-                Options = snapshot.Options,
+                // Mods that fix user options override the options a save was made with.
+                Options = snapshot.Options.WithFixedUserOptions(content.RuntimeRules.Campaign.FixedUserOptions),
             };
             campaign._handlers.Restore(snapshot);
             campaign._handlers.Validate();

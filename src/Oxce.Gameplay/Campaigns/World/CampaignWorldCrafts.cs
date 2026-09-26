@@ -53,11 +53,15 @@ internal sealed partial class CampaignWorld
         var state = craft.Logistics;
         if (state is null) return Blocked("Craft dispatch requires resolved craft state.");
         if (!owner.IsPlaced) return Blocked("A craft cannot depart from an unplaced base.");
-        // InterceptState::lstCraftsLeftClick: a READY craft always starts; an airborne one
-        // only while it is not returning for fuel or after completing its mission.
-        if (state.Status != "STR_READY" && state.Status != "STR_OUT")
-            return Blocked("The craft is not ready to depart.");
-        if (state.Status == "STR_OUT" && IsReturningHome(state)) return Blocked(ReturningReason);
+        // InterceptState::lstCraftsLeftClick: a READY craft always starts. An airborne craft,
+        // or any craft under craftLaunchAlways, starts only while it is not returning for
+        // fuel or after completing its mission.
+        if (state.Status != "STR_READY")
+        {
+            if (state.Status != "STR_OUT" && !campaign.Options.CraftLaunchAlways)
+                return Blocked("The craft is not ready to depart.");
+            if (IsReturningHome(state)) return Blocked(ReturningReason);
+        }
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var speed))

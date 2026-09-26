@@ -48,6 +48,33 @@ internal static class CampaignStartYaml
         return new FacilityPosition(value.First, value.Second, value.Third);
     }
 
+    /// <summary>
+    /// Mod::loadUnorderedNamesToNames: a plain mapping replaces the collection, <c>!add</c>
+    /// merges into it, and a <c>!remove</c> sequence erases keys. Empty names are rejected.
+    /// </summary>
+    public static void ApplyEditableNameMap(Dictionary<string, string> destination, YamlNode node, string key)
+    {
+        if (node.Tag == "!remove")
+        {
+            if (node is not YamlSequenceNode remove)
+                throw new YamlFormatException($"{key} !remove must be a sequence.", node.Span);
+            foreach (var value in remove.Items) destination.Remove(YamlValueReader.ReadString(value));
+            return;
+        }
+        if (node is not YamlMappingNode mapping)
+            throw new YamlFormatException($"{key} must be a mapping.", node.Span);
+        if (node.Tag is null or "!!map" or "!info") destination.Clear();
+        else if (node.Tag != "!add") throw new YamlFormatException($"Unsupported collection tag '{node.Tag}'.", node.Span);
+        foreach (var entry in mapping.Entries)
+        {
+            var name = entry.ScalarKey ?? throw new YamlFormatException($"{key} keys must be scalars.", entry.Key.Span);
+            var value = YamlValueReader.ReadString(entry.Value);
+            if (name.Length == 0 || value.Length == 0)
+                throw new YamlFormatException($"{key} entries require non-empty names and values.", entry.Value.Span);
+            destination[name] = value;
+        }
+    }
+
     public static void ApplyEditableNames(List<string> destination, YamlNode node, bool unique)
     {
         if (node is not YamlSequenceNode)

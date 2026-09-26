@@ -143,6 +143,27 @@ public sealed class CampaignStartRuleCatalogTests
         Assert.Equal(["Alpha", "Beta"], settings.BaseNamesFirst);
     }
 
+    [Theory]
+    [InlineData("!add {aggressiveRetaliation: 'true'}", "aggressiveRetaliation=true;craftLaunchAlways=true;oxceUfoLandingAlert=1")]
+    [InlineData("!remove [craftLaunchAlways]", "aggressiveRetaliation=false;oxceUfoLandingAlert=1")]
+    [InlineData("{canSellLiveAliens: true}", "canSellLiveAliens=true")]
+    public void ComposesFixedUserOptionsAsAnEditableNameMap(string patch, string expected)
+    {
+        // Mod::loadUnorderedNamesToNames: a plain map replaces, !add merges, !remove erases keys.
+        const string baseRules = """
+            fixedUserOptions:
+              aggressiveRetaliation: false
+              craftLaunchAlways: true
+              oxceUfoLandingAlert: 1
+            """;
+        using var fixture = new TemporaryModFixture(("20-base.rul", baseRules),
+            ("10-patch.rul", $"fixedUserOptions: {patch}\n"));
+
+        var settings = CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).Settings;
+
+        Assert.Equal(expected, string.Join(';', settings.FixedUserOptions.Select(pair => $"{pair.Key}={pair.Value}")));
+    }
+
     [Fact]
     public void ReportsInvalidInternalFacilityRelationships()
     {
