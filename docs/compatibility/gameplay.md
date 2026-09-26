@@ -8,6 +8,13 @@ See [branch 3 research and production status](../strategic-research-production-s
 See [the ownership ledger](../phase-6-ownership.md) and
 [ADR 0025](../decisions/0025-strategic-time-and-mobile-save-ownership.md).
 
+The 2026-09-26 [world scope split](../phase-6-plan.md#branch-4--world-simulation-and-mission-generation)
+sets branch 4b closure at the supported ordinary UFO lifecycle and headless craft
+operations. That gate remains open. Branch 4c owns mission/arc/event scheduling,
+broader world lifecycles, remaining scripts, pursuit and globe UI, and must satisfy
+the original combined branch 4 acceptance. The partial statuses below describe
+implemented behavior, not planned acceptance.
+
 | Subsystem or scenario | Status | Reference source | Fixture | Notes |
 |---|---|---|---|---|
 | Battlescape coordinate storage and basic conversions | partial | `src/Battlescape/Position.h` | `core-position` | Signed 16-bit storage, tile/voxel conversion, remainder, and distance rounding are covered. |
@@ -21,7 +28,7 @@ See [the ownership ledger](../phase-6-ownership.md) and
 | Manufacture | compatible for bounded strategic economy | manufacture states, `Production.cpp`, `Base.cpp`, `GeoscapeState.cpp` | `strategic-research-production`; extracted C++ progression oracle | Queue allocation, prepayment/refund, material/craft consumption, repeated/infinite production, autosell, random/item/craft/person outputs, transfer timing and shortage/completion pauses are executable and persisted. |
 | Finance and monthly processing | partial histories and transactions | `GeoscapeState.cpp`, `SavedGame.cpp` | `campaign-foundation`; logistics/save tests | Initial funding and bounded histories persist. Purchases, sales and transfer fees update funds/accounting; monthly purchase-log reset is tested independently. Complete monthly funding, scoring, pacts and campaign failure remain guarded. |
 | Alien missions and UFO movement | partial: bounded branch 4b transit and detection | `src/Geoscape/GeoscapeState.cpp`, `src/Savegame/AlienMission.cpp`, `Ufo.cpp`, `MissionSite.cpp`, `AlienBase.cpp`, `AlienStrategy.cpp` | `strategic-world`; `StrategicWorldRuleProjectionTests`; `StrategicWorldPersistenceTests`; `StrategicWorldUfoTransitTests`; `StrategicWorldMissionCountdownTests`; [foundation status](../strategic-world-foundation-status.md) | Linked rules, world target graph and alien strategy persist. Ordinary flying UFOs move toward anonymous waypoints and cross early-trajectory ten-minute boundaries. A score-mission UFO can reach a nonterminal airborne waypoint and choose its next regional destination. Existing missions count down, advance no-object waves and spawn bounded ordinary airborne UFOs at half-hour boundaries. Flying UFOs score activity in the first matching region and country; completed base radars and airborne crafts detect or lose contacts, and first alerts assign marker IDs. Installed-weapon radar bonuses, destroyed-craft exclusion and same-boundary auto-patrol relaunch are covered. These effects compose with spawning, same-tick movement and save/reload. Destroyed UFOs release mission counts and completed non-retaliation missions expire. Preflight stops before landing, recursive zero-timer waves, later-trajectory ten-minute base retargeting, detection scripts and other unsupported state. Alien mission selection, general entity spawning and full lifecycle remain pending. |
-| Detection and interception | not started | `src/Geoscape/` |  | Legal actions, ranges, and resolution. |
+| Detection and interception | partial detection; interception deferred | `src/Geoscape/`, `src/Savegame/Base.cpp`, `Craft.cpp` | `strategic-world`; `StrategicWorldUfoTransitTests` | Bounded base/craft radar detection and contact loss are implemented in 4b. Remaining detection scripts, ignored-contact alerts and pursuit belong to 4c; interception combat and deployment belong to branch 5. |
 | Tactical map generation | not started | `src/Battlescape/`, `src/Mod/MapScript.cpp` |  | Deterministic fixtures should inject random choices. |
 | Tactical pathfinding and movement | not started | `src/Battlescape/Pathfinding.cpp` |  | Costs, legality, doors, falling, and terrain. |
 | Line of sight and voxel collision | not started | `src/Battlescape/TileEngine.cpp` |  | Gameplay-visible geometry is required compatibility. |
