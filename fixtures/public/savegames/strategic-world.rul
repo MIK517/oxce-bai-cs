@@ -60,6 +60,11 @@ facilities:
     mapName: LOGISTICS
     radarRange: 1000
     radarChance: 100
+  # Base::detect sums chances as ints; above 100 is legal and always detects.
+  - type: RADAR_OVER_TEST
+    mapName: LOGISTICS
+    radarRange: 1000
+    radarChance: 150
   - type: RADAR_HYPER_TEST
     mapName: LOGISTICS
     radarRange: 1000

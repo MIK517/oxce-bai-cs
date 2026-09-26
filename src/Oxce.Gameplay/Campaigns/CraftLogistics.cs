@@ -123,27 +123,24 @@ public static class CraftLogistics
         return damageMaximum;
     }
 
-    /// <summary>Craft::_stats after installed-weapon bonuses, for updateActiveCrafts and Craft::detect.</summary>
-    public static bool TryEffectiveDetectionStats(RuntimeCraftRule rule,
-        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules,
-        out int damageMaximum, out int radarRange, out int radarChance)
+    /// <summary>
+    /// Craft::_stats radar range and chance after installed-weapon bonuses, for Craft::detect.
+    /// The reference adds these as ints; the port clamps instead of overflowing.
+    /// </summary>
+    public static void EffectiveRadar(RuntimeCraftRule rule, IReadOnlyList<CraftWeaponSnapshot?> weapons,
+        RuntimeRuleCatalog rules, out int radarRange, out int radarChance)
     {
-        long damage = rule.DamageMaximum;
         long range = rule.RadarRange;
         long chance = rule.RadarChance;
-        foreach (var weapon in weapons)
+        for (var index = 0; index < weapons.Count; index++)
         {
-            if (weapon is null) continue;
+            if (weapons[index] is not { } weapon) continue;
             var bonus = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats;
-            damage += bonus.GetValueOrDefault("damageMax");
             range += bonus.GetValueOrDefault("radarRange");
             chance += bonus.GetValueOrDefault("radarChance");
         }
-        damageMaximum = (int)Math.Clamp(damage, int.MinValue, int.MaxValue);
-        radarRange = (int)Math.Clamp(range, int.MinValue, int.MaxValue);
-        radarChance = (int)Math.Clamp(chance, int.MinValue, int.MaxValue);
-        return IsSupportedValue(damage) && range is >= 0 and <= int.MaxValue &&
-            chance is >= 0 and <= 100;
+        radarRange = ClampSupportedValue(range);
+        radarChance = ClampSupportedValue(chance);
     }
 
     /// <summary>Craft::areTooManyItemsOnboard counts only the craft item container.</summary>

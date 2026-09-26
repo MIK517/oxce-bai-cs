@@ -205,17 +205,15 @@ public sealed class StrategicWorldMissionCountdownTests
     }
 
     [Fact]
-    public void UndetectableSpawnDoesNotReserveAContactMarker()
+    public void SpawnReservesAContactMarkerEvenWithoutRadarCoverage()
     {
+        // Preflight does not forecast radar coverage; an alerting spawn always reserves a marker.
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
         campaign = CampaignState.Restore(campaign.Capture().WithNextId("STR_UFO", int.MaxValue), content,
             new SplitMix64RandomSource(82));
 
-        AdvanceOne(campaign);
-
-        Assert.False(Assert.Single(campaign.Capture().World.Ufos).Detected);
-        Assert.Equal(int.MaxValue, campaign.Capture().NextIds["STR_UFO"]);
+        AssertTimeBlocked(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
     }
 
     [Fact]
