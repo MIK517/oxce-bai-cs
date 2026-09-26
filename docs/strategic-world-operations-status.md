@@ -149,6 +149,10 @@ per-tick allocation behavior. `StrategicWorldUfoTransitTests` and
 `StrategicWorldUfoLandingTests` covers the ordinary ground cycle, contact/landing alerts,
 aggregate score and marker bounds, fake-water/ocean outcomes, timer guards and fresh/cache
 spawn-through-expiry composition. `WorldLandPointTests` checks selection and retry rules.
+The area-landing scenario rejects a water candidate through the campaign handler,
+then reloads and flies to the accepted land point with fresh/cache rules. Probability
+tests cover rolls 49 and 50 at a 50% fake-water chance. Temporary mutations confirmed
+that bypassing land selection and inverting the probability comparison fail these tests.
 The existing `strategic-world` C++ oracle covers movement, fuel and detection arithmetic.
 The command/timing, terminal-arrival, landing and half-hour integration scenarios are
 reference-shaped tests rather than extracted C++ traces.

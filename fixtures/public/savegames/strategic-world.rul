@@ -184,6 +184,14 @@ ufos:
       RACE_B:
         shieldCapacity: 2
 ufoTrajectories:
+  # Non-city land selection must reject unsuitable candidates in mission zone 0.
+  - id: TRAJ_LANDING_AREA
+    groundTimer: 2
+    waypoints:
+      - [4, 3, 100]
+      - [0, 2, 80]
+      - [6, 0, 50]
+      - [6, 1, 100]
   - id: TRAJ_LANDING
     groundTimer: 2
     waypoints:
