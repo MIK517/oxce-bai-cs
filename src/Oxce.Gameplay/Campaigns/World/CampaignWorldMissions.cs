@@ -135,7 +135,8 @@ internal sealed partial class CampaignWorld
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         // The half-hour UFO handler scores and detects this ship after spawning.
-        if (ufoRule.Scripts.Count != 0 || stats.ShieldCapacity != 0 || speed < 0)
+        if (ufoRule.Scripts.Count != 0 ||
+            !WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position) ||

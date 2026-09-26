@@ -219,6 +219,16 @@ ufos:
     speedMax: 2200
     damageMax: 50
     shieldCapacity: 0
+  - type: UFO_SHIELD_TEST
+    size: STR_SMALL
+    speedMax: 2200
+    damageMax: 100
+    missionScore: 0
+    noAlert: true
+    shieldCapacity: 10
+    shieldRechargeInGeoscape: 125
+    raceBonus:
+      RACE_B: {shieldCapacity: 5, shieldRechargeInGeoscape: 25}
   - type: UFO_LANDING_SILENT
     size: STR_SMALL
     missionScore: 3
@@ -377,6 +387,10 @@ alienMissions:
     objective: 0
     waves:
       - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: MISSION_SPAWN_SHIELD
+    objective: 0
+    waves:
+      - {ufo: UFO_SHIELD_TEST, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
   - type: MISSION_SPAWN_SCORED
     objective: 0
     waves:

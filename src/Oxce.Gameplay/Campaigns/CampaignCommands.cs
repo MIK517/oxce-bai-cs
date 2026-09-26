@@ -7,7 +7,13 @@ public interface ICampaignCommandTarget
     CampaignCommandResult Execute(ICampaignCommand command);
 }
 
-public sealed record AdvanceCampaignTime(int FiveSecondTicks) : ICampaignCommand;
+/// <summary>Reference geoscape selection, independent of command batch length.</summary>
+public enum CampaignTimeSpeed { FiveSeconds, OneMinute, FiveMinutes, ThirtyMinutes, OneHour, OneDay }
+
+public sealed record AdvanceCampaignTime(int FiveSecondTicks) : ICampaignCommand
+{
+    public CampaignTimeSpeed SelectedSpeed { get; init; } = CampaignTimeSpeed.FiveSeconds;
+}
 
 public sealed record PlaceStartingBase(int BaseIndex, string Name, double Longitude, double Latitude) : ICampaignCommand;
 
@@ -84,6 +90,7 @@ public sealed record CampaignTimeAdvanced(
     CampaignTimeTriggerSummary Summary) : ICampaignEvent
 {
     public CampaignTimeTriggerSequence Triggers => new(Previous, Summary.TickCount);
+    public CampaignTimeSpeed SelectedSpeed { get; init; } = CampaignTimeSpeed.FiveSeconds;
 }
 
 public sealed record StartingBasePlaced(

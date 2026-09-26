@@ -69,6 +69,19 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   save advances 220 ticks to the mission-spawn guard instead of stopping at tick zero
   for event scheduling. Corpus totals remain six executable, five blocked and eight
   preservation-only over the existing thirty-minute horizon.
+- UFO shield slice: flying initialization and recharge, race bonuses, clamping and
+  fractional RNG draws; landed/takeoff and terminal-departure paths preserve reference
+  ordering. Ordinary waves can spawn shielded UFOs. Evidence: `strategic-ufo-shield`,
+  `StrategicWorldUfoShieldTests` and `WorldUfoShieldTests`.
+- Explicit `CampaignTimeSpeed` context now accompanies time commands, advancement
+  feedback, preflight and timed handlers. Existing constructors/deconstruction remain
+  unchanged and default to five-second mode. Context is command-local; batch length
+  does not choose it. Hunter-killer retargeting remains unimplemented.
+- Current private continuation: eight executable for thirty minutes, three blocked,
+  eight tactical preservation-only. Rosigma Middle and autogeoscape now continue;
+  Early stops for mission-site lifecycle, and Beginning reaches the mission-spawn guard.
+- Shield/speed validation: root `dotnet test` passes 1,060 tests with zero skips;
+  formatting, code-map and fixture checksum checks pass.
 - Remaining mission/arc/adhoc/event-script selection, objectives, sites/bases, detection
-  scripts, pursuit/special UFOs and headless closure are still outstanding. Branch 4d
+  scripts, pursuit/hunting/escorts and headless closure are still outstanding. Branch 4d
   remains unstarted pending the 4c merge.
