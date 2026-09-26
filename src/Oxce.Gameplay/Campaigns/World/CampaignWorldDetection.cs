@@ -77,17 +77,20 @@ internal sealed partial class CampaignWorld
             var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, missionRule) || mission.Interrupted ||
                 mission.MultiUfoRetaliationInProgress && !missionRule.MultiUfoRetaliationExtra ||
-                mission.NextWave >= missionRule.Waves.Count || mission.SpawnCountdown > 30 ||
-                !CanSpawnOrdinaryUfoWave(mission, missionRule))
+                mission.NextWave >= missionRule.Waves.Count || mission.SpawnCountdown > 30)
                 continue;
-            var wave = missionRule.Waves[mission.NextWave];
-            var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
-            var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-            if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position))
-                return "Alien mission wave spawning requires world simulation.";
-            var reason = CheckHalfHourUfo(wave.UfoType, position, regionTotals, countryTotals);
-            if (reason is not null) return reason;
-            if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert) possibleMarkerIds++;
+            foreach (var step in DueWaveSteps(mission, missionRule))
+            {
+                if (!CanSpawnOrdinaryUfoWave(step, missionRule)) continue;
+                var wave = missionRule.Waves[step.NextWave];
+                var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
+                var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+                if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position))
+                    return "Alien mission wave spawning requires world simulation.";
+                var reason = CheckHalfHourUfo(wave.UfoType, position, regionTotals, countryTotals);
+                if (reason is not null) return reason;
+                if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert) possibleMarkerIds++;
+            }
         }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
         // Share these totals so individually safe awards cannot overflow together.
