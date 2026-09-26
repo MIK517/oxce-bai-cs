@@ -75,6 +75,10 @@ regions:
       # Target::setLongitude wraps this reference-valid range after selection.
       - [[362, 362, 2, 2, 10, CITY_WRAPPED]]
       - [[10, 10, 8, 8, 10, CITY_SPAWN]]
+      # Nearby land points allow a complete ordinary landing cycle before the
+      # still-guarded later-trajectory ten-minute base-detection boundary.
+      - [[8, 8, 2, 2, 10, LANDING_POINT]]
+      - [[8.01, 8.01, 2, 2, 10, DEPARTURE_POINT]]
 alienRaces:
   - id: RACE_A
     members: [SECTOID]
@@ -156,6 +160,12 @@ ufos:
     speedMax: 2200
     damageMax: 50
     shieldCapacity: 0
+  - type: UFO_LANDING_SILENT
+    size: STR_SMALL
+    missionScore: 3
+    noAlert: true
+    speedMax: 2200
+    damageMax: 50
   - type: UFO_HUNTER
     size: STR_LARGE
     visibility: 22
@@ -174,6 +184,34 @@ ufos:
       RACE_B:
         shieldCapacity: 2
 ufoTrajectories:
+  - id: TRAJ_LANDING
+    groundTimer: 2
+    waypoints:
+      - [4, 3, 100]
+      - [5, 2, 80]
+      - [6, 0, 50]
+      - [6, 1, 100]
+  # An early ground point isolates half-hour accounting from the later-point
+  # ten-minute base-detection guard.
+  - id: TRAJ_LANDING_EARLY
+    groundTimer: 2
+    waypoints:
+      - [5, 3, 100]
+      - [6, 0, 50]
+      - [6, 1, 100]
+  # Invalid timers must be rejected before a ground arrival publishes any state.
+  - id: TRAJ_LANDING_ZERO
+    groundTimer: 0
+    waypoints:
+      - [5, 3, 100]
+      - [6, 0, 50]
+      - [6, 1, 100]
+  - id: TRAJ_LANDING_OVERFLOW
+    groundTimer: 2147483647
+    waypoints:
+      - [5, 3, 100]
+      - [6, 0, 50]
+      - [6, 1, 100]
   - id: TRAJ_PATROL
     groundTimer: 12
     waypoints:
@@ -215,6 +253,11 @@ ufoTrajectories:
       - [5, 3, 100]
       - [5, 0, 100]
 alienMissions:
+  - type: MISSION_LANDING
+    objective: 0
+    points: 7
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_LANDING, timer: 9000}
   - type: STR_ALIEN_TERROR
     points: 4
     objective: 3

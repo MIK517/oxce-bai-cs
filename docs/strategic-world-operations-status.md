@@ -1,7 +1,8 @@
 # Phase 6 branch 4b: ordinary UFO and craft operations in progress
 
 The `codex/strategic-world-operations` branch implements bounded craft and UFO
-waypoint flight, mission countdowns, activity scoring and base/craft radar detection. This is a checkpoint, not branch
+waypoint flight, ordinary UFO landing/takeoff, mission countdowns, activity scoring and
+base/craft radar detection. This is a checkpoint, not branch
 4b acceptance. The 2026-09-26 scope revision closes 4b after ordinary UFO lifecycle
 completion; branch 4c owns the remaining world generation, special behavior, scripts,
 pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--ordinary-ufo-and-craft-operations).
@@ -48,17 +49,40 @@ pursuit and globe UI. See [the revised Phase 6 plan](phase-6-plan.md#branch-4b--
   chooses the next regional destination, applies the waypoint altitude and speed, and
   resumes movement across save/reload. This path follows `AlienMission::getWaypoint`'s
   exact mission-site predicate, validates every possible regional coordinate before RNG
-  is consumed, and clears a retained landing ID. Arrival that needs land-point selection,
-  hunting/escorting and nonzero shields remain guarded.
+  is consumed, and clears a retained landing ID. Hunting/escorting and nonzero shields
+  remain guarded.
   Ordinary UFOs at trajectory points 0-1 cross ten-minute boundaries: the reference
   base-detection predicate returns before scanning bases, and the other UFO ten-minute
   handlers have no effect without hunter-killers or alien bases. Later trajectory points
   remain guarded at that boundary.
-  If a terminal UFO precedes a nonterminal arrival in the same tick, the global
+  If a terminal UFO precedes an unsupported nonterminal arrival in the same tick, the global
   preflight stops time before either moves; the reference would return at the terminal UFO.
   Rule-derived shield capacity is cached when a save is restored. Destroyed-UFO counts
   remain guarded during cleanup ticks because a restored live count can become insufficient
   after terminal arrival; this rare check does not allocate per tick.
+- Ordinary score-mission UFOs select landing points using the reference first-area city
+  bypass, one fake-water preference roll and at most 100 candidates. The last candidate
+  is accepted even if unsuitable. Landing on real land or permitted fake water starts
+  the trajectory ground timer in five-second units; forced ocean or forbidden fake-water
+  arrivals stay landed for one tick. Crash-producing damage, mission-site conversion and
+  retaliation landings remain guarded. Invalid or overflowing ground timers stop before
+  arrival changes time, IDs or RNG state.
+- Landed UFOs decrement their timer, take off at very-low altitude using the current
+  trajectory speed, award positive mission points, and retain their landing ID until the
+  next airborne waypoint. Half-hour activity doubles while landed; base/craft detection
+  and contact loss use the ground altitude. First detected ground contacts receive both
+  missing visible and landing IDs unless the rule suppresses contact alerts. A detected
+  UFO landing normally receives a landing ID even for a `noAlert` rule. The optional
+  `oxceUfoLandingAlert` notification pauses after the current tick, defaults off, and
+  persists in `oxcePortOptions`.
+- Marker capacity and combined half-hour/takeoff scoring are checked before time advances,
+  including detection immediately before landing and multiple UFOs lifting together.
+  Ordinary five-second preflight avoids captured mission-lookup predicates and allocates
+  no scoring arrays until a half-hour, takeoff or potential landing-marker arrival is pending.
+  Terminal arrival still defers later ground timers to the next tick. A fresh/cache
+  fixture now completes spawn, detection, landing, takeoff, departure and mission expiry
+  between the guarded later-trajectory ten-minute boundaries; every transition of a
+  short restored lifecycle also survives save/reload and matches a batched command.
 - Existing alien missions decrement their wave countdown at half-hour boundaries, with
   interruption and completed-wave cases preserved. Destroyed UFOs release their mission's
   live count after craft handling, and completed missions expire on the next half-hour
@@ -103,8 +127,9 @@ Reference sources inspected at `4df3a5e`: `src/Savegame/Craft.cpp` (`setDestinat
 `think`, `consumeFuel`, `checkup`), `src/Savegame/MovingTarget.cpp` (`setDestination`,
 `setSpeed`, `move`), `src/Geoscape/GeoscapeState.cpp` (`time5Seconds`, `time10Minutes`,
 `time30Minutes`, `updateActiveCrafts` and waypoint cleanup), `src/Savegame/Ufo.cpp` (`think`,
-`calculateSpeed`, `think`), `src/Savegame/AlienMission.cpp` (`think`,
-`spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`), `src/Savegame/Base.cpp` (`detect`),
+`calculateSpeed`, `setAltitude`, `isCrashed`), `src/Savegame/AlienMission.cpp` (`think`,
+`spawnUfo`, `ufoReachedWaypoint`, `getWaypoint`, `getLandPoint`, `ufoLifting`, `addScore`),
+`src/Engine/Options.cpp` (`oxceUfoLandingAlert` default), `src/Savegame/Base.cpp` (`detect`),
 `src/Savegame/Craft.cpp` (`detect`, effective weapon stats and `isDestroyed`),
 `src/Savegame/Production.cpp` (`step`, immediate versus delayed item delivery),
 `src/Savegame/SavedGame.cpp` (research item rewards),
@@ -121,16 +146,23 @@ regional waypoint coordinates;
 `StrategicWorldCraftOperationsTests` exercise command, tick, save, relaunch and
 per-tick allocation behavior. `StrategicWorldUfoTransitTests` and
 `StrategicWorldMissionCountdownTests` cover bounded alien-world time and persistence.
+`StrategicWorldUfoLandingTests` covers the ordinary ground cycle, contact/landing alerts,
+aggregate score and marker bounds, fake-water/ocean outcomes, timer guards and fresh/cache
+spawn-through-expiry composition. `WorldLandPointTests` checks selection and retry rules.
 The existing `strategic-world` C++ oracle covers movement, fuel and detection arithmetic.
-The command/timing, terminal-arrival and half-hour integration scenarios are
+The command/timing, terminal-arrival, landing and half-hour integration scenarios are
 reference-shaped tests rather than extracted C++ traces.
+
+Landing/takeoff checkpoint (2026-09-26): 576 unit tests and 300 fast compatibility
+tests pass with no skips. Solution formatting, generated code-map validation and
+diff whitespace checks pass. The private content/save corpus was not rerun for this
+checkpoint; full lifecycle trace, corpus and population evidence remains a closure gate.
 
 ## Still required for branch 4b
 
-- Complete ordinary trajectory transitions and land-point selection, landing, ground
-  timers, takeoff and departure.
-- Apply detection/loss and activity accounting to those supported states. Implement the
-  later-trajectory ten-minute behavior needed to finish the supported ordinary mission.
+- Implement later-trajectory ten-minute behavior so ordinary flight and ground timers
+  can cross those boundaries without stopping. The short landing fixture completes
+  between them; it does not establish unrestricted lifecycle composition.
 - Complete UFO deletion, mission live-count/expiry handling and target-reference cleanup
   so the supported lifecycle does not become permanently blocked.
 - Add reference-backed full-lifecycle traces, save/reload at each transition, multi-day

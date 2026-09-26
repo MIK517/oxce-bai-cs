@@ -323,12 +323,13 @@ of purposes 1-2 below.
 is complete. This revised boundary is a plan, not a claim that the branch is accepted.
 Retain its implemented headless dispatch/recall/patrol, craft fuel/servicing integration,
 existing-mission countdowns, bounded airborne/no-object waves, activity and radar detection.
+Ordinary land-point selection, landing, timers, takeoff and departure now compose in
+a short fresh/cache scenario, with transition save/reload and landed detection/scoring.
 
-**Remaining closure scope:** ordinary trajectory transitions and land-point selection;
-landing, ground timers, takeoff and departure; detection/loss and activity accounting
-in those supported states; later-trajectory ten-minute behavior needed to finish the
-supported mission; UFO deletion, mission live counts and expiry, and target-reference
-cleanup. Complete save ownership and required semantics for each enabled transition.
+**Remaining closure scope:** later-trajectory ten-minute behavior so ordinary flight
+and ground timers can cross those boundaries; remaining UFO deletion, mission
+live-count/expiry and target-reference cleanup cases. Complete save ownership and
+required semantics for each enabled transition.
 
 **Acceptance scenario:** with controlled choices, a supported mission spawns a UFO,
 which flies, is detected, lands, takes off and departs; its mission then expires.

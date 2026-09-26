@@ -125,8 +125,7 @@ internal sealed partial class CampaignWorld
         if (hunterKillerPercentage > 0) return false;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
         if (trajectory.Waypoints.Count < 2 ||
-            !IsAirborne(trajectory.Altitude(0)) || !IsAirborne(trajectory.Altitude(1)) ||
-            trajectory.Waypoints.Count > 2 && trajectory.Altitude(2) == 0)
+            !IsAirborne(trajectory.Altitude(0)) || !IsAirborne(trajectory.Altitude(1)))
             return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
@@ -172,6 +171,8 @@ internal sealed partial class CampaignWorld
         var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         var position = NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random));
+        // Fixed-point eligibility implies getLandPoint's city bypass when the
+        // following leg lands, consuming the same regional selection.
         var destination = NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random));
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);

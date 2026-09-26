@@ -182,6 +182,27 @@ public static class WorldGeometry
         return areas;
     }
 
+    /// <summary>AlienMission::getLandPoint, including city bypass and bounded forced selection.</summary>
+    public static WorldPosition LandPoint(RuntimeRegionRule region, RuntimeGlobe globe, int zone,
+        int fakeWaterLandingChance, IRandomSource random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+        var areas = MissionAreas(region, zone);
+        // AlienMission::getLandPoint tests the FIRST area's shape, then selects
+        // from the whole zone. City points bypass land and fake-water checks.
+        if (areas[0].IsPoint) return RandomPoint(region, zone, -1, random);
+        var fakeWater = fakeWaterLandingChance >= 100 ||
+            fakeWaterLandingChance > 0 && random.NextInclusive(0, 99) < fakeWaterLandingChance;
+        for (var attempt = 1; ; attempt++)
+        {
+            var point = RandomPoint(region, zone, -1, random);
+            // The reference accepts the hundredth candidate unconditionally.
+            if (attempt == 100 || InsideLand(globe, point) && InsideRegion(region, point) &&
+                InsideFakeUnderwaterTexture(globe, point) == fakeWater)
+                return point;
+        }
+    }
+
     /// <summary>Globe::insideLand: a polygon whose texture is a cosmetic ocean is not land.</summary>
     public static bool InsideLand(RuntimeGlobe globe, WorldPosition position)
     {

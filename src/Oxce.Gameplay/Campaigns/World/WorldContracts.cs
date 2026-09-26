@@ -48,6 +48,9 @@ public enum UfoStatus
     IgnoreMe = 4,
 }
 
+/// <summary>The optional oxceUfoLandingAlert notification after a detected UFO lands.</summary>
+public sealed record UfoLanded(int UfoUniqueId, int LandingId) : ICampaignEvent;
+
 /// <summary>Reference: <c>Savegame/AlienMission.cpp</c> save nodes.</summary>
 public sealed record AlienMissionSnapshot(
     int Id,

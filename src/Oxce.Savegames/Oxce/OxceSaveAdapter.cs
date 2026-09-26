@@ -500,7 +500,8 @@ public static partial class OxceSaveAdapter
                 Pair("anytimePsiTraining", Boolean(snapshot.Options.AnytimePsiTraining)),
                 Pair("allowPsiStrengthImprovement", Boolean(snapshot.Options.AllowPsiStrengthImprovement)),
                 Pair("maximumBases", Integer(snapshot.Options.MaximumBases)),
-                Pair("allowBuildingQueue", Boolean(snapshot.Options.AllowBuildingQueue))])),
+                Pair("allowBuildingQueue", Boolean(snapshot.Options.AllowBuildingQueue)),
+                Pair("oxceUfoLandingAlert", Boolean(snapshot.Options.UfoLandingAlert))])),
         ]);
     }
 
@@ -760,11 +761,11 @@ public static partial class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
-            Boolean(map, "allowBuildingQueue", false));
+            Boolean(map, "allowBuildingQueue", false), Boolean(map, "oxceUfoLandingAlert", false));
     }
 
     private static CraftLogisticsState? ReadCraftLogistics(

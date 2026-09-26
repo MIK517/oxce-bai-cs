@@ -26,7 +26,7 @@ public sealed class StrategicWorldRuleProjectionTests
         Assert.Empty(globe.Textures[12].Deployments);
 
         var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
-        Assert.Equal(5, region.MissionZones.Count);
+        Assert.Equal(7, region.MissionZones.Count);
         Assert.Equal(10UL, region.RegionWeight);
         Assert.Equal(4UL, region.MissionWeights["MISSION_SCOUT"]);
         Assert.False(region.MissionZones[0].Areas[0].IsPoint);
@@ -40,6 +40,8 @@ public sealed class StrategicWorldRuleProjectionTests
         var spawnCity = Assert.Single(region.MissionZones[4].Areas);
         Assert.True(spawnCity.IsPoint);
         Assert.Equal("CITY_SPAWN", spawnCity.Name);
+        Assert.Equal("LANDING_POINT", Assert.Single(region.MissionZones[5].Areas).Name);
+        Assert.Equal("DEPARTURE_POINT", Assert.Single(region.MissionZones[6].Areas).Name);
 
         var scout = rules.Ufos[rules.Ufos.GetRequired("UFO_SCOUT")].Value;
         Assert.Equal("STR_SMALL", scout.Size);
