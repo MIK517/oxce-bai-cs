@@ -110,11 +110,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     internal IStatefulRandomSource Random => _random;
 
-    internal IReadOnlyList<BaseState> BaseStates => _bases;
+    // Concrete lists keep per-tick world loops on struct enumerators.
+    internal List<BaseState> BaseStates => _bases;
 
-    internal IReadOnlyList<CountryState> CountryStates => _countries;
+    internal List<CountryState> CountryStates => _countries;
 
-    internal IReadOnlyList<RegionState> RegionStates => _regions;
+    internal List<RegionState> RegionStates => _regions;
 
     internal T Read<T>(Func<T> query)
     {

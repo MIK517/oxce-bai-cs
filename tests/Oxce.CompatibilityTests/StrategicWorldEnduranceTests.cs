@@ -141,14 +141,14 @@ public sealed class StrategicWorldEnduranceTests
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(measurements));
 
-        // Regression bounds per additional UFO, measured 2026-09-26 with 1 and 8 bases:
-        // flight replaces one immutable UFO record per tick (208 B/tick measured over 12 ticks);
-        // the half-hour boundary scores and scans every base (752 B with 1 base, 1536 B with 8);
-        // cleanup removes the destroyed UFO (80 B).
+        // Regression bounds per additional UFO, measured 2026-09-26 with 1 and 8 bases alike:
+        // flight replaces one immutable UFO record per tick (208 B/tick over 12 ticks); the
+        // half-hour boundary replaces it for movement and for the detection change (368 B);
+        // cleanup replaces the owning mission record (80 B). None may grow with base count.
         static double MaximumBytesPerUfo(string operation) => operation switch
         {
             "flight" => 12 * 256,
-            "boundary" => 2048,
+            "boundary" => 448,
             "cleanup" => 128,
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };

@@ -54,6 +54,17 @@ public static class WorldDetection
         Func<int, bool> percent)
     {
         ArgumentNullException.ThrowIfNull(completedFacilities);
+        return BaseDetection(completedFacilities.ToArray(), distance, visibility, alreadyTracked, percent);
+    }
+
+    /// <summary>Base::detect over a projected facility span, without allocating.</summary>
+    public static (UfoDetectionResult Type, int Chance) BaseDetection(
+        ReadOnlySpan<WorldRadarFacility> completedFacilities,
+        int distance,
+        int visibility,
+        bool alreadyTracked,
+        Func<int, bool> percent)
+    {
         ArgumentNullException.ThrowIfNull(percent);
         var hyperwave = false;
         var hyperwaveChance = 0;
