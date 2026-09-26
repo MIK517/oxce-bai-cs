@@ -172,6 +172,11 @@ that bypassing land selection and inverting the probability comparison fail thes
 and probability boundaries, mind shields, daily completion, regional selection, RNG
 ordering, malformed inputs and saved discovery/options. The existing C++ base-detection
 chance oracle is also used by the new live handler's aggregate arithmetic.
+The live scan tests distinguish completed facility area from facility count, including
+disabled and unfinished facilities, and check exact half/full damage thresholds with
+race bonuses (`Base::getDetectionChance`, `Ufo::isCrashed`/`isDestroyed`). Temporary
+mutations that omit area, change the half-damage comparison to inclusive, or omit the
+damage bonus each fail these tests; production behavior is unchanged.
 The existing `strategic-world` C++ oracle covers movement, fuel and detection arithmetic.
 The command/timing, terminal-arrival, landing and half-hour integration scenarios are
 reference-shaped tests rather than extracted C++ traces.

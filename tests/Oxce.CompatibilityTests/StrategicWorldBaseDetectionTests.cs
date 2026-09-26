@@ -73,13 +73,19 @@ public sealed class StrategicWorldBaseDetectionTests
     }
 
     [Theory]
-    [InlineData(0, 0, false, true)]
-    [InlineData(26, 0, false, false)]
-    [InlineData(26, 1, false, true)]
-    [InlineData(26, 0, true, true)]
-    [InlineData(50, 1, true, false)]
+    [InlineData(0, 0, false, "RACE_A", true)]
+    [InlineData(25, 0, false, "RACE_A", true)]
+    [InlineData(26, 0, false, "RACE_A", false)]
+    [InlineData(26, 1, false, "RACE_A", true)]
+    [InlineData(26, 0, true, "RACE_A", true)]
+    [InlineData(50, 1, true, "RACE_A", false)]
+    [InlineData(26, 0, false, "RACE_B", true)]
+    [InlineData(30, 0, false, "RACE_B", true)]
+    [InlineData(31, 0, false, "RACE_B", false)]
+    [InlineData(59, 1, false, "RACE_B", true)]
+    [InlineData(60, 1, false, "RACE_B", false)]
     public void DestroyedDepartureScansBeforeCleanupButCrashDamageDoesNot(
-        int damage, int huntBehavior, bool unmanned, bool scans)
+        int damage, int huntBehavior, bool unmanned, string race, bool scans)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateSnapshot(content);
@@ -87,6 +93,9 @@ public sealed class StrategicWorldBaseDetectionTests
         {
             World = snapshot.World with
             {
+                // UFO_SCOUT has damageMax 50 plus 10 for RACE_B. Exactly half does
+                // not count as crashed; kamikaze UFOs remain eligible until fully destroyed.
+                Missions = [snapshot.World.Missions[0] with { Race = race }],
                 Ufos = [snapshot.World.Ufos[0] with
             {
                 Status = UfoStatus.Destroyed,
@@ -196,6 +205,39 @@ public sealed class StrategicWorldBaseDetectionTests
         AdvanceOne(campaign);
         Assert.Equal(scans, campaign.Capture().Bases[0].RetaliationTarget);
         Assert.Equal(scans ? StateAfterRolls(2, 1) : snapshot.RandomState, campaign.Capture().RandomState);
+    }
+
+    [Theory]
+    [InlineData(false, 0, false, true)]
+    [InlineData(false, 0, true, true)]
+    [InlineData(false, 1, false, false)]
+    [InlineData(true, 0, false, true)]
+    [InlineData(true, 0, true, true)]
+    [InlineData(true, 1, false, false)]
+    public void CompletedFacilityAreaCountsEvenWhenDisabled(
+        bool fromCache, int buildTime, bool disabled, bool scans)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var snapshot = CreateSnapshot(content);
+        const ulong seed = 179;
+        var choices = new SplitMix64RandomSource(seed);
+        Assert.Equal(15, choices.NextInclusive(0, 99));
+        // Base::getDetectionChance: the 1-tile store plus a completed 2x3 facility
+        // gives 7/6 + 15 = 16%. An unfinished facility leaves 1/6 + 15 = 15%.
+        // Roll 15 distinguishes area from facility count, either dimension, or zero.
+        var campaign = Restore(content, snapshot with
+        {
+            RandomState = seed,
+            Bases = [snapshot.Bases[0] with
+            {
+                Facilities = [.. snapshot.Bases[0].Facilities,
+                    new FacilitySnapshot("DETECTION_AREA_TEST", 1, 0, buildTime, 0, false, disabled, false)],
+            }],
+        });
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(scans, after.Bases[0].RetaliationTarget);
+        Assert.Equal(choices.State, after.RandomState);
     }
 
     [Theory]
