@@ -24,12 +24,23 @@ public sealed class StrategicWorldUfoLandingTests
 
         // Controlled choices for AlienMission::getLandPoint: prefer real land,
         // reject the first point north of the land polygon, then accept the second.
-        // Build the two raw candidates independently of the land-selection helper.
+        // ufoReachedWaypoint discards this whole selection and repeats getWaypoint.
+        // Build both candidate sequences independently of the land-selection helper.
         var choices = new SplitMix64RandomSource(604);
         Assert.Equal(53, choices.NextInclusive(0, 99)); // UFO_SCOUT's fake-water chance is 20%.
         var rejected = WorldGeometry.RandomPoint(region, 0, -1, choices);
-        var accepted = WorldGeometry.RandomPoint(region, 0, -1, choices);
+        var discarded = WorldGeometry.RandomPoint(region, 0, -1, choices);
         Assert.False(WorldGeometry.InsideLand(globe, rejected));
+        Assert.True(WorldGeometry.InsideLand(globe, discarded));
+        Assert.Equal(62, choices.NextInclusive(0, 99)); // second selection also prefers real land
+        var secondRejected = WorldGeometry.RandomPoint(region, 0, -1, choices);
+        Assert.False(WorldGeometry.InsideLand(globe, secondRejected));
+        var thirdRejected = WorldGeometry.RandomPoint(region, 0, -1, choices);
+        Assert.False(WorldGeometry.InsideLand(globe, thirdRejected));
+        var fakeWaterRejected = WorldGeometry.RandomPoint(region, 0, -1, choices);
+        Assert.True(WorldGeometry.InsideLand(globe, fakeWaterRejected));
+        Assert.True(WorldGeometry.InsideFakeUnderwaterTexture(globe, fakeWaterRejected));
+        var accepted = WorldGeometry.RandomPoint(region, 0, -1, choices);
         Assert.True(WorldGeometry.InsideLand(globe, accepted));
         Assert.False(WorldGeometry.InsideFakeUnderwaterTexture(globe, accepted));
         Assert.True(WorldGeometry.InsideRegion(region, accepted));
@@ -58,7 +69,7 @@ public sealed class StrategicWorldUfoLandingTests
 
         // The selected point is close enough for a short bounded flight.
         // Exercise actual movement and landing after reloading the selected destination.
-        for (var tick = 0; tick < 110 && campaign.Capture().World.Ufos[0].Status == UfoStatus.Flying; tick++)
+        for (var tick = 0; tick < 400 && campaign.Capture().World.Ufos[0].Status == UfoStatus.Flying; tick++)
             AdvanceOne(campaign);
         var landed = Assert.Single(campaign.Capture().World.Ufos);
         Assert.Equal(UfoStatus.Landed, landed.Status);

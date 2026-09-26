@@ -610,6 +610,7 @@ public sealed class StrategicWorldUfoTransitTests
         var before = arriving.Capture();
         var expectedRandom = new SplitMix64RandomSource(before.RandomState);
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
+        _ = WorldGeometry.RandomPoint(region, 3, -1, expectedRandom); // reference's discarded selection
         var rawDestination = WorldGeometry.RandomPoint(region, 3, -1, expectedRandom);
         var expectedDestination = WorldPosition.Create(rawDestination.Longitude, rawDestination.Latitude);
         var expectedSpeedRadian = WorldGeometry.RadianSpeed(1760);

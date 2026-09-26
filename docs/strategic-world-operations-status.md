@@ -178,8 +178,17 @@ race bonuses (`Base::getDetectionChance`, `Ufo::isCrashed`/`isDestroyed`). Tempo
 mutations that omit area, change the half-damage comparison to inclusive, or omit the
 damage bonus each fail these tests; production behavior is unchanged.
 The existing `strategic-world` C++ oracle covers movement, fuel and detection arithmetic.
-The command/timing, terminal-arrival, landing and half-hour integration scenarios are
-reference-shaped tests rather than extracted C++ traces.
+The `strategic-world-lifecycle` oracle now captures 2,884 five-second states across
+ordinary completion, a long landing, interrupted departure and two simultaneous UFOs.
+It extracts pinned UFO/mission/geometry methods and bounded ordinary spawn/countdown
+fragments. Unsupported objective bodies abort; the driver supplies handler ordering,
+a successful radar collaborator, one region/country and pause bits instead of GUI objects.
+It is an asset-free transition oracle, not a full-engine detection or script trace.
+Fresh/cache C# runs match every row and random-choice count, with transition reloads
+and full-snapshot batching equivalence. The trace exposed the reference's two calls to
+`getWaypoint` on nonterminal arrival: both selections now execute, and only the second
+destination is retained. The area-landing test independently pins rejection sequences
+for both selections. Existing radar/base-scan fixtures cover the injected detector.
 
 Landing/takeoff checkpoint (2026-09-26): 576 unit tests and 300 fast compatibility
 tests pass with no skips. Solution formatting, generated code-map validation and

@@ -237,10 +237,15 @@ internal sealed partial class CampaignWorld
         var nextWaypoint = ufo.TrajectoryPoint + 1;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
-        var randomPosition = nextWaypoint + 1 < trajectory.Waypoints.Count && trajectory.Altitude(nextWaypoint + 1) == 0
-            ? WorldGeometry.LandPoint(region, rules.Campaign.Globe, trajectory.Zone(nextWaypoint),
-                ufoRule.FakeWaterLandingChance, campaign.Random)
-            : WorldGeometry.RandomPoint(region, trajectory.Zone(nextWaypoint), -1, campaign.Random);
+        // The pinned ufoReachedWaypoint calls getWaypoint twice: the first result is
+        // discarded on the ordinary path, and the second becomes the destination.
+        // Preserve both selections, including land retries and their random choices.
+        var randomPosition = default(WorldPosition);
+        for (var selection = 0; selection < 2; selection++)
+            randomPosition = nextWaypoint + 1 < trajectory.Waypoints.Count && trajectory.Altitude(nextWaypoint + 1) == 0
+                ? WorldGeometry.LandPoint(region, rules.Campaign.Globe, trajectory.Zone(nextWaypoint),
+                    ufoRule.FakeWaterLandingChance, campaign.Random)
+                : WorldGeometry.RandomPoint(region, trajectory.Zone(nextWaypoint), -1, campaign.Random);
         // AlienMission::ufoReachedWaypoint assigns the raw regional point through
         // Target::setLongitude/setLatitude, which wrap coordinates across the globe.
         var nextPosition = WorldPosition.Create(randomPosition.Longitude, randomPosition.Latitude);

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-world-lifecycle",
+  "description": "Ordinary UFO lifecycle traces with pinned C++ transition methods and bounded score-mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Every five-second state is recorded.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "AlienMission.cpp think/spawnUfo ordinary fragments, ufoReachedWaypoint with unsupported bodies aborting, ufoLifting/isOver/getWaypoint/getLandPoint; Ufo.cpp think/setAltitude/isCrashed/isDestroyed/calculateSpeed; Target/MovingTarget/RuleRegion geometry. Driver controls time and radar success; see probe exclusions.",
+      "probe": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
+      "capture": "tools/capture-strategic-world-lifecycle-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
+      "size": 8974,
+      "sha256": "d6156c7479c74375efc9ab517170e40a1e9ece6ac6d84ba7ca0a05dc61588176"
+    },
+    {
+      "path": "tools/capture-strategic-world-lifecycle-reference.ps1",
+      "size": 12138,
+      "sha256": "31dd24358f5c8576a3e0212054bd75bedf2ca30a3de36a96d8176ca81afd7ba1"
+    },
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
+      "size": 16018,
+      "sha256": "7115b750f3c0d7f736f4addf56b8caf601108a93a315fa8e0a7225593533b3bd"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-world-lifecycle.expected.json"
+}
