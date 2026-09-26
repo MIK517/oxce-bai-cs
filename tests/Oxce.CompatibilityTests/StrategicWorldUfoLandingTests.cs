@@ -420,6 +420,27 @@ public sealed class StrategicWorldUfoLandingTests
         AdvanceOne(campaign);
         Assert.Equal(allowed ? UfoStatus.Landed : UfoStatus.Flying,
             Assert.Single(campaign.Capture().World.Ufos).Status);
+        var afterWater = campaign.Capture();
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(afterWater), content,
+            seed: 96, name: "water-continuation.sav").Campaign;
+        Assert.Equivalent(afterWater, reloaded.Capture(), strict: true);
+        // Continue the forced ocean/fake-water outcome through departure and mission expiry.
+        // These are strategic altitude transitions; tactical depth selection belongs to deployment.
+        foreach (var run in new[] { campaign, reloaded })
+        {
+            var ticks = 0;
+            while (run.Capture().World.Missions.Count > 0 && ticks < 3600)
+            {
+                var result = run.Execute(new AdvanceCampaignTime(120));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var advanced = Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount;
+                Assert.InRange(advanced, 1, 120);
+                ticks += advanced;
+            }
+            Assert.Empty(run.Capture().World.Ufos);
+            Assert.Empty(run.Capture().World.Missions);
+        }
+        Assert.Equivalent(campaign.Capture(), reloaded.Capture(), strict: true);
     }
 
     private static CampaignState CreateCampaign(RuntimeContent content, bool landed = false,
