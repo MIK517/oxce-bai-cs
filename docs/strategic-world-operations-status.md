@@ -207,9 +207,7 @@ The probe's `RNG::percent` counts its draw, and the driver draws `Base::detect`'
 percent roll for every scanned UFO, so the random-choice column follows the reference rule
 that `RNG::percent` always draws, even at 0% or 100%. The port's shared percent helper does
 the same; only the reference's own short-circuits (a 100% hyperwave facility, a city landing
-point) skip the roll. The current expected rows were produced by GCC through a local port of
-the capture script, whose output for the previous probe was byte-identical to the MSVC
-capture; an MSVC recapture should reproduce them unchanged.
+point) skip the roll. The expected rows are the MSVC capture of the current probe.
 Fresh/cache C# runs match every row and random-choice count, with transition reloads
 and full-snapshot batching equivalence. The trace exposed the reference's two calls to
 `getWaypoint` on nonterminal arrival: both selections now execute, and only the second
