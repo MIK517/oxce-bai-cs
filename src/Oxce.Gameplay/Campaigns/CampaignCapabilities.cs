@@ -19,7 +19,7 @@ internal sealed class DelegatedCampaignCapability(Action<CampaignCapabilityRegis
 }
 
 /// <summary>Checks the next tick without mutating state; returns a stop reason or null.</summary>
-internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeTrigger highest);
+internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeTrigger highest, CampaignTimeSpeed selectedSpeed);
 
 /// <summary>
 /// Handler order inside one reference time handler (<c>GeoscapeState::time5Seconds</c> ...
@@ -99,6 +99,12 @@ internal sealed class CampaignCapabilityRegistry
     {
         ArgumentNullException.ThrowIfNull(check);
         Add(_preflights, new Ordered<CampaignTimePreflight>(order, name, check), "preflight");
+    }
+
+    public void Preflight(int order, string name, Func<CampaignTime, CampaignTimeTrigger, string?> check)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+        Preflight(order, name, (next, highest, _) => check(next, highest));
     }
 
     public void Timed(CampaignTimeTrigger trigger, int order, string name, Action<CampaignState.TimeEffects> handler)
@@ -195,10 +201,11 @@ internal sealed class CampaignHandlerTable(
 
     public IReadOnlyCollection<Type> CommandTypes => commands.Keys;
 
-    public string? Preflight(CampaignTime next, CampaignTimeTrigger highest)
+    public string? Preflight(CampaignTime next, CampaignTimeTrigger highest,
+        CampaignTimeSpeed selectedSpeed = CampaignTimeSpeed.FiveSeconds)
     {
         foreach (var check in preflights)
-            if (check.Handler(next, highest) is { } reason) return reason;
+            if (check.Handler(next, highest, selectedSpeed) is { } reason) return reason;
         return null;
     }
 

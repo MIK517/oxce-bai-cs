@@ -430,7 +430,7 @@ public sealed class StrategicWorldUfoTransitTests
     [Theory]
     [InlineData("crashed", "UFO state requires world simulation.")]
     [InlineData("hunter", "UFO state requires world simulation.")]
-    [InlineData("shield", "UFO shield handling requires world simulation.")]
+    [InlineData("shield", "UFO shield arithmetic exceeds the supported range.")]
     [InlineData("speed", "UFO speed is invalid.")]
     public void UnsupportedUfoStateReportsItsPreflightReason(string condition, string reason)
     {
@@ -442,7 +442,7 @@ public sealed class StrategicWorldUfoTransitTests
         {
             "crashed" => ufo with { Status = UfoStatus.Crashed },
             "hunter" => ufo with { HunterKiller = true },
-            "shield" => ufo with { Shield = 1 },
+            "shield" => ufo with { Shield = -2 },
             "speed" => ufo with { Speed = -1 },
             _ => throw new ArgumentOutOfRangeException(nameof(condition)),
         };
@@ -455,7 +455,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void RaceDerivedShieldCapacityReportsItsPreflightReason()
+    public void RaceDerivedShieldCapacityInitializesOnTheFirstFlyingTick()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
@@ -466,7 +466,8 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with { Missions = [mission with { Race = "RACE_B" }] },
         }, content, new SplitMix64RandomSource(63));
 
-        AssertTimeBlocked(restored, "UFO shield handling requires world simulation.");
+        AdvanceOne(restored);
+        Assert.Equal(2, Assert.Single(restored.Capture().World.Ufos).Shield);
     }
 
     [Fact]

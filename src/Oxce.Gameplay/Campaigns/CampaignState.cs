@@ -297,11 +297,12 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(command.FiveSecondTicks);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(command.FiveSecondTicks, MaximumCommandTicks);
+        if (!Enum.IsDefined(command.SelectedSpeed)) throw new ArgumentOutOfRangeException(nameof(command), "Selected speed is invalid.");
         var previous = Time;
         _logisticsQuote = null;
-        var effects = new TimeEffects(this);
+        var effects = new TimeEffects(this, command.SelectedSpeed);
         var result = CampaignTimeDispatcher.Advance(Time, command.FiveSecondTicks, effects);
-        var advanced = new CampaignTimeAdvanced(previous, Time, result.Summary);
+        var advanced = new CampaignTimeAdvanced(previous, Time, result.Summary) { SelectedSpeed = command.SelectedSpeed };
         if (effects.Events is { } notifications)
         {
             notifications.Insert(0, advanced);
@@ -312,16 +313,18 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             ? [advanced, new CampaignActionBlocked(reason)] : [advanced]);
     }
 
-    internal sealed class TimeEffects(CampaignState campaign) : ICampaignTimeEffects
+    internal sealed class TimeEffects(CampaignState campaign,
+        CampaignTimeSpeed selectedSpeed = CampaignTimeSpeed.FiveSeconds) : ICampaignTimeEffects
     {
         public List<ICampaignEvent>? Events { get; private set; }
         /// <summary>Craft identified by base, rule type and ID; a craft list can grow within a tick.</summary>
         internal List<(int BaseId, string CraftTypeId, int CraftId)> AutoPatrolCandidates { get; } = [];
         public CampaignTime Current => campaign.Time;
+        public CampaignTimeSpeed SelectedSpeed { get; } = selectedSpeed;
         public void Notify(ICampaignEvent notification) => (Events ??= []).Add(notification);
 
         public string? Preflight(CampaignTime nextTime, CampaignTimeTrigger highestTrigger) =>
-            campaign._handlers.Preflight(nextTime, highestTrigger);
+            campaign._handlers.Preflight(nextTime, highestTrigger, SelectedSpeed);
 
         public bool Apply(CampaignTime current, CampaignTimeTrigger trigger)
         {

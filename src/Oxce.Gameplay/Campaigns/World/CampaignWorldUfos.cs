@@ -16,11 +16,26 @@ internal sealed partial class CampaignWorld
     /// Ufo::getCraftStats().shieldCapacity, including the mission race bonus. Evaluated on
     /// demand so UFOs created or re-raced by later handlers can never be missed.
     /// </summary>
-    private bool HasShieldCapacity(UfoSnapshot ufo, AlienMissionSnapshot mission)
+    private bool ValidUfoShields(UfoSnapshot ufo, AlienMissionSnapshot mission)
     {
         var rules = campaign.Content.RuntimeRules.Ufos;
         var rule = rules[rules.GetRequired(ufo.RuleId)].Value;
-        return (long)rule.Stats.ShieldCapacity + rule.RaceBonus(mission.Race).ShieldCapacity != 0;
+        var bonus = rule.RaceBonus(mission.Race);
+        var capacity = (long)rule.Stats.ShieldCapacity + bonus.ShieldCapacity;
+        var recharge = (long)rule.Stats.ShieldRechargeInGeoscape + bonus.ShieldRechargeInGeoscape;
+        return capacity is >= 0 and <= int.MaxValue && recharge is >= int.MinValue and <= int.MaxValue &&
+            WorldUfoShields.IsValid(ufo.Shield, (int)capacity, (int)recharge);
+    }
+
+    private UfoSnapshot RechargeUfoShield(UfoSnapshot ufo)
+    {
+        var rules = campaign.Content.RuntimeRules.Ufos;
+        var rule = rules[rules.GetRequired(ufo.RuleId)].Value;
+        var bonus = rule.RaceBonus(FindMission(ufo.MissionId)!.Race);
+        var shield = WorldUfoShields.Recharge(ufo.Shield,
+            checked(rule.Stats.ShieldCapacity + bonus.ShieldCapacity),
+            checked(rule.Stats.ShieldRechargeInGeoscape + bonus.ShieldRechargeInGeoscape), campaign.Random);
+        return shield == ufo.Shield ? ufo : ufo with { Shield = shield };
     }
 
     private void RegisterUfoOperations(CampaignCapabilityRegistry registry)
@@ -68,9 +83,8 @@ internal sealed partial class CampaignWorld
             // cannot remove a mission while one of its UFOs is still flying.
             if (campaign.MonthsPassed == -1 && FindMission(ufo.MissionId) is null)
                 return "UFO mission link requires world simulation.";
-            if (ufo.Shield is not (-1 or 0) ||
-                FindMission(ufo.MissionId) is { } shieldMission && HasShieldCapacity(ufo, shieldMission))
-                return "UFO shield handling requires world simulation.";
+            if (FindMission(ufo.MissionId) is { } shieldMission && !ValidUfoShields(ufo, shieldMission))
+                return "UFO shield arithmetic exceeds the supported range.";
             if (ufo.Speed < 0)
                 return "UFO speed is invalid.";
             if (ufo.Status == UfoStatus.Landed)
@@ -134,7 +148,8 @@ internal sealed partial class CampaignWorld
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         throw new InvalidOperationException("UFO arrival changed after world preflight.");
                     var arrived = AdvanceOrdinaryWaypoint(ufo, mission, trajectory, moved);
-                    _ufos[index] = arrived;
+                    // The switch entered its FLYING branch, so this also recharges on landing.
+                    _ufos[index] = RechargeUfoShield(arrived);
                     if (campaign.Options.UfoLandingAlert && arrived.Status == UfoStatus.Landed &&
                         arrived.Detected && arrived.LandId != 0)
                         effects.Notify(new UfoLanded(arrived.UniqueId, arrived.LandId));
@@ -157,7 +172,7 @@ internal sealed partial class CampaignWorld
                 _ufoArrivalEndedTick = true;
                 break;
             }
-            _ufos[index] = ufo with
+            _ufos[index] = RechargeUfoShield(ufo with
             {
                 Longitude = moved.Longitude,
                 Latitude = moved.Latitude,
@@ -165,8 +180,7 @@ internal sealed partial class CampaignWorld
                 SpeedLongitude = vector.Longitude,
                 SpeedLatitude = vector.Latitude,
                 Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
-                Shield = ufo.Shield == -1 ? 0 : ufo.Shield,
-            };
+            });
         }
     }
 
@@ -266,7 +280,6 @@ internal sealed partial class CampaignWorld
             SpeedLongitude = vector.Longitude,
             SpeedLatitude = vector.Latitude,
             Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
-            Shield = ufo.Shield == -1 ? 0 : ufo.Shield,
         };
     }
 

@@ -38,9 +38,13 @@ public sealed class PrivateStrategicWorldTests
             Assert.Equivalent(first, Exercise(cached.Content!, request, family), strict: true);
             results.AddRange(first);
         }
+        // Retain the measured classifications even when an expectation fails, for review.
+        var path = TestFixtures.RepositoryPath("artifacts", "world-closure-corpus.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, JsonSerializer.Serialize(results));
         Assert.Equal(19, results.Count);
-        Assert.Equal(6, results.Count(result => result.Outcome == "executable"));
-        Assert.Equal(5, results.Count(result => result.Outcome == "blocked"));
+        Assert.Equal(8, results.Count(result => result.Outcome == "executable"));
+        Assert.Equal(3, results.Count(result => result.Outcome == "blocked"));
         Assert.Equal(8, results.Count(result => result.Outcome == "preservation-only"));
         foreach (var result in results)
         {
@@ -48,17 +52,14 @@ public sealed class PrivateStrategicWorldTests
             {
                 ("vanilla-ufo", "early/Begining.sav") => (125, "Alien mission wave spawning requires world simulation."),
                 ("modded/rosigma", "early/Begining.sav") => (220, "Alien mission wave spawning requires world simulation."),
-                ("modded/rosigma", "early/Early.sav" or "early/Middle.sav" or "early/_autogeo_.asav") =>
-                    (0, "UFO shield handling requires world simulation."),
+                ("modded/rosigma", "early/Early.sav") =>
+                    (0, "Mission site expiry requires world simulation."),
                 (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
                     (0, "Active tactical battle is preserved; tactical continuation is unavailable."),
                 _ => (360, (string?)null),
             };
             Assert.Equal(expected, (result.Ticks, result.Reason));
         }
-        var path = TestFixtures.RepositoryPath("artifacts", "world-closure-corpus.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, JsonSerializer.Serialize(results));
     }
 
     private static ContinuationResult[] Exercise(RuntimeContent content, InstallationLoadRequest request, string family)

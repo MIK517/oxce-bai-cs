@@ -330,6 +330,11 @@ stationary-craft allocation checks remain stricter than these moving-population 
 
 ## Assigned to branch 4c
 
+Subsequent scope revision: branch 4b merged in `e10d96f`; the approved
+[4c/4d delivery plan](phase-6-world-integration-plan.md) assigns headless work to 4c
+and globe/UI plus combined acceptance to 4d. The event and UFO shield slices have
+begun 4c; the historical closure evidence above describes the 4b baseline.
+
 - Alien strategy, mission/arc/event projection, selection and daily/monthly scheduling.
 - General regional UFO/deployment waves, deployment-only and zero-timer follow-up waves,
   broader mission objectives and their immediate consequences.
