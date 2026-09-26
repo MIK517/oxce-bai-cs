@@ -25,9 +25,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 73 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 74 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 77 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 78 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -443,6 +443,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldTargetKind` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The kinds of globe target a moving target can be sent to.
 - `WorldTargetReference` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - A saved reference to a globe target: the external type name plus the identity used by `Target::saveId`.
 - `UfoStatus` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Ufo::UfoStatus`.
+- `UfoLanded` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The optional oxceUfoLandingAlert notification after a detected UFO lands.
 - `AlienMissionSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/AlienMission.cpp` save nodes.
 - `UfoSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/Ufo.cpp` save nodes.
 - `WaypointSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/Waypoint.cpp`; a bare globe marker crafts can be sent to.
@@ -979,13 +980,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 73 files.
+`tests/Oxce.CompatibilityTests` - 74 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
-<details><summary>72 test classes</summary>
+<details><summary>73 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1049,6 +1050,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldMissionCountdownTests` ([StrategicWorldMissionCountdownTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMissionCountdownTests.cs))
 - `StrategicWorldPersistenceTests` ([StrategicWorldPersistenceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldPersistenceTests.cs))
 - `StrategicWorldRuleProjectionTests` ([StrategicWorldRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRuleProjectionTests.cs))
+- `StrategicWorldUfoLandingTests` ([StrategicWorldUfoLandingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoLandingTests.cs))
 - `StrategicWorldUfoTransitTests` ([StrategicWorldUfoTransitTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoTransitTests.cs))
 - `TerrainDataFixtureTests` ([TerrainDataFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDataFixtureTests.cs))
 - `TerrainDeploymentRulesFixtureTests` ([TerrainDeploymentRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDeploymentRulesFixtureTests.cs))
@@ -1073,9 +1075,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 77 files.
+`tests/Oxce.UnitTests` - 78 files.
 
-<details><summary>77 test classes</summary>
+<details><summary>78 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1116,6 +1118,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `SoldierGenerationTests` ([SoldierGenerationTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierGenerationTests.cs))
 - `SoldierPilotingTests` ([SoldierPilotingTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierPilotingTests.cs))
 - `WorldGeometryTests` ([WorldGeometryTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldGeometryTests.cs))
+- `WorldLandPointTests` ([WorldLandPointTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldLandPointTests.cs))
 - `CampaignStartRuleCatalogTests` ([CampaignStartRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/CampaignStartRuleCatalogTests.cs))
 - `CommonResourceLayerTests` ([CommonResourceLayerTests.cs](../tests/Oxce.UnitTests/Mods/CommonResourceLayerTests.cs))
 - `ContentSnapshotTests` ([ContentSnapshotTests.cs](../tests/Oxce.UnitTests/Mods/ContentSnapshotTests.cs))

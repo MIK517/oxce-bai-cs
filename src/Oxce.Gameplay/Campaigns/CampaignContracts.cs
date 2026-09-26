@@ -15,7 +15,7 @@ public enum CampaignDifficulty
 
 public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool CanSellLiveAliens = false,
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
-    int MaximumBases = 8, bool AllowBuildingQueue = false);
+    int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false);
 
 public readonly record struct CampaignId
 {

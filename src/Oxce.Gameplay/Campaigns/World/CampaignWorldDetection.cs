@@ -3,7 +3,7 @@ using Oxce.Mods.Rulesets.Runtime;
 namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>
-/// The ordinary flying-UFO portion of GeoscapeState::time30Minutes: alien activity
+/// The ordinary flying/landed UFO portion of GeoscapeState::time30Minutes: alien activity
 /// and Base::detect/Craft::detect. Detection scripts remain a preflight gate.
 /// </summary>
 internal sealed partial class CampaignWorld
@@ -14,53 +14,72 @@ internal sealed partial class CampaignWorld
 
     private string? UfoHalfHourReason(CampaignTimeTrigger highest)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
-        var hasFlyingUfo = false;
+        var halfHour = highest >= CampaignTimeTrigger.ThirtyMinutes;
+        var hasUfoWork = false;
         foreach (var ufo in _ufos)
         {
-            if (ufo.Status != UfoStatus.Flying) continue;
-            hasFlyingUfo = true;
-            break;
+            if (halfHour && ufo.Status is UfoStatus.Flying or UfoStatus.Landed ||
+                ufo.Status == UfoStatus.Landed && ufo.SecondsRemaining == 5 ||
+                ufo.Detected && ufo.LandId == 0 && ArrivesOnGround(ufo))
+            {
+                hasUfoWork = true;
+                break;
+            }
         }
         var hasDueWave = false;
         foreach (var mission in _missions)
         {
+            if (!halfHour) break;
             if (mission.Interrupted || mission.SpawnCountdown > 30) continue;
             hasDueWave = true;
             break;
         }
-        if (!hasFlyingUfo && !hasDueWave) return null;
+        if (!hasUfoWork && !hasDueWave) return null;
         var regionTotals = campaign.RegionStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
         var countryTotals = campaign.CountryStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
         var possibleMarkerIds = 0;
+        var possibleLandingIds = 0;
         List<WorldCraftRadar> craftRadars = [];
         var craftRadarsProjected = false;
         foreach (var ufo in _ufos)
         {
-            if (ufo.Status != UfoStatus.Flying) continue;
-            var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId);
+            if (ufo.Status is not (UfoStatus.Flying or UfoStatus.Landed)) continue;
+            var mission = FindMission(ufo.MissionId);
             if (mission is null)
                 return "UFO mission link requires world simulation.";
             // GeoscapeState::time30Minutes skips instant retaliation UFOs before
             // activity, detection, and hidden-contact accounting.
-            if (IsInstantRetaliation(mission)) continue;
-            if (!craftRadarsProjected)
-            {
-                var craftReason = CollectCraftRadars(craftRadars, forecastRefuelling: true, highest);
-                if (craftReason is not null) return craftReason;
-                craftRadarsProjected = true;
-            }
-            var reason = CheckHalfHourUfo(ufo.RuleId, ufo.Position, ufo.Altitude,
-                regionTotals, countryTotals, craftRadars, highest, out var canDetect);
-            if (reason is not null) return reason;
+            var canDetect = false;
             var rule = campaign.Content.RuntimeRules.Ufos[
                 campaign.Content.RuntimeRules.Ufos.GetRequired(ufo.RuleId)].Value;
-            if (canDetect && !ufo.Detected && ufo.Id == 0 && !rule.NoAlert) possibleMarkerIds++;
+            if (halfHour && !IsInstantRetaliation(mission))
+            {
+                if (!craftRadarsProjected)
+                {
+                    var craftReason = CollectCraftRadars(craftRadars, forecastRefuelling: true, highest);
+                    if (craftReason is not null) return craftReason;
+                    craftRadarsProjected = true;
+                }
+                var reason = CheckHalfHourUfo(ufo.RuleId, ufo.Position, ufo.Altitude,
+                    regionTotals, countryTotals, craftRadars, highest, out canDetect,
+                    ufo.Status == UfoStatus.Landed ? 2 : 1);
+                if (reason is not null) return reason;
+                if (canDetect && !ufo.Detected && !rule.NoAlert)
+                {
+                    if (ufo.Id == 0) possibleMarkerIds++;
+                    if (ufo.Status == UfoStatus.Landed && ufo.LandId == 0) possibleLandingIds++;
+                }
+            }
+            // Half-hour detection precedes landing in this tick. Even a noAlert UFO
+            // can become detected here and receive a landing marker on arrival.
+            if (ufo.LandId == 0 && (ufo.Detected || canDetect) && ArrivesOnGround(ufo) &&
+                LandingAllowed(ufo.Destination!.Position, rule)) possibleLandingIds++;
         }
         // AlienMission::think runs before the scoring and detection pass. Check its
         // possible UFOs using their fixed first point without drawing RNG in preflight.
         foreach (var mission in _missions)
         {
+            if (!halfHour) break;
             var rules = campaign.Content.RuntimeRules;
             var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, missionRule) || mission.Interrupted ||
@@ -85,25 +104,38 @@ internal sealed partial class CampaignWorld
             if (reason is not null) return reason;
             if (canDetect && !rules.Ufos[wave.Ufo!.Value].Value.NoAlert) possibleMarkerIds++;
         }
-        return CanAllocateUfoMarkerIds(possibleMarkerIds)
-            ? null : "UFO contact marker IDs are exhausted or collide with a saved UFO.";
+        // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
+        // Share these totals so individually safe awards cannot overflow together.
+        foreach (var ufo in _ufos)
+        {
+            if (ufo.Status != UfoStatus.Landed || ufo.SecondsRemaining != 5) continue;
+            var mission = FindMission(ufo.MissionId)!;
+            var rules = campaign.Content.RuntimeRules;
+            var points = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value.Points;
+            if (points > 0 && CheckActivityScore(ufo.Position, points, regionTotals, countryTotals) is { } reason)
+                return reason;
+        }
+        if (!CanAllocateUfoMarkerIds(possibleMarkerIds))
+            return "UFO contact marker IDs are exhausted or collide with a saved UFO.";
+        return CanAllocateUfoMarkerIds(possibleLandingIds, landing: true)
+            ? null : "UFO landing marker IDs are exhausted or collide with a saved UFO.";
     }
 
-    private bool CanAllocateUfoMarkerIds(int count)
+    private bool CanAllocateUfoMarkerIds(int count, bool landing = false)
     {
         if (count == 0) return true;
-        var first = campaign.PeekNextId("STR_UFO");
+        var first = campaign.PeekNextId(landing ? "STR_LANDING_SITE" : "STR_UFO");
         var afterLast = (long)first + count;
         if (afterLast > int.MaxValue) return false;
         foreach (var ufo in _ufos)
-            if (ufo.Id >= first && ufo.Id < afterLast)
+            if ((landing ? ufo.LandId : ufo.Id) >= first && (landing ? ufo.LandId : ufo.Id) < afterLast)
                 return false;
         return true;
     }
 
     private string? CheckHalfHourUfo(string ruleId, WorldPosition position, string altitude,
         long[] regionTotals, long[] countryTotals, IReadOnlyList<WorldCraftRadar> craftRadars,
-        CampaignTimeTrigger highest, out bool canDetect)
+        CampaignTimeTrigger highest, out bool canDetect, int scoreMultiplier = 1)
     {
         canDetect = false;
         var rules = campaign.Content.RuntimeRules;
@@ -112,26 +144,12 @@ internal sealed partial class CampaignWorld
             return "UFO detection scripts require world simulation.";
         if (ufoRule.DefaultVisibility is < -100 or > 100)
             return "UFO detection visibility is outside the supported range.";
-        var score = ufoRule.MissionScore;
+        var score = (long)ufoRule.MissionScore * scoreMultiplier;
+        if (score is < int.MinValue or > int.MaxValue)
+            return "UFO alien activity exceeds the supported range.";
+        if (CheckActivityScore(position, (int)score, regionTotals, countryTotals) is { } scoreReason)
+            return scoreReason;
         var visibility = WorldAltitudes.Visibility(ufoRule.DefaultVisibility, altitude);
-        for (var index = 0; index < campaign.RegionStates.Count; index++)
-        {
-            var region = campaign.RegionStates[index];
-            if (!WorldGeometry.InsideRegion(rules.Regions[region.Rule].Value, position)) continue;
-            regionTotals[index] += score;
-            if (regionTotals[index] is < int.MinValue or > int.MaxValue)
-                return "UFO alien activity exceeds the supported range.";
-            break;
-        }
-        for (var index = 0; index < campaign.CountryStates.Count; index++)
-        {
-            var country = campaign.CountryStates[index];
-            if (!WorldGeometry.InsideCountry(rules.Countries[country.Rule].Value, position)) continue;
-            countryTotals[index] += score;
-            if (countryTotals[index] is < int.MinValue or > int.MaxValue)
-                return "UFO alien activity exceeds the supported range.";
-            break;
-        }
         foreach (var owner in campaign.BaseStates)
         {
             var distance = WorldGeometry.XcomDistance(WorldGeometry.Distance(
@@ -171,8 +189,8 @@ internal sealed partial class CampaignWorld
         for (var index = 0; index < _ufos.Count; index++)
         {
             var ufo = _ufos[index];
-            if (ufo.Status != UfoStatus.Flying) continue;
-            var mission = _missions.Find(candidate => candidate.Id == ufo.MissionId) ??
+            if (ufo.Status is not (UfoStatus.Flying or UfoStatus.Landed)) continue;
+            var mission = FindMission(ufo.MissionId) ??
                 throw new InvalidOperationException("UFO mission link changed after world preflight.");
             if (IsInstantRetaliation(mission)) continue;
             if (craftRadars is null)
@@ -184,7 +202,7 @@ internal sealed partial class CampaignWorld
             }
             var rules = campaign.Content.RuntimeRules;
             var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
-            ScoreUfoActivity(ufo.Position, ufoRule.MissionScore, rules);
+            ScoreUfoActivity(ufo.Position, checked(ufoRule.MissionScore * (ufo.Status == UfoStatus.Landed ? 2 : 1)), rules);
             var detected = DetectUfoFromBases(ufo, ufoRule, rules,
                 radars ??= new List<WorldRadarFacility>());
             detected |= DetectUfoFromCrafts(ufo, ufoRule, craftRadars);
@@ -192,7 +210,9 @@ internal sealed partial class CampaignWorld
             {
                 var hyperwave = (detected & UfoDetectionResult.Hyperwave) == UfoDetectionResult.Hyperwave;
                 var markerId = !ufoRule.NoAlert && ufo.Id == 0 ? campaign.NextId("STR_UFO") : ufo.Id;
-                _ufos[index] = ufo with { Id = markerId, Detected = true, HyperDetected = hyperwave };
+                var landingId = !ufoRule.NoAlert && ufo.Status == UfoStatus.Landed && ufo.LandId == 0
+                    ? campaign.NextId("STR_LANDING_SITE") : ufo.LandId;
+                _ufos[index] = ufo with { Id = markerId, LandId = landingId, Detected = true, HyperDetected = hyperwave };
                 if (!ufoRule.NoAlert) effects.Notify(new UfoContactDetected(ufo.UniqueId, hyperwave));
             }
             else if (ufo.Detected && detected == UfoDetectionResult.None)
@@ -200,6 +220,30 @@ internal sealed partial class CampaignWorld
             else if (ufo.Detected && detected == UfoDetectionResult.Hyperwave && !ufo.HyperDetected)
                 _ufos[index] = ufo with { HyperDetected = true };
         }
+    }
+
+    private string? CheckActivityScore(WorldPosition position, int score, long[] regionTotals, long[] countryTotals)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        for (var index = 0; index < campaign.RegionStates.Count; index++)
+        {
+            var region = campaign.RegionStates[index];
+            if (!WorldGeometry.InsideRegion(rules.Regions[region.Rule].Value, position)) continue;
+            regionTotals[index] += score;
+            if (regionTotals[index] is < int.MinValue or > int.MaxValue)
+                return "UFO alien activity exceeds the supported range.";
+            break;
+        }
+        for (var index = 0; index < campaign.CountryStates.Count; index++)
+        {
+            var country = campaign.CountryStates[index];
+            if (!WorldGeometry.InsideCountry(rules.Countries[country.Rule].Value, position)) continue;
+            countryTotals[index] += score;
+            if (countryTotals[index] is < int.MinValue or > int.MaxValue)
+                return "UFO alien activity exceeds the supported range.";
+            break;
+        }
+        return null;
     }
 
     private void ScoreUfoActivity(WorldPosition position, int score, RuntimeRuleCatalog rules)

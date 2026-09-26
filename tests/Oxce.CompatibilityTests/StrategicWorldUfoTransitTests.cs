@@ -49,7 +49,8 @@ public sealed class StrategicWorldUfoTransitTests
         {
             World = snapshot.World with
             {
-                Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6 }],
+                Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE", NextWave = 1 }],
+                Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0 }],
             },
         }, content, new SplitMix64RandomSource(42));
         AssertBlockedWithoutMutation(near, "UFO waypoint arrival requires mission simulation.");
@@ -803,7 +804,8 @@ public sealed class StrategicWorldUfoTransitTests
     public void LaterNonterminalArrivalBlocksBeforeAnEarlierTerminalArrival()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
+        var campaign = CreateTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
+            ufoRuleId: "UFO_SCOUT", missionRuleId: "MISSION_SITE", missionWaveNumber: 0);
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var lastPoint = content.RuntimeRules.UfoTrajectories[
@@ -823,7 +825,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Theory]
-    [InlineData("landed", "UFO state requires world simulation.")]
+    [InlineData("crashed", "UFO state requires world simulation.")]
     [InlineData("hunter", "UFO state requires world simulation.")]
     [InlineData("shield", "UFO shield handling requires world simulation.")]
     [InlineData("speed", "UFO speed is invalid.")]
@@ -835,7 +837,7 @@ public sealed class StrategicWorldUfoTransitTests
         var ufo = Assert.Single(snapshot.World.Ufos);
         ufo = condition switch
         {
-            "landed" => ufo with { Status = UfoStatus.Landed },
+            "crashed" => ufo with { Status = UfoStatus.Crashed },
             "hunter" => ufo with { HunterKiller = true },
             "shield" => ufo with { Shield = 1 },
             "speed" => ufo with { Speed = -1 },
