@@ -131,3 +131,19 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   diff checks pass. One earlier run reported a 256-byte patrol-allocation difference;
   the isolated test, complete craft suite and two subsequent root runs passed without
   changing that test or its threshold. The cause was not established.
+- Audited rule projections and preflight corrections committed as `9f7d4d0`.
+- Monthly event-script subsystem: live campaign trigger facts, eligibility/counters,
+  ordered odds draws, sequential/random/repeatable selection and transaction-owned
+  event scheduling now execute through an internal subsystem fixture operation.
+  History-key presence (including zero counts), duplicate instances and later-script
+  suppression survive save/reload. Reference loop: `strategic-event-scripts`.
+  See [scope and evidence](strategic-event-script-status.md). This does not yet install
+  the initial/monthly campaign caller: arc and mission phases must precede events.
+  Score/funding context calculations, actual hooks and the campaign month guard remain
+  outstanding with the broader 4c work. No 4d work is included.
+  Sequential preflight now stops at tails that cannot be exposed in the current pass,
+  accounting for earlier scripts without treating the current script's selections as
+  already generated. Missing/invalid-timer tails and reload transitions have regression coverage.
+  Validation: root `dotnet test` passes 1,168 tests with zero failures or skips,
+  including checksum and private-corpus tests. Formatting verification, regenerated
+  code-map and diff checks pass. Reference checkout remains unchanged.

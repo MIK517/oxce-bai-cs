@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <InternalsVisibleTo Include="Oxce.UnitTests" />
+    <InternalsVisibleTo Include="Oxce.CompatibilityTests" />
     <ProjectReference Include="../Oxce.Core/Oxce.Core.csproj" />
     <ProjectReference Include="../Oxce.Mods/Oxce.Mods.csproj" />
     <ProjectReference Include="../Oxce.Scripting/Oxce.Scripting.csproj" />

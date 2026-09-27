@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-event-scripts",
+  "description": "Extracted event-script selection loop and event history membership; controlled eligible scripts, rule storage and RNG.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::determineAlienMissions event processing loop; SavedGame::wasEventGenerated; RuleEventScript::generate; WeightedOptions::choose/set/getNames",
+      "capture": "tools/capture-strategic-event-scripts-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_event_scripts_probe.cpp",
+      "size": 2998,
+      "sha256": "844238510de33f2bbc316b561e74952af323cee26a8091ab6eca3561109d9312"
+    },
+    {
+      "path": "tools/capture-strategic-event-scripts-reference.ps1",
+      "size": 3206,
+      "sha256": "505733dc85776652ec7cdd99ac39a17746ebdecfcba163577987afc54b24bad9"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-event-scripts.rul",
+      "size": 2911,
+      "sha256": "f7a9a9176fa2fe0a58a4fa22ed5bd673de09404c7e2c8bbb8e95ed1db126c5ad"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-event-scripts.expected.json"
+}

@@ -12,9 +12,15 @@ public static class WorldScriptSelection
     {
         ArgumentNullException.ThrowIfNull(timeline);
         ArgumentNullException.ThrowIfNull(random);
-        if (timeline.Count == 0 && allowEmptyTimeline) return null; // RuleEventScript::generate
+        return Choose(ForMonth(timeline, month, allowEmptyTimeline), random);
+    }
+
+    internal static IReadOnlyList<RuntimeScriptWeight<TFamily>> ForMonth<TFamily>(
+        IReadOnlyList<RuntimeScriptTimeline<TFamily>> timeline, ulong month, bool allowEmptyTimeline)
+    {
+        if (timeline.Count == 0 && allowEmptyTimeline) return []; // RuleEventScript::generate
         for (var index = timeline.Count - 1; index >= 0; index--)
-            if (month >= timeline[index].FirstMonth) return Choose(timeline[index].Choices, random);
+            if (month >= timeline[index].FirstMonth) return timeline[index].Choices;
         // The reference dereferences rend() for this malformed input. Fail before drawing RNG.
         throw new InvalidDataException("Strategic script timeline has no entry for the requested month.");
     }
