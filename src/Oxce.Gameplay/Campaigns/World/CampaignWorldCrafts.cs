@@ -461,33 +461,39 @@ internal sealed partial class CampaignWorld
             {
                 var craft = owner.Crafts[index];
                 if (craft.Logistics is not { Status: "STR_OUT" } state) continue;
-                var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-                if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
-                        campaign.Content.RuntimeRules, out var speedMaximum))
-                    throw new InvalidOperationException("Craft speed changed after world preflight.");
-                var escortSpeed = 0;
-                if (state.Destination is { Kind: WorldTargetKind.Craft } escort && TargetCraft(escort)?.Logistics is { } leader &&
-                    WorldGeometry.Distance(new(state.Longitude, state.Latitude), new(leader.Longitude, leader.Latitude)) <
-                        WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
-                    escortSpeed = leader.Speed;
-                var consumption = state.Destination is null && rule.PatrolWithoutFuel ? 0 :
-                    WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, escortSpeed);
-                if (consumption != 0) state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };
-                // Craft::getFuelLimit divides by zero here, so its C++ result is undefined.
-                // Keep the craft stationary and recallable instead of inventing a low-fuel return.
-                if (speedMaximum > 0 && !state.LowFuel && state.Fuel <= WorldFlight.FuelLimit(
-                        rule.RefuelItem is not null, speedMaximum,
-                        WorldGeometry.Distance(new WorldPosition(state.Longitude, state.Latitude),
-                            new WorldPosition(owner.Longitude, owner.Latitude))))
-                {
-                    state = SetDestination(state with { LowFuel = true }, speedMaximum, BaseReference(owner));
-                    if (!state.IsAutoPatrolling)
-                        effects.Notify(new CraftLowFuel(owner.Id,
-                            campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
-                }
+                state = AdvanceCraftFuel(owner, craft, state);
+                if (!craft.Logistics.LowFuel && state.LowFuel && !state.IsAutoPatrolling)
+                    effects.Notify(new CraftLowFuel(owner.Id,
+                        campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
                 if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
             }
         }
+    }
+
+    // Pure transition shared by time10Minutes and arrival preflight. Fuel return precedes
+    // time5Seconds even when its notification pauses subsequent ticks.
+    private CraftLogisticsState AdvanceCraftFuel(CampaignState.BaseState owner, CampaignState.CraftState craft,
+        CraftLogisticsState state)
+    {
+        var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+        if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
+                campaign.Content.RuntimeRules, out var speedMaximum))
+            throw new InvalidOperationException("Craft speed changed after world preflight.");
+        var escortSpeed = 0;
+        if (state.Destination is { Kind: WorldTargetKind.Craft } escort && TargetCraft(escort)?.Logistics is { } leader &&
+            WorldGeometry.Distance(new(state.Longitude, state.Latitude), new(leader.Longitude, leader.Latitude)) <
+                WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
+            escortSpeed = leader.Speed;
+        var consumption = state.Destination is null && rule.PatrolWithoutFuel ? 0 :
+            WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, escortSpeed);
+        if (consumption != 0) state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };
+        // Craft::getFuelLimit divides by zero here, so its C++ result is undefined.
+        // Keep the craft stationary and recallable instead of inventing a low-fuel return.
+        if (speedMaximum > 0 && !state.LowFuel && state.Fuel <= WorldFlight.FuelLimit(
+                rule.RefuelItem is not null, speedMaximum,
+                WorldGeometry.Distance(new(state.Longitude, state.Latitude), new(owner.Longitude, owner.Latitude))))
+            state = SetDestination(state with { LowFuel = true }, speedMaximum, BaseReference(owner));
+        return state;
     }
 
     private static WorldTargetReference BaseReference(CampaignState.BaseState owner) =>

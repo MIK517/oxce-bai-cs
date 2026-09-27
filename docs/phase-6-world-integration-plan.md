@@ -107,3 +107,27 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
 - Remaining mission/arc/adhoc/event-script selection, objectives, sites/bases, detection
   scripts, UFO hunting/escorts and headless closure are still outstanding. Branch 4d
   remains unstarted pending the 4c merge.
+- Audit corrections: due-event preflight now credits guaranteed same-day interruption
+  research and lookups while guarding possible disabling discoveries. Arrival preflight
+  shares the pure ten-minute fuel/return transition with execution, so fuel return wins
+  over interception or landing in the same tick. Reference at `4df3a5e`: `GeoscapeState.cpp`
+  time-trigger fallthrough, `time1Day`, `time30Minutes`, `time10Minutes`, `time5Seconds`;
+  `SavedGame.cpp::addFinishedResearch/selectGetOneFree`; `Craft.cpp::consumeFuel/getFuelLimit`.
+  The regression fixtures in `StrategicEventSchedulingTests` and `StrategicWorldPursuitTests`
+  cover fresh/cache and transition reloads, notification fallthrough, lookup completion,
+  unrelated research, incomplete/disabled/repeatable research, possible free/zero-cost
+  disablers, and interception guards when fuel return is not due. No 4d work is included.
+  Validation: root `dotnet test` passes 1,098 tests with zero failures or skips, including
+  fixture checksums and the private corpus. Formatting, code-map and diff checks pass.
+- Scheduling-rule slice: mission/adhoc/arc/event families now project immutable linked
+  eligibility, trigger, counter, conditional, tag and weighted timeline data. Mission
+  objective consistency is validated at linking. Pure selection follows captured
+  reverse timeline scans and ordinal weights, including safe malformed-input limits.
+  Fresh/cache reconstruction uses compiler revision 26. See the [reference inventory,
+  defaults and boundaries](strategic-script-rule-status.md). Campaign scheduler hooks,
+  trigger evaluation and mission/arc/event execution remain the next slice.
+  Validation: root `dotnet test` passes 1,115 tests with zero failures or skips, including
+  fixture checksums and private corpus checks. Formatting, regenerated code-map and
+  diff checks pass. One earlier run reported a 256-byte patrol-allocation difference;
+  the isolated test, complete craft suite and two subsequent root runs passed without
+  changing that test or its threshold. The cause was not established.

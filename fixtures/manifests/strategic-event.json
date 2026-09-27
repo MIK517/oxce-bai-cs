@@ -26,8 +26,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-events.rul",
-      "size": 778,
-      "sha256": "5237b4c5f11b6af4993b6d7a95b1c46a23d596e70f2f99ac92ea995c89887137"
+      "size": 1252,
+      "sha256": "66d990c0673c87d606feea59dbac9608b300c18464eca9447ffeaa6f56a0bd96"
     }
   ],
   "normalization": [

@@ -30,8 +30,15 @@ new reference event identity. Full C++ reload is not established by these tests.
 
 Branch 6 retains event payload effects. Countdown progression and research-interrupted
 cleanup execute now. A due, non-interrupted event blocks the whole next tick before
-mutation. If same-day research could invalidate the interruption, preflight conservatively
-blocks rather than predicting script/random outcomes or rolling back effects.
+mutation. On day boundaries a registered research capability operation supplies a
+read-only lower bound of completed research after daily progress: existing discoveries
+plus finishing non-repeatable, enabled projects and their lookups, excluding possible
+disablers. Those disablers include finishing projects, their free/protected rewards and
+lookups, and zero-cost discoveries. This admits guaranteed same-day interruptions and
+does not block merely because an unrelated positive-cost rule can disable the topic.
+Random rewards, automatic discoveries and re-enables are not credited as guaranteed
+interruption research; uncertain outcomes remain conservatively guarded. Preflight does
+not mutate state, choose rewards or consume RNG.
 
 Producer preflight bounds timers, generation counts and pending population before time
 or random state changes. Pending events and history entries are limited to 100,000 each.

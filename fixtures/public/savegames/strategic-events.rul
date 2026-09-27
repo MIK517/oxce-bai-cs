@@ -12,6 +12,10 @@ events:
   - name: EVENT_OVERFLOW
     timer: 2147483647
     timerRandom: 1
+  - name: EVENT_REPEATABLE
+    interruptResearch: REPEATABLE_STOP
+  - name: EVENT_SECOND
+    interruptResearch: SECOND_STOP
 research:
   - name: STOP_EVENT
     cost: 1
@@ -23,6 +27,23 @@ research:
   - name: BAD_SOURCE
     cost: 1
     spawnedEvent: EVENT_INVALID
+  - name: EVENT_LOOKUP
+    cost: 1
+    lookup: STOP_EVENT
+  - name: FREE_DISABLER
+    cost: 1
+    getOneFree: [EVENT_SOURCE]
+  - name: REPEATABLE_STOP
+    cost: 1
+    repeatable: true
+  - name: SECOND_STOP
+    cost: 1
+  - name: TRIGGER_ZERO
+    cost: 1
+  - name: ZERO_DISABLER
+    cost: 0
+    dependencies: [TRIGGER_ZERO]
+    disables: [SECOND_STOP]
 manufacture:
   - name: EVENT_PRODUCT
     time: 1

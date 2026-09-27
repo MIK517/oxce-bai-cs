@@ -1,0 +1,74 @@
+alienMissions:
+  - type: M_A
+  - type: M_B
+  - type: M_C
+  - type: M_SITE
+    objective: 3
+alienRaces:
+  - id: RACE
+research:
+  - name: ARC_RESEARCH
+    cost: 1
+events:
+  - name: M_A
+  - name: M_B
+  - name: M_C
+missionScripts:
+  - type: Z_COMMAND
+    varName: history
+    label: 7
+    maxRuns: 3
+    avoidRepeats: 2
+    startDelay: 30
+    randomDelay: 60
+    targetBaseOdds: 25
+    firstMonth: -1
+    lastMonth: 12
+    minFunds: -5000000000
+    maxFunds: 6000000000
+    missionVarName: generated
+    missionMarkerName: marker
+    counterMin: 2
+    counterMax: 9
+    conditionals: [3, -2, 3]
+    useTable: false
+    missionWeights:
+      0: {M_B: 3, M_A: 2, REMOVED: 0}
+      6: {M_C: 1}
+      2: {M_B: 1}
+    raceWeights: {0: {RACE: 1}}
+    regionWeights: {0: {REGION: 1}}
+    researchTriggers: {UNLOCK: true, MISSING_RESEARCH: false}
+    itemTriggers: {SUPPLY: true}
+    facilityTriggers: {STORES: false}
+    soldierTypeTriggers: {MISSING_SOLDIER: false}
+    xcomBaseInRegionTriggers: {REGION: true}
+    xcomBaseInCountryTriggers: {COUNTRY: false}
+    pactCountryTriggers: {COUNTRY: true}
+  - type: A_DEFAULT
+  - type: SITE_COMMAND
+    label: 7
+    missionWeights: {0: {M_SITE: 1}}
+adhocScripts:
+  - type: ADHOC
+    adhocMissionScriptTags: [first, second, first]
+    missionWeights: {0: {M_A: 1}}
+arcScripts:
+  - type: ARC
+    sequentialArcs: [UNLOCK, ARC_RESEARCH, UNLOCK]
+    randomArcs: {UNLOCK: 2, ARC_RESEARCH: 3}
+    maxArcs: 4
+  - type: ARC_DEFAULT
+eventScripts:
+  - type: EVENT
+    oneTimeSequentialEvents: [M_A, M_A, M_B]
+    oneTimeRandomEvents: {M_B: 3, M_A: 2}
+    eventWeights:
+      0: {M_B: 3, M_A: 2}
+      6: {M_C: 1}
+      2: {M_B: 1}
+    missionMinRuns: 5
+    counterMin: 8
+    missionMaxRuns: 10
+    affectsGameProgression: true
+  - type: EVENT_DEFAULT

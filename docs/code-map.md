@@ -18,16 +18,16 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 53 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 90 | Core, Formats, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 54 | Core, Mods, Scripting |
+| [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 88 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 89 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 81 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 83 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 53 files.
+`src/Oxce.Gameplay` - 54 files.
 
 ### `Oxce.Gameplay`
 
@@ -465,13 +465,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldFlight` (class) [WorldFlight.cs](../src/Oxce.Gameplay/Campaigns/World/WorldFlight.cs) - Craft endurance arithmetic used by patrol, pursuit and return decisions.
 - `WorldPosition` (record struct) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - A point on the globe in reference units: longitude in [0, 2π), latitude in [-π/2, π/2].
 - `WorldGeometry` (class) [WorldGeometry.cs](../src/Oxce.Gameplay/Campaigns/World/WorldGeometry.cs) - Globe arithmetic shared by world simulation: distances, movement, region containment and land queries.
+- `WorldScriptSelection` (class) [WorldScriptSelection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldScriptSelection.cs) - RuleMissionScript/RuleEventScript reverse timeline scans and WeightedOptions::choose.
 - `WorldTrajectory` (class) [WorldTrajectory.cs](../src/Oxce.Gameplay/Campaigns/World/WorldTrajectory.cs) - Trajectory and wave timing arithmetic.
 - `WorldUfoShields` (class) [WorldUfoShields.cs](../src/Oxce.Gameplay/Campaigns/World/WorldUfoShields.cs) - GeoscapeState::time5Seconds flying-UFO block and Ufo::setShield at 4df3a5e.
 - `WorldWeightedOptions` (class) [WorldWeightedOptions.cs](../src/Oxce.Gameplay/Campaigns/World/WorldWeightedOptions.cs) - An ordered weighted option set.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 90 files.
+`src/Oxce.Mods` - 91 files.
 
 ### `Oxce.Mods`
 
@@ -728,6 +729,10 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AlienMissionRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `AlienDeploymentRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `AlienRaceRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `MissionScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `AdhocScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `ArcScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
+- `EventScriptRuleFamily` (struct) [RuleHandles.cs](../src/Oxce.Mods/Rulesets/Runtime/RuleHandles.cs)
 - `RuntimeCraftTemplateWeapon` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplateVehicle` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
 - `RuntimeCraftTemplate` (record) [RuntimeCraftTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeCraftTemplate.cs)
@@ -771,6 +776,13 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeScriptRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeSoldierNamePool` (record) [RuntimeSoldierNamePool.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierNamePool.cs)
 - `RuntimeSoldierTemplate` (record) [RuntimeSoldierTemplate.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeSoldierTemplate.cs)
+- `RuntimeScriptTrigger<TFamily>` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs) - A trigger retains missing IDs: negative tests of absent rules can be meaningful.
+- `RuntimeScriptWeight<TFamily>` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs) - Ordinal WeightedOptions entry, with a generation-scoped reference when available.
+- `RuntimeScriptTimeline<TFamily>` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs) - Timeline entries retain load order, including appended and duplicate months.
+- `RuntimeScriptCriteria` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs)
+- `RuntimeMissionScriptRule` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs) - RuleMissionScript, shared by ordinary and tagged adhoc scheduling.
+- `RuntimeArcScriptRule` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs)
+- `RuntimeEventScriptRule` (record) [RuntimeStrategicScriptRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeStrategicScriptRules.cs)
 - `RuntimeUfoStats` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - Craft-shaped statistics of a UFO, including the race bonus applied when a mission assigns its race.
 - `RuntimeUfoRule` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - The world-simulation projection of a UFO rule.
 - `RuntimeTrajectoryWaypoint` (record) [RuntimeWorldProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeWorldProjections.cs) - One trajectory waypoint.
@@ -988,14 +1000,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 88 files.
+`tests/Oxce.CompatibilityTests` - 89 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>86 test classes</summary>
+<details><summary>87 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1055,6 +1067,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicReadinessRegressionTests` ([StrategicReadinessRegressionTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessRegressionTests.cs))
 - `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))
 - `StrategicSalesFixtureTests` ([StrategicSalesFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicSalesFixtureTests.cs))
+- `StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs))
 - `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs))
 - `StrategicWorldBaseDetectionTests` ([StrategicWorldBaseDetectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldBaseDetectionTests.cs))
 - `StrategicWorldCleanupTests` ([StrategicWorldCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCleanupTests.cs))
@@ -1097,9 +1110,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 81 files.
+`tests/Oxce.UnitTests` - 83 files.
 
-<details><summary>81 test classes</summary>
+<details><summary>83 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1143,6 +1156,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldEventTimingTests` ([WorldEventTimingTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldEventTimingTests.cs))
 - `WorldGeometryTests` ([WorldGeometryTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldGeometryTests.cs))
 - `WorldLandPointTests` ([WorldLandPointTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldLandPointTests.cs))
+- `WorldScriptSelectionTests` ([WorldScriptSelectionTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldScriptSelectionTests.cs))
 - `WorldUfoShieldTests` ([WorldUfoShieldTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldUfoShieldTests.cs))
 - `CampaignStartRuleCatalogTests` ([CampaignStartRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/CampaignStartRuleCatalogTests.cs))
 - `CommonResourceLayerTests` ([CommonResourceLayerTests.cs](../tests/Oxce.UnitTests/Mods/CommonResourceLayerTests.cs))
@@ -1164,6 +1178,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RulesetCatalogNormalizerTests` ([RulesetCatalogNormalizerTests.cs](../tests/Oxce.UnitTests/Mods/RulesetCatalogNormalizerTests.cs))
 - `RulesetComposerTests` ([RulesetComposerTests.cs](../tests/Oxce.UnitTests/Mods/RulesetComposerTests.cs))
 - `RuntimeRuleLinkerTests` ([RuntimeRuleLinkerTests.cs](../tests/Oxce.UnitTests/Mods/RuntimeRuleLinkerTests.cs))
+- `StrategicScriptLinkingTests` ([StrategicScriptLinkingTests.cs](../tests/Oxce.UnitTests/Mods/StrategicScriptLinkingTests.cs))
 - `TerrainDeploymentRuleCatalogTests` ([TerrainDeploymentRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/TerrainDeploymentRuleCatalogTests.cs))
 - `TypedRuleFamilyLoaderTests` ([TypedRuleFamilyLoaderTests.cs](../tests/Oxce.UnitTests/Mods/TypedRuleFamilyLoaderTests.cs))
 - `VirtualFileCatalogTests` ([VirtualFileCatalogTests.cs](../tests/Oxce.UnitTests/Mods/VirtualFileCatalogTests.cs))
@@ -1311,6 +1326,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
+| [strategic-script-rules](../fixtures/manifests/strategic-script-rules.json) | cpp-reference | `savegames/strategic-script-rules.expected.json` | `StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs)) |
 | [strategic-time](../fixtures/manifests/strategic-time.json) | cpp-reference | `savegames/strategic-time.expected.json` | `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs)) |
 | [strategic-ufo-shield](../fixtures/manifests/strategic-ufo-shield.json) | cpp-reference | `savegames/strategic-ufo-shield.expected.json` | `StrategicWorldUfoShieldTests` ([StrategicWorldUfoShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoShieldTests.cs)) |
 | [strategic-wave-chain](../fixtures/manifests/strategic-wave-chain.json) | cpp-reference | `savegames/strategic-wave-chain.expected.json` | `StrategicWorldWaveChainTests` ([StrategicWorldWaveChainTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldWaveChainTests.cs)) |
