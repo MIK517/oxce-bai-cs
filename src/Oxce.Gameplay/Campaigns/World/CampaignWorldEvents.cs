@@ -72,18 +72,19 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var rules = campaign.Content.RuntimeRules;
+        IReadOnlySet<string>? researchAfterDailyProgress = null;
         foreach (var scheduled in _events)
         {
             var rule = rules.Events[rules.Events.GetRequired(scheduled.RuleId)].Value;
             if (scheduled.Over || scheduled.SpawnCountdown <= 30)
             {
-                if (!IsEventInterrupted(rule)) return EventPayloadReason;
-                // Research runs before the half-hour handler on a day boundary. Its discoveries
-                // can disable interruption research; do not speculate on random free discoveries.
-                if (highest >= CampaignTimeTrigger.OneDay && campaign.BaseStates.Any(owner =>
-                        owner.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost)) &&
-                    rules.Research.Rules.Any(research => research.Value.Disables.Contains(rule.InterruptResearch,
-                        StringComparer.Ordinal))) return EventPayloadReason;
+                if (rule.InterruptResearch.Length == 0) return EventPayloadReason;
+                if (highest >= CampaignTimeTrigger.OneDay)
+                {
+                    researchAfterDailyProgress ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+                    if (!researchAfterDailyProgress.Contains(rule.InterruptResearch)) return EventPayloadReason;
+                }
+                else if (!IsEventInterrupted(rule)) return EventPayloadReason;
             }
         }
 

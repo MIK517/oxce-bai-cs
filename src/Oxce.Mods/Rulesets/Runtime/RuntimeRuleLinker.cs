@@ -15,6 +15,7 @@ using AlienMissionRule = Oxce.Mods.Rulesets.MissionEvents.AlienMissionRule;
 using EventRule = Oxce.Mods.Rulesets.MissionEvents.EventRule;
 using UfoTrajectoryRule = Oxce.Mods.Rulesets.MissionEvents.UfoTrajectoryRule;
 using WeightedTimelineEntry = Oxce.Mods.Rulesets.MissionEvents.WeightedTimelineEntry;
+using StrategicScriptRule = Oxce.Mods.Rulesets.MissionEvents.StrategicScriptRule;
 
 namespace Oxce.Mods.Rulesets.Runtime;
 
@@ -63,6 +64,8 @@ public static class RuntimeRuleLinker
         var researchHandles = Handles<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research);
         var manufactureHandles = Handles<ManufactureRuleFamily, ManufactureRule>(generation, content.EquipmentProduction.Manufacture);
         var eventHandles = Handles<EventRuleFamily, EventRule>(generation, content.MissionEvents.Events);
+        var missionHandles = Handles<AlienMissionRuleFamily, AlienMissionRule>(generation, content.MissionEvents.AlienMissions);
+        var raceHandles = Handles<AlienRaceRuleFamily, AlienRaceRule>(generation, content.TerrainDeployment.AlienRaces);
         var ufoHandles = Handles<UfoRuleFamily, UfoRule>(generation, content.EquipmentProduction.Ufos);
         var trajectoryHandles = Handles<UfoTrajectoryRuleFamily, UfoTrajectoryRule>(
             generation, content.MissionEvents.UfoTrajectories);
@@ -371,10 +374,66 @@ public static class RuntimeRuleLinker
             BuildFamily<AlienDeploymentRuleFamily, AlienDeploymentRule, RuntimeAlienDeploymentRule>(generation,
                 content.TerrainDeployment.AlienDeployments, rule => BuildAlienDeployment(rule.Id, rule.Value)),
             IdentityFamily<AlienRaceRuleFamily, AlienRaceRule>(generation, content.TerrainDeployment.AlienRaces),
+            BuildFamily<MissionScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
+                content.MissionEvents.MissionScripts, rule => BuildMissionScript(rule, "missionScripts")),
+            BuildFamily<AdhocScriptRuleFamily, StrategicScriptRule, RuntimeMissionScriptRule>(generation,
+                content.MissionEvents.AdhocScripts, rule => BuildMissionScript(rule, "adhocScripts")),
+            BuildFamily<ArcScriptRuleFamily, StrategicScriptRule, RuntimeArcScriptRule>(generation,
+                content.MissionEvents.ArcScripts, rule => new(BuildScriptCriteria(rule.Value), rule.Value.Integers["maxArcs"],
+                    References(researchHandles, rule.Value.Sequential), ScriptWeights(researchHandles, rule.Value.Random))),
+            BuildFamily<EventScriptRuleFamily, StrategicScriptRule, RuntimeEventScriptRule>(generation,
+                content.MissionEvents.EventScripts, rule => new(BuildScriptCriteria(rule.Value), rule.Value.Booleans["affectsGameProgression"],
+                    References(eventHandles, rule.Value.Sequential), ScriptWeights(eventHandles, rule.Value.Random),
+                    ScriptTimeline(eventHandles, rule.Value.EventWeights))),
             scriptBuild.Family,
             settings);
         cancellationToken.ThrowIfCancellationRequested();
         return new RuntimeRuleLinkResult(catalog, compatibility, Array.AsReadOnly(issues.ToArray()));
+
+        RuntimeMissionScriptRule BuildMissionScript(TypedRule<StrategicScriptRule> owner, string family)
+        {
+            var value = owner.Value;
+            bool? siteType = null;
+            var firstMission = true;
+            // Mod::loadAll derives the objective from the first ordinal ID across all months.
+            // It rejects a missing first ID, but skips later missing IDs during consistency checks.
+            foreach (var id in value.MissionWeights.SelectMany(entry => entry.Weights.Keys).Distinct(StringComparer.Ordinal)
+                         .Order(StringComparer.Ordinal))
+            {
+                if (!content.MissionEvents.AlienMissions.TryGet(id, out var mission))
+                {
+                    if (firstMission)
+                        Report(family, owner.Id, "missionWeights", id, "Referenced alien mission does not exist.", owner.LastUpdateSource);
+                    firstMission = false;
+                    continue;
+                }
+                firstMission = false;
+                var isSite = mission!.Value.Integers["objective"] == (int)RuntimeMissionObjective.Site;
+                if (siteType is { } previous && previous != isSite)
+                    Report(family, owner.Id, "missionWeights", id,
+                        "A mission script cannot mix site and non-site objectives.", owner.LastUpdateSource);
+                siteType ??= isSite;
+            }
+            return new(BuildScriptCriteria(value), value.Strings["varName"], value.Integers["label"],
+                value.Integers["targetBaseOdds"], value.Integers["maxRuns"], value.Integers["avoidRepeats"],
+                value.Integers["startDelay"], value.Integers["randomDelay"], value.Booleans["useTable"], siteType ?? false,
+                Array.AsReadOnly(value.Conditionals.ToArray()), Array.AsReadOnly(value.Tags.ToArray()),
+                ScriptTimeline(missionHandles, value.MissionWeights), ScriptTimeline(raceHandles, value.RaceWeights),
+                ScriptTimeline(regionHandles, value.RegionWeights));
+        }
+
+        RuntimeScriptCriteria BuildScriptCriteria(StrategicScriptRule value) => new(
+            value.Integers["firstMonth"], value.Integers["lastMonth"], value.Integers["executionOdds"],
+            value.Integers["minDifficulty"], value.Integers["maxDifficulty"],
+            value.Integers["minScore"], value.Integers["maxScore"], value.Longs["minFunds"], value.Longs["maxFunds"],
+            value.Strings["missionVarName"], value.Strings["missionMarkerName"], value.Integers["counterMin"], value.Integers["counterMax"],
+            ScriptTriggers(researchHandles, value.Triggers["researchTriggers"]),
+            ScriptTriggers(itemHandles, value.Triggers["itemTriggers"]),
+            ScriptTriggers(facilityHandles, value.Triggers["facilityTriggers"]),
+            ScriptTriggers(soldierHandles, value.Triggers["soldierTypeTriggers"]),
+            ScriptTriggers(regionHandles, value.Triggers["xcomBaseInRegionTriggers"]),
+            ScriptTriggers(countryHandles, value.Triggers["xcomBaseInCountryTriggers"]),
+            ScriptTriggers(countryHandles, value.Triggers["pactCountryTriggers"]));
 
         RuntimeUfoRule BuildUfo(string id, UfoRule source)
         {
@@ -704,7 +763,7 @@ public static class RuntimeRuleLinker
             diagnostics.Report(new DiagnosticEvent(
                 ModDiagnosticCodes.InvalidRuntimeRuleLink,
                 DiagnosticSeverity.Error,
-                $"Runtime {family} rule '{ownerId}' property '{property}' references missing rule '{id}'.",
+                $"Runtime {family} rule '{ownerId}' property '{property}' ('{id}'): {message}",
                 source?.Span,
                 new DiagnosticContext(source?.LayerId, source?.ModId, family, ownerId, id)));
         }
@@ -721,6 +780,21 @@ public static class RuntimeRuleLinker
 
     private static readonly IReadOnlyDictionary<string, ulong> EmptyWeights =
         new ReadOnlyDictionary<string, ulong>(new Dictionary<string, ulong>(StringComparer.Ordinal));
+
+    private static ReadOnlyCollection<RuntimeScriptTrigger<TFamily>> ScriptTriggers<TFamily>(
+        Dictionary<string, RuleHandle<TFamily>> handles, IReadOnlyDictionary<string, bool> source) =>
+        Array.AsReadOnly(source.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
+            new RuntimeScriptTrigger<TFamily>(new(pair.Key, OptionalRuntime(handles, pair.Key)), pair.Value)).ToArray());
+
+    private static ReadOnlyCollection<RuntimeScriptWeight<TFamily>> ScriptWeights<TFamily>(
+        Dictionary<string, RuleHandle<TFamily>> handles, IReadOnlyDictionary<string, ulong> source) =>
+        Array.AsReadOnly(source.Where(pair => pair.Value != 0).OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
+            new RuntimeScriptWeight<TFamily>(new(pair.Key, OptionalRuntime(handles, pair.Key)), pair.Value)).ToArray());
+
+    private static ReadOnlyCollection<RuntimeScriptTimeline<TFamily>> ScriptTimeline<TFamily>(
+        Dictionary<string, RuleHandle<TFamily>> handles, IReadOnlyList<WeightedTimelineEntry> source) =>
+        Array.AsReadOnly(source.Select(entry => new RuntimeScriptTimeline<TFamily>(entry.Month,
+            ScriptWeights(handles, entry.Weights))).ToArray());
 
     private static ReadOnlyCollection<RuntimeWeightedTimeline> Timeline(
         IEnumerable<WeightedTimelineEntry> source) =>

@@ -13,6 +13,72 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldPursuitTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void FuelReturnPrecedesGuardedArrivalInTheSameTick(bool fromCache, bool landed)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        var snapshot = landed ? CreateLifecycleSnapshot(content) : PursuitCampaign(content).Capture();
+        var ufo = snapshot.World.Ufos[0] with { Detected = true, Speed = 0 };
+        snapshot = snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 1, 9, 55),
+            World = snapshot.World with { Ufos = [ufo] },
+        };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 1,
+                LowFuel = false,
+                Speed = 6000,
+                Longitude = ufo.Longitude - 0.00001,
+                Latitude = ufo.Latitude,
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
+                { UniqueId = ufo.UniqueId },
+            },
+        });
+        var owner = snapshot.Bases[0];
+        snapshot = snapshot with
+        {
+            Bases = [owner with { Soldiers =
+            [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } },
+                .. owner.Soldiers.Skip(1)] }, .. snapshot.Bases.Skip(1)]
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
+        campaign = Reload(content, campaign, 92, "fuel-arrival.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(12));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Single(result.Events.OfType<CraftLowFuel>());
+        Assert.Equal(WorldTargetKind.Base, Ship(campaign.Capture()).Destination!.Kind);
+        Assert.True(Ship(campaign.Capture()).LowFuel);
+        Assert.Equal(0, Ship(campaign.Capture()).Fuel);
+        Reload(content, campaign, 92, "fuel-return.sav");
+    }
+
+    [Theory]
+    [InlineData(50, 1)]
+    [InlineData(55, 300)]
+    public void ArrivalStillBlocksWhenFuelReturnIsNotDue(int second, int fuel)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = PursuitCampaign(content).Capture();
+        var ufo = snapshot.World.Ufos[0] with { Speed = 0, Longitude = 0.20001, Latitude = 0.1 };
+        snapshot = snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 1, 9, second),
+            World = snapshot.World with { Ufos = [ufo] },
+        };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Fuel = fuel } });
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
+        AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void PursuitMovesAfterUfoAndMatchesReferenceAcrossReloads(bool fromCache)
@@ -312,4 +378,3 @@ public sealed class StrategicWorldPursuitTests
     private static CraftLogisticsState Ship(CampaignSnapshot snapshot) =>
         snapshot.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP" && craft.Id == 1).Logistics!;
 }
-

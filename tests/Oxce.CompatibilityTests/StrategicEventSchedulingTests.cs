@@ -13,6 +13,71 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicEventSchedulingTests
 {
+    [Theory]
+    [InlineData(false, "STOP_EVENT")]
+    [InlineData(true, "STOP_EVENT")]
+    [InlineData(false, "EVENT_LOOKUP")]
+    public void SameDayInterruptionResearchCompletesBeforeDueEventCleanup(bool fromCache, string research)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-events.rul", fromCache);
+        var snapshot = CreateSnapshot(content, "Same-day interruption");
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            Bases = [snapshot.Bases[0] with { Research = [new ResearchProjectSnapshot(research, 1, 0, 1)] }],
+            World = snapshot.World with { Events = [new GeoscapeEventSnapshot("EVENT_REPEAT", 30)] },
+        }, content, new SplitMix64RandomSource(17));
+        campaign = Reload(content, campaign, 17, "same-day-interruption.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(12));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal(research, Assert.Single(result.Events.OfType<CampaignResearchCompleted>()).RuleId);
+        Assert.Contains("STOP_EVENT", campaign.Capture().CompletedResearch);
+        Assert.Empty(campaign.Capture().World.Events);
+        Reload(content, campaign, 17, "interrupted-event-removed.sav");
+    }
+
+    [Fact]
+    public void UnrelatedResearchDoesNotInvalidateExistingEventInterruption()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-events.rul");
+        var snapshot = CreateSnapshot(content, "Unrelated daily research");
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            CompletedResearch = ["STOP_EVENT"],
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            Bases = [snapshot.Bases[0] with { Research = [new ResearchProjectSnapshot("UNLOCK", 1, 0, 1)] }],
+            World = snapshot.World with { Events = [new GeoscapeEventSnapshot("EVENT_REPEAT", 30)] },
+        }, content, new SplitMix64RandomSource(17));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Empty(campaign.Capture().World.Events);
+        Assert.Contains("STOP_EVENT", campaign.Capture().CompletedResearch);
+    }
+
+    [Theory]
+    [InlineData("STOP_EVENT", "EVENT_REPEAT", false, 2, false)]
+    [InlineData("STOP_EVENT", "EVENT_REPEAT", true, 1, false)]
+    [InlineData("FREE_DISABLER", "EVENT_REPEAT", false, 1, true)]
+    [InlineData("REPEATABLE_STOP", "EVENT_REPEATABLE", false, 1, false)]
+    [InlineData("TRIGGER_ZERO", "EVENT_SECOND", false, 1, true)]
+    public void UncertainOrUnavailableInterruptionStillBlocksBeforeMutation(
+        string research, string eventId, bool disabled, int cost, bool alreadyInterrupted)
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-events.rul");
+        var snapshot = CreateSnapshot(content, "Guarded research interruption");
+        var interruption = content.RuntimeRules.Events[content.RuntimeRules.Events.GetRequired(eventId)].Value.InterruptResearch;
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            CompletedResearch = alreadyInterrupted ? [interruption] : [],
+            ResearchRuleStatus = disabled ? new Dictionary<string, int> { [research] = 2 } : new Dictionary<string, int>(),
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            Bases = [snapshot.Bases[0] with { Research = [new ResearchProjectSnapshot(research, 1, 0, cost)] }],
+            World = snapshot.World with { Events = [new GeoscapeEventSnapshot(eventId, 30)] },
+        }, content, new SplitMix64RandomSource(17));
+        AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+    }
+
     [Fact]
     public void TimersMatchExtractedReference()
     {

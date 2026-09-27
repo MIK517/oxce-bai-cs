@@ -133,6 +133,8 @@ internal sealed partial class CampaignWorld
             return "A craft cannot escort itself.";
         if (state.Destination is not { } destination ||
             destination.Kind is WorldTargetKind.Base or WorldTargetKind.Waypoint or WorldTargetKind.Craft) return null;
+        if (highest >= CampaignTimeTrigger.TenMinutes &&
+            AdvanceCraftFuel(owner, craft, state).Destination is { Kind: WorldTargetKind.Base }) return null;
         if (!TryGetCraftDestinationPosition(destination, out var targetPosition)) return null;
         (WorldPosition Position, UfoStatus Status, int Speed)? projectedUfo = null;
         if (destination.Kind == WorldTargetKind.Ufo)
