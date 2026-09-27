@@ -3,7 +3,9 @@
 Branch 4c prerequisite slice, reference `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 Mission, adhoc, arc and event scripts now have immutable runtime families with
 generation-scoped links. Compiler/cache revision 26 rebuilds the runtime catalog.
-This slice supplies executable timeline/weighted selection, not campaign scheduling.
+This slice supplies executable timeline/weighted selection. The subsequent
+[monthly event-script subsystem](strategic-event-script-status.md) now consumes
+event projections in isolated fixtures; integrated campaign scheduling remains guarded.
 
 ## Reference inventory
 

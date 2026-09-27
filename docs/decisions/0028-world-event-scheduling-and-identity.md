@@ -9,6 +9,15 @@ campaign transaction is held. Scheduling is not performed by notification consum
 The existing requested-event notification remains feedback; scheduling already happened.
 Internal operations are distinct from public read-only queries and command dispatch.
 
+The monthly event-script phase registers `ICampaignWorldEventScripts` and calls the
+same event scheduling operation. Its internal `ScheduleMonthlyWorldEvents` command
+exists for isolated subsystem fixtures through the campaign transaction gate, with
+test-assembly friend access; it is not exposed as a player command. This allows
+selection/history/persistence acceptance without enabling incomplete campaign month
+progression. The future full scheduler must supply the reference score/funds context
+and run arcs and missions before this phase. Automatic campaign hooks remain absent
+until that ordering is implemented.
+
 `SavedGame::spawnEvent`, `addGeneratedEvent` and `GeoscapeEvent::think` at pinned
 revision `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15` define history and timing. The
 `strategic-event` extracted-method oracle covers rounding, the sixty-minute minimum,
