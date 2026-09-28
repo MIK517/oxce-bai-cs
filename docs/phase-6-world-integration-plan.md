@@ -147,3 +147,13 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   Validation: root `dotnet test` passes 1,168 tests with zero failures or skips,
   including checksum and private-corpus tests. Formatting verification, regenerated
   code-map and diff checks pass. Reference checkout remains unchanged.
+- Monthly mission-script subsystem: ordinary space missions with explicit weighted
+  mission/region/race choices now start through an internal gameplay operation.
+  Eligibility, run-limit collection, conditional labels, odds, delays, mission IDs,
+  run history and strategy-table consumption have fresh/cache and transition-reload
+  tests. The pinned `strategic-script-rules` probe now captures the reference delay.
+  See [scope and boundaries](strategic-mission-script-status.md). Site/base/fallback
+  modes, arc/adhoc scheduling, full campaign hooks, score/funding calculation and
+  the month guard remain for later 4c slices. Branch 4d remains untouched.
+  Validation: root `dotnet test` passes 1,188 tests with zero failures or skips;
+  fixture checksums, formatting and generated code-map verification pass.

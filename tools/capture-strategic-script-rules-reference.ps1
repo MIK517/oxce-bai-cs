@@ -25,6 +25,7 @@ $methods = @(
     (Read-Method 'src/Savegame/WeightedOptions.cpp' 'void WeightedOptions::set('),
     (Read-Method 'src/Savegame/WeightedOptions.cpp' 'std::vector<std::string> WeightedOptions::getNames()'),
     (Read-Method 'src/Mod/RuleMissionScript.cpp' 'std::string RuleMissionScript::generate('),
+    (Read-Method 'src/Mod/RuleMissionScript.cpp' 'int RuleMissionScript::getDelay() const'),
     (Read-Method 'src/Mod/RuleMissionScript.cpp' 'std::vector<std::string> RuleMissionScript::getMissionTypes('),
     (Read-Method 'src/Mod/RuleMissionScript.cpp' 'std::vector<std::string> RuleMissionScript::getRegions('),
     (Read-Method 'src/Mod/RuleMissionScript.cpp' 'std::set<std::string> RuleMissionScript::getAllMissionTypes()'),
