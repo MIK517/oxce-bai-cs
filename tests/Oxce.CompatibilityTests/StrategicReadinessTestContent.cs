@@ -8,6 +8,9 @@ namespace Oxce.CompatibilityTests;
 internal static class StrategicReadinessTestContent
 {
     public static RuntimeContent Load(string overlay = "strategic-bases.rul", bool fromCache = false)
+        => Load([overlay], fromCache);
+
+    public static RuntimeContent Load(IReadOnlyList<string> overlays, bool fromCache = false)
     {
         var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var root = Path.Combine(Path.GetTempPath(), $"oxce-readiness-content-{Guid.NewGuid():N}");
@@ -15,9 +18,12 @@ internal static class StrategicReadinessTestContent
         {
             TestFixtures.CopyDirectory(Path.Combine(repository, "fixtures/public/mods/strategic-logistics"), Path.Combine(root, "standard"));
             Directory.CreateDirectory(Path.Combine(root, "user/mods"));
-            var targetName = $"aa-{Path.GetFileName(overlay).Replace("strategic-", "", StringComparison.Ordinal)}";
-            File.Copy(Path.Combine(repository, "fixtures/public/savegames", overlay),
-                Path.Combine(root, "standard/logistics/Ruleset", targetName));
+            foreach (var overlay in overlays)
+            {
+                var targetName = $"aa-{Path.GetFileName(overlay).Replace("strategic-", "", StringComparison.Ordinal)}";
+                File.Copy(Path.Combine(repository, "fixtures/public/savegames", overlay),
+                    Path.Combine(root, "standard/logistics/Ruleset", targetName));
+            }
             var request = InstallationLoadRequest.ForMasterAndAddOn(root, "logistics", "-", TestFixtures.Engine);
             var loaded = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
             if (fromCache)

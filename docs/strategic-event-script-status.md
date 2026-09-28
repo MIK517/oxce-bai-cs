@@ -82,7 +82,7 @@ is checked separately by `WorldScriptEligibilityTests` and live campaign fixture
 Validation for this slice: root `dotnet test` passes 1,168 tests with zero failures
 or skips; formatting, code-map, diff and fixture checksum checks pass.
 
-Still outstanding: arc/mission/adhoc scheduling and actual campaign scheduler hooks,
+Still outstanding: arc/full-mission/adhoc scheduling and actual campaign scheduler hooks,
 score/funding eligibility calculations, remaining world lifecycles/detection/hunting
 and the final 4c acceptance gate. Event payloads, combat/deployment and integrated
 monthly progression retain their branch 5/6 boundaries. Branch 4d is untouched.

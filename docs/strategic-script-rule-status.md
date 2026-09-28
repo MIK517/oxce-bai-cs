@@ -5,7 +5,9 @@ Mission, adhoc, arc and event scripts now have immutable runtime families with
 generation-scoped links. Compiler/cache revision 26 rebuilds the runtime catalog.
 This slice supplies executable timeline/weighted selection. The subsequent
 [monthly event-script subsystem](strategic-event-script-status.md) now consumes
-event projections in isolated fixtures; integrated campaign scheduling remains guarded.
+event projections in isolated fixtures. The bounded
+[monthly mission-script subsystem](strategic-mission-script-status.md) similarly
+consumes mission projections; integrated campaign scheduling remains guarded.
 
 ## Reference inventory
 

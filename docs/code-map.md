@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 58 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 60 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 90 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 91 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 84 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 58 files.
+`src/Oxce.Gameplay` - 60 files.
 
 ### `Oxce.Gameplay`
 
@@ -1001,14 +1001,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 90 files.
+`tests/Oxce.CompatibilityTests` - 91 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>88 test classes</summary>
+<details><summary>89 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1065,6 +1065,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))
 - `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs))
 - `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))
+- `StrategicMissionScriptTests` ([StrategicMissionScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionScriptTests.cs))
 - `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs))
 - `StrategicReadinessRegressionTests` ([StrategicReadinessRegressionTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessRegressionTests.cs))
 - `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))
@@ -1243,7 +1244,7 @@ Prefer these over local copies (see AGENTS.md, *Test conventions*).
 ### [tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 
 - `StrategicReadinessTestContent` (class)
-- members: `Load`
+- members: `Load`, `Load`
 
 ### [tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs)
 
@@ -1330,7 +1331,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
-| [strategic-script-rules](../fixtures/manifests/strategic-script-rules.json) | cpp-reference | `savegames/strategic-script-rules.expected.json` | `StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs)) |
+| [strategic-script-rules](../fixtures/manifests/strategic-script-rules.json) | cpp-reference | `savegames/strategic-script-rules.expected.json` | `StrategicMissionScriptTests` ([StrategicMissionScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionScriptTests.cs))<br>`StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs)) |
 | [strategic-time](../fixtures/manifests/strategic-time.json) | cpp-reference | `savegames/strategic-time.expected.json` | `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs)) |
 | [strategic-ufo-shield](../fixtures/manifests/strategic-ufo-shield.json) | cpp-reference | `savegames/strategic-ufo-shield.expected.json` | `StrategicWorldUfoShieldTests` ([StrategicWorldUfoShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoShieldTests.cs)) |
 | [strategic-wave-chain](../fixtures/manifests/strategic-wave-chain.json) | cpp-reference | `savegames/strategic-wave-chain.expected.json` | `StrategicWorldWaveChainTests` ([StrategicWorldWaveChainTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldWaveChainTests.cs)) |

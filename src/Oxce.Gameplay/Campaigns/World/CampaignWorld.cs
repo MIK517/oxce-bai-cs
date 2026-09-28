@@ -35,6 +35,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         RegisterCraftOperations(registry);
         RegisterEventScheduling(registry);
         RegisterEventScripts(registry);
+        RegisterMissionScripts(registry);
     }
 
     internal AlienStrategyState Strategy => _strategy;

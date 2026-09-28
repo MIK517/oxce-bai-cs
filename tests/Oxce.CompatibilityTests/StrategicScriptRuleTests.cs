@@ -118,6 +118,14 @@ public sealed class StrategicScriptRuleTests
         Assert.Equal(oracle.RootElement.GetProperty("emptyEvent").GetString(),
             WorldScriptSelection.Generate(empty.Events, 0, noDraw, allowEmptyTimeline: true)?.Id ?? "");
         Assert.Equal(oracle.RootElement.GetProperty("emptyCalls").GetInt32(), noDraw.Calls);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "delayRows"))
+        {
+            var random = new ScriptRoll(1);
+            var script = mission with { StartDelay = row[0].GetInt32(), RandomDelay = row[1].GetInt32() };
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new[]
+            { script.StartDelay, script.RandomDelay, WorldMissionScriptSelection.Delay(script, random), random.Calls });
+            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+        }
     }
 
     private sealed class ScriptRoll(int roll) : IRandomSource

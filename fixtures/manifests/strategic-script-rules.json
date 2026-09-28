@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "strategic-script-rules",
-  "description": "Extracted mission/event timeline selection and weighted choice; rule storage and fixed RNG collaborators. Loading/linking verified separately.",
+  "description": "Extracted mission/event timeline selection and mission delay; controlled collaborators. The separate monthly mission-script integration ruleset is pinned alongside the extracted method fixtures.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "RuleMissionScript.cpp generate/getMissionTypes/getRegions/getAllMissionTypes; RuleEventScript.cpp generate; WeightedOptions.cpp choose/set/getNames",
+      "sources": "RuleMissionScript.cpp generate/getMissionTypes/getRegions/getAllMissionTypes; RuleEventScript.cpp generate; WeightedOptions.cpp choose/set/getNames; RuleMissionScript.cpp getDelay",
       "capture": "tools/capture-strategic-script-rules-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
     }
@@ -15,18 +15,23 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_script_rules_probe.cpp",
-      "size": 2369,
-      "sha256": "e49cea2e6f9aa4a35d430ef5f1f45aa73bcaf8f93dc9baf3d4a2190d8231c6de"
+      "size": 2769,
+      "sha256": "ab7844d7b94d7d3885b6f874623e64087d7f449f8ba439b5f44c39b521ab0f86"
     },
     {
       "path": "tools/capture-strategic-script-rules-reference.ps1",
-      "size": 3403,
-      "sha256": "773b4205cb89ab229067b09792b9b5a9b45386b172562b0fd4ec32af313c25cc"
+      "size": 3496,
+      "sha256": "0267aa5e98d5f8825e68d23cf87b7789877da7ba63f869aa695a363da888e003"
     },
     {
       "path": "fixtures/public/savegames/strategic-script-rules.rul",
       "size": 1774,
       "sha256": "e37228fb0d01667c5b6afe98d8a22a75e24dd880f64e3a57c763c699f8111675"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-scripts.rul",
+      "size": 2596,
+      "sha256": "397ee6bcb36b090ef26fce7d3c213f7f80ee330af7ea85dbba7d4b7a64a8fce5"
     }
   ],
   "normalization": [
