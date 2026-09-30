@@ -80,7 +80,7 @@ internal sealed partial class CampaignWorld
             if (transition.ReturnFollowers)
             {
                 ReturnSiteCraftFollowers(site);
-                effects.Notify(new MissionSiteLost(site.Id, site.DeploymentId, site.Name));
+                effects.Notify(new MissionSiteLost(site.Id, MarkerName(site.DeploymentId), site.Name));
             }
             ScoreUfoActivity(site.Position, transition.Score, rules);
             if (transition.Remove) _sites.RemoveAt(index);

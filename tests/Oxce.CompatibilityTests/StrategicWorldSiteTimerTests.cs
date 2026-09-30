@@ -105,9 +105,11 @@ public sealed class StrategicWorldSiteTimerTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ForcedExpiryReturnsFollowerBeforeLandingAndPersists(bool fromCache)
+    [InlineData(false, "")]
+    [InlineData(false, "Site")]
+    [InlineData(true, "")]
+    [InlineData(true, "Site")]
+    public void ForcedExpiryReturnsFollowerBeforeLandingAndPersists(bool fromCache, string customName)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         var content = StrategicReadinessTestContent.Load(
@@ -121,7 +123,7 @@ public sealed class StrategicWorldSiteTimerTests
             MissionRuleId = "MISSION_SITE_FORCE",
             Longitude = 0.25,
             Latitude = 0.15,
-            Name = "Site",
+            Name = customName,
         };
         snapshot = snapshot with { World = snapshot.World with { MissionSites = [site] } };
         var owner = snapshot.Bases[0];
@@ -146,7 +148,9 @@ public sealed class StrategicWorldSiteTimerTests
         var result = campaign.Execute(new AdvanceCampaignTime(1));
         Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
         Assert.Single(result.Events.OfType<MissionSiteLost>());
-        Assert.Equal(new MissionSiteLost(site.Id, site.DeploymentId, "Site"),
+        // Target::getName uses the custom name or localizes the marker with the ID.
+        // The site is gone when the notification is consumed, so preserve both inputs.
+        Assert.Equal(new MissionSiteLost(site.Id, "STR_TERROR_SITE", customName),
             result.Events.OfType<MissionSiteLost>().Single());
         var after = campaign.Capture();
         Assert.Empty(after.World.MissionSites);
