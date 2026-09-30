@@ -654,6 +654,7 @@ public static class RuntimeRuleLinker
                 HireEngineersBaseFunctions = source.HireEngineersRequiredBaseFunctions,
                 HireByCountryOdds = source.HireByCountryOdds,
                 HireByRegionOdds = source.HireByRegionOdds,
+                PerformanceBonusFactor = source.PerformanceBonusFactor,
                 FixedUserOptions = source.FixedUserOptions,
             };
         }

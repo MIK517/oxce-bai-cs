@@ -71,6 +71,12 @@ internal static class CampaignStartSettingsComposer
         b.HireByCountryOdds = Read(root, "hireByCountryOdds", b.HireByCountryOdds);
         b.HireByRegionOdds = Read(root, "hireByRegionOdds", b.HireByRegionOdds);
         b.InitialFunding = Read(root, "initialFunding", b.InitialFunding);
+        if (root.TryGet("performanceBonusFactor", out var bonus))
+        {
+            b.PerformanceBonusFactor = YamlValueReader.ReadDouble(bonus!);
+            if (!double.IsFinite(b.PerformanceBonusFactor))
+                throw new YamlFormatException("performanceBonusFactor must be finite.", bonus!.Span);
+        }
         ApplyCoefficients(root, "buyPriceCoefficient", b.BuyPriceCoefficients);
         ApplyCoefficients(root, "sellPriceCoefficient", b.SellPriceCoefficients);
         if (root.TryGet("transferCosts", out var transfer))

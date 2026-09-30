@@ -176,3 +176,8 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   unsupported-objective fixtures are in [the status](strategic-adhoc-script-status.md).
   Due event payloads remain guarded for branch 6; full mission modes and actual
   campaign hooks remain 4c work. Branch 4d remains untouched.
+- World-script context slice: the isolated monthly caller inputs now derive score,
+  current/peeked funding and the mod performance bonus from live campaign state.
+  The [pinned context probe](strategic-world-monthly-context-status.md) checks
+  month-zero/one/two, negative/fractional bonuses and the adhoc funding path.
+  Actual initial/monthly calls remain guarded; branch 4d remains untouched.

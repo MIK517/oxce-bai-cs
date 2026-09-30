@@ -12,6 +12,14 @@ namespace Oxce.UnitTests.Mods;
 public sealed class CampaignStartRuleCatalogTests
 {
     [Fact]
+    public void NonfinitePerformanceBonusFactorFailsAtRuleLoad()
+    {
+        using var fixture = new TemporaryModFixture(("fixture.rul", "performanceBonusFactor: NaN"));
+        Assert.Throws<YamlFormatException>(() =>
+            CampaignStartRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)));
+    }
+
+    [Fact]
     public void LoadsGeographyAndFacilityMergeSemantics()
     {
         const string yaml = """
