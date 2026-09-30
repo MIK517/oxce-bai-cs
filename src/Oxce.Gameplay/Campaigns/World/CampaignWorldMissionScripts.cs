@@ -30,8 +30,14 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             WorldScriptEligibility.Matches(entry.Value.Criteria, state) &&
             (entry.Value.MaximumRuns == -1 ||
              entry.Value.MaximumRuns > _strategy.MissionsRun(entry.Value.VariableName))).ToArray();
+        return ScheduleMissionScriptCommands(available, state.Month);
+    }
+
+    private CampaignCommandResult ScheduleMissionScriptCommands(
+        RuntimeRule<RuntimeMissionScriptRule>[] available, int month)
+    {
         if (available.Length > 4096) return Blocked("Mission scripts exceed the supported work limit.");
-        if (MissionScriptReason(available, state.Month) is { } reason) return Blocked(reason);
+        if (MissionScriptReason(available, month) is { } reason) return Blocked(reason);
 
         // GeoscapeState gathers the available list once, then evaluates labels and odds in order.
         var conditions = new Dictionary<int, bool>();
@@ -51,10 +57,10 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 // The ordinary non-site path draws target-base odds even when zero.
                 if (Percent(script.TargetBaseOdds))
                     throw new InvalidOperationException("Mission target-base odds changed after preflight.");
-                var month = unchecked((ulong)state.Month);
-                var region = WorldScriptSelection.Generate(script.Regions, month, campaign.Random)!.Id;
-                var mission = WorldScriptSelection.Generate(script.Missions, month, campaign.Random)!.Id;
-                var race = WorldScriptSelection.Generate(script.Races, month, campaign.Random)!.Id;
+                var selectionMonth = unchecked((ulong)month);
+                var region = WorldScriptSelection.Generate(script.Regions, selectionMonth, campaign.Random)!.Id;
+                var mission = WorldScriptSelection.Generate(script.Missions, selectionMonth, campaign.Random)!.Id;
+                var race = WorldScriptSelection.Generate(script.Races, selectionMonth, campaign.Random)!.Id;
                 var delay = WorldMissionScriptSelection.Delay(script, campaign.Random);
                 var rule = campaign.Content.RuntimeRules.AlienMissions[
                     campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission)].Value;
