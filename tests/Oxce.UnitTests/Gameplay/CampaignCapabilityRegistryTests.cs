@@ -51,7 +51,7 @@ public sealed class CampaignCapabilityRegistryTests
         Assert.Equal<string>(["days passed", "base daily loop"], table.HandlerNames(CampaignTimeTrigger.OneDay));
         Assert.Equal<string>(["craft servicing", "transfers", "production"], table.HandlerNames(CampaignTimeTrigger.OneHour));
         Assert.Equal<string>(["alien mission countdown", "craft refuelling", "world craft auto-patrol",
-            "UFO activity and base detection", "strategic event countdowns"],
+            "UFO activity and base detection", "mission site activity and expiry", "strategic event countdowns"],
             table.HandlerNames(CampaignTimeTrigger.ThirtyMinutes));
         Assert.Equal<string>(["world craft fuel", "UFO detection of XCOM bases"],
             table.HandlerNames(CampaignTimeTrigger.TenMinutes));

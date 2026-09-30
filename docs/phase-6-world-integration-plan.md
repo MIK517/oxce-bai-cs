@@ -181,3 +181,11 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   The [pinned context probe](strategic-world-monthly-context-status.md) checks
   month-zero/one/two, negative/fractional bonuses and the adhoc funding path.
   Actual initial/monthly calls remain guarded; branch 4d remains untouched.
+- Mission-site timer slice: the half-hour handler scores sites, decrements their
+  timers and removes simple unlinked sites in reference order. Followed sites can
+  remain overdue; unsupported forced follower return and despawn consequences
+  stop before the tick. The [pinned site-timer probe](strategic-world-site-timer-status.md)
+  and fresh/cache transition tests cover this bounded lifecycle. Full site and
+  alien-base behavior remain branch 4c work. At the 360-tick corpus horizon,
+  Rosigma Early now executes; totals are nine executable, two blocked and eight
+  tactical preservation-only across fresh/cache loads.

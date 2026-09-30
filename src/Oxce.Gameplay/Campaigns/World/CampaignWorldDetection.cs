@@ -34,7 +34,7 @@ internal sealed partial class CampaignWorld
             hasDueWave = true;
             break;
         }
-        if (!hasUfoWork && !hasDueWave) return null;
+        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0)) return null;
         var regionTotals = campaign.RegionStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
         var countryTotals = campaign.CountryStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
         // Marker capacity is reserved for every contact that could be made, whatever the
@@ -92,6 +92,20 @@ internal sealed partial class CampaignWorld
                 if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert) possibleMarkerIds++;
             }
         }
+        // processMissionSite follows UFO detection in the same half-hour handler.
+        // Every site scores, including one whose timer remains above zero or whose
+        // expiry is held by followers.
+        if (halfHour)
+            foreach (var site in _sites)
+            {
+                var rules = campaign.Content.RuntimeRules;
+                var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
+                var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+                var transition = WorldSiteTimer.Advance(site.SecondsRemaining, SiteHasFollowers(site),
+                    mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
+                if (CheckActivityScore(site.Position, transition.Score, regionTotals, countryTotals) is { } reason)
+                    return reason;
+            }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
         // Share these totals so individually safe awards cannot overflow together.
         foreach (var ufo in _ufos)

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-site-timer",
+  "description": "Extracted GeoscapeState mission-site half-hour timer, follower and score branches.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::processMissionSite timer/follower and score statements",
+      "capture": "tools/capture-strategic-site-timer-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected statement blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_site_timer_probe.cpp",
+      "size": 2638,
+      "sha256": "d5c8cfc87b1871a7389f1aa7d0e3f7013dba153a40d0f7b68d006bf8ceebb6af"
+    },
+    {
+      "path": "tools/capture-strategic-site-timer-reference.ps1",
+      "size": 2700,
+      "sha256": "a12cf9bc59cac32f0ee10f78547006d2fd8f68d2224857477c7c671f9a174782"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-site-timer.rul",
+      "size": 303,
+      "sha256": "3240c2bd24ebfa0251e4622a0b09533fc7fd1320309bfa8c7677251d2411ac7b"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": ["compact-json"],
+  "expected": "fixtures/expected/savegames/strategic-site-timer.expected.json"
+}
