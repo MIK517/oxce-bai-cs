@@ -51,6 +51,9 @@ public enum UfoStatus
 /// <summary>The optional oxceUfoLandingAlert notification after a detected UFO lands.</summary>
 public sealed record UfoLanded(int UfoUniqueId, int LandingId) : ICampaignEvent;
 
+/// <summary>A forced site despawn returns craft followers and displays one lost-site alert.</summary>
+public sealed record MissionSiteLost(int SiteId, string DeploymentId, string Name) : ICampaignEvent;
+
 /// <summary>Reference: <c>Savegame/AlienMission.cpp</c> save nodes.</summary>
 public sealed record AlienMissionSnapshot(
     int Id,

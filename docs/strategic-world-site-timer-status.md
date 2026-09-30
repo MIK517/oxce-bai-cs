@@ -12,16 +12,17 @@ deployment points while it remains, or the despawn penalty when removed.
 
 The `strategic-site-timer` C++ probe inserts the timer/follower and score
 statements verbatim. The runtime handler covers ordinary countdown, followed
-hold and simple unlinked expiry, with combined UFO/site activity overflow
-preflight. Fresh/cache tests check score, timer, save/reload and an atomic
-unsupported-despawn guard. A future slice must handle forced follower return,
-lost-site alerts, despawn research and counters, instant-event consequences
-and associated-UFO reactivation. These transitions stop before mutation.
+hold, simple unlinked expiry and forced expiry with craft followers. Forced
+expiry returns those craft to base before movement and emits one lost-site
+alert. Combined UFO/site activity overflow is preflighted. Fresh/cache tests
+check score, timer, save/reload, forced follower return and atomic guards.
+UFO followers, despawn research and counters, instant-event consequences and
+associated-UFO reactivation still stop before mutation.
 
 The branch 5 landing/deployment and branch 6 event-payload and integrated month
 guards remain in place. This does not close branch 4c.
 
-Validation: root `dotnet test` passes 1,232 tests with zero failures or skips,
+Validation: root `dotnet test --no-restore` passes 1,234 tests with zero failures or skips,
 including fixture checksums and all 19 staged saves under fresh/cache content.
 Formatting, regenerated code-map and diff checks pass. The thirty-minute corpus
 horizon is now nine executable, two blocked and eight tactical preservation-only;

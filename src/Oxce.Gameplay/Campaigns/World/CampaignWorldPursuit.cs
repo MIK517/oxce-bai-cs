@@ -133,6 +133,9 @@ internal sealed partial class CampaignWorld
             return "A craft cannot escort itself.";
         if (state.Destination is not { } destination ||
             destination.Kind is WorldTargetKind.Base or WorldTargetKind.Waypoint or WorldTargetKind.Craft) return null;
+        // processMissionSite runs before time5Seconds craft movement on a half-hour tick.
+        if (highest >= CampaignTimeTrigger.ThirtyMinutes && destination.Kind == WorldTargetKind.MissionSite &&
+            ReturnsFromSiteBeforeMovement(destination)) return null;
         if (highest >= CampaignTimeTrigger.TenMinutes &&
             AdvanceCraftFuel(owner, craft, state).Destination is { Kind: WorldTargetKind.Base }) return null;
         if (!TryGetCraftDestinationPosition(destination, out var targetPosition)) return null;
