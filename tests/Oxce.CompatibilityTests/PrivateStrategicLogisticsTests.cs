@@ -17,37 +17,46 @@ public sealed class PrivateStrategicLogisticsTests
         var root = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var installation = Path.Combine(root, "artifacts/private-install");
         Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")), "Owned installation is not staged.");
-        var purchasedWithProjects = 0;
-        foreach (var (master, addon) in new[] { ("xcom1", "-"), ("xcom2", "-"), ("40k", "40k_ROSIGMA_edits") })
+        var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-logistics-cache-");
+        try
         {
-            var request = InstallationLoadRequest.ForMasterAndAddOn(installation, master, addon, new("Extended", "8.6.1.0"));
-            var fresh = InstallationContentLoader.Load(request, new() { Cache = new() { Enabled = false } }, cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(fresh.IsSuccess, fresh.DescribeFailure());
-            var seed = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(seed.IsSuccess, seed.DescribeFailure());
-            var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(cached.IsSuccess, cached.DescribeFailure());
-            Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
-            var first = Exercise(fresh.Content!, request);
-            var second = Exercise(cached.Content!, request);
-            Assert.Equivalent(first, second, strict: true);
-            var family = master switch { "xcom1" => "vanilla-ufo", "xcom2" => "vanilla-tftd", _ => "modded/rosigma" };
-            var imported = ExerciseImported(fresh.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
-            var cachedImported = ExerciseImported(cached.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
-            Assert.Equivalent(imported, cachedImported, strict: true);
-            var (expectedSave, expectedItem) = master switch
+            var purchasedWithProjects = 0;
+            foreach (var (master, addon) in new[] { ("xcom1", "-"), ("xcom2", "-"), ("40k", "40k_ROSIGMA_edits") })
             {
-                "xcom1" => ("early/IronMode.sav", "STR_STINGRAY_LAUNCHER"),
-                "xcom2" => ("early/IronMode.sav", "STR_AJAX_LAUNCHER"),
-                _ => ("early/Begining.sav", "STR_STINGRAY_LAUNCHER"),
-            };
-            Assert.Contains(imported, result => result.Name == expectedSave &&
-                result.Outcome == ImportedOutcome.Purchased && result.Detail == expectedItem);
-            purchasedWithProjects += imported.Count(result =>
-                result.Outcome == ImportedOutcome.Purchased && result.ActiveProjects > 0);
+                var request = InstallationLoadRequest.ForMasterAndAddOn(installation, master, addon, new("Extended", "8.6.1.0"));
+                var fresh = InstallationContentLoader.Load(request, new() { Cache = new() { Enabled = false } }, cancellationToken: TestContext.Current.CancellationToken);
+                Assert.True(fresh.IsSuccess, fresh.DescribeFailure());
+                var options = new InstallationContentLoadOptions
+                {
+                    Cache = new() { DirectoryPath = cacheDirectory.FullName },
+                };
+                var seed = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
+                Assert.True(seed.IsSuccess, seed.DescribeFailure());
+                var cached = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
+                Assert.True(cached.IsSuccess, cached.DescribeFailure());
+                Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+                var first = Exercise(fresh.Content!, request);
+                var second = Exercise(cached.Content!, request);
+                Assert.Equivalent(first, second, strict: true);
+                var family = master switch { "xcom1" => "vanilla-ufo", "xcom2" => "vanilla-tftd", _ => "modded/rosigma" };
+                var imported = ExerciseImported(fresh.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
+                var cachedImported = ExerciseImported(cached.Content!, request, Path.Combine(root, "fixtures/private/saves", family));
+                Assert.Equivalent(imported, cachedImported, strict: true);
+                var (expectedSave, expectedItem) = master switch
+                {
+                    "xcom1" => ("early/IronMode.sav", "STR_STINGRAY_LAUNCHER"),
+                    "xcom2" => ("early/IronMode.sav", "STR_AJAX_LAUNCHER"),
+                    _ => ("early/Begining.sav", "STR_STINGRAY_LAUNCHER"),
+                };
+                Assert.Contains(imported, result => result.Name == expectedSave &&
+                    result.Outcome == ImportedOutcome.Purchased && result.Detail == expectedItem);
+                purchasedWithProjects += imported.Count(result =>
+                    result.Outcome == ImportedOutcome.Purchased && result.ActiveProjects > 0);
+            }
+            // Active research/production no longer blocks imported saves.
+            Assert.True(purchasedWithProjects > 0, "No imported save with active projects completed a purchase.");
         }
-        // Active research/production no longer blocks imported saves.
-        Assert.True(purchasedWithProjects > 0, "No imported save with active projects completed a purchase.");
+        finally { cacheDirectory.Delete(recursive: true); }
     }
 
     private static object Exercise(RuntimeContent content, InstallationLoadRequest request)

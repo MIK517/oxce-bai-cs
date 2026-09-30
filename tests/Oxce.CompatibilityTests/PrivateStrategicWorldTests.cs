@@ -17,49 +17,58 @@ public sealed class PrivateStrategicWorldTests
         var installation = TestFixtures.RepositoryPath("artifacts", "private-install");
         Assert.SkipUnless(File.Exists(Path.Combine(installation, ".oxce-private-install-manifest.json")),
             "Owned installation is not staged.");
-        List<ContinuationResult> results = [];
-        foreach (var (master, addon, family, count) in new[]
+        var cacheDirectory = Directory.CreateTempSubdirectory("oxce-private-world-cache-");
+        try
         {
+            List<ContinuationResult> results = [];
+            foreach (var (master, addon, family, count) in new[]
+            {
             ("xcom1", "-", "vanilla-ufo", 7), ("xcom2", "-", "vanilla-tftd", 5),
             ("40k", "40k_ROSIGMA_edits", "modded/rosigma", 7),
         })
-        {
-            var request = InstallationLoadRequest.ForMasterAndAddOn(installation, master, addon, new("Extended", "8.6.1.0"));
-            var fresh = InstallationContentLoader.Load(request, new() { Cache = new() { Enabled = false } },
-                cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(fresh.IsSuccess, fresh.DescribeFailure());
-            var seed = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(seed.IsSuccess, seed.DescribeFailure());
-            var cached = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(cached.IsSuccess, cached.DescribeFailure());
-            Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
-            var first = Exercise(fresh.Content!, request, family);
-            Assert.Equal(count, first.Length);
-            Assert.Equivalent(first, Exercise(cached.Content!, request, family), strict: true);
-            results.AddRange(first);
-        }
-        // Retain the measured classifications even when an expectation fails, for review.
-        var path = TestFixtures.RepositoryPath("artifacts", "world-closure-corpus.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, JsonSerializer.Serialize(results));
-        Assert.Equal(19, results.Count);
-        Assert.Equal(8, results.Count(result => result.Outcome == "executable"));
-        Assert.Equal(3, results.Count(result => result.Outcome == "blocked"));
-        Assert.Equal(8, results.Count(result => result.Outcome == "preservation-only"));
-        foreach (var result in results)
-        {
-            var expected = (result.Family, result.Name) switch
             {
-                ("vanilla-ufo", "early/Begining.sav") => (125, "Alien mission wave spawning requires world simulation."),
-                ("modded/rosigma", "early/Begining.sav") => (220, "Alien mission wave spawning requires world simulation."),
-                ("modded/rosigma", "early/Early.sav") =>
-                    (0, "Mission site expiry requires world simulation."),
-                (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
-                    (0, "Active tactical battle is preserved; tactical continuation is unavailable."),
-                _ => (360, (string?)null),
-            };
-            Assert.Equal(expected, (result.Ticks, result.Reason));
+                var request = InstallationLoadRequest.ForMasterAndAddOn(installation, master, addon, new("Extended", "8.6.1.0"));
+                var fresh = InstallationContentLoader.Load(request, new() { Cache = new() { Enabled = false } },
+                    cancellationToken: TestContext.Current.CancellationToken);
+                Assert.True(fresh.IsSuccess, fresh.DescribeFailure());
+                var options = new InstallationContentLoadOptions
+                {
+                    Cache = new() { DirectoryPath = cacheDirectory.FullName },
+                };
+                var seed = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
+                Assert.True(seed.IsSuccess, seed.DescribeFailure());
+                var cached = InstallationContentLoader.Load(request, options, cancellationToken: TestContext.Current.CancellationToken);
+                Assert.True(cached.IsSuccess, cached.DescribeFailure());
+                Assert.Equal(CompiledContentCacheStatus.Hit, cached.CacheStatus);
+                var first = Exercise(fresh.Content!, request, family);
+                Assert.Equal(count, first.Length);
+                Assert.Equivalent(first, Exercise(cached.Content!, request, family), strict: true);
+                results.AddRange(first);
+            }
+            // Retain the measured classifications even when an expectation fails, for review.
+            var path = TestFixtures.RepositoryPath("artifacts", "world-closure-corpus.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, JsonSerializer.Serialize(results));
+            Assert.Equal(19, results.Count);
+            Assert.Equal(8, results.Count(result => result.Outcome == "executable"));
+            Assert.Equal(3, results.Count(result => result.Outcome == "blocked"));
+            Assert.Equal(8, results.Count(result => result.Outcome == "preservation-only"));
+            foreach (var result in results)
+            {
+                var expected = (result.Family, result.Name) switch
+                {
+                    ("vanilla-ufo", "early/Begining.sav") => (125, "Alien mission wave spawning requires world simulation."),
+                    ("modded/rosigma", "early/Begining.sav") => (220, "Alien mission wave spawning requires world simulation."),
+                    ("modded/rosigma", "early/Early.sav") =>
+                        (0, "Mission site expiry requires world simulation."),
+                    (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
+                        (0, "Active tactical battle is preserved; tactical continuation is unavailable."),
+                    _ => (360, (string?)null),
+                };
+                Assert.Equal(expected, (result.Ticks, result.Reason));
+            }
         }
+        finally { cacheDirectory.Delete(recursive: true); }
     }
 
     private static ContinuationResult[] Exercise(RuntimeContent content, InstallationLoadRequest request, string family)

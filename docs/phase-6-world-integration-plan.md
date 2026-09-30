@@ -157,3 +157,15 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   the month guard remain for later 4c slices. Branch 4d remains untouched.
   Validation: root `dotnet test` passes 1,188 tests with zero failures or skips;
   fixture checksums, formatting and generated code-map verification pass.
+- Monthly arc-script subsystem: a registered isolated world operation now collects
+  eligibility and odds before any research grant, counts duplicate researched arcs,
+  applies sequential then prefiltered weighted grants, and uses the research
+  capability for lookup/zero-cost chains. Reachable missing topics and possible
+  score overflow stop before RNG or mutation. Fresh/cache, save/reload and
+  same-pass exposure scenarios use `strategic-arc-scripts.rul`. See
+  [scope and boundaries](strategic-arc-script-status.md). The actual monthly
+  caller, score/funding calculation and month guard remain for later 4c work;
+  branch 4d remains untouched. Preflight ignores weighted choices made unreachable
+  by `maxArcs` and bounds score per reachable grant slot. Root `dotnet test` passes
+  1,212 tests with zero failures or skips, including checksum and private-corpus
+  tests; formatting verification passes.
