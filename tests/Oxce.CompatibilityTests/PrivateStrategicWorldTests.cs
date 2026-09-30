@@ -50,8 +50,8 @@ public sealed class PrivateStrategicWorldTests
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(results));
             Assert.Equal(19, results.Count);
-            Assert.Equal(8, results.Count(result => result.Outcome == "executable"));
-            Assert.Equal(3, results.Count(result => result.Outcome == "blocked"));
+            Assert.Equal(9, results.Count(result => result.Outcome == "executable"));
+            Assert.Equal(2, results.Count(result => result.Outcome == "blocked"));
             Assert.Equal(8, results.Count(result => result.Outcome == "preservation-only"));
             foreach (var result in results)
             {
@@ -59,8 +59,6 @@ public sealed class PrivateStrategicWorldTests
                 {
                     ("vanilla-ufo", "early/Begining.sav") => (125, "Alien mission wave spawning requires world simulation."),
                     ("modded/rosigma", "early/Begining.sav") => (220, "Alien mission wave spawning requires world simulation."),
-                    ("modded/rosigma", "early/Early.sav") =>
-                        (0, "Mission site expiry requires world simulation."),
                     (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
                         (0, "Active tactical battle is preserved; tactical continuation is unavailable."),
                     _ => (360, (string?)null),

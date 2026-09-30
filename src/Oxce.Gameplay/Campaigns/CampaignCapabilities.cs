@@ -55,6 +55,7 @@ internal static class CampaignTimeOrder
     public const int ThirtyMinutesRefuel = 100;
     public const int ThirtyMinutesAutoPatrol = 200;
     public const int ThirtyMinutesWorldUfoDetection = 300;
+    public const int ThirtyMinutesWorldSites = 400;
     public const int ThirtyMinutesWorldEvents = 500;
 }
 

@@ -32,6 +32,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         RegisterUfoOperations(registry);
         RegisterMissionOperations(registry);
         RegisterUfoDetection(registry);
+        RegisterSiteOperations(registry);
         RegisterCraftOperations(registry);
         RegisterEventScheduling(registry);
         RegisterEventScripts(registry);
@@ -428,9 +429,10 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (missionReason is not null) return missionReason;
         var baseDetectionReason = UfoBaseDetectionReason(highest);
         if (baseDetectionReason is not null) return baseDetectionReason;
+        var siteReason = SiteTimingReason(highest);
+        if (siteReason is not null) return siteReason;
         var detectionReason = UfoHalfHourReason(highest);
         if (detectionReason is not null) return detectionReason;
-        if (_sites.Count != 0) return "Mission site expiry requires world simulation.";
         if (_alienBases.Count != 0) return "Alien base activity requires world simulation.";
         return EventSchedulingReason(highest);
     }
