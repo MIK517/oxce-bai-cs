@@ -39,6 +39,7 @@ public sealed class CampaignStartSettings
         HireByCountryOdds = builder.HireByCountryOdds;
         HireByRegionOdds = builder.HireByRegionOdds;
         InitialFunding = builder.InitialFunding;
+        PerformanceBonusFactor = builder.PerformanceBonusFactor;
         GlobalTransferCostMultiplier = builder.GlobalTransferCostMultiplier;
         GlobalTransferCostDivisor = builder.GlobalTransferCostDivisor;
         PsiUnlockResearch = builder.PsiUnlockResearch;
@@ -97,7 +98,8 @@ public sealed class CampaignStartSettings
         IReadOnlyList<int> sellPriceCoefficients,
         IReadOnlyList<YamlMappingNode> globeLayers,
         int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
-        IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20)
+        IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
+        double performanceBonusFactor = 0)
     {
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
@@ -118,6 +120,7 @@ public sealed class CampaignStartSettings
         HireByCountryOdds = hireByCountryOdds;
         HireByRegionOdds = hireByRegionOdds;
         InitialFunding = initialFunding;
+        PerformanceBonusFactor = performanceBonusFactor;
         GlobalTransferCostMultiplier = globalTransferCostMultiplier;
         GlobalTransferCostDivisor = globalTransferCostDivisor;
         PsiUnlockResearch = psiUnlockResearch;
@@ -157,6 +160,7 @@ public sealed class CampaignStartSettings
     public int HireByCountryOdds { get; }
     public int HireByRegionOdds { get; }
     public int InitialFunding { get; }
+    public double PerformanceBonusFactor { get; }
     public IReadOnlyList<int> BuyPriceCoefficients { get; }
     public IReadOnlyList<int> SellPriceCoefficients { get; }
     public int GlobalTransferCostMultiplier { get; }
@@ -219,6 +223,7 @@ internal sealed class CampaignStartSettingsBuilder
     public int HireByCountryOdds { get; set; }
     public int HireByRegionOdds { get; set; }
     public int InitialFunding { get; set; }
+    public double PerformanceBonusFactor { get; set; }
     public int GlobalTransferCostMultiplier { get; set; } = 1;
     public int GlobalTransferCostDivisor { get; set; } = 1;
     public string PsiUnlockResearch { get; set; } = string.Empty;
