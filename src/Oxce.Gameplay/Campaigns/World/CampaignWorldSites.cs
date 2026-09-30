@@ -25,6 +25,8 @@ internal sealed partial class CampaignWorld
 {
     private const string SiteDespawnBoundary =
         "Mission site despawn requires research, counters, event payloads or UFO reactivation.";
+    private const string SiteUfoFollowerBoundary =
+        "Targeted mission site despawn requires UFO follower destination repair.";
 
     private void RegisterSiteOperations(CampaignCapabilityRegistry registry) =>
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldSites,
@@ -41,7 +43,20 @@ internal sealed partial class CampaignWorld
             var transition = WorldSiteTimer.Advance(site.SecondsRemaining, SiteHasFollowers(site),
                 mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
             if (transition.ReturnFollowers)
-                return "Targeted mission site despawn requires craft return and lost-site alert.";
+            {
+                if (_ufos.Any(ufo => FollowsSite(ufo.Destination, site)))
+                    return SiteUfoFollowerBoundary;
+                foreach (var owner in campaign.BaseStates)
+                    foreach (var craft in owner.Crafts)
+                    {
+                        if (!FollowsSite(craft.Logistics?.Destination, site)) continue;
+                        if (craft.Logistics is not { Status: "STR_OUT" } state || !owner.IsPlaced)
+                            return "A mission site follower craft cannot return to its base.";
+                        if (!CraftLogistics.TryEffectiveSpeedMaximum(
+                                rules.Crafts[craft.Rule].Value, state.Weapons, rules, out _))
+                            return SpeedRangeReason;
+                    }
+            }
             if (transition.Remove && (site.UfoUniqueId != 0 ||
                 deployment.UnlockedResearchOnDespawnId.Length != 0 || deployment.DespawnEvents.Count != 0 ||
                 deployment.CounterDespawn.Length != 0 || deployment.CounterFailure.Length != 0 ||
@@ -52,7 +67,7 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private void AdvanceSites(CampaignState.TimeEffects _)
+    private void AdvanceSites(CampaignState.TimeEffects effects)
     {
         var rules = campaign.Content.RuntimeRules;
         for (var index = 0; index < _sites.Count;)
@@ -63,7 +78,10 @@ internal sealed partial class CampaignWorld
             var transition = WorldSiteTimer.Advance(site.SecondsRemaining, SiteHasFollowers(site),
                 mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
             if (transition.ReturnFollowers)
-                throw new InvalidOperationException("Mission site expiry changed after world preflight.");
+            {
+                ReturnSiteCraftFollowers(site);
+                effects.Notify(new MissionSiteLost(site.Id, site.DeploymentId, site.Name));
+            }
             ScoreUfoActivity(site.Position, transition.Score, rules);
             if (transition.Remove) _sites.RemoveAt(index);
             else _sites[index++] = site with { SecondsRemaining = transition.SecondsRemaining };
@@ -72,11 +90,31 @@ internal sealed partial class CampaignWorld
 
     private bool SiteHasFollowers(MissionSiteSnapshot site)
     {
-        var marker = MarkerName(site.DeploymentId);
-        bool Matches(WorldTargetReference? target) => target is
-        { Kind: WorldTargetKind.MissionSite } reference && reference.Id == site.Id &&
-            reference.TypeId == marker;
-        return campaign.BaseStates.Any(owner => owner.Crafts.Any(craft => Matches(craft.Logistics?.Destination))) ||
-            _ufos.Any(ufo => Matches(ufo.Destination));
+        return campaign.BaseStates.Any(owner => owner.Crafts.Any(craft => FollowsSite(craft.Logistics?.Destination, site))) ||
+            _ufos.Any(ufo => FollowsSite(ufo.Destination, site));
+    }
+
+    private bool FollowsSite(WorldTargetReference? target, MissionSiteSnapshot site) =>
+        target is { Kind: WorldTargetKind.MissionSite } reference && reference.Id == site.Id &&
+        reference.TypeId == MarkerName(site.DeploymentId);
+
+    private bool ReturnsFromSiteBeforeMovement(WorldTargetReference destination) =>
+        _sites.Any(site => FollowsSite(destination, site) && site.SecondsRemaining < 30 * 60 &&
+            campaign.Content.RuntimeRules.AlienMissions[
+                campaign.Content.RuntimeRules.AlienMissions.GetRequired(site.MissionRuleId)].Value.DespawnEvenIfTargeted);
+
+    private void ReturnSiteCraftFollowers(MissionSiteSnapshot site)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var owner in campaign.BaseStates)
+            for (var index = 0; index < owner.Crafts.Count; index++)
+            {
+                var craft = owner.Crafts[index];
+                if (craft.Logistics is not { } state || !FollowsSite(state.Destination, site)) continue;
+                if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value,
+                        state.Weapons, rules, out var speed))
+                    throw new InvalidOperationException("Mission site follower speed changed after world preflight.");
+                owner.Crafts[index] = craft with { Logistics = SetDestination(state, speed, BaseReference(owner)) };
+            }
     }
 }

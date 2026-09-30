@@ -93,19 +93,6 @@ public sealed class StrategicWorldSiteTimerTests
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(0, Assert.Single(campaign.Capture().World.MissionSites).SecondsRemaining);
 
-        var forcedSnapshot = snapshot with
-        {
-            World = snapshot.World with
-            {
-                MissionSites = [site with { MissionRuleId = "MISSION_SITE_FORCE" }]
-            }
-        };
-        var forced = CampaignState.Restore(forcedSnapshot, content, new SplitMix64RandomSource(17));
-        var forcedBefore = forced.Capture();
-        Assert.Contains(forced.Execute(new AdvanceCampaignTime(1)).Events,
-            item => item is CampaignActionBlocked action && action.Reason.Contains("Targeted mission site despawn", StringComparison.Ordinal));
-        Assert.Equivalent(forcedBefore, forced.Capture(), strict: true);
-
         var blockedSnapshot = WithSite(CreateSnapshot(content, "Guarded site") with
         {
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
@@ -115,6 +102,59 @@ public sealed class StrategicWorldSiteTimerTests
         Assert.Contains(blocked.Execute(new AdvanceCampaignTime(1)).Events,
             item => item is CampaignActionBlocked action && action.Reason.Contains("despawn", StringComparison.OrdinalIgnoreCase));
         Assert.Equivalent(before, blocked.Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ForcedExpiryReturnsFollowerBeforeLandingAndPersists(bool fromCache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+        var snapshot = WithSite(CreateSnapshot(content, "Forced site") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+        }, "SITE_TIMER", 0);
+        var site = Assert.Single(snapshot.World.MissionSites) with
+        {
+            MissionRuleId = "MISSION_SITE_FORCE",
+            Longitude = 0.25,
+            Latitude = 0.15,
+            Name = "Site",
+        };
+        snapshot = snapshot with { World = snapshot.World with { MissionSites = [site] } };
+        var owner = snapshot.Bases[0];
+        snapshot = snapshot with
+        {
+            Bases = [owner with
+            {
+                Crafts = [owner.Crafts[0] with { Logistics = owner.Crafts[0].Logistics! with
+                {
+                    Status = "STR_OUT", Takeoff = 0, Fuel = 50, Speed = 6000,
+                    Longitude = site.Longitude, Latitude = site.Latitude,
+                    Destination = new(WorldTargetKind.MissionSite, "STR_TERROR_SITE", site.Id,
+                        site.Longitude, site.Latitude),
+                } }, .. owner.Crafts.Skip(1)],
+                Soldiers = [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with
+                {
+                    CraftType = "SHIP", CraftId = 1,
+                } }, .. owner.Soldiers.Skip(1)],
+            }, .. snapshot.Bases.Skip(1)]
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Single(result.Events.OfType<MissionSiteLost>());
+        Assert.Equal(new MissionSiteLost(site.Id, site.DeploymentId, "Site"),
+            result.Events.OfType<MissionSiteLost>().Single());
+        var after = campaign.Capture();
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal(WorldTargetKind.Base, after.Bases[0].Crafts[0].Logistics!.Destination!.Kind);
+        Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + 9, after.Regions[0].ActivityAlien[^1]);
+        var reloaded = Reload(content, campaign, 17, "forced-site-expiry.sav").Capture();
+        Assert.Empty(reloaded.World.MissionSites);
+        Assert.Equal(WorldTargetKind.Base, reloaded.Bases[0].Crafts[0].Logistics!.Destination!.Kind);
     }
 
     [Fact]
