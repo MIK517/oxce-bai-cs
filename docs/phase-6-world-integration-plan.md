@@ -169,3 +169,10 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   by `maxArcs` and bounds score per reachable grant slot. Root `dotnet test` passes
   1,212 tests with zero failures or skips, including checksum and private-corpus
   tests; formatting verification passes.
+- Tagged adhoc mission-script subsystem: event rules retain immutable tag lists;
+  the registered gameplay operation filters the ordered adhoc list using the
+  reference first-script-tag behavior and shares bounded mission execution with
+  the monthly mission phase. Fresh/cache, save/reload, eligibility and atomic
+  unsupported-objective fixtures are in [the status](strategic-adhoc-script-status.md).
+  Due event payloads remain guarded for branch 6; full mission modes and actual
+  campaign hooks remain 4c work. Branch 4d remains untouched.
