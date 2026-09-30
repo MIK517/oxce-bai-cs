@@ -28,6 +28,18 @@ internal interface ICampaignResearchPreflight
     IReadOnlySet<string> GuaranteedResearchAfterDailyProgress();
 }
 
+/// <summary>World arcs use SavedGame::addFinishedResearch, without daily project side effects.</summary>
+internal interface ICampaignArcResearch
+{
+    bool IsResearched(string id);
+    string? GrantReason(string id);
+    string Grant(string id);
+    bool ScoreCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots);
+    IReadOnlySet<string> PossibleDisables(string id);
+    IReadOnlySet<string> PossibleAutomaticResearch();
+    string? Lookup(string id);
+}
+
 public sealed record CampaignResearchChoice(string RuleId, int Cost, string? UnavailableReason);
 public sealed record CampaignResearchProject(string RuleId, int Assigned, int Spent, int Cost, string Progress);
 public sealed record CampaignProductionChoice(string RuleId, int Time, int Cost, int Space, string? UnavailableReason);
@@ -38,11 +50,12 @@ public sealed record CampaignResearchProduction(
     IReadOnlyList<CampaignResearchChoice> ResearchChoices, IReadOnlyList<CampaignResearchProject> Research,
     IReadOnlyList<CampaignProductionChoice> ProductionChoices, IReadOnlyList<CampaignProductionProject> Productions);
 
-public sealed partial class CampaignState : ICampaignResearchProductionQuery, ICampaignResearchPreflight
+public sealed partial class CampaignState : ICampaignResearchProductionQuery, ICampaignResearchPreflight, ICampaignArcResearch
 {
     private void RegisterResearchProduction(CampaignCapabilityRegistry registry)
     {
         registry.Operation<ICampaignResearchPreflight>(this);
+        registry.Operation<ICampaignArcResearch>(this);
         registry.Command<ConfigureResearchProject>(ConfigureResearch);
         registry.Command<ConfigureProductionProject>(ConfigureProduction);
         registry.Preflight(CampaignPreflightOrder.ResearchProduction, "research and production",
@@ -67,6 +80,79 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     internal bool HasCompletedResearch(string id) => _completedResearch.Contains(id);
 
     internal ICampaignResearchPreflight ResearchPreflight => _handlers.Operation<ICampaignResearchPreflight>();
+
+    internal ICampaignArcResearch ArcResearch => _handlers.Operation<ICampaignArcResearch>();
+
+    bool ICampaignArcResearch.IsResearched(string id) => _debugMode || _completedResearch.Contains(id);
+
+    string? ICampaignArcResearch.GrantReason(string id)
+    {
+        if (_bases.Count == 0) return "Arc research requires a headquarters base.";
+        return _content.RuntimeRules.Research.TryGet(id, out _) ? null : $"Required arc research '{id}' does not exist.";
+    }
+
+    string ICampaignArcResearch.Grant(string id)
+    {
+        var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+        var discoveries = new List<string>();
+        AddFinishedResearch(_bases[0], id, discoveries);
+        if (rule.Lookup.Length == 0 || !_content.RuntimeRules.Research.TryGet(rule.Lookup, out _)) return id;
+        AddFinishedResearch(_bases[0], rule.Lookup, discoveries);
+        return rule.Lookup;
+    }
+
+    string? ICampaignArcResearch.Lookup(string id) =>
+        _content.RuntimeRules.Research.TryGet(id, out var handle) &&
+        _content.RuntimeRules.Research[handle].Value.Lookup.Length != 0
+            ? _content.RuntimeRules.Research[handle].Value.Lookup : null;
+
+    IReadOnlySet<string> ICampaignArcResearch.PossibleDisables(string id) =>
+        _content.RuntimeRules.Research.TryGet(id, out var handle)
+            ? _content.RuntimeRules.Research[handle].Value.Disables.ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+
+    IReadOnlySet<string> ICampaignArcResearch.PossibleAutomaticResearch() =>
+        _content.RuntimeRules.Research.Rules.Where(entry => entry.Value.Cost == 0)
+            .Select(entry => entry.Id).ToHashSet(StringComparer.Ordinal);
+
+    bool ICampaignArcResearch.ScoreCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots)
+    {
+        // Each slot grants at most one candidate. A direct grant and its optional
+        // lookup each run an automatic zero-cost chain; bound both score signs.
+        long automaticPositive = 0;
+        long automaticNegative = 0;
+        foreach (var entry in _content.RuntimeRules.Research.Rules)
+            if (entry.Value.Cost == 0)
+            {
+                automaticPositive += Math.Max(0, (long)entry.Value.Points);
+                automaticNegative += Math.Min(0, (long)entry.Value.Points);
+            }
+        long positive = 0;
+        long negative = 0;
+        foreach (var slot in possibleGrantSlots)
+        {
+            long slotPositive = 0;
+            long slotNegative = 0;
+            foreach (var id in slot)
+            {
+                var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+                var candidatePositive = Math.Max(0, (long)rule.Points) + automaticPositive;
+                var candidateNegative = Math.Min(0, (long)rule.Points) + automaticNegative;
+                if (rule.Lookup.Length != 0 && _content.RuntimeRules.Research.TryGet(rule.Lookup, out var lookup))
+                {
+                    var linked = _content.RuntimeRules.Research[lookup].Value;
+                    candidatePositive += Math.Max(0, (long)linked.Points) + automaticPositive;
+                    candidateNegative += Math.Min(0, (long)linked.Points) + automaticNegative;
+                }
+                slotPositive = Math.Max(slotPositive, candidatePositive);
+                slotNegative = Math.Min(slotNegative, candidateNegative);
+            }
+            positive += slotPositive;
+            negative += slotNegative;
+        }
+        var score = (long)_researchScores[^1];
+        return positive <= int.MaxValue - score && negative >= int.MinValue - score;
+    }
 
     IReadOnlySet<string> ICampaignResearchPreflight.GuaranteedResearchAfterDailyProgress()
     {

@@ -46,6 +46,7 @@ labels/links/delays, unavailable objectives and exhausted IDs.
 Validation: root `dotnet test` passes 1,188 tests with zero failures or skips,
 including checksum and private-corpus tests. Formatting and code-map verification pass.
 
-Outstanding: arc scheduling, mission site/base/strategy fallback paths, tagged adhoc
-scripts, actual initial/monthly hooks and score/funding calculations. This subsystem
+Arc scheduling now has an [isolated subsystem](strategic-arc-script-status.md).
+Outstanding: mission site/base/strategy fallback paths, tagged adhoc scripts,
+actual initial/monthly hooks and score/funding calculations. This subsystem
 does not claim integrated monthly campaign progression or branch 4c acceptance.

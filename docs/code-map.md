@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 60 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 61 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 91 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 92 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 84 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 60 files.
+`src/Oxce.Gameplay` - 61 files.
 
 ### `Oxce.Gameplay`
 
@@ -432,6 +432,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 - `AlienStrategyState` (class) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs) - The alien strategy table: which regions are still worth attacking, which missions remain available there, how often each mission-script v...
 - `AlienStrategyState.MissionLocation` (record struct) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs)
+- `CampaignArcUnlocked` (record) [CampaignWorldArcScripts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldArcScripts.cs) - The article that GeoscapeState opens for one granted arc.
 - `DispatchCraftToWaypoint` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Send a ready craft to a new globe waypoint, as in GeoscapeCraftState.
 - `DispatchCraftToTarget` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Dispatch to a visible target using stable identity rather than marker coordinates.
 - `RecallCraft` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Recall an airborne craft to its owner base.
@@ -1001,14 +1002,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 91 files.
+`tests/Oxce.CompatibilityTests` - 92 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>89 test classes</summary>
+<details><summary>90 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1062,6 +1063,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ScriptEventFixtureTests` ([ScriptEventFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptEventFixtureTests.cs))
 - `SpriteFontFixtureTests` ([SpriteFontFixtureTests.cs](../tests/Oxce.CompatibilityTests/SpriteFontFixtureTests.cs))
 - `StartingPersonnelFixtureTests` ([StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs))
+- `StrategicArcScriptTests` ([StrategicArcScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicArcScriptTests.cs))
 - `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))
 - `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs))
 - `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))
