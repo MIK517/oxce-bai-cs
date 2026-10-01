@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-mission-base-target",
+  "description": "Exact non-site target-base branch of GeoscapeState::processCommand, with minimum choices and controlled base/mission lists. Duplicate regions, pruning, circular retry, exhausted candidates and one mission type. Race and mission creation are tested separately.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::processCommand target-base branch",
+      "capture": "tools/capture-strategic-mission-base-target-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; branch inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_mission_base_target_probe.cpp",
+      "size": 2220,
+      "sha256": "d9b4adde3ea2b55ea0d7c5e7d47afee01796e386b24e945e9555f57cd7e04d60"
+    },
+    {
+      "path": "tools/capture-strategic-mission-base-target-reference.ps1",
+      "size": 2669,
+      "sha256": "23a8c06780e80c8a3bca5548f555fe523a47f3017475ce8f1365fc588e186c4a"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-base-target.rul",
+      "size": 960,
+      "sha256": "c31a64fcf440a166880f98f92f1067aada077be8123c4762c7d96232cc01f837"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-mission-base-target.expected.json"
+}

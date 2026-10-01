@@ -14,7 +14,7 @@ internal sealed record ScheduleMonthlyWorldMissions(int Score, long Funds) : ICa
 internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
 {
     private const string MissionScriptBoundary =
-        "Mission script requires site, base targeting, strategy fallback or another unavailable world transition.";
+        "Mission script requires site, strategy fallback or another unavailable world transition.";
 
     private void RegisterMissionScripts(CampaignCapabilityRegistry registry)
     {
@@ -54,12 +54,22 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             var success = false;
             if (process && Percent(script.Criteria.ExecutionOdds))
             {
-                // The ordinary non-site path draws target-base odds even when zero.
-                if (Percent(script.TargetBaseOdds))
-                    throw new InvalidOperationException("Mission target-base odds changed after preflight.");
                 var selectionMonth = unchecked((ulong)month);
-                var region = WorldScriptSelection.Generate(script.Regions, selectionMonth, campaign.Random)!.Id;
-                var mission = WorldScriptSelection.Generate(script.Missions, selectionMonth, campaign.Random)!.Id;
+                string region, mission;
+                if (Percent(script.TargetBaseOdds))
+                {
+                    if (SelectBaseTargetMission(script, month) is not { } selection)
+                    {
+                        if (script.Label > 0) conditions.Add(script.Label, false);
+                        continue;
+                    }
+                    (region, mission) = selection;
+                }
+                else
+                {
+                    region = WorldScriptSelection.Generate(script.Regions, selectionMonth, campaign.Random)!.Id;
+                    mission = WorldScriptSelection.Generate(script.Missions, selectionMonth, campaign.Random)!.Id;
+                }
                 var rule = campaign.Content.RuntimeRules.AlienMissions[
                     campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission)].Value;
                 var race = script.Races.Count == 0
@@ -85,11 +95,12 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
     }
 
     private string? MissionScriptReason(
-        IReadOnlyList<RuntimeRule<RuntimeMissionScriptRule>> available, int month)
+        RuntimeRule<RuntimeMissionScriptRule>[] available, int month)
     {
         var labels = new HashSet<int>();
         var runs = new Dictionary<string, int>(StringComparer.Ordinal);
         var possible = 0;
+        long work = 0;
         foreach (var entry in available)
         {
             var script = entry.Value;
@@ -99,19 +110,33 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Mission script condition is outside the supported range.";
             if (script.Criteria.ExecutionOdds <= 0) continue;
             possible++;
-            if (script.SiteType || script.TargetBaseOdds > 0 || script.Missions.Count == 0 ||
-                script.Regions.Count == 0)
+            if (script.SiteType || script.Missions.Count == 0 ||
+                (script.TargetBaseOdds < 100 && script.Regions.Count == 0))
                 return MissionScriptBoundary;
             if (script.StartDelay < 0 || script.RandomDelay < 0 ||
                 (long)script.StartDelay + script.RandomDelay > int.MaxValue)
                 return "Mission script delay exceeds the supported range.";
-            if (Choices(script.Missions, month, choice =>
-                    choice.Handle is { } handle && ValidMission(handle, script.Races.Count == 0)) is { } missionReason)
-                return missionReason;
-            if (Choices(script.Regions, month, choice => choice.Handle is { } handle &&
-                    (campaign.Content.RuntimeRules.Regions[handle].Value.MissionRegionId.Length == 0 ||
-                     campaign.Content.RuntimeRules.Regions[handle].Value.MissionRegion is not null)) is { } regionReason)
-                return regionReason;
+            if (script.TargetBaseOdds > 0)
+            {
+                var types = WorldScriptSelection.Available(script.Missions, month);
+                work += (long)types.Count * campaign.BaseStates.Count * (1L + _missions.Count + available.Length);
+                work += (long)campaign.BaseStates.Count * campaign.RegionStates.Count;
+                if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+                if (types.Count == 0 || types.Any(choice => choice.Rule.Handle is not { } handle ||
+                        !ValidMission(handle, script.Races.Count == 0))) return MissionScriptBoundary;
+                foreach (var owner in campaign.BaseStates)
+                    if (LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) is not { } region ||
+                        !ValidRegion(campaign.Content.RuntimeRules.Regions.GetRequired(region)))
+                        return "Mission script cannot locate a valid player base region.";
+            }
+            if (script.TargetBaseOdds < 100)
+            {
+                if (Choices(script.Missions, month, choice =>
+                        choice.Handle is { } handle && ValidMission(handle, script.Races.Count == 0)) is { } missionReason)
+                    return missionReason;
+                if (Choices(script.Regions, month, choice => choice.Handle is { } handle && ValidRegion(handle)) is { } regionReason)
+                    return regionReason;
+            }
             if (script.Races.Count != 0 && Choices(script.Races, month, choice => choice.IsResolved) is { } raceReason)
                 return raceReason;
             if (script.VariableName.Length != 0)
@@ -129,6 +154,12 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             _missions.Any(mission => mission.Id >= next && mission.Id < (long)next + possible))
             return "Alien mission IDs or population exceed the supported limit.";
         return null;
+
+        bool ValidRegion(RuleHandle<RegionRuleFamily> handle)
+        {
+            var region = campaign.Content.RuntimeRules.Regions[handle].Value;
+            return region.MissionRegionId.Length == 0 || region.MissionRegion is not null;
+        }
 
         bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle, bool useMissionRace)
         {
