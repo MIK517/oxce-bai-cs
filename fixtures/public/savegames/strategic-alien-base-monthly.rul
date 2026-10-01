@@ -203,6 +203,20 @@ alienRaces:
   - id: CHAIN_100
     members: []
 alienDeployments:
+  - type: MONTHLY_craftMarker
+    alienBase: true
+    markerName: SHIP
+  - type: MONTHLY_craftMarkerUpgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_craftMarker: 1}}
+  - type: MONTHLY_legacyMarker
+    alienBase: true
+    markerName: STR_ALIEN_TERROR
+  - type: MONTHLY_legacyMarkerUpgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_legacyMarker: 1}}
   - &monthlyNew
     type: MONTHLY_NEW
     alienBase: true

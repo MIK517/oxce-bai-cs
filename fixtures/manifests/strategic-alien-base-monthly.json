@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "GeoscapeState::determineAlienMissions/attemptAlienRaceEvolution, AlienDeployment::generateAlienBaseUpgrade, AlienBase::setDeployment, WeightedOptions::choose",
+      "sources": "GeoscapeState::determineAlienMissions/attemptAlienRaceEvolution, AlienDeployment::generateAlienBaseUpgrade, AlienBase::setDeployment, WeightedOptions::choose, Craft::load destination/finishLoading",
       "capture": "tools/capture-strategic-alien-base-monthly-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; selected blocks inserted verbatim"
     }
@@ -15,18 +15,18 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_alien_base_monthly_probe.cpp",
-      "size": 6751,
-      "sha256": "93f9eceb59e0e3b3dedfc28d5175ad20eb6a9de94a21afb6663f5a11f647980a"
+      "size": 9105,
+      "sha256": "60189fc03cb885111a095bad86a5ad2a41e2129a04e7cb89620f0694d1b671e8"
     },
     {
       "path": "tools/capture-strategic-alien-base-monthly-reference.ps1",
-      "size": 3415,
-      "sha256": "0f114e0cbef12cbe6c102125362745946205f722eddb79085a62e8b546c42081"
+      "size": 3672,
+      "sha256": "55fea84a7b36b0d7244c31ce0e1a0b315b4edf948ab923d10315fd177e82725b"
     },
     {
       "path": "fixtures/public/savegames/strategic-alien-base-monthly.rul",
-      "size": 14009,
-      "sha256": "caecc104b5dd93c5445e135200c3e8b55380dfdf76559cbf5fe5db9d5313711a"
+      "size": 14448,
+      "sha256": "26d0de20e17844a9017d9bd43e87a890cad2f852aaa50b7a85c67c1d289c06db"
     },
     {
       "path": "fixtures/public/savegames/strategic-world.rul",

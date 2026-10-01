@@ -19,6 +19,8 @@ $template = $template.Replace('// WEIGHTED_CHOOSE', (ReadBlock 'src/Savegame/Wei
 $template = $template.Replace('// GENERATE_UPGRADE', (ReadBlock 'src/Mod/AlienDeployment.cpp' 'std::string AlienDeployment::generateAlienBaseUpgrade('))
 $template = $template.Replace('// SET_DEPLOYMENT', (ReadBlock 'src/Savegame/AlienBase.cpp' 'void AlienBase::setDeployment('))
 $template = $template.Replace('// EVOLUTION', (ReadBlock 'src/Geoscape/GeoscapeState.cpp' 'bool GeoscapeState::attemptAlienRaceEvolution('))
+$template = $template.Replace('// CRAFT_DESTINATION', (ReadBlock 'src/Savegame/Craft.cpp' 'if (const auto& dest = reader["dest"])'))
+$template = $template.Replace('// CRAFT_FINISH_LOADING', (ReadBlock 'src/Savegame/Craft.cpp' 'void Craft::finishLoading('))
 $source = [IO.File]::ReadAllText((Join-Path $reference 'src/Geoscape/GeoscapeState.cpp'))
 $start = $source.IndexOf('// Alien base upgrades happen only AFTER the first game month')
 $end = $source.IndexOf("`n}`n", $start)

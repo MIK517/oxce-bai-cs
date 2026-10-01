@@ -242,5 +242,9 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   `strategic-alien-base-monthly` capture, fresh/cache and reload tests cover the
   operation. See [status](strategic-world-alien-base-monthly-status.md). The actual
   monthly caller and campaign month guard remain outstanding; 4d is untouched.
-  Validation: all 1,376 root tests pass with no failures or skips, including checksum
+  Audit repair classifies craft destinations by actual type/ID instead of rule
+  names, preserves followers of craft-named base markers, and guards actual craft
+  collisions and the legacy terror-marker alias before upgrades. Three extracted
+  craft loading traces and fresh/cache reload regressions cover the fixes.
+  Validation: all 1,384 root tests pass with no failures or skips, including checksum
   and private-corpus tests; formatting, regenerated code-map and diff checks pass.
