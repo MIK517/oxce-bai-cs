@@ -25,3 +25,6 @@ research:
   - name: UNUSED_COUNTER_RULE
     cost: 1
     increaseCounter: [shared]
+  - name: COUNTER_DECREMENT
+    cost: 1
+    decreaseCounter: [shared]

@@ -24,14 +24,17 @@ duplicate names, missing-key defaults and the one-based floor. The shared
 campaign counter operation persists them in the save's `ids` map and preflights
 combined overflow, including possible same-day research increments from
 completing topics and their free rewards. Unrelated research rules do not block
-the tick. UFO
+the tick. The preflight also credits guaranteed same-day research decrements in
+catalog order before site expiry; it does not credit a later base's project if
+an earlier base may remove that topic. This follows the pinned
+`GeoscapeState::time1Day/time30Minutes` and `SavedGame` counter paths. UFO
 followers, despawn research, instant-event consequences and associated-UFO
 reactivation still stop before mutation.
 
 The branch 5 landing/deployment and branch 6 event-payload and integrated month
 guards remain in place. This does not close branch 4c.
 
-Validation: root `dotnet test --no-restore` passes 1,242 tests with zero failures or skips,
+Validation: root `dotnet test --no-restore` passes 1,245 tests with zero failures or skips,
 including fixture checksums and all 19 staged saves under fresh/cache content.
 Formatting, regenerated code-map and diff checks pass. The thirty-minute corpus
 horizon is now nine executable, two blocked and eight tactical preservation-only;

@@ -32,18 +32,24 @@ public sealed partial class CampaignState : ICampaignCustomCounters
                 projected.Add(change.Name, _nextIds.GetValueOrDefault(change.Name, 1));
 
         // Daily research precedes the half-hour site loop. Each completing base applies each
-        // completed topic's side effects at most once, in catalog order. A free topic can be
-        // selected before its parent, so reserve all of that parent's possible rewards too.
+        // completed topic's side effects at most once, in catalog order. Reserve increases
+        // from every possible free topic, but credit decreases only from topics certain to
+        // finish. An earlier base can remove a later base's project with the same topic.
         if (highest >= CampaignTimeTrigger.OneDay)
+        {
+            var possiblyRemovedByEarlierBases = new HashSet<string>(StringComparer.Ordinal);
             foreach (var owner in _bases)
             {
                 HashSet<string>? possibleSideEffects = null;
+                var guaranteedSideEffects = new HashSet<string>(StringComparer.Ordinal);
                 foreach (var project in owner.Research)
                 {
                     if ((long)project.Spent + project.Assigned < project.Cost) continue;
                     var research = _content.RuntimeRules.Research[project.Rule];
                     possibleSideEffects ??= new(StringComparer.Ordinal);
                     possibleSideEffects.Add(research.Id);
+                    if (!possiblyRemovedByEarlierBases.Contains(research.Id))
+                        guaranteedSideEffects.Add(research.Id);
                     possibleSideEffects.UnionWith(research.Value.GetOneFree);
                     foreach (var group in research.Value.GetOneFreeProtected)
                         possibleSideEffects.UnionWith(group.Topics);
@@ -53,9 +59,21 @@ public sealed partial class CampaignState : ICampaignCustomCounters
                 {
                     if (!possibleSideEffects.Contains(rule.Id)) continue;
                     foreach (var name in rule.Value.IncreaseCounters)
-                        if (projected.TryGetValue(name, out var value)) projected[name] = value + 1;
+                        if (projected.TryGetValue(name, out var value))
+                        {
+                            if (value >= int.MaxValue) return capacityReason;
+                            projected[name] = value + 1;
+                        }
+                    if (!guaranteedSideEffects.Contains(rule.Id)) continue;
+                    foreach (var name in rule.Value.DecreaseCounters)
+                        if (projected.TryGetValue(name, out var value))
+                            projected[name] = Math.Max(1, value - 1);
                 }
+                // ApplyResearchSideEffects can remove all projects for its source topic,
+                // including projects in bases that have not run their daily loop yet.
+                possiblyRemovedByEarlierBases.UnionWith(possibleSideEffects);
             }
+        }
 
         if (projected.Values.Any(static value => value > int.MaxValue)) return capacityReason;
 
