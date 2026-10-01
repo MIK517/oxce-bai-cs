@@ -246,8 +246,10 @@ acceptance to 4d before branch 5. Branch 4b merged in `e10d96f`. Campaign-event 
 effects remain guarded until branch 6; 4c owns scheduling and persistence.
 Branch 4c now includes [alien-base activity and discovery](strategic-world-alien-base-activity-status.md):
 daily scoring, facility sight and craft patrol sight with save/reload and precise
-transition guards. Mission generation, hunting, linked deletion, upgrades and
-evolution remain open alongside the other remaining 4c capabilities.
+transition guards. [Daily alien-base mission generation](strategic-world-alien-base-generation-status.md)
+now schedules linked missions with region/race selection and persistent limits.
+Creation-tick immediate waves, hunting, linked deletion, upgrades and evolution
+remain open alongside the other remaining 4c capabilities.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate

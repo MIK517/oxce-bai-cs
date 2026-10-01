@@ -23,6 +23,7 @@ internal sealed partial class CampaignWorld
         var work = daily ? _alienBases.Count * (1L + campaign.RegionStates.Count + campaign.CountryStates.Count) : 0;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         var undiscovered = 0;
+        var possibleMissions = 0;
         foreach (var alienBase in _alienBases)
         {
             if (!alienBase.Discovered) undiscovered++;
@@ -35,17 +36,38 @@ internal sealed partial class CampaignWorld
             work += rule.GenMission.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
             ulong total = 0;
+            var canGenerate = false;
             foreach (var choice in rule.GenMission)
             {
                 if (choice.Value > (ulong)int.MaxValue - total)
                     return "Alien base mission weights exceed the supported range.";
                 total += choice.Value;
                 if (choice.Value == 0 || choice.Key.Length == 0) continue;
-                if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out _))
+                if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var mission))
                     return "Alien base generation references an undefined alien mission.";
                 if (alienBase.GenMissionCount < rule.GenMissionLimit && rule.GenMissionFrequency > 0)
-                    return "Alien base mission generation requires world simulation.";
+                {
+                    canGenerate = true;
+                    try
+                    {
+                        if (AlienBaseGenerationReason(alienBase, rule,
+                                campaign.Content.RuntimeRules.AlienMissions[mission].Value, ref work) is { } reason)
+                            return reason;
+                    }
+                    catch (InvalidDataException error) { return error.Message; }
+                }
             }
+            if (canGenerate) possibleMissions++;
+        }
+        if (possibleMissions != 0)
+        {
+            var next = campaign.PeekNextId("ALIEN_MISSIONS");
+            if ((long)_missions.Count + possibleMissions > 100_000 || next <= 0 ||
+                (long)next + possibleMissions > int.MaxValue)
+                return "Alien mission IDs or population exceed the supported limit.";
+            foreach (var mission in _missions)
+                if (mission.Id >= next && mission.Id < (long)next + possibleMissions)
+                    return "Alien mission IDs or population exceed the supported limit.";
         }
         foreach (var owner in campaign.BaseStates)
         {
@@ -74,25 +96,7 @@ internal sealed partial class CampaignWorld
         foreach (var alienBase in _alienBases)
             ScoreUfoActivity(alienBase.Position, AlienBaseRule(alienBase).Points, rules);
 
-        // GenerateSupplyMission chooses its mission even when frequency is zero or
-        // the limit is exhausted. Only its non-generating paths are owned here.
-        foreach (var alienBase in _alienBases)
-        {
-            var rule = AlienBaseRule(alienBase);
-            var total = 0;
-            foreach (var choice in rule.GenMission) total = checked(total + (int)choice.Value);
-            if (total == 0) continue;
-            var roll = (ulong)campaign.Random.NextInclusive(1, total);
-            foreach (var choice in rule.GenMission.OrderBy(static choice => choice.Key, StringComparer.Ordinal))
-            {
-                if (roll > choice.Value) { roll -= choice.Value; continue; }
-                // A zero-frequency percent call still consumes a roll. Preflight
-                // guarantees that any nonempty selection cannot generate a mission.
-                if (choice.Key.Length != 0 && alienBase.GenMissionCount < rule.GenMissionLimit)
-                    _ = Percent(rule.GenMissionFrequency);
-                break;
-            }
-        }
+        for (var index = 0; index < _alienBases.Count; index++) GenerateAlienBaseMission(index);
         for (var index = 0; index < _alienBases.Count; index++)
         {
             var alienBase = _alienBases[index];

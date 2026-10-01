@@ -26,6 +26,7 @@ public interface ICampaignResearchProductionQuery
 internal interface ICampaignResearchPreflight
 {
     IReadOnlySet<string> GuaranteedResearchAfterDailyProgress();
+    IReadOnlySet<string> PossibleResearchAfterDailyProgress();
 }
 
 /// <summary>World arcs use SavedGame::addFinishedResearch, without daily project side effects.</summary>
@@ -158,29 +159,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     IReadOnlySet<string> ICampaignResearchPreflight.GuaranteedResearchAfterDailyProgress()
     {
         var rules = _content.RuntimeRules.Research;
-        var finishing = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var owner in _bases)
-            foreach (var project in owner.Research)
-                if ((long)project.Spent + project.Assigned >= project.Cost)
-                    finishing.Add(rules.GetExternalId(project.Rule));
+        var finishing = FinishingResearchTopics();
         if (finishing.Count == 0) return _completedResearch;
 
-        // CompleteResearch applies a possible free topic and its lookup before the primary
-        // topic and its lookup. AddFinishedResearch can also discover zero-cost topics.
-        // Include all such possible disablers without choosing rewards or consuming RNG.
-        var possible = new HashSet<string>(finishing, StringComparer.Ordinal);
-        foreach (var id in finishing)
-        {
-            var rule = rules[rules.GetRequired(id)].Value;
-            possible.UnionWith(rule.GetOneFree);
-            foreach (var group in rule.GetOneFreeProtected) possible.UnionWith(group.Topics);
-        }
-        var topics = possible.ToArray();
-        foreach (var id in topics)
-            if (rules.TryGet(id, out var handle) && rules[handle].Value.Lookup.Length != 0)
-                possible.Add(rules[handle].Value.Lookup);
-        foreach (var entry in rules.Rules)
-            if (entry.Value.Cost == 0) possible.Add(entry.Id);
+        var possible = DailyResearchPossibilities(finishing);
         var possiblyDisabled = new HashSet<string>(StringComparer.Ordinal);
         foreach (var id in possible)
             if (rules.TryGet(id, out var handle)) possiblyDisabled.UnionWith(rules[handle].Value.Disables);
@@ -203,6 +185,47 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 _researchRuleStatus.GetValueOrDefault(id) != 2)
                 guaranteed.Add(id);
         }
+    }
+
+    IReadOnlySet<string> ICampaignResearchPreflight.PossibleResearchAfterDailyProgress()
+    {
+        var finishing = FinishingResearchTopics();
+        if (finishing.Count == 0) return _completedResearch;
+        var possible = DailyResearchPossibilities(finishing);
+        possible.UnionWith(_completedResearch);
+        return possible;
+    }
+
+    private HashSet<string> FinishingResearchTopics()
+    {
+        var finishing = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var owner in _bases)
+            foreach (var project in owner.Research)
+                if ((long)project.Spent + project.Assigned >= project.Cost)
+                    finishing.Add(_content.RuntimeRules.Research.GetExternalId(project.Rule));
+        return finishing;
+    }
+
+    private HashSet<string> DailyResearchPossibilities(IReadOnlySet<string> finishing)
+    {
+        var rules = _content.RuntimeRules.Research;
+        // CompleteResearch applies a possible free topic and its lookup before the primary
+        // topic and its lookup. AddFinishedResearch can also discover zero-cost topics.
+        // Include all such possible disablers without choosing rewards or consuming RNG.
+        var possible = new HashSet<string>(finishing, StringComparer.Ordinal);
+        foreach (var id in finishing)
+        {
+            var rule = rules[rules.GetRequired(id)].Value;
+            possible.UnionWith(rule.GetOneFree);
+            foreach (var group in rule.GetOneFreeProtected) possible.UnionWith(group.Topics);
+        }
+        var topics = possible.ToArray();
+        foreach (var id in topics)
+            if (rules.TryGet(id, out var handle) && rules[handle].Value.Lookup.Length != 0)
+                possible.Add(rules[handle].Value.Lookup);
+        foreach (var entry in rules.Rules)
+            if (entry.Value.Cost == 0) possible.Add(entry.Id);
+        return possible;
     }
 
     private void ScheduleStrategicEvent(string ruleId, string source, TimeEffects effects)

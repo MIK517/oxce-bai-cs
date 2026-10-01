@@ -427,9 +427,11 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
     private string? LiveWorldReason(CampaignTimeTrigger highest)
     {
+        var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
+        if (interruptionReason is not null) return interruptionReason;
         var ufoReason = UfoMovementReason(highest);
         if (ufoReason is not null) return ufoReason;
-        var missionReason = MissionSchedulingReason(highest);
+        var missionReason = MissionSchedulingReason(highest, guaranteedResearch);
         if (missionReason is not null) return missionReason;
         var alienBaseReason = AlienBaseActivityReason(highest);
         if (alienBaseReason is not null) return alienBaseReason;
@@ -437,7 +439,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (baseDetectionReason is not null) return baseDetectionReason;
         var siteReason = SiteTimingReason(highest);
         if (siteReason is not null) return siteReason;
-        var detectionReason = UfoHalfHourReason(highest);
+        var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
         if (detectionReason is not null) return detectionReason;
         return EventSchedulingReason(highest);
     }

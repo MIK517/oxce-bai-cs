@@ -1,0 +1,352 @@
+# Synthetic daily base-generated missions. No original assets.
+regions:
+  - type: REGION_SECOND
+    areas: [[40, 50, -20, 20]]
+    missionRegion: REGION
+  - type: REGION_BAD_FALLBACK
+    missionRegion: MISSING_REGION
+alienDeployments:
+  - type: GEN_BASE_local
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_local: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_weighted
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_weighted: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+    genMissionRaceFromAlienBase: false
+  - type: GEN_BASE_target
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_target: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_baseRace
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_baseRace: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_noRaceWeights
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_noRaceWeights: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+    genMissionRaceFromAlienBase: false
+  - type: GEN_BASE_site
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_site: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_futureRace
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_futureRace: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+    genMissionRaceFromAlienBase: false
+  - type: GEN_BASE_exhausted
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_exhausted: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_zeroFrequency
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_zeroFrequency: 1}
+    genMissionFreq: 0
+    genMissionLimit: 3
+  - type: GEN_BASE_empty
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {"": 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_operation1
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_operation1: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_operation2
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_operation2: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_operation3
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_operation3: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_operation4
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_operation4: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_operation5
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_operation5: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_operation6
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_operation6: 1}
+    genMissionFreq: 100
+    genMissionLimit: 3
+  - type: GEN_BASE_GEN_IMMEDIATE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_IMMEDIATE: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_GEN_FUTURE_REGION
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_FUTURE_REGION: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_GEN_INVALID_ZONE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_INVALID_ZONE: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_GEN_WEIGHT_OVERFLOW
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_WEIGHT_OVERFLOW: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_GEN_INVALID_FALLBACK
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_INVALID_FALLBACK: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_objective0
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_objective0: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_objective1
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_objective1: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_objective2
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_objective2: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_objective3
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_objective3: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_objective4
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_objective4: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_objective5
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_objective5: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_objective6
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_objective6: 1}
+    genMissionFreq: 100
+  - type: GEN_BASE_short
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_short: 1}
+    genMissionFreq: 100
+    genMissionLimit: 2
+  - type: GEN_BASE_rare
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_local: 1}
+    genMissionFreq: 50
+    genMissionLimit: 3
+  - type: GEN_BASE_interrupt
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    genMission: {GEN_INTERRUPT: 1}
+    genMissionFreq: 100
+    genMissionLimit: 1
+alienMissions:
+  - type: GEN_local
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_weighted
+    objective: 0
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    regionWeights: {0: {REGION_SECOND: 1}}
+    raceWeights: {0: {RACE_B: 1}}
+  - type: GEN_target
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    regionWeights: {0: {REGION_SECOND: 1}}
+    targetBaseOdds: 100
+  - type: GEN_baseRace
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    raceWeights: {0: {RACE_B: 1}}
+  - type: GEN_noRaceWeights
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_site
+    objective: 3
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    spawnZone: 1
+  - type: GEN_futureRace
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    raceWeights: {2: {RACE_B: 1}}
+  - type: GEN_exhausted
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_zeroFrequency
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_empty
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_operation1
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    operationType: 1
+  - type: GEN_operation2
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    operationType: 2
+  - type: GEN_operation3
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    operationType: 3
+  - type: GEN_operation4
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    operationType: 4
+  - type: GEN_operation5
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    operationType: 5
+  - type: GEN_operation6
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+    operationType: 6
+  - type: GEN_IMMEDIATE
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 90}]
+  - type: GEN_FUTURE_REGION
+    regionWeights: {2: {REGION: 1}}
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_INVALID_ZONE
+    objective: 3
+    spawnZone: 99
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_WEIGHT_OVERFLOW
+    regionWeights: {0: {REGION: 2147483648}}
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_INVALID_FALLBACK
+    regionWeights: {0: {REGION_BAD_FALLBACK: 1}}
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_objective0
+    objective: 0
+    spawnZone: 1
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_objective1
+    objective: 1
+    spawnZone: 1
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_objective2
+    objective: 2
+    spawnZone: 1
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_objective3
+    objective: 3
+    spawnZone: 1
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_objective4
+    objective: 4
+    spawnZone: 1
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_objective5
+    objective: 5
+    spawnZone: 1
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_objective6
+    objective: 6
+    spawnZone: 1
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_short
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 120}]
+  - type: GEN_INTERRUPT
+    interruptResearch: UNLOCK
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_STOP_TOPIC
+    interruptResearch: GEN_STOP
+    waves: [{ufo: UFO_HUNTER, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_SCORED_INTERRUPT
+    interruptResearch: GEN_STOP
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}]
+  - type: GEN_MISSING_INTERRUPT
+    interruptResearch: MISSING_RESEARCH
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_RETALIATION_INTERRUPT
+    objective: 4
+    interruptResearch: UNLOCK
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+research:
+  - name: GEN_STOP
+    cost: 5
+  - name: GEN_SOURCE
+    cost: 5
+    lookup: GEN_STOP
+  - name: GEN_REWARD
+    cost: 5
+    getOneFree: [GEN_STOP]
+  - name: GEN_OTHER
+    cost: 5
+  - name: GEN_DISABLE
+    cost: 5
+    disables: [GEN_STOP]
+facilities:
+  - type: GEN_LAB
+    mapName: LOGISTICS
+    labs: 5

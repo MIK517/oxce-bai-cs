@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldUfoDetection,
             "UFO activity and base detection", ProcessUfoHalfHour);
 
-    private string? UfoHalfHourReason(CampaignTimeTrigger highest)
+    private string? UfoHalfHourReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
         var halfHour = highest >= CampaignTimeTrigger.ThirtyMinutes;
         var hasUfoWork = false;
@@ -27,9 +27,10 @@ internal sealed partial class CampaignWorld
             }
         }
         var hasDueWave = false;
-        foreach (var mission in _missions)
+        foreach (var savedMission in _missions)
         {
             if (!halfHour) break;
+            var mission = MissionAfterDailyResearch(savedMission, guaranteedResearch);
             if (mission.Interrupted || mission.SpawnCountdown > 30) continue;
             hasDueWave = true;
             break;
@@ -88,9 +89,10 @@ internal sealed partial class CampaignWorld
         }
         // AlienMission::think runs before the scoring and detection pass. Check its
         // possible UFOs using their fixed first point without drawing RNG in preflight.
-        foreach (var mission in _missions)
+        foreach (var savedMission in _missions)
         {
             if (!halfHour) break;
+            var mission = MissionAfterDailyResearch(savedMission, guaranteedResearch);
             var rules = campaign.Content.RuntimeRules;
             var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, missionRule) || mission.Interrupted ||

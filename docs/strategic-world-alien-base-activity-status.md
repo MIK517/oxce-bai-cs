@@ -43,8 +43,10 @@ before RNG or fuel changes. This is a port resource limit, not a reference rule.
 Inspected sources also include `AlienDeployment::chooseGenMissionType`,
 `WeightedOptions::choose`, `Craft::getCraftStats`, `AlienBase::load/save`,
 `GenerateSupplyMission`, `GeoscapeState::baseHunting`, and
-`SavedGame::clearLinksForAlienBase`. Base mission creation remains a daily guard
-when a nonempty valid choice could generate. Self-destruct deployments retain a
+`SavedGame::clearLinksForAlienBase`. The subsequent
+[daily mission-generation slice](strategic-world-alien-base-generation-status.md)
+owns creation when its first countdown cannot spawn during that same tick.
+Immediate creation-tick waves retain a specific guard. Self-destruct deployments retain a
 daily guard until same-day research, mission interruption, target repairs and pact
 cleanup are implemented together. Positive hunting range retains a ten-minute
 guard until hunting eligibility, timers and generated missions are owned.

@@ -64,3 +64,9 @@ across live facility and patrol transitions, reloads and loaded rewrites. Unknow
 base fields survive discovery changes and disappear when their base is deleted;
 the source overlay cannot resurrect it. See
 [status and evidence](../strategic-world-alien-base-activity-status.md).
+
+Daily alien-base generation exercises existing `genMissionCount` and linked
+mission identity/region/race/site-area/timer fields across fresh/cache, reloads,
+repeated loaded rewrites and deletion. Surviving unknown mission fields persist;
+deleted mission sidecars cannot reset the base counter or recreate missions. See
+[generation status](../strategic-world-alien-base-generation-status.md).
