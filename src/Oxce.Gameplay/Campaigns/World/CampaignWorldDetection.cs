@@ -43,6 +43,18 @@ internal sealed partial class CampaignWorld
         var possibleLandingIds = 0;
         foreach (var ufo in _ufos)
         {
+            if (ufo.Status == UfoStatus.IgnoreMe)
+            {
+                var lifted = UfoAfterSiteExpiry(ufo, highest);
+                // This UFO misses the half-hour detection pass, but can land in the
+                // later five-second flight pass using its existing detected flag.
+                if (lifted.Status == UfoStatus.Flying && lifted.Detected && lifted.LandId == 0 &&
+                    ArrivesOnGround(lifted) && LandingAllowed(lifted.Destination!.Position,
+                        campaign.Content.RuntimeRules.Ufos[
+                            campaign.Content.RuntimeRules.Ufos.GetRequired(lifted.RuleId)].Value))
+                    possibleLandingIds++;
+                continue;
+            }
             if (ufo.Status is not (UfoStatus.Flying or UfoStatus.Landed)) continue;
             var mission = FindMission(ufo.MissionId);
             if (mission is null)
@@ -105,6 +117,11 @@ internal sealed partial class CampaignWorld
                     mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
                 if (CheckActivityScore(site.Position, transition.Score, regionTotals, countryTotals) is { } reason)
                     return reason;
+                if (transition.Remove && site.UfoUniqueId != 0 &&
+                    _ufos.Find(candidate => candidate.UniqueId == site.UfoUniqueId) is { } siteUfo &&
+                    TryLiftUfo(siteUfo, fromSite: true, out _, out var liftScore) && liftScore != 0 &&
+                    CheckActivityScore(siteUfo.Position, liftScore, regionTotals, countryTotals) is { } liftReason)
+                    return liftReason;
             }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
         // Share these totals so individually safe awards cannot overflow together.

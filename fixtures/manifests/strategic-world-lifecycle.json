@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "strategic-world-lifecycle",
-  "description": "Ordinary UFO lifecycle traces with pinned C++ transition methods and bounded score-mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Every five-second state is recorded.",
+  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "AlienMission.cpp think/spawnUfo ordinary fragments, ufoReachedWaypoint with unsupported bodies aborting, ufoLifting/isOver/getWaypoint/getLandPoint; Ufo.cpp think/setAltitude/isCrashed/isDestroyed/calculateSpeed; Target/MovingTarget/RuleRegion geometry. Driver controls time and radar success; see probe exclusions.",
+      "sources": "AlienMission.cpp think/spawnUfo ordinary fragments, ufoReachedWaypoint with unsupported bodies aborting, ufoLifting/isOver/getWaypoint/getLandPoint and addScore infiltration filter; GeoscapeState.cpp processMissionSite associated-UFO release block; Ufo.cpp think/setAltitude/isCrashed/isDestroyed/calculateSpeed; Target/MovingTarget/RuleRegion geometry. Driver controls time and radar success; see probe exclusions.",
       "probe": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
       "capture": "tools/capture-strategic-world-lifecycle-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
-      "size": 9087,
-      "sha256": "90ef3042d4765128693b6803a44f5d439bcd02798a904ee0bb8fc1449f60b95e"
+      "size": 10649,
+      "sha256": "6d53569ad168e8f2a2e788288ad3b87e7bb7a4aaa0c60739be77076bfc5e9b17"
     },
     {
       "path": "tools/capture-strategic-world-lifecycle-reference.ps1",
-      "size": 12157,
-      "sha256": "71649672b7e720f16ba1bfd272e4513618625e3687470ffe482ab99c44bf464b"
+      "size": 13219,
+      "sha256": "ebef353f53f9a32e4339dab40c7a7237afe9426133174fd1e262aa5d76899179"
     },
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",

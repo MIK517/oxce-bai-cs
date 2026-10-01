@@ -191,3 +191,15 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   alien-base behavior remain branch 4c work. At the 360-tick corpus horizon,
   Rosigma Early now executes; totals are nine executable, two blocked and eight
   tactical preservation-only across fresh/cache loads.
+- Associated-UFO site lifecycle: ignored UFOs wait inertly while their linked site
+  remains, then lift at expiry with the reference score, stored timer and landing
+  identity. The same tick runs base scanning, flight and shield recharge; ordinary
+  airborne site-objective outbound legs now execute. The extended
+  `strategic-world-lifecycle` C++ capture pins the release block and mission-score
+  filter. Fresh/cache reloads cover waiting, reactivation, UFO departure and mission
+  cleanup. Follower holds, hidden-contact loss, terminal fallthrough and atomic
+  interception/activity/shield guards are tested. Ordinary takeoff shares lift-speed
+  validation with site reactivation; negative/overflowing inputs stop before the tick,
+  including when two negatives would produce a positive speed. Despawn research/events and UFO
+  follower repair remain guarded. See [status](strategic-world-site-timer-status.md).
+  This advances item 5; the branch 4c headless gate remains open.

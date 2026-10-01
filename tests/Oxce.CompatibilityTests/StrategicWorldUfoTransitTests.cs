@@ -56,7 +56,10 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with
             {
                 Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE", NextWave = 1 }],
-                Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0 }],
+                // Site airborne outbound legs are supported; the ground objective
+                // arrival still requires site creation and must stop before mutation.
+                Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0,
+                    TrajectoryId = "TRAJ_SITE" }],
             },
         }, content, new SplitMix64RandomSource(42));
         AssertTimeBlocked(near, "UFO waypoint arrival requires mission simulation.");
@@ -408,7 +411,7 @@ public sealed class StrategicWorldUfoTransitTests
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
-            ufoRuleId: "UFO_SCOUT", missionRuleId: "MISSION_SITE", missionWaveNumber: 0);
+            ufoRuleId: "UFO_SCOUT", missionRuleId: "MISSION_SITE", trajectoryId: "TRAJ_SITE", missionWaveNumber: 0);
         var snapshot = campaign.Capture();
         var ufo = Assert.Single(snapshot.World.Ufos);
         var lastPoint = content.RuntimeRules.UfoTrajectories[

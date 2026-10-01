@@ -113,6 +113,16 @@ $timerStart = $think.LastIndexOf('if (_nextWave != _rule.getWaveCount())')
 if ($prefixEnd -lt 0 -or $countersStart -lt 0 -or $countersEnd -lt 0 -or $timerStart -lt 0) {throw 'Mission countdown fragments missing.'}
 $think = $think.Substring(0,$prefixEnd) + $think.Substring($countersStart,$countersEnd-$countersStart) + $think.Substring($timerStart)
 $template = $template.Replace('// MISSION_THINK', $think)
+$site = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'bool GeoscapeState::processMissionSite('
+$reactivationStart = $site.IndexOf('Ufo* ufo = site->getUfo();', [StringComparison]::Ordinal)
+$reactivationEnd = $site.IndexOf('return removeSite;', $reactivationStart, [StringComparison]::Ordinal)
+if ($reactivationStart -lt 0 -or $reactivationEnd -le $reactivationStart) { throw 'Site UFO reactivation fragment missing.' }
+$template = $template.Replace('// SITE_REACTIVATION', $site.Substring($reactivationStart, $reactivationEnd - $reactivationStart))
+$score = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'void AlienMission::addScore('
+$scoreStart = $score.IndexOf('if (_rule.getObjective() == OBJECTIVE_INFILTRATION)', [StringComparison]::Ordinal)
+$scoreEnd = $score.IndexOf('for (auto* region', $scoreStart, [StringComparison]::Ordinal)
+if ($scoreStart -lt 0 -or $scoreEnd -le $scoreStart) { throw 'Mission score filter missing.' }
+$template = $template.Replace('// MISSION_SCORE_FILTER', $score.Substring($scoreStart, $scoreEnd - $scoreStart))
 Assert-ReferenceContains 'src/Geoscape/GeoscapeState.cpp' 'if (ufo->getStatus() == Ufo::DESTROYED)'
 Assert-ReferenceContains 'src/Geoscape/GeoscapeState.cpp' 'mission->ufoLifting(*ufo, *_game->getSavedGame());'
 Assert-ReferenceContains 'src/Savegame/Ufo.cpp' '_mission->decreaseLiveUfos();'

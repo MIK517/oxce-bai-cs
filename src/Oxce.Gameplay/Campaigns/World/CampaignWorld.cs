@@ -328,11 +328,14 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             if (ufo.Destination is null) throw new InvalidDataException("A UFO must have a destination.");
         }
 
+        var linkedSiteUfos = new HashSet<int>();
         foreach (var site in _sites)
         {
             if (site.Id <= 0) throw new InvalidDataException("Mission site IDs must be positive.");
             ValidatePosition(site.Position, "mission site");
             if (site.SecondsRemaining < 0) throw new InvalidDataException("Mission site timers cannot be negative.");
+            if (site.UfoUniqueId != 0 && !linkedSiteUfos.Add(site.UfoUniqueId))
+                throw new InvalidDataException("Multiple mission sites reference the same dormant UFO.");
         }
 
         foreach (var alienBase in _alienBases)
@@ -423,7 +426,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
     private string? LiveWorldReason(CampaignTimeTrigger highest)
     {
-        var ufoReason = UfoMovementReason();
+        var ufoReason = UfoMovementReason(highest);
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest);
         if (missionReason is not null) return missionReason;
