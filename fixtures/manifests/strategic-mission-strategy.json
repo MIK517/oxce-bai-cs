@@ -25,13 +25,18 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-mission-strategy.rul",
-      "size": 1126,
-      "sha256": "e04b9c91ff76e6be70c6c82d7569c6cdf628318f8d040cd814adb02fdebe0de5"
+      "size": 1700,
+      "sha256": "3a1636575bd03d64589c40ce7c27b0379aa145cbe21ae6161c2abcf5540927a8"
     },
     {
       "path": "fixtures/public/savegames/strategic-world.rul",
       "size": 14290,
       "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-a-strategy-reset.rul",
+      "size": 254,
+      "sha256": "9a55bf87221e5f9a5d8fe482d33a7daa4234d4d72e01e17485c01474965febdf"
     }
   ],
   "normalization": [

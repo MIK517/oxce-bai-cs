@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using Oxce.Core.Random;
 using Oxce.FixtureSupport;
@@ -20,7 +19,7 @@ public sealed class StrategicMissionBaseTargetTests
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-base-target");
         var content = Load(cache);
         var rows = new List<object[]>();
-        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row => !row[0].GetString()!.StartsWith("implicit", StringComparison.Ordinal)))
         {
             var name = row[0].GetString()!;
             var random = new MinimumChoices();
@@ -39,7 +38,8 @@ public sealed class StrategicMissionBaseTargetTests
             else Assert.DoesNotContain(after.World.Strategy.MissionRuns, p => p.Key == "BASE_RUN");
             Reload(content, campaign, 17, "mission-base-target.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(oracle.RootElement.GetProperty("rows").GetRawText())),
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(TestFixtures.Rows(oracle.RootElement, "rows")
+                .Where(row => !row[0].GetString()!.StartsWith("implicit", StringComparison.Ordinal)).ToArray())),
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 

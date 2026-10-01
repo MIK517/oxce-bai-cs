@@ -1,0 +1,8 @@
+regions:
+  - type: REGION
+    regionWeight: 1
+    missionWeights: {MISSION_SCOUT: 0, MISSION_SITE: 0, MISSION_A: 3, MISSION_B: 1}
+  - type: REGION_SECOND
+    areas: [[40, 50, -20, 20]]
+    regionWeight: 0
+    missionWeights: {MISSION_A: 3, MISSION_B: 1}

@@ -14,7 +14,7 @@ internal sealed record ScheduleMonthlyWorldMissions(int Score, long Funds) : ICa
 internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
 {
     private const string MissionScriptBoundary =
-        "Mission script requires site, strategy fallback or another unavailable world transition.";
+        "Mission script requires site or another unavailable world transition.";
 
     private void RegisterMissionScripts(CampaignCapabilityRegistry registry)
     {
@@ -67,7 +67,9 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 }
                 else
                 {
-                    region = WorldScriptSelection.Generate(script.Regions, selectionMonth, campaign.Random)!.Id;
+                    region = script.Regions.Count == 0
+                        ? _strategy.ChooseRandomRegion(campaign.Random, StrategyRegions())
+                        : WorldScriptSelection.Generate(script.Regions, selectionMonth, campaign.Random)!.Id;
                     mission = script.Missions.Count == 0
                         ? _strategy.ChooseRandomMission(region, campaign.Random)
                         : WorldScriptSelection.Generate(script.Missions, selectionMonth, campaign.Random)!.Id;
@@ -120,26 +122,32 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Mission script condition is outside the supported range.";
             if (script.Criteria.ExecutionOdds <= 0) continue;
             possible++;
-            if (script.SiteType || (script.Missions.Count == 0 && script.TargetBaseOdds > 0) ||
-                (script.TargetBaseOdds < 100 && script.Regions.Count == 0))
+            if (script.SiteType)
                 return MissionScriptBoundary;
             if (script.StartDelay < 0 || script.RandomDelay < 0 ||
                 (long)script.StartDelay + script.RandomDelay > int.MaxValue)
                 return "Mission script delay exceeds the supported range.";
             if (script.TargetBaseOdds > 0)
             {
-                var types = WorldScriptSelection.Available(script.Missions, month);
-                work += (long)types.Count * campaign.BaseStates.Count * (1L + _missions.Count + available.Length);
+                var types = script.Missions.Count == 0 ? [] : WorldScriptSelection.Available(script.Missions, month);
+                work += Math.Max(1L, types.Count) * campaign.BaseStates.Count * (1L + _missions.Count + available.Length);
                 work += (long)campaign.BaseStates.Count * campaign.RegionStates.Count;
                 if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-                if (types.Count == 0 || types.Any(choice => choice.Rule.Handle is not { } handle ||
-                        !ValidMission(handle, script.Races.Count == 0))) return MissionScriptBoundary;
+                if (script.Missions.Count != 0 && (types.Count == 0 || types.Any(choice => choice.Rule.Handle is not { } handle ||
+                        !ValidMission(handle, script.Races.Count == 0)))) return MissionScriptBoundary;
                 foreach (var owner in campaign.BaseStates)
                 {
                     if (LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) is not { } region ||
                         !ValidRegion(campaign.Content.RuntimeRules.Regions.GetRequired(region)))
                         return "Mission script cannot locate a valid player base region.";
-                    if (script.UseTable)
+                    if (script.Missions.Count == 0)
+                    {
+                        // validMissionRegion prunes missing tables before choosing a base region.
+                        if (!_strategy.RegionMissions.TryGetValue(region, out var options)) continue;
+                        if (StrategyMissionReason(region, options, script, creditedRegions, explicitRegion: false) is { } reason)
+                            return reason;
+                    }
+                    else if (script.UseTable)
                         foreach (var type in types) RecordRemoval(region, type.Rule.Id, creditedRegions);
                 }
             }
@@ -148,31 +156,56 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 if (script.Missions.Count != 0 && Choices(script.Missions, month, choice =>
                         choice.Handle is { } handle && ValidMission(handle, script.Races.Count == 0)) is { } missionReason)
                     return missionReason;
-                if (Choices(script.Regions, month, choice => choice.Handle is { } handle && ValidRegion(handle)) is { } regionReason)
-                    return regionReason;
-                foreach (var region in WorldScriptSelection.ForMonth(script.Regions, unchecked((ulong)month), false))
+                var regions = new List<string>();
+                var resetOptions = new Dictionary<string, WorldWeightedOptions>(StringComparer.Ordinal);
+                if (script.Regions.Count == 0)
                 {
+                    regions.AddRange(_strategy.RegionChances.Names);
+                    var initialChances = new WorldWeightedOptions();
+                    foreach (var (region, weight, missions) in StrategyRegions())
+                    {
+                        work++;
+                        if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+                        initialChances.Set(region, weight);
+                        var initialMissions = new WorldWeightedOptions(missions);
+                        work += initialMissions.Names.Count;
+                        if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+                        // A reset rebuilds every table, including zero-weight regions.
+                        resetOptions.Add(region, initialMissions);
+                        if (weight != 0) regions.Add(region);
+                    }
+                    if (initialChances.IsEmpty) return "Mission script strategy cannot refresh an empty region distribution.";
+                }
+                else
+                {
+                    if (Choices(script.Regions, month, choice => choice.Handle is { } handle && ValidRegion(handle)) is { } regionReason)
+                        return regionReason;
+                    regions.AddRange(WorldScriptSelection.ForMonth(script.Regions, unchecked((ulong)month), false)
+                        .Select(choice => choice.Rule.Id));
+                }
+                foreach (var region in regions.Distinct(StringComparer.Ordinal))
+                {
+                    if (!campaign.Content.RuntimeRules.Regions.TryGet(region, out var regionHandle) || !ValidRegion(regionHandle))
+                        return "Mission script strategy references an unavailable region.";
                     if (script.Missions.Count == 0)
                     {
-                        if (!_strategy.RegionMissions.TryGetValue(region.Rule.Id, out var options))
+                        if (_strategy.RegionMissions.TryGetValue(region, out var options))
+                        {
+                            if (StrategyMissionReason(region, options, script, creditedRegions,
+                                    explicitRegion: script.Regions.Count != 0) is { } reason) return reason;
+                        }
+                        else if (script.Regions.Count != 0 || _strategy.RegionChances[region] != 0)
                             return "Mission script strategy has no table for its selected region.";
-                        work += options.Names.Count;
-                        if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-                        if (!options.IsEmpty && removalCounts.GetValueOrDefault(region.Rule.Id) >= options.Names.Count &&
-                            options.Names.All(name => possibleRemoved.Contains((region.Rule.Id, name))))
-                            return "Earlier mission scripts can exhaust a required strategy region table.";
-                        foreach (var choice in options.Entries)
-                            if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle) ||
-                                !ValidMission(handle, script.Races.Count == 0)) return MissionScriptBoundary;
-                        if (script.UseTable)
-                            foreach (var name in options.Names) RecordRemoval(region.Rule.Id, name, creditedRegions);
+                        if (resetOptions.TryGetValue(region, out var initialOptions) &&
+                            StrategyMissionReason(region, initialOptions, script, creditedRegions, explicitRegion: false) is { } resetReason)
+                            return resetReason;
                     }
                     else if (script.UseTable)
                     {
                         var choices = WorldScriptSelection.ForMonth(script.Missions, unchecked((ulong)month), false);
                         work += choices.Count;
                         if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-                        foreach (var choice in choices) RecordRemoval(region.Rule.Id, choice.Rule.Id, creditedRegions);
+                        foreach (var choice in choices) RecordRemoval(region, choice.Rule.Id, creditedRegions);
                     }
                 }
             }
@@ -193,6 +226,22 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             _missions.Any(mission => mission.Id >= next && mission.Id < (long)next + possible))
             return "Alien mission IDs or population exceed the supported limit.";
         return null;
+
+        string? StrategyMissionReason(string region, WorldWeightedOptions options, RuntimeMissionScriptRule script,
+            HashSet<string> credited, bool explicitRegion)
+        {
+            work += options.Names.Count;
+            if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+            if (explicitRegion && !options.IsEmpty && (removalCounts.GetValueOrDefault(region) - (credited.Contains(region) ? 1 : 0)) >= options.Names.Count &&
+                options.Names.All(name => possibleRemoved.Contains((region, name))))
+                return "Earlier mission scripts can exhaust a required strategy region table.";
+            foreach (var choice in options.Entries)
+                if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle) ||
+                    !ValidMission(handle, script.Races.Count == 0)) return MissionScriptBoundary;
+            if (script.UseTable)
+                foreach (var name in options.Names) RecordRemoval(region, name, credited);
+            return null;
+        }
 
         void RecordRemoval(string region, string mission, HashSet<string> credited)
         {
