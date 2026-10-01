@@ -431,7 +431,6 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Theory]
-    [InlineData("crashed", "UFO state requires world simulation.")]
     [InlineData("hunter", "UFO state requires world simulation.")]
     [InlineData("shield", "UFO shield arithmetic exceeds the supported range.")]
     [InlineData("speed", "UFO speed is invalid.")]
@@ -443,7 +442,6 @@ public sealed class StrategicWorldUfoTransitTests
         var ufo = Assert.Single(snapshot.World.Ufos);
         ufo = condition switch
         {
-            "crashed" => ufo with { Status = UfoStatus.Crashed },
             "hunter" => ufo with { HunterKiller = true },
             "shield" => ufo with { Shield = -2 },
             "speed" => ufo with { Speed = -1 },

@@ -104,7 +104,7 @@ internal sealed partial class CampaignWorld
     private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfo(UfoSnapshot ufo,
         CampaignTimeTrigger highest)
     {
-        ufo = UfoAfterSiteExpiry(ufo, highest);
+        ufo = UfoAfterTimedTransitions(ufo, highest);
         if (ufo.Status == UfoStatus.Landed)
             return ufo.SecondsRemaining == 5 ? (ufo.Position, UfoStatus.Flying,
                 campaign.Content.RuntimeRules.UfoTrajectories[
@@ -155,7 +155,7 @@ internal sealed partial class CampaignWorld
             // Dormant UFOs miss the radar pass before processMissionSite. Reactivation
             // cannot reveal a hidden contact before craft target-loss handling.
             if (original is { Status: UfoStatus.IgnoreMe, Detected: false }) return null;
-            var ufo = original is null ? null : UfoAfterSiteExpiry(original, highest);
+            var ufo = original is null ? null : UfoAfterTimedTransitions(original, highest);
             // Detection may reveal an imported hidden destination at the half-hour boundary.
             if (ufo is null || !ufo.Detected && highest < CampaignTimeTrigger.ThirtyMinutes ||
                 ufo.Status is UfoStatus.Destroyed or UfoStatus.IgnoreMe) return null;
@@ -165,7 +165,7 @@ internal sealed partial class CampaignWorld
         // A terminal UFO arrival skips the entire craft pass, regardless of list order.
         foreach (var candidate in _ufos)
             if (ForecastUfo(candidate, highest).Status == UfoStatus.Destroyed &&
-                UfoAfterSiteExpiry(candidate, highest).Status == UfoStatus.Flying) return null;
+                UfoAfterTimedTransitions(candidate, highest).Status == UfoStatus.Flying) return null;
         var from = new WorldPosition(state.Longitude, state.Latitude);
         var position = state.Takeoff > 0 ? from : WorldGeometry.Move(from, targetPosition, WorldGeometry.RadianSpeed(state.Speed));
         if (!WorldGeometry.ReachedDestination(position, targetPosition)) return null;

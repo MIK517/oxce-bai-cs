@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-crashed-ufo",
+  "description": "Exact Ufo::think, GeoscapeState::time30Minutes crashed expiry and time5Seconds crashed branch.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "capture": "tools/capture-strategic-crashed-ufo-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_crashed_ufo_probe.cpp",
+      "size": 1450,
+      "sha256": "94d92641c106e216abb3fa6f0b7afa5521260426da55487ac04c22e1aac8a86d"
+    },
+    {
+      "path": "tools/capture-strategic-crashed-ufo-reference.ps1",
+      "size": 3254,
+      "sha256": "58731ca180bdd15a839784711e427a96eb19e3cdaab6ccf1949e1b4c9a60152e"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "expected": "fixtures/expected/savegames/strategic-crashed-ufo.expected.json"
+}

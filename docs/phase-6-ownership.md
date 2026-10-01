@@ -233,3 +233,8 @@ Retaliation mission IDs are now gameplay-owned player-base links. Finished
 retaliation missions clear matching links before half-hour deletion; loaded
 rewrites remove cleared fields while conserving unknown base data. Reference
 traces and fresh/cache regressions are recorded in [retaliation cleanup status](strategic-world-retaliation-cleanup-status.md).
+
+Existing crashed UFOs now reveal, count down and expire in reference order,
+return followers and release mission live counts. Pure forecasts preserve landing
+and tactical boundaries; fresh/cache, reload, resource and 72-hour scenarios are
+recorded in [crashed UFO status](strategic-world-crashed-ufo-status.md).

@@ -40,6 +40,8 @@ internal sealed partial class CampaignWorld
 
     private void RegisterUfoOperations(CampaignCapabilityRegistry registry)
     {
+        registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldCrashExpiry,
+            "crashed UFO expiry", ExpireCrashedUfos);
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsWorldUfos,
             "world UFO movement", MoveUfos);
         registry.Timed(CampaignTimeTrigger.FiveSeconds, CampaignTimeOrder.FiveSecondsWorldUfoCleanup,
@@ -52,21 +54,35 @@ internal sealed partial class CampaignWorld
     {
         // A restored live count can become insufficient after another terminal arrival.
         // Keep this guard live and allocation-free; destroyed UFOs normally survive one tick.
-        if (_ufos.Exists(static ufo => ufo.Status == UfoStatus.Destroyed))
+        if (HasDestroyedUfoAfterTransitions(highest))
         {
+            if ((long)_missions.Count * _ufos.Count > MaximumAlienBaseChecks)
+                return "Destroyed UFO cleanup exceeds the supported work limit.";
             foreach (var mission in _missions)
             {
                 var destroyed = 0;
                 foreach (var ufo in _ufos)
-                    if (ufo.Status == UfoStatus.Destroyed && ufo.MissionId == mission.Id)
+                    if (UfoDestroyedAfterTimers(ufo, highest) && ufo.MissionId == mission.Id)
                         destroyed++;
                 if (destroyed > mission.LiveUfos)
                     return "Destroyed UFO count exceeds its mission's live count.";
             }
         }
+        long siteLinkWork = 0;
         for (var index = 0; index < _ufos.Count; index++)
         {
-            var ufo = UfoAfterSiteExpiry(_ufos[index], highest);
+            if (_ufos[index] is { Status: UfoStatus.Crashed, InBattlescape: true })
+                return "Crashed UFO battlescape transitions require tactical simulation.";
+            var ufo = UfoAfterTimedTransitions(_ufos[index], highest);
+            if (_ufos[index].Status == UfoStatus.Crashed && ufo.Status == UfoStatus.Destroyed)
+            {
+                siteLinkWork += _sites.Count;
+                if (siteLinkWork > MaximumAlienBaseChecks) return "Destroyed UFO cleanup exceeds the supported work limit.";
+                foreach (var site in _sites)
+                    if (site.UfoUniqueId == ufo.UniqueId)
+                        return "Crashed UFO cannot expire while a mission site references it.";
+            }
+            if (ufo.Status == UfoStatus.Crashed) continue;
             // GeoscapeState skips ignored UFOs until their associated site lifts them.
             if (ufo.Status == UfoStatus.IgnoreMe) continue;
             if (ufo.Status == UfoStatus.Destroyed)
@@ -126,6 +142,11 @@ internal sealed partial class CampaignWorld
         for (var index = 0; index < _ufos.Count; index++)
         {
             var ufo = _ufos[index];
+            if (ufo.Status == UfoStatus.Crashed)
+            {
+                _ufos[index] = WorldCrashedUfo.FiveSeconds(ufo);
+                continue;
+            }
             if (ufo.Status == UfoStatus.Landed)
             {
                 _ufos[index] = ufo.SecondsRemaining == 5 ? LiftUfo(ufo) :

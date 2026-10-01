@@ -54,6 +54,7 @@ internal static class CampaignTimeOrder
 
     // time30Minutes: missions, craft refuelling, then UFO activity and detection.
     public const int ThirtyMinutesWorldMissions = 50;
+    public const int ThirtyMinutesWorldCrashExpiry = 60;
     public const int ThirtyMinutesRefuel = 100;
     public const int ThirtyMinutesAutoPatrol = 200;
     public const int ThirtyMinutesWorldUfoDetection = 300;
