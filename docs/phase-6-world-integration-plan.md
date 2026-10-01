@@ -271,3 +271,9 @@ The composed cleanup audit adds an atomic guard for alien bases sharing marker/I
 across deployments. C++ pointer-identity traces and fresh/cache reproductions
 show that deletion must not detach another base's missions or followers. See
 [cleanup audit](strategic-world-alien-base-cleanup-status.md).
+
+Alien-base hunting timers now run after ten-minute fuel and base detection.
+Craft eligibility, empty choices, precise generation/timer/work guards and
+persistence are covered against pinned reference traces. Runtime craft
+`undetectable` is projected with cache revision 32. See
+[hunting timer status](strategic-world-alien-base-hunting-status.md).

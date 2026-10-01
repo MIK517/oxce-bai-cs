@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-alien-base-hunt-timer",
+  "description": "Exact GeoscapeState baseHunting and updateActiveCrafts, Craft ignored/destroyed predicates and AlienDeployment hunt timeline with empty weighted choices. Supplied distances isolate hunting from geometry; no nonempty mission is created.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState.cpp::baseHunting/updateActiveCrafts; Craft.cpp::isDestroyed/isIgnoredByHK; AlienDeployment.cpp::generateHuntMission; WeightedOptions.cpp::choose/set",
+      "capture": "tools/capture-strategic-alien-base-hunt-timer-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; methods inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_alien_base_hunt_timer_probe.cpp",
+      "size": 4842,
+      "sha256": "af1ed5cda5506266b93edd826f221edfff8222f42a7897186a91eacc9e9438b6"
+    },
+    {
+      "path": "tools/capture-strategic-alien-base-hunt-timer-reference.ps1",
+      "size": 3589,
+      "sha256": "8b208b9ce3ef105cc41a06b9e24d2114b69b8837c06b4cb46948fceb286e2ba4"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-alien-base-hunt-timer.rul",
+      "size": 954,
+      "sha256": "07d910c0dc7edd44336fba8b016a71ab273ca8464cd216c7dac5df8be72efec4"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-alien-base-hunt-timer.expected.json"
+}

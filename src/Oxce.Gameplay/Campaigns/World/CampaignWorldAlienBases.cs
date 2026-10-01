@@ -8,9 +8,13 @@ internal sealed partial class CampaignWorld
     private const long MaximumAlienBaseChecks = 1_000_000;
     private const string AlienBaseWorkReason = "Alien base activity and sight checks exceed the supported work limit.";
 
-    private void RegisterAlienBaseOperations(CampaignCapabilityRegistry registry) =>
+    private void RegisterAlienBaseOperations(CampaignCapabilityRegistry registry)
+    {
         registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayWorldAlienBases,
             "alien base activity and facility discovery", ProcessAlienBasesDaily);
+        registry.Timed(CampaignTimeTrigger.TenMinutes, CampaignTimeOrder.TenMinutesWorldAlienBaseHunting,
+            "alien base hunting timers", AdvanceAlienBaseHunting);
+    }
 
     private RuntimeAlienDeploymentRule AlienBaseRule(AlienBaseSnapshot alienBase) =>
         campaign.Content.RuntimeRules.AlienDeployments[
@@ -29,8 +33,7 @@ internal sealed partial class CampaignWorld
             if (daily && BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch)) continue;
             if (!alienBase.Discovered) undiscovered++;
             var rule = AlienBaseRule(alienBase);
-            if (rule.BaseDetectionRange > 0)
-                return "Alien base hunting requires mission generation and hunter-killer simulation.";
+            if (AlienBaseHuntingReason(alienBase, rule, highest, ref work) is { } huntingReason) return huntingReason;
             if (highest < CampaignTimeTrigger.OneDay) continue;
             work += rule.GenMission.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;

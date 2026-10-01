@@ -191,6 +191,7 @@ public sealed record RuntimeCraftRule(
     public int MaximumItems { get; init; }
     public double MaximumStorageSpace { get; init; }
     public bool NotifyWhenRefueled { get; init; }
+    public bool Undetectable { get; init; }
     public bool PatrolWithoutFuel { get; init; }
     public bool AutoPatrol { get; init; }
     public IReadOnlyList<string> FixedWeaponSlots { get; init; } = [];

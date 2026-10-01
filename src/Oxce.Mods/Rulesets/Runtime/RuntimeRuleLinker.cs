@@ -205,6 +205,7 @@ public static class RuntimeRuleLinker
                 MaximumItems = rule.Value.Stats.Get("maxItems"),
                 MaximumStorageSpace = rule.Value.Stats.MaximumStorageSpace,
                 NotifyWhenRefueled = rule.Value.Booleans["notifyWhenRefueled"],
+                Undetectable = rule.Value.Booleans["undetectable"],
                 PatrolWithoutFuel = rule.Value.Booleans["patrolWithoutFuel"],
                 AutoPatrol = rule.Value.Booleans["autoPatrol"],
                 FixedWeaponSlots = rule.Value.FixedWeapons,
