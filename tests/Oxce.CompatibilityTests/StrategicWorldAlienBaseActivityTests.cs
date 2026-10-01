@@ -257,7 +257,6 @@ public sealed class StrategicWorldAlienBaseActivityTests
     }
 
     [Theory]
-    [InlineData("BASE_HUNTING", false, "Alien base hunting requires mission generation and hunter-killer simulation.")]
     [InlineData("BASE_MISSING_MISSION", true, "Alien base generation references an undefined alien mission.")]
     [InlineData("BASE_EXCESSIVE_WEIGHTS", true, "Alien base mission weights exceed the supported range.")]
     public void UnownedTransitionsBlockBeforeTheirAffectedTick(string deployment, bool daily, string reason)
@@ -268,6 +267,18 @@ public sealed class StrategicWorldAlienBaseActivityTests
         var earlier = snapshot with { Time = snapshot.Time with { Second = 50 } };
         AdvanceOne(Restore(content, earlier));
         AssertTimeBlocked(Restore(content, snapshot), reason);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingRangeWithoutActiveCraftAdvancesTimerAndReloads(bool cache)
+    {
+        var content = Load(cache);
+        var campaign = Restore(content, Snapshot(content, "BASE_HUNTING"));
+        AdvanceOne(campaign);
+        Assert.Equal(10, Assert.Single(campaign.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+        Reload(content, campaign, 40, "inactive-hunting-base.sav");
     }
 
     [Theory]

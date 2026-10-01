@@ -282,3 +282,9 @@ Pinned traces cover refresh and implicit-base pruning; fresh/cache composed
 batches and transition reloads verify persistence. Preflight validates current
 and possible refreshed selections without RNG or live mutation. Site scheduling,
 non-space initialization and campaign monthly composition remain guarded.
+
+Alien-base hunting timers now run after ten-minute fuel and base detection.
+Craft eligibility, empty choices, precise generation/timer/work guards and
+persistence are covered against pinned reference traces. Runtime craft
+`undetectable` is projected with cache revision 32. See
+[hunting timer status](strategic-world-alien-base-hunting-status.md).
