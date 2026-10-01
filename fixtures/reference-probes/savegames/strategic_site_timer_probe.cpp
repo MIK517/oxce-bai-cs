@@ -1,7 +1,21 @@
 // The timer/follower and score statements of GeoscapeState::processMissionSite are inserted verbatim.
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
+
+class SavedGame {
+    std::map<std::string, int> _ids;
+public:
+    void increaseCustomCounter(const std::string& name);
+    void decreaseCustomCounter(const std::string& name);
+    void setCounter(const std::string& name, int value) { _ids[name] = value; }
+    int counter(const std::string& name) const {
+        auto found = _ids.find(name);
+        return found == _ids.end() ? -1 : found->second;
+    }
+};
+// COUNTER_METHODS
 
 struct Rule {
     bool force;
@@ -76,6 +90,25 @@ int main() {
         std::cout << '[' << input.seconds << ',' << input.follower << ',' << input.force << ','
                   << input.points << ',' << input.penalty << ',' << removed << ',' << site.remaining
                   << ',' << score << ',' << craft.returned << ',' << geoscape.popups << ']';
+    }
+    std::cout << "],\"counterRows\":[";
+    struct CounterCase { const char* name; int start; const char* operations; };
+    std::vector<CounterCase> counterCases = {
+        {"site", -1, "+"}, {"site", -1, "-"}, {"site", 1, "-"},
+        {"site", 3, "++-"}, {"site", 2, "--"}, {"", -1, "+-"}
+    };
+    first = true;
+    for (const auto& input : counterCases) {
+        if (!first) std::cout << ',';
+        first = false;
+        SavedGame game;
+        if (input.start >= 0) game.setCounter(input.name, input.start);
+        for (const char* op = input.operations; *op; ++op) {
+            if (*op == '+') game.increaseCustomCounter(input.name);
+            else game.decreaseCustomCounter(input.name);
+        }
+        std::cout << "[\"" << input.name << "\"," << input.start << ",\""
+                  << input.operations << "\"," << game.counter(input.name) << ']';
     }
     std::cout << "]}\n";
 }

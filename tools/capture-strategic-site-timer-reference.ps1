@@ -15,6 +15,12 @@ if ($method -lt 0 -or $start -lt 0 -or $end -lt 0 -or $score -lt 0 -or $scoreEnd
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_site_timer_probe.cpp'))
 $template = $template.Replace('// TIMER_AND_FOLLOWERS', $source.Substring($start, $end - $start))
 $template = $template.Replace('// SCORE', $source.Substring($score, $scoreEnd - $score))
+$saveSource = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/SavedGame.cpp'))
+$counterStart = $saveSource.IndexOf('void SavedGame::increaseCustomCounter(', [StringComparison]::Ordinal)
+$decreaseStart = $saveSource.IndexOf('void SavedGame::decreaseCustomCounter(', $counterStart, [StringComparison]::Ordinal)
+$counterEnd = $saveSource.IndexOf('/**', $decreaseStart, [StringComparison]::Ordinal)
+if ($counterStart -lt 0 -or $decreaseStart -lt 0 -or $counterEnd -le $decreaseStart) { throw 'Missing reference counter methods.' }
+$template = $template.Replace('// COUNTER_METHODS', $saveSource.Substring($counterStart, $counterEnd - $counterStart))
 $work = Join-Path $repository 'artifacts/reference-strategic-site-timer'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_site_timer_probe.cpp'

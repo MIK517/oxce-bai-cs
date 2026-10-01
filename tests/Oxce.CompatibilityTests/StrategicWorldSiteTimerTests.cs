@@ -31,6 +31,27 @@ public sealed class StrategicWorldSiteTimerTests
         }
     }
 
+    [Fact]
+    public void CustomCountersMatchExtractedSavedGameMethods()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-timer");
+        var actualRows = new List<object[]>();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "counterRows"))
+        {
+            var name = row[0].GetString()!;
+            var start = row[1].GetInt32();
+            var operations = row[2].GetString()!;
+            int? value = start < 0 ? null : start;
+            foreach (var operation in operations)
+                if (name.Length != 0)
+                    value = CustomCounterValue.Apply(value, operation == '+');
+            actualRows.Add([name, start, operations, value ?? -1]);
+        }
+        var expected = System.Text.Encoding.UTF8.GetBytes(oracle.RootElement.GetProperty("counterRows").GetRawText());
+        var actual = JsonSerializer.SerializeToUtf8Bytes(actualRows);
+        Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -159,6 +180,95 @@ public sealed class StrategicWorldSiteTimerTests
         var reloaded = Reload(content, campaign, 17, "forced-site-expiry.sav").Capture();
         Assert.Empty(reloaded.World.MissionSites);
         Assert.Equal(WorldTargetKind.Base, reloaded.Bases[0].Crafts[0].Logistics!.Destination!.Kind);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DespawnCountersApplyInReferenceOrderAndPersist(bool fromCache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+        var snapshot = WithSite(CreateSnapshot(content, "Site counters") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+        }, "SITE_COUNTERS", 0);
+        var counters = snapshot.NextIds.ToDictionary(static entry => entry.Key, static entry => entry.Value,
+            StringComparer.Ordinal);
+        counters["shared"] = 3;
+        snapshot = snapshot with { NextIds = counters };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal(4, after.NextIds["shared"]);
+        Assert.Equal(1, after.NextIds["all"]);
+        Assert.Equal(1, after.NextIds["missing"]);
+        var reloaded = Reload(content, campaign, 17, "site-counters.sav").Capture();
+        Assert.Equal(after.NextIds.OrderBy(static entry => entry.Key, StringComparer.Ordinal),
+            reloaded.NextIds.OrderBy(static entry => entry.Key, StringComparer.Ordinal));
+        Assert.Empty(reloaded.World.MissionSites);
+    }
+
+    [Fact]
+    public void CombinedSiteCountersOverflowBeforeTheTick()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
+        var snapshot = WithSite(CreateSnapshot(content, "Site counter overflow") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+        }, "SITE_COUNTERS", 0);
+        var site = Assert.Single(snapshot.World.MissionSites);
+        var counters = snapshot.NextIds.ToDictionary(static entry => entry.Key, static entry => entry.Value,
+            StringComparer.Ordinal);
+        counters["shared"] = int.MaxValue - 2;
+        snapshot = snapshot with
+        {
+            NextIds = counters,
+            World = snapshot.World with { MissionSites = [site, site with { Id = site.Id + 1 }] },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events,
+            item => item is CampaignActionBlocked action && action.Reason.Contains("counter", StringComparison.Ordinal));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData("FUEL_RESEARCH", false)]
+    [InlineData("UNUSED_COUNTER_RULE", true)]
+    public void DailyCounterPreflightOnlyReservesPossibleResearchSideEffects(
+        string researchId, bool shouldBlock)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
+        var snapshot = WithSite(CreateSnapshot(content, "Site with daily research") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 23, 59, 55),
+        }, "SITE_COUNTERS", 0);
+        var owner = snapshot.Bases[0];
+        var counters = snapshot.NextIds.ToDictionary(static entry => entry.Key, static entry => entry.Value,
+            StringComparer.Ordinal);
+        counters["shared"] = int.MaxValue - 2;
+        snapshot = snapshot with
+        {
+            NextIds = counters,
+            Bases = [owner with { Research = [new ResearchProjectSnapshot(researchId, 0, 1, 1)] },
+                .. snapshot.Bases.Skip(1)],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        if (shouldBlock)
+        {
+            var before = campaign.Capture();
+            Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events,
+                item => item is CampaignActionBlocked action && action.Reason.Contains("counter", StringComparison.Ordinal));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            return;
+        }
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal(int.MaxValue - 1, after.NextIds["shared"]);
     }
 
     [Fact]

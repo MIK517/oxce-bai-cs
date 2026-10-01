@@ -15,18 +15,18 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_site_timer_probe.cpp",
-      "size": 2638,
-      "sha256": "d5c8cfc87b1871a7389f1aa7d0e3f7013dba153a40d0f7b68d006bf8ceebb6af"
+      "size": 3962,
+      "sha256": "3c044a012f0280adee11d387763c085faf1c8f82231330c73f4c05bbf7b60a9f"
     },
     {
       "path": "tools/capture-strategic-site-timer-reference.ps1",
-      "size": 2700,
-      "sha256": "a12cf9bc59cac32f0ee10f78547006d2fd8f68d2224857477c7c671f9a174782"
+      "size": 3357,
+      "sha256": "b7552f96c96680c84136fc73f0d52733e4e6cb8e0ae308039b5e0f27fe12b218"
     },
     {
       "path": "fixtures/public/savegames/strategic-site-timer.rul",
-      "size": 303,
-      "sha256": "3240c2bd24ebfa0251e4622a0b09533fc7fd1320309bfa8c7677251d2411ac7b"
+      "size": 671,
+      "sha256": "cf1698a21a11bb8d057c990b87c545b2b13eac07126f78d69dca6c57f56231ba"
     },
     {
       "path": "fixtures/public/savegames/strategic-world.rul",

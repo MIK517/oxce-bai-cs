@@ -56,6 +56,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     {
         registry.Operation<ICampaignResearchPreflight>(this);
         registry.Operation<ICampaignArcResearch>(this);
+        registry.Operation<ICampaignCustomCounters>(this);
         registry.Command<ConfigureResearchProject>(ConfigureResearch);
         registry.Command<ConfigureProductionProject>(ConfigureProduction);
         registry.Preflight(CampaignPreflightOrder.ResearchProduction, "research and production",
@@ -615,11 +616,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             if (_content.RuntimeRules.Items.TryGet(id, out _))
                 QueueTransfer(owner, 1, CampaignTransferKind.Item, id, 1);
         foreach (var id in rule.IncreaseCounters)
-            if (id.Length != 0)
-                _nextIds[id] = checked(_nextIds.TryGetValue(id, out var value) ? value + 1 : 2);
+            CustomCounters.Apply(new CustomCounterChange(id, true));
         foreach (var id in rule.DecreaseCounters)
-            if (id.Length != 0)
-                _nextIds[id] = _nextIds.TryGetValue(id, out var value) ? Math.Max(1, value - 1) : 1;
+            CustomCounters.Apply(new CustomCounterChange(id, false));
         if (rule.SpawnedEvent.Length != 0)
             ScheduleStrategicEvent(rule.SpawnedEvent, source, effects);
         var selectedEvent = SelectWeighted(rule.Events, static entry => entry.Value,

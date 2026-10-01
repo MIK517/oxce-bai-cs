@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 64 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 65 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 64 files.
+`src/Oxce.Gameplay` - 65 files.
 
 ### `Oxce.Gameplay`
 
@@ -336,6 +336,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ICampaignClock` (interface) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `SystemCampaignClock` (class) [CampaignContracts.cs](../src/Oxce.Gameplay/Campaigns/CampaignContracts.cs)
 - `CampaignState` (class) [CampaignCrafts.cs](../src/Oxce.Gameplay/Campaigns/CampaignCrafts.cs)
+- `CampaignState` (class) [CampaignCustomCounters.cs](../src/Oxce.Gameplay/Campaigns/CampaignCustomCounters.cs)
 - `CampaignState` (class) [CampaignEntityValidation.cs](../src/Oxce.Gameplay/Campaigns/CampaignEntityValidation.cs)
 - `BuildCampaignFacility` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs)
 - `DismantleCampaignFacility` (record) [CampaignFacilities.cs](../src/Oxce.Gameplay/Campaigns/CampaignFacilities.cs)
