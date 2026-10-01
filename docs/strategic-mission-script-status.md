@@ -63,3 +63,13 @@ Ordinary script missions now apply `AlienMission::setRegion`'s single remap;
 strategy removal still uses the selected source region. The existing pinned
 base-generation probe inserts the exact method. Fresh/cache regressions cover
 remapping, chained aliases (one hop), unresolved targets, table history and reload.
+
+Ordinary mission scripts with explicit mission types now target player-base
+regions using the reference's uniform starting list entry, circular retry,
+duplicate base regions and active-mission pruning. All-busy candidates fail the
+label without creating a mission or changing run/table history. Missing region
+weights are permitted for guaranteed base targeting; mixed odds still validate
+both paths. Candidate work is bounded before mutation. The pinned
+`strategic-mission-base-target` probe and fresh/cache tests cover selection,
+failure labels, RNG order, resource limits and reload. Implicit strategy fallback,
+site scheduling and campaign month composition remain unavailable.
