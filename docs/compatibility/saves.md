@@ -70,3 +70,10 @@ mission identity/region/race/site-area/timer fields across fresh/cache, reloads,
 repeated loaded rewrites and deletion. Surviving unknown mission fields persist;
 deleted mission sidecars cannot reset the base counter or recreate missions. See
 [generation status](../strategic-world-alien-base-generation-status.md).
+
+Monthly alien-base upgrades preserve base IDs, generation counts, pact countries,
+age/hunting timers and race, while repairing mission and follower references when
+markers change. The optional port `oxcePortEntityKey` records a stable base sidecar
+identity across deployment changes; legacy identities are derived on import and
+the reference ignores this field. Loaded rewrites conserve unknown fields only
+for surviving keyed bases. See [monthly base status](../strategic-world-alien-base-monthly-status.md).

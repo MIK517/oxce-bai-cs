@@ -341,7 +341,9 @@ public sealed class StrategicWorldAlienBaseActivityTests
             World = snapshot.World with
             {
                 AlienBases = [.. Enumerable.Range(1, 1001)
-                .Select(id => snapshot.World.AlienBases[0] with { Id = id })]
+                .Select(id => new AlienBaseSnapshot(id, snapshot.World.AlienBases[0].DeploymentId,
+                    snapshot.World.AlienBases[0].Race, snapshot.World.AlienBases[0].Longitude,
+                    snapshot.World.AlienBases[0].Latitude))]
             },
         };
         AssertTimeBlocked(Restore(content, snapshot),

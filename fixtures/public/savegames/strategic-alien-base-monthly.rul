@@ -1,0 +1,534 @@
+# Monthly deployment selection, age reset and ordered race evolution.
+alienRaces:
+  - id: RACE_C
+    members: []
+  - id: CHAIN_1
+    members: []
+  - id: CHAIN_2
+    members: []
+  - id: CHAIN_3
+    members: []
+  - id: CHAIN_4
+    members: []
+  - id: CHAIN_5
+    members: []
+  - id: CHAIN_6
+    members: []
+  - id: CHAIN_7
+    members: []
+  - id: CHAIN_8
+    members: []
+  - id: CHAIN_9
+    members: []
+  - id: CHAIN_10
+    members: []
+  - id: CHAIN_11
+    members: []
+  - id: CHAIN_12
+    members: []
+  - id: CHAIN_13
+    members: []
+  - id: CHAIN_14
+    members: []
+  - id: CHAIN_15
+    members: []
+  - id: CHAIN_16
+    members: []
+  - id: CHAIN_17
+    members: []
+  - id: CHAIN_18
+    members: []
+  - id: CHAIN_19
+    members: []
+  - id: CHAIN_20
+    members: []
+  - id: CHAIN_21
+    members: []
+  - id: CHAIN_22
+    members: []
+  - id: CHAIN_23
+    members: []
+  - id: CHAIN_24
+    members: []
+  - id: CHAIN_25
+    members: []
+  - id: CHAIN_26
+    members: []
+  - id: CHAIN_27
+    members: []
+  - id: CHAIN_28
+    members: []
+  - id: CHAIN_29
+    members: []
+  - id: CHAIN_30
+    members: []
+  - id: CHAIN_31
+    members: []
+  - id: CHAIN_32
+    members: []
+  - id: CHAIN_33
+    members: []
+  - id: CHAIN_34
+    members: []
+  - id: CHAIN_35
+    members: []
+  - id: CHAIN_36
+    members: []
+  - id: CHAIN_37
+    members: []
+  - id: CHAIN_38
+    members: []
+  - id: CHAIN_39
+    members: []
+  - id: CHAIN_40
+    members: []
+  - id: CHAIN_41
+    members: []
+  - id: CHAIN_42
+    members: []
+  - id: CHAIN_43
+    members: []
+  - id: CHAIN_44
+    members: []
+  - id: CHAIN_45
+    members: []
+  - id: CHAIN_46
+    members: []
+  - id: CHAIN_47
+    members: []
+  - id: CHAIN_48
+    members: []
+  - id: CHAIN_49
+    members: []
+  - id: CHAIN_50
+    members: []
+  - id: CHAIN_51
+    members: []
+  - id: CHAIN_52
+    members: []
+  - id: CHAIN_53
+    members: []
+  - id: CHAIN_54
+    members: []
+  - id: CHAIN_55
+    members: []
+  - id: CHAIN_56
+    members: []
+  - id: CHAIN_57
+    members: []
+  - id: CHAIN_58
+    members: []
+  - id: CHAIN_59
+    members: []
+  - id: CHAIN_60
+    members: []
+  - id: CHAIN_61
+    members: []
+  - id: CHAIN_62
+    members: []
+  - id: CHAIN_63
+    members: []
+  - id: CHAIN_64
+    members: []
+  - id: CHAIN_65
+    members: []
+  - id: CHAIN_66
+    members: []
+  - id: CHAIN_67
+    members: []
+  - id: CHAIN_68
+    members: []
+  - id: CHAIN_69
+    members: []
+  - id: CHAIN_70
+    members: []
+  - id: CHAIN_71
+    members: []
+  - id: CHAIN_72
+    members: []
+  - id: CHAIN_73
+    members: []
+  - id: CHAIN_74
+    members: []
+  - id: CHAIN_75
+    members: []
+  - id: CHAIN_76
+    members: []
+  - id: CHAIN_77
+    members: []
+  - id: CHAIN_78
+    members: []
+  - id: CHAIN_79
+    members: []
+  - id: CHAIN_80
+    members: []
+  - id: CHAIN_81
+    members: []
+  - id: CHAIN_82
+    members: []
+  - id: CHAIN_83
+    members: []
+  - id: CHAIN_84
+    members: []
+  - id: CHAIN_85
+    members: []
+  - id: CHAIN_86
+    members: []
+  - id: CHAIN_87
+    members: []
+  - id: CHAIN_88
+    members: []
+  - id: CHAIN_89
+    members: []
+  - id: CHAIN_90
+    members: []
+  - id: CHAIN_91
+    members: []
+  - id: CHAIN_92
+    members: []
+  - id: CHAIN_93
+    members: []
+  - id: CHAIN_94
+    members: []
+  - id: CHAIN_95
+    members: []
+  - id: CHAIN_96
+    members: []
+  - id: CHAIN_97
+    members: []
+  - id: CHAIN_98
+    members: []
+  - id: CHAIN_99
+    members: []
+  - id: CHAIN_100
+    members: []
+alienDeployments:
+  - &monthlyNew
+    type: MONTHLY_NEW
+    alienBase: true
+    markerName: STR_ALIEN_BASE_NEW
+    points: 7
+    huntMissionMaxFrequency: 120
+  - type: MONTHLY_RESET
+    refNode: *monthlyNew
+    resetAlienBaseAge: true
+  - type: MONTHLY_UNKNOWN_RACE
+    refNode: *monthlyNew
+    upgradeRace: MISSING
+  - type: MONTHLY_EVOLVED
+    refNode: *monthlyNew
+    upgradeRace: RACE_B
+    alienRaceEvolution: [[3, RACE_B, RACE_C]]
+  - &monthlyUpgrade
+    type: MONTHLY_upgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_NEW: 1}}
+  - type: MONTHLY_monthZero
+    refNode: *monthlyUpgrade
+  - type: MONTHLY_notNewMonth
+    refNode: *monthlyUpgrade
+  - type: MONTHLY_noWeights
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+  - type: MONTHLY_sourceReset
+    refNode: *monthlyUpgrade
+    resetAlienBaseAgeAfterUpgrade: true
+  - type: MONTHLY_targetReset
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_RESET: 1}}
+  - type: MONTHLY_unknownUpgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MISSING: 1}}
+  - type: MONTHLY_sameUpgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    resetAlienBaseAgeAfterUpgrade: true
+    upgradeRace: RACE_B
+    alienBaseUpgrades: {0: {MONTHLY_sameUpgrade: 1}}
+  - type: MONTHLY_emptyUpgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {'': 1}}
+  - type: MONTHLY_zeroWeights
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_NEW: 0}}
+  - type: MONTHLY_unknownRace
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_UNKNOWN_RACE: 1}}
+  - type: MONTHLY_upgradeEvolution
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_EVOLVED: 1}}
+  - type: MONTHLY_evolutionChain
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    # The loader sorts months descending, keeping equal-month source order.
+    alienRaceEvolution: [[1, RACE_A, RACE_B], [2, RACE_B, RACE_C]]
+  - type: MONTHLY_priority
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution: [[1, RACE_A, RACE_B], [3, RACE_A, RACE_C]]
+  - type: MONTHLY_stableTie
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution: [[2, RACE_A, RACE_B], [2, RACE_A, RACE_C]]
+  - type: MONTHLY_missingEvolution
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution: [[2, RACE_A, MISSING], [1, RACE_A, RACE_B]]
+  - type: MONTHLY_futureEvolution
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution: [[4, RACE_A, RACE_B]]
+  - type: MONTHLY_selfLoop
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution: [[1, RACE_A, RACE_A]]
+  - type: MONTHLY_cycle
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution: [[1, RACE_A, RACE_B], [1, RACE_B, RACE_A]]
+  - type: MONTHLY_timelineEarly
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_timelineEarly: 1}, 2: {MONTHLY_NEW: 1}}
+  - type: MONTHLY_timelineBoundary
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_timelineBoundary: 1}, 2: {MONTHLY_NEW: 1}}
+  - type: MONTHLY_futureStart
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_futureStart: 1}, 2: {MONTHLY_NEW: 1}}
+  - type: MONTHLY_futureTimeline
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {4: {MONTHLY_NEW: 1}}
+  - type: MONTHLY_badHuntTimer
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    huntMissionMaxFrequency: -1
+  - type: MONTHLY_badUpgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_badHuntTimer: 1}}
+  - type: MONTHLY_badEvolutionUpgrade
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_NEW: 1, MONTHLY_cycle: 1}}
+  - type: MONTHLY_overflowWeights
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienBaseUpgrades: {0: {MONTHLY_NEW: 2147483647, MONTHLY_RESET: 1}}
+  - type: MONTHLY_chain99
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution:
+      - [1, RACE_A, CHAIN_1]
+      - [1, CHAIN_1, CHAIN_2]
+      - [1, CHAIN_2, CHAIN_3]
+      - [1, CHAIN_3, CHAIN_4]
+      - [1, CHAIN_4, CHAIN_5]
+      - [1, CHAIN_5, CHAIN_6]
+      - [1, CHAIN_6, CHAIN_7]
+      - [1, CHAIN_7, CHAIN_8]
+      - [1, CHAIN_8, CHAIN_9]
+      - [1, CHAIN_9, CHAIN_10]
+      - [1, CHAIN_10, CHAIN_11]
+      - [1, CHAIN_11, CHAIN_12]
+      - [1, CHAIN_12, CHAIN_13]
+      - [1, CHAIN_13, CHAIN_14]
+      - [1, CHAIN_14, CHAIN_15]
+      - [1, CHAIN_15, CHAIN_16]
+      - [1, CHAIN_16, CHAIN_17]
+      - [1, CHAIN_17, CHAIN_18]
+      - [1, CHAIN_18, CHAIN_19]
+      - [1, CHAIN_19, CHAIN_20]
+      - [1, CHAIN_20, CHAIN_21]
+      - [1, CHAIN_21, CHAIN_22]
+      - [1, CHAIN_22, CHAIN_23]
+      - [1, CHAIN_23, CHAIN_24]
+      - [1, CHAIN_24, CHAIN_25]
+      - [1, CHAIN_25, CHAIN_26]
+      - [1, CHAIN_26, CHAIN_27]
+      - [1, CHAIN_27, CHAIN_28]
+      - [1, CHAIN_28, CHAIN_29]
+      - [1, CHAIN_29, CHAIN_30]
+      - [1, CHAIN_30, CHAIN_31]
+      - [1, CHAIN_31, CHAIN_32]
+      - [1, CHAIN_32, CHAIN_33]
+      - [1, CHAIN_33, CHAIN_34]
+      - [1, CHAIN_34, CHAIN_35]
+      - [1, CHAIN_35, CHAIN_36]
+      - [1, CHAIN_36, CHAIN_37]
+      - [1, CHAIN_37, CHAIN_38]
+      - [1, CHAIN_38, CHAIN_39]
+      - [1, CHAIN_39, CHAIN_40]
+      - [1, CHAIN_40, CHAIN_41]
+      - [1, CHAIN_41, CHAIN_42]
+      - [1, CHAIN_42, CHAIN_43]
+      - [1, CHAIN_43, CHAIN_44]
+      - [1, CHAIN_44, CHAIN_45]
+      - [1, CHAIN_45, CHAIN_46]
+      - [1, CHAIN_46, CHAIN_47]
+      - [1, CHAIN_47, CHAIN_48]
+      - [1, CHAIN_48, CHAIN_49]
+      - [1, CHAIN_49, CHAIN_50]
+      - [1, CHAIN_50, CHAIN_51]
+      - [1, CHAIN_51, CHAIN_52]
+      - [1, CHAIN_52, CHAIN_53]
+      - [1, CHAIN_53, CHAIN_54]
+      - [1, CHAIN_54, CHAIN_55]
+      - [1, CHAIN_55, CHAIN_56]
+      - [1, CHAIN_56, CHAIN_57]
+      - [1, CHAIN_57, CHAIN_58]
+      - [1, CHAIN_58, CHAIN_59]
+      - [1, CHAIN_59, CHAIN_60]
+      - [1, CHAIN_60, CHAIN_61]
+      - [1, CHAIN_61, CHAIN_62]
+      - [1, CHAIN_62, CHAIN_63]
+      - [1, CHAIN_63, CHAIN_64]
+      - [1, CHAIN_64, CHAIN_65]
+      - [1, CHAIN_65, CHAIN_66]
+      - [1, CHAIN_66, CHAIN_67]
+      - [1, CHAIN_67, CHAIN_68]
+      - [1, CHAIN_68, CHAIN_69]
+      - [1, CHAIN_69, CHAIN_70]
+      - [1, CHAIN_70, CHAIN_71]
+      - [1, CHAIN_71, CHAIN_72]
+      - [1, CHAIN_72, CHAIN_73]
+      - [1, CHAIN_73, CHAIN_74]
+      - [1, CHAIN_74, CHAIN_75]
+      - [1, CHAIN_75, CHAIN_76]
+      - [1, CHAIN_76, CHAIN_77]
+      - [1, CHAIN_77, CHAIN_78]
+      - [1, CHAIN_78, CHAIN_79]
+      - [1, CHAIN_79, CHAIN_80]
+      - [1, CHAIN_80, CHAIN_81]
+      - [1, CHAIN_81, CHAIN_82]
+      - [1, CHAIN_82, CHAIN_83]
+      - [1, CHAIN_83, CHAIN_84]
+      - [1, CHAIN_84, CHAIN_85]
+      - [1, CHAIN_85, CHAIN_86]
+      - [1, CHAIN_86, CHAIN_87]
+      - [1, CHAIN_87, CHAIN_88]
+      - [1, CHAIN_88, CHAIN_89]
+      - [1, CHAIN_89, CHAIN_90]
+      - [1, CHAIN_90, CHAIN_91]
+      - [1, CHAIN_91, CHAIN_92]
+      - [1, CHAIN_92, CHAIN_93]
+      - [1, CHAIN_93, CHAIN_94]
+      - [1, CHAIN_94, CHAIN_95]
+      - [1, CHAIN_95, CHAIN_96]
+      - [1, CHAIN_96, CHAIN_97]
+      - [1, CHAIN_97, CHAIN_98]
+      - [1, CHAIN_98, CHAIN_99]
+  - type: MONTHLY_chain100
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    alienRaceEvolution:
+      - [1, RACE_A, CHAIN_1]
+      - [1, CHAIN_1, CHAIN_2]
+      - [1, CHAIN_2, CHAIN_3]
+      - [1, CHAIN_3, CHAIN_4]
+      - [1, CHAIN_4, CHAIN_5]
+      - [1, CHAIN_5, CHAIN_6]
+      - [1, CHAIN_6, CHAIN_7]
+      - [1, CHAIN_7, CHAIN_8]
+      - [1, CHAIN_8, CHAIN_9]
+      - [1, CHAIN_9, CHAIN_10]
+      - [1, CHAIN_10, CHAIN_11]
+      - [1, CHAIN_11, CHAIN_12]
+      - [1, CHAIN_12, CHAIN_13]
+      - [1, CHAIN_13, CHAIN_14]
+      - [1, CHAIN_14, CHAIN_15]
+      - [1, CHAIN_15, CHAIN_16]
+      - [1, CHAIN_16, CHAIN_17]
+      - [1, CHAIN_17, CHAIN_18]
+      - [1, CHAIN_18, CHAIN_19]
+      - [1, CHAIN_19, CHAIN_20]
+      - [1, CHAIN_20, CHAIN_21]
+      - [1, CHAIN_21, CHAIN_22]
+      - [1, CHAIN_22, CHAIN_23]
+      - [1, CHAIN_23, CHAIN_24]
+      - [1, CHAIN_24, CHAIN_25]
+      - [1, CHAIN_25, CHAIN_26]
+      - [1, CHAIN_26, CHAIN_27]
+      - [1, CHAIN_27, CHAIN_28]
+      - [1, CHAIN_28, CHAIN_29]
+      - [1, CHAIN_29, CHAIN_30]
+      - [1, CHAIN_30, CHAIN_31]
+      - [1, CHAIN_31, CHAIN_32]
+      - [1, CHAIN_32, CHAIN_33]
+      - [1, CHAIN_33, CHAIN_34]
+      - [1, CHAIN_34, CHAIN_35]
+      - [1, CHAIN_35, CHAIN_36]
+      - [1, CHAIN_36, CHAIN_37]
+      - [1, CHAIN_37, CHAIN_38]
+      - [1, CHAIN_38, CHAIN_39]
+      - [1, CHAIN_39, CHAIN_40]
+      - [1, CHAIN_40, CHAIN_41]
+      - [1, CHAIN_41, CHAIN_42]
+      - [1, CHAIN_42, CHAIN_43]
+      - [1, CHAIN_43, CHAIN_44]
+      - [1, CHAIN_44, CHAIN_45]
+      - [1, CHAIN_45, CHAIN_46]
+      - [1, CHAIN_46, CHAIN_47]
+      - [1, CHAIN_47, CHAIN_48]
+      - [1, CHAIN_48, CHAIN_49]
+      - [1, CHAIN_49, CHAIN_50]
+      - [1, CHAIN_50, CHAIN_51]
+      - [1, CHAIN_51, CHAIN_52]
+      - [1, CHAIN_52, CHAIN_53]
+      - [1, CHAIN_53, CHAIN_54]
+      - [1, CHAIN_54, CHAIN_55]
+      - [1, CHAIN_55, CHAIN_56]
+      - [1, CHAIN_56, CHAIN_57]
+      - [1, CHAIN_57, CHAIN_58]
+      - [1, CHAIN_58, CHAIN_59]
+      - [1, CHAIN_59, CHAIN_60]
+      - [1, CHAIN_60, CHAIN_61]
+      - [1, CHAIN_61, CHAIN_62]
+      - [1, CHAIN_62, CHAIN_63]
+      - [1, CHAIN_63, CHAIN_64]
+      - [1, CHAIN_64, CHAIN_65]
+      - [1, CHAIN_65, CHAIN_66]
+      - [1, CHAIN_66, CHAIN_67]
+      - [1, CHAIN_67, CHAIN_68]
+      - [1, CHAIN_68, CHAIN_69]
+      - [1, CHAIN_69, CHAIN_70]
+      - [1, CHAIN_70, CHAIN_71]
+      - [1, CHAIN_71, CHAIN_72]
+      - [1, CHAIN_72, CHAIN_73]
+      - [1, CHAIN_73, CHAIN_74]
+      - [1, CHAIN_74, CHAIN_75]
+      - [1, CHAIN_75, CHAIN_76]
+      - [1, CHAIN_76, CHAIN_77]
+      - [1, CHAIN_77, CHAIN_78]
+      - [1, CHAIN_78, CHAIN_79]
+      - [1, CHAIN_79, CHAIN_80]
+      - [1, CHAIN_80, CHAIN_81]
+      - [1, CHAIN_81, CHAIN_82]
+      - [1, CHAIN_82, CHAIN_83]
+      - [1, CHAIN_83, CHAIN_84]
+      - [1, CHAIN_84, CHAIN_85]
+      - [1, CHAIN_85, CHAIN_86]
+      - [1, CHAIN_86, CHAIN_87]
+      - [1, CHAIN_87, CHAIN_88]
+      - [1, CHAIN_88, CHAIN_89]
+      - [1, CHAIN_89, CHAIN_90]
+      - [1, CHAIN_90, CHAIN_91]
+      - [1, CHAIN_91, CHAIN_92]
+      - [1, CHAIN_92, CHAIN_93]
+      - [1, CHAIN_93, CHAIN_94]
+      - [1, CHAIN_94, CHAIN_95]
+      - [1, CHAIN_95, CHAIN_96]
+      - [1, CHAIN_96, CHAIN_97]
+      - [1, CHAIN_97, CHAIN_98]
+      - [1, CHAIN_98, CHAIN_99]
+      - [1, CHAIN_99, CHAIN_100]

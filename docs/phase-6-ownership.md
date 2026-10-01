@@ -44,7 +44,8 @@ reference region/race selection, site areas and persistent generation counters;
 `strategic-alien-base-generation` and `StrategicWorldAlienBaseGenerationTests`
 cover all objectives/operation modes at creation, fresh/cache, reloads, 72-hour
 composition and atomic guards. Immediate creation-tick waves, hunting, linked
-self-destruction and monthly evolution/upgrades remain deferred. See
+self-destruction remain deferred. Monthly evolution/upgrades now have an isolated
+subsystem operation; campaign month rollover remains guarded. See
 [generation status](strategic-world-alien-base-generation-status.md) and
 [activity/discovery status](strategic-world-alien-base-activity-status.md).
 
@@ -55,6 +56,13 @@ same-day primary/lookup completion, following-day interruption of generated
 missions, save/reload and atomic guards. Shared read-only research proofs forecast
 guaranteed and possible discoveries; live-UFO interruption and uncertain daily
 research outcomes remain explicitly guarded until their combined effects are owned.
+
+Monthly alien-base upgrades and race evolution belong to branch 4c. The
+`strategic-alien-base-monthly` extracted probe and fresh/cache transition tests
+cover weighted age selection, reset flags, hunting timers, ordered evolution,
+atomic loop/resource guards, marker-link repair and stable save sidecars. The future
+monthly caller runs this phase after event scheduling. See
+[monthly base status](strategic-world-alien-base-monthly-status.md).
 
 ## Implemented prerequisites
 

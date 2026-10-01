@@ -74,6 +74,7 @@ public static partial class OxceSaveAdapter
         Double(map, "lon", 0),
         Double(map, "lat", 0))
     {
+        PreservationKey = String(map, "oxcePortEntityKey", AlienBasePreservationKey(map)),
         Name = String(map, "name", string.Empty),
         Discovered = Boolean(map, "discovered", false),
         InBattlescape = Boolean(map, "inBattlescape", false),
@@ -281,6 +282,38 @@ public static partial class OxceSaveAdapter
     private static YamlSequenceNode? BuildWorldSection(int count, IEnumerable<YamlNode> values) =>
         count == 0 ? null : Sequence(values);
 
+    private static YamlMappingNode?[] MatchAlienBases(IReadOnlyList<AlienBaseSnapshot> bases,
+        IEnumerable<YamlMappingNode> source)
+    {
+        var originals = source.ToArray();
+        var byKey = new Dictionary<string, int>(StringComparer.Ordinal);
+        var byIdentity = new Dictionary<(string Deployment, int Id), int>();
+        for (var index = 0; index < originals.Length; index++)
+        {
+            var map = originals[index];
+            var key = String(map, "oxcePortEntityKey", AlienBasePreservationKey(map));
+            if (key.Length != 0 && !byKey.TryAdd(key, index))
+                throw new InvalidDataException("Duplicate alien base preservation keys.");
+            byIdentity.TryAdd((String(map, "deployment", "STR_ALIEN_BASE_ASSAULT"), Integer(map, "id", 0)), index);
+        }
+        var used = new bool[originals.Length];
+        var matches = new YamlMappingNode?[bases.Count];
+        for (var index = 0; index < bases.Count; index++)
+        {
+            var current = bases[index];
+            var matched = current.PreservationKey.Length != 0
+                ? byKey.TryGetValue(current.PreservationKey, out var keyed) ? keyed : -1
+                : byIdentity.TryGetValue((current.DeploymentId, current.Id), out var legacy) ? legacy : -1;
+            if (matched < 0 || used[matched] || Integer(originals[matched], "id", 0) != current.Id) continue;
+            matches[index] = originals[matched];
+            used[matched] = true;
+        }
+        return matches;
+    }
+
+    private static string AlienBasePreservationKey(YamlMappingNode map) =>
+        $"alien-base:identity:{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}";
+
     /// <summary>
     /// Imported and newly scheduled events have a persistent sidecar key. Unkeyed synthetic
     /// snapshots retain the legacy matching behavior: prefer complete saved state, then use the
@@ -422,6 +455,7 @@ public static partial class OxceSaveAdapter
 
     private static YamlMappingNode BuildAlienBase(AlienBaseSnapshot alienBase, YamlMappingNode? source) => Overlay(source,
     [
+        Pair("oxcePortEntityKey", alienBase.PreservationKey.Length == 0 ? null : Scalar(alienBase.PreservationKey)),
         Pair("lon", Real(alienBase.Longitude)), Pair("lat", Real(alienBase.Latitude)),
         Pair("id", Integer(alienBase.Id)),
         Pair("name", alienBase.Name.Length == 0 ? null : Scalar(alienBase.Name)),

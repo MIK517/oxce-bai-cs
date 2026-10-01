@@ -248,8 +248,10 @@ Branch 4c now includes [alien-base activity and discovery](strategic-world-alien
 daily scoring, facility sight and craft patrol sight with save/reload and precise
 transition guards. [Daily alien-base mission generation](strategic-world-alien-base-generation-status.md)
 now schedules linked missions with region/race selection and persistent limits.
-Creation-tick immediate waves, hunting, linked deletion, upgrades and evolution
-remain open alongside the other remaining 4c capabilities.
+[Monthly upgrades and race evolution](strategic-world-alien-base-monthly-status.md)
+now execute through an isolated registered world operation, including link repair
+and save preservation. Creation-tick immediate waves, hunting, linked deletion
+and actual monthly caller composition remain open with the other 4c capabilities.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate

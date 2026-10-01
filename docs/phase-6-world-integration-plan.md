@@ -232,3 +232,15 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   research-aware wave/scoring forecasts and transition reloads. Generated missions
   are first checked on the next day. Uncertain research outcomes and interruption
   with live UFOs stop before the daily tick until combined forecasts are owned.
+
+- Monthly alien-base upgrade/evolution slice: a registered isolated operation now
+  preserves weighted age selection, deployment/age/hunting-timer changes and
+  ordered chained race evolution. All upgrades precede evolution. Every reachable
+  outcome is checked before mutation/RNG, with reference loop and bounded work
+  failures. Marker changes repair mission and follower references; stable base
+  sidecar keys preserve unknown data across repeated upgraded rewrites. The pinned
+  `strategic-alien-base-monthly` capture, fresh/cache and reload tests cover the
+  operation. See [status](strategic-world-alien-base-monthly-status.md). The actual
+  monthly caller and campaign month guard remain outstanding; 4d is untouched.
+  Validation: all 1,376 root tests pass with no failures or skips, including checksum
+  and private-corpus tests; formatting, regenerated code-map and diff checks pass.

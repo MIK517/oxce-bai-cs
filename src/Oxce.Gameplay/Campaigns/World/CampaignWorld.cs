@@ -34,6 +34,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         RegisterUfoDetection(registry);
         RegisterSiteOperations(registry);
         RegisterAlienBaseOperations(registry);
+        RegisterAlienBaseMonthly(registry);
         RegisterCraftOperations(registry);
         RegisterEventScheduling(registry);
         RegisterEventScripts(registry);
@@ -286,6 +287,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         EnsureUnique(_waypoints.Select(static waypoint => waypoint.Id), "waypoint IDs");
         EnsureUnique(_sites.Select(static site => (site.DeploymentId, site.Id)), "mission site identities");
         EnsureUnique(_alienBases.Select(static item => (item.DeploymentId, item.Id)), "alien base identities");
+        EnsureUnique(_alienBases.Where(static item => item.PreservationKey.Length != 0)
+            .Select(static item => item.PreservationKey), "alien base preservation keys");
 
         foreach (var mission in _missions)
         {
