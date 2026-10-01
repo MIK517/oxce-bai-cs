@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-mission-strategy",
+  "description": "Exact AlienStrategy init, region/mission selection and removal, and WeightedOptions choose/set. Controlled rule tables and explicit rolls show ordering, empty selection, depletion and refresh.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "AlienStrategy.cpp::init/chooseRandomRegion/chooseRandomMission/removeMission; WeightedOptions.cpp::choose/set",
+      "capture": "tools/capture-strategic-mission-strategy-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; methods inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_mission_strategy_probe.cpp",
+      "size": 2115,
+      "sha256": "ad4ae24473de93d9ffbb98eda57ab03e83e8a64263cfd109a35641e41bd8bb9e"
+    },
+    {
+      "path": "tools/capture-strategic-mission-strategy-reference.ps1",
+      "size": 3351,
+      "sha256": "72709a424903fc340019c7eff20589866d384eab8cb9f6710be25728c01c8fdc"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-strategy.rul",
+      "size": 1126,
+      "sha256": "e04b9c91ff76e6be70c6c82d7569c6cdf628318f8d040cd814adb02fdebe0de5"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-mission-strategy.expected.json"
+}

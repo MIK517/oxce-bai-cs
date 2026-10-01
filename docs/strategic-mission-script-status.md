@@ -83,3 +83,11 @@ Audits found no confirmed functional defect in these slices; the final audit
 corrected obsolete capability statements in this status document. The reference
 checkout is unchanged. Branch 4c still has outstanding world capabilities and
 acceptance work; branch 4d has not started.
+
+Explicit-region mission scripts can now choose their mission from the persisted
+alien strategy table. Weighted order, empty-choice failure, live batch removal,
+`useTable: false`, run history and reload are covered against the pinned
+`strategic-mission-strategy` probe. Missing/invalid tables and batches that can
+remove a later explicitly required table stop before mutation; removal bounds
+count one possible removal per command and region. Region-table refresh and
+implicit base-target mission selection remain for the next slice.
