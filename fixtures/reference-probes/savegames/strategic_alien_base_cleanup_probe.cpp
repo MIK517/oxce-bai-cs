@@ -65,5 +65,14 @@ int main() {
   std::cout << '[' << complete << ',' << follower.returned << ']';
   if (!save.bases.empty()) delete base;
  }
+ std::cout << "],\"ambiguousRows\":[";
+ {
+  AlienBase* firstBase = new AlienBase; firstBase->rule.code.clear(); AlienBase* secondBase = new AlienBase;
+  Mission mission{{0},firstBase}; CraftFollower follower; firstBase->crafts.push_back(&follower);
+  SavedGame save{{&mission},{},{firstBase,secondBase},true}; Game game{{false}};
+  daily(&game,&save,&game.mod);
+  std::cout << '[' << (mission.base == firstBase) << ',' << follower.returned << ',' << save.bases.size() << ']';
+  delete firstBase;
+ }
  std::cout << "]}\n";
 }

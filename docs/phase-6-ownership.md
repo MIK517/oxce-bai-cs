@@ -238,3 +238,8 @@ Existing crashed UFOs now reveal, count down and expire in reference order,
 return followers and release mission live counts. Pure forecasts preserve landing
 and tactical boundaries; fresh/cache, reload, resource and 72-hour scenarios are
 recorded in [crashed UFO status](strategic-world-crashed-ufo-status.md).
+
+The composed cleanup audit adds an atomic guard for alien bases sharing marker/ID
+across deployments. C++ pointer-identity traces and fresh/cache reproductions
+show that deletion must not detach another base's missions or followers. See
+[cleanup audit](strategic-world-alien-base-cleanup-status.md).
