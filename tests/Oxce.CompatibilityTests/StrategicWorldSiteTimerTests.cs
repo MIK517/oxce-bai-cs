@@ -271,6 +271,67 @@ public sealed class StrategicWorldSiteTimerTests
         Assert.Equal(int.MaxValue - 1, after.NextIds["shared"]);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyResearchDecrementMakesSiteExpirySafe(bool fromCache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-site-timer.rul"], fromCache);
+        var snapshot = WithSite(CreateSnapshot(content, "Research before site counters") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 23, 59, 55),
+        }, "SITE_COUNTERS", 0);
+        var owner = snapshot.Bases[0];
+        var counters = snapshot.NextIds.ToDictionary(static entry => entry.Key, static entry => entry.Value,
+            StringComparer.Ordinal);
+        counters["shared"] = int.MaxValue - 1;
+        snapshot = snapshot with
+        {
+            NextIds = counters,
+            Bases = [owner with { Research = [new ResearchProjectSnapshot("COUNTER_DECREMENT", 0, 1, 1)] },
+                .. snapshot.Bases.Skip(1)],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal(int.MaxValue - 1, after.NextIds["shared"]);
+        Assert.Equal(after.NextIds.OrderBy(static entry => entry.Key, StringComparer.Ordinal),
+            Reload(content, campaign, 17, "daily-site-decrement.sav").Capture().NextIds
+                .OrderBy(static entry => entry.Key, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void DailyCounterPreflightDoesNotCreditResearchRemovedByAnEarlierBase()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
+        var snapshot = WithSite(CreateSnapshot(content, "Research removed before second base") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 23, 59, 55),
+        }, "SITE_COUNTERS", 0);
+        var first = snapshot.Bases[0];
+        var project = new ResearchProjectSnapshot("COUNTER_DECREMENT", 0, 1, 1);
+        var counters = snapshot.NextIds.ToDictionary(static entry => entry.Key, static entry => entry.Value,
+            StringComparer.Ordinal);
+        counters["shared"] = int.MaxValue;
+        snapshot = snapshot with
+        {
+            NextIds = counters,
+            Bases = [first with { Research = [project] }, first with
+            {
+                Id = first.Id + 1, Name = "Beta", Longitude = 0.4, Latitude = 0.2,
+                Crafts = [], Soldiers = [], Transfers = [], Research = [project]
+            }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events,
+            item => item is CampaignActionBlocked action && action.Reason.Contains("counter", StringComparison.Ordinal));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
     [Fact]
     public void CombinedSiteActivityOverflowStopsBeforeTheTick()
     {
