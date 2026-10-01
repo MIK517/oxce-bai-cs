@@ -15,6 +15,7 @@ function ReadBlock([string]$Path, [string]$Signature) {
  if ($depth -ne 0) { throw 'Unbalanced reference block.' }
  return $source.Substring($start, $end - $start)
 }
+$template = $template.Replace('// TARGET_DESTRUCTOR', (ReadBlock 'src/Savegame/Target.cpp' 'Target::~Target()'))
 $template = $template.Replace('// CANCEL_PACT', (ReadBlock 'src/Savegame/Country.cpp' 'void Country::setCancelPact()'))
 $template = $template.Replace('// CLEAR_LINKS', (ReadBlock 'src/Savegame/SavedGame.cpp' 'void SavedGame::clearLinksForAlienBase('))
 $source = [IO.File]::ReadAllText((Join-Path $reference 'src/Geoscape/GeoscapeState.cpp'))

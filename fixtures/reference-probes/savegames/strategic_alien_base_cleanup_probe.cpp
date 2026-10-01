@@ -11,7 +11,14 @@ struct Country {
 };
 // CANCEL_PACT
 struct Deployment { std::string code = "UNLOCK"; const auto& getBaseSelfDestructCode() const { return code; } };
-struct AlienBase {
+struct CraftFollower { bool returned = false; void returnToBase() { returned = true; } };
+struct UfoFollower { void resetOriginalDestination(bool) {} };
+struct Target {
+ std::vector<CraftFollower*> crafts; std::vector<UfoFollower*> ufos;
+ auto getCraftFollowers() { return crafts; } auto getUfoFollowers() { return ufos; } ~Target();
+};
+// TARGET_DESTRUCTOR
+struct AlienBase : Target {
  Deployment rule; std::string pact = "COUNTRY";
  Deployment* getDeployment() { return &rule; } const auto& getPactCountry() const { return pact; }
 };
@@ -47,6 +54,15 @@ int main() {
   std::cout << '[' << complete << ',' << cancel << ',' << pact << ',' << save.bases.size() << ','
    << (space.base != nullptr) << ',' << space.interrupted << ',' << (earth.base != nullptr) << ',' << earth.interrupted
    << ',' << (unrelated.base == &other) << ',' << country._pact << ',' << country._newPact << ',' << country._cancelPact << ']';
+  if (!save.bases.empty()) delete base;
+ }
+ std::cout << "],\"followerRows\":["; first = true;
+ for (int complete : {0,1}) {
+  if (!first) std::cout << ','; first = false;
+  AlienBase* base = new AlienBase; CraftFollower follower; base->crafts.push_back(&follower);
+  SavedGame save{{},{},{base},bool(complete)}; Game game{{false}};
+  daily(&game,&save,&game.mod);
+  std::cout << '[' << complete << ',' << follower.returned << ']';
   if (!save.bases.empty()) delete base;
  }
  std::cout << "]}\n";

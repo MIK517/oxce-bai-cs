@@ -22,6 +22,7 @@ internal sealed partial class CampaignWorld
             if (!guaranteedResearch.Contains(rule.BaseSelfDestructCodeId))
                 return "Alien base self-destruction depends on uncertain daily research outcomes.";
             work += _missions.Count + (long)campaign.CountryStates.Count;
+            foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
             foreach (var mission in _missions)
                 if (FollowsAlienBase(mission.AlienBase, alienBase) &&
@@ -53,8 +54,25 @@ internal sealed partial class CampaignWorld
             var id = AlienBaseRule(alienBase).BaseSelfDestructCodeId;
             if (id.Length == 0 || !campaign.HasCompletedResearch(id)) { index++; continue; }
             ClearAlienBaseLinks(alienBase);
+            ReturnAlienBaseCraftFollowers(alienBase);
             _alienBases.RemoveAt(index);
         }
+    }
+
+    // Target::~Target runs during deletion, before any later handler can skip craft movement.
+    private void ReturnAlienBaseCraftFollowers(AlienBaseSnapshot alienBase)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var owner in campaign.BaseStates)
+            for (var index = 0; index < owner.Crafts.Count; index++)
+            {
+                var craft = owner.Crafts[index];
+                if (craft.Logistics is not { } state || !FollowsAlienBase(state.Destination, alienBase)) continue;
+                if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value,
+                    state.Weapons, rules, out var speed))
+                    throw new InvalidOperationException("Deleted base follower speed changed after preflight.");
+                owner.Crafts[index] = craft with { Logistics = SetDestination(state, speed, BaseReference(owner)) };
+            }
     }
 
     // SavedGame::clearLinksForAlienBase: space missions survive; Earth operations interrupt.

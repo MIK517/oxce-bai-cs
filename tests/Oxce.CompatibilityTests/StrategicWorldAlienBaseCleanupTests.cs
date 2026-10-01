@@ -141,6 +141,72 @@ public sealed class StrategicWorldAlienBaseCleanupTests
         Assert.NotNull(campaign.Capture().World.Missions.Single(mission => mission.Id == 5).AlienBase);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TargetDestructorFollowerRowsMatchReference(bool cache)
+    {
+        var content = Load(cache);
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
+        var rows = new List<int[]>();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "followerRows"))
+        {
+            var complete = row[0].GetInt32();
+            var snapshot = Snapshot(content) with { CompletedResearch = complete == 1 ? ["UNLOCK"] : [] };
+            snapshot = snapshot.WithCraft("SHIP", craft => craft with
+            {
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_OUT",
+                    Longitude = 0.21,
+                    Latitude = 0.1,
+                    Speed = 0,
+                    Fuel = 100,
+                    LowFuel = false,
+                    Destination = BaseTarget()
+                }
+            });
+            var campaign = Restore(content, snapshot);
+            AdvanceUnblocked(campaign, 1);
+            var follower = campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+            rows.Add([complete, follower.Destination?.Kind == WorldTargetKind.Base ? 1 : 0]);
+        }
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("followerRows"))),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeletionReturnsFollowersBeforeTerminalUfoSkipsCraftMovement(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = CreateUfoTransitCampaign(content, new(1, 1, 1, 1999, 23, 59, 55), "UFO_SCOUT", 2200,
+            missionWaveNumber: 0).Capture();
+        snapshot = snapshot with
+        {
+            CompletedResearch = ["UNLOCK"],
+            World = snapshot.World with
+            {
+                AlienBases = [new(2, "CLEANUP_BASE", "RACE_A", 0.2001, 0.1)],
+                Missions = [snapshot.World.Missions[0] with { Interrupted = true }],
+                Ufos = [snapshot.World.Ufos[0] with { Destination = WorldTargetReference.ForWaypoint(0, snapshot.World.Ufos[0].Position) }]
+            }
+        };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            { Status = "STR_OUT", Longitude = 0.2001, Latitude = 0.1, Destination = BaseTarget(), Speed = 0, Fuel = 100, LowFuel = false }
+        });
+        var campaign = Restore(content, snapshot);
+        AdvanceUnblocked(campaign, 1);
+        Assert.Empty(campaign.Capture().World.AlienBases);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(campaign.Capture().World.Ufos).Status);
+        Assert.Equal(WorldTargetKind.Base, campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP")
+            .Logistics!.Destination!.Kind);
+        Reload(content, campaign, 40, "deleted-base-terminal-ufo.sav");
+    }
+
     private static RuntimeContent Load(bool cache = false, bool cancel = true)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
