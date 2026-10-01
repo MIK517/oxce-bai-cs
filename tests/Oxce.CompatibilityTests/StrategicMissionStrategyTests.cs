@@ -78,11 +78,18 @@ public sealed class StrategicMissionStrategyTests
     [InlineData("invalid", true)]
     [InlineData("depletion", false)]
     [InlineData("depletion", true)]
+    [InlineData("emptyDepletion", false)]
+    [InlineData("emptyDepletion", true)]
     public void InvalidAndPotentiallyDeletedTablesBlockWholeBatch(string kind, bool cache)
     {
         var content = Load(cache);
-        var snapshot = Snapshot(content, kind == "depletion" ? 32 : 30,
+        var snapshot = Snapshot(content, kind is "depletion" or "emptyDepletion" ? 32 : 30,
             [new(kind == "invalid" ? "MISSING_MISSION" : "MISSION_A", 1)]);
+        if (kind == "emptyDepletion") snapshot = snapshot with
+        {
+            World = snapshot.World with
+            { Strategy = snapshot.World.Strategy with { RegionMissions = [new("REGION", [])] } }
+        };
         if (kind == "missing") snapshot = snapshot with
         {
             World = snapshot.World with
@@ -163,6 +170,26 @@ public sealed class StrategicMissionStrategyTests
             else Assert.Empty(campaign.Capture().World.Strategy.MissionRuns);
             Reload(content, campaign, 17, "strategy-implicit-base.sav");
         }
+    }
+
+    [Fact]
+    public void RemovingFromEmptyTableDeletesRegionLikeReference()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-strategy");
+        var rows = new List<object[]>();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "deletionRows"))
+        {
+            var name = row[0].GetString()!;
+            var missions = new List<KeyValuePair<string, ulong>>();
+            if (name != "empty") missions.Add(new("MISSION_A", 1));
+            if (name == "remaining") missions.Add(new("MISSION_B", 1));
+            var strategy = new AlienStrategyState();
+            strategy.Initialize([("REGION", 1UL, (IEnumerable<KeyValuePair<string, ulong>>)missions)]);
+            strategy.RemoveMission("REGION", "MISSION_A");
+            rows.Add([name, strategy.RegionMissions.Count, strategy.RegionChances.TotalWeight]);
+        }
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("deletionRows"))),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
     }
 
     private static RuntimeContent Load(bool cache)

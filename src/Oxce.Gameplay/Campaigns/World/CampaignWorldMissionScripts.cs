@@ -232,8 +232,9 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         {
             work += options.Names.Count;
             if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-            if (explicitRegion && !options.IsEmpty && (removalCounts.GetValueOrDefault(region) - (credited.Contains(region) ? 1 : 0)) >= options.Names.Count &&
-                options.Names.All(name => possibleRemoved.Contains((region, name))))
+            var priorRemovals = removalCounts.GetValueOrDefault(region) - (credited.Contains(region) ? 1 : 0);
+            if (explicitRegion && (options.IsEmpty ? priorRemovals > 0 :
+                    priorRemovals >= options.Names.Count && options.Names.All(name => possibleRemoved.Contains((region, name)))))
                 return "Earlier mission scripts can exhaust a required strategy region table.";
             foreach (var choice in options.Entries)
                 if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle) ||

@@ -31,4 +31,11 @@ int main(){std::cout<<"{\"rows\":[";bool first=true;
  if(name=="refresh"){s.removeMission("REGION","MISSION_A");s.removeMission("REGION","MISSION_B");s.chooseRandomRegion(&mod);}
  auto mission=s.chooseRandomMission("REGION");
  std::cout<<"[\""<<name<<"\",\""<<mission<<"\",[";bool fc=true;for(auto p:RNG::calls){if(!fc)std::cout<<',';fc=false;std::cout<<'['<<p.first<<','<<p.second<<']';}std::cout<<"]]";
+ }std::cout<<"],\"deletionRows\":[";first=true;
+ for(std::string name:{"empty","single","remaining"}){
+ if(!first)std::cout<<',';first=false;Mod mod;
+ if(name!="empty")mod.rule.options.set("MISSION_A",1);
+ if(name=="remaining")mod.rule.options.set("MISSION_B",1);
+ AlienStrategy s;s.init(&mod);s.removeMission("REGION","MISSION_A");
+ std::cout<<"[\""<<name<<"\","<<s._regionMissions.size()<<','<<s._regionChances._totalWeight<<']';
  }std::cout<<"]}\n";}

@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_mission_strategy_probe.cpp",
-      "size": 2115,
-      "sha256": "ad4ae24473de93d9ffbb98eda57ab03e83e8a64263cfd109a35641e41bd8bb9e"
+      "size": 2547,
+      "sha256": "1228f9ab66f0def4d31113b8311eeab17adb62bc265dce356c852788fff7d425"
     },
     {
       "path": "tools/capture-strategic-mission-strategy-reference.ps1",
