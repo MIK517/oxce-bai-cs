@@ -39,3 +39,17 @@ reproductions confirmed the stale destination. Immediate follower repair now
 runs in the deletion handler and is charged to the work budget. The extended
 reference capture pins two destructor traces; reload regression covers the
 terminal-arrival interaction.
+
+Final composed audit: deletion of a second deployment with the same marker/ID
+incorrectly detached missions belonging to the first. C++ pointer identity keeps
+the unrelated links and followers intact, as the new extracted trace records.
+Fresh/cache reproductions confirm that the port's marker reference is ambiguous.
+Daily self-destruction now rejects that transition before mutation and charges
+identity checks to the cleanup budget. This leaves imported ambiguous state
+readable without claiming safe deletion.
+
+Final composed checkpoint: all 1,416 root tests pass with no failures or skips,
+including 15 cleanup, seven retaliation and 13 crash cases. Formatting, fixture
+checksum/private-corpus, allocation, code-map and diff checks pass. The pinned
+reference checkout is unchanged. Three implementation/audit cycles are complete;
+branch 4c still has outstanding capabilities and branch 4d is untouched.

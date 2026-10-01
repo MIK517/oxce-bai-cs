@@ -207,6 +207,40 @@ public sealed class StrategicWorldAlienBaseCleanupTests
         Reload(content, campaign, 40, "deleted-base-terminal-ufo.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeletingSecondBaseWithSharedMarkerCannotDetachFirstBaseMissions(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = Snapshot(content) with { CompletedResearch = ["UNLOCK"] };
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                AlienBases = [
+            new(2, "ALIEN_BASE_DEPLOY_UPGRADED", "RACE_A", 0.4, 0.1), snapshot.World.AlienBases[0]]
+            }
+        };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            { Status = "STR_OUT", Fuel = 100, Destination = BaseTarget() }
+        });
+        var campaign = Restore(content, snapshot);
+        AssertTimeBlocked(campaign,
+            "Alien base self-destruction cannot resolve an ambiguous marker identity.");
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "ambiguousRows"))
+        {
+            var after = campaign.Capture();
+            Assert.Equal(row[0].GetInt32(), after.World.Missions.Single(mission => mission.Id == 4).AlienBase is null ? 0 : 1);
+            Assert.Equal(row[1].GetInt32(), after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP")
+                .Logistics!.Destination?.Kind == WorldTargetKind.Base ? 1 : 0);
+            Assert.Equal(2, after.World.AlienBases.Count); // Atomic port guard keeps both bases; reference safely deletes one pointer.
+        }
+    }
+
     private static RuntimeContent Load(bool cache = false, bool cancel = true)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");

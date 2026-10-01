@@ -21,9 +21,13 @@ internal sealed partial class CampaignWorld
             if (!possible.Contains(rule.BaseSelfDestructCodeId)) continue;
             if (!guaranteedResearch.Contains(rule.BaseSelfDestructCodeId))
                 return "Alien base self-destruction depends on uncertain daily research outcomes.";
-            work += _missions.Count + (long)campaign.CountryStates.Count;
+            work += _missions.Count + (long)campaign.CountryStates.Count + _alienBases.Count;
             foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            var marker = MarkerName(alienBase.DeploymentId);
+            foreach (var other in _alienBases)
+                if (!ReferenceEquals(other, alienBase) && other.Id == alienBase.Id && MarkerName(other.DeploymentId) == marker)
+                    return "Alien base self-destruction cannot resolve an ambiguous marker identity.";
             foreach (var mission in _missions)
                 if (FollowsAlienBase(mission.AlienBase, alienBase) &&
                     MissionRule(mission).OperationType != RuntimeMissionOperationType.Space && mission.LiveUfos != 0)
