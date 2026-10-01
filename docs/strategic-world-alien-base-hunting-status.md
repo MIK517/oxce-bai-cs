@@ -29,3 +29,14 @@ and arriving auto-patrol craft before half-hour/hourly handlers can mutate state
 When launch fuel/servicing outcomes are uncertain, candidate eligibility is
 conservative. A fresh/cache regression reproduced a post-mutation hunt exception
 from half-hour refuelling and now verifies atomic blocking instead.
+
+Final audit corrected an obsolete persistence test that still expected the blanket
+hunting guard. It now verifies the due branch-6 event boundary, with a separate
+composed movement/timer reload regression. Destroyed-craft coverage verifies the
+real whole-tick removal guard rather than synthesizing a timer result for a tick
+that the port intentionally cannot execute.
+
+Final validation for these three cycles: root `dotnet test --no-restore` passes
+1,478 tests, zero failed or skipped, including checksum and private-corpus tests.
+Formatting, regenerated code-map and diff checks pass. The pinned C++ checkout
+is unchanged. Branch 4c remains incomplete and branch 4d has not started.
