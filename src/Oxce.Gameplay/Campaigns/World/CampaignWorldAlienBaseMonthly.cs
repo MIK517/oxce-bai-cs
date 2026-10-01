@@ -60,7 +60,14 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         var identities = new Dictionary<(string Marker, int Id), int>();
         long work = _alienBases.Count + _sites.Count;
         long craftReferences = 0;
-        foreach (var owner in campaign.BaseStates) craftReferences += owner.Crafts.Count;
+        foreach (var owner in campaign.BaseStates)
+        {
+            craftReferences += owner.Crafts.Count;
+            if (work + craftReferences > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+            foreach (var craft in owner.Crafts)
+                identities.TryAdd((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id), -1);
+        }
+        work += craftReferences;
         foreach (var site in _sites) identities.TryAdd((MarkerName(site.DeploymentId), site.Id), -1);
         for (var index = 0; index < _alienBases.Count; index++)
         {
@@ -108,7 +115,9 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
 
         bool ReserveIdentity(string marker, int id, int owner)
         {
-            if (marker is WorldTargetReference.BaseType or WorldTargetReference.UfoType or WorldTargetReference.WaypointType)
+            // Craft::load remaps the legacy terror name before resolving site/base markers.
+            if (marker is WorldTargetReference.BaseType or WorldTargetReference.UfoType or
+                WorldTargetReference.WaypointType or "STR_ALIEN_TERROR")
                 return false;
             var identity = (marker, id);
             if (identities.TryGetValue(identity, out var prior)) return prior == owner;

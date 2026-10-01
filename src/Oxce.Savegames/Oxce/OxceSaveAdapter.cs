@@ -189,7 +189,7 @@ public static partial class OxceSaveAdapter
             created,
             Boolean(header, "ironman", false));
         var world = ReadWorld(body, content);
-        var markers = new WorldMarkerIndex(world.MissionSites, world.AlienBases, content);
+        var markers = new WorldMarkerIndex(world.MissionSites, world.AlienBases, content, body);
         var difficultyValue = Integer(body, "difficulty", 0);
         if (difficultyValue is < 0 or > 4) throw new InvalidDataException("Save difficulty is outside 0..4.");
         var snapshot = new CampaignSnapshot(

@@ -28,7 +28,7 @@ public static partial class OxceSaveAdapter
             .Select(static map => ReadMissionSite(map, legacy: true))
             .Concat(Maps(body, "missionSites").Select(static map => ReadMissionSite(map, legacy: false))).ToArray();
         var alienBases = Maps(body, "alienBases").Select(ReadAlienBase).ToArray();
-        var markers = new WorldMarkerIndex(sites, alienBases, content);
+        var markers = new WorldMarkerIndex(sites, alienBases, content, body);
         return new WorldSnapshot
         {
             Missions = Array.AsReadOnly(Maps(body, "alienMissions").Select(map => ReadAlienMission(map, markers)).ToArray()),
@@ -238,19 +238,23 @@ public static partial class OxceSaveAdapter
     {
         private readonly HashSet<(string Marker, int Id)> _sites = [];
         private readonly Dictionary<(string Marker, int Id), (double Longitude, double Latitude, string Type)> _bases = [];
-        private readonly HashSet<string> _craftTypes;
+        private readonly HashSet<(string Type, int Id)> _crafts = [];
 
         public WorldMarkerIndex(
             IEnumerable<MissionSiteSnapshot> sites,
             IEnumerable<AlienBaseSnapshot> alienBases,
-            RuntimeContent content)
+            RuntimeContent content, YamlMappingNode body)
         {
             foreach (var site in sites) _sites.Add((MarkerName(content, site.DeploymentId), site.Id));
             foreach (var alienBase in alienBases)
                 _bases[(MarkerName(content, alienBase.DeploymentId), alienBase.Id)] =
                     (alienBase.Longitude, alienBase.Latitude, alienBase.DeploymentId);
-            _craftTypes = content.RuntimeRules.Crafts.Rules.Select(static rule => rule.Id)
-                .ToHashSet(StringComparer.Ordinal);
+            foreach (var owner in Maps(body, "bases"))
+                foreach (var craft in Maps(owner, "crafts"))
+                {
+                    var type = String(craft, "type", string.Empty);
+                    if (content.RuntimeRules.Crafts.TryGet(type, out _)) _crafts.Add((type, Integer(craft, "id", 0)));
+                }
         }
 
         /// <summary>
@@ -262,7 +266,7 @@ public static partial class OxceSaveAdapter
         /// </summary>
         public WorldTargetKind Classify(ref string type, int id)
         {
-            if (_craftTypes.Contains(type)) return WorldTargetKind.Craft;
+            if (_crafts.Contains((type, id))) return WorldTargetKind.Craft;
             if (type == LegacyTerrorMission) type = LegacyTerrorMarker;
             if (_sites.Contains((type, id))) return WorldTargetKind.MissionSite;
             return _bases.ContainsKey((type, id)) ? WorldTargetKind.AlienBase : WorldTargetKind.MissionSite;

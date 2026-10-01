@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 using Exception = std::runtime_error;
 struct RNG {
@@ -23,6 +24,7 @@ struct AlienDeployment {
  std::string generateAlienBaseUpgrade(size_t)const;
  bool resetAlienBaseAgeAfterUpgrade()const{return resetSource;}bool resetAlienBaseAge()const{return resetTarget;}
  const std::string& getType()const{return id;}const std::string& getUpgradeRace()const{return upgradeRace;}
+ const std::string& getMarkerName()const{return marker;}
  const auto& getAlienRaceEvolution()const{return evolution;}int getHuntMissionMaxFrequency()const{return hunt;}
 };
 // GENERATE_UPGRADE
@@ -40,7 +42,34 @@ struct Mod {
  AlienDeployment* getDeployment(const std::string& id,bool)const{auto p=deployments.find(id);return p==deployments.end()?nullptr:p->second;}
  RuleAlienRace* getAlienRace(const std::string& id,bool)const{auto p=races.find(id);return p==races.end()?nullptr:p->second;}
 };
-struct SavedGame {std::vector<AlienBase*> bases;std::vector<std::string> logs;auto* getAlienBases(){return &bases;}auto& getGeoscapeDebugLog(){return logs;}};
+struct Node {
+ std::string type;int id;int slot=0;
+ explicit operator bool()const{return true;}
+ Node operator[](const std::string& key)const{Node result=*this;result.slot=key=="type"?1:key=="id"?2:0;return result;}
+ template<class T>T readVal()const{if constexpr(std::is_same_v<T,std::string>)return type;else return id;}
+};
+namespace YAML{using YamlNodeReader=Node;}
+struct SavedGame;
+struct RuleCraft {std::string type="SHIP";const std::string& getType()const{return type;}};
+struct Site {AlienDeployment* deployment;int getId()const{return 2;}AlienDeployment* getDeployment()const{return deployment;}};
+struct OtherTarget{int getId()const{return 2;}};
+struct Craft {
+ RuleCraft* rule;int id=1,destinationKind=0;
+ int getId()const{return id;}RuleCraft* getRules()const{return rule;}
+ void setDestination(AlienBase*){destinationKind=1;}void setDestination(Craft*){destinationKind=2;}
+ void setDestination(Site*){destinationKind=3;}void setDestination(OtherTarget*){destinationKind=4;}
+ void returnToBase(){destinationKind=5;}
+ void loadDestination(const YAML::YamlNodeReader&,SavedGame*);void finishLoading(const YAML::YamlNodeReader&,SavedGame*);
+};
+struct PlayerBase{std::vector<Craft*> crafts;auto* getCrafts(){return &crafts;}};
+struct SavedGame {std::vector<AlienBase*> bases;std::vector<std::string> logs;
+ std::vector<PlayerBase*> playerBases;std::vector<Site*> sites;std::vector<OtherTarget*> other;
+ auto* getAlienBases(){return &bases;}auto& getGeoscapeDebugLog(){return logs;}
+ auto* getBases(){return &playerBases;}auto* getMissionSites(){return &sites;}auto* getUfos(){return &other;}auto* getWaypoints(){return &other;}};
+void Craft::loadDestination(const YAML::YamlNodeReader& reader,SavedGame* save){
+ // CRAFT_DESTINATION
+}
+// CRAFT_FINISH_LOADING
 struct Game {Mod mod;SavedGame save;Mod* getMod(){return &mod;}SavedGame* getSavedGame(){return &save;}};
 struct Options {static inline int oxceGeoscapeDebugLogMaxEntries=0;};
 struct GeoscapeState {Game* _game;bool attemptAlienRaceEvolution(int,AlienBase*)const;
@@ -99,6 +128,14 @@ int main(){std::cout<<"{\"rows\":[";bool first=true;
   game.save.bases={&base};bool error=false;
   try{GeoscapeState{&game}.monthly(true,3);}catch(const Exception&){error=true;}
   std::cout<<'['<<count<<','<<error<<",\""<<base.race<<"\"]";
+ }
+ std::cout<<"],\"markerRows\":[";first=true;
+ for(std::string name:{"craftRuleOnly","craftIdentity","legacyAlias"}){
+  if(!first)std::cout<<',';first=false;AlienDeployment deployment;deployment.marker=name=="legacyAlias"?"STR_ALIEN_TERROR":"SHIP";
+  AlienBase base{&deployment};RuleCraft rule;Craft follower{&rule,1},target{&rule,2};PlayerBase player{{&follower}};
+  SavedGame save;save.bases={&base};save.playerBases={&player};if(name=="craftIdentity")player.crafts.push_back(&target);
+  Node reader{deployment.marker,2};follower.loadDestination(reader,&save);follower.finishLoading(reader,&save);
+  std::cout<<"[\""<<name<<"\","<<follower.destinationKind<<']';
  }
  std::cout<<"]}\n";
 }

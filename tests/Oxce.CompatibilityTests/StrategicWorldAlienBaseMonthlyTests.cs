@@ -180,6 +180,83 @@ public sealed class StrategicWorldAlienBaseMonthlyTests
         AssertBlocked(content, snapshot, "Alien base upgrades can collide with another world target's marker identity.");
     }
 
+    [Theory]
+    [InlineData(false, "MONTHLY_craftMarkerUpgrade")]
+    [InlineData(true, "MONTHLY_craftMarkerUpgrade")]
+    [InlineData(false, "MONTHLY_legacyMarkerUpgrade")]
+    [InlineData(true, "MONTHLY_legacyMarkerUpgrade")]
+    public void UpgradeMarkerPreservesFollowerOrStopsBeforeAmbiguousReload(bool cache, string deployment)
+    {
+        var content = Load(cache);
+        var snapshot = Snapshot(content, deployment);
+        var destination = new WorldTargetReference(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 2, 0.2, 0.1);
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        { Logistics = craft.Logistics! with { Status = "STR_OUT", Destination = destination } });
+        if (deployment == "MONTHLY_legacyMarkerUpgrade")
+        {
+            AssertBlocked(content, snapshot, "Alien base upgrades can collide with another world target's marker identity.");
+            return;
+        }
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(40));
+        Assert.Empty(campaign.Execute(new AdvanceMonthlyWorldAlienBases()).Events);
+        var before = campaign.Capture();
+        var reloaded = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(before), content, 40).Campaign.Capture();
+        Assert.Equal(Assert.Single(before.Bases[0].Crafts, craft => craft.RuleId == "SHIP").Logistics!.Destination,
+            Assert.Single(reloaded.Bases[0].Crafts, craft => craft.RuleId == "SHIP").Logistics!.Destination);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ActualCraftIdentityCollisionStopsBeforeUpgradeAndFollowerRewiring(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = Snapshot(content, "MONTHLY_craftMarkerUpgrade");
+        var owner = snapshot.Bases[0];
+        var craft = Assert.Single(owner.Crafts, craft => craft.RuleId == "SHIP");
+        snapshot = snapshot with { Bases = [owner with { Crafts = [.. owner.Crafts, craft with { Id = 2 }] }] };
+        AssertBlocked(content, snapshot, "Alien base upgrades can collide with another world target's marker identity.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SavedMarkerClassificationMatchesCraftLoadAndFinishLoadingReference(bool cache)
+    {
+        var content = Load(cache);
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-monthly");
+        var rows = new List<object[]>();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "markerRows"))
+        {
+            var name = row[0].GetString()!;
+            var snapshot = Snapshot(content, name == "legacyAlias" ? "MONTHLY_legacyMarker" : "MONTHLY_craftMarker");
+            var marker = name == "legacyAlias" ? "STR_ALIEN_TERROR" : "SHIP";
+            snapshot = snapshot.WithCraft("SHIP", craft => craft with
+            {
+                Logistics = craft.Logistics! with
+                { Status = "STR_OUT", Destination = new(WorldTargetKind.AlienBase, marker, 2, 0.2, 0.1) }
+            });
+            if (name == "craftIdentity")
+            {
+                var owner = snapshot.Bases[0];
+                var craft = Assert.Single(owner.Crafts, craft => craft.RuleId == "SHIP");
+                snapshot = snapshot with
+                {
+                    Bases = [owner with { Crafts = [.. owner.Crafts,
+                    craft with { Id = 2, Logistics = craft.Logistics! with { Destination = null, Status = "STR_READY" } }] }]
+                };
+            }
+            var after = TestFixtures.LoadLogisticsSave(OxceSaveAdapter.EmitNewCampaign(snapshot), content, 40).Campaign.Capture();
+            var destination = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP" && craft.Id == 1)
+                .Logistics!.Destination;
+            rows.Add([name, destination?.Kind switch { WorldTargetKind.AlienBase => 1, WorldTargetKind.Craft => 2, null => 0,
+                _ => throw new InvalidOperationException("Unexpected target kind.") }]);
+            Reload(content, CampaignState.Restore(after, content, new SplitMix64RandomSource(40)), 40, "monthly-marker-classification.sav");
+        }
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("markerRows"))),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+    }
+
     [Fact]
     public void ExcessiveBasePopulationIsRejectedBeforeUpgradeSelection()
     {

@@ -37,10 +37,13 @@ new hunting timers fail intentionally.
 Reference object pointers keep mission and follower links attached to the upgraded
 base even when its marker changes. Gameplay repairs saved mission/base, craft
 destination and UFO destination references to the new marker. It does not change
-existing mission/UFO races. Reachable collisions with other base/site markers or
-reserved target names are guarded before mutation, preventing save reload from
+existing mission/UFO races. Reachable collisions with other base/site markers,
+actual craft type/ID pairs or reserved target names are guarded before mutation, preventing save reload from
 redirecting a reference. Collision reservations are conservative: they also retain
-each base's original marker during the operation.
+each base's original marker during the operation. The legacy `STR_ALIEN_TERROR`
+alias is also guarded because `Craft::load` remaps it before resolving targets.
+The save classifier recognizes crafts by existing type/ID pairs, matching
+`Craft::finishLoading`; a craft rule name alone does not override a base marker.
 
 `AlienBaseSnapshot.PreservationKey` retains a stable sidecar identity through
 deployment changes. Legacy bases derive it from their original deployment and ID;
@@ -53,11 +56,13 @@ the immutable rule projections are unchanged, so the compiler/cache revision sta
 
 The `strategic-alien-base-monthly` capture inserts the exact monthly upgrade and
 evolution loops, `attemptAlienRaceEvolution`, `generateAlienBaseUpgrade`,
-`AlienBase::setDeployment` and `WeightedOptions::choose` into asset-free
+`AlienBase::setDeployment`, `WeightedOptions::choose` and craft destination
+load/finish-loading blocks into asset-free
 collaborators. Twenty-four traces cover ignored calls, thresholds, future start
 months, both reset flags, unknown/self/empty choices, upgraded race evolution,
 stable ties, missing races, chains, loop failures and the finite 99/100-transition
-boundary. The malformed future-timeline
+boundary. Three additional marker traces distinguish craft rules from actual
+craft identities and pin the legacy alias behavior. The malformed future-timeline
 case is tested only in the port because the reference dereferences an invalid
 iterator. Debug-log formatting and exact RNG streams are not acceptance targets.
 
@@ -66,14 +71,18 @@ mutation-free guards, target-link/marker changes, transition reloads, legacy and
 repeated unknown-field rewrites, deletion, duplicate keys and population limits.
 The generation ID and sight work-limit tests now construct distinct bases instead
 of copying the first base's preservation key, retaining their original assertions.
+The post-commit audit reproduced follower loss across reload with craft-named
+markers and the legacy alias. Classifier repair and atomic collision guards fix
+both cases; fresh/cache tests cover allowed markers, actual craft collisions,
+alias rejection and reference destination classifications.
 
 Daily generation/activity, hunting, self-destruction and linked deletion retain
 their existing ownership and guards. Actual monthly scheduler composition and
 the remaining headless acceptance work are still open. Branch 4c is incomplete;
 branch 4d remains untouched.
 
-Validation checkpoint: all 1,376 root tests pass with zero failures or skips,
-including 18 monthly base cases, fixture checksum and private-corpus tests.
+Validation checkpoint: all 1,384 root tests pass with zero failures or skips,
+including 26 monthly base cases, fixture checksum and private-corpus tests.
 Formatting verification, regenerated code-map validation and `git diff --check`
 pass. The pinned reference checkout is unchanged. Private continuation horizons
 remain nine executable through 360 ticks, two blocked at 125/220 ticks and eight
