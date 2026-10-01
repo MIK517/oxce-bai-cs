@@ -334,7 +334,7 @@ public sealed class StrategicWorldMissionCountdownTests
     }
 
     [Fact]
-    public void CompletedRetaliationMissionReportsPermanentCleanupGate()
+    public void CompletedRetaliationMissionReleasesLinkedBaseAndCleansUp()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateCampaign(content);
@@ -349,10 +349,14 @@ public sealed class StrategicWorldMissionCountdownTests
         };
         var restored = CampaignState.Restore(snapshot with
         {
+            Bases = [snapshot.Bases[0] with { RetaliationMissionId = mission.Id }],
             World = snapshot.World with { Missions = [mission] },
         }, content, new SplitMix64RandomSource(54));
 
-        AssertTimeBlocked(restored, "Retaliation mission cleanup requires base linkage.");
+        AdvanceOne(restored);
+        Assert.Empty(restored.Capture().World.Missions);
+        Assert.Null(restored.Capture().Bases[0].RetaliationMissionId);
+        Reload(content, restored, 54, "completed-retaliation.sav");
     }
 
     private static CampaignState CreateCampaign(RuntimeContent content)

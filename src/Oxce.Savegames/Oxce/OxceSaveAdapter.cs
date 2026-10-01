@@ -321,6 +321,8 @@ public static partial class OxceSaveAdapter
                     ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
                 RetaliationTarget = Boolean(map, "retaliationTarget", false),
+                RetaliationMissionId = map.TryGet("retaliationMissionUniqueId", out _)
+                    ? Integer(map, "retaliationMissionUniqueId", 0) : null,
                 Research = research,
                 Productions = productions,
             };
@@ -558,6 +560,7 @@ public static partial class OxceSaveAdapter
             Pair("name", value.Name.Length == 0 ? null : Scalar(value.Name)),
             Pair("fakeUnderwater", value.FakeUnderwater ? Boolean(true) : null),
             Pair("retaliationTarget", value.RetaliationTarget ? Boolean(true) : null),
+            Pair("retaliationMissionUniqueId", value.RetaliationMissionId is { } missionId ? Integer(missionId) : null),
             Pair("facilities", Sequence(facilities)), Pair("soldiers", Sequence(soldiers)),
             Pair("crafts", Sequence(crafts)),
             Pair("items", IntMapping(value.Items)),

@@ -256,3 +256,8 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   Reference capture, fresh/cache and loaded rewrite coverage: [status](strategic-world-alien-base-cleanup-status.md).
   Campaign settings/cache revision 31 preserves the default-false pact option.
   Branch 4c remains open and 4d is untouched.
+
+Retaliation mission IDs are now gameplay-owned player-base links. Finished
+retaliation missions clear matching links before half-hour deletion; loaded
+rewrites remove cleared fields while conserving unknown base data. Reference
+traces and fresh/cache regressions are recorded in [retaliation cleanup status](strategic-world-retaliation-cleanup-status.md).

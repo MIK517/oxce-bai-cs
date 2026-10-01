@@ -201,6 +201,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                         ? site.CustomDeploymentId : string.Empty,
                     UfoUniqueId = _ufos.Any(ufo => ufo.UniqueId == site.UfoUniqueId) ? site.UfoUniqueId : 0,
                 });
+        foreach (var owner in campaign.BaseStates)
+            if (owner.RetaliationMissionId is { } id && !_missions.Any(mission => mission.Id == id))
+                owner.RetaliationMissionId = null;
         _waypoints.AddRange(snapshot.World.Waypoints);
         NormalizeDestinations();
         _strategy = AlienStrategyState.Restore(

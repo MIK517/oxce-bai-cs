@@ -1,0 +1,8 @@
+# Finished retaliation missions and their saved player-base links.
+alienMissions:
+  - type: RETALIATION_CLEANUP
+    objective: 4
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: RETALIATION_INSTANT_CLEANUP
+    objective: 6
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]

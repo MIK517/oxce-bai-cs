@@ -448,6 +448,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         Transfers = CampaignSnapshot.ReadOnly(state.Transfers),
         FakeUnderwater = state.FakeUnderwater,
         RetaliationTarget = state.RetaliationTarget,
+        RetaliationMissionId = state.RetaliationMissionId,
         Research = CampaignSnapshot.ReadOnly(state.Research.Select(project => new ResearchProjectSnapshot(
             _content.RuntimeRules.Research.GetExternalId(project.Rule), project.Assigned, project.Spent, project.Cost))),
         Productions = CampaignSnapshot.ReadOnly(state.Productions.Select(production => new ProductionSnapshot(
@@ -504,6 +505,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             new Dictionary<string, int>(production.RandomProductionInfo, StringComparer.Ordinal))));
         result.FakeUnderwater = source.FakeUnderwater;
         result.RetaliationTarget = source.RetaliationTarget;
+        result.RetaliationMissionId = source.RetaliationMissionId;
         foreach (var transfer in source.Transfers)
         {
             ValidateTransfer(transfer, rules);
@@ -739,6 +741,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public bool IsPlaced => Name.Length != 0;
         public bool FakeUnderwater { get; set; }
         public bool RetaliationTarget { get; set; }
+        public int? RetaliationMissionId { get; set; }
     }
 
     internal sealed record ResearchProjectState(

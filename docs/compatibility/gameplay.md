@@ -56,3 +56,8 @@ implemented behavior, not planned acceptance.
 Research-driven alien-base self-destruction and mission unlinking now execute in
 reference daily order, with optional pact cancellation and atomic uncertainty/live
 operation guards. See [cleanup status](../strategic-world-alien-base-cleanup-status.md).
+
+Retaliation mission IDs are now gameplay-owned player-base links. Finished
+retaliation missions clear matching links before half-hour deletion; loaded
+rewrites remove cleared fields while conserving unknown base data. Reference
+traces and fresh/cache regressions are recorded in [retaliation cleanup status](../strategic-world-retaliation-cleanup-status.md).
