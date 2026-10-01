@@ -39,9 +39,22 @@ Alien-base daily activity, facility discovery and fuel-ordered craft patrol sigh
 now execute under branch 4c ownership. `strategic-alien-base-activity` pins the
 reference statements; `StrategicWorldAlienBaseActivityTests` covers fresh/cache,
 transition reloads, combined score overflow, passive 72-hour advancement and
-unknown/deleted save overlays. Mission creation, hunting, linked self-destruction
-and monthly evolution/upgrades remain explicit deferred transitions. See
+unknown/deleted save overlays. Daily linked mission creation now executes with
+reference region/race selection, site areas and persistent generation counters;
+`strategic-alien-base-generation` and `StrategicWorldAlienBaseGenerationTests`
+cover all objectives/operation modes at creation, fresh/cache, reloads, 72-hour
+composition and atomic guards. Immediate creation-tick waves, hunting, linked
+self-destruction and monthly evolution/upgrades remain deferred. See
+[generation status](strategic-world-alien-base-generation-status.md) and
 [activity/discovery status](strategic-world-alien-base-activity-status.md).
+
+Daily mission interruption belongs to branch 4c and now runs after daily research
+and before alien-base activity/generation. The extended generation oracle and
+`StrategicWorldMissionInterruptionTests` cover zero-live interruption/cleanup,
+same-day primary/lookup completion, following-day interruption of generated
+missions, save/reload and atomic guards. Shared read-only research proofs forecast
+guaranteed and possible discoveries; live-UFO interruption and uncertain daily
+research outcomes remain explicitly guarded until their combined effects are owned.
 
 ## Implemented prerequisites
 

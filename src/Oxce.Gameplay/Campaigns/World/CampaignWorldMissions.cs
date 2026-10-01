@@ -9,18 +9,22 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
-    private void RegisterMissionOperations(CampaignCapabilityRegistry registry) =>
+    private void RegisterMissionOperations(CampaignCapabilityRegistry registry)
+    {
+        registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayWorldMissionInterruption,
+            "alien mission research interruption", InterruptMissionsDaily);
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldMissions,
             "alien mission countdown", AdvanceMissionCountdowns);
+    }
 
-    private string? MissionSchedulingReason(CampaignTimeTrigger highest)
+    private string? MissionSchedulingReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var ufoSpawns = 0;
         var work = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
-            var mission = _missions[index];
+            var mission = MissionAfterDailyResearch(_missions[index], guaranteedResearch);
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))

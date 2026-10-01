@@ -1,0 +1,107 @@
+# Daily alien-base mission generation
+
+Branch 4c incremental slice, pinned to reference
+`4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+
+The existing daily world handler now executes `GenerateSupplyMission` after
+alien-base activity and before facility discovery. Weighted mission selection
+precedes the generation limit and frequency checks. Empty choices skip the
+frequency roll; exhausted limits skip it; zero frequency still draws it.
+Undefined nonempty mission choices fail before the affected tick mutates time,
+scores, counters or RNG, even when their generation limit is exhausted.
+
+Region selection preserves target-base odds, player-base order and duplicate
+regions, weighted monthly regions, or the first containing saved region of the
+alien base. `missionRegion` remaps exactly once. Race selection preserves the
+deployment's `genMissionRaceFromAlienBase` option, optional mission race weights
+and reverse timeline scan. A race timeline before its first entry returns the
+reference's empty race without drawing a weighted roll; the existing load repair
+interrupts that mission and assigns the first race on reload. A region timeline
+before its first entry instead fails intentionally, defining the reference's
+invalid iterator dereference as a port input error.
+
+Creation owns mission ID allocation, zeroed wave/live counters, site-area selection,
+initial timer rounding, source-base link and generation-count increment. All seven
+mission objectives may be scheduled. All six non-space operation modes reuse the
+already linked source base: `AlienMission::start` does not acquire or create a new
+base in this caller. This does not implement their later wave/objective effects.
+Neither strategy run counts nor script repeat/location tables change in this caller.
+
+Midnight falls through to the half-hour handlers. Creation is currently allowed
+only when the first timer guarantees a countdown above thirty minutes at creation
+(`timer / 30 >= 4`). That pass subtracts thirty minutes immediately. Shorter timers
+stop before the daily tick with an explicit immediate-generation boundary until
+new mission candidates can participate in the combined wave/scoring/detection
+forecasts. Later waves use existing capability checks; supply, site, retaliation
+and other unavailable wave paths stop before their affected tick. Event payloads,
+combat, deployment and campaign month rollover retain their established guards.
+
+Preflight checks all reachable weighted choices and selection branches without
+RNG. It reserves one possible mission per generating base, bounds population to
+100,000 and prevents exhausted or colliding IDs. Weighted totals and initial
+countdown maxima must fit signed integers. Generation selection and region scans
+share the existing one-million daily base-work budget. Disabled frequency/limit
+paths do not inspect unreachable region/race dependencies. The absent-base fast
+path remains allocation-free; the existing campaign allocation gates pass.
+
+Daily mission interruption now executes after the player-base/research loop and
+before alien-base activity/generation, as in `GeoscapeState::time1Day`. It checks
+completed research without debug shortcuts. Missions created later in that same
+day are first checked at the following daily boundary. Zero-live missions become
+interrupted and the same tick's half-hour cleanup removes them; generation limits
+and base links retain their existing ownership across this transition.
+
+The shared research preflight provides guaranteed and possible daily discoveries
+without rolling rewards or executing research. Guaranteed interruption is applied
+to mission-wave and UFO scoring forecasts, preventing obsolete wave candidates
+from blocking the tick or reserving effects. Uncertain reward/disabler outcomes
+retain an explicit guard; the possible set conservatively includes free/protected
+topics, their lookups and zero-cost discoveries. Interruption with live UFOs also
+retains an explicit daily guard until combined arrival, pursuit and site forecasts
+support it. Missing interruption research, malformed live counts with remaining
+UFO links, and deferred retaliation cleanup stop before mutation. Already
+interrupted missions use the existing lifecycle and save behavior.
+
+The extracted `strategic-alien-base-generation` probe inserts the exact
+`GenerateSupplyMission::operator()`, `AlienMission::setRegion`, start timer block,
+and `RuleAlienMission::generateRace/generateRegion` methods into asset-free rule
+and target collaborators. Minimum integer choices record call ranges; weighted
+collaborators use ordinal map order. Twenty-three traces cover local/weighted/
+player-base targeting, race choices, site areas, all objectives and base-operation
+modes, exhausted limits, zero frequency and empty choices. The oracle ends at
+creation; fresh/cache gameplay comparisons separately check current-tick
+half-hour fallthrough. This is controlled-decision evidence, not RNG stream parity
+or a full C++ engine reload of port saves.
+
+The extended capture also inserts the exact daily interruption loop and
+`AlienMission::isOver`; four additional traces cover completed/uncompleted research
+and existing interruption flags. `StrategicWorldMissionInterruptionTests` compares
+those zero-live traces through real daily/half-hour processing, exercises the audit
+reproduction through generation and transition reloads, and checks same-day primary
+and lookup research, discarded wave score forecasts, uncertainty/live-UFO guards,
+missing rules and malformed links. The installed-handler order test records the
+new daily phase explicitly.
+
+Additional tests cover real deterministic frequency outcomes, malformed region
+timelines/weights/zones/fallbacks, immediate boundaries, combined ID reservations,
+future supply-wave guards, and 72 hours of generation/countdown/cleanup with a
+persisted limit across reloads. Repeated loaded rewrites conserve unknown mission
+fields only while their mission survives; deletion does not resurrect sidecars or
+reset the source base's count. Existing save fields `alienBase`, `uniqueID`,
+`missionSiteZone`, wave/countdown counters and `genMissionCount` already have
+gameplay ownership, so no save schema or compiled-cache revision changes.
+
+References also inspected: `AlienDeployment` constructor/load/chooseGenMissionType,
+`SavedGame::locateRegion`, `AlienMission` constructor/load/save, and the mission
+spawning branches. Defaults remain frequency 0, limit 1000 and race-from-base true.
+Hunting, linked self-destruction, upgrades/evolution, broad wave spawning and the
+remaining scheduler/script work are still open. Branch 4c is incomplete; 4d is
+untouched.
+
+Validation checkpoint: all 1,358 root tests pass with no failures or skips,
+including 20 new generation compatibility cases, 18 interruption cases, ten local
+selection tests and the existing allocation gates. Fixture checksums, formatting verification,
+regenerated code-map validation and `git diff --check` pass. The private fresh/cache
+corpus retains nine executable saves through 360 ticks, two stopping at mission
+spawning (125 and 220 ticks), and eight active-battle preservation-only imports.
+These horizons establish bounded continuation, not branch 4c closure.

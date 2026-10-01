@@ -18,14 +18,19 @@ public sealed class StrategicWorldAlienBaseActivityTests
     [InlineData(true, "BASE_MERGED_OVERRIDE")]
     [InlineData(false, "BASE_MERGED_GENERATING")]
     [InlineData(true, "BASE_MERGED_GENERATING")]
-    public void InheritedGeneratingChoiceRemainsInDailyGuard(bool cache, string deployment)
+    public void InheritedGeneratingChoiceCreatesMissionWhenSelected(bool cache, string deployment)
     {
         var content = Load(cache);
         var rule = content.RuntimeRules.AlienDeployments[content.RuntimeRules.AlienDeployments.GetRequired(deployment)].Value;
         Assert.Equal(1UL, rule.GenMission["MISSION_SUPPLY"]);
         Assert.Equal(1UL, rule.GenMission[string.Empty]);
-        AssertTimeBlocked(Restore(content, Snapshot(content, deployment, daily: true)),
-            "Alien base mission generation requires world simulation.");
+        var snapshot = Snapshot(content, deployment, daily: true);
+        var random = new SplitMix64RandomSource(snapshot.RandomState);
+        var selected = random.NextInclusive(1, 2) == 2;
+        var campaign = Restore(content, snapshot);
+        AdvanceOne(campaign);
+        Assert.Equal(selected ? 1 : 0, campaign.Capture().World.Missions.Count);
+        Assert.Equal(selected ? 1 : 0, campaign.Capture().World.AlienBases[0].GenMissionCount);
     }
 
     [Theory]
@@ -254,7 +259,6 @@ public sealed class StrategicWorldAlienBaseActivityTests
     [Theory]
     [InlineData("BASE_HUNTING", false, "Alien base hunting requires mission generation and hunter-killer simulation.")]
     [InlineData("BASE_SELF_DESTRUCT", true, "Alien base self-destruction requires mission-link and pact cleanup.")]
-    [InlineData("BASE_GENERATING", true, "Alien base mission generation requires world simulation.")]
     [InlineData("BASE_MISSING_MISSION", true, "Alien base generation references an undefined alien mission.")]
     [InlineData("BASE_EXCESSIVE_WEIGHTS", true, "Alien base mission weights exceed the supported range.")]
     public void UnownedTransitionsBlockBeforeTheirAffectedTick(string deployment, bool daily, string reason)

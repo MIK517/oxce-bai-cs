@@ -216,3 +216,19 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   escape the daily guard, and clamp distance rounding before daily sight converts
   it to integer units. Extended reference weight traces and fresh/cache regression
   tests cover both repairs.
+
+- Daily alien-base mission-generation slice: reference mission selection, generation
+  frequency/limits, targeted/weighted/local regions and optional weighted races now
+  create missions linked to their source base. All objectives and linked operation
+  modes may be scheduled with site-area and initial countdown ownership. Midnight
+  half-hour countdown fallthrough, generation counters, ID reservations, fresh/cache
+  reloads, unknown/deleted overlays and a 72-hour generation/cleanup scenario pass.
+  Short first timers that could spawn in the creation tick retain an explicit guard
+  until combined new-mission forecasts exist; unsupported later waves still stop
+  before mutation. See [status](strategic-world-alien-base-generation-status.md).
+  Hunting, linked deletion, upgrades/evolution and the remaining branch 4c work
+  remain open. No branch 4d work was started.
+  Audit repair adds reference-ordered daily mission interruption, zero-live cleanup,
+  research-aware wave/scoring forecasts and transition reloads. Generated missions
+  are first checked on the next day. Uncertain research outcomes and interruption
+  with live UFOs stop before the daily tick until combined forecasts are owned.
