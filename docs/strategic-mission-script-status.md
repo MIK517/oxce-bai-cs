@@ -100,3 +100,8 @@ Pinned traces cover refresh and implicit-base pruning; fresh/cache composed
 batches and transition reloads verify persistence. Preflight validates current
 and possible refreshed selections without RNG or live mutation. Site scheduling,
 non-space initialization and campaign monthly composition remain guarded.
+
+Strategy audit correction: `AlienStrategy::removeMission` deletes even an
+already-empty table. A prior removal must therefore guard a later explicit-region
+fallback lookup of that table. New pinned deletion traces and fresh/cache red/green
+regressions prove the batch now blocks before its first mission or RNG mutation.
