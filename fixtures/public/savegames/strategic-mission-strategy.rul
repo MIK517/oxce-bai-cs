@@ -42,3 +42,29 @@ missionScripts:
     lastMonth: 33
     regionWeights: {0: {REGION: 1}}
     startDelay: 60
+  - type: FULL_STRATEGY
+    firstMonth: 34
+    lastMonth: 34
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: REFRESH_BATCH_FIRST
+    firstMonth: 35
+    lastMonth: 35
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: REFRESH_BATCH_SECOND
+    firstMonth: 35
+    lastMonth: 35
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: REFRESH_BATCH_THIRD
+    firstMonth: 35
+    lastMonth: 35
+    startDelay: 60
+    varName: REFRESH_RUN
+  - type: IMPLICIT_BASE
+    firstMonth: 36
+    lastMonth: 36
+    targetBaseOdds: 100
+    startDelay: 60
+    varName: BASE_FALLBACK_RUN

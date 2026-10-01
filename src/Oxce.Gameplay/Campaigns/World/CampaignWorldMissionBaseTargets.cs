@@ -10,10 +10,18 @@ internal sealed partial class CampaignWorld
     /// <summary>GeoscapeState::processCommand: uniform mission-list entry, circular retry, duplicate base regions.</summary>
     private (string Region, string Mission)? SelectBaseTargetMission(RuntimeMissionScriptRule script, int month)
     {
-        var types = WorldScriptSelection.Available(script.Missions, month);
+        var types = script.Missions.Count == 0 ? [] : WorldScriptSelection.Available(script.Missions, month);
         var master = new List<string>(campaign.BaseStates.Count);
         foreach (var owner in campaign.BaseStates)
             master.Add(LocateGenerationRegion(new(owner.Longitude, owner.Latitude))!);
+        if (types.Count == 0)
+        {
+            master.RemoveAll(region => !_strategy.ValidMissionRegion(region));
+            if (master.Count == 0) return null;
+            var region = master[campaign.Random.NextInclusive(0, master.Count - 1)];
+            var mission = _strategy.ChooseRandomMission(region, campaign.Random);
+            return mission.Length == 0 ? null : (region, mission);
+        }
         var entry = campaign.Random.NextInclusive(0, types.Count - 1);
         for (var attempt = 0; attempt < types.Count; attempt++)
         {

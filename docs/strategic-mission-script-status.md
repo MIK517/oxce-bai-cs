@@ -91,3 +91,12 @@ alien strategy table. Weighted order, empty-choice failure, live batch removal,
 remove a later explicitly required table stop before mutation; removal bounds
 count one possible removal per command and region. Region-table refresh and
 implicit base-target mission selection remain for the next slice.
+
+Strategy region selection and exhausted-table refresh now execute through the
+mission scheduler. Refresh rebuilds weighted regions/missions and preserves run
+and location histories. Base targeting without mission weights prunes missing
+region tables, retains duplicate base regions and then chooses a table mission.
+Pinned traces cover refresh and implicit-base pruning; fresh/cache composed
+batches and transition reloads verify persistence. Preflight validates current
+and possible refreshed selections without RNG or live mutation. Site scheduling,
+non-space initialization and campaign monthly composition remain guarded.
