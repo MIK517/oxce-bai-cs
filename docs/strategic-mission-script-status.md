@@ -58,3 +58,8 @@ ordinal weighted selection, explicit override and RNG order are preserved.
 The pinned `strategic-alien-base-generation` oracle includes the exact method;
 `StrategicMissionRaceFallbackTests` covers fresh/cache and persisted run history.
 Site missions, base targeting and strategy region/mission fallback remain guarded.
+
+Ordinary script missions now apply `AlienMission::setRegion`'s single remap;
+strategy removal still uses the selected source region. The existing pinned
+base-generation probe inserts the exact method. Fresh/cache regressions cover
+remapping, chained aliases (one hop), unresolved targets, table history and reload.

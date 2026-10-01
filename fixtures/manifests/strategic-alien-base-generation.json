@@ -37,6 +37,11 @@
       "path": "fixtures/public/savegames/strategic-mission-race-fallback.rul",
       "size": 1425,
       "sha256": "0fd89bc4b8c01efc1ec5bd2e595d31701cb6abfd4fc3368a6531edcd9a3984f5"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-region-remap.rul",
+      "size": 714,
+      "sha256": "425c721b349432189ac8f9d3c06c07e012864ddfd9fbb5e3bded523768ace5c3"
     }
   ],
   "normalization": [

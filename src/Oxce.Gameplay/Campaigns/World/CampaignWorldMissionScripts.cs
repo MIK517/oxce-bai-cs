@@ -72,7 +72,10 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     : delay;
                 var id = campaign.NextId("ALIEN_MISSIONS");
                 _strategy.AddMissionRun(script.VariableName);
-                _missions.Add(new AlienMissionSnapshot(id, mission, region, race, 0, 0, countdown, 0, -1));
+                var regionRule = campaign.Content.RuntimeRules.Regions[
+                    campaign.Content.RuntimeRules.Regions.GetRequired(region)].Value;
+                var missionRegion = regionRule.MissionRegionId.Length == 0 ? region : regionRule.MissionRegionId;
+                _missions.Add(new AlienMissionSnapshot(id, mission, missionRegion, race, 0, 0, countdown, 0, -1));
                 if (script.UseTable) _strategy.RemoveMission(region, mission);
                 success = true;
             }
@@ -105,7 +108,9 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             if (Choices(script.Missions, month, choice =>
                     choice.Handle is { } handle && ValidMission(handle, script.Races.Count == 0)) is { } missionReason)
                 return missionReason;
-            if (Choices(script.Regions, month, choice => choice.IsResolved) is { } regionReason)
+            if (Choices(script.Regions, month, choice => choice.Handle is { } handle &&
+                    (campaign.Content.RuntimeRules.Regions[handle].Value.MissionRegionId.Length == 0 ||
+                     campaign.Content.RuntimeRules.Regions[handle].Value.MissionRegion is not null)) is { } regionReason)
                 return regionReason;
             if (script.Races.Count != 0 && Choices(script.Races, month, choice => choice.IsResolved) is { } raceReason)
                 return raceReason;

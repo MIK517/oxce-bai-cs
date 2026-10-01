@@ -1,0 +1,26 @@
+regions:
+  - type: REGION_SECOND
+    missionRegion: REGION
+  - type: REGION_THIRD
+    missionRegion: REGION_SECOND
+  - type: REGION_BAD
+    missionRegion: MISSING_REGION
+missionScripts:
+  - type: REMAP
+    firstMonth: 15
+    lastMonth: 15
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION_SECOND: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: ONE_HOP
+    firstMonth: 16
+    lastMonth: 16
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION_THIRD: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: MISSING_REMAP
+    firstMonth: 17
+    lastMonth: 17
+    missionWeights: {0: {MISSION_SCOUT: 1}}
+    regionWeights: {0: {REGION_BAD: 1}}
+    raceWeights: {0: {RACE_A: 1}}
