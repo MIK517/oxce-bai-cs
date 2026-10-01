@@ -148,7 +148,6 @@ public sealed class StrategicWorldMissionInterruptionTests
 
     [Theory]
     [InlineData("GEN_MISSING_INTERRUPT", "Alien mission interruption references undefined research.")]
-    [InlineData("GEN_RETALIATION_INTERRUPT", "Retaliation mission cleanup requires base linkage.")]
     public void MissingResearchOrDeferredCleanupStopsBeforeDailyMutation(string mission, string reason)
     {
         var content = Load();

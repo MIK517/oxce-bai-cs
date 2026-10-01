@@ -22,6 +22,7 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var ufoSpawns = 0;
         var work = 0;
+        long cleanupWork = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = MissionAfterDailyResearch(_missions[index], guaranteedResearch);
@@ -34,8 +35,11 @@ internal sealed partial class CampaignWorld
                 foreach (var ufo in _ufos)
                     if (ufo.MissionId == mission.Id)
                         return "Alien mission cannot expire while UFOs still reference it.";
-                if (rule.Objective == RuntimeMissionObjective.Retaliation)
-                    return "Retaliation mission cleanup requires base linkage.";
+                cleanupWork += campaign.BaseStates.Count;
+                if (cleanupWork > MaximumAlienBaseChecks) return "Retaliation mission cleanup exceeds the supported work limit.";
+                if (rule.Objective != RuntimeMissionObjective.Retaliation &&
+                    campaign.BaseStates.Any(owner => owner.RetaliationMissionId == mission.Id))
+                    return "A non-retaliation mission cannot expire while a base links it as retaliation.";
                 continue;
             }
             if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
@@ -110,7 +114,12 @@ internal sealed partial class CampaignWorld
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
+            {
+                if (rule.Objective == RuntimeMissionObjective.Retaliation)
+                    foreach (var owner in campaign.BaseStates)
+                        if (owner.RetaliationMissionId == mission.Id) owner.RetaliationMissionId = null;
                 _missions.RemoveAt(index);
+            }
         }
     }
 

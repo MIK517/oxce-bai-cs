@@ -77,3 +77,8 @@ markers change. The optional port `oxcePortEntityKey` records a stable base side
 identity across deployment changes; legacy identities are derived on import and
 the reference ignores this field. Loaded rewrites conserve unknown fields only
 for surviving keyed bases. See [monthly base status](../strategic-world-alien-base-monthly-status.md).
+
+Retaliation mission IDs are now gameplay-owned player-base links. Finished
+retaliation missions clear matching links before half-hour deletion; loaded
+rewrites remove cleared fields while conserving unknown base data. Reference
+traces and fresh/cache regressions are recorded in [retaliation cleanup status](../strategic-world-retaliation-cleanup-status.md).

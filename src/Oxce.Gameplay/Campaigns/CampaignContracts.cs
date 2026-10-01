@@ -148,6 +148,7 @@ public sealed record BaseSnapshot(
 {
     public bool FakeUnderwater { get; init; }
     public bool RetaliationTarget { get; init; }
+    public int? RetaliationMissionId { get; init; }
     public IReadOnlyList<TransferSnapshot> Transfers { get; init; } = [];
     public IReadOnlyList<ResearchProjectSnapshot> Research { get; init; } = [];
     public IReadOnlyList<ProductionSnapshot> Productions { get; init; } = [];
