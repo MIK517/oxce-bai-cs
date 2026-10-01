@@ -191,7 +191,7 @@ public sealed class StrategicWorldAlienBaseGenerationTests
         {
             World = snapshot.World with
             {
-                AlienBases = [source, source with { Id = 3 }],
+                AlienBases = [source, new(3, source.DeploymentId, source.Race, source.Longitude, source.Latitude)],
                 Missions = exhausted ? [] : [new(2, "GEN_local", "REGION", "RACE_A", 0, 0, 9000, 0, -1)],
             },
         };

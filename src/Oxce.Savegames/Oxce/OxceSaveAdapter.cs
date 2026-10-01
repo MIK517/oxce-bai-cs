@@ -423,8 +423,7 @@ public static partial class OxceSaveAdapter
             static map => String(map, "id", string.Empty));
         var originalSites = FirstByKey(Maps(source?.Body, "missionSites"), static map =>
             $"{String(map, "deployment", "STR_TERROR_MISSION")}:{Integer(map, "id", 0)}");
-        var originalAlienBases = FirstByKey(Maps(source?.Body, "alienBases"), static map =>
-            $"{String(map, "deployment", "STR_ALIEN_BASE_ASSAULT")}:{Integer(map, "id", 0)}");
+        var originalAlienBases = MatchAlienBases(snapshot.World.AlienBases, Maps(source?.Body, "alienBases"));
         var originalEvents = MatchScheduledEvents(snapshot.World.Events, Maps(source?.Body, "geoscapeEvents"));
         YamlMappingNode? originalStrategy = null;
         if (source?.Body is { } sourceBody && sourceBody.TryGet("alienStrategy", out var strategyNode))
@@ -475,8 +474,8 @@ public static partial class OxceSaveAdapter
                 snapshot.World.MissionSites.Select(site => BuildMissionSite(site,
                     originalSites.GetValueOrDefault($"{site.DeploymentId}:{site.Id}"))))),
             Pair("alienBases", BuildWorldSection(snapshot.World.AlienBases.Count,
-                snapshot.World.AlienBases.Select(alienBase => BuildAlienBase(alienBase,
-                    originalAlienBases.GetValueOrDefault($"{alienBase.DeploymentId}:{alienBase.Id}"))))),
+                snapshot.World.AlienBases.Select((alienBase, index) => BuildAlienBase(alienBase,
+                    originalAlienBases[index])))),
             Pair("geoscapeEvents", BuildWorldSection(snapshot.World.Events.Count,
                 snapshot.World.Events.Select((scheduled, index) => Overlay(originalEvents[index],
                 [

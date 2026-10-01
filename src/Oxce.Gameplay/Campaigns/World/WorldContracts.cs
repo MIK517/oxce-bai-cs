@@ -161,6 +161,8 @@ public sealed record AlienBaseSnapshot(
     double Longitude,
     double Latitude)
 {
+    /// <summary>Stable port sidecar identity across deployment upgrades.</summary>
+    public string PreservationKey { get; init; } = $"alien-base:identity:{DeploymentId}:{Id}";
     public string Name { get; init; } = string.Empty;
     public bool Discovered { get; init; }
     public bool InBattlescape { get; init; }

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-alien-base-monthly",
+  "description": "Exact monthly deployment upgrade and race evolution loops, generateAlienBaseUpgrade, setDeployment and WeightedOptions::choose; controlled minimum integer choices and asset-free rule collaborators.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::determineAlienMissions/attemptAlienRaceEvolution, AlienDeployment::generateAlienBaseUpgrade, AlienBase::setDeployment, WeightedOptions::choose",
+      "capture": "tools/capture-strategic-alien-base-monthly-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_alien_base_monthly_probe.cpp",
+      "size": 6751,
+      "sha256": "93f9eceb59e0e3b3dedfc28d5175ad20eb6a9de94a21afb6663f5a11f647980a"
+    },
+    {
+      "path": "tools/capture-strategic-alien-base-monthly-reference.ps1",
+      "size": 3415,
+      "sha256": "0f114e0cbef12cbe6c102125362745946205f722eddb79085a62e8b546c42081"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-alien-base-monthly.rul",
+      "size": 14009,
+      "sha256": "caecc104b5dd93c5445e135200c3e8b55380dfdf76559cbf5fe5db9d5313711a"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "expected": "fixtures/expected/savegames/strategic-alien-base-monthly.expected.json"
+}
