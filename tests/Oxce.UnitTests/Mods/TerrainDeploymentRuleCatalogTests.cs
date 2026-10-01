@@ -1,4 +1,5 @@
 using Oxce.FixtureSupport;
+using System.Text.Json;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods;
@@ -14,6 +15,53 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class TerrainDeploymentRuleCatalogTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SupplyWeightsMergeUpdatesAndInheritanceLikeReference(bool inheritance)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-activity");
+        var actualRows = new List<object[]>();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "weightRows"))
+        {
+            var patches = row[0].EnumerateArray().ToArray();
+            string Map(JsonElement patch) => "{" + string.Join(", ", patch.EnumerateArray().Select(entry =>
+                $"{JsonSerializer.Serialize(entry[0].GetString())}: {entry[1].GetUInt64()}")) + "}";
+            var yaml = "alienDeployments:\n";
+            if (inheritance)
+                yaml += $"  - type: DEPLOY\n    refNode:\n      genMission: {Map(patches[0])}\n    genMission: {Map(patches[1])}\n";
+            foreach (var patch in patches.Skip(inheritance ? 2 : 0))
+                yaml += $"  - type: DEPLOY\n    genMission: {Map(patch)}\n";
+            using var fixture = new TemporaryModFixture(yaml);
+            var rule = Assert.Single(TerrainDeploymentRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).AlienDeployments.Rules).Value;
+            var weights = Assert.IsType<YamlMappingNode>(rule.GenMission).Entries;
+            var total = weights.Aggregate(0UL, (sum, entry) => sum + YamlValueReader.ReadUInt64(entry.Value));
+            actualRows.Add([row[0], weights.Select(entry => new object[] { YamlValueReader.ReadString(entry.Key),
+                YamlValueReader.ReadUInt64(entry.Value) }).ToArray(), total]);
+        }
+        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(oracle.RootElement.GetProperty("weightRows").GetRawText())),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actualRows)));
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("~")]
+    [InlineData("{}")]
+    public void ChildlessSupplyWeightPatchLeavesExistingChoices(string patch)
+    {
+        using var fixture = new TemporaryModFixture($$"""
+            alienDeployments:
+              - type: DEPLOY
+                genMission: {MISSION: 3}
+              - type: DEPLOY
+                genMission: {{patch}}
+            """);
+        var rule = Assert.Single(TerrainDeploymentRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root)).AlienDeployments.Rules).Value;
+        var entry = Assert.Single(Assert.IsType<YamlMappingNode>(rule.GenMission).Entries);
+        Assert.Equal("MISSION", entry.ScalarKey);
+        Assert.Equal(3UL, YamlValueReader.ReadUInt64(entry.Value));
+    }
+
     [Fact]
     public void LoadsTerrainFamiliesAndSpecialSectionsWithReferenceMerges()
     {
@@ -105,6 +153,8 @@ public sealed class TerrainDeploymentRuleCatalogTests
     [InlineData("mapScripts: [{type: MAP, commands: [{type: addLine}]}]")]
     [InlineData("terrains: [{name: TERRAIN, mapBlocks: [{name: BAD, width: 11}]}]")]
     [InlineData("MCDPatches: [{type: PATCH, data: [{}]}]")]
+    [InlineData("alienDeployments: [{type: DEPLOY, genMission: []}]")]
+    [InlineData("alienDeployments: [{type: DEPLOY, genMission: {MISSION: -1}}]")]
     public void RejectsMalformedTerrainProperties(string yaml)
     {
         using var fixture = new TemporaryModFixture(("fixture.rul", yaml));

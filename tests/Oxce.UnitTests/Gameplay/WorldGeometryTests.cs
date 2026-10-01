@@ -9,6 +9,21 @@ namespace Oxce.UnitTests.Gameplay;
 public sealed class WorldGeometryTests
 {
     [Fact]
+    public void CoincidentAndAntipodalRoundingStaysInsideAcosDomain()
+    {
+        var from = new WorldPosition(0.2, 0.0002);
+        var nearby = new WorldPosition(0.2 + 1e-12, 0.0002);
+        var antipode = new WorldPosition(0.2 + Math.PI, -0.0002);
+        Assert.Equal(0.0, WorldGeometry.Distance(from, nearby));
+        Assert.Equal(0, WorldGeometry.XcomDistance(WorldGeometry.Distance(from, nearby)));
+        Assert.Equal(Math.PI, WorldGeometry.Distance(from, antipode));
+        Assert.Equal(WorldGeometry.Distance(from, nearby), WorldGeometry.Distance(nearby, from));
+        Assert.Equal(Math.PI, WorldGeometry.Distance(antipode, from));
+        // Clamping must not turn genuinely invalid input into a valid distance.
+        Assert.True(double.IsNaN(WorldGeometry.Distance(from, double.NaN, 0)));
+    }
+
+    [Fact]
     public void LatitudePastAPoleFlipsTheLongitude()
     {
         var position = WorldPosition.Create(1.0, Math.PI / 2 + 0.25);

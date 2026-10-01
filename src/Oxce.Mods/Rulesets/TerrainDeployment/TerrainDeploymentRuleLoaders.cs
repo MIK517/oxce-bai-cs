@@ -191,7 +191,7 @@ internal sealed class AlienDeploymentRuleLoader : IdOnlyTypedRuleFamilyLoader<Al
         ReadNode(reader, "successEvents", value => builder.SuccessEvents = value);
         ReadNode(reader, "despawnEvents", value => builder.DespawnEvents = value);
         ReadNode(reader, "failureEvents", value => builder.FailureEvents = value);
-        ReadNode(reader, "genMission", value => builder.GenMission = value);
+        ReadNode(reader, "genMission", value => builder.GenMission = MergeMissionWeights(builder.GenMission, value));
         if (reader.TryGet("huntMissionWeights", out var hunts)) builder.HuntMissionWeights.AddRange(TerrainDeploymentYaml.ReadWeightTimeline(hunts!, "huntMissionWeights"));
         if (reader.TryGet("alienBaseUpgrades", out var upgrades)) builder.AlienBaseUpgrades.AddRange(TerrainDeploymentYaml.ReadWeightTimeline(upgrades!, "alienBaseUpgrades"));
         ReadNodes(reader, "alienRaceEvolution", value => builder.AlienRaceEvolution = value.OrderByDescending(ReadEvolutionMonth).ToList());
@@ -216,6 +216,25 @@ internal sealed class AlienDeploymentRuleLoader : IdOnlyTypedRuleFamilyLoader<Al
     }
     private static void ReadNode(RulePropertyReader reader, string key, Action<YamlNode> set)
     { if (reader.TryGet(key, out var node)) set(node!); }
+    // AlienDeployment::load calls WeightedOptions::load, which edits the existing
+    // options rather than replacing them, including through refNode inheritance.
+    private static YamlNode? MergeMissionWeights(YamlNode? current, YamlNode patch)
+    {
+        if (patch is YamlNullNode) return current;
+        if (patch is not YamlMappingNode mapping)
+            throw new YamlFormatException("genMission must be a mapping.", patch.Span);
+        var entries = new SortedDictionary<string, YamlMappingEntry>(StringComparer.Ordinal);
+        if (current is YamlMappingNode previous)
+            foreach (var entry in previous.Entries) entries.Add(YamlValueReader.ReadString(entry.Key), entry);
+        foreach (var entry in mapping.Entries)
+        {
+            var id = YamlValueReader.ReadString(entry.Key);
+            var weight = YamlValueReader.ReadUInt64(entry.Value);
+            if (weight == 0) entries.Remove(id);
+            else entries[id] = entry;
+        }
+        return new YamlMappingNode(mapping.Span, entries.Values);
+    }
     private static ulong ReadEvolutionMonth(YamlNode node) => node is YamlSequenceNode sequence && sequence.Items.Count > 0
         ? YamlValueReader.ReadUInt64(sequence.Items[0]) : 0;
 }

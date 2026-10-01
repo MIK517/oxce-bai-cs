@@ -24,6 +24,9 @@ public sealed record CampaignActionBlocked(string Reason) : ICampaignEvent;
 /// <summary>A newly detected UFO contact; the reference pauses for its alert.</summary>
 public sealed record UfoContactDetected(int UniqueId, bool Hyperwave) : ICampaignEvent;
 
+/// <summary>A facility sight check discovered an alien base; patrol discovery is silent.</summary>
+public sealed record AlienBaseDiscovered(int Id, string DeploymentId) : ICampaignEvent;
+
 public readonly record struct CampaignTimeTriggerSummary(
     int TickCount,
     int FiveSeconds,

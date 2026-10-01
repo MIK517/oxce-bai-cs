@@ -58,3 +58,9 @@ The world-save regression fixtures also pin two load details from `Ufo::load` an
 waypoint at the saved destination coordinates, and an ordinary `missionSites` entry
 must provide its `type`. The fixed legacy `STR_ALIEN_TERROR` type applies only to
 entries imported from `terrorSites`.
+
+Alien-base activity/discovery tests exercise the existing `discovered` ownership
+across live facility and patrol transitions, reloads and loaded rewrites. Unknown
+base fields survive discovery changes and disappear when their base is deleted;
+the source overlay cannot resurrect it. See
+[status and evidence](../strategic-world-alien-base-activity-status.md).

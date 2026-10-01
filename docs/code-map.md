@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 66 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 68 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 96 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 97 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 84 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 66 files.
+`src/Oxce.Gameplay` - 68 files.
 
 ### `Oxce.Gameplay`
 
@@ -311,6 +311,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `ICampaignEvent` (interface) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `CampaignActionBlocked` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `UfoContactDetected` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - A newly detected UFO contact; the reference pauses for its alert.
+- `AlienBaseDiscovered` (record) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs) - A facility sight check discovered an alien base; patrol discovery is silent.
 - `CampaignTimeTriggerSummary` (record struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `CampaignTimeTriggerSequence` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
 - `CampaignTimeTriggerSequence.Enumerator` (struct) [CampaignCommands.cs](../src/Oxce.Gameplay/Campaigns/CampaignCommands.cs)
@@ -448,6 +449,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignWorldCraft` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
 - `CampaignWorldOverview` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - The alien activity the player can act on plus the scheduled work behind it.
 - `ICampaignWorldQuery` (interface) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
+- `WorldAlienBaseSight` (class) [WorldAlienBaseSight.cs](../src/Oxce.Gameplay/Campaigns/World/WorldAlienBaseSight.cs) - GeoscapeState::time1Day/time10Minutes alien-base sight checks at 4df3a5e.
 - `WorldAltitudes` (class) [WorldAltitudes.cs](../src/Oxce.Gameplay/Campaigns/World/WorldAltitudes.cs) - UFO altitude and heading vocabulary.
 - `WorldTargetKind` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The kinds of globe target a moving target can be sent to.
 - `WorldTargetReference` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - A saved reference to a globe target: the external type name plus the identity used by `Target::saveId`.
@@ -1005,14 +1007,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 96 files.
+`tests/Oxce.CompatibilityTests` - 97 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>94 test classes</summary>
+<details><summary>95 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1078,6 +1080,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicSalesFixtureTests` ([StrategicSalesFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicSalesFixtureTests.cs))
 - `StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs))
 - `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs))
+- `StrategicWorldAlienBaseActivityTests` ([StrategicWorldAlienBaseActivityTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseActivityTests.cs))
 - `StrategicWorldBaseDetectionTests` ([StrategicWorldBaseDetectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldBaseDetectionTests.cs))
 - `StrategicWorldCleanupTests` ([StrategicWorldCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCleanupTests.cs))
 - `StrategicWorldCraftOperationsTests` ([StrategicWorldCraftOperationsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftOperationsTests.cs))
@@ -1336,6 +1339,7 @@ A test is listed when it names the manifest id or its expected file.
 | [script-events](../fixtures/manifests/script-events.json) | cpp-reference | `scripting/script-events.expected.json` | `ScriptEventFixtureTests` ([ScriptEventFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptEventFixtureTests.cs)) |
 | [sprite-font](../fixtures/manifests/sprite-font.json) | cpp-reference | `rendering/sprite-font.expected.json` | `SpriteFontFixtureTests` ([SpriteFontFixtureTests.cs](../tests/Oxce.CompatibilityTests/SpriteFontFixtureTests.cs)) |
 | [strategic-adhoc-scripts](../fixtures/manifests/strategic-adhoc-scripts.json) | cpp-reference | `savegames/strategic-adhoc-scripts.expected.json` | `StrategicAdhocScriptTests` ([StrategicAdhocScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicAdhocScriptTests.cs)) |
+| [strategic-alien-base-activity](../fixtures/manifests/strategic-alien-base-activity.json) | cpp-reference | `savegames/strategic-alien-base-activity.expected.json` | `StrategicWorldAlienBaseActivityTests` ([StrategicWorldAlienBaseActivityTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseActivityTests.cs))<br>`TerrainDeploymentRuleCatalogTests` ([TerrainDeploymentRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/TerrainDeploymentRuleCatalogTests.cs)) |
 | [strategic-event-scripts](../fixtures/manifests/strategic-event-scripts.json) | cpp-reference | `savegames/strategic-event-scripts.expected.json` | `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs)) |
 | [strategic-event](../fixtures/manifests/strategic-event.json) | cpp-reference | `savegames/strategic-event.expected.json` | `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs)) |
 | [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |

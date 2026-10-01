@@ -44,6 +44,7 @@ internal static class CampaignTimeOrder
     // time1Day: GeoscapeState::time1Day base loop (construction, research, soldier recovery and training).
     public const int DayCalendar = 100;
     public const int DayBases = 200;
+    public const int DayWorldAlienBases = 300;
 
     // time1Hour: craft servicing loop, transfers, then production.
     public const int HourCraftServicing = 100;

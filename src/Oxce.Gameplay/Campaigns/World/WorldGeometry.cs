@@ -77,8 +77,12 @@ public static class WorldGeometry
     public static double Distance(WorldPosition from, double longitude, double latitude)
     {
         if (AreSame(longitude, from.Longitude) && AreSame(latitude, from.Latitude)) return 0.0;
-        return Math.Acos(Math.Cos(from.Latitude) * Math.Cos(latitude) * Math.Cos(longitude - from.Longitude) +
-            Math.Sin(from.Latitude) * Math.Sin(latitude));
+        var cosine = Math.Cos(from.Latitude) * Math.Cos(latitude) * Math.Cos(longitude - from.Longitude) +
+            Math.Sin(from.Latitude) * Math.Sin(latitude);
+        // Target::getDistance uses this acos formula. Rounding at coincident or
+        // antipodal points can exceed its domain by an ulp. Define those endpoints
+        // instead of letting NaN fail a later integer conversion after tick mutation.
+        return Math.Acos(Math.Clamp(cosine, -1.0, 1.0));
     }
 
     /// <summary>MovingTarget::calculateRadianSpeed.</summary>
