@@ -32,3 +32,10 @@ this slice. Branch 4c remains incomplete.
 Validation: 1,392 root tests pass with no failures or skips, including nine cleanup
 cases, fixture checksum checks, private-corpus classification and allocation gates.
 Formatting, code-map and diff checks pass; the pinned C++ checkout is unchanged.
+
+Post-commit audit repair: `Target::~Target` returns craft during base deletion,
+before terminal UFO arrival can skip craft movement. Two failing fresh/cache
+reproductions confirmed the stale destination. Immediate follower repair now
+runs in the deletion handler and is charged to the work budget. The extended
+reference capture pins two destructor traces; reload regression covers the
+terminal-arrival interaction.

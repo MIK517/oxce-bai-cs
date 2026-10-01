@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-alien-base-cleanup",
-  "description": "Exact daily self-destruction, SavedGame::clearLinksForAlienBase and Country::setCancelPact blocks; asset-free collaborators.",
+  "description": "Exact daily self-destruction, SavedGame::clearLinksForAlienBase and Country::setCancelPact blocks; asset-free collaborators. Includes Target::~Target immediate craft returns.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -14,13 +14,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_alien_base_cleanup_probe.cpp",
-      "size": 2561,
-      "sha256": "e8d6af11b4acca2bd2635f750e1bc65c26f7d4e7eff328abe66c545e43d83f61"
+      "size": 3360,
+      "sha256": "832a17370a043a37f9fc4ddebde7d2c43175854c30113e62a3cc932560f92d98"
     },
     {
       "path": "tools/capture-strategic-alien-base-cleanup-reference.ps1",
-      "size": 3135,
-      "sha256": "6021edca00c3ac47adc568f9aa79b2d9d86b3d9c8f50f263f42b084da859e28e"
+      "size": 3248,
+      "sha256": "f959aab4058b751aa9396c3c7c1b1dc516974dfcc1fa0a43ec5472ab58d467b9"
     },
     {
       "path": "fixtures/public/savegames/strategic-alien-base-cleanup.rul",
