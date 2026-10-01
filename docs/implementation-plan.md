@@ -378,3 +378,7 @@ separately versioned campaign query, command, and event capabilities.
    Keep each branch integrated across commands, script providers, saves and UI actions.
 2. Continue adding focused executable C++ probes, compatibility matrix entries, and
    controlled benchmarks with every compatibility-sensitive slice.
+
+Branch 4c increment: [research-driven alien-base cleanup](strategic-world-alien-base-cleanup-status.md)
+owns daily self-destruction, safe mission unlinking and optional pact cancellation.
+Live Earth-operation interruption and remaining 4c capabilities remain guarded.

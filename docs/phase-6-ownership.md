@@ -225,3 +225,6 @@ are checked after the reference integer division; initial psi skill does not dra
 The status document records measured allocations, UI controls and remaining guards.
 
 See [ADR 0025](decisions/0025-strategic-time-and-mobile-save-ownership.md).
+
+Daily alien-base self-destruction, mission unlinking and pact-cancellation flags are
+gameplay-owned. See [cleanup status](strategic-world-alien-base-cleanup-status.md).

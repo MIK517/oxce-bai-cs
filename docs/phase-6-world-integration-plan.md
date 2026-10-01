@@ -248,3 +248,11 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   craft loading traces and fresh/cache reload regressions cover the fixes.
   Validation: all 1,384 root tests pass with no failures or skips, including checksum
   and private-corpus tests; formatting, regenerated code-map and diff checks pass.
+
+- Research-driven alien-base deletion: daily self-destruction clears mission links,
+  interrupts Earth operations and applies optional pact cancellation before scoring,
+  generation and discovery. Guaranteed daily research participates in forecasts;
+  uncertain outcomes and live Earth-operation transitions retain precise guards.
+  Reference capture, fresh/cache and loaded rewrite coverage: [status](strategic-world-alien-base-cleanup-status.md).
+  Campaign settings/cache revision 31 preserves the default-false pact option.
+  Branch 4c remains open and 4d is untouched.

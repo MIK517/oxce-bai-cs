@@ -16,7 +16,7 @@ internal sealed partial class CampaignWorld
         campaign.Content.RuntimeRules.AlienDeployments[
             campaign.Content.RuntimeRules.AlienDeployments.GetRequired(alienBase.DeploymentId)].Value;
 
-    private string? AlienBaseActivityReason(CampaignTimeTrigger highest)
+    private string? AlienBaseActivityReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
         if (_alienBases.Count == 0 || highest < CampaignTimeTrigger.TenMinutes) return null;
         var daily = highest >= CampaignTimeTrigger.OneDay;
@@ -26,13 +26,12 @@ internal sealed partial class CampaignWorld
         var possibleMissions = 0;
         foreach (var alienBase in _alienBases)
         {
+            if (daily && BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch)) continue;
             if (!alienBase.Discovered) undiscovered++;
             var rule = AlienBaseRule(alienBase);
             if (rule.BaseDetectionRange > 0)
                 return "Alien base hunting requires mission generation and hunter-killer simulation.";
             if (highest < CampaignTimeTrigger.OneDay) continue;
-            if (rule.BaseSelfDestructCodeId.Length != 0)
-                return "Alien base self-destruction requires mission-link and pact cleanup.";
             work += rule.GenMission.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
             ulong total = 0;
@@ -92,6 +91,7 @@ internal sealed partial class CampaignWorld
 
     private void ProcessAlienBasesDaily(CampaignState.TimeEffects effects)
     {
+        DestroyAlienBasesDaily();
         var rules = campaign.Content.RuntimeRules;
         foreach (var alienBase in _alienBases)
             ScoreUfoActivity(alienBase.Position, AlienBaseRule(alienBase).Points, rules);
