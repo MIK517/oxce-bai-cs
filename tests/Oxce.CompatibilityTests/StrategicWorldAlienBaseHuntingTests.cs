@@ -23,18 +23,9 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         Assert.True(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIELD_CRAFT")].Value.Undetectable);
         Assert.Equal(0, content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIELD_CRAFT")].Value.SightRange);
         var rows = new List<object[]>();
-        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row => row[0].GetString() != "destroyed"))
         {
             var name = row[0].GetString()!;
-            if (name == "destroyed")
-            {
-                // Destroyed craft cleanup stays guarded. Verify its hunting predicate directly.
-                var craft = Snapshot(content).Bases[0].Crafts.Single(c => c.RuleId == "SHIP");
-                Assert.False(WorldAlienBaseHunting.Eligible(craft.Logistics! with { Status = "STR_OUT", Damage = 100 },
-                    false, 100, new(0.2, 0.1), 100));
-                rows.Add([name, 60, Array.Empty<int[]>()]);
-                continue;
-            }
             var snapshot = Snapshot(content, name);
             var random = new MinimumChoices();
             var campaign = CampaignState.Restore(snapshot, content, random);
@@ -43,8 +34,26 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             Assert.Empty(campaign.Capture().World.Missions);
             Reload(content, campaign, 17, "base-hunt-timer.sav");
         }
-        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(oracle.RootElement.GetProperty("rows"))),
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(TestFixtures.Rows(oracle.RootElement, "rows")
+                .Where(row => row[0].GetString() != "destroyed").ToArray())),
             CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DestroyedCraftIsIgnoredByHuntingButWholeTickKeepsItsRemovalGuard(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
+        var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "destroyed");
+        Assert.Equal(0, row[2].GetArrayLength());
+        var content = Load(cache);
+        var snapshot = Snapshot(content).WithCraft("SHIP", craft => craft with
+        { Logistics = craft.Logistics! with { Damage = 100 } });
+        var state = snapshot.Bases[0].Crafts.Single(c => c.RuleId == "SHIP").Logistics!;
+        Assert.False(WorldAlienBaseHunting.Eligible(state, false, 100, new(0.2, 0.1), 100));
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new MinimumChoices()),
+            "Destroyed craft removal requires world simulation.");
     }
 
     [Theory]
