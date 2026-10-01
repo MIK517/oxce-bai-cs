@@ -48,7 +48,7 @@ internal sealed partial class CampaignWorld
             "UFO detection of XCOM bases", DetectXcomBases);
     }
 
-    private string? UfoMovementReason()
+    private string? UfoMovementReason(CampaignTimeTrigger highest)
     {
         // A restored live count can become insufficient after another terminal arrival.
         // Keep this guard live and allocation-free; destroyed UFOs normally survive one tick.
@@ -66,7 +66,9 @@ internal sealed partial class CampaignWorld
         }
         for (var index = 0; index < _ufos.Count; index++)
         {
-            var ufo = _ufos[index];
+            var ufo = UfoAfterSiteExpiry(_ufos[index], highest);
+            // GeoscapeState skips ignored UFOs until their associated site lifts them.
+            if (ufo.Status == UfoStatus.IgnoreMe) continue;
             if (ufo.Status == UfoStatus.Destroyed)
             {
                 // The ten-minute scan also inspects these before five-second cleanup.
@@ -97,10 +99,7 @@ internal sealed partial class CampaignWorld
                 if (missionRule.Objective != RuntimeMissionObjective.Score ||
                     missionRule.OperationType != RuntimeMissionOperationType.Space)
                     return "UFO takeoff requires mission simulation.";
-                var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
-                var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
-                var maximumSpeed = checked(rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum);
-                if (trajectory.Speed(ufo.TrajectoryPoint, maximumSpeed) < 0)
+                if (!TryUfoLiftSpeed(ufo, mission, out _))
                     return "UFO speed is invalid.";
                 continue;
             }
@@ -193,8 +192,11 @@ internal sealed partial class CampaignWorld
             return false;
         var rules = campaign.Content.RuntimeRules;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        if (missionRule.Objective != RuntimeMissionObjective.Score ||
-            missionRule.OperationType != RuntimeMissionOperationType.Space)
+        // Site UFOs resume an ordinary airborne outbound leg after reactivation.
+        // Their ground arrivals and all operation-base trajectories still need mission handling.
+        if (missionRule.OperationType != RuntimeMissionOperationType.Space ||
+            missionRule.Objective != RuntimeMissionObjective.Score &&
+            (missionRule.Objective != RuntimeMissionObjective.Site || altitude == 0))
             return false;
         var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
         if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
@@ -308,31 +310,44 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private UfoSnapshot LiftUfo(UfoSnapshot ufo)
+    // Shared by preflight and execution, without allocating a projected UFO each
+    // tick of a long ground stay. Validate both the effective maximum and percentage result.
+    private bool TryUfoLiftSpeed(UfoSnapshot ufo, AlienMissionSnapshot mission, out int speed)
     {
+        speed = 0;
         var rules = campaign.Content.RuntimeRules;
-        var mission = FindMission(ufo.MissionId)!;
-        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        if (missionRule.Points > 0) ScoreUfoActivity(ufo.Position, missionRule.Points, rules);
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
-        var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
-        var speed = trajectory.Speed(ufo.TrajectoryPoint,
-            checked(rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum));
-        var radians = WorldGeometry.RadianSpeed(speed);
-        var vector = WorldGeometry.SpeedVector(ufo.Position, ufo.Destination!.Position, radians);
+        if (!rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectoryId)) return false;
+        var trajectory = rules.UfoTrajectories[trajectoryId].Value;
+        if ((uint)ufo.TrajectoryPoint >= (uint)trajectory.Waypoints.Count) return false;
+        var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum;
+        if (maximum is < 0 or > int.MaxValue) return false;
+        var result = maximum * trajectory.Waypoints[ufo.TrajectoryPoint].SpeedPercentage / 100;
+        if (result is < 0 or > int.MaxValue) return false;
+        speed = (int)result;
+        return true;
+    }
+
+    private bool TryLiftUfo(UfoSnapshot ufo, bool fromSite, out UfoSnapshot lifted, out int score)
+    {
+        lifted = ufo;
+        score = 0;
+        var mission = FindMission(ufo.MissionId);
+        if (mission is null || !TryUfoLiftSpeed(ufo, mission, out var speed)) return false;
+        var rules = campaign.Content.RuntimeRules;
+        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        (lifted, score) = WorldUfoLift.Advance(ufo, speed, missionRule.Points, missionRule.Objective, fromSite);
+        return true;
+    }
+
+    private UfoSnapshot LiftUfo(UfoSnapshot ufo, bool fromSite = false)
+    {
+        if (!TryLiftUfo(ufo, fromSite, out var lifted, out var score))
+            throw new InvalidOperationException("UFO takeoff changed after world preflight.");
+        if (score != 0) ScoreUfoActivity(ufo.Position, score, campaign.Content.RuntimeRules);
         // ufoLifting retains the landing ID until the next airborne waypoint, and
         // does not move or recharge shields in this landed branch of time5Seconds.
-        return ufo with
-        {
-            Status = UfoStatus.Flying,
-            Altitude = WorldAltitudes.VeryLow,
-            SecondsRemaining = 0,
-            Speed = speed,
-            SpeedRadian = radians,
-            SpeedLongitude = vector.Longitude,
-            SpeedLatitude = vector.Latitude,
-            Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
-        };
+        return lifted;
     }
 
     private static int MissionWaveIndex(

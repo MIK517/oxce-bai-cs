@@ -21,18 +21,19 @@ struct UfoTrajectory {
  std::string getID() const {return "ordinary";}
 };
 const std::string UfoTrajectory::RETALIATION_ASSAULT_RUN="__RETALIATION_ASSAULT_RUN";
-constexpr int OBJECTIVE_SCORE=0,OBJECTIVE_RETALIATION=1,OBJECTIVE_BASE=2,OBJECTIVE_INFILTRATION=3,AMOT_SPACE=0;
+constexpr int OBJECTIVE_SCORE=0,OBJECTIVE_INFILTRATION=1,OBJECTIVE_BASE=2,OBJECTIVE_RETALIATION=4,AMOT_SPACE=0;
 struct MissionRule {
+ int objective=OBJECTIVE_SCORE,points=7;
  std::string getType() const {return "MISSION_LANDING";}
  MissionWave wave;
  size_t getWaveCount() const {return 1;}
  const MissionWave& getWave(int) const {return wave;}
- int getObjective() const {return OBJECTIVE_SCORE;}
+ int getObjective() const {return objective;}
  int getOperationType() const {return AMOT_SPACE;}
  int getSpawnZone() const {return -1;}
  bool isEndlessInfiltration() const {return false;}
  bool isMultiUfoRetaliationExtra() const {return false;}
- int getPoints() const {return 7;}
+ int getPoints() const {return points;}
 };
 class AlienMission;
 struct Waypoint:Target {};
@@ -56,6 +57,7 @@ struct Ufo:MovingTarget {
  void setMissionWaveNumber(int n){wave=n;} int getMissionWaveNumber() const{return wave;}
  int getTrajectoryPoint() const{return point;} void setTrajectoryPoint(int n){point=n;}
  const UfoTrajectory& getTrajectory() const{return *trajectory;}
+ AlienMission* getMission() const{return mission;}
  const RuleUfoStats& getCraftStats() const{return _stats;}
  const RuleUfo* getRules() const{return _rules;}
  const std::string& getAltitude() const{return _altitude;}
@@ -88,7 +90,10 @@ struct AlienMission {
  std::pair<double,double> getLandPoint(const Globe&,const RuleRegion&,size_t,const Ufo&);
  std::pair<double,double> getLandPointForMissionSite(const Globe&,const RuleRegion&,int,int,const Ufo&){throw std::runtime_error("site");}
  void logMissionError(size_t,const RuleRegion&){throw std::runtime_error("zone");}
- void addScore(double,double,SavedGame& game){game.activity+=_rule.getPoints();}
+ void addScore(double,double,SavedGame& game){
+  // MISSION_SCORE_FILTER
+  game.activity+=_rule.getPoints();
+ }
 };
 void Ufo::setMissionInfo(AlienMission* m,const UfoTrajectory* t){mission=m;trajectory=t;++m->_liveUfos;}
 Ufo::~Ufo(){if(mission) --mission->_liveUfos;delete _dest;}
@@ -143,5 +148,31 @@ void run(const std::string& name,int timer,bool interrupted,bool multiple){
  }
  assert(game.save.ufos.empty() && mission==nullptr);std::cout<<"]}";
 }
+struct MissionSite {
+ Ufo* ufo;
+ Ufo* getUfo() const {return ufo;}
+ void setUfo(Ufo* value){ufo=value;}
+};
+void reactivateSite(Game* _game,MissionSite* site,bool removeSite){
+ // SITE_REACTIVATION
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"]}\n";}
+void siteLiftRows(){
+ struct Case{int points,objective,timer;bool remove;};
+ const std::vector<Case> cases={{7,OBJECTIVE_SCORE,77,false},{7,OBJECTIVE_SCORE,77,true},
+  {7,OBJECTIVE_BASE,77,true},{7,OBJECTIVE_INFILTRATION,77,true},{4,3,77,true},{-3,OBJECTIVE_SCORE,0,true}};
+ bool first=true;
+ for(const auto& input:cases){
+  if(!first)std::cout<<',';first=false;
+  Game game;AlienMission mission;mission._rule.points=input.points;mission._rule.objective=input.objective;
+  Ufo ufo(&game.mod.ufo,9);ufo.setMissionInfo(&mission,&game.mod.trajectory);
+  ufo.point=2;ufo.setAltitude("STR_GROUND");ufo.setStatus(Ufo::IGNORE_ME);ufo.setSecondsRemaining(input.timer);
+  auto* destination=new Waypoint();destination->setLongitude(0.4);destination->setLatitude(0.2);ufo.setDestination(destination);
+  ufo.think(); // IGNORE_ME must leave the stored ground timer and movement untouched.
+  MissionSite site{&ufo};reactivateSite(&game,&site,input.remove);
+  std::cout<<'['<<input.points<<','<<input.objective<<','<<input.timer<<','<<(input.remove?1:0)<<','
+   <<ufo._status<<",\""<<ufo._altitude<<"\","<<ufo._speed<<','<<ufo._secondsRemaining<<','
+   <<game.save.activity<<','<<(site.ufo?1:0)<<']';
+ }
+}
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"]}\n";}

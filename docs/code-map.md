@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 65 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 66 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 95 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 96 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 84 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 65 files.
+`src/Oxce.Gameplay` - 66 files.
 
 ### `Oxce.Gameplay`
 
@@ -1005,14 +1005,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 95 files.
+`tests/Oxce.CompatibilityTests` - 96 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>93 test classes</summary>
+<details><summary>94 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1093,6 +1093,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldPursuitTests` ([StrategicWorldPursuitTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldPursuitTests.cs))
 - `StrategicWorldRuleProjectionTests` ([StrategicWorldRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRuleProjectionTests.cs))
 - `StrategicWorldSiteTimerTests` ([StrategicWorldSiteTimerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteTimerTests.cs))
+- `StrategicWorldSiteUfoTests` ([StrategicWorldSiteUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteUfoTests.cs))
 - `StrategicWorldUfoLandingTests` ([StrategicWorldUfoLandingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoLandingTests.cs))
 - `StrategicWorldUfoShieldTests` ([StrategicWorldUfoShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoShieldTests.cs))
 - `StrategicWorldUfoTransitTests` ([StrategicWorldUfoTransitTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoTransitTests.cs))
@@ -1341,11 +1342,11 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
 | [strategic-script-rules](../fixtures/manifests/strategic-script-rules.json) | cpp-reference | `savegames/strategic-script-rules.expected.json` | `StrategicMissionScriptTests` ([StrategicMissionScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionScriptTests.cs))<br>`StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs)) |
-| [strategic-site-timer](../fixtures/manifests/strategic-site-timer.json) | cpp-reference | `savegames/strategic-site-timer.expected.json` | `StrategicWorldSiteTimerTests` ([StrategicWorldSiteTimerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteTimerTests.cs)) |
+| [strategic-site-timer](../fixtures/manifests/strategic-site-timer.json) | cpp-reference | `savegames/strategic-site-timer.expected.json` | `StrategicWorldSiteTimerTests` ([StrategicWorldSiteTimerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteTimerTests.cs))<br>`StrategicWorldSiteUfoTests` ([StrategicWorldSiteUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteUfoTests.cs)) |
 | [strategic-time](../fixtures/manifests/strategic-time.json) | cpp-reference | `savegames/strategic-time.expected.json` | `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs)) |
 | [strategic-ufo-shield](../fixtures/manifests/strategic-ufo-shield.json) | cpp-reference | `savegames/strategic-ufo-shield.expected.json` | `StrategicWorldUfoShieldTests` ([StrategicWorldUfoShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoShieldTests.cs)) |
 | [strategic-wave-chain](../fixtures/manifests/strategic-wave-chain.json) | cpp-reference | `savegames/strategic-wave-chain.expected.json` | `StrategicWorldWaveChainTests` ([StrategicWorldWaveChainTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldWaveChainTests.cs)) |
-| [strategic-world-lifecycle](../fixtures/manifests/strategic-world-lifecycle.json) | cpp-reference | `savegames/strategic-world-lifecycle.expected.json` | `StrategicWorldLifecycleTraceTests` ([StrategicWorldLifecycleTraceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldLifecycleTraceTests.cs)) |
+| [strategic-world-lifecycle](../fixtures/manifests/strategic-world-lifecycle.json) | cpp-reference | `savegames/strategic-world-lifecycle.expected.json` | `StrategicWorldLifecycleTraceTests` ([StrategicWorldLifecycleTraceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldLifecycleTraceTests.cs))<br>`StrategicWorldSiteUfoTests` ([StrategicWorldSiteUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteUfoTests.cs)) |
 | [strategic-world-monthly-context](../fixtures/manifests/strategic-world-monthly-context.json) | cpp-reference | `savegames/strategic-world-monthly-context.expected.json` | `StrategicWorldMonthlyContextTests` ([StrategicWorldMonthlyContextTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMonthlyContextTests.cs)) |
 | [strategic-world](../fixtures/manifests/strategic-world.json) | cpp-reference | `savegames/strategic-world.expected.json` | `StrategicWorldFixtureTests` ([StrategicWorldFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldFixtureTests.cs))<br>`StrategicWorldPursuitTests` ([StrategicWorldPursuitTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldPursuitTests.cs))<br>`StrategicWorldUfoTransitTests` ([StrategicWorldUfoTransitTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoTransitTests.cs)) |
 | [terrain-data](../fixtures/manifests/terrain-data.json) | cpp-reference | `terrain/terrain-data.expected.json` | `TerrainDataFixtureTests` ([TerrainDataFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDataFixtureTests.cs)) |

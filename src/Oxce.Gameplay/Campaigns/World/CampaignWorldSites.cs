@@ -24,7 +24,7 @@ internal static class WorldSiteTimer
 internal sealed partial class CampaignWorld
 {
     private const string SiteDespawnBoundary =
-        "Mission site despawn requires research, event payloads or UFO reactivation.";
+        "Mission site despawn requires research or event payloads.";
     private const string SiteUfoFollowerBoundary =
         "Targeted mission site despawn requires UFO follower destination repair.";
 
@@ -58,8 +58,16 @@ internal sealed partial class CampaignWorld
                             return SpeedRangeReason;
                     }
             }
-            if (transition.Remove && (site.UfoUniqueId != 0 ||
-                deployment.UnlockedResearchOnDespawnId.Length != 0 || deployment.DespawnEvents.Count != 0))
+            if (transition.Remove && site.UfoUniqueId != 0)
+            {
+                var ufo = _ufos.Find(candidate => candidate.UniqueId == site.UfoUniqueId);
+                if (ufo is not { Status: UfoStatus.IgnoreMe })
+                    return "Mission site UFO reactivation requires a dormant UFO.";
+                if (!TryLiftUfo(ufo, fromSite: true, out _, out _))
+                    return "Mission site UFO reactivation speed exceeds the supported range.";
+            }
+            if (transition.Remove && (deployment.UnlockedResearchOnDespawnId.Length != 0 ||
+                deployment.DespawnEvents.Count != 0))
                 return SiteDespawnBoundary;
             if (transition.Remove) AddSiteCounterChanges(counterChanges, deployment);
         }
@@ -90,9 +98,33 @@ internal sealed partial class CampaignWorld
                 foreach (var change in counterChanges) campaign.CustomCounters.Apply(change);
             }
             ScoreUfoActivity(site.Position, transition.Score, rules);
+            if (transition.Remove && site.UfoUniqueId != 0)
+            {
+                var ufoIndex = _ufos.FindIndex(candidate => candidate.UniqueId == site.UfoUniqueId);
+                _ufos[ufoIndex] = LiftUfo(_ufos[ufoIndex], fromSite: true);
+            }
             if (transition.Remove) _sites.RemoveAt(index);
             else _sites[index++] = site with { SecondsRemaining = transition.SecondsRemaining };
         }
+    }
+
+    private bool SiteExpiresThisTick(MissionSiteSnapshot site, CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || site.SecondsRemaining >= 30 * 60) return false;
+        var rule = campaign.Content.RuntimeRules.AlienMissions[
+            campaign.Content.RuntimeRules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
+        return rule.DespawnEvenIfTargeted || !SiteHasFollowers(site);
+    }
+
+    // Pure forecast for handlers that run after the half-hour site loop: ten-minute
+    // base detection, five-second flight and craft interception/deployment guards.
+    private UfoSnapshot UfoAfterSiteExpiry(UfoSnapshot ufo, CampaignTimeTrigger highest)
+    {
+        if (ufo.Status != UfoStatus.IgnoreMe || highest < CampaignTimeTrigger.ThirtyMinutes) return ufo;
+        foreach (var site in _sites)
+            if (site.UfoUniqueId == ufo.UniqueId && SiteExpiresThisTick(site, highest) &&
+                TryLiftUfo(ufo, fromSite: true, out var lifted, out _)) return lifted;
+        return ufo;
     }
 
     private bool SiteHasFollowers(MissionSiteSnapshot site)

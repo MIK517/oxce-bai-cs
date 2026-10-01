@@ -11,7 +11,7 @@ internal sealed partial class CampaignWorld
         var hasScanner = false;
         // Validate every possible scanner before any handler consumes RNG or mutates state.
         foreach (var ufo in _ufos)
-            if (UfoCanScanBases(ufo, out _)) hasScanner = true;
+            if (UfoCanScanBases(UfoAfterSiteExpiry(ufo, highest), out _)) hasScanner = true;
         if (!hasScanner) return null;
         for (var index = 0; index < campaign.BaseStates.Count; index++)
         {
@@ -71,7 +71,7 @@ internal sealed partial class CampaignWorld
     private bool UfoCanScanBases(UfoSnapshot ufo, out int sightRange)
     {
         sightRange = 0;
-        if (ufo.TrajectoryPoint <= 1) return false;
+        if (ufo.Status == UfoStatus.IgnoreMe || ufo.TrajectoryPoint <= 1) return false;
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
         if (trajectory.Zone(ufo.TrajectoryPoint) == 5) return false;
@@ -79,7 +79,7 @@ internal sealed partial class CampaignWorld
             throw new InvalidDataException("UFO base detection requires a valid mission link.");
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
         if (!campaign.Options.AggressiveRetaliation && missionRule.Objective != RuntimeMissionObjective.Retaliation ||
-            ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun || ufo.Status == UfoStatus.IgnoreMe)
+            ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun)
             return false;
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         var bonus = rule.RaceBonus(mission.Race);
