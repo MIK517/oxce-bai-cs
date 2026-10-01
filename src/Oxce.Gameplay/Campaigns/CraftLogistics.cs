@@ -105,6 +105,21 @@ public static class CraftLogistics
         return IsSupportedValue(speed);
     }
 
+    /// <summary>Craft::getCraftStats sight range, including every installed weapon.</summary>
+    public static bool TryEffectiveSightRange(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules, out int result)
+    {
+        long range = rule.SightRange;
+        for (var index = 0; index < weapons.Count; index++)
+        {
+            if (weapons[index] is not { } weapon) continue;
+            range += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats
+                .GetValueOrDefault("sightRange");
+        }
+        result = (int)Math.Clamp(range, int.MinValue, int.MaxValue);
+        return range is >= int.MinValue and <= int.MaxValue;
+    }
+
     /// <summary>Geoscape shield stats include every installed weapon, even a disabled one.</summary>
     public static bool TryEffectiveGeoscapeShields(RuntimeCraftRule rule,
         IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules, out int capacity, out int recharge)

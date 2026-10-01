@@ -149,6 +149,8 @@ public sealed record RuntimeFacilityRule(
     public IReadOnlyList<string> ForbiddenBaseFunctions { get; init; } = [];
     public int HangarType { get; init; }
     public IReadOnlyList<string> ProvidedBaseFunctions { get; init; } = [];
+    public int SightRange { get; init; }
+    public int SightChance { get; init; }
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }
     public bool Hyperwave { get; init; }
@@ -183,6 +185,7 @@ public sealed record RuntimeCraftRule(
     public int ShieldCapacity { get; init; }
     public int ShieldRechargeInGeoscape { get; init; }
     public int ShieldRechargeAtBase { get; init; }
+    public int SightRange { get; init; }
     public int RadarRange { get; init; }
     public int RadarChance { get; init; }
     public int MaximumItems { get; init; }

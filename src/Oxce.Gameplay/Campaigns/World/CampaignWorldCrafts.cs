@@ -466,6 +466,7 @@ internal sealed partial class CampaignWorld
                     effects.Notify(new CraftLowFuel(owner.Id,
                         campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
                 if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
+                DiscoverAlienBasesFromCraft(craft.Rule, state);
             }
         }
     }

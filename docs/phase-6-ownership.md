@@ -35,6 +35,14 @@ are added with each owning fixture. Unknown fields alone do not imply an unsafe 
 fields required by the action or its next tick do. Positive executable, blocked, and
 inspect/preserve corpus results must be reported separately.
 
+Alien-base daily activity, facility discovery and fuel-ordered craft patrol sight
+now execute under branch 4c ownership. `strategic-alien-base-activity` pins the
+reference statements; `StrategicWorldAlienBaseActivityTests` covers fresh/cache,
+transition reloads, combined score overflow, passive 72-hour advancement and
+unknown/deleted save overlays. Mission creation, hunting, linked self-destruction
+and monthly evolution/upgrades remain explicit deferred transitions. See
+[activity/discovery status](strategic-world-alien-base-activity-status.md).
+
 ## Implemented prerequisites
 
 `StrategicTimeFixtureTests` matches all 18 extracted-loop traces. Dispatcher unit tests

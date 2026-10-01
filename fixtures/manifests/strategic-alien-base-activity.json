@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-alien-base-activity",
+  "description": "Extracted GeoscapeState daily alien-base activity/facility discovery, ten-minute patrol sight and WeightedOptions set/load merges. Asset-free collaborators supply distances, containment and parsed weights; RNG records chances and succeeds for positive chances. Mission creation, hunting, deletion and monthly upgrades are excluded.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::time1Day/time10Minutes, fmath::XcomDistance, WeightedOptions::set/load",
+      "capture": "tools/capture-strategic-alien-base-activity-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; selected statement blocks inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_alien_base_activity_probe.cpp",
+      "size": 5885,
+      "sha256": "bf9f9c8a19589f29666b80f1af4c55f140df169f5a9a39ed4446cb44764b9327"
+    },
+    {
+      "path": "tools/capture-strategic-alien-base-activity-reference.ps1",
+      "size": 3780,
+      "sha256": "a8dddcd45e3f582864e0f318f1febad295f3bd183ee741624e80e0fc4ef30cd9"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-alien-base-activity.rul",
+      "size": 2197,
+      "sha256": "f6649b57df7d3a3f68d4dc6631daaaff1a92293ffa5342618a5f572a1ffb491c"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-alien-base-activity.expected.json"
+}

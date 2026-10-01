@@ -34,9 +34,15 @@ internal sealed partial class CampaignWorld
             hasDueWave = true;
             break;
         }
-        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0)) return null;
+        var dailyBases = highest >= CampaignTimeTrigger.OneDay && _alienBases.Count != 0;
+        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases) return null;
         var regionTotals = campaign.RegionStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
         var countryTotals = campaign.CountryStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
+        if (dailyBases)
+            foreach (var alienBase in _alienBases)
+                if (CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
+                        regionTotals, countryTotals) is { } reason)
+                    return reason;
         // Marker capacity is reserved for every contact that could be made, whatever the
         // radar coverage: only exhausted ID ranges can block, and they never occur in play.
         var possibleMarkerIds = 0;

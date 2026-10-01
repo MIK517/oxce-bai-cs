@@ -120,7 +120,7 @@ public sealed class StrategicWorldPersistenceTests
         var advanced = Assert.IsType<CampaignTimeAdvanced>(events[0]);
         Assert.Equal(0, advanced.Summary.TickCount);
         var blocked = Assert.IsType<CampaignActionBlocked>(events[^1]);
-        Assert.Equal("Alien base activity requires world simulation.", blocked.Reason);
+        Assert.Equal("Alien base hunting requires mission generation and hunter-killer simulation.", blocked.Reason);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
 
         var overview = campaign.GetQuery<ICampaignWorldQuery>()!.QueryWorld();

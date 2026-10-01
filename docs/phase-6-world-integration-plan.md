@@ -203,3 +203,16 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
   including when two negatives would produce a positive speed. Despawn research/events and UFO
   follower repair remain guarded. See [status](strategic-world-site-timer-status.md).
   This advances item 5; the branch 4c headless gate remains open.
+- Alien-base activity/discovery slice: passive bases accrue daily region/country
+  points, completed facilities discover in reference order, and craft patrol sight
+  executes after each craft's fuel transition. Safe non-generating supply checks
+  retain weighted selection and frequency RNG. Discovery persists across reloads
+  and loaded rewrites; deleted base overlays cannot resurrect state. The blanket
+  alien-base guard is replaced with daily mission-generation/self-destruction and
+  ten-minute hunting guards. The [pinned probe and status](strategic-world-alien-base-activity-status.md)
+  cover boundaries and remaining work. Upgrades, evolution, generation and linked
+  deletion remain open; the 4c gate has not closed and 4d remains untouched.
+  Audit fixes retain merged/inherited supply weights so generating choices cannot
+  escape the daily guard, and clamp distance rounding before daily sight converts
+  it to integer units. Extended reference weight traces and fresh/cache regression
+  tests cover both repairs.
