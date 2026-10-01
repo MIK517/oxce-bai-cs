@@ -696,8 +696,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         public List<int> ActivityXcom { get; } = activityXcom;
         public List<int> ActivityAlien { get; } = activityAlien;
         public bool Pact { get; } = pact;
-        public bool NewPact { get; } = newPact;
-        public bool CancelPact { get; } = cancelPact;
+        public bool NewPact { get; set; } = newPact;
+        public bool CancelPact { get; set; } = cancelPact;
         public ScriptValueState? ScriptValues { get; } = scriptValues;
     }
 

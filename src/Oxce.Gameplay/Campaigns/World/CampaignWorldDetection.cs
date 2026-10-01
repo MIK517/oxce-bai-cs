@@ -41,7 +41,7 @@ internal sealed partial class CampaignWorld
         var countryTotals = campaign.CountryStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
         if (dailyBases)
             foreach (var alienBase in _alienBases)
-                if (CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
+                if (!BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch) && CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
                         regionTotals, countryTotals) is { } reason)
                     return reason;
         // Marker capacity is reserved for every contact that could be made, whatever the

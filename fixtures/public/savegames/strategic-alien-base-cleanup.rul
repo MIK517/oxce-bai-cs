@@ -1,0 +1,38 @@
+# Synthetic research-driven base deletion. No original assets.
+alienDeployments:
+  - type: CLEANUP_PASSIVE
+    alienBase: true
+    markerName: STR_OTHER_BASE
+  - type: CLEANUP_BASE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    points: 7
+    baseSelfDestructCode: UNLOCK
+  - type: CLEANUP_BAD_GENERATION
+    refNode: {alienBase: true, markerName: STR_ALIEN_BASE, points: 7, baseSelfDestructCode: UNLOCK}
+    genMission: {MISSING: 1}
+    baseDetectionRange: 100
+  - type: CLEANUP_MISSING_RESEARCH
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseSelfDestructCode: MISSING
+alienMissions:
+  - type: CLEANUP_SPACE
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_EARTH
+    operationType: 1
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+research:
+  - name: CLEANUP_SOURCE
+    cost: 1
+    lookup: UNLOCK
+  - name: CLEANUP_REWARD
+    cost: 1
+    getOneFree: [UNLOCK, CLEANUP_OTHER]
+  - name: CLEANUP_OTHER
+    cost: 1
+facilities:
+  - type: CLEANUP_LAB
+    mapName: LOGISTICS
+    labs: 10

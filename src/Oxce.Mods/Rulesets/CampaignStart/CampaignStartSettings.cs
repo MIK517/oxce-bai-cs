@@ -25,6 +25,7 @@ public sealed class CampaignStartSettings
         ManaWoundThreshold = builder.ManaWoundThreshold;
         HealthWoundThreshold = builder.HealthWoundThreshold;
         EscortRange = builder.EscortRange;
+        AllowCountriesToCancelAlienPact = builder.AllowCountriesToCancelAlienPact;
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(builder.StartingBases));
         StartingTime = new CampaignStartTime(
@@ -99,7 +100,7 @@ public sealed class CampaignStartSettings
         IReadOnlyList<YamlMappingNode> globeLayers,
         int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
-        double performanceBonusFactor = 0)
+        double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false)
     {
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
@@ -107,6 +108,7 @@ public sealed class CampaignStartSettings
         ManaWoundThreshold = manaWoundThreshold;
         HealthWoundThreshold = healthWoundThreshold;
         EscortRange = escortRange;
+        AllowCountriesToCancelAlienPact = allowCountriesToCancelAlienPact;
         GlobeLayers = Array.AsReadOnly(globeLayers.ToArray());
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(startingBases));
@@ -150,6 +152,7 @@ public sealed class CampaignStartSettings
     public int ManaWoundThreshold { get; }
     public int HealthWoundThreshold { get; }
     public int EscortRange { get; }
+    public bool AllowCountriesToCancelAlienPact { get; }
     public CampaignStartTime StartingTime { get; }
     public int StartingDifficulty { get; }
     public int CostHireEngineer { get; }
@@ -204,6 +207,7 @@ internal sealed class CampaignStartSettingsBuilder
     public int ManaWoundThreshold { get; set; } = 200;
     public int HealthWoundThreshold { get; set; } = 100;
     public int EscortRange { get; set; } = 20;
+    public bool AllowCountriesToCancelAlienPact { get; set; }
     public int[] BuyPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public int[] SellPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public Dictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; } = [];

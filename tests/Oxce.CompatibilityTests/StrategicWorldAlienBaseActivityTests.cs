@@ -258,7 +258,6 @@ public sealed class StrategicWorldAlienBaseActivityTests
 
     [Theory]
     [InlineData("BASE_HUNTING", false, "Alien base hunting requires mission generation and hunter-killer simulation.")]
-    [InlineData("BASE_SELF_DESTRUCT", true, "Alien base self-destruction requires mission-link and pact cleanup.")]
     [InlineData("BASE_MISSING_MISSION", true, "Alien base generation references an undefined alien mission.")]
     [InlineData("BASE_EXCESSIVE_WEIGHTS", true, "Alien base mission weights exceed the supported range.")]
     public void UnownedTransitionsBlockBeforeTheirAffectedTick(string deployment, bool daily, string reason)

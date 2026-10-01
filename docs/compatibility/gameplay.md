@@ -52,3 +52,7 @@ implemented behavior, not planned acceptance.
 | Morale, reactions, melee, and psi | not started | `src/Battlescape/` |  | Compare permissions before random outcomes. |
 | Tactical AI and turn processing | not started | `src/Battlescape/` |  | Benchmark and scenario coverage required. |
 | Mission objectives and debriefing | not started | `src/Battlescape/`, `src/Geoscape/` |  | Recovery and campaign transition. |
+
+Research-driven alien-base self-destruction and mission unlinking now execute in
+reference daily order, with optional pact cancellation and atomic uncertainty/live
+operation guards. See [cleanup status](../strategic-world-alien-base-cleanup-status.md).

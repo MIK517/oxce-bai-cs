@@ -135,6 +135,13 @@ internal sealed partial class CampaignWorld
             return "A craft cannot escort itself.";
         if (state.Destination is not { } destination ||
             destination.Kind is WorldTargetKind.Base or WorldTargetKind.Waypoint or WorldTargetKind.Craft) return null;
+        if (highest >= CampaignTimeTrigger.OneDay && destination.Kind == WorldTargetKind.AlienBase)
+        {
+            var guaranteed = campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+            foreach (var alienBase in _alienBases)
+                if (FollowsAlienBase(destination, alienBase) && BaseDestroyedAfterDailyResearch(alienBase, guaranteed))
+                    return null;
+        }
         // processMissionSite runs before time5Seconds craft movement on a half-hour tick.
         if (highest >= CampaignTimeTrigger.ThirtyMinutes && destination.Kind == WorldTargetKind.MissionSite &&
             ReturnsFromSiteBeforeMovement(destination)) return null;

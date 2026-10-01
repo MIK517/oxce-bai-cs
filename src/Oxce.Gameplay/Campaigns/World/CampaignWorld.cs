@@ -432,11 +432,13 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     {
         var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
         if (interruptionReason is not null) return interruptionReason;
+        var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
+        if (destructionReason is not null) return destructionReason;
         var ufoReason = UfoMovementReason(highest);
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest, guaranteedResearch);
         if (missionReason is not null) return missionReason;
-        var alienBaseReason = AlienBaseActivityReason(highest);
+        var alienBaseReason = AlienBaseActivityReason(highest, guaranteedResearch);
         if (alienBaseReason is not null) return alienBaseReason;
         var baseDetectionReason = UfoBaseDetectionReason(highest);
         if (baseDetectionReason is not null) return baseDetectionReason;

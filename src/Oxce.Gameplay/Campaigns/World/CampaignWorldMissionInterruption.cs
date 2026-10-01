@@ -51,7 +51,17 @@ internal sealed partial class CampaignWorld
         if (guaranteedResearch is null || mission.Interrupted) return mission;
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        return rule.InterruptResearchId.Length != 0 && guaranteedResearch.Contains(rule.InterruptResearchId)
+        var projected = rule.InterruptResearchId.Length != 0 && guaranteedResearch.Contains(rule.InterruptResearchId)
             ? mission with { Interrupted = true } : mission;
+        if (projected.AlienBase is null) return projected;
+        foreach (var alienBase in _alienBases)
+            if (BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch) && FollowsAlienBase(projected.AlienBase, alienBase))
+                projected = projected with
+                {
+                    AlienBase = null,
+                    Interrupted = projected.Interrupted ||
+                    rule.OperationType != RuntimeMissionOperationType.Space
+                };
+        return projected;
     }
 }
