@@ -18,8 +18,10 @@ transaction gate. The score and eligible funds are supplied by the future monthl
 caller. The campaign time handler does not invoke it yet: arcs precede missions and
 events follow them, and the month guard remains in place.
 
-Supported scripts use explicit weighted mission, region and race timelines and create
-ordinary space missions. Eligibility uses the shared live campaign triggers and the
+Supported scripts create ordinary space missions from explicit mission timelines.
+Ordinary selection uses explicit regions; base targeting can omit region weights
+when its odds guarantee that path. Races come from explicit script weights or the
+selected mission rule's race timeline. Eligibility uses the shared live campaign triggers and the
 run limit at list-collection time. Processing preserves rule order, dynamic conditional
 labels, an odds draw for each processed command, the ordinary target-base odds draw,
 the reference weighted-choice order and fixed/random delay before the first-wave
@@ -31,7 +33,7 @@ IDs, counters and strategy-table removal persist through OXCE save/reload.
 The phase preflights all potentially executable choices before RNG or mutation.
 Duplicate positive labels, unresolved choices, unsafe delays/timers and ID or
 population exhaustion stop atomically. It conservatively blocks scripts that could
-enter site generation, base targeting, implicit strategy-table fallback, or non-space
+enter site generation, implicit strategy-table fallback, or non-space
 objectives. Those paths and regional spawn/objective work belong to subsequent 4c
 slices. Some choices that a later odds or conditional draw would skip are also
 conservatively blocked. A 4,096-script and 100,000-mission bound keeps work finite.
@@ -43,13 +45,13 @@ actual world rules. `StrategicMissionScriptTests` covers fresh/cache, mission cr
 selection RNG order, conditional and run history, table removal, reload, invalid
 labels/links/delays, unavailable objectives and exhausted IDs.
 
-Validation: root `dotnet test` passes 1,188 tests with zero failures or skips,
-including checksum and private-corpus tests. Formatting and code-map verification pass.
+The original subsystem passed its root checks at introduction. Current validation
+for the expanded scheduler is recorded below.
 
 Arc scheduling now has an [isolated subsystem](strategic-arc-script-status.md), and
 tagged adhoc scheduling has a [shared executor](strategic-adhoc-script-status.md).
-Outstanding: mission site/base/strategy fallback paths,
-actual initial/monthly hooks and score/funding calculations. This subsystem
+Outstanding: mission site and strategy fallback paths,
+actual initial/monthly hook composition. This subsystem
 does not claim integrated monthly campaign progression or branch 4c acceptance.
 
 Mission scripts now use `RuleAlienMission::generateRace` when their own race
@@ -57,7 +59,7 @@ weights are absent. The reverse mission timeline, empty/future timeline failure,
 ordinal weighted selection, explicit override and RNG order are preserved.
 The pinned `strategic-alien-base-generation` oracle includes the exact method;
 `StrategicMissionRaceFallbackTests` covers fresh/cache and persisted run history.
-Site missions, base targeting and strategy region/mission fallback remain guarded.
+Site missions and strategy region/mission fallback remain guarded.
 
 Ordinary script missions now apply `AlienMission::setRegion`'s single remap;
 strategy removal still uses the selected source region. The existing pinned
@@ -73,3 +75,11 @@ both paths. Candidate work is bounded before mutation. The pinned
 `strategic-mission-base-target` probe and fresh/cache tests cover selection,
 failure labels, RNG order, resource limits and reload. Implicit strategy fallback,
 site scheduling and campaign month composition remain unavailable.
+
+Validation after all three scheduler slices and their audits: root
+`dotnet test --no-restore` passes 1,438 tests, zero failed or skipped, including
+checksum and private-corpus coverage. Formatting, code-map and diff checks pass.
+Audits found no confirmed functional defect in these slices; the final audit
+corrected obsolete capability statements in this status document. The reference
+checkout is unchanged. Branch 4c still has outstanding world capabilities and
+acceptance work; branch 4d has not started.
