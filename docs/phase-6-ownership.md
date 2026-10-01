@@ -243,3 +243,10 @@ The composed cleanup audit adds an atomic guard for alien bases sharing marker/I
 across deployments. C++ pointer-identity traces and fresh/cache reproductions
 show that deletion must not detach another base's missions or followers. See
 [cleanup audit](strategic-world-alien-base-cleanup-status.md).
+
+Mission scripts now use `RuleAlienMission::generateRace` when their own race
+weights are absent. The reverse mission timeline, empty/future timeline failure,
+ordinal weighted selection, explicit override and RNG order are preserved.
+The pinned `strategic-alien-base-generation` oracle includes the exact method;
+`StrategicMissionRaceFallbackTests` covers fresh/cache and persisted run history.
+Site missions, base targeting and strategy region/mission fallback remain guarded.
