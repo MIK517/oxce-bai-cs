@@ -4,9 +4,24 @@ alienDeployments:
     duration: [1, 1]
     points: 4
     despawnPenalty: 9
+  - type: SITE_COUNTERS
+    markerName: STR_TERROR_SITE
+    duration: [1, 1]
+    points: 4
+    despawnPenalty: 9
+    counterDespawn: shared
+    counterFailure: shared
+    counterAll: all
+    decreaseCounterDespawn: shared
+    decreaseCounterFailure: missing
+    decreaseCounterAll: all
 alienMissions:
   - type: MISSION_SITE_FORCE
     objective: 3
     despawnEvenIfTargeted: true
     waves:
       - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: 3000}
+research:
+  - name: UNUSED_COUNTER_RULE
+    cost: 1
+    increaseCounter: [shared]

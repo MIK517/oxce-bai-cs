@@ -24,7 +24,7 @@ internal static class WorldSiteTimer
 internal sealed partial class CampaignWorld
 {
     private const string SiteDespawnBoundary =
-        "Mission site despawn requires research, counters, event payloads or UFO reactivation.";
+        "Mission site despawn requires research, event payloads or UFO reactivation.";
     private const string SiteUfoFollowerBoundary =
         "Targeted mission site despawn requires UFO follower destination repair.";
 
@@ -34,8 +34,9 @@ internal sealed partial class CampaignWorld
 
     private string? SiteTimingReason(CampaignTimeTrigger highest)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0) return null;
         var rules = campaign.Content.RuntimeRules;
+        var counterChanges = new List<CustomCounterChange>();
         foreach (var site in _sites)
         {
             var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
@@ -58,18 +59,18 @@ internal sealed partial class CampaignWorld
                     }
             }
             if (transition.Remove && (site.UfoUniqueId != 0 ||
-                deployment.UnlockedResearchOnDespawnId.Length != 0 || deployment.DespawnEvents.Count != 0 ||
-                deployment.CounterDespawn.Length != 0 || deployment.CounterFailure.Length != 0 ||
-                deployment.CounterAll.Length != 0 || deployment.DecreaseCounterDespawn.Length != 0 ||
-                deployment.DecreaseCounterFailure.Length != 0 || deployment.DecreaseCounterAll.Length != 0))
+                deployment.UnlockedResearchOnDespawnId.Length != 0 || deployment.DespawnEvents.Count != 0))
                 return SiteDespawnBoundary;
+            if (transition.Remove) AddSiteCounterChanges(counterChanges, deployment);
         }
-        return null;
+        return campaign.CustomCounters.CapacityReason(counterChanges, highest);
     }
 
     private void AdvanceSites(CampaignState.TimeEffects effects)
     {
+        if (_sites.Count == 0) return;
         var rules = campaign.Content.RuntimeRules;
+        var counterChanges = new List<CustomCounterChange>(6);
         for (var index = 0; index < _sites.Count;)
         {
             var site = _sites[index];
@@ -81,6 +82,12 @@ internal sealed partial class CampaignWorld
             {
                 ReturnSiteCraftFollowers(site);
                 effects.Notify(new MissionSiteLost(site.Id, MarkerName(site.DeploymentId), site.Name));
+            }
+            if (transition.Remove)
+            {
+                counterChanges.Clear();
+                AddSiteCounterChanges(counterChanges, deployment);
+                foreach (var change in counterChanges) campaign.CustomCounters.Apply(change);
             }
             ScoreUfoActivity(site.Position, transition.Score, rules);
             if (transition.Remove) _sites.RemoveAt(index);
@@ -97,6 +104,16 @@ internal sealed partial class CampaignWorld
     private bool FollowsSite(WorldTargetReference? target, MissionSiteSnapshot site) =>
         target is { Kind: WorldTargetKind.MissionSite } reference && reference.Id == site.Id &&
         reference.TypeId == MarkerName(site.DeploymentId);
+
+    private static void AddSiteCounterChanges(List<CustomCounterChange> changes, RuntimeAlienDeploymentRule deployment)
+    {
+        if (deployment.CounterDespawn.Length != 0) changes.Add(new(deployment.CounterDespawn, true));
+        if (deployment.CounterFailure.Length != 0) changes.Add(new(deployment.CounterFailure, true));
+        if (deployment.CounterAll.Length != 0) changes.Add(new(deployment.CounterAll, true));
+        if (deployment.DecreaseCounterDespawn.Length != 0) changes.Add(new(deployment.DecreaseCounterDespawn, false));
+        if (deployment.DecreaseCounterFailure.Length != 0) changes.Add(new(deployment.DecreaseCounterFailure, false));
+        if (deployment.DecreaseCounterAll.Length != 0) changes.Add(new(deployment.DecreaseCounterAll, false));
+    }
 
     private bool ReturnsFromSiteBeforeMovement(WorldTargetReference destination) =>
         _sites.Any(site => FollowsSite(destination, site) && site.SecondsRemaining < 30 * 60 &&

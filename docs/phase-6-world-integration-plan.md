@@ -184,7 +184,8 @@ Run root `dotnet test`, formatting verification, checksum tests and code-map ver
 - Mission-site timer slice: the half-hour handler scores sites, decrements their
   timers and removes simple unlinked sites in reference order. Followed sites can
   remain overdue; forced expiry returns craft followers before movement and emits
-  the lost-site alert. UFO followers and other despawn consequences stop before
+  the lost-site alert. All six despawn counter changes execute in reference
+  order and persist. UFO followers and other despawn consequences stop before
   the tick. The [pinned site-timer probe](strategic-world-site-timer-status.md)
   and fresh/cache transition tests cover this bounded lifecycle. Full site and
   alien-base behavior remain branch 4c work. At the 360-tick corpus horizon,
