@@ -32,6 +32,11 @@
       "path": "fixtures/public/savegames/strategic-world.rul",
       "size": 14290,
       "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-race-fallback.rul",
+      "size": 1425,
+      "sha256": "0fd89bc4b8c01efc1ec5bd2e595d31701cb6abfd4fc3368a6531edcd9a3984f5"
     }
   ],
   "normalization": [

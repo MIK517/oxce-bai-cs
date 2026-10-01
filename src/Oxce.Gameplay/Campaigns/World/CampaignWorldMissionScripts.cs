@@ -60,10 +60,13 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 var selectionMonth = unchecked((ulong)month);
                 var region = WorldScriptSelection.Generate(script.Regions, selectionMonth, campaign.Random)!.Id;
                 var mission = WorldScriptSelection.Generate(script.Missions, selectionMonth, campaign.Random)!.Id;
-                var race = WorldScriptSelection.Generate(script.Races, selectionMonth, campaign.Random)!.Id;
-                var delay = WorldMissionScriptSelection.Delay(script, campaign.Random);
                 var rule = campaign.Content.RuntimeRules.AlienMissions[
                     campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission)].Value;
+                var race = script.Races.Count == 0
+                    ? WorldAlienMissionGeneration.Choose(WorldAlienMissionGeneration.WeightsAt(rule.RaceWeights,
+                        selectionMonth, race: true), campaign.Random)
+                    : WorldScriptSelection.Generate(script.Races, selectionMonth, campaign.Random)!.Id;
+                var delay = WorldMissionScriptSelection.Delay(script, campaign.Random);
                 var countdown = delay == 0
                     ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[0].SpawnTimer), campaign.Random)
                     : delay;
@@ -94,17 +97,17 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             if (script.Criteria.ExecutionOdds <= 0) continue;
             possible++;
             if (script.SiteType || script.TargetBaseOdds > 0 || script.Missions.Count == 0 ||
-                script.Regions.Count == 0 || script.Races.Count == 0)
+                script.Regions.Count == 0)
                 return MissionScriptBoundary;
             if (script.StartDelay < 0 || script.RandomDelay < 0 ||
                 (long)script.StartDelay + script.RandomDelay > int.MaxValue)
                 return "Mission script delay exceeds the supported range.";
             if (Choices(script.Missions, month, choice =>
-                    choice.Handle is { } handle && ValidMission(handle)) is { } missionReason)
+                    choice.Handle is { } handle && ValidMission(handle, script.Races.Count == 0)) is { } missionReason)
                 return missionReason;
             if (Choices(script.Regions, month, choice => choice.IsResolved) is { } regionReason)
                 return regionReason;
-            if (Choices(script.Races, month, choice => choice.IsResolved) is { } raceReason)
+            if (script.Races.Count != 0 && Choices(script.Races, month, choice => choice.IsResolved) is { } raceReason)
                 return raceReason;
             if (script.VariableName.Length != 0)
             {
@@ -122,12 +125,20 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             return "Alien mission IDs or population exceed the supported limit.";
         return null;
 
-        bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle)
+        bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle, bool useMissionRace)
         {
             var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
             if (rule.Objective != RuntimeMissionObjective.Score ||
                 rule.OperationType != RuntimeMissionOperationType.Space || rule.Waves.Count == 0)
                 return false;
+            if (useMissionRace)
+            {
+                var weights = WorldAlienMissionGeneration.WeightsAt(rule.RaceWeights, unchecked((ulong)month), race: true);
+                if (WorldAlienMissionGeneration.Total(weights) == 0) return false;
+                foreach (var choice in weights)
+                    if (choice.Value != 0 && !campaign.Content.RuntimeRules.AlienRaces.TryGet(choice.Key, out _))
+                        return false;
+            }
             var timer = rule.Waves[0].SpawnTimer;
             var steps = timer / 30;
             return timer <= int.MaxValue && (steps / 2 + steps) * 30 <= int.MaxValue;

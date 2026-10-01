@@ -51,3 +51,10 @@ tagged adhoc scheduling has a [shared executor](strategic-adhoc-script-status.md
 Outstanding: mission site/base/strategy fallback paths,
 actual initial/monthly hooks and score/funding calculations. This subsystem
 does not claim integrated monthly campaign progression or branch 4c acceptance.
+
+Mission scripts now use `RuleAlienMission::generateRace` when their own race
+weights are absent. The reverse mission timeline, empty/future timeline failure,
+ordinal weighted selection, explicit override and RNG order are preserved.
+The pinned `strategic-alien-base-generation` oracle includes the exact method;
+`StrategicMissionRaceFallbackTests` covers fresh/cache and persisted run history.
+Site missions, base targeting and strategy region/mission fallback remain guarded.
