@@ -52,7 +52,7 @@ internal sealed partial class CampaignWorld
         {
             if (ufo.Status == UfoStatus.IgnoreMe)
             {
-                var lifted = UfoAfterSiteExpiry(ufo, highest);
+                var lifted = UfoAfterTimedTransitions(ufo, highest);
                 // This UFO misses the half-hour detection pass, but can land in the
                 // later five-second flight pass using its existing detected flag.
                 if (lifted.Status == UfoStatus.Flying && lifted.Detected && lifted.LandId == 0 &&

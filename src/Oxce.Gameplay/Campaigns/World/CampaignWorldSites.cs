@@ -118,8 +118,9 @@ internal sealed partial class CampaignWorld
 
     // Pure forecast for handlers that run after the half-hour site loop: ten-minute
     // base detection, five-second flight and craft interception/deployment guards.
-    private UfoSnapshot UfoAfterSiteExpiry(UfoSnapshot ufo, CampaignTimeTrigger highest)
+    private UfoSnapshot UfoAfterTimedTransitions(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
+        ufo = WorldCrashedUfo.FiveSeconds(highest >= CampaignTimeTrigger.ThirtyMinutes ? WorldCrashedUfo.HalfHour(ufo) : ufo);
         if (ufo.Status != UfoStatus.IgnoreMe || highest < CampaignTimeTrigger.ThirtyMinutes) return ufo;
         foreach (var site in _sites)
             if (site.UfoUniqueId == ufo.UniqueId && SiteExpiresThisTick(site, highest) &&

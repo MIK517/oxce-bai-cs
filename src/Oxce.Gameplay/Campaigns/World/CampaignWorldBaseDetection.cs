@@ -11,7 +11,7 @@ internal sealed partial class CampaignWorld
         var hasScanner = false;
         // Validate every possible scanner before any handler consumes RNG or mutates state.
         foreach (var ufo in _ufos)
-            if (UfoCanScanBases(UfoAfterSiteExpiry(ufo, highest), out _)) hasScanner = true;
+            if (UfoCanScanBases(UfoAfterTimedTransitions(ufo, highest), out _)) hasScanner = true;
         if (!hasScanner) return null;
         for (var index = 0; index < campaign.BaseStates.Count; index++)
         {
