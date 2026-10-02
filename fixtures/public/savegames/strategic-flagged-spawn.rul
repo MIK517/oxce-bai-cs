@@ -1,0 +1,201 @@
+alienMissions:
+  - type: FLAG_SPAWN_0_0
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_0_1
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_0_2
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_0_3
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_0_4
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_0_5
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_0_6
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_0_7
+    objective: 0
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_1_0
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_1_1
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_1_2
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_1_3
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_1_4
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_1_5
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_1_6
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_1_7
+    objective: 1
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_2_0
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_2_1
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_2_2
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_2_3
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_2_4
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_2_5
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_2_6
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_2_7
+    objective: 2
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_3_0
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_3_1
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_3_2
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_3_3
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_3_4
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_3_5
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_3_6
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_3_7
+    objective: 3
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_5_0
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_5_1
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_5_2
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_5_3
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: false, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_5_4
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_5_5
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: false, objectiveOnXcomBase: true}
+  - type: FLAG_SPAWN_5_6
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: false}
+  - type: FLAG_SPAWN_5_7
+    objective: 5
+    spawnZone: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, objective: true, objectiveOnTheLandingSite: true, objectiveOnXcomBase: true}

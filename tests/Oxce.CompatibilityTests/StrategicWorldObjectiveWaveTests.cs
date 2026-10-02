@@ -13,6 +13,42 @@ public sealed class StrategicWorldObjectiveWaveTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void AirborneSpawnFlagsOnlyGuardPathsThatWouldUseMissionSiteWaypoints(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-flagged-spawn.rul"], cache);
+        foreach (var objective in new[] { 0, 1, 2, 3, 5 })
+        {
+            var baseline = Restore(content, new AlienMissionSnapshot(4, $"FLAG_SPAWN_{objective}_0", "REGION", "RACE_A", 0, 0, 0, 0, -1));
+            AdvanceOne(baseline);
+            foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnFlagRows"))
+            {
+                Assert.Equal(6, row[7].GetInt32());
+                var flag = row[0].GetInt32() * 4 + row[1].GetInt32() * 2 + row[2].GetInt32();
+                // Supply objective waves require a base; the preceding slice owns that suppression.
+                if (objective == 5 && row[0].GetInt32() != 0) continue;
+                foreach (var area in new[] { -1, 0 })
+                {
+                    var campaign = Restore(content, new AlienMissionSnapshot(4, $"FLAG_SPAWN_{objective}_{flag}",
+                        "REGION", "RACE_A", 0, 0, 0, 0, area));
+                    if (area == 0 && row[0].GetInt32() != 0 && objective != 5)
+                        AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+                    else
+                    {
+                        AdvanceOne(campaign);
+                        Assert.Equivalent(baseline.Capture().World.Ufos, campaign.Capture().World.Ufos, strict: true);
+                        Assert.Equal(baseline.Capture().RandomState, campaign.Capture().RandomState);
+                        Reload(content, campaign, 17, "flagged-airborne-spawn.sav");
+                    }
+                }
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void UndefinedUfosAndNonSiteFlagsFollowReferenceNoObjectDecisions(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
