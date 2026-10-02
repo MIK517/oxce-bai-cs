@@ -250,8 +250,12 @@ transition guards. [Daily alien-base mission generation](strategic-world-alien-b
 now schedules linked missions with region/race selection and persistent limits.
 [Monthly upgrades and race evolution](strategic-world-alien-base-monthly-status.md)
 now execute through an isolated registered world operation, including link repair
-and save preservation. Creation-tick immediate waves, hunting, linked deletion
-and actual monthly caller composition remain open with the other 4c capabilities.
+and save preservation. Existing operation-base initialization, broader ordinary
+objective waves and delayed hunting mission creation now execute; see
+[mission status](strategic-mission-script-status.md). Creation-tick immediate waves,
+new-base/deployment effects, special UFO hunting/escorts and actual monthly caller
+composition remain open with the other 4c capabilities. Research-driven linked
+base deletion is covered by its cleanup slice below.
 
 The first branch of the [2026-09-05 review](project-review-2026-09-05.md) corrects
 compiled-cache resource dependencies: shared TAB/CAT headers and lengths now participate

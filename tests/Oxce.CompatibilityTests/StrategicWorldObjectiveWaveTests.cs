@@ -133,6 +133,34 @@ public sealed class StrategicWorldObjectiveWaveTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void FinalNoObjectWaveChecksCleanupReferencesBeforeMutatingTheTick(bool cache, bool ufoLink)
+    {
+        var content = Load(cache);
+        foreach (var ruleId in new[] { "EMPTY_OBJECTIVE_5", "CHAIN_zero" })
+        {
+            var campaign = Restore(content, new AlienMissionSnapshot(4, ruleId, "REGION", "RACE_A", ruleId == "CHAIN_zero" ? 0 : 1, 0, 0, 0, -1));
+            var before = campaign.Capture();
+            var snapshot = before with
+            {
+                Bases = [before.Bases[0] with { RetaliationMissionId = ufoLink ? null : 4 }],
+                World = before.World with
+                {
+                    Ufos = ufoLink ?
+                    [new UfoSnapshot(9, "UFO_SPAWN", 4, "TRAJ_PATROL", 0, 0.4, 0.2, UfoStatus.Flying, WorldAltitudes.High)
+                    { Speed = 2200, MissionWaveNumber = 1, Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) }] : []
+                }
+            };
+            var restored = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            AssertTimeBlocked(restored, ufoLink ? "Alien mission cannot expire while UFOs still reference it." :
+                "A non-retaliation mission cannot expire while a base links it as retaliation.");
+        }
+    }
+
     private static RuntimeContent Load(bool cache) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-waves.rul"], cache);
 
