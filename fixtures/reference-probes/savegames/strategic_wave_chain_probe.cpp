@@ -46,6 +46,15 @@ bool completionRequired(int objective,size_t _nextWave,bool landing) {
  // BASE_CONDITION
  return false;
 }
+constexpr int OBJECTIVE_SITE=3;
+bool siteRequired(bool deployment,bool marker,int objective,bool objectiveFlag){
+ struct Deployment { bool marker;std::string getMarkerName()const{return marker?"SITE":"";} }value{marker};
+ struct Mod {Deployment* deployment;Deployment* getDeployment(const std::string&)const{return deployment;}
+  const void* getUfo(const std::string&)const{return nullptr;}}mod{deployment?&value:nullptr};
+ struct {std::string ufoType;bool objective;}wave{"MISSING_UFO",objectiveFlag};ObjectiveRule _rule{objective};
+ // DIRECT_SITE_CONDITION
+ return false;
+}
 int main() {
     std::cout << "{\"cases\":[";
     run("mixed", {{2,90},{3,0},{1,1}}, 1, 0); std::cout << ',';
@@ -57,5 +66,9 @@ int main() {
     for(int objective=0;objective<=6;objective++)for(bool last:{false,true})for(bool landing:{false,true}) {
         if(!first)std::cout<<',';first=false;
         std::cout<<'['<<objective<<','<<last<<','<<landing<<','<<completionRequired(objective,last?2:1,landing)<<']';
+    }std::cout<<"],\"siteRows\":[";first=true;
+    for(bool deployment:{false,true})for(bool marker:{false,true})for(int objective=0;objective<=6;objective++)for(bool objectiveFlag:{false,true}){
+     if(!first)std::cout<<',';first=false;
+     std::cout<<'['<<deployment<<','<<marker<<','<<objective<<','<<objectiveFlag<<','<<siteRequired(deployment,marker,objective,objectiveFlag)<<']';
     }std::cout<<"]}\n";
 }

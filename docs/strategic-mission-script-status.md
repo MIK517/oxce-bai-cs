@@ -148,3 +148,11 @@ Immediate-chain forecasts now account for suppression so cleanup remains atomic.
 AlienMission.cpp spawnUfo and Ufo.h defaults back captured decision rows; fresh/cache
 tests cover source links, space/Earth operations, percentages, immediate chains and reloads.
 Supply ground destinations and non-objective hunters remain guarded.
+
+### Additional 4c cycle: no-object wave classification
+
+Unknown UFO IDs and deployments with no marker can advance as no-object waves,
+regardless of unrelated objective flags. The pinned think predicate guards direct
+site generation for marked deployments and Site objectives with objective waves.
+Infiltration completion and special retaliation spawning remain guarded. Fresh/cache
+fixtures cover the predicate combinations, immediate chains, atomic guards and reloads.
