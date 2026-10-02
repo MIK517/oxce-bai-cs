@@ -288,3 +288,20 @@ Craft eligibility, empty choices, precise generation/timer/work guards and
 persistence are covered against pinned reference traces. Runtime craft
 `undetectable` is projected with cache revision 32. See
 [hunting timer status](strategic-world-alien-base-hunting-status.md).
+
+### Mission initialization, wave and hunting checkpoint (2026-10-03)
+
+Six further 4c slices now own non-site space objective initialization, existing
+regional/Earth operation bases and missing-base interruption, no-object objective
+waves, ordinary airborne objective waves, linked-base launch origins and delayed
+hunting mission creation. Pinned operation/origin/hunting captures verify choices,
+RNG order, countdown fallthrough and source links; fresh/cache transition reloads
+cover each slice. The final audit adds forecast cleanup guards for surviving UFO
+or retaliation references, including within immediate chains.
+
+Forced new-base creation, deployment and special objective effects, general
+regional wave geometry, immediate hunting waves, real detection VM providers,
+hunter/escort paths and initial/monthly world caller composition remain open.
+The branch 4c headless acceptance gate remains open; branch 4d is untouched.
+See [mission status](strategic-mission-script-status.md) and
+[hunting status](strategic-world-alien-base-hunting-status.md).

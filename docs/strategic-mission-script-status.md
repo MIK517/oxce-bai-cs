@@ -38,9 +38,12 @@ table also deletes the region; the audit added that missing guard. Work is bound
 at 4,096 scripts, 100,000 missions and one million candidate checks. Uncertain
 conditionals, removals and possible refresh paths are checked conservatively.
 
-Site scheduling, non-space initialization and integrated
-campaign month progression retain capability guards. This subsystem does not
-claim complete branch 4c acceptance.
+Site-script scheduling, new-base creation when required, deployment waves, special
+objective effects, hunting/escort UFO behavior and integrated campaign month
+progression retain capability guards. Existing regional/Earth base acquisition
+and missing-base interruption are owned. Ordinary airborne spawns remain limited
+to fixed first-leg points, and later special arrivals/takeoffs remain guarded.
+This subsystem does not claim complete branch 4c acceptance.
 
 Evidence: `strategic-script-rules` captures script timelines and delay selection;
 `strategic-alien-base-generation` captures mission race selection and region
@@ -52,11 +55,6 @@ transition reloads, run history, malformed inputs and work/ID bounds.
 The second strategy-slice audit reproduced an already-empty table deletion followed
 by an unsafe explicit-region lookup. The guard fix is committed separately and its
 fresh/cache regressions verify the entire batch remains unchanged.
-
-Final validation for these three cycles: root `dotnet test --no-restore` passes
-1,478 tests, zero failed or skipped, including checksum and private-corpus tests.
-Formatting, regenerated code-map and diff checks pass. The pinned C++ checkout
-is unchanged. Branch 4c remains incomplete and branch 4d has not started.
 
 Cycle 1: AlienMission::start initializes space mission counters and timer independently
 of objective. Scheduling now permits infiltration, base, retaliation, supply and
@@ -93,3 +91,16 @@ Cycle 6: hunting creates delayed missions through the world capability, applies
 the immediate think countdown, resets only the hunting timer and preserves source
 links. Shorter first timers retain the immediate-wave guard. Cycle 5 audit found
 no confirmed functional defect. Six-cycle acceptance and final audit follow.
+
+Final six-cycle audit reproduced unsafe completion of final no-object waves:
+saved live count zero did not guarantee absence of UFO/base references. The fix
+forecasts cleanup through the entire immediate chain and applies the existing
+reference/expiry guards before tick mutation. Fresh/cache regressions cover both
+single final waves and immediate chains, and assert unchanged state and RNG.
+
+Final validation: root `dotnet test --no-restore` passes 1,496 tests, with no
+failures or skips, including checksum/private-corpus checks. Full formatting
+verification, regenerated code-map validation and diff checks pass. Obsolete
+compiler object files for the four captures were removed; useful capture outputs
+remain project-local. The pinned C++ checkout is unchanged. Branch 4c remains
+incomplete and branch 4d has not started.

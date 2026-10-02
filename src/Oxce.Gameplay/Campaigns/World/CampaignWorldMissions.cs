@@ -31,16 +31,7 @@ internal sealed partial class CampaignWorld
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
             {
-                // A malformed saved count must not delete a mission that the later
-                // detection/movement handlers still need, after time has advanced.
-                foreach (var ufo in _ufos)
-                    if (ufo.MissionId == mission.Id)
-                        return "Alien mission cannot expire while UFOs still reference it.";
-                cleanupWork += campaign.BaseStates.Count;
-                if (cleanupWork > MaximumAlienBaseChecks) return "Retaliation mission cleanup exceeds the supported work limit.";
-                if (rule.Objective != RuntimeMissionObjective.Retaliation &&
-                    campaign.BaseStates.Any(owner => owner.RetaliationMissionId == mission.Id))
-                    return "A non-retaliation mission cannot expire while a base links it as retaliation.";
+                if (MissionExpiryReason(mission, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
                 continue;
             }
             if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
@@ -57,7 +48,14 @@ internal sealed partial class CampaignWorld
                 }
                 if (DeferredWaveCompletion(step, rule, rule.Waves[step.NextWave]))
                     return "Alien mission wave completion requires objective simulation.";
-                if (CanAdvanceNoObjectWave(step, rule)) continue;
+                if (CanAdvanceNoObjectWave(step, rule))
+                {
+                    var finishes = step.NextWave + 1 == rule.Waves.Count &&
+                        (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
+                    if (finishes && step.LiveUfos == 0 &&
+                        MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
+                    continue;
+                }
                 if (CanSpawnOrdinaryUfoWave(step, rule))
                 {
                     ufoSpawns++;
@@ -68,6 +66,19 @@ internal sealed partial class CampaignWorld
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
         return CanAllocateUfoIds(ufoSpawns) ? null : "UFO unique IDs are exhausted or collide with a saved UFO.";
+    }
+
+    private string? MissionExpiryReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, ref long work)
+    {
+        // Check both existing completion and completion forecast within this tick.
+        // Saved live counts alone cannot prove that deleting the mission is safe.
+        work += _ufos.Count + (long)campaign.BaseStates.Count;
+        if (work > MaximumAlienBaseChecks) return "Retaliation mission cleanup exceeds the supported work limit.";
+        foreach (var ufo in _ufos)
+            if (ufo.MissionId == mission.Id) return "Alien mission cannot expire while UFOs still reference it.";
+        return rule.Objective != RuntimeMissionObjective.Retaliation &&
+            campaign.BaseStates.Any(owner => owner.RetaliationMissionId == mission.Id)
+            ? "A non-retaliation mission cannot expire while a base links it as retaliation." : null;
     }
 
     private void AdvanceMissionCountdowns(CampaignState.TimeEffects _)
