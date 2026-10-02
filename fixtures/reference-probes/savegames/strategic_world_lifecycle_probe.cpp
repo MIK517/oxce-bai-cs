@@ -23,13 +23,13 @@ struct UfoTrajectory {
 const std::string UfoTrajectory::RETALIATION_ASSAULT_RUN="__RETALIATION_ASSAULT_RUN";
 constexpr int OBJECTIVE_SCORE=0,OBJECTIVE_INFILTRATION=1,OBJECTIVE_BASE=2,OBJECTIVE_RETALIATION=4,AMOT_SPACE=0;
 struct MissionRule {
- int objective=OBJECTIVE_SCORE,points=7;
+ int objective=OBJECTIVE_SCORE,points=7,operation=AMOT_SPACE;
  std::string getType() const {return "MISSION_LANDING";}
  MissionWave wave;
  size_t getWaveCount() const {return 1;}
  const MissionWave& getWave(int) const {return wave;}
  int getObjective() const {return objective;}
- int getOperationType() const {return AMOT_SPACE;}
+ int getOperationType() const {return operation;}
  int getSpawnZone() const {return -1;}
  bool isEndlessInfiltration() const {return false;}
  bool isMultiUfoRetaliationExtra() const {return false;}
@@ -174,5 +174,23 @@ void siteLiftRows(){
    <<game.save.activity<<','<<(site.ufo?1:0)<<']';
  }
 }
+
+void transitionRows(){
+ bool first=true;
+ for(int objective=0;objective<=6;objective++)for(int operation=0;operation<=6;operation++)
+ for(bool linked:{false,true})for(int point=0;point<3;point++){
+  if(!first)std::cout<<',';first=false;
+  RNG::calls=0;Game game;Globe globe;AlienMission mission;Target base;
+  base.setLongitude(0.2);base.setLatitude(0.1);mission._base=linked?&base:nullptr;
+  mission._rule.objective=objective;mission._rule.operation=operation;mission._nextWave=1;
+  auto& region=game.mod.region;region._lonMin={0};region._lonMax={1};region._latMin={-1};region._latMax={1};
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  Ufo ufo(&game.mod.ufo,9);ufo.setMissionInfo(&mission,&game.mod.trajectory);ufo.point=point;
+  ufo.setLongitude(Deg2Rad(8));ufo.setLatitude(Deg2Rad(2));
+  auto* destination=new Waypoint();destination->setLongitude(ufo._lon);destination->setLatitude(ufo._lat);ufo.setDestination(destination);
+  mission.ufoReachedWaypoint(ufo,game,globe);
+  std::cout<<'['<<objective<<','<<operation<<','<<(linked?1:0)<<','<<point<<','<<ufo._status<<",\""<<ufo._altitude<<"\",\""<<number(ufo._dest->_lon)<<"\",\""<<number(ufo._dest->_lat)<<"\","<<ufo._speed<<','<<ufo._secondsRemaining<<','<<RNG::calls<<']';
+ }
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"]}\n";}
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"]}\n";}
