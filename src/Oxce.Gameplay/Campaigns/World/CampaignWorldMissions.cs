@@ -151,11 +151,11 @@ internal sealed partial class CampaignWorld
 
     private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
-        if (rule.Objective != RuntimeMissionObjective.Score ||
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation ||
             rule.OperationType != RuntimeMissionOperationType.Space || mission.LiveUfos == int.MaxValue)
             return false;
         var wave = rule.Waves[mission.NextWave];
-        if (wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
+        if (DeferredWaveCompletion(mission, rule, wave) || wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
             wave.Objective || wave.ObjectiveOnTheLandingSite || wave.ObjectiveOnXcomBase)
             return false;
         var rules = campaign.Content.RuntimeRules;

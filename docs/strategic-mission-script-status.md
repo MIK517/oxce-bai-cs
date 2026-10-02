@@ -76,3 +76,9 @@ missions without restricting their operation mode. Final infiltration/base
 effects stop before the entire tick mutates; retaliation spawning remains guarded.
 The wave-chain capture includes the exact objective-completion predicates.
 Cycle 2 post-commit audit found no confirmed functional issue.
+
+Cycle 4: ordinary airborne non-objective waves now spawn for space-based
+infiltration, base, site and supply missions. UFO identity, race stats, movement,
+scoring/detection and reload use the existing ordinary-wave path. Retaliation
+assault generation, objective-site waves and final infiltration/base effects
+remain guarded at their transition. Cycle 3 post-commit audit found no defect.
