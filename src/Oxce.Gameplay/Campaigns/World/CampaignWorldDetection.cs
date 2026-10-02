@@ -136,10 +136,8 @@ internal sealed partial class CampaignWorld
         foreach (var ufo in _ufos)
         {
             if (ufo.Status != UfoStatus.Landed || ufo.SecondsRemaining != 5) continue;
-            var mission = FindMission(ufo.MissionId)!;
-            var rules = campaign.Content.RuntimeRules;
-            var points = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value.Points;
-            if (points > 0 && CheckActivityScore(ufo.Position, points, regionTotals, countryTotals) is { } reason)
+            if (TryLiftUfo(ufo, fromSite: false, out _, out var points) && points != 0 &&
+                CheckActivityScore(ufo.Position, points, regionTotals, countryTotals) is { } reason)
                 return reason;
         }
         if (!CanAllocateUfoMarkerIds(possibleMarkerIds))

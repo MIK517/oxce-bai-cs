@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-world-lifecycle",
-  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering. Transition rows cover all objective/operation combinations, linked and absent operation bases, and three non-terminal waypoints with objective flags disabled; aggressive retaliation is excluded.",
+  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering. Transition rows cover all objective/operation combinations, linked and absent operation bases, and three non-terminal waypoints with objective flags disabled; aggressive retaliation is excluded. Normal lift rows cover all objective and operation combinations, including Base/Infiltration score suppression.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -16,8 +16,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
-      "size": 12052,
-      "sha256": "7fc740083bf251f4335c48ba1c1f113b698b673d888db8e239d36980435941d6"
+      "size": 12877,
+      "sha256": "41a06a89914ddd038242d834e0f3c251b16eb892261a1b2653df5ded2f059434"
     },
     {
       "path": "tools/capture-strategic-world-lifecycle-reference.ps1",

@@ -55,7 +55,9 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         var mission = initial.World.Missions[0] with { RuleId = "LIFECYCLE_BASE_EFFECT" };
         var ufo = initial.World.Ufos[0] with
         {
-            Status = UfoStatus.Flying, Altitude = WorldAltitudes.Low, TrajectoryPoint = 1,
+            Status = UfoStatus.Flying,
+            Altitude = WorldAltitudes.Low,
+            TrajectoryPoint = 1,
             Destination = WorldTargetReference.ForWaypoint(0, initial.World.Ufos[0].Position),
         };
         var campaign = CampaignState.Restore(initial with
@@ -79,6 +81,42 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         var campaign = CampaignState.Restore(initial with
         { World = initial.World with { Missions = [mission], Ufos = [ufo] } }, content, new SplitMix64RandomSource(17));
         AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrdinaryTakeoffsUseReferenceObjectiveScoreFiltering(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "normalLiftRows"))
+        {
+            var initial = CreateLifecycleSnapshot(content);
+            var objective = row[0].GetInt32();
+            var operation = row[1].GetInt32();
+            var excluded = objective is 1 or 2;
+            var snapshot = initial with
+            {
+                Regions = [initial.Regions[0] with { ActivityAlien = [excluded ? int.MaxValue : 0] }],
+                World = initial.World with
+                {
+                    Missions = [initial.World.Missions[0] with { RuleId = $"LIFECYCLE_{objective}_{operation}" }],
+                    Ufos = [initial.World.Ufos[0] with { SecondsRemaining = 5 }],
+                },
+            };
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var actual = Assert.Single(after.World.Ufos);
+            Assert.Equal((UfoStatus)row[2].GetInt32(), actual.Status);
+            Assert.Equal(row[3].GetString(), actual.Altitude);
+            Assert.Equal(row[4].GetInt32(), actual.Speed);
+            Assert.Equal(row[5].GetInt32(), actual.SecondsRemaining);
+            Assert.Equal(excluded ? int.MaxValue : row[6].GetInt32(), after.Regions[0].ActivityAlien[0]);
+            Assert.Equal(snapshot.RandomState, after.RandomState);
+            Reload(content, campaign, 17, "objective-takeoff.sav");
+        }
     }
 
     private static void AssertTransition(RuntimeContent content, JsonElement row)
