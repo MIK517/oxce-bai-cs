@@ -94,7 +94,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 var regionRule = campaign.Content.RuntimeRules.Regions[
                     campaign.Content.RuntimeRules.Regions.GetRequired(region)].Value;
                 var missionRegion = regionRule.MissionRegionId.Length == 0 ? region : regionRule.MissionRegionId;
-                _missions.Add(new AlienMissionSnapshot(id, mission, missionRegion, race, 0, 0, countdown, 0, -1));
+                _missions.Add(InitializeMissionOperation(
+                    new AlienMissionSnapshot(id, mission, missionRegion, race, 0, 0, countdown, 0, -1), rule));
                 if (script.UseTable) _strategy.RemoveMission(region, mission);
                 success = true;
             }
@@ -147,8 +148,13 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                         if (StrategyMissionReason(region, options, script, creditedRegions, explicitRegion: false) is { } reason)
                             return reason;
                     }
-                    else if (script.UseTable)
-                        foreach (var type in types) RecordRemoval(region, type.Rule.Id, creditedRegions);
+                    else
+                    {
+                        foreach (var type in types)
+                            if (!ValidMission(type.Rule.Handle!.Value, script.Races.Count == 0, region)) return MissionScriptBoundary;
+                        if (script.UseTable)
+                            foreach (var type in types) RecordRemoval(region, type.Rule.Id, creditedRegions);
+                    }
                 }
             }
             if (script.TargetBaseOdds < 100)
@@ -187,6 +193,10 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 {
                     if (!campaign.Content.RuntimeRules.Regions.TryGet(region, out var regionHandle) || !ValidRegion(regionHandle))
                         return "Mission script strategy references an unavailable region.";
+                    if (script.Missions.Count != 0)
+                        foreach (var choice in WorldScriptSelection.ForMonth(script.Missions, unchecked((ulong)month), false))
+                            if (choice.Weight != 0 && !ValidMission(choice.Rule.Handle!.Value, script.Races.Count == 0, region))
+                                return MissionScriptBoundary;
                     if (script.Missions.Count == 0)
                     {
                         if (_strategy.RegionMissions.TryGetValue(region, out var options))
@@ -238,7 +248,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Earlier mission scripts can exhaust a required strategy region table.";
             foreach (var choice in options.Entries)
                 if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle) ||
-                    !ValidMission(handle, script.Races.Count == 0)) return MissionScriptBoundary;
+                    !ValidMission(handle, script.Races.Count == 0, region)) return MissionScriptBoundary;
             if (script.UseTable)
                 foreach (var name in options.Names) RecordRemoval(region, name, credited);
             return null;
@@ -256,12 +266,18 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             return region.MissionRegionId.Length == 0 || region.MissionRegion is not null;
         }
 
-        bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle, bool useMissionRace)
+        bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle, bool useMissionRace, string? regionId = null)
         {
             var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
             if (!Enum.IsDefined(rule.Objective) ||
-                rule.OperationType != RuntimeMissionOperationType.Space || rule.Waves.Count == 0)
+                !Enum.IsDefined(rule.OperationType) || rule.Waves.Count == 0)
                 return false;
+            if (regionId is not null)
+            {
+                work += 1L + (rule.OperationType == RuntimeMissionOperationType.Space ? 0 : 2L * _alienBases.Count);
+                if (work > MaximumMissionScriptChecks) return false;
+                if (MissionOperationReason(rule, regionId) is not null) return false;
+            }
             if (useMissionRace)
             {
                 var weights = WorldAlienMissionGeneration.WeightsAt(rule.RaceWeights, unchecked((ulong)month), race: true);

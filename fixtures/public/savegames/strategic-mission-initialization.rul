@@ -29,6 +29,41 @@ alienMissions:
     raceWeights: {0: {RACE_A: 1}}
     waves:
       - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OPERATION_0
+    operationType: 0
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OPERATION_1
+    operationType: 1
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OPERATION_2
+    operationType: 2
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OPERATION_3
+    operationType: 3
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OPERATION_4
+    operationType: 4
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OPERATION_5
+    operationType: 5
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OPERATION_6
+    operationType: 6
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
 missionScripts:
   - type: START_OBJECTIVE_0
     firstMonth: 50
@@ -64,5 +99,47 @@ missionScripts:
     firstMonth: 56
     lastMonth: 56
     missionWeights: {0: {START_OBJECTIVE_6: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OPERATION_0
+    firstMonth: 60
+    lastMonth: 60
+    missionWeights: {0: {START_OPERATION_0: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OPERATION_1
+    firstMonth: 61
+    lastMonth: 61
+    missionWeights: {0: {START_OPERATION_1: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OPERATION_2
+    firstMonth: 62
+    lastMonth: 62
+    missionWeights: {0: {START_OPERATION_2: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OPERATION_3
+    firstMonth: 63
+    lastMonth: 63
+    missionWeights: {0: {START_OPERATION_3: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OPERATION_4
+    firstMonth: 64
+    lastMonth: 64
+    missionWeights: {0: {START_OPERATION_4: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OPERATION_5
+    firstMonth: 65
+    lastMonth: 65
+    missionWeights: {0: {START_OPERATION_5: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OPERATION_6
+    firstMonth: 66
+    lastMonth: 66
+    missionWeights: {0: {START_OPERATION_6: 1}}
     regionWeights: {0: {REGION: 1}}
     raceWeights: {0: {RACE_A: 1}}

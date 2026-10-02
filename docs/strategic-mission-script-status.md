@@ -62,3 +62,11 @@ Cycle 1: AlienMission::start initializes space mission counters and timer indepe
 of objective. Scheduling now permits infiltration, base, retaliation, supply and
 instant retaliation without executing future effects. The generation oracle
 objective rows verify the shared initialization timer; fresh/cache tests reload each.
+
+Cycle 2: non-space initialization now selects existing regional or Earth bases in
+saved order, aborts existing-only missions when none exist, and reuses bases for
+new-if-necessary modes. Forced regional new-base creation and missing fallback bases
+remain guarded before scheduling. The strategic-mission-operation probe captures
+the exact initialization prefix, including timer-before-base-selection order.
+The misleading EarthNewBase name retains the reference whole-Earth existing-base
+lookup before creation. Audit review also bounds candidate and identity scans.

@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 76 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 77 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 76 files.
+`src/Oxce.Gameplay` - 77 files.
 
 ### `Oxce.Gameplay`
 
@@ -1363,6 +1363,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-event](../fixtures/manifests/strategic-event.json) | cpp-reference | `savegames/strategic-event.expected.json` | `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs)) |
 | [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [strategic-mission-base-target](../fixtures/manifests/strategic-mission-base-target.json) | cpp-reference | `savegames/strategic-mission-base-target.expected.json` | `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))<br>`StrategicMissionStrategyTests` ([StrategicMissionStrategyTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionStrategyTests.cs)) |
+| [strategic-mission-operation](../fixtures/manifests/strategic-mission-operation.json) | cpp-reference | `savegames/strategic-mission-operation.expected.json` | `StrategicMissionInitializationTests` ([StrategicMissionInitializationTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionInitializationTests.cs)) |
 | [strategic-mission-strategy](../fixtures/manifests/strategic-mission-strategy.json) | cpp-reference | `savegames/strategic-mission-strategy.expected.json` | `StrategicMissionStrategyTests` ([StrategicMissionStrategyTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionStrategyTests.cs)) |
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
