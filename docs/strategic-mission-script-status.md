@@ -130,3 +130,11 @@ retaliation assault, aggressive-retaliation RNG, crash creation, and flagged
 base-creation transitions. The Base objective's landing flag is checked against
 the current zone independently of the wave objective flag, as in AlienMission.cpp.
 Fresh/cache oracle rows and an atomic base-creation boundary regression pass.
+
+### Additional 4c cycle: ordinary takeoffs
+
+All normal landed UFOs may count down and take off across objectives and operation
+modes. AlienMission.cpp ufoLifting/addScore supply the score semantics: positive
+mission points, excluding Base and Infiltration. Preflight now uses the same lift
+operation for overflow accounting. All 49 objective/operation combinations pass
+fresh/cache oracle tests and reload, including excluded scores at int.MaxValue.

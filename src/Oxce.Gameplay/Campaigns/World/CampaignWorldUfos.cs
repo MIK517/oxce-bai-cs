@@ -110,11 +110,6 @@ internal sealed partial class CampaignWorld
                 if (ufo.Altitude != WorldAltitudes.Ground || ufo.SecondsRemaining < 5 || ufo.SecondsRemaining % 5 != 0)
                     return "Landed UFO timer or altitude is invalid.";
                 var mission = FindMission(ufo.MissionId)!;
-                var rules = campaign.Content.RuntimeRules;
-                var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-                if (missionRule.Objective != RuntimeMissionObjective.Score ||
-                    missionRule.OperationType != RuntimeMissionOperationType.Space)
-                    return "UFO takeoff requires mission simulation.";
                 if (!TryUfoLiftSpeed(ufo, mission, out _))
                     return "UFO speed is invalid.";
                 continue;

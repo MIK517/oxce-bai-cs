@@ -192,5 +192,18 @@ void transitionRows(){
   std::cout<<'['<<objective<<','<<operation<<','<<(linked?1:0)<<','<<point<<','<<ufo._status<<",\""<<ufo._altitude<<"\",\""<<number(ufo._dest->_lon)<<"\",\""<<number(ufo._dest->_lat)<<"\","<<ufo._speed<<','<<ufo._secondsRemaining<<','<<RNG::calls<<']';
  }
 }
+void normalLiftRows(){
+ bool first=true;
+ for(int objective=0;objective<=6;objective++)for(int operation=0;operation<=6;operation++){
+  if(!first)std::cout<<',';first=false;
+  Game game;AlienMission mission;mission._rule.objective=objective;mission._rule.operation=operation;
+  Ufo ufo(&game.mod.ufo,9);ufo.setMissionInfo(&mission,&game.mod.trajectory);ufo.point=2;
+  ufo.setAltitude("STR_GROUND");ufo.setSecondsRemaining(5);
+  auto* destination=new Waypoint();destination->setLongitude(0.4);destination->setLatitude(0.2);ufo.setDestination(destination);
+  ufo.think();mission.ufoLifting(ufo,game.save);
+  std::cout<<'['<<objective<<','<<operation<<','<<ufo._status<<",\""<<ufo._altitude<<"\","<<ufo._speed<<','<<ufo._secondsRemaining<<','<<game.save.activity<<']';
+ }
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"]}\n";}
+
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"]}\n";}

@@ -331,7 +331,7 @@ public sealed class StrategicWorldUfoLandingTests
     }
 
     [Fact]
-    public void UnsupportedLandedMissionStopsBeforeMutation()
+    public void SiteMissionUsesOrdinaryLandedCountdownAndTakeoff()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateCampaign(content, landed: true).Capture();
@@ -341,7 +341,13 @@ public sealed class StrategicWorldUfoLandingTests
             { Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE" }] },
         }, content, new SplitMix64RandomSource(94));
 
-        AssertTimeBlocked(campaign, "UFO takeoff requires mission simulation.");
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(UfoStatus.Flying, Assert.Single(after.World.Ufos).Status);
+        Assert.Equal(WorldAltitudes.VeryLow, after.World.Ufos[0].Altitude);
+        Assert.Equal(0, after.World.Ufos[0].SecondsRemaining);
+        Assert.Empty(after.World.MissionSites);
+        Reload(content, campaign, 94, "site-mission-takeoff.sav");
     }
 
     [Theory]
