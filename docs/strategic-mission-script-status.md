@@ -138,3 +138,13 @@ modes. AlienMission.cpp ufoLifting/addScore supply the score semantics: positive
 mission points, excluding Base and Infiltration. Preflight now uses the same lift
 operation for overflow accounting. All 49 objective/operation combinations pass
 fresh/cache oracle tests and reload, including excluded scores at int.MaxValue.
+
+### Additional 4c cycle: Supply spawn decisions
+
+Supply objective waves with no linked alien base advance counters without creating
+UFOs; undefined supply UFO rules also suppress spawning. Objective supply UFOs use
+the reference default constructor, ignoring configured hunter-killer percentages.
+Immediate-chain forecasts now account for suppression so cleanup remains atomic.
+AlienMission.cpp spawnUfo and Ufo.h defaults back captured decision rows; fresh/cache
+tests cover source links, space/Earth operations, percentages, immediate chains and reloads.
+Supply ground destinations and non-objective hunters remain guarded.

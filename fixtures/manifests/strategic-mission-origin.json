@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-mission-origin",
-  "description": "Verbatim ordinary/supply spawn origin blocks, with regional selection as a counted collaborator. Captures origin override and skipped supply draws.",
+  "description": "Verbatim ordinary/supply spawn origin blocks, with regional selection as a counted collaborator. Captures origin override and skipped supply draws. Supply decision rows capture missing-rule/base suppression and objective constructor selection, with the header default checked.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_mission_origin_probe.cpp",
-      "size": 1706,
-      "sha256": "9d243b003e8d9a20aa6c679e674d3ea5fe006bb3808d205a919b4aa896592c86"
+      "size": 2593,
+      "sha256": "46678c0884799d027bdf4dd7b690a2ac0f8680d72ec72f66e1410ed1558f96a9"
     },
     {
       "path": "tools/capture-strategic-mission-origin-reference.ps1",
-      "size": 3192,
-      "sha256": "8031df6b5e446a0977cc51a07b62567d550c6c10a16985ecb4260a0cd098d305"
+      "size": 3698,
+      "sha256": "03d4d73bb137d6ed2367ccda2fe877c150b5cb79a7e4c49e897590910fbfb949"
     },
     {
       "path": "fixtures/public/savegames/strategic-objective-waves.rul",
@@ -32,6 +32,11 @@
       "path": "fixtures/public/savegames/strategic-world.rul",
       "size": 14290,
       "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-supply-decisions.rul",
+      "size": 3087,
+      "sha256": "e7f6fdd6666d7366e16f7d527cc051f8fa7d7f5f4ced6ca69a087f57968dafa2"
     }
   ],
   "normalization": [

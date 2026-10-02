@@ -1,0 +1,81 @@
+alienMissions:
+  - type: SUPPLY_0_0_0_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 0}
+  - type: SUPPLY_0_0_0_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 0}
+  - type: SUPPLY_0_0_100_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 100}
+  - type: SUPPLY_0_0_100_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 100}
+  - type: SUPPLY_0_1_0_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 0}
+  - type: SUPPLY_0_1_0_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 0}
+  - type: SUPPLY_0_1_100_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 100}
+  - type: SUPPLY_0_1_100_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: "", count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 100}
+  - type: SUPPLY_1_0_0_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 0}
+  - type: SUPPLY_1_0_0_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 0}
+  - type: SUPPLY_1_0_100_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 100}
+  - type: SUPPLY_1_0_100_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: false, hunterKillerPercentage: 100}
+  - type: SUPPLY_1_1_0_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 0}
+  - type: SUPPLY_1_1_0_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 0}
+  - type: SUPPLY_1_1_100_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 100}
+  - type: SUPPLY_1_1_100_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0, objective: true, hunterKillerPercentage: 100}

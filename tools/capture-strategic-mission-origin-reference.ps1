@@ -25,6 +25,12 @@ $start=$mission.IndexOf('std::pair<double, double> pos;', $mission.IndexOf('else
 $end=$mission.IndexOf('Waypoint *wp = new Waypoint();',$start)
 if($start -lt 0 -or $end -le $start){throw 'Missing supply origin block.'}
 $template=$template.Replace('// SUPPLY_ORIGIN',$mission.Substring($start,$end-$start))
+$start=$mission.IndexOf('if (ufoRule == 0 || (wave.objective && !_base))')
+$end=$mission.IndexOf('ufo->setMissionInfo(this, &trajectory);',$start)
+if($start -lt 0 -or $end -le $start){throw 'Missing supply decision block.'}
+$template=$template.Replace('// SUPPLY_DECISION',$mission.Substring($start,$end-$start))
+$ufoHeader=[IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/Ufo.h'))
+if(-not $ufoHeader.Contains('int hunterKillerPercentage = 0')){throw 'Unexpected default UFO hunter percentage.'}
 $work=Join-Path $repository 'artifacts/reference-strategic-mission-origin'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe=Join-Path $work 'strategic_mission_origin_probe.cpp'
