@@ -152,7 +152,7 @@ public sealed class StrategicWorldAlienBaseGenerationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GeneratedFutureSupplyMissionStopsAtItsWaveBeforeFurtherMutation(bool cache)
+    public void GeneratedNoObjectSupplyWaveCompletesWhileObjectiveWaveRemainsGuarded(bool cache)
     {
         var content = Load(cache);
         var campaign = CampaignState.Restore(Snapshot(content, "local"), content, new MinimumChoices());
@@ -163,7 +163,18 @@ public sealed class StrategicWorldAlienBaseGenerationTests
             Time = new CampaignTime(1, 1, 2, 1999, 0, 29, 55),
             World = after.World with { Missions = [after.World.Missions[0] with { SpawnCountdown = 30 }] },
         };
-        AssertTimeBlocked(CampaignState.Restore(due, content, new MinimumChoices()),
+        var completed = CampaignState.Restore(due, content, new MinimumChoices());
+        AdvanceOne(completed);
+        Assert.Empty(completed.Capture().World.Missions);
+        Assert.Empty(completed.Capture().World.Ufos);
+        Assert.Equal(after.World.AlienBases, completed.Capture().World.AlienBases);
+        Reload(content, completed, 40, "completed-generated-supply.sav");
+        var objective = due with
+        {
+            World = due.World with
+            { Missions = [due.World.Missions[0] with { RuleId = "MISSION_SUPPLY" }] }
+        };
+        AssertTimeBlocked(CampaignState.Restore(objective, content, new MinimumChoices()),
             "Alien mission wave spawning requires world simulation.");
     }
 

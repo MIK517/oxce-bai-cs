@@ -13,9 +13,8 @@ craft without resetting the timer. The craft `undetectable` runtime projection
 preserves its default false; compiler revision 32 invalidates stale caches.
 
 Preflight uses the existing pure fuel transition and daily base-deletion proof.
-It allows inactive/not-due hunts and safe empty choices. A possible nonempty
-mission blocks before tick mutation until hunting mission creation and immediate
-waves are integrated. Missing/current-month timelines, weight limits, timer
+It allows inactive/not-due hunts, safe empty choices and delayed mission creation.
+A first wave that may spawn in the immediate think pass blocks before tick mutation. Missing/current-month timelines, weight limits, timer
 overflow and bounded craft checks fail intentionally. Destroyed-craft cleanup and
 combat remain guarded by their existing owners.
 
@@ -40,3 +39,11 @@ Final validation for these three cycles: root `dotnet test --no-restore` passes
 1,478 tests, zero failed or skipped, including checksum and private-corpus tests.
 Formatting, regenerated code-map and diff checks pass. The pinned C++ checkout
 is unchanged. Branch 4c remains incomplete and branch 4d has not started.
+
+Delayed hunting mission creation is now owned. Exact baseHunting and initialization
+countdown captures show source region (one remap), mission ID, optional race and site
+area, source-base linkage, timer reset and first-success craft-loop exit. The
+new mission receives one immediate think countdown after the half-hour handler,
+including at midnight. First timers below 120 minutes retain an immediate-wave
+guard. Mission IDs/population are reserved together with daily base generation.
+Fresh/cache tests cover shortest supported delay, RNG ordering and transition reload.
