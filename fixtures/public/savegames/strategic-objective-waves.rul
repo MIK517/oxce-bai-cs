@@ -34,3 +34,38 @@ alienMissions:
     waves:
       - {ufo: "", count: 2, trajectory: TRAJ_PATROL, timer: 90}
       - {ufo: "", count: 1, trajectory: TRAJ_PATROL, timer: 3000}
+  - type: AIR_OBJECTIVE_0
+    objective: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: AIR_OBJECTIVE_1
+    objective: 1
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: AIR_OBJECTIVE_2
+    objective: 2
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: AIR_OBJECTIVE_3
+    objective: 3
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: AIR_OBJECTIVE_4
+    objective: 4
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: AIR_OBJECTIVE_5
+    objective: 5
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: AIR_OBJECTIVE_6
+    objective: 6
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
