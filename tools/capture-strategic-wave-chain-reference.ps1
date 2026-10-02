@@ -39,6 +39,11 @@ foreach($entry in @(@('// INFILTRATION_CONDITION','if (_rule.getObjective() == O
     if($start -lt 0 -or $end -le $start){throw 'Missing completion condition.'}
     $template=$template.Replace($entry[0],$think.Substring($start,$end-$start)+'return true;')
 }
+$start=$think.IndexOf('else if ((mod.getDeployment(wave.ufoType)')
+$end=$think.IndexOf('{',$start)
+if($start -lt 0 -or $end -le $start){throw 'Missing direct site condition.'}
+$condition=$think.Substring($start,$end-$start).Replace('else if','if')
+$template=$template.Replace('// DIRECT_SITE_CONDITION',$condition+'return true;')
 $work = Join-Path $repository 'artifacts/reference-strategic-wave-chain'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_wave_chain_probe.cpp'

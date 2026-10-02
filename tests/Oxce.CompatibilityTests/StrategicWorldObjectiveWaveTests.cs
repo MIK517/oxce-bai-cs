@@ -13,6 +13,38 @@ public sealed class StrategicWorldObjectiveWaveTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void UndefinedUfosAndNonSiteFlagsFollowReferenceNoObjectDecisions(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-no-object-waves.rul"], cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "siteRows"))
+        {
+            var deployment = row[0].GetInt32();
+            var marker = row[1].GetInt32();
+            var objective = row[2].GetInt32();
+            var flag = row[3].GetInt32();
+            var mission = new AlienMissionSnapshot(4, $"NO_OBJECT_{deployment}_{marker}_{objective}_{flag}",
+                "REGION", "RACE_A", 0, 0, 0, 0, -1);
+            var campaign = Restore(content, mission);
+            if (row[4].GetInt32() != 0 || objective is 4 or 6)
+                AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+            else if (objective == 1)
+                AssertTimeBlocked(campaign, "Alien mission wave completion requires objective simulation.");
+            else
+            {
+                AdvanceOne(campaign);
+                Assert.Empty(campaign.Capture().World.Missions);
+                Assert.Empty(campaign.Capture().World.Ufos);
+                Assert.Empty(campaign.Capture().World.MissionSites);
+                Reload(content, campaign, 17, "no-object-flags.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void SupplySpawnSuppressionAndConstructorChoiceMatchReference(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");

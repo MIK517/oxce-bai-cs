@@ -154,9 +154,9 @@ internal sealed partial class CampaignWorld
         var wave = rule.Waves[mission.NextWave];
         if (SuppressedSupplyWave(mission, rule, wave))
             return wave.Trajectory is not null && CanAdvanceWaveCounters(mission, rule, wave);
-        if (DeferredWaveCompletion(mission, rule, wave) || wave.UfoType.Length != 0 || wave.Ufo is not null || wave.Deployment is not null ||
-            wave.Trajectory is null || wave.Objective || wave.ObjectiveOnTheLandingSite ||
-            wave.ObjectiveOnXcomBase)
+        if (DeferredWaveCompletion(mission, rule, wave) || wave.Ufo is not null || wave.Trajectory is null ||
+            rule.Objective == RuntimeMissionObjective.Site && wave.Objective ||
+            wave.Deployment is { } deployment && campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.MarkerName.Length != 0)
             return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
