@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-wave-chain",
-  "description": "Extracted AlienMission::think countdown, wave counters and exact-zero recursive scheduling; creation is a counted collaborator.",
+  "description": "Extracted AlienMission::think countdown, wave counters and exact-zero recursive scheduling; creation is a counted collaborator. Includes verbatim infiltration/base completion conditions with payload bodies replaced by boundary predicates.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -16,18 +16,23 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_wave_chain_probe.cpp",
-      "size": 1861,
-      "sha256": "2ee3ecfadcad0d0b1ac24d4aab39e93c515b8a484c3c507cedd311e3183a16ec"
+      "size": 2595,
+      "sha256": "734071f42e97979bab060a9d723ab6f5971a90745a30e7265f5ab03a34308fd0"
     },
     {
       "path": "tools/capture-strategic-wave-chain-reference.ps1",
-      "size": 3544,
-      "sha256": "b4b6e9de2854123215c12c3536cf548c84d463e6ccd627652654ff471cb11750"
+      "size": 4000,
+      "sha256": "3a2294ff1b761491fab0a8c62961a9fb5a663439e30bb356ccc9db3e3be2d23f"
     },
     {
       "path": "fixtures/public/savegames/strategic-world.rul",
       "size": 14290,
       "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-objective-waves.rul",
+      "size": 1317,
+      "sha256": "73ddb373f6ca9f82678d66493425a23f5da15d4bff4944ca5e6a9740478f08b3"
     }
   ],
   "normalization": [
