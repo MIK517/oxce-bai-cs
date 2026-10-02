@@ -38,6 +38,14 @@ void run(const char* name, std::vector<Wave> waves, size_t counter, size_t count
     }
     std::cout << "]}";
 }
+constexpr int OBJECTIVE_INFILTRATION=1, OBJECTIVE_BASE=2;
+struct ObjectiveRule { int objective; int getObjective()const{return objective;} size_t getWaveCount()const{return 2;} };
+bool completionRequired(int objective,size_t _nextWave,bool landing) {
+ ObjectiveRule _rule{objective}; struct {bool objectiveOnTheLandingSite;} wave{landing};
+ // INFILTRATION_CONDITION
+ // BASE_CONDITION
+ return false;
+}
 int main() {
     std::cout << "{\"cases\":[";
     run("mixed", {{2,90},{3,0},{1,1}}, 1, 0); std::cout << ',';
@@ -45,5 +53,9 @@ int main() {
     run("rounded", {{3,29}}, 0, 0); std::cout << ',';
     run("empty-count", {{0,0},{0,0}}, 0, 0); std::cout << ',';
     run("pending", {{1,90}}, 0, 90);
-    std::cout << "]}\n";
+    std::cout << "],\"completionRows\":[";bool first=true;
+    for(int objective=0;objective<=6;objective++)for(bool last:{false,true})for(bool landing:{false,true}) {
+        if(!first)std::cout<<',';first=false;
+        std::cout<<'['<<objective<<','<<last<<','<<landing<<','<<completionRequired(objective,last?2:1,landing)<<']';
+    }std::cout<<"]}\n";
 }

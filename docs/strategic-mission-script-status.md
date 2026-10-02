@@ -70,3 +70,9 @@ remain guarded before scheduling. The strategic-mission-operation probe captures
 the exact initialization prefix, including timer-before-base-selection order.
 The misleading EarthNewBase name retains the reference whole-Earth existing-base
 lookup before creation. Audit review also bounds candidate and identity scans.
+
+Cycle 3: no-object waves now advance score, infiltration, base, site and supply
+missions without restricting their operation mode. Final infiltration/base
+effects stop before the entire tick mutates; retaliation spawning remains guarded.
+The wave-chain capture includes the exact objective-completion predicates.
+Cycle 2 post-commit audit found no confirmed functional issue.

@@ -33,6 +33,12 @@ $start = $think.IndexOf('if (_nextWave != _rule.getWaveCount())', [StringCompari
 $end = $think.LastIndexOf('}')
 if ($start -lt 0 -or $end -lt 0) { throw 'Missing recursive scheduling block.' }
 $template = $template.Replace('// FOLLOWUP', $think.Substring($start, $end - $start))
+foreach($entry in @(@('// INFILTRATION_CONDITION','if (_rule.getObjective() == OBJECTIVE_INFILTRATION'), @('// BASE_CONDITION','if (_rule.getObjective() == OBJECTIVE_BASE'))) {
+    $start=$think.IndexOf($entry[1], [StringComparison]::Ordinal)
+    $end=$think.IndexOf('{',$start)
+    if($start -lt 0 -or $end -le $start){throw 'Missing completion condition.'}
+    $template=$template.Replace($entry[0],$think.Substring($start,$end-$start)+'return true;')
+}
 $work = Join-Path $repository 'artifacts/reference-strategic-wave-chain'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_wave_chain_probe.cpp'

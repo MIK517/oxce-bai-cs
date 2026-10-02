@@ -49,6 +49,8 @@ internal sealed partial class CampaignWorld
             foreach (var step in DueWaveSteps(mission, rule))
             {
                 if (++work > MaximumImmediateWaveSteps) return WaveWorkReason;
+                if (DeferredWaveCompletion(step, rule, rule.Waves[step.NextWave]))
+                    return "Alien mission wave completion requires objective simulation.";
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
                 if (CanSpawnOrdinaryUfoWave(step, rule))
                 {
@@ -130,15 +132,21 @@ internal sealed partial class CampaignWorld
 
     private static bool CanAdvanceNoObjectWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
-        if (rule.Objective != RuntimeMissionObjective.Score ||
-            rule.OperationType != RuntimeMissionOperationType.Space)
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
             return false;
         var wave = rule.Waves[mission.NextWave];
-        if (wave.UfoType.Length != 0 || wave.Ufo is not null || wave.Deployment is not null ||
+        if (DeferredWaveCompletion(mission, rule, wave) || wave.UfoType.Length != 0 || wave.Ufo is not null || wave.Deployment is not null ||
             wave.Trajectory is null || wave.Objective || wave.ObjectiveOnTheLandingSite ||
             wave.ObjectiveOnXcomBase)
             return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
+    }
+
+    private static bool DeferredWaveCompletion(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave)
+    {
+        var finishes = mission.NextWave + 1 == rule.Waves.Count && (ulong)mission.NextUfoCounter + 1 >= wave.UfoCount;
+        return finishes && (rule.Objective == RuntimeMissionObjective.Infiltration ||
+            rule.Objective == RuntimeMissionObjective.Base && !wave.ObjectiveOnTheLandingSite);
     }
 
     private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
