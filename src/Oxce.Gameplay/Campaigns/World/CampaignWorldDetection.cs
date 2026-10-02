@@ -105,7 +105,7 @@ internal sealed partial class CampaignWorld
                 var wave = missionRule.Waves[step.NextWave];
                 var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
                 var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-                if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position))
+                if (!TryOrdinarySpawnPosition(step, missionRule, trajectory, region, out var position))
                     return "Alien mission wave spawning requires world simulation.";
                 var reason = CheckHalfHourUfo(wave.UfoType, position, regionTotals, countryTotals);
                 if (reason is not null) return reason;
