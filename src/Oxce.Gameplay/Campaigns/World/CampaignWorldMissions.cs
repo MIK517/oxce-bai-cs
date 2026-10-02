@@ -179,8 +179,7 @@ internal sealed partial class CampaignWorld
             return false;
         var wave = rule.Waves[mission.NextWave];
         if (DeferredWaveCompletion(mission, rule, wave) || wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
-            wave.Objective && rule.Objective != RuntimeMissionObjective.Supply ||
-            wave.ObjectiveOnTheLandingSite || wave.ObjectiveOnXcomBase || SuppressedSupplyWave(mission, rule, wave))
+            SuppressedSupplyWave(mission, rule, wave))
             return false;
         var rules = campaign.Content.RuntimeRules;
         var ufoRule = rules.Ufos[ufoHandle].Value;
@@ -191,6 +190,9 @@ internal sealed partial class CampaignWorld
         if (trajectory.Waypoints.Count < 2 ||
             !IsAirborne(trajectory.Altitude(0)) || !IsAirborne(trajectory.Altitude(1)))
             return false;
+        if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 && wave.Objective &&
+            (trajectory.Zone(0) == rule.SpawnZone || trajectory.Zone(1) == rule.SpawnZone))
+            return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         // The half-hour UFO handler scores and detects this ship after spawning.
@@ -199,7 +201,7 @@ internal sealed partial class CampaignWorld
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         if (!TryOrdinarySpawnPosition(mission, rule, trajectory, region, out var position) ||
-            !TryGetFixedWaypoint(region, trajectory.Zone(1), out var destination) ||
+            !TryOrdinarySpawnDestination(mission, rule, trajectory, region, out var destination) ||
             !(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed)))
             return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
@@ -225,6 +227,19 @@ internal sealed partial class CampaignWorld
         if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out position)) return false;
         if (source is not null) position = source.Position;
         return position.IsNormalized;
+    }
+
+    private bool TryOrdinarySpawnDestination(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out WorldPosition position)
+    {
+        _ = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
+        if (rule.Objective != RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
+            trajectory.Waypoints.Count == 2 && MissionSourceBase(mission) is { } source)
+        {
+            position = source.Position;
+            return position.IsNormalized;
+        }
+        return TryGetFixedWaypoint(region, trajectory.Zone(1), out position);
     }
 
     private static bool TryGetFixedWaypoint(RuntimeRegionRule region, int zone, out WorldPosition position)
@@ -265,7 +280,9 @@ internal sealed partial class CampaignWorld
         if (source is not null) position = source.Position;
         // Fixed-point eligibility implies getLandPoint's city bypass when the
         // following leg lands, consuming the same regional selection.
-        var destination = NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random));
+        var destination = NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
+            ? WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random)
+            : OrdinaryWaypoint(mission, trajectory, 1, region, ufoRule));
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         var speedRadian = WorldGeometry.RadianSpeed(speed);

@@ -156,3 +156,12 @@ regardless of unrelated objective flags. The pinned think predicate guards direc
 site generation for marked deployments and Site objectives with objective waves.
 Infiltration completion and special retaliation spawning remain guarded. Fresh/cache
 fixtures cover the predicate combinations, immediate chains, atomic guards and reloads.
+
+### Additional 4c cycle: flag-aware ordinary airborne spawning
+
+Objective, landing-site and XCOM-base flags no longer blanket-block ordinary
+spawning. Generic spawn still guards actual getWaypoint mission-site paths;
+Supply keeps its separate constructor and destination rules. Generic two-point
+Earth trajectories return to the operation base at waypoint 1, matching the same
+getWaypoint helper used by later arrivals. Flags without site targeting preserve
+coordinates and RNG in captured ordinary-spawn rows and fresh/cache reload tests.

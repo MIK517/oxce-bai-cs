@@ -9,7 +9,7 @@ struct RuleUfo {
  bool isUnmanned() const { return false; }
  std::string getType() const { return "UFO_SCOUT"; }
 };
-struct MissionWave { int ufoCount=1; size_t spawnTimer=9000; bool objective=false,objectiveOnTheLandingSite=false; std::string trajectory="ordinary"; };
+struct MissionWave { int ufoCount=1; size_t spawnTimer=9000; bool objective=false,objectiveOnTheLandingSite=false,objectiveOnXcomBase=false; std::string trajectory="ordinary"; };
 struct UfoTrajectory {
  static const std::string RETALIATION_ASSAULT_RUN;
  int timer=2;
@@ -205,5 +205,17 @@ void normalLiftRows(){
  }
 }
 
+void spawnFlagRows(){
+ bool first=true;
+ for(bool objective:{false,true})for(bool landing:{false,true})for(bool xcom:{false,true}){
+  if(!first)std::cout<<',';first=false;
+  Game game;Globe globe;AlienMission mission;mission._rule.wave.objective=objective;
+  mission._rule.wave.objectiveOnTheLandingSite=landing;mission._rule.wave.objectiveOnXcomBase=xcom;
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);game.mod.region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  RNG::calls=0;auto* ufo=mission.spawnUfo(game.save,game.mod,globe,mission._rule.wave,game.mod.trajectory);
+  std::cout<<'['<<objective<<','<<landing<<','<<xcom<<",\""<<number(ufo->_lon)<<"\",\""<<number(ufo->_lat)<<"\",\""<<number(ufo->_dest->_lon)<<"\",\""<<number(ufo->_dest->_lat)<<"\","<<RNG::calls<<']';delete ufo;
+ }
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"]}\n";}
+
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"]}\n";}
