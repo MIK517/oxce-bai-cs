@@ -259,7 +259,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle, bool useMissionRace)
         {
             var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
-            if (rule.Objective != RuntimeMissionObjective.Score ||
+            if (!Enum.IsDefined(rule.Objective) ||
                 rule.OperationType != RuntimeMissionOperationType.Space || rule.Waves.Count == 0)
                 return false;
             if (useMissionRace)

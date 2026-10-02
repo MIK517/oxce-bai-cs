@@ -1,0 +1,68 @@
+alienMissions:
+  - type: START_OBJECTIVE_0
+    objective: 0
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OBJECTIVE_1
+    objective: 1
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OBJECTIVE_2
+    objective: 2
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OBJECTIVE_4
+    objective: 4
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OBJECTIVE_5
+    objective: 5
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: START_OBJECTIVE_6
+    objective: 6
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+missionScripts:
+  - type: START_OBJECTIVE_0
+    firstMonth: 50
+    lastMonth: 50
+    missionWeights: {0: {START_OBJECTIVE_0: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OBJECTIVE_1
+    firstMonth: 51
+    lastMonth: 51
+    missionWeights: {0: {START_OBJECTIVE_1: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OBJECTIVE_2
+    firstMonth: 52
+    lastMonth: 52
+    missionWeights: {0: {START_OBJECTIVE_2: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OBJECTIVE_4
+    firstMonth: 54
+    lastMonth: 54
+    missionWeights: {0: {START_OBJECTIVE_4: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OBJECTIVE_5
+    firstMonth: 55
+    lastMonth: 55
+    missionWeights: {0: {START_OBJECTIVE_5: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+  - type: START_OBJECTIVE_6
+    firstMonth: 56
+    lastMonth: 56
+    missionWeights: {0: {START_OBJECTIVE_6: 1}}
+    regionWeights: {0: {REGION: 1}}
+    raceWeights: {0: {RACE_A: 1}}

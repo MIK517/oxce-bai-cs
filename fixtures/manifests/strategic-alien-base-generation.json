@@ -42,6 +42,11 @@
       "path": "fixtures/public/savegames/strategic-mission-region-remap.rul",
       "size": 714,
       "sha256": "425c721b349432189ac8f9d3c06c07e012864ddfd9fbb5e3bded523768ace5c3"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-mission-initialization.rul",
+      "size": 2137,
+      "sha256": "c9e697aaebc231327a2049c73034d2e75b6596343029b7b910301339f8699472"
     }
   ],
   "normalization": [
