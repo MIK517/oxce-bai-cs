@@ -121,3 +121,12 @@ Ordinary airborne arrivals now support all mission objectives and operation mode
 The pinned lifecycle rows verify waypoint coordinates, speeds, RNG and reloads.
 Aggressive retaliation outside zone 5 remains blocked before its discarded
 first-waypoint random adjustment; site conversion and ground objectives remain guarded.
+
+### Additional 4c cycle: ordinary ground arrivals
+
+Ground arrivals now use reference landing eligibility, timers, altitude, marker and
+speed behavior across all objectives/operations. Guards sit at site replacement,
+retaliation assault, aggressive-retaliation RNG, crash creation, and flagged
+base-creation transitions. The Base objective's landing flag is checked against
+the current zone independently of the wave objective flag, as in AlienMission.cpp.
+Fresh/cache oracle rows and an atomic base-creation boundary regression pass.

@@ -293,3 +293,8 @@ alienMissions:
     points: 7
     waves:
       - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_LANDING, timer: 9000}
+  - type: LIFECYCLE_BASE_EFFECT
+    objective: 2
+    spawnZone: 5
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_LANDING, timer: 9000, objectiveOnTheLandingSite: true}

@@ -35,6 +35,34 @@ public sealed class StrategicWorldObjectiveLifecycleTests
             AssertTransition(content, row);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrdinaryGroundArrivalsAcrossObjectivesPreserveLandingTimers(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "transitionRows")
+                     .Where(row => row[0].GetInt32() != 0 && row[3].GetInt32() == 1))
+            AssertTransition(content, row);
+    }
+
+    [Fact]
+    public void GroundArrivalThatWouldCreateAnAlienBaseIsBlockedBeforeMutation()
+    {
+        var content = Load(false);
+        var initial = CreateLifecycleSnapshot(content);
+        var mission = initial.World.Missions[0] with { RuleId = "LIFECYCLE_BASE_EFFECT" };
+        var ufo = initial.World.Ufos[0] with
+        {
+            Status = UfoStatus.Flying, Altitude = WorldAltitudes.Low, TrajectoryPoint = 1,
+            Destination = WorldTargetReference.ForWaypoint(0, initial.World.Ufos[0].Position),
+        };
+        var campaign = CampaignState.Restore(initial with
+        { World = initial.World with { Missions = [mission], Ufos = [ufo] } }, content, new SplitMix64RandomSource(17));
+        AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+    }
+
     [Fact]
     public void AggressiveRetaliationArrivalsStayAtomicBeforeTheirAdditionalRandomChoices()
     {
