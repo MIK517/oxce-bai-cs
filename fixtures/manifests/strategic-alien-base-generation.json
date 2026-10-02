@@ -45,8 +45,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-mission-initialization.rul",
-      "size": 2137,
-      "sha256": "c9e697aaebc231327a2049c73034d2e75b6596343029b7b910301339f8699472"
+      "size": 4622,
+      "sha256": "9f09e32b328ea86c1b211ec0ddf8c0361a2e31fac0a84a22d40f1dd380ac15c7"
     }
   ],
   "normalization": [
