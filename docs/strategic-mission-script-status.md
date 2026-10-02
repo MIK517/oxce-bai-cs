@@ -88,3 +88,8 @@ base. Ordinary missions retain regional selection before the override; supply
 missions skip it, as captured by strategic-mission-origin. Scoring preflight uses
 the actual source position and lookups are bounded. Space missions ignore the
 optional source for launch origin. Cycle 4 audit found no confirmed defect.
+
+Cycle 6: hunting creates delayed missions through the world capability, applies
+the immediate think countdown, resets only the hunting timer and preserves source
+links. Shorter first timers retain the immediate-wave guard. Cycle 5 audit found
+no confirmed functional defect. Six-cycle acceptance and final audit follow.

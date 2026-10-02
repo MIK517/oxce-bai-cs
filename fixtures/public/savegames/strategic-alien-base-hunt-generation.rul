@@ -1,0 +1,75 @@
+crafts:
+  - type: SHIP
+    sightRange: 0
+alienMissions:
+  - type: HUNT_GEN
+    objective: 0
+    spawnZone: 1
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: HUNT_GEN_RACE
+    objective: 0
+    spawnZone: 1
+    raceWeights: {0: {RACE_B: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: HUNT_GEN_SITE
+    objective: 3
+    spawnZone: 1
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: HUNT_GEN_SHORT
+    objective: 0
+    spawnZone: 1
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 120}
+  - type: HUNT_GEN_IMMEDIATE
+    objective: 0
+    spawnZone: 1
+    raceWeights: {0: {RACE_A: 1}}
+    waves:
+      - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 30}
+alienDeployments:
+  - type: HUNT_GENERATE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionRaceFromAlienBase: true
+    huntMissionWeights: {0: {HUNT_GEN: 1}}
+  - type: HUNT_GENERATE_RACE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionRaceFromAlienBase: false
+    huntMissionWeights: {0: {HUNT_GEN_RACE: 1}}
+  - type: HUNT_GENERATE_SITE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionRaceFromAlienBase: true
+    huntMissionWeights: {0: {HUNT_GEN_SITE: 1}}
+  - type: HUNT_GENERATE_SHORT
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionRaceFromAlienBase: true
+    huntMissionWeights: {0: {HUNT_GEN_SHORT: 1}}
+  - type: HUNT_IMMEDIATE
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionRaceFromAlienBase: true
+    huntMissionWeights: {0: {HUNT_GEN_IMMEDIATE: 1}}

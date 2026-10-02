@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-alien-base-hunt-generation",
+  "description": "Exact baseHunting creation and start/think countdown prefixes. Controlled mission/race/region collaborators; delayed waves only. Captures timer reset, craft-loop break, source linkage, site area and one immediate think.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState.cpp::baseHunting/updateActiveCrafts; Craft.cpp::isDestroyed/isIgnoredByHK; AlienDeployment.cpp::generateHuntMission; WeightedOptions.cpp::choose/set",
+      "capture": "tools/capture-strategic-alien-base-hunt-generation-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; methods inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_alien_base_hunt_generation_probe.cpp",
+      "size": 6161,
+      "sha256": "f01eafd3dbb0b68b8540cbda0db7220891e137c84681e891681a14b0326ed81f"
+    },
+    {
+      "path": "tools/capture-strategic-alien-base-hunt-generation-reference.ps1",
+      "size": 4249,
+      "sha256": "f647123759e30c2095cda011477e247e5ad3e28b55ed5cad1ec15c714a1f6058"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-alien-base-hunt-generation.rul",
+      "size": 2251,
+      "sha256": "777790cf297023e93103ddcca126cae8993e8fe67e6cff3e2cc60908e899d37d"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-alien-base-hunt-timer.rul",
+      "size": 954,
+      "sha256": "07d910c0dc7edd44336fba8b016a71ab273ca8464cd216c7dac5df8be72efec4"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world.rul",
+      "size": 14290,
+      "sha256": "9b1d246a38a20824d282ef0d14a64c65d68e687a780d3caa1f4da8c93a510c07"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-alien-base-hunt-generation.expected.json"
+}

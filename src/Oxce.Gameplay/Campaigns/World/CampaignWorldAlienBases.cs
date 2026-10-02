@@ -33,7 +33,8 @@ internal sealed partial class CampaignWorld
             if (daily && BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch)) continue;
             if (!alienBase.Discovered) undiscovered++;
             var rule = AlienBaseRule(alienBase);
-            if (AlienBaseHuntingReason(alienBase, rule, highest, ref work) is { } huntingReason) return huntingReason;
+            if (AlienBaseHuntingReason(alienBase, rule, highest, ref work, out var canHunt) is { } huntingReason) return huntingReason;
+            if (canHunt) possibleMissions++;
             if (highest < CampaignTimeTrigger.OneDay) continue;
             work += rule.GenMission.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;

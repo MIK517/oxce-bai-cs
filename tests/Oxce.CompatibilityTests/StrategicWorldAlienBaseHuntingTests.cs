@@ -84,7 +84,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     public void UnsafeHuntingBlocksBeforeTickMutation(string kind, bool cache)
     {
         var content = Load(cache);
-        var snapshot = Snapshot(content, deployment: kind == "future" ? "HUNT_FUTURE" : "HUNT_LIVE");
+        var snapshot = Snapshot(content, deployment: kind == "future" ? "HUNT_FUTURE" : "HUNT_IMMEDIATE");
         if (kind == "overflow") snapshot = snapshot with
         {
             World = snapshot.World with
@@ -105,7 +105,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     public void AutoPatrolRelaunchCannotEnterHuntingAfterMutatingEarlierHandlers(bool cache)
     {
         var content = Load(cache);
-        var snapshot = Snapshot(content, "grounded", "HUNT_LIVE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+        var snapshot = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -169,10 +169,72 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             "Alien base activity and sight checks exceed the supported work limit.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DelayedHuntingCreationMatchesReferenceAndPersists(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
+        var content = Load(cache);
+        var rows = new List<object[]>();
+        var selected = TestFixtures.Rows(oracle.RootElement, "rows").Where(row => row[3].GetInt32() != 0).ToArray();
+        Assert.NotEmpty(selected);
+        foreach (var row in selected)
+        {
+            var name = row[0].GetString()!;
+            var deployment = name switch
+            {
+                "weightedRace" => "HUNT_GENERATE_RACE",
+                "site" => "HUNT_GENERATE_SITE",
+                "short" => "HUNT_GENERATE_SHORT",
+                _ => "HUNT_GENERATE"
+            };
+            var snapshot = Snapshot(content, name == "twoCrafts" ? "multiple" : "emptyChoice", deployment)
+                .WithNextId("ALIEN_MISSIONS", 1);
+            var random = new MinimumChoices();
+            var campaign = CampaignState.Restore(snapshot, content, random);
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var source = Assert.Single(after.World.AlienBases);
+            var mission = Assert.Single(after.World.Missions);
+            rows.Add([name, source.MinutesSinceLastHuntMissionGeneration, random.Calls, after.World.Missions.Count,
+                new object[] { mission.Id, mission.Race, mission.MissionSiteZoneArea, mission.SpawnCountdown,
+                    mission.AlienBase?.Id == source.Id ? 1 : 0 }]);
+            Assert.Equal(snapshot.World.AlienBases[0].GenMissionCount, source.GenMissionCount);
+            Assert.Equal((0, 0, 0, false), (mission.NextWave, mission.NextUfoCounter, mission.LiveUfos, mission.Interrupted));
+            Assert.Equivalent(snapshot.World.Strategy, after.World.Strategy, strict: true);
+            Reload(content, campaign, 17, "hunting-generated.sav");
+        }
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(selected)),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(rows)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingAfterHalfHourGetsOneImmediateCountdownAndReservesMissionIds(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = Snapshot(content, deployment: "HUNT_GENERATE_SHORT") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+        var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
+        AdvanceOne(campaign);
+        Assert.Equal(30, Assert.Single(campaign.Capture().World.Missions).SpawnCountdown);
+        Reload(content, campaign, 17, "hunting-half-hour.sav");
+        AssertTimeBlocked(CampaignState.Restore(snapshot.WithNextId("ALIEN_MISSIONS", int.MaxValue), content, new MinimumChoices()),
+            "Alien mission IDs or population exceed the supported limit.");
+        var occupied = snapshot with
+        {
+            World = snapshot.World with
+            { Missions = [new AlienMissionSnapshot(1, "MISSION_SCOUT", "REGION", "RACE_A", 0, 0, 9000, 0, -1)] }
+        };
+        AssertTimeBlocked(CampaignState.Restore(occupied.WithNextId("ALIEN_MISSIONS", 1), content, new MinimumChoices()),
+            "Alien mission IDs or population exceed the supported limit.");
+    }
+
     private static RuntimeContent Load(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul"], cache);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache);
     }
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, string name = "emptyChoice", string? deployment = null)
