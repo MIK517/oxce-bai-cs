@@ -219,11 +219,11 @@ internal sealed partial class CampaignWorld
             return false;
         var rules = campaign.Content.RuntimeRules;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        // Ordinary score operations also return to their linked source base.
-        if (missionRule.Objective != RuntimeMissionObjective.Score &&
-            (missionRule.OperationType != RuntimeMissionOperationType.Space ||
-             missionRule.Objective != RuntimeMissionObjective.Site || altitude == 0))
+        if (altitude == 0 && missionRule.Objective != RuntimeMissionObjective.Score)
             return false;
+        if (missionRule.Objective == RuntimeMissionObjective.Retaliation &&
+            campaign.Options.AggressiveRetaliation && trajectory.Zone(nextWaypoint) != 5)
+            return false; // The discarded first waypoint still consumes aggressive retaliation RNG.
         var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
         if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
         var wave = missionRule.Waves[waveIndex];

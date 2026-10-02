@@ -114,3 +114,10 @@ calls remain ordered. Reference: AlienMission.cpp getWaypoint/ufoReachedWaypoint
 The lifecycle oracle covers all seven operation modes, absent/linked bases, and
 three non-terminal transitions. Fresh/cache tests save and reload each result.
 Other objectives, special arrivals, and ordinary takeoff expansion remain pending.
+
+### Additional 4c cycle: airborne objective continuation
+
+Ordinary airborne arrivals now support all mission objectives and operation modes.
+The pinned lifecycle rows verify waypoint coordinates, speeds, RNG and reloads.
+Aggressive retaliation outside zone 5 remains blocked before its discarded
+first-waypoint random adjustment; site conversion and ground objectives remain guarded.
