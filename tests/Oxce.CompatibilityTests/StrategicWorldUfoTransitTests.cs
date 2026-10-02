@@ -55,7 +55,7 @@ public sealed class StrategicWorldUfoTransitTests
         {
             World = snapshot.World with
             {
-                Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE", NextWave = 1 }],
+                Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE", NextWave = 1, MissionSiteZoneArea = 0 }],
                 // Site airborne outbound legs are supported; the ground objective
                 // arrival still requires site creation and must stop before mutation.
                 Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0,
@@ -422,7 +422,7 @@ public sealed class StrategicWorldUfoTransitTests
         {
             World = snapshot.World with
             {
-                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 2 }],
+                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 2, MissionSiteZoneArea = 0 }],
                 Ufos = [arriving, later],
             },
         }, content, new SplitMix64RandomSource(62));

@@ -50,15 +50,14 @@ public sealed class PrivateStrategicWorldTests
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(results));
             Assert.Equal(19, results.Count);
-            Assert.Equal(9, results.Count(result => result.Outcome == "executable"));
-            Assert.Equal(2, results.Count(result => result.Outcome == "blocked"));
+            Assert.Equal(10, results.Count(result => result.Outcome == "executable"));
+            Assert.Equal(1, results.Count(result => result.Outcome == "blocked"));
             Assert.Equal(8, results.Count(result => result.Outcome == "preservation-only"));
             foreach (var result in results)
             {
                 var expected = (result.Family, result.Name) switch
                 {
                     ("vanilla-ufo", "early/Begining.sav") => (125, "Alien mission wave spawning requires world simulation."),
-                    ("modded/rosigma", "early/Begining.sav") => (220, "Alien mission wave spawning requires world simulation."),
                     (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
                         (0, "Active tactical battle is preserved; tactical continuation is unavailable."),
                     _ => (360, (string?)null),
@@ -82,6 +81,18 @@ public sealed class PrivateStrategicWorldTests
         {
             var loaded = OxceSaveAdapter.LoadFile(file, content, new SplitMix64RandomSource(17), options);
             var initial = loaded.Campaign.Capture();
+            if (family == "modded/rosigma" && Path.GetFileName(file) == "Begining.sav")
+            {
+                // This dummy wave previously stopped at tick 220. Reference spawnUfo
+                // returns null for its undefined UFO; think advances without a site.
+                var dummy = Assert.Single(initial.World.Missions, mission => mission.RuleId == "STR_DUMMY");
+                var rule = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired(dummy.RuleId)].Value;
+                var wave = Assert.Single(rule.Waves);
+                Assert.Null(wave.Ufo);
+                Assert.False(wave.Objective);
+                Assert.True(wave.Deployment is null ||
+                    content.RuntimeRules.AlienDeployments[wave.Deployment.Value].Value.MarkerName.Length == 0);
+            }
             var replay = OxceSaveAdapter.Load(OxceSaveAdapter.EmitLoadedCampaign(initial, loaded.Source),
                 file, content, new SplitMix64RandomSource(17), options).Campaign;
             Assert.Equivalent(initial, replay.Capture(), strict: true);

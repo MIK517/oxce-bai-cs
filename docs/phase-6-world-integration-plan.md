@@ -294,3 +294,11 @@ hunter/escort paths and initial/monthly world caller composition remain open.
 The branch 4c headless acceptance gate remains open; branch 4d is untouched.
 See [mission status](strategic-mission-script-status.md) and
 [hunting status](strategic-world-alien-base-hunting-status.md).
+
+Post-cycle audit preserves site-arrival guard tests by selecting an actual mission
+site area instead of relying on the removed objective-wide ground guard. Private
+Rosigma Begining's undefined STR_DUMMY wave now follows captured no-object behavior
+at tick 220 and completes the 360-tick horizon. Its resolved wave is asserted to
+have no UFO or site effect. All 19 classifications remain explicit: ten executable
+at 360 ticks, one UFO save blocked at 125 ticks, eight tactical saves preserved at
+zero ticks; fresh/cache and repeated loaded rewrite assertions are retained.
