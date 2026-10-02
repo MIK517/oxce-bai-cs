@@ -14,7 +14,7 @@ transaction gate. The caller supplies score and eligible funds. The campaign
 month handler remains guarded; initial/monthly arc → mission → event composition
 is still outstanding. Tagged adhoc scheduling shares the mission executor.
 
-Ordinary space/score missions support explicit weighted region, mission and race
+Space missions with every non-site objective support explicit weighted region, mission and race
 timelines, implicit strategy region/mission selection, mission-rule race fallback
 and base targeting. Strategy refresh rebuilds region/mission distributions while
 preserving run and location histories. Base targeting retains duplicate regions,
@@ -38,7 +38,7 @@ table also deletes the region; the audit added that missing guard. Work is bound
 at 4,096 scripts, 100,000 missions and one million candidate checks. Uncertain
 conditionals, removals and possible refresh paths are checked conservatively.
 
-Site scheduling, non-score objectives, non-space initialization and integrated
+Site scheduling, non-space initialization and integrated
 campaign month progression retain capability guards. This subsystem does not
 claim complete branch 4c acceptance.
 
@@ -57,3 +57,8 @@ Final validation for these three cycles: root `dotnet test --no-restore` passes
 1,478 tests, zero failed or skipped, including checksum and private-corpus tests.
 Formatting, regenerated code-map and diff checks pass. The pinned C++ checkout
 is unchanged. Branch 4c remains incomplete and branch 4d has not started.
+
+Cycle 1: AlienMission::start initializes space mission counters and timer independently
+of objective. Scheduling now permits infiltration, base, retaliation, supply and
+instant retaliation without executing future effects. The generation oracle
+objective rows verify the shared initialization timer; fresh/cache tests reload each.

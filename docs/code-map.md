@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 108 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 109 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 86 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -1007,14 +1007,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 108 files.
+`tests/Oxce.CompatibilityTests` - 109 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>106 test classes</summary>
+<details><summary>107 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1074,6 +1074,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs))
 - `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))
 - `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))
+- `StrategicMissionInitializationTests` ([StrategicMissionInitializationTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionInitializationTests.cs))
 - `StrategicMissionRaceFallbackTests` ([StrategicMissionRaceFallbackTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionRaceFallbackTests.cs))
 - `StrategicMissionRegionRemapTests` ([StrategicMissionRegionRemapTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionRegionRemapTests.cs))
 - `StrategicMissionScriptTests` ([StrategicMissionScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionScriptTests.cs))
@@ -1354,7 +1355,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-adhoc-scripts](../fixtures/manifests/strategic-adhoc-scripts.json) | cpp-reference | `savegames/strategic-adhoc-scripts.expected.json` | `StrategicAdhocScriptTests` ([StrategicAdhocScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicAdhocScriptTests.cs)) |
 | [strategic-alien-base-activity](../fixtures/manifests/strategic-alien-base-activity.json) | cpp-reference | `savegames/strategic-alien-base-activity.expected.json` | `StrategicWorldAlienBaseActivityTests` ([StrategicWorldAlienBaseActivityTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseActivityTests.cs))<br>`TerrainDeploymentRuleCatalogTests` ([TerrainDeploymentRuleCatalogTests.cs](../tests/Oxce.UnitTests/Mods/TerrainDeploymentRuleCatalogTests.cs)) |
 | [strategic-alien-base-cleanup](../fixtures/manifests/strategic-alien-base-cleanup.json) | cpp-reference | `savegames/strategic-alien-base-cleanup.expected.json` | `StrategicWorldAlienBaseCleanupTests` ([StrategicWorldAlienBaseCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseCleanupTests.cs)) |
-| [strategic-alien-base-generation](../fixtures/manifests/strategic-alien-base-generation.json) | cpp-reference | `savegames/strategic-alien-base-generation.expected.json` | `StrategicMissionRaceFallbackTests` ([StrategicMissionRaceFallbackTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionRaceFallbackTests.cs))<br>`StrategicMissionRegionRemapTests` ([StrategicMissionRegionRemapTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionRegionRemapTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldAlienBaseGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseGenerationTests.cs))<br>`StrategicWorldMissionInterruptionTests` ([StrategicWorldMissionInterruptionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMissionInterruptionTests.cs)) |
+| [strategic-alien-base-generation](../fixtures/manifests/strategic-alien-base-generation.json) | cpp-reference | `savegames/strategic-alien-base-generation.expected.json` | `StrategicMissionInitializationTests` ([StrategicMissionInitializationTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionInitializationTests.cs))<br>`StrategicMissionRaceFallbackTests` ([StrategicMissionRaceFallbackTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionRaceFallbackTests.cs))<br>`StrategicMissionRegionRemapTests` ([StrategicMissionRegionRemapTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionRegionRemapTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldAlienBaseGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseGenerationTests.cs))<br>`StrategicWorldMissionInterruptionTests` ([StrategicWorldMissionInterruptionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMissionInterruptionTests.cs)) |
 | [strategic-alien-base-hunt-timer](../fixtures/manifests/strategic-alien-base-hunt-timer.json) | cpp-reference | `savegames/strategic-alien-base-hunt-timer.expected.json` | `StrategicWorldAlienBaseHuntingTests` ([StrategicWorldAlienBaseHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseHuntingTests.cs)) |
 | [strategic-alien-base-monthly](../fixtures/manifests/strategic-alien-base-monthly.json) | cpp-reference | `savegames/strategic-alien-base-monthly.expected.json` | `StrategicWorldAlienBaseMonthlyTests` ([StrategicWorldAlienBaseMonthlyTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseMonthlyTests.cs)) |
 | [strategic-crashed-ufo](../fixtures/manifests/strategic-crashed-ufo.json) | cpp-reference | `savegames/strategic-crashed-ufo.expected.json` | `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs)) |
