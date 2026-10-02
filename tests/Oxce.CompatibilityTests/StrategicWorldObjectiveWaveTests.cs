@@ -13,6 +13,51 @@ public sealed class StrategicWorldObjectiveWaveTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void SupplySpawnSuppressionAndConstructorChoiceMatchReference(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-supply-decisions.rul"], cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "supplyRows"))
+            foreach (var operation in new[] { 0, 1 })
+            {
+                var defined = row[0].GetInt32();
+                var objective = row[1].GetInt32();
+                var linked = row[2].GetInt32() != 0;
+                var percentage = row[3].GetInt32();
+                var initial = CreateSnapshot(content, "Supply decision");
+                var mission = new AlienMissionSnapshot(4, $"SUPPLY_{defined}_{objective}_{percentage}_{operation}",
+                    "REGION", "RACE_A", 0, 0, 0, 0, -1)
+                { AlienBase = linked ? new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 7, 0.2, 0.1) : null };
+                var snapshot = initial with
+                {
+                    Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+                    RandomState = 17,
+                    World = initial.World with
+                    {
+                        Missions = [mission],
+                        AlienBases = linked ? [new AlienBaseSnapshot(7, "ALIEN_BASE_DEPLOY", "RACE_A", 0.2, 0.1)] : [],
+                    },
+                };
+                var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+                if (row[5].GetInt32() > 0)
+                    AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+                else
+                {
+                    AdvanceOne(campaign);
+                    var after = campaign.Capture();
+                    Assert.Equal(row[4].GetInt32() * 2, after.World.Ufos.Count);
+                    Assert.All(after.World.Ufos, ufo => Assert.False(ufo.HunterKiller));
+                    if (after.World.Ufos.Count == 0) Assert.Empty(after.World.Missions);
+                    else Assert.Equal(2, Assert.Single(after.World.Missions).LiveUfos);
+                    Reload(content, campaign, 17, "supply-decision.sav");
+                }
+            }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void NoObjectWavesAdvanceUntilTheCapturedObjectiveCompletionBoundary(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");

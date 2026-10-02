@@ -41,7 +41,7 @@ internal sealed partial class CampaignWorld
             foreach (var step in DueWaveSteps(mission, rule))
             {
                 if (++work > MaximumImmediateWaveSteps) return WaveWorkReason;
-                if (rule.OperationType != RuntimeMissionOperationType.Space && step.AlienBase is not null)
+                if (step.AlienBase is not null)
                 {
                     sourceBaseWork += _alienBases.Count;
                     if (sourceBaseWork > MaximumAlienBaseChecks) return "Alien mission source base lookups exceed the supported work limit.";
@@ -147,17 +147,23 @@ internal sealed partial class CampaignWorld
         !(rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration) &&
         mission.NextWave == rule.Waves.Count && mission.LiveUfos == 0;
 
-    private static bool CanAdvanceNoObjectWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    private bool CanAdvanceNoObjectWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
             return false;
         var wave = rule.Waves[mission.NextWave];
+        if (SuppressedSupplyWave(mission, rule, wave))
+            return wave.Trajectory is not null && CanAdvanceWaveCounters(mission, rule, wave);
         if (DeferredWaveCompletion(mission, rule, wave) || wave.UfoType.Length != 0 || wave.Ufo is not null || wave.Deployment is not null ||
             wave.Trajectory is null || wave.Objective || wave.ObjectiveOnTheLandingSite ||
             wave.ObjectiveOnXcomBase)
             return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
+
+    private bool SuppressedSupplyWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
+        rule.Objective == RuntimeMissionObjective.Supply &&
+        (wave.Ufo is null ? wave.Deployment is null : wave.Objective && MissionSourceBase(mission) is null);
 
     private static bool DeferredWaveCompletion(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave)
     {
@@ -173,13 +179,14 @@ internal sealed partial class CampaignWorld
             return false;
         var wave = rule.Waves[mission.NextWave];
         if (DeferredWaveCompletion(mission, rule, wave) || wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
-            wave.Objective || wave.ObjectiveOnTheLandingSite || wave.ObjectiveOnXcomBase)
+            wave.Objective && rule.Objective != RuntimeMissionObjective.Supply ||
+            wave.ObjectiveOnTheLandingSite || wave.ObjectiveOnXcomBase || SuppressedSupplyWave(mission, rule, wave))
             return false;
         var rules = campaign.Content.RuntimeRules;
         var ufoRule = rules.Ufos[ufoHandle].Value;
         var hunterKillerPercentage = wave.HunterKillerPercentage == -1
             ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage;
-        if (hunterKillerPercentage > 0) return false;
+        if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective)) return false;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
         if (trajectory.Waypoints.Count < 2 ||
             !IsAirborne(trajectory.Altitude(0)) || !IsAirborne(trajectory.Altitude(1)))
@@ -300,7 +307,7 @@ internal sealed partial class CampaignWorld
     private const string WaveWorkReason = "Immediate mission waves exceed the supported work limit.";
 
     /// <summary>Forecasts only counters, never object creation, scripts or random choices.</summary>
-    private static IEnumerable<AlienMissionSnapshot> DueWaveSteps(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    private IEnumerable<AlienMissionSnapshot> DueWaveSteps(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         for (var work = 0; ; work++)
         {
@@ -316,7 +323,8 @@ internal sealed partial class CampaignWorld
                 NextWave = nextWave,
                 NextUfoCounter = checked((int)counter),
                 SpawnCountdown = 0,
-                LiveUfos = wave.Ufo is not null ? checked(mission.LiveUfos + 1) : mission.LiveUfos
+                LiveUfos = wave.Ufo is not null && !SuppressedSupplyWave(mission, rule, wave)
+                    ? checked(mission.LiveUfos + 1) : mission.LiveUfos
             };
         }
     }
