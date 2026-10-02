@@ -219,8 +219,6 @@ internal sealed partial class CampaignWorld
             return false;
         var rules = campaign.Content.RuntimeRules;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        if (altitude == 0 && missionRule.Objective != RuntimeMissionObjective.Score)
-            return false;
         if (missionRule.Objective == RuntimeMissionObjective.Retaliation &&
             campaign.Options.AggressiveRetaliation && trajectory.Zone(nextWaypoint) != 5)
             return false; // The discarded first waypoint still consumes aggressive retaliation RNG.
@@ -236,6 +234,9 @@ internal sealed partial class CampaignWorld
         if (altitude == 0 && (ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
             mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(ufo.TrajectoryPoint) == missionRule.SpawnZone))
             return false;
+        if (altitude == 0 && missionRule.Objective == RuntimeMissionObjective.Base &&
+            wave.ObjectiveOnTheLandingSite && trajectory.Zone(ufo.TrajectoryPoint) == missionRule.SpawnZone)
+            return false; // spawnAlienBase is a separate world consequence.
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         ValidateWaypointAreas(region, zone);
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;

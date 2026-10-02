@@ -31,8 +31,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-objective-lifecycle.rul",
-      "size": 7904,
-      "sha256": "0bddf2316bc5256459fdaec47210cc7fe31d239f18d8369d7f05baedeee4c8ee"
+      "size": 8088,
+      "sha256": "3a4e12be4e27fafe8c659919c4d884a485c0018970cc58dacbc6006b9d376366"
     }
   ],
   "normalization": [
