@@ -198,8 +198,13 @@ internal sealed partial class CampaignWorld
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
-    private AlienBaseSnapshot? MissionSourceBase(AlienMissionSnapshot mission) =>
-        mission.AlienBase is null ? null : _alienBases.Find(candidate => FollowsAlienBase(mission.AlienBase, candidate));
+    private AlienBaseSnapshot? MissionSourceBase(AlienMissionSnapshot mission)
+    {
+        if (mission.AlienBase is null) return null;
+        foreach (var candidate in _alienBases)
+            if (FollowsAlienBase(mission.AlienBase, candidate)) return candidate;
+        return null;
+    }
 
     private bool TryOrdinarySpawnPosition(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out WorldPosition position)

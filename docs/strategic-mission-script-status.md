@@ -104,3 +104,13 @@ verification, regenerated code-map validation and diff checks pass. Obsolete
 compiler object files for the four captures were removed; useful capture outputs
 remain project-local. The pinned C++ checkout is unchanged. Branch 4c remains
 incomplete and branch 4d has not started.
+
+### Additional 4c cycle: operation-base waypoint continuation
+
+Ordinary score UFO arrivals now work for every operation mode. The last waypoint
+returns to a linked alien base without consuming regional RNG; absent bases fall
+back to the original trajectory. Zone validation and both reference getWaypoint
+calls remain ordered. Reference: AlienMission.cpp getWaypoint/ufoReachedWaypoint.
+The lifecycle oracle covers all seven operation modes, absent/linked bases, and
+three non-terminal transitions. Fresh/cache tests save and reload each result.
+Other objectives, special arrivals, and ordinary takeoff expansion remain pending.

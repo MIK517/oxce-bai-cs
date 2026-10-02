@@ -128,6 +128,12 @@ internal sealed partial class CampaignWorld
                 if (mission is null) return "UFO mission link requires world simulation.";
                 var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
                     campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+                if (mission.AlienBase is not null)
+                {
+                    siteLinkWork += _alienBases.Count;
+                    if (siteLinkWork > MaximumAlienBaseChecks)
+                        return "UFO operation-base lookup exceeds the supported work limit.";
+                }
                 if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
                     !CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                     return "UFO waypoint arrival requires mission simulation.";
@@ -213,11 +219,10 @@ internal sealed partial class CampaignWorld
             return false;
         var rules = campaign.Content.RuntimeRules;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        // Site UFOs resume an ordinary airborne outbound leg after reactivation.
-        // Their ground arrivals and all operation-base trajectories still need mission handling.
-        if (missionRule.OperationType != RuntimeMissionOperationType.Space ||
-            missionRule.Objective != RuntimeMissionObjective.Score &&
-            (missionRule.Objective != RuntimeMissionObjective.Site || altitude == 0))
+        // Ordinary score operations also return to their linked source base.
+        if (missionRule.Objective != RuntimeMissionObjective.Score &&
+            (missionRule.OperationType != RuntimeMissionOperationType.Space ||
+             missionRule.Objective != RuntimeMissionObjective.Site || altitude == 0))
             return false;
         var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
         if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
@@ -274,10 +279,7 @@ internal sealed partial class CampaignWorld
         // Preserve both selections, including land retries and their random choices.
         var randomPosition = default(WorldPosition);
         for (var selection = 0; selection < 2; selection++)
-            randomPosition = nextWaypoint + 1 < trajectory.Waypoints.Count && trajectory.Altitude(nextWaypoint + 1) == 0
-                ? WorldGeometry.LandPoint(region, rules.Campaign.Globe, trajectory.Zone(nextWaypoint),
-                    ufoRule.FakeWaterLandingChance, campaign.Random)
-                : WorldGeometry.RandomPoint(region, trajectory.Zone(nextWaypoint), -1, campaign.Random);
+            randomPosition = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule);
         // AlienMission::ufoReachedWaypoint assigns the raw regional point through
         // Target::setLongitude/setLatitude, which wrap coordinates across the globe.
         var nextPosition = WorldPosition.Create(randomPosition.Longitude, randomPosition.Latitude);
@@ -304,6 +306,22 @@ internal sealed partial class CampaignWorld
             SpeedLatitude = vector.Latitude,
             Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
         };
+    }
+
+    private WorldPosition OrdinaryWaypoint(AlienMissionSnapshot mission, RuntimeUfoTrajectoryRule trajectory,
+        int point, RuntimeRegionRule region, RuntimeUfoRule ufoRule)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        // getWaypoint validates the zone before choosing the final operation-base destination.
+        _ = WorldGeometry.MissionAreas(region, trajectory.Zone(point));
+        if (missionRule.OperationType != RuntimeMissionOperationType.Space &&
+            point >= trajectory.Waypoints.Count - 1 && MissionSourceBase(mission) is { } source)
+            return source.Position;
+        return point + 1 < trajectory.Waypoints.Count && trajectory.Altitude(point + 1) == 0
+            ? WorldGeometry.LandPoint(region, rules.Campaign.Globe, trajectory.Zone(point),
+                ufoRule.FakeWaterLandingChance, campaign.Random)
+            : WorldGeometry.RandomPoint(region, trajectory.Zone(point), -1, campaign.Random);
     }
 
     private bool LandingAllowed(WorldPosition position, RuntimeUfoRule rule) =>
