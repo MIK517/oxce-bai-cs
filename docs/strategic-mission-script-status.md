@@ -82,3 +82,9 @@ infiltration, base, site and supply missions. UFO identity, race stats, movement
 scoring/detection and reload use the existing ordinary-wave path. Retaliation
 assault generation, objective-site waves and final infiltration/base effects
 remain guarded at their transition. Cycle 3 post-commit audit found no defect.
+
+Cycle 5: linked Earth-based ordinary airborne missions launch from the source
+base. Ordinary missions retain regional selection before the override; supply
+missions skip it, as captured by strategic-mission-origin. Scoring preflight uses
+the actual source position and lookups are bounded. Space missions ignore the
+optional source for launch origin. Cycle 4 audit found no confirmed defect.

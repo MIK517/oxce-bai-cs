@@ -22,6 +22,7 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var ufoSpawns = 0;
         var work = 0;
+        long sourceBaseWork = 0;
         long cleanupWork = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
@@ -49,6 +50,11 @@ internal sealed partial class CampaignWorld
             foreach (var step in DueWaveSteps(mission, rule))
             {
                 if (++work > MaximumImmediateWaveSteps) return WaveWorkReason;
+                if (rule.OperationType != RuntimeMissionOperationType.Space && step.AlienBase is not null)
+                {
+                    sourceBaseWork += _alienBases.Count;
+                    if (sourceBaseWork > MaximumAlienBaseChecks) return "Alien mission source base lookups exceed the supported work limit.";
+                }
                 if (DeferredWaveCompletion(step, rule, rule.Waves[step.NextWave]))
                     return "Alien mission wave completion requires objective simulation.";
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
@@ -152,7 +158,7 @@ internal sealed partial class CampaignWorld
     private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation ||
-            rule.OperationType != RuntimeMissionOperationType.Space || mission.LiveUfos == int.MaxValue)
+            mission.LiveUfos == int.MaxValue)
             return false;
         var wave = rule.Waves[mission.NextWave];
         if (DeferredWaveCompletion(mission, rule, wave) || wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
@@ -174,11 +180,28 @@ internal sealed partial class CampaignWorld
             !WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out var position) ||
+        if (!TryOrdinarySpawnPosition(mission, rule, trajectory, region, out var position) ||
             !TryGetFixedWaypoint(region, trajectory.Zone(1), out var destination) ||
             !(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed)))
             return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
+    }
+
+    private AlienBaseSnapshot? MissionSourceBase(AlienMissionSnapshot mission) =>
+        mission.AlienBase is null ? null : _alienBases.Find(candidate => FollowsAlienBase(mission.AlienBase, candidate));
+
+    private bool TryOrdinarySpawnPosition(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out WorldPosition position)
+    {
+        var source = rule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
+        if (source is not null && rule.Objective == RuntimeMissionObjective.Supply)
+        {
+            position = source.Position;
+            return position.IsNormalized;
+        }
+        if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out position)) return false;
+        if (source is not null) position = source.Position;
+        return position.IsNormalized;
     }
 
     private static bool TryGetFixedWaypoint(RuntimeRegionRule region, int zone, out WorldPosition position)
@@ -211,7 +234,12 @@ internal sealed partial class CampaignWorld
         var ufoRule = rules.Ufos[wave.Ufo!.Value].Value;
         var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        var position = NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random));
+        var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var source = missionRule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
+        var position = source is not null && missionRule.Objective == RuntimeMissionObjective.Supply
+            ? source.Position
+            : NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random));
+        if (source is not null) position = source.Position;
         // Fixed-point eligibility implies getLandPoint's city bypass when the
         // following leg lands, consuming the same regional selection.
         var destination = NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random));

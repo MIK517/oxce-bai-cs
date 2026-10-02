@@ -69,3 +69,23 @@ alienMissions:
     waves:
       - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
       - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: ORIGIN_0_0
+    objective: 0
+    operationType: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: ORIGIN_0_1
+    objective: 0
+    operationType: 1
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: ORIGIN_5_0
+    objective: 5
+    operationType: 0
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+  - type: ORIGIN_5_1
+    objective: 5
+    operationType: 1
+    waves:
+      - {ufo: UFO_SPAWN, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}

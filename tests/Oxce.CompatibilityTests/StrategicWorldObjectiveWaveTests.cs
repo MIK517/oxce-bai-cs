@@ -81,6 +81,58 @@ public sealed class StrategicWorldObjectiveWaveTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SourceBaseOriginsAndSupplyRandomOrderMatchReference(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
+        var content = Load(cache);
+        var regions = content.RuntimeRules.Regions;
+        var region = regions[regions.GetRequired("REGION")].Value;
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
+        {
+            var supply = row[0].GetInt32() != 0;
+            var operation = row[1].GetInt32();
+            var linked = row[2].GetInt32() != 0;
+            var rule = $"ORIGIN_{(supply ? 5 : 0)}_{operation}";
+            var mission = new AlienMissionSnapshot(4, rule, "REGION", "RACE_A", 0, 0, 0, 0, -1)
+            { AlienBase = linked ? new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 7, 0.2, 0.1) : null };
+            var initial = CreateSnapshot(content, "Source base wave") with
+            { Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55), RandomState = 17 };
+            var snapshot = initial with
+            {
+                World = initial.World with
+                {
+                    Missions = [mission],
+                    AlienBases = linked ?
+                [new AlienBaseSnapshot(7, "ALIEN_BASE_DEPLOY", "RACE_A", 0.2, 0.1)] : []
+                }
+            };
+            var random = new SplitMix64RandomSource(17);
+            WorldPosition position = default;
+            if (row[5].GetInt32() != 0)
+            {
+                var raw = WorldGeometry.RandomPoint(region, 4, -1, random);
+                position = WorldPosition.Create(raw.Longitude, raw.Latitude);
+            }
+            if (linked && operation != 0) position = new(row[3].GetDouble(), row[4].GetDouble());
+            var target = WorldGeometry.RandomPoint(region, 3, -1, random);
+            var destination = WorldPosition.Create(target.Longitude, target.Latitude);
+            var countdown = WorldTrajectory.SpawnCountdown(9000, random);
+            random.NextInclusive(0, 99); // base detection, even with no radar
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            Assert.Equal(WorldGeometry.Move(position, destination, WorldGeometry.RadianSpeed(2200)), ufo.Position);
+            Assert.Equal(destination, ufo.Destination!.Position);
+            Assert.Equal(countdown, Assert.Single(after.World.Missions).SpawnCountdown);
+            Assert.Equal(random.State, after.RandomState);
+            Reload(content, campaign, 17, "source-base-wave.sav");
+        }
+    }
+
     private static RuntimeContent Load(bool cache) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-waves.rul"], cache);
 
