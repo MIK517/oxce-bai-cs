@@ -25,11 +25,13 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var ufoSpawns = 0;
         var newFlyingHunters = 0;
+        var newEscorts = 0;
         var work = 0;
         long sourceBaseWork = 0;
         long cleanupWork = 0;
         long geometryWork = 0;
         long landWork = 0;
+        long escortSelectionWork = 0;
         Dictionary<string, int>? siteMarkerReservations = null;
         var siteSpawns = 0;
         for (var index = 0; index < _missions.Count; index++)
@@ -75,6 +77,13 @@ internal sealed partial class CampaignWorld
                         MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
                     continue;
                 }
+                if (NewEscortWave(rule, rule.Waves[step.NextWave]))
+                {
+                    escortSelectionWork += _ufos.Count;
+                    if (escortSelectionWork > MaximumAlienBaseChecks)
+                        return "New UFO escort selection exceeds the supported work limit.";
+                }
+                if (NewEscortSpawnReason(step, rule) is { } escortReason) return escortReason;
                 if (CanSpawnOrdinaryUfoWave(step, rule))
                 {
                     var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[rule.Waves[step.NextWave].Trajectory!.Value].Value;
@@ -91,10 +100,27 @@ internal sealed partial class CampaignWorld
                     if (trajectory.Altitude(0) != 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
                         (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0)
                         newFlyingHunters++;
+                    if (wave.Escort && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+                        (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0)
+                        newEscorts++;
                     continue;
                 }
                 return "Alien mission wave spawning requires world simulation.";
             }
+        }
+        if (newEscorts != 0 && ufoSpawns > 1)
+            return "Creation-time escorts require immediate-wave leader forecasts.";
+        var finalUfoCount = (long)_ufos.Count + ufoSpawns;
+        if (newEscorts != 0 && 2L * newEscorts * finalUfoCount > MaximumAlienBaseChecks)
+            return "New UFO escort selection exceeds the supported work limit.";
+        if (ufoSpawns != 0 && HasDestroyedUfoAfterTransitions(highest))
+        {
+            var terminal = 0;
+            foreach (var ufo in _ufos)
+                if (UfoDestroyedAfterTimers(ufo, highest)) terminal++;
+            if ((long)_missions.Count * finalUfoCount > MaximumAlienBaseChecks ||
+                (long)terminal * finalUfoCount > MaximumAlienBaseChecks)
+                return "Destroyed UFO cleanup with new waves exceeds the supported work limit.";
         }
         if (newFlyingHunters != 0)
         {
@@ -118,7 +144,7 @@ internal sealed partial class CampaignWorld
                 if (possibleCrafts > MaximumAlienBaseChecks)
                     return "New UFO retargeting exceeds the supported work limit.";
             }
-            if (_huntingForecastWork + possibleCrafts * newFlyingHunters > MaximumAlienBaseChecks)
+            if (_huntingForecastWork + possibleCrafts * newFlyingHunters + 2L * newEscorts * finalUfoCount > MaximumAlienBaseChecks)
                 return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
@@ -276,8 +302,9 @@ internal sealed partial class CampaignWorld
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
         if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
-            (wave.Escort || (trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1) &&
+            ((trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1 || wave.Escort) &&
                 !NoCraftCanBecomeHunterTarget())) return false;
+        if (NewEscortSpawnReason(mission, rule) is not null) return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         if (trajectory.Altitude(0) == 0 &&
@@ -298,8 +325,30 @@ internal sealed partial class CampaignWorld
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
+    private bool NewEscortWave(RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
+        wave.Escort && wave.Ufo is { } handle && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+        (wave.HunterKillerPercentage == -1
+            ? campaign.Content.RuntimeRules.Ufos[handle].Value.HunterKillerPercentage : wave.HunterKillerPercentage) > 0;
+
+    private string? NewEscortSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    {
+        var wave = rule.Waves[mission.NextWave];
+        if (!NewEscortWave(rule, wave) || wave.Trajectory is not { } trajectory) return null;
+        var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
+        var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
+        if (path.Waypoints.Count != 0 && path.Altitude(0) == 0)
+            return "Grounded escort spawning requires additional takeoff forecasts.";
+        var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
+        if (maximum is < 0 or > int.MaxValue) return "UFO escort speed exceeds the supported range.";
+        if (!NoCraftCanBecomeHunterTarget())
+            return "New UFO escorts require craft retarget forecasts.";
+        if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader && (leader.Hunting || leader.Escorting))
+            return "UFO escort chains require additional movement forecasts.";
+        return null;
+    }
+
     // A new hunter has no original target. With no current or potential airborne
-    // craft and no escort request, the reference retarget pass cannot change its path.
+    // craft, the reference retarget pass cannot select a craft.
     private bool NoCraftCanBecomeHunterTarget() => _newHunterHasNoTarget ??= CalculateNoHunterTarget();
 
     private bool CalculateNoHunterTarget()
@@ -510,7 +559,7 @@ internal sealed partial class CampaignWorld
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         var speedRadian = WorldGeometry.RadianSpeed(speed);
         var vector = WorldGeometry.SpeedVector(position, destination, speedRadian);
-        return new UfoSnapshot(campaign.NextId("STR_UFO_UNIQUE"), wave.UfoType, mission.Id,
+        var spawned = new UfoSnapshot(campaign.NextId("STR_UFO_UNIQUE"), wave.UfoType, mission.Id,
             wave.TrajectoryId, 0, position.Longitude, position.Latitude,
             trajectory.Altitude(0) == 0 ? UfoStatus.Landed : UfoStatus.Flying,
             WorldAltitudes.All[trajectory.Altitude(0)])
@@ -527,6 +576,7 @@ internal sealed partial class CampaignWorld
             Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
                 WorldTargetReference.WaypointType, 0, destination.Longitude, destination.Latitude),
         };
+        return WorldHunting.InitializeEscort(spawned, wave.Escort, stats.SpeedMaximum, _ufos);
     }
 
     private WorldPosition SupplySpawnDestination(AlienMissionSnapshot mission, RuntimeMissionWave wave,
