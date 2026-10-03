@@ -40,6 +40,94 @@ public sealed class StrategicInfiltrationRepeatTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EndlessCompletionSignsAtMostOnePendingPactPerPassAndRestartsAfterSearch(bool cache)
+    {
+        var content = Load(cache, """
+            alienMissions:
+              - type: INF_REPEAT
+                objective: 1
+                endlessInfiltration: true
+                spawnZone: 1
+                siteType: INF_BASE
+                waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 60}]
+            """);
+        var initial = Initial(content, "INF_REPEAT");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var expected = new SplitMix64RandomSource(17);
+        var rules = content.RuntimeRules;
+        var rule = rules.AlienMissions[rules.AlienMissions.GetRequired("INF_REPEAT")].Value;
+        for (var pass = 0; pass < 3; pass++)
+        {
+            if (pass < 2)
+                _ = WorldInfiltration.SelectRegion(rules, rule, rules.Regions[rules.Regions.GetRequired("INF_REGION")].Value, expected);
+            _ = WorldTrajectory.SpawnCountdown(60, expected);
+            var snapshot = campaign.Capture();
+            campaign = CampaignState.Restore(snapshot with
+            {
+                Time = initial.Time,
+                World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { SpawnCountdown = 0 }] },
+            }, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(Math.Min(pass + 1, 2), after.World.AlienBases.Count);
+            var mission = Assert.Single(after.World.Missions);
+            Assert.Equal(0, mission.NextWave);
+            Assert.InRange(mission.SpawnCountdown, 30, 90);
+            Assert.Equal(expected.State, after.RandomState);
+            Assert.Equal(Math.Min(pass + 1, 2), after.Countries.Count(country => country.NewPact));
+            campaign = Reload(content, campaign, 17, "endless-infiltration.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EndlessFiniteZeroTimerFollowupRestartsInReferenceOrderAndUnsafeCyclesStopAtomically(bool cache)
+    {
+        var content = Load(cache, """
+            alienMissions:
+              - type: INF_REPEAT
+                objective: 1
+                endlessInfiltration: true
+                waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 0}, {count: 1, trajectory: TRAJ_PATROL, timer: 60}]
+            """);
+        var initial = Initial(content, "INF_REPEAT") with { Countries = [] };
+        initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { NextWave = 1 }] } };
+        var expected = new SplitMix64RandomSource(17);
+        expected.NextInclusive(0, 0); // restart of wave 0, followed immediately
+        var countdown = WorldTrajectory.SpawnCountdown(60, expected);
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var mission = Assert.Single(campaign.Capture().World.Missions);
+        Assert.Equal((1, countdown), (mission.NextWave, mission.SpawnCountdown));
+        Assert.Equal(expected.State, campaign.Capture().RandomState);
+        Reload(content, campaign, 17, "endless-zero-followup.sav");
+        content = Load(cache, """
+            alienMissions:
+              - type: INF_REPEAT
+                objective: 1
+                endlessInfiltration: true
+                waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 0}]
+            """);
+        AssertTimeBlocked(CampaignState.Restore(Initial(content, "INF_REPEAT") with { Countries = [] }, content, new SplitMix64RandomSource(17)),
+            "Immediate mission waves exceed the supported work limit.");
+    }
+
+    private static CampaignSnapshot Initial(RuntimeContent content, string rule)
+    {
+        var initial = CreateSnapshot(content, "Repeating infiltration");
+        return initial with
+        {
+            RandomState = 17,
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            Countries = initial.Countries.Where(country => country.RuleId.StartsWith("INF_", StringComparison.Ordinal)).ToArray(),
+            World = initial.World with { Missions = [new(4, rule, "INF_REGION", "RACE_B", 0, 0, 0, 0, -1)] },
+        };
+    }
+
     private static RuntimeContent Load(bool cache, string extra = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], cache, extra);
 }
