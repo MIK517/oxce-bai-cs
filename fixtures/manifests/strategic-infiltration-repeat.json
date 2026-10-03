@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-infiltration-repeat",
+  "description": "Endless infiltration restart and original-timer countdown recursion; country/base effects isolated separately.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Verbatim AlienMission::think countdown, counters, endless restart and follow-up; no-object collaborator",
+      "capture": "tools/capture-strategic-infiltration-repeat-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_infiltration_repeat_probe.cpp",
+      "size": 1863,
+      "sha256": "6315996d45cd0df2a704897438f144d39b818b1ddba55814b2aaf568dd63ddad"
+    },
+    {
+      "path": "tools/capture-strategic-infiltration-repeat-reference.ps1",
+      "size": 3910,
+      "sha256": "435ccc79a12145a78e81cd254779dac55f01e3a593554b04a4a9a203d5538e28"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-infiltration.rul",
+      "size": 593,
+      "sha256": "77d1e15c95dffe61986b048745705ba6f75853414ae55494ee74f554579ef718"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-infiltration-repeat.expected.json"
+}

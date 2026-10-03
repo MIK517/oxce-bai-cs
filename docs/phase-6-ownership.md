@@ -781,3 +781,8 @@ next two slices. Combat and deployment remain branch 5.
   projection, country eligibility and shuffled RNG order were checked together.
   No confirmed implementation issue was found. All 1,862 root tests pass with
   no failures/skips; formatting, code-map and diff checks pass. Reference is clean.
+
+- Five-cycle batch 3, slice 1: endless-infiltration restart/countdown is pinned
+  separately from country effects. Short, rounded and long timers preserve the
+  original-timer recursion rule and one reference countdown draw per restart.
+  Pure runtime restart projection matches six steps of each fresh/cache trace.

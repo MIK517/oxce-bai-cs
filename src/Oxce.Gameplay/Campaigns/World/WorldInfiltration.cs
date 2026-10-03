@@ -9,6 +9,9 @@ internal static class WorldInfiltration
 {
     internal static bool CanInfiltrate(bool pact, bool newPact, bool cancelPact) =>
         !pact && !newPact || pact && cancelPact;
+    internal static AlienMissionSnapshot Restart(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, IRandomSource random) =>
+        mission with { NextWave = 0, SpawnCountdown = WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[0].SpawnTimer), random) };
+
     internal static IReadOnlyList<T> CountryOrder<T>(IReadOnlyList<T> countries, bool shuffle, IRandomSource random)
     {
         if (!shuffle) return countries;
