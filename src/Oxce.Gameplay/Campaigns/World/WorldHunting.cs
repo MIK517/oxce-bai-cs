@@ -1,3 +1,5 @@
+using Oxce.Core.Random;
+
 namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>Read-only craft input for GeoscapeState::ufoHuntingAndEscorting.</summary>
@@ -6,6 +8,14 @@ internal readonly record struct WorldHuntCraft(WorldTargetReference Reference, W
 
 internal static class WorldHunting
 {
+    internal static (bool HunterKiller, int Mode, int Behavior) Initialize(int percentage, int mode,
+        int behavior, IRandomSource random)
+    {
+        if (percentage <= 0 || random.NextInclusive(0, 99) >= percentage) return (false, 0, 0);
+        return (true, mode > 1 ? random.NextInclusive(0, 1) : mode,
+            behavior > 1 ? random.NextInclusive(0, 1) : behavior);
+    }
+
     internal static bool RetargetDue(CampaignTimeTrigger highest, CampaignTimeSpeed speed, bool fast) =>
         highest >= CampaignTimeTrigger.TenMinutes || fast &&
         speed is CampaignTimeSpeed.FiveSeconds or CampaignTimeSpeed.OneMinute;
