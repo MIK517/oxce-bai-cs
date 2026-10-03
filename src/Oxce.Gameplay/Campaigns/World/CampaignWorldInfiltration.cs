@@ -1,4 +1,5 @@
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Mods.Rulesets.CampaignStart;
 
 namespace Oxce.Gameplay.Campaigns.World;
 
@@ -13,8 +14,6 @@ internal sealed partial class CampaignWorld
     {
         if (rule.EndlessInfiltration) return "Endless infiltration requires repeating wave forecasts.";
         var rules = campaign.Content.RuntimeRules;
-        if (rules.Campaign.BuildInfiltrationBaseCloseToTheCountry)
-            return "Infiltration country-border search is unavailable.";
         if (rules.Campaign.InfiltrateRandomCountryInTheRegion)
             return "Infiltration country shuffle is unavailable.";
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
@@ -22,6 +21,8 @@ internal sealed partial class CampaignWorld
         if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
         var eligible = campaign.CountryStates.Count(country => Eligible(country, region));
         if (eligible == 0) return null;
+        if (rules.Campaign.BuildInfiltrationBaseCloseToTheCountry)
+            return CountryInfiltrationReason(mission, rule, region, highest, markers, ref work);
         var areas = WorldGeometry.MissionAreas(region, rule.SpawnZone);
         long search = region.Areas.Count + 1L;
         foreach (var polygon in rules.Campaign.Globe.Polygons) search += 2L * polygon.Points.Count;
@@ -36,6 +37,35 @@ internal sealed partial class CampaignWorld
         return ObjectiveBaseSpawnReason(mission, rule with { Points = 0 }, highest, markers, ref work);
     }
 
+    private string? CountryInfiltrationReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeRegionRule region, CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        long geometry = 1;
+        foreach (var polygon in rules.Campaign.Globe.Polygons) geometry += polygon.Points.Count;
+        var areas = new List<MissionArea>();
+        foreach (var country in campaign.CountryStates)
+        {
+            if (!Eligible(country, region)) continue;
+            var countryRule = rules.Countries[country.Rule].Value;
+            if (countryRule.Areas.Count == 0) return "Infiltration country has no spawn areas.";
+            work += 100L * (2 * geometry + countryRule.Areas.Count + 1L);
+            if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
+            foreach (var area in countryRule.Areas)
+            {
+                if (area.LongitudeMinimum <= area.LongitudeMaximum)
+                    areas.Add(new(area.LongitudeMinimum, area.LongitudeMaximum, area.LatitudeMinimum, area.LatitudeMaximum, 0, ""));
+                else
+                {
+                    areas.Add(new(0, area.LongitudeMaximum, area.LatitudeMinimum, area.LatitudeMaximum, 0, ""));
+                    areas.Add(new(area.LongitudeMinimum, 359.99 * Math.PI / 180, area.LatitudeMinimum, area.LatitudeMaximum, 0, ""));
+                }
+            }
+        }
+        // One birth, but any eligible country's area may win after suppressed retries.
+        return ReserveObjectiveBase(rule with { Points = 0 }, areas, highest, markers, ref work);
+    }
+
     private bool Eligible(CampaignState.CountryState country, RuntimeRegionRule region) =>
         WorldInfiltration.CanInfiltrate(country.Pact, country.NewPact, country.CancelPact) &&
         WorldGeometry.InsideRegion(region, new(campaign.Content.RuntimeRules.Countries[country.Rule].Value.LabelLongitude,
@@ -48,7 +78,10 @@ internal sealed partial class CampaignWorld
         foreach (var country in campaign.CountryStates)
         {
             if (!Eligible(country, region)) continue;
-            if (WorldInfiltration.SelectRegion(rules, rule, region, campaign.Random) is not { } selected) continue;
+            var selection = rules.Campaign.BuildInfiltrationBaseCloseToTheCountry
+                ? WorldInfiltration.SelectCountry(rules, rule, rules.Countries[country.Rule].Value, campaign.Random)
+                : WorldInfiltration.SelectRegion(rules, rule, region, campaign.Random);
+            if (selection is not { } selected) continue;
             // Country::setNewPact does not sign the pact or execute an event.
             country.NewPact = true;
             country.CancelPact = false;
