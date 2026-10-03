@@ -438,6 +438,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
         _dailyResearchForecast = null;
+        _newHunterHasNoTarget = null;
         _siteBirthIdChanges = null;
         _siteBirthExpiryIncreases = null;
         _siteBirthExpiryDecreases = null;
