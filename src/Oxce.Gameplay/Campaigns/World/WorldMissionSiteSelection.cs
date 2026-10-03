@@ -29,6 +29,7 @@ internal static class WorldMissionSiteSelection
         }
         return result;
     }
+
     internal static IReadOnlyList<WorldSiteScriptCandidate>? SelectMission(
         string firstMission, IReadOnlyList<string> missions,
         Func<string, IReadOnlyList<WorldSiteScriptCandidate>> candidates, out string selected)
@@ -64,5 +65,4 @@ internal static class WorldMissionSiteSelection
         if (first == -1) throw new InvalidOperationException("Site script region lost its preflighted candidates.");
         return candidates[random.NextInclusive(first, last)].Area;
     }
-
 }

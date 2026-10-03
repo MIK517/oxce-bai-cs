@@ -421,3 +421,18 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   false labels for later conditionals. History capacity and all scan/repeat
   checks are reserved before mutation. All 66 focused scheduling cases pass
   fresh/cache and transition reloads. Due event effects remain branch 6.
+
+- Site-script batch audit confirmed that empty location-history keys bypassed
+  the new capacity check and were omitted from work accounting. The regression
+  fails before the fix. Preflight now reserves both location entries and new
+  variable keys across the whole batch, and charges enumeration of empty keys.
+  No RNG or campaign mutation occurs when either history limit is exceeded.
+
+- Site-script batch final validation: all 1,775 root tests pass with zero
+  failures/skips, including private corpus classifications, endurance, checksums
+  and allocation coverage. Formatting verification, regenerated code-map and
+  diff checks pass. The pinned reference checkout remains clean; the obsolete
+  site-candidate probe object was removed. Weighted/uniform safe site scheduling
+  and history are accepted for these slices; arbitrary region rejection
+  sampling, composed multi-region forecasts and the broader 4c gate remain
+  open. Event payload execution and branch 4d remain deferred.
