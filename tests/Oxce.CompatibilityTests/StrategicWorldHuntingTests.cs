@@ -281,6 +281,42 @@ public sealed class StrategicWorldHuntingTests
             "Alien mission wave spawning requires world simulation.");
     }
 
+    [Fact]
+    public void IgnoredHunterTargetsMatchThePinnedCraftMethod()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "ignoredRows"))
+            Assert.Equal(row[2].GetBoolean(), WorldHunting.IsIgnored(row[0].GetBoolean(), row[1].GetBoolean()));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void AirborneHunterSpawnsWhileExistingCraftAreIgnored(bool cache, bool complete)
+    {
+        var content = Load(cache);
+        var snapshot = HuntingSnapshot(content);
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { LowFuel = !complete, MissionComplete = complete },
+        }) with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "MISSION_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81));
+        AdvanceOne(campaign);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.True(ufo.HunterKiller);
+        Assert.False(ufo.Hunting);
+        Reload(content, campaign, 81, "ignored-target-hunter-spawn.sav");
+    }
+
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
 

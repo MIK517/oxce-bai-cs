@@ -91,7 +91,7 @@ internal sealed partial class CampaignWorld
                     return SpeedRangeReason;
                 if (forecastFuel && highest >= CampaignTimeTrigger.TenMinutes && state.Status == "STR_OUT")
                     state = AdvanceCraftFuel(owner, craft, state);
-                var ignored = state.LowFuel || state.MissionComplete;
+                var ignored = WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete);
                 var attraction = 0;
                 if (!ignored && (original || !craftRule.Undetectable))
                 {

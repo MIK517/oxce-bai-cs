@@ -16,6 +16,8 @@ internal static class WorldHunting
             behavior > 1 ? random.NextInclusive(0, 1) : behavior);
     }
 
+    internal static bool IsIgnored(bool lowFuel, bool missionComplete) => lowFuel || missionComplete;
+
     internal static bool RetargetDue(CampaignTimeTrigger highest, CampaignTimeSpeed speed, bool fast) =>
         highest >= CampaignTimeTrigger.TenMinutes || fast &&
         speed is CampaignTimeSpeed.FiveSeconds or CampaignTimeSpeed.OneMinute;

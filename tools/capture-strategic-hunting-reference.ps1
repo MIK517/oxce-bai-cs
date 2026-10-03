@@ -21,6 +21,7 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
     return $source.Substring($start, $end - $start)
 }
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_hunting_probe.cpp'))
+$template = $template.Replace('// IGNORED_METHOD', (Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'bool Craft::isIgnoredByHK() const'))
 $template = $template.Replace('// ATTRACTION', (Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'int Craft::getHunterKillerAttraction(int huntMode) const'))
 $constructor = Read-ReferenceMethod 'src/Savegame/Ufo.cpp' 'Ufo::Ufo(const RuleUfo *rules, int uniqueId, int hunterKillerPercentage, int huntMode, int huntBehavior)'
 $flagStart = $constructor.IndexOf('if (hunterKillerPercentage > 0)', [StringComparison]::Ordinal)
