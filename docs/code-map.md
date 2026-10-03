@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 77 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 78 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 111 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 112 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 86 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 77 files.
+`src/Oxce.Gameplay` - 78 files.
 
 ### `Oxce.Gameplay`
 
@@ -436,6 +436,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `AlienStrategyState` (class) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs) - The alien strategy table: which regions are still worth attacking, which missions remain available there, how often each mission-script v...
 - `AlienStrategyState.MissionLocation` (record struct) [AlienStrategyState.cs](../src/Oxce.Gameplay/Campaigns/World/AlienStrategyState.cs)
 - `CampaignArcUnlocked` (record) [CampaignWorldArcScripts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldArcScripts.cs) - The article that GeoscapeState opens for one granted arc.
+- `IgnoreUfoContact` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs) - Suppress future detected-contact alerts for this current UFO contact.
+- `UfoContactIgnored` (record) [CampaignWorldContacts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldContacts.cs)
 - `DispatchCraftToWaypoint` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Send a ready craft to a new globe waypoint, as in GeoscapeCraftState.
 - `DispatchCraftToTarget` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Dispatch to a visible target using stable identity rather than marker coordinates.
 - `RecallCraft` (record) [CampaignWorldCrafts.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldCrafts.cs) - Recall an airborne craft to its owner base.
@@ -1007,14 +1009,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 111 files.
+`tests/Oxce.CompatibilityTests` - 112 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>109 test classes</summary>
+<details><summary>110 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1098,6 +1100,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs))
 - `StrategicWorldEnduranceTests` ([StrategicWorldEnduranceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEnduranceTests.cs))
 - `StrategicWorldFixtureTests` ([StrategicWorldFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldFixtureTests.cs))
+- `StrategicWorldIgnoredContactTests` ([StrategicWorldIgnoredContactTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldIgnoredContactTests.cs))
 - `StrategicWorldLifecycleTraceTests` ([StrategicWorldLifecycleTraceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldLifecycleTraceTests.cs))
 - `StrategicWorldMissionCountdownTests` ([StrategicWorldMissionCountdownTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMissionCountdownTests.cs))
 - `StrategicWorldMissionInterruptionTests` ([StrategicWorldMissionInterruptionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldMissionInterruptionTests.cs))
@@ -1364,6 +1367,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-crashed-ufo](../fixtures/manifests/strategic-crashed-ufo.json) | cpp-reference | `savegames/strategic-crashed-ufo.expected.json` | `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs)) |
 | [strategic-event-scripts](../fixtures/manifests/strategic-event-scripts.json) | cpp-reference | `savegames/strategic-event-scripts.expected.json` | `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs)) |
 | [strategic-event](../fixtures/manifests/strategic-event.json) | cpp-reference | `savegames/strategic-event.expected.json` | `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs)) |
+| [strategic-ignored-contacts](../fixtures/manifests/strategic-ignored-contacts.json) | cpp-reference | `savegames/strategic-ignored-contacts.expected.json` | `StrategicWorldIgnoredContactTests` ([StrategicWorldIgnoredContactTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldIgnoredContactTests.cs)) |
 | [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [strategic-mission-base-target](../fixtures/manifests/strategic-mission-base-target.json) | cpp-reference | `savegames/strategic-mission-base-target.expected.json` | `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))<br>`StrategicMissionStrategyTests` ([StrategicMissionStrategyTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionStrategyTests.cs)) |
 | [strategic-mission-operation](../fixtures/manifests/strategic-mission-operation.json) | cpp-reference | `savegames/strategic-mission-operation.expected.json` | `StrategicMissionInitializationTests` ([StrategicMissionInitializationTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionInitializationTests.cs)) |

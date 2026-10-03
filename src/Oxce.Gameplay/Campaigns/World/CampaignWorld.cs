@@ -71,6 +71,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
                 Status = ufo.Status.ToString(),
                 Altitude = ufo.Altitude,
                 Detected = ufo.Detected,
+                DetectionAlertIgnored = _ignoredUfoContacts.Contains(ufo.Id),
                 SecondsRemaining = ufo.SecondsRemaining,
                 Reference = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id, ufo.Longitude, ufo.Latitude)
                 { UniqueId = ufo.UniqueId },

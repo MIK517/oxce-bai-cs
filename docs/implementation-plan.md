@@ -386,3 +386,32 @@ separately versioned campaign query, command, and event capabilities.
 Branch 4c increment: [research-driven alien-base cleanup](strategic-world-alien-base-cleanup-status.md)
 owns daily self-destruction, safe mission unlinking and optional pact cancellation.
 Live Earth-operation interruption and remaining 4c capabilities remain guarded.
+
+### Ordinary mission lifecycle and contact checkpoint (2026-10-03)
+
+Eight further 4c implementation cycles cover operation-base waypoint returns,
+ordinary airborne arrivals across objectives, ordinary ground arrivals, takeoffs
+with objective score filtering, Supply spawn suppression/constructor defaults,
+no-object wave classification, flag-aware airborne spawning, and transient ignored
+UFO contacts. Every slice has pinned reference evidence, focused fresh/cache tests,
+transition reload coverage, and an audit. Coverage corrections are a separate commit:
+site guard tests now select actual site areas, and the undefined Rosigma dummy wave
+has an explicit 360-tick classification with its resolved no-effect rule asserted.
+
+All 19 staged saves retain explicit stopping horizons: ten executable at 360 ticks,
+one blocked at 125 ticks, eight tactical saves preserved at zero ticks. This horizon
+does not establish unrestricted continuation. The ignored-contact set clears on
+reload because SavedGame does not serialize it in the reference engine.
+
+The headless gate remains open: forced/new base creation, infiltration/pacts and
+special objective effects, deployment/site spawning, regional spawn geometry,
+immediate hunting waves, detection VM providers, hunter/escort behavior and actual
+initial/monthly world hook composition remain outstanding. Combat, deployment,
+event effects and integrated monthly progression keep their branch 5/6 boundaries.
+Branch 4d is untouched. See [mission status](strategic-mission-script-status.md).
+
+Validation for this checkpoint: root `dotnet test --no-restore` passes all 1,522
+tests, with no failures or skips, including checksum, private corpus and populated
+world scenarios. Formatting verification, regenerated code-map validation and
+`git diff --check` pass. Captured probes remain available under artifacts; obsolete
+probe object files were removed. The pinned C++ checkout is clean.

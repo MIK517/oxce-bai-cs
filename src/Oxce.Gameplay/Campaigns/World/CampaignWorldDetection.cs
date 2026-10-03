@@ -8,9 +8,12 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
-    private void RegisterUfoDetection(CampaignCapabilityRegistry registry) =>
+    private void RegisterUfoDetection(CampaignCapabilityRegistry registry)
+    {
+        registry.Command<IgnoreUfoContact>(IgnoreContact);
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldUfoDetection,
             "UFO activity and base detection", ProcessUfoHalfHour);
+    }
 
     private string? UfoHalfHourReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
@@ -75,7 +78,7 @@ internal sealed partial class CampaignWorld
                 var reason = CheckHalfHourUfo(ufo.RuleId, ufo.Position, regionTotals, countryTotals,
                     ufo.Status == UfoStatus.Landed ? 2 : 1);
                 if (reason is not null) return reason;
-                if (!ufo.Detected && !rule.NoAlert)
+                if (!ufo.Detected && !rule.NoAlert && !_ignoredUfoContacts.Contains(ufo.Id))
                 {
                     if (ufo.Id == 0) possibleMarkerIds++;
                     if (ufo.Status == UfoStatus.Landed && ufo.LandId == 0) possibleLandingIds++;
@@ -224,11 +227,12 @@ internal sealed partial class CampaignWorld
             if (!ufo.Detected && (detected & UfoDetectionResult.Radar) != 0)
             {
                 var hyperwave = (detected & UfoDetectionResult.Hyperwave) == UfoDetectionResult.Hyperwave;
-                var markerId = !ufoRule.NoAlert && ufo.Id == 0 ? campaign.NextId("STR_UFO") : ufo.Id;
-                var landingId = !ufoRule.NoAlert && ufo.Status == UfoStatus.Landed && ufo.LandId == 0
+                var alert = !ufoRule.NoAlert && !_ignoredUfoContacts.Contains(ufo.Id);
+                var markerId = alert && ufo.Id == 0 ? campaign.NextId("STR_UFO") : ufo.Id;
+                var landingId = alert && ufo.Status == UfoStatus.Landed && ufo.LandId == 0
                     ? campaign.NextId("STR_LANDING_SITE") : ufo.LandId;
                 _ufos[index] = ufo with { Id = markerId, LandId = landingId, Detected = true, HyperDetected = hyperwave };
-                if (!ufoRule.NoAlert) effects.Notify(new UfoContactDetected(ufo.UniqueId, hyperwave));
+                if (alert) effects.Notify(new UfoContactDetected(ufo.UniqueId, hyperwave));
             }
             else if (ufo.Detected && detected == UfoDetectionResult.None)
                 _ufos[index] = ufo with { Detected = false, HyperDetected = false };
