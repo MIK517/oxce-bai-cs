@@ -1,0 +1,44 @@
+# Direct mission-site waves: coordinates convert to the captured radian bounds.
+regions:
+  - type: SITE_SPAWN_REGION
+    areas: [[0, 60, -20, 20]]
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 10, CITY], [28.647889756541161, 28.647889756541161, 5.7295779513082321, 5.7295779513082321, 10, CITY_SELECTED]]
+alienDeployments:
+  - type: DIRECT_DEPLOY
+    markerName: DIRECT_MARKER
+    duration: [2, 3]
+    points: 4
+  - type: RULE_DEPLOY
+    markerName: RULE_MARKER
+    duration: [3, 4]
+    points: 7
+  - type: DIRECT_ZERO_DURATION
+    markerName: DIRECT_MARKER
+    duration: [0, 0]
+  - type: DIRECT_OVERFLOW_DURATION
+    markerName: DIRECT_MARKER
+    duration: [1, 2147483647]
+ufoTrajectories:
+  - id: DIRECT_SITE
+    waypoints: [[0, 3, 100], [0, 4, 100]]
+alienMissions:
+  - type: DIRECT_OVERRIDE
+    siteType: RULE_DEPLOY
+    spawnZone: 0
+    waves: [{ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_SELECTED
+    spawnZone: 0
+    waves: [{ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_CHAIN
+    spawnZone: 0
+    waves:
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000}
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}
+      - {ufo: RULE_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}
+  - type: DIRECT_ZERO_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_ZERO_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_OVERFLOW_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_OVERFLOW_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]

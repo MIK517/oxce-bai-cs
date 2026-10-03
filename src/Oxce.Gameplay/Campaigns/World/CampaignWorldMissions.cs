@@ -27,6 +27,8 @@ internal sealed partial class CampaignWorld
         long cleanupWork = 0;
         long geometryWork = 0;
         long landWork = 0;
+        var siteMarkerReservations = new Dictionary<string, int>(StringComparer.Ordinal);
+        var siteSpawns = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = MissionAfterDailyResearch(_missions[index], guaranteedResearch);
@@ -51,6 +53,16 @@ internal sealed partial class CampaignWorld
                 }
                 if (DeferredWaveCompletion(step, rule, rule.Waves[step.NextWave]))
                     return "Alien mission wave completion requires objective simulation.";
+                if (IsDirectSiteWave(step, rule))
+                {
+                    if (DirectSiteSpawnReason(step, rule, siteMarkerReservations, ref geometryWork, ref siteSpawns) is { } siteReason)
+                        return siteReason;
+                    var finishes = step.NextWave + 1 == rule.Waves.Count &&
+                        (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
+                    if (finishes && step.LiveUfos == 0 &&
+                        MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
+                    continue;
+                }
                 if (CanAdvanceNoObjectWave(step, rule))
                 {
                     var finishes = step.NextWave + 1 == rule.Waves.Count &&
@@ -111,10 +123,12 @@ internal sealed partial class CampaignWorld
                     if (work >= MaximumImmediateWaveSteps)
                         throw new InvalidOperationException("Mission wave work changed after preflight.");
                     var spawnsUfo = CanSpawnOrdinaryUfoWave(mission, rule);
-                    if (!spawnsUfo && !CanAdvanceNoObjectWave(mission, rule))
+                    var spawnsSite = IsDirectSiteWave(mission, rule);
+                    if (!spawnsUfo && !spawnsSite && !CanAdvanceNoObjectWave(mission, rule))
                         throw new InvalidOperationException("Alien mission wave changed after world preflight.");
                     var wave = rule.Waves[mission.NextWave];
                     if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
+                    if (spawnsSite) SpawnDirectSite(mission, rule);
                     mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
                     _missions[index] = mission;
                     // Recursion tests the original timer, not the rounded countdown.
