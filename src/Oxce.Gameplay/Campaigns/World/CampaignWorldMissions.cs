@@ -275,7 +275,8 @@ internal sealed partial class CampaignWorld
             work += owner.Crafts.Count + (long)owner.Transfers.Count;
             if (work > MaximumAlienBaseChecks) return false;
             foreach (var craft in owner.Crafts)
-                if (craft.Logistics is { } state &&
+                if (!campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.Undetectable &&
+                    craft.Logistics is { } state &&
                     (state.Status == "STR_OUT" && !WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) || state.IsAutoPatrolling &&
                         campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
             foreach (var transfer in owner.Transfers)

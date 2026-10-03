@@ -317,6 +317,29 @@ public sealed class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "ignored-target-hunter-spawn.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UndetectableAirborneCraftDoNotBlockNewHunterWaves(bool cache)
+    {
+        var content = Load(cache, "crafts:\n  - type: SHIP\n    undetectable: true\n");
+        Assert.True(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value.Undetectable);
+        var snapshot = HuntingSnapshot(content) with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "MISSION_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81));
+        AdvanceOne(campaign);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.True(ufo.HunterKiller);
+        Assert.False(ufo.Hunting);
+        Reload(content, campaign, 81, "undetectable-target-hunter-spawn.sav");
+    }
+
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
 
