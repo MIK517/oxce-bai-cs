@@ -28,6 +28,17 @@ $start = $method.IndexOf('int newAttraction = INT_MAX;', [StringComparison]::Ord
 $end = $method.IndexOf('if (newTarget)', $start, [StringComparison]::Ordinal)
 if ($start -lt 0 -or $end -le $start) { throw 'Missing hunter selection fragment.' }
 $template = $template.Replace('// SELECTION', $method.Substring($start, $end - $start))
+$retarget = ''
+foreach ($signature in @('void Ufo::backupOriginalDestination()', 'void Ufo::setTargetedXcomCraft(', 'void Ufo::setEscortedUfo(', 'void Ufo::resetOriginalDestination(bool', 'void Ufo::setDestination(')) {
+    $retarget += (Read-ReferenceMethod 'src/Savegame/Ufo.cpp' $signature) + [Environment]::NewLine
+}
+$template = $template.Replace('// RETARGET_METHODS', $retarget)
+$fiveSeconds = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time5Seconds()'
+$conditionStart = $fiveSeconds.IndexOf('if ((_timeSpeed', [StringComparison]::Ordinal)
+$conditionEnd = $fiveSeconds.IndexOf('{', $conditionStart, [StringComparison]::Ordinal)
+if ($conditionStart -lt 0 -or $conditionEnd -le $conditionStart) { throw 'Missing fast retarget condition.' }
+$condition = $fiveSeconds.Substring($conditionStart + 3, $conditionEnd - $conditionStart - 3).Trim()
+$template = $template.Replace('// FAST_CONDITION', $condition)
 $work = Join-Path $repository 'artifacts/reference-strategic-hunting'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_hunting_probe.cpp'

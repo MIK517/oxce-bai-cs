@@ -509,7 +509,8 @@ public static partial class OxceSaveAdapter
                 Pair("oxceUfoLandingAlert", Boolean(snapshot.Options.UfoLandingAlert)),
                 Pair("aggressiveRetaliation", Boolean(snapshot.Options.AggressiveRetaliation)),
                 Pair("craftLaunchAlways", Boolean(snapshot.Options.CraftLaunchAlways)),
-                Pair("oxceGeoSuppressLandingWithoutEquipment", Boolean(snapshot.Options.SuppressLandingWithoutEquipment))])),
+                Pair("oxceGeoSuppressLandingWithoutEquipment", Boolean(snapshot.Options.SuppressLandingWithoutEquipment)),
+                Pair("oxceGeoSuppressRedundantHKAlert", Boolean(snapshot.Options.SuppressRedundantHunterAlert))])),
         ]);
     }
 
@@ -771,13 +772,13 @@ public static partial class OxceSaveAdapter
 
     private static CampaignOptions ReadOptions(YamlMappingNode map)
     {
-        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment"]);
+        RejectDuplicateKnownKeys(map, ["storageLimitsEnforced", "canSellLiveAliens", "autoCombatDefaultSoldier", "anytimePsiTraining", "allowPsiStrengthImprovement", "maximumBases", "allowBuildingQueue", "oxceUfoLandingAlert", "aggressiveRetaliation", "craftLaunchAlways", "oxceGeoSuppressLandingWithoutEquipment", "oxceGeoSuppressRedundantHKAlert"]);
         return new(Boolean(map, "storageLimitsEnforced", false), Boolean(map, "canSellLiveAliens", false),
             Boolean(map, "autoCombatDefaultSoldier", true), Boolean(map, "anytimePsiTraining", false),
             Boolean(map, "allowPsiStrengthImprovement", false), Integer(map, "maximumBases", 8),
             Boolean(map, "allowBuildingQueue", false), Boolean(map, "oxceUfoLandingAlert", false),
             Boolean(map, "aggressiveRetaliation", true), Boolean(map, "craftLaunchAlways", false),
-            Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false));
+            Boolean(map, "oxceGeoSuppressLandingWithoutEquipment", false), Boolean(map, "oxceGeoSuppressRedundantHKAlert", true));
     }
 
     /// <summary>
@@ -802,6 +803,7 @@ public static partial class OxceSaveAdapter
             AggressiveRetaliation = Snapshot("aggressiveRetaliation", defaults.AggressiveRetaliation),
             CraftLaunchAlways = Snapshot("craftLaunchAlways", defaults.CraftLaunchAlways),
             SuppressLandingWithoutEquipment = Snapshot("oxceGeoSuppressLandingWithoutEquipment", defaults.SuppressLandingWithoutEquipment),
+            SuppressRedundantHunterAlert = Snapshot("oxceGeoSuppressRedundantHKAlert", defaults.SuppressRedundantHunterAlert),
         };
 
         bool Snapshot(string key, bool fallback) =>

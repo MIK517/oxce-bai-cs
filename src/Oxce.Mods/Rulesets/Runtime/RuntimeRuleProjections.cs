@@ -362,6 +362,7 @@ public sealed record RuntimeCampaignSettings(
     public int ManaWoundThreshold { get; init; } = 200;
     public int HealthWoundThreshold { get; init; } = 100;
     public int EscortRange { get; init; } = 20;
+    public bool HunterKillerFastRetarget { get; init; } = true;
     public bool AllowCountriesToCancelAlienPact { get; init; }
     public IReadOnlyList<int> BuyPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<int> SellPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
