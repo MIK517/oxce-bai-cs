@@ -15,6 +15,8 @@ internal sealed partial class CampaignWorld
         Dictionary<string, int> markerReservations, ActivityRange[] regionScores, ActivityRange[] countryScores,
         ref int population, ref long work)
     {
+        if (ulong.MaxValue - _alienBaseBirthSequence < (ulong)(population - _alienBases.Count + 1))
+            return "Mission operation base birth sequence is exhausted.";
         if (++population > 100_000) return "Mission operation base population exceeds the supported limit.";
         var rules = campaign.Content.RuntimeRules;
         var globe = rules.Campaign.Globe;
@@ -28,7 +30,8 @@ internal sealed partial class CampaignWorld
         var maximumRegions = new int[regionScores.Length];
         var minimumCountries = new int[countryScores.Length];
         var maximumCountries = new int[countryScores.Length];
-        foreach (var choice in choices)
+        foreach (var choice in choices.OrderBy(choice => rules.AlienMissions[choice.Mission].Id, StringComparer.Ordinal)
+                     .ThenBy(choice => choice.Region, StringComparer.Ordinal))
         {
             var rule = rules.AlienMissions[choice.Mission].Value;
             if (rule.OperationBaseType is not { } deploymentHandle)
@@ -36,7 +39,7 @@ internal sealed partial class CampaignWorld
             var deployment = rules.AlienDeployments[deploymentHandle].Value;
             var marker = deployment.MarkerName;
             if (marker.Length == 0 || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
-                marker is WorldTargetReference.WaypointType or WorldTargetReference.BaseType)
+                marker is WorldTargetReference.WaypointType or WorldTargetReference.BaseType or "STR_ALIEN_TERROR")
                 return "Mission operation base uses an unsupported marker namespace.";
             markers.Add(marker);
             var region = rules.Regions[rules.Regions.GetRequired(choice.Region)].Value;
@@ -61,12 +64,18 @@ internal sealed partial class CampaignWorld
             markerReservations[marker] = count;
             var first = campaign.PeekNextId(marker);
             work += _alienBases.Count + (long)_sites.Count;
+            foreach (var owner in campaign.BaseStates) work += 1L + owner.Crafts.Count + owner.Transfers.Count;
             if (work > MaximumMissionScriptChecks) return "Mission operation base creation exceeds the supported work limit.";
             if (first <= 0 || (long)first + count > int.MaxValue ||
                 _alienBases.Any(existing => MarkerName(existing.DeploymentId) == marker &&
                     existing.Id >= first && existing.Id < (long)first + count) ||
                 _sites.Any(existing => MarkerName(existing.DeploymentId) == marker &&
-                    existing.Id >= first && existing.Id < (long)first + count))
+                    existing.Id >= first && existing.Id < (long)first + count) ||
+                campaign.BaseStates.Any(owner => owner.Crafts.Any(craft =>
+                    rules.Crafts.GetExternalId(craft.Rule) == marker &&
+                    craft.Id >= first && craft.Id < (long)first + count) ||
+                    owner.Transfers.Any(transfer => !transfer.Delivered && transfer.Craft is { } incoming &&
+                        incoming.RuleId == marker && incoming.Id >= first && incoming.Id < (long)first + count)))
                 return "Mission operation base IDs are exhausted or collide.";
         }
         for (var index = 0; index < regionScores.Length; index++)
@@ -113,6 +122,8 @@ internal sealed partial class CampaignWorld
         var alienBase = new AlienBaseSnapshot(campaign.NextId(deployment.MarkerName), rule.OperationBaseTypeId,
             mission.Race, position.Longitude, position.Latitude)
         {
+            PreservationKey = "alien-base:generated:" + checked(++_alienBaseBirthSequence)
+                .ToString(System.Globalization.CultureInfo.InvariantCulture),
             StartMonth = campaign.MonthsPassed,
             MinutesSinceLastHuntMissionGeneration = deployment.HuntMissionMaxFrequency,
         };

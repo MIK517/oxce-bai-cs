@@ -6,9 +6,8 @@ internal sealed partial class CampaignWorld
 {
     private string? MissionOperationReason(RuntimeAlienMissionRule rule, string selectedRegion)
     {
-        if (rule.OperationType == RuntimeMissionOperationType.Space) return null;
-        var candidates = rule.OperationType == RuntimeMissionOperationType.RegionNewBase
-            ? [] : MissionOperationBases(rule, selectedRegion).ToArray();
+        if (rule.OperationType is RuntimeMissionOperationType.Space or RuntimeMissionOperationType.RegionNewBase) return null;
+        var candidates = MissionOperationBases(rule, selectedRegion).ToArray();
         var identities = new HashSet<(string Marker, int Id)>();
         var duplicates = new HashSet<(string Marker, int Id)>();
         foreach (var candidate in _alienBases)

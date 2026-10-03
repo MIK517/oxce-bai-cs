@@ -38,6 +38,7 @@ public static partial class OxceSaveAdapter
             { Name = String(map, "name", string.Empty) }).ToArray()),
             MissionSites = Array.AsReadOnly(sites),
             AlienBases = Array.AsReadOnly(alienBases),
+            AlienBaseBirthSequence = ULong(body, "oxcePortAlienBaseBirthSequence", 0),
             Events = Array.AsReadOnly(Maps(body, "geoscapeEvents").Select(static (map, index) => new GeoscapeEventSnapshot(
                 RequiredString(map, "name"), Integer(map, "spawnCountdown", 0))
             {

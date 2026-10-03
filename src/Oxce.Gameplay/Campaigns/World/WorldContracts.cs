@@ -211,6 +211,8 @@ public sealed record WorldSnapshot
     public IReadOnlyList<WaypointSnapshot> Waypoints { get; init; } = [];
     public IReadOnlyList<MissionSiteSnapshot> MissionSites { get; init; } = [];
     public IReadOnlyList<AlienBaseSnapshot> AlienBases { get; init; } = [];
+    /// <summary>Port-owned birth sequence; prevents deleted sidecars following reused marker IDs.</summary>
+    public ulong AlienBaseBirthSequence { get; init; }
     public IReadOnlyList<GeoscapeEventSnapshot> Events { get; init; } = [];
     /// <summary>SavedGame::generatedEvents counts, including history for removed event rules.</summary>
     public IReadOnlyDictionary<string, int> GeneratedEvents { get; init; } =
@@ -222,5 +224,5 @@ public sealed record WorldSnapshot
     public bool IsEmpty =>
         Missions.Count == 0 && Ufos.Count == 0 && Waypoints.Count == 0 &&
         MissionSites.Count == 0 && AlienBases.Count == 0 && Events.Count == 0 &&
-        GeneratedEvents.Count == 0 && Strategy.IsEmpty;
+        GeneratedEvents.Count == 0 && AlienBaseBirthSequence == 0 && Strategy.IsEmpty;
 }

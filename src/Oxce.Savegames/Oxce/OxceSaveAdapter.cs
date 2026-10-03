@@ -488,6 +488,8 @@ public static partial class OxceSaveAdapter
                 ])))),
             Pair("alienStrategy", BuildAlienStrategy(snapshot.World.Strategy, originalStrategy)),
             Pair("generatedEvents", IntMapping(snapshot.World.GeneratedEvents)),
+            Pair("oxcePortAlienBaseBirthSequence", snapshot.World.AlienBaseBirthSequence == 0
+                ? null : ULong(snapshot.World.AlienBaseBirthSequence)),
             // Legacy terror sites were imported as mission sites, so the legacy node is not rewritten.
             Pair("terrorSites", null),
             Pair("tags", ScriptValues(snapshot.ScriptValues)),

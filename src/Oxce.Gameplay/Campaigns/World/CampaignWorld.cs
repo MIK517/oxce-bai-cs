@@ -17,6 +17,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private readonly List<WaypointSnapshot> _waypoints = [];
     private readonly List<MissionSiteSnapshot> _sites = [];
     private readonly List<AlienBaseSnapshot> _alienBases = [];
+    private ulong _alienBaseBirthSequence;
     private readonly List<GeoscapeEventSnapshot> _events = [];
     private AlienStrategyState _strategy = new();
 
@@ -150,6 +151,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         Waypoints = CampaignSnapshot.ReadOnly(_waypoints),
         MissionSites = CampaignSnapshot.ReadOnly(_sites),
         AlienBases = CampaignSnapshot.ReadOnly(_alienBases),
+        AlienBaseBirthSequence = _alienBaseBirthSequence,
         Events = CampaignSnapshot.ReadOnly(_events),
         GeneratedEvents = CampaignSnapshot.ReadOnlyIds(_generatedEvents),
         Strategy = CaptureStrategy(),
@@ -176,6 +178,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _waypoints.Clear();
         _sites.Clear();
         _alienBases.Clear();
+        _alienBaseBirthSequence = snapshot.World.AlienBaseBirthSequence;
         _events.Clear();
         _generatedEvents.Clear();
         foreach (var pair in snapshot.World.GeneratedEvents) _generatedEvents.Add(pair.Key, pair.Value);
@@ -288,6 +291,13 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
 
     private void Validate()
     {
+        foreach (var alienBase in _alienBases)
+            if (alienBase.PreservationKey.StartsWith("alien-base:generated:", StringComparison.Ordinal) &&
+                (!ulong.TryParse(alienBase.PreservationKey.AsSpan("alien-base:generated:".Length),
+                    System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var birth) ||
+                 birth == 0 || birth > _alienBaseBirthSequence))
+                throw new InvalidDataException("Alien base birth identity exceeds its saved sequence.");
+
         var rules = campaign.Content.RuntimeRules;
         EnsureUnique(_missions.Select(static mission => mission.Id), "alien mission IDs");
         EnsureUnique(_ufos.Select(static ufo => ufo.UniqueId), "UFO unique IDs");

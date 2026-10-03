@@ -170,8 +170,11 @@ public sealed class StrategicOperationBaseSpawnTests
         Assert.Equal(26, after.Regions.Sum(state => (long)state.ActivityAlien[^1]) -
             initial.Regions.Sum(state => (long)state.ActivityAlien[^1]));
         Reload(content, campaign, 17, "composed-operation-bases.sav");
-        initial = initial with { Regions = initial.Regions.Select(region =>
-            region with { ActivityAlien = [int.MaxValue - 13] }).ToArray() };
+        initial = initial with
+        {
+            Regions = initial.Regions.Select(region =>
+                region with { ActivityAlien = [int.MaxValue - 13] }).ToArray()
+        };
         campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AssertCommandBlocked(campaign, "Mission operation base activity exceeds the supported range.");
     }
@@ -260,10 +263,125 @@ public sealed class StrategicOperationBaseSpawnTests
         AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeletedBaseSidecarCannotAttachToACreatedBaseReusingItsMarkerId(bool cache)
+    {
+        var content = LoadCreation(cache, 2);
+        var initial = CreateSnapshot(content, "Deleted operation base sidecar") with { RandomState = 17 };
+        initial = initial with { World = initial.World with { AlienBases = [new(1, "OPERATION_BASE", "RACE_A", 0.2, 0.1)] } };
+        var yaml = Oxce.Savegames.Oxce.OxceSaveAdapter.EmitNewCampaign(initial);
+        var start = yaml.IndexOf("alienBases:\n", StringComparison.Ordinal);
+        Assert.True(start >= 0);
+        var line = yaml.IndexOf('\n', start + "alienBases:\n".Length);
+        yaml = yaml.Insert(line + 1, "    futureBase: obsolete\n");
+        var loaded = TestFixtures.LoadLogisticsSave(yaml, content, 17, "obsolete-operation-base.sav");
+        var deleted = loaded.Campaign.Capture().WithNextId("STR_ALIEN_BASE", 1);
+        deleted = deleted with { World = deleted.World with { AlienBases = [] } };
+        var campaign = CampaignState.Restore(deleted, content, new SplitMix64RandomSource(deleted.RandomState));
+        Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
+        var created = campaign.Capture();
+        Assert.Equal(1, Assert.Single(created.World.AlienBases).Id);
+        var written = Oxce.Savegames.Oxce.OxceSaveAdapter.EmitLoadedCampaign(created, loaded.Source);
+        Assert.DoesNotContain("futureBase", written, StringComparison.Ordinal);
+        var again = TestFixtures.LoadLogisticsSave(written, content, 17, "replacement-operation-base.sav");
+        Assert.Equivalent(created, again.Campaign.Capture(), strict: true);
+        Assert.Equal(1UL, created.World.AlienBaseBirthSequence);
+        var firstKey = Assert.Single(created.World.AlienBases).PreservationKey;
+        var empty = again.Campaign.Capture();
+        empty = empty with { World = empty.World with { AlienBases = [], Missions = [] } };
+        var emptyYaml = Oxce.Savegames.Oxce.OxceSaveAdapter.EmitLoadedCampaign(empty, again.Source);
+        var emptied = TestFixtures.LoadLogisticsSave(emptyYaml, content, 17, "operation-base-sequence-without-actors.sav");
+        Assert.Equal(1UL, emptied.Campaign.Capture().World.AlienBaseBirthSequence);
+        var replacement = emptied.Campaign.Capture().WithNextId("STR_ALIEN_BASE", 1);
+        var next = CampaignState.Restore(replacement, content, new SplitMix64RandomSource(replacement.RandomState));
+        Assert.Empty(next.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
+        Assert.Equal(2UL, next.Capture().World.AlienBaseBirthSequence);
+        Assert.NotEqual(firstKey, Assert.Single(next.Capture().World.AlienBases).PreservationKey);
+        Reload(content, next, 17, "second-replacement-operation-base.sav");
+    }
+
+    [Fact]
+    public void ExhaustedBirthSequenceBlocksBeforeRngAndInconsistentBirthIdentityIsRejected()
+    {
+        var content = LoadCreation(false, 2);
+        var initial = CreateSnapshot(content, "Operation base birth capacity") with { RandomState = 17 };
+        initial = initial with { World = initial.World with { AlienBaseBirthSequence = ulong.MaxValue } };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AssertCommandBlocked(campaign, "Mission operation base birth sequence is exhausted.");
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBaseBirthSequence = 0,
+                AlienBases = [new(1, "OPERATION_BASE", "RACE_A", 0.2, 0.1) { PreservationKey = "alien-base:generated:1" }],
+            },
+        };
+        Assert.Throws<InvalidDataException>(() =>
+            CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)));
+    }
+
+    [Theory]
+    [InlineData("SHIP", true)]
+    [InlineData("STR_ALIEN_TERROR", false)]
+    public void CreationCannotReuseACraftMarkerIdentityOrTheLegacyTerrorNamespace(string marker, bool collision)
+    {
+        var content = LoadCreation(false, 2, marker: marker);
+        var initial = CreateSnapshot(content, "Operation base target identity") with { RandomState = 17 };
+        if (collision)
+        {
+            var craft = initial.Bases.SelectMany(owner => owner.Crafts).First(candidate => candidate.RuleId == marker);
+            initial = initial.WithNextId(marker, craft.Id);
+        }
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AssertCommandBlocked(campaign, collision ? "Mission operation base IDs are exhausted or collide." :
+            "Mission operation base uses an unsupported marker namespace.");
+    }
+
+    [Fact]
+    public void IncomingCraftMarkerIdentityAlsoPreventsAmbiguousBaseCreation()
+    {
+        var content = LoadCreation(false, 2, marker: "SHIP");
+        var initial = CreateSnapshot(content, "Incoming craft operation base identity") with { RandomState = 17 };
+        var owner = initial.Bases[0];
+        var craft = owner.Crafts.First(candidate => candidate.RuleId == "SHIP") with { Id = 11, PreservationKey = "" };
+        initial = initial.WithNextId("SHIP", 11) with
+        {
+            Bases = [owner with
+            {
+                Transfers = [new TransferSnapshot(77, 1, CampaignTransferKind.Craft, "SHIP", 1, Craft: craft)],
+            }, .. initial.Bases.Skip(1)],
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AssertCommandBlocked(campaign, "Mission operation base IDs are exhausted or collide.");
+    }
+
+    [Fact]
+    public void RegionalBaseCandidateGeometryIsIncludedInTheWholeBatchWorkBound()
+    {
+        var content = LoadCreation(false, 3, regionAreaCopies: 1000);
+        var initial = CreateSnapshot(content, "Regional operation candidate work").WithNextId("STR_ALIEN_BASE", 501) with
+        {
+            RandomState = 17,
+        };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBases = Enumerable.Range(1, 500).Select(id =>
+                    new AlienBaseSnapshot(id, "OPERATION_BASE", "RACE_A", 2, 0.1)).ToArray(),
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AssertCommandBlocked(campaign, "Mission script base targeting exceeds the supported work limit.");
+    }
+
     private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadCreation(
-        bool cache, int operation, int zone = 1, int objective = 0, bool additional = false, bool invalidTexture = false, bool? allow = null, int extraScripts = 0, bool adhoc = false)
+        bool cache, int operation, int zone = 1, int objective = 0, bool additional = false, bool invalidTexture = false, bool? allow = null, int extraScripts = 0, bool adhoc = false, string marker = "STR_ALIEN_BASE", int regionAreaCopies = 1)
     {
         TestFixtures.LoadVerifiedManifest("strategic-operation-base-spawn");
+        var regionAreas = string.Join(", ", Enumerable.Repeat("[0, 90, -20, 20]", regionAreaCopies));
         var points = invalidTexture ? "[[45, 45, 2, 2]]" : "[[8, 8, 2, 2], [12, 12, -2, -2]]";
         var option = allow is { } configured ? "allowAlienBasesOnWrongTextures: " + (configured ? "true" : "false") : "";
         var second = string.Join("\n", Enumerable.Range(0, additional ? 1 : extraScripts).Select(index => $$$"""
@@ -291,14 +409,14 @@ public sealed class StrategicOperationBaseSpawnTests
             {{{option}}}
             regions:
               - type: OPERATION_REGION
-                areas: [[0, 90, -20, 20]]
+                areas: [{{{regionAreas}}}]
                 missionZones:
                   - []
                   - {{{points}}}
             alienDeployments:
               - type: OPERATION_BASE
                 alienBase: true
-                markerName: STR_ALIEN_BASE
+                markerName: {{{marker}}}
                 huntMissionMaxFrequency: 90
             alienMissions:
               - type: CREATE_OPERATION
