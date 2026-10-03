@@ -48,7 +48,7 @@ public sealed class StrategicWorldObjectiveLifecycleTests
     }
 
     [Fact]
-    public void GroundArrivalThatWouldCreateAnAlienBaseIsBlockedBeforeMutation()
+    public void GroundBaseObjectiveWithMissingFallbackDeploymentIsBlockedBeforeMutation()
     {
         var content = Load(false);
         var initial = CreateLifecycleSnapshot(content);
@@ -62,7 +62,7 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         };
         var campaign = CampaignState.Restore(initial with
         { World = initial.World with { Missions = [mission], Ufos = [ufo] } }, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+        AssertTimeBlocked(campaign, "Base objective references an unavailable deployment.");
     }
 
     [Theory]

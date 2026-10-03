@@ -94,4 +94,3 @@ int main(){std::cout<<"{\"rows\":[";bool first=true;
  mission.land(game,allowed,conversion,landing,waveObjective,current);
  std::cout<<'['<<objective<<','<<landing<<','<<waveObjective<<','<<current<<','<<spawn<<','<<allowed<<','<<conversion<<','<<kind<<','<<game.births<<','<<RNG::integerCalls<<','<<RNG::unitCalls<<",\""<<game.selected<<"\"]";
  }std::cout<<"]}\n";}
-

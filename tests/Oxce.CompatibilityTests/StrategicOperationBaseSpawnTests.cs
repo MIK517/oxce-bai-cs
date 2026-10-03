@@ -377,8 +377,19 @@ public sealed class StrategicOperationBaseSpawnTests
         AssertCommandBlocked(campaign, "Mission script base targeting exceeds the supported work limit.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NegativeOperationBaseTimerIsRejectedBeforeCreatingUnreloadableState(bool cache)
+    {
+        var content = LoadCreation(cache, 2, huntTimer: -1);
+        var campaign = CampaignState.Restore(CreateSnapshot(content, "Invalid operation birth timer"),
+            content, new SplitMix64RandomSource(17));
+        AssertCommandBlocked(campaign, "Mission operation base hunting timer cannot be negative.");
+    }
+
     private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadCreation(
-        bool cache, int operation, int zone = 1, int objective = 0, bool additional = false, bool invalidTexture = false, bool? allow = null, int extraScripts = 0, bool adhoc = false, string marker = "STR_ALIEN_BASE", int regionAreaCopies = 1)
+        bool cache, int operation, int zone = 1, int objective = 0, bool additional = false, bool invalidTexture = false, bool? allow = null, int extraScripts = 0, bool adhoc = false, string marker = "STR_ALIEN_BASE", int regionAreaCopies = 1, int huntTimer = 90)
     {
         TestFixtures.LoadVerifiedManifest("strategic-operation-base-spawn");
         var regionAreas = string.Join(", ", Enumerable.Repeat("[0, 90, -20, 20]", regionAreaCopies));
@@ -417,7 +428,7 @@ public sealed class StrategicOperationBaseSpawnTests
               - type: OPERATION_BASE
                 alienBase: true
                 markerName: {{{marker}}}
-                huntMissionMaxFrequency: 90
+                huntMissionMaxFrequency: {{{huntTimer}}}
             alienMissions:
               - type: CREATE_OPERATION
                 objective: {{{objective}}}

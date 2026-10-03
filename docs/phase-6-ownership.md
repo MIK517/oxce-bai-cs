@@ -700,3 +700,35 @@ next two slices. Combat and deployment remain branch 5.
   checks pass. Confirmed sidecar, marker-identity and geometry-work findings are
   fixed with regressions; the reference checkout remains clean and the obsolete
   probe object was removed. Broader 4c acceptance remains open; 4d is untouched.
+
+- 4c base-objective cycle: pinned AlienMission::think final-base and landing-base
+  blocks, chooseAlienBaseType, Texture::getRandomDeployment and MissionArea
+  defaults. The 432 search and 384 landing rows cover ordering, dynamic selection,
+  technical regions, fake-water/fallback and conversion precedence. Final-wave
+  and accepted landing creation now execute through registered world handlers,
+  with persistent birth identity, score/marker/population/work reservations and
+  fresh/cache transition reloads. Operation-base creation shares the birth helper.
+- Batch audit confirmed omitted counter-forecast scans, combined patrol-discovery
+  work and creation-tick newborn-base hunting capacity. Deterministic regressions
+  fail before the fixes. The hunting reproduction overflowed after mutation;
+  possible creation-tick hunting and invalid timer bounds now stop before birth.
+  No-candidate birth/timer fallthrough remains executable. A legacy missing
+  fallback test now asserts the precise deployment failure. Infiltration/pacts,
+  broader hunting forecasts, detection VM and actual campaign hook composition
+  remain open; branches 4d/5/6 retain their agreed boundaries.
+
+- Shared birth validation additionally rejects negative deployment hunting timers
+  before operation or landing creation, preventing unreloadable owned state.
+  Fresh/cache reproductions fail before the fix. Whitespace-only markers are
+  handled consistently with existing site creation.
+
+- The batch ID audit reproduced hourly craft production shifting a shared base
+  marker into an existing ID. Final-wave and landing preflights now guard this
+  precise composition before mutation, with bounded scans and fresh/cache tests.
+  Reference callers are GeoscapeState::timeAdvance and Production::step;
+  production-aware base marker forecasts remain open 4c work.
+
+- Cycle validation: all 1,841 root tests pass with no skips/failures, including
+  checksums and private corpus. Formatting, code-map and diff checks pass; the
+  pinned reference is clean. Three implementation commits and a separate audit
+  repair commit preserve the 4c/4d and branch 5/6 boundaries.

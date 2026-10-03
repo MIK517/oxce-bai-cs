@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_objective_base_spawn_probe.cpp",
-      "size": 5470,
-      "sha256": "c19f71235255867de466cc569ddd639f94e6a528b8d7119167f715b7d58b1f73"
+      "size": 5469,
+      "sha256": "e3aca34b71e930039d58f96374b68f5fdb8526922ba6d1411aee1b1399b9dafe"
     },
     {
       "path": "tools/capture-strategic-objective-base-spawn-reference.ps1",
