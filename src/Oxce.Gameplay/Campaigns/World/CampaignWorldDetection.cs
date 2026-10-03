@@ -103,6 +103,19 @@ internal sealed partial class CampaignWorld
                 mission.MultiUfoRetaliationInProgress && !missionRule.MultiUfoRetaliationExtra ||
                 mission.NextWave >= missionRule.Waves.Count || mission.SpawnCountdown > 30)
                 continue;
+            List<SpawnArea>? leaderOrigins = null;
+            var certainLeader = false;
+            if (missionRule.Waves.Any(wave => NewEscortWave(missionRule, wave)))
+            {
+                activityWork += _ufos.Count;
+                if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
+                leaderOrigins = [];
+                if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader)
+                {
+                    leaderOrigins.Add(new(leader.Position, 0));
+                    certainLeader = true;
+                }
+            }
             foreach (var step in DueWaveSteps(mission, missionRule))
             {
                 if (!CanSpawnOrdinaryUfoWave(step, missionRule)) continue;
@@ -111,11 +124,27 @@ internal sealed partial class CampaignWorld
                 var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
                 if (!TryOrdinarySpawnPositions(step, missionRule, trajectory, region, out var positions))
                     return "Alien mission wave spawning requires world simulation.";
+                var ordinaryOrigins = positions;
+                var percentage = missionRule.Objective == RuntimeMissionObjective.Supply && wave.Objective
+                    ? 0 : wave.HunterKillerPercentage == -1
+                        ? rules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
+                // spawnUfo relocates a successful escort BEFORE this score pass.
+                // Earlier probabilistic births may or may not provide the first
+                // ordinary leader; preserve every possible outcome without RNG.
+                if (NewEscortWave(missionRule, wave) && leaderOrigins is { Count: > 0 })
+                    positions = percentage >= 100 && certainLeader ? leaderOrigins : [.. positions, .. leaderOrigins];
                 activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length) * 2;
                 if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
                 var grounded = trajectory.Altitude(0) == 0;
                 var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1);
                 if (reason is not null) return reason;
+                if (!certainLeader && leaderOrigins is not null && percentage < 100)
+                {
+                    activityWork += ordinaryOrigins.Count;
+                    if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
+                    leaderOrigins.AddRange(ordinaryOrigins);
+                    certainLeader = percentage <= 0;
+                }
                 if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert)
                 {
                     possibleMarkerIds++;

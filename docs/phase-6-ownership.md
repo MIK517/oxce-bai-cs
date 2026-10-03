@@ -543,3 +543,12 @@ next two slices. Combat and deployment remain branch 5.
   behavior. Positive unique UFO references permit an unassigned contact marker.
   Fresh/cache persistence and aggregate work limits are verified. Loaded idle
   escort/newborn-leader pursuit forecasts retain a precise boundary.
+
+- 4c escort batch audit: confirmed and fixed scoring preflight using the wrong
+  origin after creation relocation. Region/country boundary regressions cover
+  saved and immediate-wave leaders; terminal leader fallthrough/reload is covered.
+
+- Escort cycle final gate: all 1,745 root tests pass, including private/endurance
+  and allocation/checksum coverage. Formatting, code-map and diff checks pass.
+  The read-only reference checkout is clean;
+  remaining 4c ownership is explicit and the 4d boundary is unchanged.

@@ -150,3 +150,27 @@ and existing escort scans over the final population. Excessive immediate escort
 work stops before any birth or RNG draw. Loaded idle escorts attaching to newborn
 leaders still stop at a specific pursuit-forecast boundary; grounded escorts and
 creation-time craft hunting remain explicit future 4c work.
+
+### Escort batch audit
+
+The three-slice audit reproduced a relocation scoring defect: newborn escort
+activity was forecast at its ordinary origin even though AlienMission::spawnUfo
+moved it to a leader before GeoscapeState::time30Minutes scored it. Overflow or
+underflow in the leader's region/country therefore threw after mutation.
+
+Activity preflight now tracks saved leader positions and all possible earlier
+ordinary births in list order, including probabilistic hunter constructor outcomes.
+A certain hunter escort with a certain leader scores only at the candidate leader
+origins; otherwise the original birth point remains a possible outcome. Geography
+work and candidate storage stay bounded and no forecast draws RNG.
+
+Sixteen region/country boundary regressions cover saved and newly born leaders,
+positive/negative scores, atomic refusal and exact-fit success with reload.
+A terminal-leader regression also saves after the reference's early return,
+then verifies next-tick follower restoration and mission live-count release.
+
+Final escort-cycle validation passes all 1,745 root tests with no failures or
+skips, including private classifications, endurance, checksums and allocation
+checks. Formatting verification, code-map and diff validation pass. The pinned reference checkout remains
+clean; obsolete probe object output was removed. Branch 4c's headless gate remains
+open and branch 4d has not started.

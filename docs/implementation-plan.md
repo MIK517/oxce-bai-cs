@@ -681,3 +681,11 @@ next two slices. Combat and deployment remain branch 5.
 - Branch 4c immediate escort slice: finite wave chains preserve earlier/later
   leader order and origin semantics, including unmarked leader reloads and bounded
   population scans. Focused verification passed (66 hunting/escort cases).
+
+- Branch 4c escort batch audit: reproduced and fixed relocated-escort activity
+  overflow after mutation. Preflight now includes saved and possible earlier-wave
+  leader positions; boundary and terminal-arrival persistence regressions pass.
+
+- Final escort-cycle root validation: 1,745 passed, zero failures/skips, including
+  private classifications, endurance, checksum and allocation coverage. Code-map
+  and diff checks pass, as does formatting verification; 4c remains open and 4d is untouched.
