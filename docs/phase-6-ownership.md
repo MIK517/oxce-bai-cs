@@ -732,3 +732,8 @@ next two slices. Combat and deployment remain branch 5.
   checksums and private corpus. Formatting, code-map and diff checks pass; the
   pinned reference is clean. Three implementation commits and a separate audit
   repair commit preserve the 4c/4d and branch 5/6 boundaries.
+
+- Five-cycle batch 1, slice 1: Country::canBeInfiltrated/setNewPact evidence and
+  both Mod infiltration options are pinned. Defaults are false; immutable runtime
+  projections and cache revision 35 preserve loaded options. All eight country
+  flag combinations and fresh/cache options are covered. Live completion follows.

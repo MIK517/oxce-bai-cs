@@ -40,6 +40,8 @@ internal static class CampaignStartSettingsComposer
         b.HunterKillerFastRetarget = Read(root, "hunterKillerFastRetarget", b.HunterKillerFastRetarget);
         b.AllowAlienBasesOnWrongTextures = Read(root, "allowAlienBasesOnWrongTextures", b.AllowAlienBasesOnWrongTextures);
         b.AllowCountriesToCancelAlienPact = Read(root, "allowCountriesToCancelAlienPact", b.AllowCountriesToCancelAlienPact);
+        b.BuildInfiltrationBaseCloseToTheCountry = Read(root, "buildInfiltrationBaseCloseToTheCountry", b.BuildInfiltrationBaseCloseToTheCountry);
+        b.InfiltrateRandomCountryInTheRegion = Read(root, "infiltrateRandomCountryInTheRegion", b.InfiltrateRandomCountryInTheRegion);
         if (root.TryGet("mana", out var mana))
             b.ManaWoundThreshold = Read(mana as YamlMappingNode ?? throw new InvalidDataException("Mana settings require a mapping."), "woundThreshold", b.ManaWoundThreshold);
         if (root.TryGet("health", out var health))

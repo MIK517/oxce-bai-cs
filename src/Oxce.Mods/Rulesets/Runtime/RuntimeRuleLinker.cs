@@ -307,6 +307,8 @@ public static class RuntimeRuleLinker
             HunterKillerFastRetarget = content.CampaignStart.Settings.HunterKillerFastRetarget,
             AllowAlienBasesOnWrongTextures = content.CampaignStart.Settings.AllowAlienBasesOnWrongTextures,
             AllowCountriesToCancelAlienPact = content.CampaignStart.Settings.AllowCountriesToCancelAlienPact,
+            BuildInfiltrationBaseCloseToTheCountry = content.CampaignStart.Settings.BuildInfiltrationBaseCloseToTheCountry,
+            InfiltrateRandomCountryInTheRegion = content.CampaignStart.Settings.InfiltrateRandomCountryInTheRegion,
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
         var catalog = new RuntimeRuleCatalog(

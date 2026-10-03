@@ -600,3 +600,8 @@ Formatting verification, regenerated code-map validation and git diff --check
 pass. Useful captured probes remain available; obsolete probe objects were
 removed. The pinned reference checkout is clean. Branch 4c remains incomplete,
 and branch 4d is untouched.
+
+- Five-cycle batch 1, slice 1: Country::canBeInfiltrated/setNewPact evidence and
+  both Mod infiltration options are pinned. Defaults are false; immutable runtime
+  projections and cache revision 35 preserve loaded options. All eight country
+  flag combinations and fresh/cache options are covered. Live completion follows.
