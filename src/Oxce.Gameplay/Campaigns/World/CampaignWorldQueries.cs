@@ -12,6 +12,8 @@ public sealed record CampaignWorldTarget(
     public string Status { get; init; } = string.Empty;
     public string Altitude { get; init; } = string.Empty;
     public bool Detected { get; init; }
+    /// <summary>Future UFO detection alerts are ignored until the campaign is reloaded.</summary>
+    public bool DetectionAlertIgnored { get; init; }
     public int SecondsRemaining { get; init; }
     public WorldTargetReference Reference { get; init; } = new(Kind, TypeId, Id, Longitude, Latitude);
     /// <summary>Reason interception or landing cannot yet execute; pursuit may still be available.</summary>

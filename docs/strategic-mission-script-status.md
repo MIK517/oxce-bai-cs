@@ -165,3 +165,21 @@ Supply keeps its separate constructor and destination rules. Generic two-point
 Earth trajectories return to the operation base at waypoint 1, matching the same
 getWaypoint helper used by later arrivals. Flags without site targeting preserve
 coordinates and RNG in captured ordinary-spawn rows and fresh/cache reload tests.
+
+### Additional 4c cycle: ignored UFO contacts
+
+IgnoreUfoContact is registered in the world capability and validates stable UFO
+identity, positive current contact ID and visibility before mutation. Query targets
+report alert suppression. Radar, hyperwave tracking, activity and movement continue;
+only the detected-contact popup and its marker allocations are suppressed.
+SavedGame.cpp addUfoToIgnoreList/isUfoOnIgnoreList and GeoscapeState.cpp ufoDetection
+back the oracle. UfoDetectedState.cpp btnCancelClick is the reference caller.
+The ignore set is transient, matching the reference (no save key); save-neutral
+state is unchanged and reload clears suppression. Fresh/cache loss/rediscovery,
+idempotence, stale-command and reload tests verify this behavior.
+
+Validation for this checkpoint: root `dotnet test --no-restore` passes all 1,522
+tests, with no failures or skips, including checksum, private corpus and populated
+world scenarios. Formatting verification, regenerated code-map validation and
+`git diff --check` pass. Captured probes remain available under artifacts; obsolete
+probe object files were removed. The pinned C++ checkout is clean.
