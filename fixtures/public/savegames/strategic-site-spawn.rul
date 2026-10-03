@@ -1,9 +1,35 @@
 # Direct mission-site waves: coordinates convert to the captured radian bounds.
+globe:
+  textures:
+    - {id: 10, deployments: {RULE_DEPLOY: 1, DIRECT_DEPLOY: 3}}
+    - {id: 30, deployments: {DIRECT_DEPLOY: 0}}
+    - {id: 31, deployments: {DIRECT_DEPLOY: 0, RULE_DEPLOY: 0}}
+    - {id: 32, deployments: {}}
+    - {id: 33, deployments: {DIRECT_DEPLOY: 2147483647, RULE_DEPLOY: 1}}
+    - {id: 34, deployments: {MISSING_DEPLOY: 0, DIRECT_DEPLOY: 1}}
 regions:
   - type: SITE_SPAWN_REGION
     areas: [[0, 60, -20, 20]]
     missionZones:
       - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 10, CITY], [28.647889756541161, 28.647889756541161, 5.7295779513082321, 5.7295779513082321, 10, CITY_SELECTED]]
+  - type: SITE_SINGLE_ZERO
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 30, CITY]]
+  - type: SITE_ALL_ZERO
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 31, CITY]]
+  - type: SITE_EMPTY
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 32, CITY]]
+  - type: SITE_MISSING_TEXTURE
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 99, CITY]]
+  - type: SITE_OVERFLOW_WEIGHTS
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 33, CITY]]
+  - type: SITE_ZERO_MISSING
+    missionZones:
+      - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 34, CITY]]
 alienDeployments:
   - type: DIRECT_DEPLOY
     markerName: DIRECT_MARKER
@@ -42,3 +68,12 @@ alienMissions:
   - type: DIRECT_OVERFLOW_DURATION
     spawnZone: 0
     waves: [{ufo: DIRECT_OVERFLOW_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_RULE
+    objective: 3
+    siteType: RULE_DEPLOY
+    spawnZone: 0
+    waves: [{ufo: UNKNOWN_DIRECT_UFO, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}]
+  - type: DIRECT_TERRAIN
+    objective: 3
+    spawnZone: 0
+    waves: [{ufo: UNKNOWN_DIRECT_UFO, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}]

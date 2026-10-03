@@ -31,20 +31,16 @@ int getDurationMin() const { return minimum; }
 int getDurationMax() const { return maximum; }
 };
 struct Texture {
-std::map<std::string, int> deployments;
-std::string getRandomDeployment() const {
-int total = 0; for (const auto& entry : deployments) total += entry.second;
-if (!total) return "";
-int roll = RNG::generate(1, total);
-for (const auto& entry : deployments) { if (roll <= entry.second) return entry.first; roll -= entry.second; }
-throw Exception("invalid roll");
-}
+std::map<std::string, int> _deployments;
+std::string getRandomDeployment() const;
 };
+// TEXTURE_SELECTION
 struct Globe { std::map<int, Texture> textures; Texture* getTexture(int id) { auto it = textures.find(id); return it == textures.end() ? nullptr : &it->second; } };
 struct Mod {
 Globe globe; RuleRegion region; std::map<std::string, AlienDeployment> deployments;
 Globe* getGlobe() const { return const_cast<Globe*>(&globe); }
 AlienDeployment* getDeployment(const std::string& id, bool required = false) const {
+if (id.empty() || id == std::string(1, '\0')) return nullptr;
 auto it = deployments.find(id); if (it != deployments.end()) return const_cast<AlienDeployment*>(&it->second);
 if (required) throw Exception("missing deployment"); return nullptr;
 }
@@ -84,18 +80,20 @@ int main() {
 using namespace OpenXcom;
 std::cout << std::fixed << std::setprecision(9) << "{\"cases\":[";
 bool first = true;
-for (const std::string name : {"override", "rule", "terrain", "selected", "base", "missing-base", "empty-terrain", "missing-texture"}) {
+for (const std::string name : {"override", "rule", "terrain", "single-zero", "all-zero", "selected", "base", "missing-base", "empty-terrain", "missing-texture"}) {
 if (!first) std::cout << ','; first = false;
 Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY", "DIRECT_MARKER", 2, 3});
 mod.deployments.emplace("RULE_DEPLOY", AlienDeployment{"RULE_DEPLOY", "RULE_MARKER", 3, 4});
-mod.globe.textures[10].deployments = {{"DIRECT_DEPLOY", 3}, {"RULE_DEPLOY", 1}};
+mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 3}, {"RULE_DEPLOY", 1}};
 mod.region.zones = {{{{0.1, 0.3, -0.2, 0.2, 10, "CITY"}, {0.5, 0.5, 0.1, 0.1, 10, "CITY_SELECTED"}}}};
 AlienMission mission; MissionWave wave; UfoTrajectory trajectory; SavedGame game; Base base{0.2,0.1};
 if (name == "override" || name == "selected" || name == "base" || name == "missing-base") wave.ufoType = "DIRECT_DEPLOY";
 if (name == "override" || name == "rule") mission._rule.siteType = "RULE_DEPLOY";
 if (name == "selected") mission._missionSiteZoneArea = 1;
 if (name == "base" || name == "missing-base") { wave.objectiveOnXcomBase = true; if (name == "base") game.base = &base; }
-if (name == "empty-terrain") mod.globe.textures[10].deployments.clear();
+if (name == "single-zero") mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 0}};
+if (name == "all-zero") mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 0}, {"RULE_DEPLOY", 0}};
+if (name == "empty-terrain") mod.globe.textures[10]._deployments.clear();
 if (name == "missing-texture") mod.globe.textures.clear();
 RNG::calls = 0; bool error = false; try { mission.direct(game, mod, wave, trajectory); } catch (const Exception&) { error = true; }
 std::cout << "{\"name\":\"" << name << "\",\"error\":" << (error ? "true" : "false") << ",\"calls\":" << RNG::calls << ",\"site\":[";
