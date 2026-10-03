@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-retaliation-spawn",
+  "description": "Retaliation assault/scouting and instant termination decisions, target order, source override, default constructor and movement setup.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Verbatim AlienMission retaliation spawn block and selectXcomBase; generic fallback is a counted boundary; controlled point/land and UFO collaborators",
+      "capture": "tools/capture-strategic-retaliation-spawn-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_retaliation_spawn_probe.cpp",
+      "size": 4139,
+      "sha256": "8f477fa5e0b2c7c9719385c43f6b95457646c324b8123835b94387f0a7e308b2"
+    },
+    {
+      "path": "tools/capture-strategic-retaliation-spawn-reference.ps1",
+      "size": 2812,
+      "sha256": "49e07a406be67c355daf43e876c3e8f69bcec320f7f5ad1a1e47db01a128f518"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-retaliation-spawn.expected.json"
+}
