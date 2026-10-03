@@ -531,3 +531,9 @@ missing leaders, mission filtering, hunter exclusions, first saved-order leader,
 all leader statuses, origin relocation, original destination and full speed.
 The owning gameplay operation reproduces those rows; live wave callers are the
 next two slices. Combat and deployment remain branch 5.
+
+- 4c creation-time escorts: live single airborne waves attach to the first saved
+  same-mission ordinary UFO, retain requests when no leader exists, and repair
+  deletion through shared target cleanup. Fresh/cache, persistence, malformed
+  effective-speed and craft-retarget boundary tests pass. Immediate-wave leaders
+  and grounded escort forecasts remain the next boundaries.

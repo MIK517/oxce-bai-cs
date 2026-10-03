@@ -117,3 +117,18 @@ missing leaders, mission filtering, hunter exclusions, first saved-order leader,
 all leader statuses, origin relocation, original destination and full speed.
 The owning gameplay operation reproduces those rows; live wave callers are the
 next two slices. Combat and deployment remain branch 5.
+
+### Creation-time escorts: live single waves
+
+Airborne escort waves now run AlienMission::spawnUfo's constructor and initial
+leader attachment through gameplay-owned mission spawning. The saved-order leader
+may be flying, landed, ignored, crashed or destroyed. Timer-driven deletion repairs
+the new follower's original waypoint and mission live count; no-leader waves retain
+the escort request without changing their trajectory speed. Fresh/cache cases and
+save/reload on both sides of the transition are covered.
+
+Preflight reserves creation/retarget scans and cleanup over the final UFO population,
+validates the effective full escort speed, and stops before craft retargeting or
+grounded escort takeoff needs further forecasts. Multiple same-tick births remain
+guarded for the immediate-wave slice. Reference: AlienMission::spawnUfo,
+Ufo::setEscortedUfo/resetOriginalDestination and GeoscapeState::time5Seconds.

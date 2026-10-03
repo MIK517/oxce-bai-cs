@@ -673,3 +673,7 @@ missing leaders, mission filtering, hunter exclusions, first saved-order leader,
 all leader statuses, origin relocation, original destination and full speed.
 The owning gameplay operation reproduces those rows; live wave callers are the
 next two slices. Combat and deployment remain branch 5.
+
+- Branch 4c escort creation slice: enabled single airborne escort births, including
+  no-leader requests and same-tick expired-leader recovery. Focused hunting/escort
+  verification passed (59 cases); immediate-wave composition follows separately.
