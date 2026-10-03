@@ -331,3 +331,23 @@ tests, with no failures or skips, including checksum, private corpus and populat
 world scenarios. Formatting verification, regenerated code-map validation and
 `git diff --check` pass. Captured probes remain available under artifacts; obsolete
 probe object files were removed. The pinned C++ checkout is clean.
+
+### Base-objective checkpoint (2026-10-04)
+
+The latest three-slice cycle completes the pinned deployment/search projection,
+live final-wave creation and accepted landing-site creation. The batch audit adds
+counter-scan and aggregate patrol work guards and prevents newborn bases from
+starting unreserved hunting missions during the same tick. Persistent birth keys,
+combined IDs/scores, fresh/cache reloads and precise malformed-rule boundaries
+are covered. The audit also rejects negative hunting timers and guards craft
+production sharing a base marker on hourly ticks. Remaining 4c work includes
+creation-tick hunting and shared craft-production ID forecasts, infiltration/pacts,
+detection VM and actual initial/monthly caller composition.
+This checkpoint does not close headless acceptance or begin 4d.
+
+Validation: root dotnet test --no-restore passes all 1,841 tests, with no failures
+or skips, including checksum, private-corpus and populated world coverage.
+Formatting verification, regenerated code-map validation and git diff --check
+pass. Useful captured probes remain available; obsolete probe objects were
+removed. The pinned reference checkout is clean. Branch 4c remains incomplete,
+and branch 4d is untouched.

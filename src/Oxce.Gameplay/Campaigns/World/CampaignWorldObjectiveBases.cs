@@ -6,6 +6,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private int _objectiveBaseBirths;
+    private int _objectiveBasesBeforeHunting;
     private List<(IReadOnlyList<SpawnArea> Positions, int Points)>? _objectiveBaseScores;
 
     private static bool CompletesBaseObjective(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
@@ -35,6 +36,7 @@ internal sealed partial class CampaignWorld
             return "Base objective population exceeds the supported limit.";
         if (ulong.MaxValue - _alienBaseBirthSequence < (ulong)_objectiveBaseBirths)
             return "Base objective birth sequence is exhausted.";
+        if (!landing) _objectiveBasesBeforeHunting++;
         var rules = campaign.Content.RuntimeRules;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         var positions = new List<SpawnArea>();
@@ -49,8 +51,12 @@ internal sealed partial class CampaignWorld
             foreach (var candidate in ObjectiveBaseDeployments(rule, area))
             {
                 var deployment = rules.AlienDeployments[candidate].Value;
+                if (deployment.HuntMissionMaxFrequency < 0)
+                    return "Base objective hunting timer cannot be negative.";
+                if (!landing && NewObjectiveBaseHuntingReason(deployment, position, highest, ref work) is { } huntingReason)
+                    return huntingReason;
                 var marker = deployment.MarkerName;
-                if (marker.Length == 0 || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
+                if (string.IsNullOrWhiteSpace(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
                     marker is WorldTargetReference.WaypointType or WorldTargetReference.BaseType or "STR_ALIEN_TERROR")
                     return "Base objective uses an unsupported marker namespace.";
                 markers.Add(marker);
@@ -58,10 +64,26 @@ internal sealed partial class CampaignWorld
         }
         foreach (var marker in markers)
         {
+            // Hourly production precedes both final-wave and landing births.
+            // Its craft allocator can advance this shared counter past our range.
+            if (highest >= CampaignTimeTrigger.OneHour)
+                foreach (var owner in campaign.BaseStates)
+                    foreach (var production in owner.Productions)
+                    {
+                        var materials = rules.Manufacture[production.Rule].Value.ProducedMaterials;
+                        work += 1L + materials.Count;
+                        if (work > MaximumAlienBaseChecks)
+                            return "Base objective creation exceeds the supported work limit.";
+                        if (materials.Any(material => material.Quantity > 0 && material.Craft is { } craft &&
+                            rules.Crafts.GetExternalId(craft) == marker))
+                            return "Base objective markers shared with same-tick craft production require ID forecasts.";
+                    }
             var count = reservations.GetValueOrDefault(marker) + 1;
             reservations[marker] = count;
             work += _alienBases.Count + (long)_sites.Count;
             foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            if (landing)
+                work += (_siteBirthIdChanges?.Count ?? 0) + 2L * (_siteConversionCounterForecast?.Count ?? 0);
             // Counter forecasts include daily research; charge its scans too.
             if (highest >= CampaignTimeTrigger.OneDay)
             {
@@ -120,6 +142,69 @@ internal sealed partial class CampaignWorld
             return [rules.AlienDeployments.GetRequired("STR_ALIEN_BASE_ASSAULT")];
         }
         catch (KeyNotFoundException error) { throw new InvalidDataException("Base objective references an unavailable deployment.", error); }
+    }
+
+    private string? NewObjectiveBaseHuntingReason(RuntimeAlienDeploymentRule deployment, SpawnArea area,
+        CampaignTimeTrigger highest, ref long work)
+    {
+        if (highest < CampaignTimeTrigger.TenMinutes || deployment.BaseDetectionRange <= 0) return null;
+        if (deployment.HuntMissionMaxFrequency > int.MaxValue - 10)
+            return "New base objective hunting timer exceeds the supported range.";
+        var rules = campaign.Content.RuntimeRules;
+        var range = WorldGeometry.Nautical(deployment.BaseDetectionRange);
+        foreach (var owner in campaign.BaseStates)
+        {
+            work += owner.Crafts.Count + (highest >= CampaignTimeTrigger.OneHour ? (long)owner.Transfers.Count : 0);
+            if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+            foreach (var craft in owner.Crafts)
+            {
+                if (craft.Logistics is not { } state || rules.Crafts[craft.Rule].Value.Undetectable) continue;
+                var craftRule = rules.Crafts[craft.Rule].Value;
+                var possible = false;
+                if (state.Status == "STR_OUT")
+                {
+                    var projected = AdvanceCraftFuel(owner, craft, state);
+                    possible = !projected.LowFuel && !projected.MissionComplete &&
+                        projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craftRule, rules) &&
+                        Near(new(projected.Longitude, projected.Latitude));
+                }
+                else if (state.IsAutoPatrolling && craftRule.AutoPatrol)
+                    possible = Near(new(state.Longitude, state.Latitude)) || Near(new(owner.Longitude, owner.Latitude));
+                if (possible && ChoiceReason(ref work) is { } reason) return reason;
+            }
+            if (highest < CampaignTimeTrigger.OneHour) continue;
+            foreach (var transfer in owner.Transfers)
+            {
+                if (transfer.Delivered || transfer.Hours > 1 ||
+                    transfer.Craft?.Logistics is not { IsAutoPatrolling: true }) continue;
+                var craft = rules.Crafts[rules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
+                if (!craft.Undetectable && craft.AutoPatrol && Near(new(owner.Longitude, owner.Latitude)) &&
+                    ChoiceReason(ref work) is { } reason) return reason;
+            }
+        }
+        return null;
+
+        bool Near(WorldPosition position) => WorldGeometry.Distance(position, area.Center) - area.Radius < range;
+
+        string? ChoiceReason(ref long checks)
+        {
+            if (deployment.BaseDetectionChance <= 0) return null;
+            var choices = WorldAlienBaseHunting.Weights(deployment.HuntMissions, unchecked((ulong)campaign.MonthsPassed));
+            checks += 2L * choices.Count;
+            if (checks > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+            _ = WorldAlienMissionGeneration.Total(choices);
+            return choices.Any(choice => choice.Value != 0 && choice.Key.Length != 0)
+                ? "New base objective hunting requires creation-tick mission forecasts." : null;
+        }
+    }
+
+    private string? ObjectiveBasePatrolReason(CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.TenMinutes || _objectiveBasesBeforeHunting == 0) return null;
+        long possibleCrafts = 0;
+        foreach (var owner in campaign.BaseStates) possibleCrafts += owner.Crafts.Count + (long)owner.Transfers.Count;
+        return possibleCrafts * (_alienBases.Count + (long)_objectiveBasesBeforeHunting) > MaximumAlienBaseChecks
+            ? "Base objective patrol discovery exceeds the supported work limit." : null;
     }
 
     private bool CreatesLandingBase(UfoSnapshot ufo, AlienMissionSnapshot mission, RuntimeUfoTrajectoryRule trajectory)

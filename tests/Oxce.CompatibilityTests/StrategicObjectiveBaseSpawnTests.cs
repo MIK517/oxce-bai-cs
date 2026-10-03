@@ -185,8 +185,10 @@ public sealed class StrategicObjectiveBaseSpawnTests
         content = LoadWorld(false, "zero");
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "Base objective texture weights select an unavailable deployment.");
+        content = LoadWorld(false, marker: "\" \"");
+        AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
+            "Base objective uses an unsupported marker namespace.");
     }
-
 
     [Theory]
     [InlineData(false)]
@@ -204,12 +206,14 @@ public sealed class StrategicObjectiveBaseSpawnTests
             var template = rules.AlienMissions[rules.AlienMissions.GetRequired("BASE_OBJECTIVE")].Value;
             var rule = template with
             {
-                Objective = (RuntimeMissionObjective)row[0].GetInt32(), SpawnZone = row[4].GetInt32(),
+                Objective = (RuntimeMissionObjective)row[0].GetInt32(),
+                SpawnZone = row[4].GetInt32(),
                 SiteTypeId = kind == 0 ? "EXPLICIT" : "",
             };
             var wave = rule.Waves[0] with
             {
-                ObjectiveOnTheLandingSite = row[1].GetInt32() != 0, Objective = row[2].GetInt32() != 0,
+                ObjectiveOnTheLandingSite = row[1].GetInt32() != 0,
+                Objective = row[2].GetInt32() != 0,
             };
             var random = new TestFixtures.CountingMinimumRandomSource();
             var creates = WorldObjectiveBaseSpawn.CreatesOnLanding(rule, wave, row[3].GetInt32(),
@@ -279,11 +283,14 @@ public sealed class StrategicObjectiveBaseSpawnTests
             var initial = LandingInitial(content);
             if (scenario == "water") initial = initial with
             {
-                World = initial.World with { Ufos = [initial.World.Ufos[0] with
+                World = initial.World with
                 {
-                    Longitude = Degrees(45), Latitude = Degrees(2),
-                    Destination = WorldTargetReference.ForWaypoint(0, new(Degrees(45), Degrees(2))),
-                }] },
+                    Ufos = [initial.World.Ufos[0] with
+                    {
+                        Longitude = Degrees(45), Latitude = Degrees(2),
+                        Destination = WorldTargetReference.ForWaypoint(0, new(Degrees(45), Degrees(2))),
+                    }],
+                },
             };
             if (scenario == "conversion") initial = initial with
             {
@@ -329,6 +336,128 @@ public sealed class StrategicObjectiveBaseSpawnTests
         AssertTimeBlocked(CampaignState.Restore(overflow, content, new SplitMix64RandomSource(17)), "UFO alien activity exceeds the supported range.");
     }
 
+    [Fact]
+    public void LandingCounterForecastWorkIsBoundedAcrossExpiringSitesAndManyBirths()
+    {
+        var content = LoadWorld(false, landing: true, zone: 0);
+        var initial = LandingInitial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55) };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = 100 }],
+                Ufos = Enumerable.Range(1, 100).Select(id => initial.World.Ufos[0] with { UniqueId = id }).ToArray(),
+                MissionSites = Enumerable.Range(1, 3000).Select(id =>
+                    new MissionSiteSnapshot(id, "MISSION_SCOUT", "COUNTER_SITE", "RACE_A", 0.2, 0.1, 0)
+                    { Detected = true }).ToArray(),
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Base objective creation exceeds the supported work limit.");
+    }
+
+    [Fact]
+    public void ObjectiveBirthsReserveCombinedExistingAndNewBasePatrolDiscoveryWork()
+    {
+        var content = LoadWorld(false);
+        var initial = Initial(content);
+        var owner = initial.Bases[0];
+        var prototype = owner.Crafts.First(craft => craft.RuleId == "SHIP");
+        Assert.True(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SHIP")].Value.SightRange > 0);
+        initial = initial with
+        {
+            Bases = [owner with
+            {
+                Crafts = [.. owner.Crafts, .. Enumerable.Range(1000, 4000).Select(id => prototype with
+                {
+                    Id = id, Logistics = prototype.Logistics! with
+                    {
+                        Status = "STR_OUT", Takeoff = 0, Destination = null, Speed = 0, Fuel = 100, Damage = 0,
+                        Longitude = owner.Longitude, Latitude = owner.Latitude,
+                    },
+                })],
+            }],
+            World = initial.World with
+            {
+                Missions = Enumerable.Range(1, 80).Select(id => initial.World.Missions[0] with { Id = id }).ToArray(),
+                AlienBases = Enumerable.Range(1000, 190).Select(id => new AlienBaseSnapshot(id, "EXPLICIT", "RACE_A", 0.2, 0.1)).ToArray(),
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Base objective patrol discovery exceeds the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewFinalWaveBaseStopsBeforeUnreservedHuntingGeneration(bool cache)
+    {
+        var content = LoadWorld(cache, hunting: true);
+        var initial = Initial(content).WithNextId("ALIEN_MISSIONS", int.MaxValue);
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Destination = null,
+                Speed = 0,
+                Fuel = 100,
+                Damage = 0,
+                Longitude = Degrees(8),
+                Latitude = Degrees(2),
+                LowFuel = false,
+                MissionComplete = false,
+            },
+        });
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "New base objective hunting requires creation-tick mission forecasts.");
+        // No available craft still permits birth and the reference's timer fallthrough.
+        var peaceful = Initial(content);
+        var campaign = CampaignState.Restore(peaceful, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(100, Assert.Single(campaign.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+        Reload(content, campaign, 17, "new-base-hunting-timer.sav");
+        content = LoadWorld(cache, hunting: true, huntTimer: int.MaxValue);
+        AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
+            "New base objective hunting timer exceeds the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NegativeLandingBaseTimerIsRejectedBeforeCreatingUnreloadableState(bool cache)
+    {
+        var content = LoadWorld(cache, landing: true, zone: 0, hunting: true, huntTimer: -1);
+        AssertTimeBlocked(CampaignState.Restore(LandingInitial(content), content, new SplitMix64RandomSource(17)),
+            "Base objective hunting timer cannot be negative.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void BaseMarkerNamespaceWithHourlyCraftProductionStopsBeforeIdForecastChanges(bool cache, bool landing)
+    {
+        var content = LoadWorld(cache, marker: "SHIP", landing: landing, zone: landing ? 0 : 1);
+        var initial = landing ? LandingInitial(content) : Initial(content);
+        var owner = initial.Bases[0];
+        var nextCraft = owner.Crafts.Where(craft => craft.RuleId == "SHIP").Max(craft => craft.Id) + 1;
+        initial = initial.WithNextId("SHIP", nextCraft) with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+            Bases = [owner with
+            {
+                Facilities = [.. owner.Facilities, new("BASE_MARKER_WORKSHOP", 5, 5, 0, 0, false, false, false)],
+                Productions = [new("BASE_MARKER_CRAFT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+            }],
+            World = initial.World with { AlienBases = [new(nextCraft + 1, "COLLISION_BASE", "RACE_A", 0.2, 0.1)] },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Base objective markers shared with same-tick craft production require ID forecasts.");
+    }
+
     private static CampaignSnapshot LandingInitial(RuntimeContent content)
     {
         var initial = Initial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 0) };
@@ -351,7 +480,8 @@ public sealed class StrategicObjectiveBaseSpawnTests
     {
         var snapshot = CreateSnapshot(content, "Base objective") with
         {
-            RandomState = 17, Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            RandomState = 17,
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
         };
         return snapshot with
         {
@@ -361,7 +491,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
 
     private static RuntimeContent LoadWorld(bool cache, string kind = "EXPLICIT", int chance = 0,
         bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1, bool landing = false,
-        bool objectiveFlag = false, bool landingFlag = true)
+        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90)
     {
         var table = kind switch
         {
@@ -370,7 +500,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
             "zero" => "{TEXTURE: 0, Z_UNUSED: 0}",
             _ => "{}",
         };
-        var explicitType = marker == "OBJECTIVE_BASE" ? "EXPLICIT" : "COLLISION_BASE";
+        var explicitType = hunting ? "HUNT_BASE" : marker == "OBJECTIVE_BASE" ? "EXPLICIT" : "COLLISION_BASE";
         var site = kind == "EXPLICIT" ? explicitType : "\"\"";
         var waveType = landing ? "UFO_SCOUT" : ufo ? "UFO_SPAWN" : "UNDEFINED";
         var trajectory = landing ? "OBJECTIVE_LAND" : "OBJECTIVE_AIR";
@@ -387,6 +517,19 @@ public sealed class StrategicObjectiveBaseSpawnTests
               textures:
                 - {id: 110, deployments: {{{table}}}}
             alienDeployments:
+              - type: {{{explicitType}}}
+                baseDetectionRange: {{{(hunting ? 10000 : 0)}}}
+                baseDetectionChance: 100
+                huntMissionMaxFrequency: {{{huntTimer}}}
+                huntMissionWeights: {{{(hunting ? "{0: {MISSION_SCOUT: 1}}" : "{}")}}}
+              - type: COUNTER_SITE
+                markerName: COUNTER_SITE
+                counterDespawn: OTHER_COUNTER
+                counterFailure: OTHER_COUNTER
+                counterAll: OTHER_COUNTER
+                decreaseCounterDespawn: OTHER_COUNTER
+                decreaseCounterFailure: OTHER_COUNTER
+                decreaseCounterAll: OTHER_COUNTER
               - {type: {{{explicitType}}}, markerName: {{{marker}}}, fakeUnderwaterSpawnChance: {{{chance}}}}
               - {type: TEXTURE, fakeUnderwaterSpawnChance: {{{chance}}}}
               - {type: Z_UNUSED, fakeUnderwaterSpawnChance: {{{chance}}}}
@@ -396,6 +539,16 @@ public sealed class StrategicObjectiveBaseSpawnTests
               - id: OBJECTIVE_LAND
                 groundTimer: 2
                 waypoints: [[0, 3, 100], [1, 0, 80], [0, 1, 50]]
+            facilities:
+              - type: BASE_MARKER_WORKSHOP
+                mapName: LOGISTICS
+                size: 1
+                workshops: 2
+            manufacture:
+              - name: BASE_MARKER_CRAFT
+                category: STR_CRAFT
+                time: 1
+                producedItems: {SHIP: 1}
             alienMissions:
               - type: FINAL_BASE
                 objective: 2

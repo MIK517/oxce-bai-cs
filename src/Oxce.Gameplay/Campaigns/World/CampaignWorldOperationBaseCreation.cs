@@ -37,8 +37,10 @@ internal sealed partial class CampaignWorld
             if (rule.OperationBaseType is not { } deploymentHandle)
                 return "Mission operation references an unavailable alien base deployment.";
             var deployment = rules.AlienDeployments[deploymentHandle].Value;
+            if (deployment.HuntMissionMaxFrequency < 0)
+                return "Mission operation base hunting timer cannot be negative.";
             var marker = deployment.MarkerName;
-            if (marker.Length == 0 || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
+            if (string.IsNullOrWhiteSpace(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
                 marker is WorldTargetReference.WaypointType or WorldTargetReference.BaseType or "STR_ALIEN_TERROR")
                 return "Mission operation base uses an unsupported marker namespace.";
             markers.Add(marker);

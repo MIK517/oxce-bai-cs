@@ -565,3 +565,38 @@ real land/water arrivals and conversion precedence, reload through takeoff and
 verify composed final-wave/landing IDs and score limits. Arrival creation shares
 site-conversion counter forecasts and checks birth identity, population and
 marker collisions before mutation. Interception/deployment remains branch 5.
+
+The base-objective batch audit reproduced three omissions and fixes them in a
+separate commit. Landing reservations now charge prior birth/counter forecast
+scans (100 arrivals with 3,000 expiring sites exceeded the uncharged limit).
+Final-wave births reserve combined existing/new-base patrol discovery work
+(4,000 patrollers, 190 existing bases and 80 births exceeded one million checks).
+The reference timeAdvance fallthrough also exposes newborn final-wave bases to
+time10Minutes hunting. An eligible fueled craft and exhausted ALIEN_MISSIONS
+IDs reproduced overflow after mutation. A precise creation-tick hunting guard
+now checks all possible areas/deployments and current/autopatrol/incoming craft;
+timer overflow is rejected too. Birth with no eligible craft preserves timer
+fallthrough and reload. Landing births occur after the hunting/fuel pass and do
+not use that guard or discovery reservation. Broad creation-tick hunting mission
+forecasts remain 4c work; infiltration/pacts remain guarded.
+
+The shared-birth audit also reproduced negative deployment hunting timers in
+operation commands and landing objectives: both created state rejected on reload.
+Both preflights now reject these malformed counters before mutation. Blank marker
+names use the same whitespace-aware validation as site creation.
+
+The final ID audit reproduced a shared craft/base marker collision: hourly
+Production::step precedes the thirty-minute mission pass in
+GeoscapeState::timeAdvance, and craft creation consumes its type's SavedGame ID
+namespace. A craft build moved SHIP's counter from 2 to 3 after the preflight,
+creating a second alien base with ID 3. Final-wave and landing births now stop
+before hourly ticks with potentially shared craft production; these production
+ID forecasts remain explicit 4c work. The scans are bounded, and fresh/cache
+regressions cover both callers without advancing the clock or RNG.
+
+Validation: root dotnet test --no-restore passes all 1,841 tests, with no failures
+or skips, including checksum, private-corpus and populated world coverage.
+Formatting verification, regenerated code-map validation and git diff --check
+pass. Useful captured probes remain available; obsolete probe objects were
+removed. The pinned reference checkout is clean. Branch 4c remains incomplete,
+and branch 4d is untouched.

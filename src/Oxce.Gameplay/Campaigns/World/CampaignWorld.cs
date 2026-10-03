@@ -453,6 +453,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _newLeaderHasNoCraftPursuer = null;
         _siteBirthIdChanges = null;
         _objectiveBaseBirths = 0;
+        _objectiveBasesBeforeHunting = 0;
         _objectiveBaseScores = null;
         _siteBirthExpiryIncreases = null;
         _siteBirthExpiryDecreases = null;
@@ -479,6 +480,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         var siteReason = SiteTimingReason(highest);
         if (siteReason is not null) return siteReason;
         if (UfoSiteConversionsReason(highest) is { } conversionReason) return conversionReason;
+        if (ObjectiveBasePatrolReason(highest) is { } patrolReason) return patrolReason;
         var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
         if (detectionReason is not null) return detectionReason;
         return EventSchedulingReason(highest);
