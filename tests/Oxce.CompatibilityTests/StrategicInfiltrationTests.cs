@@ -119,15 +119,26 @@ public sealed class StrategicInfiltrationTests
     {
         var content = Load(cache);
         var initial = Initial(content);
-        initial = initial with { World = initial.World with {
-            Missions = [initial.World.Missions[0], initial.World.Missions[0] with { Id = 5 }] } };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0], initial.World.Missions[0] with { Id = 5 }],
+            },
+        };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(["INF_A", "INF_B"], campaign.Capture().World.AlienBases.Select(item => item.PactCountryId));
         Reload(content, campaign, 17, "two-pacts.sav");
-        initial = Initial(content) with {
-            Countries = Initial(content).Countries.Select(country => country with {
-                Pact = true, CancelPact = country.RuleId == "INF_B", NewPact = false }).ToArray() };
+        initial = Initial(content) with
+        {
+            Countries = Initial(content).Countries.Select(country => country with
+            {
+                Pact = true,
+                CancelPact = country.RuleId == "INF_B",
+                NewPact = false,
+            }).ToArray(),
+        };
         campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.Equal("INF_B", Assert.Single(campaign.Capture().World.AlienBases).PactCountryId);
@@ -147,8 +158,10 @@ public sealed class StrategicInfiltrationTests
         Assert.Empty(campaign.Capture().World.AlienBases);
         Assert.All(campaign.Capture().Countries, country => Assert.False(country.NewPact));
         Reload(content, campaign, 17, "suppressed-infiltration.sav");
-        var initial = Initial(content) with {
-            Countries = Initial(content).Countries.Select(country => country with { NewPact = true }).ToArray() };
+        var initial = Initial(content) with
+        {
+            Countries = Initial(content).Countries.Select(country => country with { NewPact = true }).ToArray(),
+        };
         campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         Assert.Empty(campaign.Capture().World.AlienBases);
@@ -165,13 +178,24 @@ public sealed class StrategicInfiltrationTests
             "Base objective IDs are exhausted or collide.");
     }
 
+    [Fact]
+    public void SuppressedCountriesReserveAllPossibleSearchRetriesBeforeMutation()
+    {
+        var countryRules = string.Join("\n", Enumerable.Range(0, 4000).Select(index =>
+            $"  - {{type: INF_C{index}, labelLon: 8, labelLat: 2, areas: [[0, 20, -10, 10]]}}"));
+        var content = Load(false, "allowAlienBasesOnWrongTextures: false\nalienDeployments:\n  - {type: INF_BASE, fakeUnderwaterSpawnChance: 100}\ncountries:\n" + countryRules);
+        AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
+            "Infiltration country search exceeds the supported work limit.");
+    }
+
     private static RuntimeContent Load(bool cache, string extra = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], cache, extra);
 
     private static CampaignSnapshot Initial(RuntimeContent content)
     {
         var initial = CreateSnapshot(content, "Infiltration");
-        return initial with {
+        return initial with
+        {
             RandomState = 17,
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
             Countries = initial.Countries.Where(country => country.RuleId.StartsWith("INF_", StringComparison.Ordinal)).ToArray(),

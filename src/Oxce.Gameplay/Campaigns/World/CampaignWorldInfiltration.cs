@@ -20,7 +20,17 @@ internal sealed partial class CampaignWorld
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         work += (long)campaign.CountryStates.Count * (region.Areas.Count + 1L);
         if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
-        if (!campaign.CountryStates.Any(country => Eligible(country, region))) return null;
+        var eligible = campaign.CountryStates.Count(country => Eligible(country, region));
+        if (eligible == 0) return null;
+        var areas = WorldGeometry.MissionAreas(region, rule.SpawnZone);
+        long search = region.Areas.Count + 1L;
+        foreach (var polygon in rules.Campaign.Globe.Polygons) search += 2L * polygon.Points.Count;
+        foreach (var area in areas)
+            search += 1L + (rule.SiteTypeId.Length == 0 &&
+                rules.Campaign.Globe.Textures.TryGetValue(area.Texture, out var texture) ? 3L * texture.Deployments.Count : 1);
+        // Suppression can repeat all 100 attempts for every eligible country.
+        work += eligible * 100L * search;
+        if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
         // Regional searches have the same possible birth regardless of country.
         // Only one country may sign per mission completion.
         return ObjectiveBaseSpawnReason(mission, rule with { Points = 0 }, highest, markers, ref work);
