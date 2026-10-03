@@ -128,9 +128,14 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         work += locationCount + (hasSiteScripts ? _strategy.MissionLocations.Count : 0);
         var possibleRemoved = new HashSet<(string Region, string Mission)>();
         var removalCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var creationChoices = new HashSet<(RuleHandle<AlienMissionRuleFamily> Mission, string Region)>();
+        Dictionary<string, int>? baseMarkers = null;
+        ActivityRange[]? baseRegionScores = null, baseCountryScores = null;
+        var basePopulation = _alienBases.Count;
         foreach (var entry in available)
         {
             var script = entry.Value;
+            creationChoices.Clear();
             var creditedRegions = new HashSet<string>(StringComparer.Ordinal);
             if (script.Label > 0 && !labels.Add(script.Label))
                 return $"Mission scripts share label {script.Label}.";
@@ -260,6 +265,14 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     }
                 }
             }
+            if (creationChoices.Count != 0)
+            {
+                baseMarkers ??= new(StringComparer.Ordinal);
+                baseRegionScores ??= campaign.RegionStates.Select(state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
+                baseCountryScores ??= campaign.CountryStates.Select(state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
+                if (ReserveOperationBaseCreation(creationChoices, baseMarkers, baseRegionScores, baseCountryScores,
+                        ref basePopulation, ref work) is { } baseReason) return baseReason;
+            }
             if (script.Races.Count != 0 && Choices(script.Races, month, choice => choice.IsResolved) is { } raceReason)
                 return raceReason;
             if (script.VariableName.Length != 0)
@@ -318,6 +331,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 work += 1L + (rule.OperationType == RuntimeMissionOperationType.Space ? 0 : 2L * _alienBases.Count);
                 if (work > MaximumMissionScriptChecks) return false;
                 if (MissionOperationReason(rule, regionId) is not null) return false;
+                if (RequiresOperationBaseCreation(rule, regionId)) creationChoices.Add((handle, regionId));
             }
             if (useMissionRace)
             {
