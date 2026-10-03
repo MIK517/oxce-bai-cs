@@ -159,13 +159,99 @@ public sealed class StrategicWorldUfoSiteConversionTests
             : "UFO alien activity exceeds the supported range.");
     }
 
-    [Fact]
-    public void ConversionRetainsPreciseCombinedTickGuard()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CombinedTickConversionFollowsCapturedCounterOrder(bool cache)
     {
-        var content = Load();
-        var snapshot = Snapshot(content) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new QuarterChoices()),
-            "UFO site conversion requires combined half-hour counter forecasts.");
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "counterConversionRows"))
+        {
+            var birth = row[0].GetBoolean();
+            var decrease = row[1].GetBoolean();
+            var overlay = "alienDeployments:\n  - type: EXPIRING_COUNTER\n    markerName: OTHER_MARKER\n" +
+                "    counterDespawn: DIRECT_MARKER\n" + (decrease ? "    decreaseCounterAll: DIRECT_MARKER\n" : "");
+            var content = Load(cache, overlay);
+            var initial = Snapshot(content);
+            initial = initial with
+            {
+                Time = new(1, 1, 1, 1999, 1, 29, 55),
+                World = initial.World with
+                {
+                    Missions = birth ? [.. initial.World.Missions,
+                        new AlienMissionSnapshot(5, "DIRECT_OVERRIDE", "SITE_SPAWN_REGION", "RACE_A", 0, 0, 30, 0, 0)] :
+                        initial.World.Missions,
+                    MissionSites = [new MissionSiteSnapshot(1, "DIRECT_OVERRIDE", "EXPIRING_COUNTER", "RACE_A", 0.2, 0.1, 0)
+                    { Detected = true }],
+                },
+            };
+            var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+            if (birth && decrease)
+            {
+                AssertTimeBlocked(campaign, "UFO site conversion shares decreased marker counters with same-tick direct sites.");
+                continue;
+            }
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Contains(result.Events, item => item is MissionSiteDetected);
+            var after = campaign.Capture();
+            var converted = after.World.MissionSites[^1];
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                birth, decrease, birth ? after.World.MissionSites[0].Id : 0, converted.Id, after.NextIds["DIRECT_MARKER"],
+            });
+            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            Assert.Equal(7200, converted.SecondsRemaining); // Created after the site timer pass.
+            Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 3 + 5 + (birth ? 4 : 0), after.Regions[0].ActivityAlien[^1]);
+            Reload(content, campaign, 17, "combined-ufo-site-counter-order.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyConversionForecastIncludesResearchMarkerChanges(bool collision)
+    {
+        const string overlay = "research:\n  - name: SHIFT_MARKER\n    cost: 1\n    increaseCounter: [DIRECT_MARKER]\n";
+        var content = Load(overlay: overlay);
+        var initial = Snapshot(content).WithNextId("DIRECT_MARKER", 1);
+        initial = initial with
+        {
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            Bases = [initial.Bases[0] with { Research = [new ResearchProjectSnapshot("SHIFT_MARKER", 0, 1, 1)] }],
+            World = initial.World with
+            {
+                MissionSites = [new MissionSiteSnapshot(collision ? 2 : 3, "DIRECT_OVERRIDE", "DIRECT_DEPLOY", "RACE_A", 0.2, 0.1, 3600)
+                { Detected = true }],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+        if (collision)
+        {
+            AssertTimeBlocked(campaign, "Mission site marker IDs are exhausted or collide with a saved target.");
+            return;
+        }
+        Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+        Assert.Equal(2, campaign.Capture().World.MissionSites[^1].Id);
+        Reload(content, campaign, 17, "daily-converted-site.sav");
+    }
+
+    [Fact]
+    public void ExpiryCounterCannotOverflowALaterConversionMarker()
+    {
+        const string overlay = "alienDeployments:\n  - type: EXPIRING_COUNTER\n    markerName: OTHER_MARKER\n    counterDespawn: DIRECT_MARKER\n";
+        var content = Load(overlay: overlay);
+        var initial = Snapshot(content).WithNextId("DIRECT_MARKER", int.MaxValue - 1);
+        initial = initial with
+        {
+            Time = new(1, 1, 1, 1999, 1, 29, 55),
+            World = initial.World with
+            {
+                MissionSites = [new MissionSiteSnapshot(1, "DIRECT_OVERRIDE", "EXPIRING_COUNTER", "RACE_A", 0.2, 0.1, 0)
+                { Detected = true }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new QuarterChoices()),
+            "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
     [Fact]

@@ -77,10 +77,14 @@ internal sealed partial class CampaignWorld
 
     private string? SiteTimingReason(CampaignTimeTrigger highest)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0 && _siteBirthExpiryIncreases is not { Count: > 0 }) return null;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0 && _siteBirthIdChanges is not { Count: > 0 }) return null;
         var rules = campaign.Content.RuntimeRules;
         var counterChanges = new List<CustomCounterChange>();
-        if (_siteBirthIdChanges is not null) counterChanges.AddRange(_siteBirthIdChanges);
+        if (_siteBirthIdChanges is not null)
+        {
+            counterChanges.AddRange(_siteBirthIdChanges);
+            _siteConversionCounterForecast = _siteBirthIdChanges.Select(static change => new CustomCounterForecast(change, false)).ToList();
+        }
         var discovered = FirstSiteDiscoveredThisTick(highest);
         long despawnWork = 0;
         foreach (var site in _sites)
@@ -116,9 +120,21 @@ internal sealed partial class CampaignWorld
                 if (despawnWork > MaximumAlienBaseChecks) return "Mission site despawn checks exceed the supported work limit.";
                 if (SiteDespawnReason(deployment, highest) is { } despawnReason) return despawnReason;
             }
-            if (transition.Remove) AddSiteCounterChanges(counterChanges, deployment);
+            if (transition.Remove)
+            {
+                var start = counterChanges.Count;
+                AddSiteCounterChanges(counterChanges, deployment);
+                for (var index = start; index < counterChanges.Count; index++)
+                    (_siteConversionCounterForecast ??= []).Add(new(counterChanges[index], true));
+            }
         }
-        if (_siteBirthExpiryIncreases is not null) counterChanges.AddRange(_siteBirthExpiryIncreases);
+        if (_siteBirthExpiryIncreases is not null)
+        {
+            counterChanges.AddRange(_siteBirthExpiryIncreases);
+            foreach (var change in _siteBirthExpiryIncreases) (_siteConversionCounterForecast ??= []).Add(new(change, false));
+        }
+        if (_siteBirthExpiryDecreases is not null)
+            foreach (var change in _siteBirthExpiryDecreases) (_siteConversionCounterForecast ??= []).Add(new(change, false));
         return campaign.CustomCounters.CapacityReason(counterChanges, highest);
     }
 

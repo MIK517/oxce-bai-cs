@@ -3,12 +3,16 @@ namespace Oxce.Gameplay.Campaigns;
 /// <summary>A SavedGame::increase/decreaseCustomCounter call in reference order.</summary>
 internal readonly record struct CustomCounterChange(string Name, bool Increase);
 
+/// <summary>A certain or possible counter change preceding a later world allocation.</summary>
+internal readonly record struct CustomCounterForecast(CustomCounterChange Change, bool Guaranteed);
+
 /// <summary>Gameplay-owned custom counters stored in the save's ids mapping.</summary>
 internal interface ICampaignCustomCounters
 {
     string? CapacityReason(IReadOnlyList<CustomCounterChange> changes, CampaignTimeTrigger highest);
     void Apply(CustomCounterChange change);
-    (long Minimum, long Maximum) BeforeWorldCreation(string name, CampaignTimeTrigger highest);
+    (long Minimum, long Maximum) BeforeWorldCreation(string name, CampaignTimeTrigger highest,
+        IReadOnlyList<CustomCounterForecast>? preceding = null);
 }
 
 internal static class CustomCounterValue
@@ -22,7 +26,29 @@ public sealed partial class CampaignState : ICampaignCustomCounters
 {
     internal ICampaignCustomCounters CustomCounters => _handlers.Operation<ICampaignCustomCounters>();
 
-    (long Minimum, long Maximum) ICampaignCustomCounters.BeforeWorldCreation(string name, CampaignTimeTrigger highest)
+    (long Minimum, long Maximum) ICampaignCustomCounters.BeforeWorldCreation(string name, CampaignTimeTrigger highest,
+        IReadOnlyList<CustomCounterForecast>? preceding)
+    {
+        var (minimum, maximum) = CounterAfterDailyResearch(name, highest);
+        if (preceding is not null)
+            foreach (var forecast in preceding)
+            {
+                if (forecast.Change.Name != name) continue;
+                if (forecast.Change.Increase)
+                {
+                    maximum++;
+                    if (forecast.Guaranteed) minimum++;
+                }
+                else
+                {
+                    minimum = Math.Max(1, minimum - 1);
+                    if (forecast.Guaranteed) maximum = Math.Max(1, maximum - 1);
+                }
+            }
+        return (minimum, maximum);
+    }
+
+    private (long Minimum, long Maximum) CounterAfterDailyResearch(string name, CampaignTimeTrigger highest)
     {
         long minimum = _nextIds.GetValueOrDefault(name, 1);
         var maximum = minimum;

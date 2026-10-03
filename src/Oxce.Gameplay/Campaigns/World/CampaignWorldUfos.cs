@@ -69,7 +69,6 @@ internal sealed partial class CampaignWorld
             }
         }
         long siteLinkWork = 0;
-        Dictionary<string, int>? siteReservations = null;
         for (var index = 0; index < _ufos.Count; index++)
         {
             if (_ufos[index] is { Status: UfoStatus.Crashed, InBattlescape: true })
@@ -142,9 +141,6 @@ internal sealed partial class CampaignWorld
                     }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
-                    if (IsSiteConversion(ufo, mission, trajectory) &&
-                        UfoSiteReason(ufo, mission, highest, siteReservations ??= new(StringComparer.Ordinal), ref siteLinkWork) is { } siteReason)
-                        return siteReason;
                 }
             }
         }

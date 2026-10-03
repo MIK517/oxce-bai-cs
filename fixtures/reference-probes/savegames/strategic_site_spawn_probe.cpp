@@ -84,10 +84,14 @@ void setCity(const std::string& value) { city = value; }
 };
 struct SavedGame {
 std::vector<MissionSite*> sites; std::vector<Base*> bases; int scoreCalls = 0;
-int getId(const std::string&) { return 7; }
+std::map<std::string, int> _ids = {{"DIRECT_MARKER",7},{"RULE_MARKER",7}};
+int getId(const std::string&);
+void increaseCustomCounter(const std::string&);
+void decreaseCustomCounter(const std::string&);
 auto* getMissionSites() { return &sites; }
 auto* getBases() { return &bases; }
 };
+// ID_AND_COUNTER_METHODS
 struct AlienMission {
 RuleAlienMission _rule; std::string _race = "RACE_A", _region = "REGION"; int _missionSiteZoneArea = -1;
 MissionSite* spawnMissionSite(SavedGame&, const Mod&, const MissionArea&, const Ufo*, AlienDeployment* = nullptr);
@@ -165,6 +169,21 @@ AlienMission mission; mission._rule.respawn = respawn; mission._missionSiteZoneA
 Ufo ufo; SavedGame game; RNG::calls = 0; mission.convert(game, mod, ufo, false);
 std::cout << "[" << (respawn ? "true" : "false") << ",\"" << (ufo.status == Ufo::DESTROYED ? "destroyed" : "ignore")
 << "\"," << game.sites.size() << ',' << game.scoreCalls << ',' << RNG::calls << ']';
+}
+std::cout << "],\"counterConversionRows\":[";
+first = true;
+for (bool birth : {false,true}) for (bool decrease : {false,true}) {
+if (!first) std::cout << ','; first = false;
+Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY","DIRECT_MARKER",2,3});
+mod.region.zones = {{{{0.1,0.3,-0.2,0.2,10,"CITY"}}}};
+SavedGame game; int directId = birth ? game.getId("DIRECT_MARKER") : 0;
+game.increaseCustomCounter("DIRECT_MARKER");
+if (decrease) game.decreaseCustomCounter("DIRECT_MARKER");
+AlienMission mission; mission._rule.siteType = "DIRECT_DEPLOY"; mission._missionSiteZoneArea = 0;
+Ufo ufo; mission.convert(game, mod, ufo, false);
+std::cout << '[' << (birth ? "true" : "false") << ',' << (decrease ? "true" : "false") << ',' << directId
+<< ',' << game.sites.at(0)->id << ',' << game._ids.at("DIRECT_MARKER") << ']';
+for (auto* site : game.sites) delete site;
 }
 std::cout << "]}\n";
 }
