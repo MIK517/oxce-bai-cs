@@ -45,3 +45,8 @@ alienMissions:
     refNode: *conversion
     siteType: ""
     waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]
+
+items:
+  - type: VEHICLE
+    battleType: 0
+    size: 1

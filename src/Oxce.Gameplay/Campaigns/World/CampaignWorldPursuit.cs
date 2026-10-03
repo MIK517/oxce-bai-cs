@@ -162,6 +162,8 @@ internal sealed partial class CampaignWorld
             // Detection may reveal an imported hidden destination at the half-hour boundary.
             if (ufo is null || !ufo.Detected && highest < CampaignTimeTrigger.ThirtyMinutes ||
                 ufo.Status is UfoStatus.Destroyed or UfoStatus.IgnoreMe) return null;
+            // Conversion's new site position and reset speed are forecast by the world capability.
+            if (ArrivesAtSite(ufo, highest)) return null;
             projectedUfo = ForecastUfo(ufo, highest);
             targetPosition = projectedUfo.Value.Position;
         }

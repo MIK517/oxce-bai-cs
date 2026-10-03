@@ -58,14 +58,16 @@ double lon, lat; double getLongitude() const { return lon; } double getLatitude(
 bool getRetaliationTarget() const { return false; }
 };
 struct MissionSite;
-struct Craft { int getNumTotalUnits() const { return 0; } void setDestination(MissionSite*) {} void returnToBase() {} };
+struct Craft { int units = 0; MissionSite* destination = nullptr; bool returned = false;
+int getNumTotalUnits() const { return units; } void setDestination(MissionSite* site) { destination = site; } void returnToBase() { returned = true; } };
 struct Ufo {
 enum Status { FLYING, IGNORE_ME, DESTROYED }; Status status = FLYING;
 struct Stats { std::string missionCustomDeploy; }; Stats stats;
 Stats getCraftStats() const { return stats; }
 double getLongitude() const { return 0.25; } double getLatitude() const { return 0.15; }
 void setStatus(Status value) { status = value; } Status getStatus() const { return status; }
-std::vector<Craft*> getCraftFollowers() const { return {}; }
+std::vector<Craft*> followers;
+std::vector<Craft*> getCraftFollowers() const { return followers; }
 };
 struct UfoTrajectory { int getZone(int) const { return 0; } };
 struct MissionWave { std::string ufoType; bool objectiveOnXcomBase = false; bool objectiveOnTheLandingSite = false; };
@@ -183,6 +185,19 @@ AlienMission mission; mission._rule.siteType = "DIRECT_DEPLOY"; mission._mission
 Ufo ufo; mission.convert(game, mod, ufo, false);
 std::cout << '[' << (birth ? "true" : "false") << ',' << (decrease ? "true" : "false") << ',' << directId
 << ',' << game.sites.at(0)->id << ',' << game._ids.at("DIRECT_MARKER") << ']';
+for (auto* site : game.sites) delete site;
+}
+std::cout << "],\"followerConversionRows\":[";
+first = true;
+for (bool respawn : {false,true}) for (int units : {0,1,2}) {
+if (!first) std::cout << ','; first = false;
+Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY","DIRECT_MARKER",2,3});
+mod.region.zones = {{{{0.1,0.3,-0.2,0.2,10,"CITY"}}}};
+AlienMission mission; mission._rule.siteType = "DIRECT_DEPLOY"; mission._rule.respawn = respawn; mission._missionSiteZoneArea = 0;
+SavedGame game; Ufo ufo; Craft craft; craft.units = units; ufo.followers.push_back(&craft);
+mission.convert(game,mod,ufo,false);
+std::cout << '[' << (respawn ? "true" : "false") << ',' << units << ',' << (craft.destination == game.sites.at(0) ? "true" : "false")
+<< ',' << (craft.returned ? "true" : "false") << ']';
 for (auto* site : game.sites) delete site;
 }
 std::cout << "]}\n";

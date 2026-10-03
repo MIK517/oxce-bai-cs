@@ -369,6 +369,117 @@ public sealed class StrategicWorldUfoSiteConversionTests
         }
     }
 
+    private static CampaignSnapshot Following(CampaignSnapshot snapshot, int units, WorldPosition position)
+    {
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 100,
+                Longitude = position.Longitude, Latitude = position.Latitude,
+                Items = new Dictionary<string, int>(),
+                Vehicles = units == 1 ? [new CraftVehicleSnapshot("VEHICLE", 0) { Size = 1, PreservationKey = craft.PreservationKey + ":vehicle:0" }] : [],
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.25, 0.15) { UniqueId = 9 },
+            },
+        });
+        var owner = snapshot.Bases[0];
+        return snapshot with
+        {
+            Bases = [owner with
+            {
+                Soldiers = owner.Soldiers.Select((soldier, index) => soldier with
+                {
+                    Personal = soldier.Personal! with
+                    { CraftType = units == 2 && index < 2 ? "SHIP" : "", CraftId = units == 2 && index < 2 ? 1 : 0 },
+                }).ToArray(),
+            }, .. snapshot.Bases.Skip(1)],
+        };
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FollowerTransfersMatchCapturedUnitsAndDormancy(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "followerConversionRows"))
+        {
+            var respawn = row[0].GetBoolean();
+            var units = row[1].GetInt32();
+            var initial = Following(Snapshot(content, respawn: respawn), units, new(1, 0.6));
+            var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+            Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+            var after = campaign.Capture();
+            var state = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                respawn, units, state.Destination?.Kind == WorldTargetKind.MissionSite, state.Destination?.Kind == WorldTargetKind.Base,
+            });
+            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            if (units > 0)
+            {
+                var site = Assert.Single(after.World.MissionSites);
+                Assert.Equal(site.Id, state.Destination!.Id);
+                Assert.Equal("DIRECT_MARKER", state.Destination.TypeId);
+                Assert.Equal(site.Position, state.Destination.Position);
+                Assert.Equal(6000, state.Speed);
+            }
+            if (!respawn) Assert.Equal(new WorldPosition(1, 0.6), new(state.Longitude, state.Latitude));
+            Reload(content, campaign, 17, "converted-craft-followers.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DormantFollowerLandingStopsBeforeConversionButTerminalTransferProceeds(bool respawn)
+    {
+        var content = Load();
+        var initial = Following(Snapshot(content, landing: true, respawn: respawn), 2, new(0.25, 0.15));
+        var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+        if (respawn)
+        {
+            AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+            return;
+        }
+        Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+        Assert.Equal(WorldTargetKind.MissionSite, campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.Kind);
+        var next = Reload(content, campaign, 17, "terminal-follower-transfer.sav");
+        AssertTimeBlocked(next, "Craft landing requires deployment (Phase 6 branch 5).");
+    }
+
+    [Fact]
+    public void FuelReturnPrecedesConversionFollowerTransfer()
+    {
+        var content = Load();
+        var initial = Following(Snapshot(content, landing: true, respawn: true), 2, new(0.25, 0.15));
+        initial = initial with { Time = new(1, 1, 1, 1999, 1, 9, 55) };
+        initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Fuel = 1 } });
+        var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Contains(result.Events, item => item is CraftLowFuel);
+        Assert.Contains(result.Events, item => item is MissionSiteDetected);
+        Assert.Equal(WorldTargetKind.Base, campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.Kind);
+        Reload(content, campaign, 17, "fuel-before-converted-follower.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NonLandingCraftStillTransferToConvertedSites(bool suppressEquipment)
+    {
+        var content = Load(overlay: suppressEquipment ? null : "crafts:\n  - type: SHIP\n    allowLanding: false\n");
+        var initial = Following(Snapshot(content, landing: true, respawn: true), 2, new(0.25, 0.15));
+        initial = initial with { Options = initial.Options with { SuppressLandingWithoutEquipment = suppressEquipment } };
+        var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+        Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+        // The reference first transfers units, then the ordinary arrival caller recalls
+        // a craft unable to deploy. It produces no lost-UFO notification.
+        Assert.Equal(WorldTargetKind.Base, campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.Kind);
+        Reload(content, campaign, 17, "nonlanding-converted-follower.sav");
+    }
+
     private sealed class QuarterChoices : IStatefulRandomSource
     {
         public ulong State { get; set; }

@@ -63,14 +63,6 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var rule = MissionRule(mission);
-        foreach (var owner in campaign.BaseStates)
-            foreach (var craft in owner.Crafts)
-            {
-                if (++work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
-                if (craft.Logistics?.Destination is { Kind: WorldTargetKind.Ufo } target &&
-                    (target.UniqueId > 0 ? target.UniqueId == ufo.UniqueId : target.Id == ufo.Id))
-                    return "UFO site conversion requires craft follower transfer.";
-            }
         var wave = rule.Waves[MissionWaveIndex(ufo, mission, rule)] with { Deployment = null };
         var area = UfoSiteArea(ufo, mission, ufo.Destination!.Position);
         work += SiteDeploymentSelectionWork(wave, rule, area);
@@ -83,6 +75,8 @@ internal sealed partial class CampaignWorld
             return "World mission site population exceeds the supported limit.";
         if (candidates.Count != 0 && !TrySpawnArea(area, out _))
             return "UFO site conversion coordinates require an unsupported latitude domain.";
+        if (candidates.Count != 0 && UfoSiteFollowersReason(ufo, rule, area, highest, ref work) is { } followerReason)
+            return followerReason;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         foreach (var handle in candidates)
         {
@@ -152,6 +146,7 @@ internal sealed partial class CampaignWorld
                 CustomDeploymentId = rules.AlienDeployments.TryGet(custom, out _) ? custom : string.Empty,
                 UfoUniqueId = rule.RespawnUfoAfterSiteDespawn ? arrived.UniqueId : 0,
             });
+            TransferUfoSiteFollowers(arrived, _sites[^1], rule.RespawnUfoAfterSiteDespawn);
             effects.Notify(new MissionSiteDetected(id, deployment.MarkerName));
             if (rule.RespawnUfoAfterSiteDespawn) return arrived with { Status = UfoStatus.IgnoreMe };
         }
