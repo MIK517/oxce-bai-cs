@@ -38,6 +38,11 @@ foreach ($signature in @('void Ufo::backupOriginalDestination()', 'void Ufo::set
     $retarget += (Read-ReferenceMethod 'src/Savegame/Ufo.cpp' $signature) + [Environment]::NewLine
 }
 $template = $template.Replace('// RETARGET_METHODS', $retarget)
+$spawn = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'Ufo *AlienMission::spawnUfo('
+$escortStart = $spawn.LastIndexOf('if (ufo->isHunterKiller() && wave.escort)', [StringComparison]::Ordinal)
+$escortEnd = $spawn.IndexOf('logUfo(ufo, game, this);', $escortStart, [StringComparison]::Ordinal)
+if ($escortStart -lt 0 -or $escortEnd -le $escortStart) { throw 'Missing ordinary spawn escort fragment.' }
+$template = $template.Replace('// SPAWN_ESCORT', $spawn.Substring($escortStart, $escortEnd - $escortStart))
 $fiveSeconds = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time5Seconds()'
 $conditionStart = $fiveSeconds.IndexOf('if ((_timeSpeed', [StringComparison]::Ordinal)
 $conditionEnd = $fiveSeconds.IndexOf('{', $conditionStart, [StringComparison]::Ordinal)
