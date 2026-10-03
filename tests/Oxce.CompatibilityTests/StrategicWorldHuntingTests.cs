@@ -143,6 +143,37 @@ public sealed class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "hunting-settings.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedHunterWavesInitializeBeforeGeometryAndReload(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = CreateSnapshot(content, "Ground hunter") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "MISSION_HUNTER_GROUND", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        var random = new SplitMix64RandomSource(snapshot.RandomState);
+        var expected = WorldHunting.Initialize(100, 2, 2, random);
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(snapshot.RandomState));
+        AdvanceOne(campaign);
+        var spawned = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.True(spawned.HunterKiller);
+        Assert.Equal(expected.Mode, spawned.HuntMode);
+        Assert.Equal(expected.Behavior, spawned.HuntBehavior);
+        Assert.Equal(UfoStatus.Landed, spawned.Status);
+        Assert.Equal(55, spawned.SecondsRemaining);
+        Reload(content, campaign, 81, "ground-hunter-spawn.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(12));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
+        Reload(content, campaign, 81, "ground-hunter-lift.sav");
+    }
+
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
 

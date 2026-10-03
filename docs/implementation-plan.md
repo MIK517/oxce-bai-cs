@@ -620,3 +620,9 @@ ordered optional random selections. Failed rolls consume no mode/behavior draws;
 nonpositive percentages consume no RNG. Supply objective callers retain the
 reference constructor defaults. Positive hunter spawning remains guarded until
 the following slices connect safe wave contexts.
+
+Grounded non-escort hunter waves now use the captured constructor operation
+before geometry selection. Wave values inherit rule defaults only at -1.
+Initial ground timers above one keep retargeting outside the creation tick;
+fresh/cache tests cover constructor metadata, ground countdown, lift and reload.
+Airborne hunter creation and spawn escorts remain precisely guarded.
