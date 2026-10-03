@@ -4,7 +4,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private const string SiteScriptRegionBoundary = "Site mission scripts require bounded region retry forecasts.";
+    private const string SiteScriptRegionBoundary = "Site mission script region listing and selection timelines disagree.";
 
     private (string Region, string Mission, int Area)? SelectSiteTargetMission(RuntimeMissionScriptRule script, int month)
     {
@@ -15,10 +15,11 @@ internal sealed partial class CampaignWorld
         var candidates = WorldMissionSiteSelection.SelectMission(first, types,
             type => SiteScriptCandidates(script, month, type, targetBase), out var mission);
         if (candidates is null) return null;
-        var region = script.Regions.Count == 0
-            ? campaign.Content.RuntimeRules.Regions.Rules[campaign.Random.NextInclusive(0,
-                campaign.Content.RuntimeRules.Regions.Count - 1)].Id
-            : WorldScriptSelection.Generate(script.Regions, unchecked((ulong)month), campaign.Random)!.Id;
+        var weights = script.Regions.Count == 0 ? null :
+            WorldScriptSelection.ForMonth(script.Regions, unchecked((ulong)month), false)
+                .Select(choice => new KeyValuePair<string, ulong>(choice.Rule.Id, choice.Weight));
+        var region = WorldMissionSiteSelection.SelectRegion(candidates,
+            script.Regions.Count == 0 ? SiteScriptRegionIds(script, month) : [], weights, campaign.Random);
         var area = WorldMissionSiteSelection.SelectArea(candidates, region, campaign.Random);
         _strategy.AddMissionLocation(script.VariableName, region, area, script.AvoidRepeats);
         return (region, mission, area);
@@ -63,12 +64,11 @@ internal sealed partial class CampaignWorld
         if (selectedRegions.Length == 0) return SiteScriptRegionBoundary;
         work += regionIds.Count + (long)selectedRegions.Length;
         if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-        var multiRegion = selectedRegions.Length != 1 || regionIds.Count != 1 || selectedRegions[0] != regionIds[0];
-        // An earlier command can occupy a region or change point repeat history.
-        // Single-region selection either succeeds immediately or has no candidates;
-        // broader batches need a future possible-location/mission projection.
-        if (multiRegion && batchSize != 1)
-            return "Site mission scripts require composed multi-region candidate forecasts.";
+        // Every candidate region must have a positive weight in the generation
+        // timeline. Conditioning then remains safe even when earlier commands
+        // occupy regions or expose previously suppressed point locations.
+        var selectedRegionSet = selectedRegions.ToHashSet(StringComparer.Ordinal);
+        if (!selectedRegionSet.SetEquals(regionIds)) return SiteScriptRegionBoundary;
         var rules = campaign.Content.RuntimeRules;
         foreach (var regionId in regionIds.Concat(selectedRegions).Distinct(StringComparer.Ordinal))
             if (!rules.Regions.TryGet(regionId, out var regionHandle) ||
@@ -106,22 +106,10 @@ internal sealed partial class CampaignWorld
             {
                 var region = rules.Regions[rules.Regions.GetRequired(regionId)].Value;
                 // Bound preflight plus runtime scans and every possible repeat lookup.
-                work += 3L * (1L + _missions.Count + campaign.BaseStates.Count * baseRegionWork);
+                work += 3L * (1L + _missions.Count + batchSize + campaign.BaseStates.Count * baseRegionWork);
                 if (mission.SpawnZone < region.MissionZones.Count)
                     work += 3L * region.MissionZones[mission.SpawnZone].Areas.Count * (1L + recentCount + batchSize);
                 if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-            }
-            if (!multiRegion) continue;
-            for (var targetMode = 0; targetMode < 2; targetMode++)
-            {
-                var targetBase = targetMode != 0;
-                if (targetBase ? script.TargetBaseOdds <= 0 : script.TargetBaseOdds >= 100) continue;
-                var candidates = SiteScriptCandidates(script, month, type.Rule.Id, targetBase);
-                work += candidates.Count + (long)selectedRegions.Length;
-                if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-                var candidateRegions = candidates.Select(candidate => candidate.Region).ToHashSet(StringComparer.Ordinal);
-                if (candidates.Count != 0 && selectedRegions.Any(region => !candidateRegions.Contains(region)))
-                    return SiteScriptRegionBoundary;
             }
         }
         return null;

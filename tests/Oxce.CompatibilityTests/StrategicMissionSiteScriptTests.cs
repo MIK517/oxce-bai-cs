@@ -303,7 +303,7 @@ public sealed class StrategicMissionSiteScriptTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SiteRegionRetryWithoutCandidateProofStopsBeforeAnyCommandMutates(bool targetBase)
+    public void RemovedSiteRegionsUseConditionedSelectionBeforeAreaChoice(bool targetBase)
     {
         var content = LoadSite(overlay: $$$"""
             regions:
@@ -328,10 +328,23 @@ public sealed class StrategicMissionSiteScriptTests
         Assert.Equal(targetBase ? 100 : 0, loadedScript.TargetBaseOdds);
         var initial = CreateSnapshot(content, "Site retry guard") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
-        var before = campaign.Capture();
-        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events));
-        Assert.Equal("Site mission scripts require bounded region retry forecasts.", blocked.Reason);
-        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        var expected = new SplitMix64RandomSource(17);
+        expected.NextInclusive(0, 99); // disabled original
+        expected.NextInclusive(0, 99); // active script
+        expected.NextInclusive(1, 1); // mission
+        expected.NextInclusive(0, 99); // base odds
+        expected.NextInclusive(1, 1); // conditioned REGION weight only
+        var area = expected.NextInclusive(0, 1);
+        expected.NextInclusive(1, 1); // race
+        var countdown = WorldTrajectory.SpawnCountdown(3000, expected);
+        Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
+        var after = campaign.Capture();
+        var mission = Assert.Single(after.World.Missions);
+        Assert.Equal("REGION", mission.RegionId);
+        Assert.Equal(area, mission.MissionSiteZoneArea);
+        Assert.Equal(countdown, mission.SpawnCountdown);
+        Assert.Equal(expected.State, after.RandomState);
+        Reload(content, campaign, 17, "conditioned-site-region.sav");
     }
 
     [Fact]
@@ -381,6 +394,53 @@ public sealed class StrategicMissionSiteScriptTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void ComposedMultiRegionSitesUseLiveOccupancyWithoutUnboundedRetries(bool cache, bool uniform)
+    {
+        var weights = uniform ? "{}" : "{0: {REGION: 4, SITE_SECOND: 1}}";
+        var content = LoadSite(cache, $$$"""
+            regions:
+              - type: SITE_SECOND
+                areas: [[90, 180, -20, 20]]
+                missionZones:
+                  - []
+                  - [[100, 100, 2, 2, 10]]
+            missionScripts:
+              - type: SITE_SCRIPT_START
+                executionOdds: 0
+              - type: SITE_COMPOSE_A
+                useTable: false
+                varName: SHARED_CITIES
+                avoidRepeats: 2
+                startDelay: 30
+                missionWeights: {0: {SITE_SCRIPT_A: 1}}
+                regionWeights: {{{weights}}}
+                raceWeights: {0: {RACE_A: 1}}
+              - type: SITE_COMPOSE_B
+                useTable: false
+                varName: SHARED_CITIES
+                avoidRepeats: 2
+                startDelay: 30
+                missionWeights: {0: {SITE_SCRIPT_A: 1}}
+                regionWeights: {{{weights}}}
+                raceWeights: {0: {RACE_A: 1}}
+            """);
+        var initial = CreateSnapshot(content, "Composed multi-region sites") with { RandomState = 17 };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
+        var after = campaign.Capture();
+        Assert.Equal(2, after.World.Missions.Count);
+        Assert.Equal(["REGION", "SITE_SECOND"], after.World.Missions.Select(mission => mission.RegionId).Order(StringComparer.Ordinal));
+        Assert.All(after.World.Missions, mission => Assert.Equal("SITE_SCRIPT_A", mission.RuleId));
+        Assert.Equal(2, after.World.Strategy.MissionRuns.Single(pair => pair.Key == "SHARED_CITIES").Value);
+        Assert.Equal(2, after.World.Strategy.MissionLocations.Single(pair => pair.Key == "SHARED_CITIES").Value.Count);
+        Reload(content, campaign, 17, "composed-multi-region-sites.sav");
+    }
     private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadSite(bool cache = false, string? overlay = null)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-site-candidates");
