@@ -13,7 +13,7 @@ public sealed class StrategicWorldObjectiveWaveTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AirborneSpawnFlagsOnlyGuardPathsThatWouldUseMissionSiteWaypoints(bool cache)
+    public void AirborneSpawnFlagsUseSelectedSiteWaypointsOrOrdinaryRegionalSelection(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var content = StrategicReadinessTestContent.Load(
@@ -32,15 +32,11 @@ public sealed class StrategicWorldObjectiveWaveTests
                 {
                     var campaign = Restore(content, new AlienMissionSnapshot(4, $"FLAG_SPAWN_{objective}_{flag}",
                         "REGION", "RACE_A", 0, 0, 0, 0, area));
-                    if (area == 0 && row[0].GetInt32() != 0 && objective != 5)
-                        AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
-                    else
-                    {
-                        AdvanceOne(campaign);
-                        Assert.Equivalent(baseline.Capture().World.Ufos, campaign.Capture().World.Ufos, strict: true);
+                    AdvanceOne(campaign);
+                    Assert.Equivalent(baseline.Capture().World.Ufos, campaign.Capture().World.Ufos, strict: true);
+                    if (area == -1 || row[0].GetInt32() == 0 || objective == 5)
                         Assert.Equal(baseline.Capture().RandomState, campaign.Capture().RandomState);
-                        Reload(content, campaign, 17, "flagged-airborne-spawn.sav");
-                    }
+                    Reload(content, campaign, 17, "flagged-airborne-spawn.sav");
                 }
             }
         }

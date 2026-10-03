@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
-      "size": 17636,
-      "sha256": "773064492fab771acd2017c8d2a4e2c62ae095cffa92ef16b6f0968e476597cb"
+      "size": 18561,
+      "sha256": "5bc1b68a241d209c55aea9827fc607e9c706c69c8ec118b5167844bad0fc34d0"
     },
     {
       "path": "tools/capture-strategic-world-lifecycle-reference.ps1",
-      "size": 13664,
-      "sha256": "e68abf471cca3a7ef66f36334371203ae6b0c204f3928c556083c1758c499694"
+      "size": 13793,
+      "sha256": "5c6d99d60cf924e4e5c1c7adbf89476bc1b2f10468d65a54bf6d270b12402098"
     },
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
@@ -58,6 +58,11 @@
       "path": "fixtures/public/savegames/strategic-rectangle-destinations.rul",
       "size": 395,
       "sha256": "f1b9d5493d468f6065162a529e26ab4f9492466882b8df6137ce06f04317f084"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-selected-site-waypoints.rul",
+      "size": 468,
+      "sha256": "0da70e41692b226d65ecf661da6a70f1c90601cf3db5eecb992832942b4e3c80"
     }
   ],
   "normalization": [

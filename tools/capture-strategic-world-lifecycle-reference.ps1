@@ -81,6 +81,7 @@ $direct = [ordered]@{
  'MISSION_OVER' = @('src/Savegame/AlienMission.cpp', 'bool AlienMission::isOver() const')
  'MISSION_LIFT' = @('src/Savegame/AlienMission.cpp', 'void AlienMission::ufoLifting(Ufo &ufo, SavedGame &game)')
  'MISSION_WAYPOINT' = @('src/Savegame/AlienMission.cpp', 'std::pair<double, double> AlienMission::getWaypoint(')
+ 'MISSION_SITE_LAND' = @('src/Savegame/AlienMission.cpp', 'std::pair<double, double> AlienMission::getLandPointForMissionSite(')
  'MISSION_LAND' = @('src/Savegame/AlienMission.cpp', 'std::pair<double, double> AlienMission::getLandPoint(')
 }
 foreach ($entry in $direct.GetEnumerator()) { $template = $template.Replace('// ' + $entry.Key, (Read-ReferenceMethod $entry.Value[0] $entry.Value[1])) }

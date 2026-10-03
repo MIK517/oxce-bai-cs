@@ -206,6 +206,21 @@ public static class WorldGeometry
         }
     }
 
+    /// <summary>AlienMission::getLandPointForMissionSite: fixed area, no city bypass or region containment.</summary>
+    public static WorldPosition MissionSiteLandPoint(RuntimeRegionRule region, RuntimeGlobe globe, int zone,
+        int area, int fakeWaterLandingChance, IRandomSource random)
+    {
+        var areas = MissionAreas(region, zone);
+        if ((uint)area >= (uint)areas.Count) throw new InvalidDataException($"Mission zone {zone} has no area {area}.");
+        var fakeWater = RandomChance.Percent(random, fakeWaterLandingChance);
+        for (var attempt = 1; ; attempt++)
+        {
+            var point = RandomPoint(region, zone, area, random);
+            if (attempt == 100 || InsideLand(globe, point) && InsideFakeUnderwaterTexture(globe, point) == fakeWater)
+                return point;
+        }
+    }
+
     /// <summary>Globe::insideLand: a polygon whose texture is a cosmetic ocean is not land.</summary>
     public static bool InsideLand(RuntimeGlobe globe, WorldPosition position)
     {

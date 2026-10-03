@@ -23,14 +23,14 @@ struct UfoTrajectory {
 const std::string UfoTrajectory::RETALIATION_ASSAULT_RUN="__RETALIATION_ASSAULT_RUN";
 constexpr int OBJECTIVE_SCORE=0,OBJECTIVE_INFILTRATION=1,OBJECTIVE_BASE=2,OBJECTIVE_RETALIATION=4,OBJECTIVE_SUPPLY=5,AMOT_SPACE=0;
 struct MissionRule {
- int objective=OBJECTIVE_SCORE,points=7,operation=AMOT_SPACE;
+ int objective=OBJECTIVE_SCORE,points=7,operation=AMOT_SPACE,spawnZone=-1;
  std::string getType() const {return "MISSION_LANDING";}
  MissionWave wave;
  size_t getWaveCount() const {return 1;}
  const MissionWave& getWave(int) const {return wave;}
  int getObjective() const {return objective;}
  int getOperationType() const {return operation;}
- int getSpawnZone() const {return -1;}
+ int getSpawnZone() const {return spawnZone;}
  bool isEndlessInfiltration() const {return false;}
  bool isMultiUfoRetaliationExtra() const {return false;}
  int getPoints() const {return points;}
@@ -88,7 +88,7 @@ struct AlienMission {
  void ufoReachedWaypoint(Ufo&,Game&,const Globe&);void ufoLifting(Ufo&,SavedGame&);
  std::pair<double,double> getWaypoint(const MissionWave&,const UfoTrajectory&,size_t,const Globe&,const RuleRegion&,const Ufo&);
  std::pair<double,double> getLandPoint(const Globe&,const RuleRegion&,size_t,const Ufo&);
- std::pair<double,double> getLandPointForMissionSite(const Globe&,const RuleRegion&,int,int,const Ufo&){throw std::runtime_error("site");}
+ std::pair<double,double> getLandPointForMissionSite(const Globe&,const RuleRegion&,size_t,int,const Ufo&);
  void logMissionError(size_t,const RuleRegion&){throw std::runtime_error("zone");}
  void addScore(double,double,SavedGame& game){
   // MISSION_SCORE_FILTER
@@ -109,6 +109,7 @@ Ufo::~Ufo(){if(mission) --mission->_liveUfos;delete _dest;}
 // MISSION_LIFT
 // MISSION_WAYPOINT
 // MISSION_LAND
+// MISSION_SITE_LAND
 std::string number(double n){std::ostringstream s;s<<std::fixed<<std::setprecision(9)<<n;return s.str();}
 void row(int tick,AlienMission* mission,Game& game,bool pause){
  std::cout<<'['<<tick<<','<<(mission?(int)mission->_nextWave:-1)<<','<<(mission?(int)mission->_nextUfoCounter:-1)<<','<<(mission?(int)mission->_spawnCountdown:-1)<<','<<(mission?(int)mission->_liveUfos:-1)<<','<<game.save.activity<<','<<(pause?1:0)<<','<<RNG::calls<<",[";
@@ -275,5 +276,19 @@ void rectangleDestinationRows(){
  RNG::fraction=0.0;
 }
 
+void selectedSiteRows(){
+ bool first=true;
+ for(bool landing:{false,true})for(int area:{0,1}){
+  if(!first)std::cout<<',';first=false;
+  Game game;Globe globe;AlienMission mission;
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);game.mod.region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  game.mod.region._missionZones[5].areas.push_back({Deg2Rad(12),Deg2Rad(12),Deg2Rad(-2),Deg2Rad(-2)});
+  mission._rule.spawnZone=5;mission._missionSiteZoneArea=area;mission._rule.wave.objective=true;mission._rule.wave.objectiveOnTheLandingSite=landing;
+  RNG::calls=0;RNG::intValue=0;
+  auto* ufo=mission.spawnUfo(game.save,game.mod,globe,mission._rule.wave,game.mod.trajectory);
+  std::cout<<'['<<landing<<','<<area<<",\""<<number(ufo->_dest->_lon)<<"\",\""<<number(ufo->_dest->_lat)<<"\","<<RNG::calls<<']';delete ufo;
+ }
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"]}\n";}
+
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"],\"selectedSiteRows\":[";selectedSiteRows();std::cout<<"]}\n";}
