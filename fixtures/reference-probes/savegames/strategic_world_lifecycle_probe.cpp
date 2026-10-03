@@ -245,5 +245,20 @@ void pointDestinationRows(){
  RNG::intValue=0;
 }
 
+void pointOriginRows(){
+ bool first=true;
+ for(int selected:{0,1}){
+  if(!first)std::cout<<',';first=false;
+  Game game;Globe globe;AlienMission mission;
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);game.mod.region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  game.mod.region._missionZones[4].areas[0]={Deg2Rad(8),Deg2Rad(8),Deg2Rad(2),Deg2Rad(2)};
+  game.mod.region._missionZones[4].areas.push_back({Deg2Rad(12),Deg2Rad(12),Deg2Rad(-2),Deg2Rad(-2)});
+  RNG::calls=0;RNG::intValue=selected;
+  auto* ufo=mission.spawnUfo(game.save,game.mod,globe,mission._rule.wave,game.mod.trajectory);
+  std::cout<<'['<<selected<<",\""<<number(ufo->_lon)<<"\",\""<<number(ufo->_lat)<<"\","<<RNG::calls<<']';delete ufo;
+ }
+ RNG::intValue=0;
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"]}\n";}
+
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"]}\n";}

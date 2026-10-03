@@ -24,6 +24,7 @@ internal sealed partial class CampaignWorld
         var work = 0;
         long sourceBaseWork = 0;
         long cleanupWork = 0;
+        long geometryWork = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = MissionAfterDailyResearch(_missions[index], guaranteedResearch);
@@ -58,6 +59,12 @@ internal sealed partial class CampaignWorld
                 }
                 if (CanSpawnOrdinaryUfoWave(step, rule))
                 {
+                    var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[rule.Waves[step.NextWave].Trajectory!.Value].Value;
+                    var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
+                    TryOrdinarySpawnPositions(step, rule, trajectory, region, out var origins);
+                    TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
+                    geometryWork += (long)origins.Count * destinations.Count;
+                    if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
                     ufoSpawns++;
                     continue;
                 }
@@ -205,11 +212,12 @@ internal sealed partial class CampaignWorld
             !WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        if (!TryOrdinarySpawnPosition(mission, rule, trajectory, region, out var position) ||
+        if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var positions) ||
             !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations))
             return false;
-        foreach (var destination in destinations)
-            if (!(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed))) return false;
+        foreach (var position in positions)
+            foreach (var destination in destinations)
+                if (!(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed))) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -221,18 +229,27 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private bool TryOrdinarySpawnPosition(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out WorldPosition position)
+    private bool TryOrdinarySpawnPositions(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<WorldPosition> positions)
     {
         var source = rule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
         if (source is not null && rule.Objective == RuntimeMissionObjective.Supply)
         {
-            position = source.Position;
-            return position.IsNormalized;
+            positions = [source.Position];
+            return source.Position.IsNormalized;
         }
-        if (!TryGetFixedWaypoint(region, trajectory.Zone(0), out position)) return false;
-        if (source is not null) position = source.Position;
-        return position.IsNormalized;
+        if (!TryPointPositions(region, trajectory.Zone(0), out positions)) return false;
+        if (source is not null) positions = [source.Position];
+        return positions.All(static position => position.IsNormalized);
+    }
+
+    private static bool TryPointPositions(RuntimeRegionRule region, int zone, out IReadOnlyList<WorldPosition> positions)
+    {
+        var areas = WorldGeometry.MissionAreas(region, zone);
+        positions = [];
+        if (areas.Count > 256 || areas.Any(static area => !area.IsPoint)) return false;
+        positions = areas.Select(static area => WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum)).ToArray();
+        return positions.All(static position => position.IsNormalized);
     }
 
     private bool TryOrdinarySpawnDestinations(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
