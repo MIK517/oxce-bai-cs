@@ -4,9 +4,12 @@
 #include <string>
 #include <vector>
 
+struct Site;
 class SavedGame {
     std::map<std::string, int> _ids;
 public:
+    std::vector<Site*> sites;
+    std::vector<Site*>* getMissionSites() { return &sites; }
     void increaseCustomCounter(const std::string& name);
     void decreaseCustomCounter(const std::string& name);
     void setCounter(const std::string& name, int value) { _ids[name] = value; }
@@ -35,6 +38,9 @@ struct Site {
     Rule* rule;
     Deployment* deployment;
     std::vector<Craft*> followers;
+    bool detected = false;
+    bool getDetected() const { return detected; }
+    void setDetected(bool value) { detected = value; }
     int getSecondsRemaining() const { return remaining; }
     void setSecondsRemaining(int value) { remaining = value; }
     Rule* getRules() const { return rule; }
@@ -44,10 +50,15 @@ struct Site {
     std::string getName(const std::string&) const { return "Site"; }
 };
 struct Game {
+    SavedGame saved;
+    SavedGame* getSavedGame() { return &saved; }
     std::string getLanguage() const { return "en-US"; }
 };
 struct UfoLostState {
     explicit UfoLostState(const std::string&) {}
+};
+struct MissionDetectedState {
+    MissionDetectedState(Site*, void*) {}
 };
 class GeoscapeState {
     Game* _game;
@@ -55,6 +66,10 @@ public:
     explicit GeoscapeState(Game* game) : _game(game) {}
     int popups = 0;
     void popup(UfoLostState* state) { ++popups; delete state; }
+    void popup(MissionDetectedState* state) { ++popups; delete state; }
+    void hour() {
+        // DISCOVERY
+    }
     std::pair<bool, int> run(Site* site) {
         // TIMER_AND_FOLLOWERS
         // SCORE
@@ -109,6 +124,42 @@ int main() {
         }
         std::cout << "[\"" << input.name << "\"," << input.start << ",\""
                   << input.operations << "\"," << game.counter(input.name) << ']';
+    }
+    std::cout << "],\"discoveryRows\":[";
+    std::vector<std::vector<std::pair<bool, int>>> discoveries = {
+        {}, {{true, 3600}, {true, 7200}},
+        {{false, 0}, {false, 1}, {false, 7200}},
+        {{true, 3600}, {false, 1800}, {false, 2147480047}},
+        {{false, 2147483647}, {true, 3600}}
+    };
+    first = true;
+    for (const auto& input : discoveries) {
+        if (!first) std::cout << ',';
+        first = false;
+        Game game;
+        std::vector<Site> sites;
+        for (const auto& [detected, seconds] : input) {
+            sites.push_back(Site{seconds, nullptr, nullptr});
+            sites.back().detected = detected;
+        }
+        for (auto& site : sites) game.saved.sites.push_back(&site);
+        GeoscapeState geoscape(&game);
+        std::cout << "{\"before\":[";
+        bool rowFirst = true;
+        for (const auto& [detected, seconds] : input) {
+            if (!rowFirst) std::cout << ',';
+            rowFirst = false;
+            std::cout << '[' << detected << ',' << seconds << ']';
+        }
+        geoscape.hour();
+        std::cout << "],\"after\":[";
+        rowFirst = true;
+        for (const auto& site : sites) {
+            if (!rowFirst) std::cout << ',';
+            rowFirst = false;
+            std::cout << '[' << site.detected << ',' << site.remaining << ']';
+        }
+        std::cout << "],\"popups\":" << geoscape.popups << '}';
     }
     std::cout << "]}\n";
 }

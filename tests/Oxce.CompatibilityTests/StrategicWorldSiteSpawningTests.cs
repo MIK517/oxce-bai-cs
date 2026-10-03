@@ -55,7 +55,7 @@ public sealed class StrategicWorldSiteSpawningTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ImmediateSitesReserveSharedMarkersAndScoreAfterExistingSites(bool cache)
+    public void ImmediateSitesReserveSharedMarkersAndScoreInWaveOrder(bool cache)
     {
         var content = Load(cache);
         var snapshot = Snapshot(content, "DIRECT_CHAIN").WithNextId("DIRECT_MARKER", 7).WithNextId("RULE_MARKER", 9);
@@ -134,8 +134,14 @@ public sealed class StrategicWorldSiteSpawningTests
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
             var name = row.GetProperty("name").GetString();
-            if (name is not ("single-zero" or "all-zero" or "empty-terrain")) continue;
-            var region = name switch { "single-zero" => "SITE_SINGLE_ZERO", "all-zero" => "SITE_ALL_ZERO", _ => "SITE_EMPTY" };
+            if (name is not ("single-zero" or "all-zero" or "empty-terrain" or "null-choice")) continue;
+            var region = name switch
+            {
+                "single-zero" => "SITE_SINGLE_ZERO",
+                "all-zero" => "SITE_ALL_ZERO",
+                "null-choice" => "SITE_NULL_CHOICE",
+                _ => "SITE_EMPTY",
+            };
             var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_TERRAIN", region: region)
                 .WithNextId("DIRECT_MARKER", 7), content, new QuarterChoices());
             AdvanceOne(campaign);
@@ -296,5 +302,87 @@ public sealed class StrategicWorldSiteSpawningTests
         snapshot = snapshot with { Regions = [snapshot.Regions[0] with { ActivityAlien = [1] }] };
         var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
         AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SiteCreatedAfterHourlyPassIsDetectedNextHourAcrossReload(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = Snapshot(content, "DIRECT_OVERRIDE") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AdvanceOne(campaign);
+        Assert.False(Assert.Single(campaign.Capture().World.MissionSites).Detected);
+        campaign = Reload(content, campaign, 17, "site-awaiting-detection.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(720));
+        Assert.Single(result.Events.OfType<MissionSiteDetected>());
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Equal(720, Assert.Single(result.Events.OfType<CampaignTimeAdvanced>()).Summary.TickCount);
+        var site = Assert.Single(campaign.Capture().World.MissionSites);
+        Assert.True(site.Detected);
+        Assert.Equal(1800, site.SecondsRemaining);
+        Reload(content, campaign, 17, "new-site-detected.sav");
+    }
+
+    [Fact]
+    public void SuppressedTerrainChoiceCannotSupplyNegativeScoreHeadroomForLaterWave()
+    {
+        var content = Load(false);
+        var snapshot = Snapshot(content, "DIRECT_NULL_CHAIN", region: "SITE_NULL_CHOICE") with
+        {
+            Regions = [Snapshot(content, "DIRECT_NULL_CHAIN").Regions[0] with { ActivityAlien = [int.MaxValue] }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
+    }
+
+    [Fact]
+    public void ExistingNegativeSiteScoresBeforeNewPositiveSites()
+    {
+        var content = Load(false);
+        var snapshot = Snapshot(content, "DIRECT_CHAIN").WithNextId("DIRECT_MARKER", 7).WithNextId("RULE_MARKER", 9);
+        snapshot = snapshot with
+        {
+            Regions = [snapshot.Regions[0] with { ActivityAlien = [int.MaxValue - 14] }],
+            World = snapshot.World with
+            {
+                MissionSites = [new MissionSiteSnapshot(1, "DIRECT_OVERRIDE", "DIRECT_NEGATIVE", "RACE_A", 0.2, 0.1, 3600)
+                { Detected = true }],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AdvanceOne(campaign);
+        Assert.Equal(int.MaxValue - 3, campaign.Capture().Regions[0].ActivityAlien[^1]);
+        Assert.Equal(4, campaign.Capture().World.MissionSites.Count);
+        Reload(content, campaign, 17, "existing-site-score-order.sav");
+    }
+
+    [Fact]
+    public void UnreachableDeploymentTableEntriesStillConsumeBoundedPreflightWork()
+    {
+        var weights = string.Join(", ", Enumerable.Range(0, 1000).Select(index => $"MISSING_{index}: 0"));
+        var overlay = $"globe:\n  textures:\n    - {{id: 36, deployments: {{{weights}}}}}\n" +
+            "regions:\n  - type: SITE_LARGE_EMPTY\n    missionZones:\n      - [[10, 10, 5, 5, 36]]\n" +
+            "alienMissions:\n  - type: DIRECT_LARGE_EMPTY\n    objective: 3\n    spawnZone: 0\n" +
+            "    waves: [{ufo: UNKNOWN_DIRECT_UFO, count: 1000, trajectory: DIRECT_SITE, timer: 0, objective: true}]\n";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], extraRules: overlay);
+        var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_LARGE_EMPTY", region: "SITE_LARGE_EMPTY"),
+            content, new QuarterChoices());
+        AssertTimeBlocked(campaign, "Direct mission site creation exceeds the supported work limit.");
+    }
+
+    [Fact]
+    public void EmptyMarkerNamespaceStopsBeforeCreationInsteadOfThrowingDuringIdAllocation()
+    {
+        const string overlay = "alienDeployments:\n  - type: EMPTY_MARKER\n    markerName: ''\n    duration: [2, 2]\n" +
+            "alienMissions:\n  - type: DIRECT_EMPTY_MARKER\n    objective: 3\n    spawnZone: 0\n" +
+            "    waves: [{ufo: EMPTY_MARKER, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}]\n";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], extraRules: overlay);
+        var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_EMPTY_MARKER"), content, new QuarterChoices());
+        AssertTimeBlocked(campaign, "Direct mission site marker names require a nonempty ID namespace.");
     }
 }

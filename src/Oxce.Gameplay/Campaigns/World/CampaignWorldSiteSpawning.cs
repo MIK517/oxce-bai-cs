@@ -47,6 +47,8 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         foreach (var area in areas)
         {
+            work += SiteDeploymentSelectionWork(wave, rule, area);
+            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
             if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
@@ -66,6 +68,8 @@ internal sealed partial class CampaignWorld
         if ((long)_sites.Count + ++population > 100_000) return "World mission site population exceeds the supported limit.";
         foreach (var marker in markers)
         {
+            if (string.IsNullOrWhiteSpace(marker))
+                return "Direct mission site marker names require a nonempty ID namespace.";
             work += _sites.Count + (long)_alienBases.Count;
             if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
             if (marker is "STR_UFO_UNIQUE" or "STR_UFO" or "STR_LANDING_SITE" or "STR_CRASH_SITE")
@@ -94,8 +98,10 @@ internal sealed partial class CampaignWorld
             var owner = bases[bases.Count == 1 ? 0 : campaign.Random.NextInclusive(0, bases.Count - 1)];
             area = area with
             {
-                LongitudeMinimum = owner.Longitude, LongitudeMaximum = owner.Longitude,
-                LatitudeMinimum = owner.Latitude, LatitudeMaximum = owner.Latitude,
+                LongitudeMinimum = owner.Longitude,
+                LongitudeMaximum = owner.Longitude,
+                LatitudeMinimum = owner.Latitude,
+                LatitudeMaximum = owner.Latitude,
                 Name = string.Empty,
             };
         }
@@ -145,6 +151,21 @@ internal sealed partial class CampaignWorld
         return id.Length == 0 || id == "\0" ? null : rules.AlienDeployments.GetRequired(id);
     }
 
+    private long SiteDeploymentSelectionWork(RuntimeMissionWave wave, RuntimeAlienMissionRule rule, MissionArea area)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        return wave.Deployment is not null || rules.AlienDeployments.TryGet(rule.SiteTypeId, out _) ? 1 :
+            rules.Campaign.Globe.Textures.TryGetValue(area.Texture, out var texture) ? 2L * texture.Deployments.Count + 1 : 1;
+    }
+
+    private bool SiteDeploymentMayBeSuppressed(RuntimeMissionWave wave, RuntimeAlienMissionRule rule, MissionArea area)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        if (wave.Deployment is not null || rules.AlienDeployments.TryGet(rule.SiteTypeId, out _)) return false;
+        var weights = rules.Campaign.Globe.Textures[area.Texture].Deployments;
+        return weights.Any(pair => (pair.Key.Length == 0 || pair.Key == "\0") && (weights.Count == 1 || pair.Value != 0));
+    }
+
     private string? DirectSiteActivityReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
         ActivityRange[] regions, ActivityRange[] countries, ref long work)
     {
@@ -164,10 +185,13 @@ internal sealed partial class CampaignWorld
         }
         foreach (var area in DirectSiteAreas(mission, rule))
         {
+            work += SiteDeploymentSelectionWork(wave, rule, area);
+            if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
             if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
             if (candidates.Count == 0) { suppressed = true; continue; }
+            suppressed |= SiteDeploymentMayBeSuppressed(wave, rule, area);
             hasCandidates = true;
             if (bases is null)
             {

@@ -7,6 +7,7 @@ globe:
     - {id: 32, deployments: {}}
     - {id: 33, deployments: {DIRECT_DEPLOY: 2147483647, RULE_DEPLOY: 1}}
     - {id: 34, deployments: {MISSING_DEPLOY: 0, DIRECT_DEPLOY: 1}}
+    - {id: 35, deployments: {"": 1, DIRECT_NEGATIVE: 1}}
 regions:
   - type: SITE_SPAWN_REGION
     areas: [[0, 60, -20, 20]]
@@ -30,11 +31,18 @@ regions:
   - type: SITE_ZERO_MISSING
     missionZones:
       - [[5.7295779513082321, 17.188733853924695, -11.459155902616464, 11.459155902616464, 34, CITY]]
+  - type: SITE_NULL_CHOICE
+    missionZones:
+      - [[11.459155902616464, 11.459155902616464, 5.7295779513082321, 5.7295779513082321, 35]]
 alienDeployments:
   - type: DIRECT_DEPLOY
     markerName: DIRECT_MARKER
     duration: [2, 3]
     points: 4
+  - type: DIRECT_NEGATIVE
+    markerName: DIRECT_MARKER
+    duration: [2, 2]
+    points: -4
   - type: RULE_DEPLOY
     markerName: RULE_MARKER
     duration: [3, 4]
@@ -90,3 +98,9 @@ alienMissions:
   - type: DIRECT_BASE_MAX_SCORE
     spawnZone: 0
     waves: [{ufo: DIRECT_MAX_SCORE, count: 1, trajectory: DIRECT_SITE, timer: 3000, objectiveOnXcomBase: true}]
+  - type: DIRECT_NULL_CHAIN
+    objective: 3
+    spawnZone: 0
+    waves:
+      - {ufo: UNKNOWN_DIRECT_UFO, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}

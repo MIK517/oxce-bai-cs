@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_site_spawn_probe.cpp",
-      "size": 6480,
-      "sha256": "1db4c92d9e0a5ed441865197cb149ff4551ed18857d45e568365b5234e09e1f6"
+      "size": 6593,
+      "sha256": "7b30d88b5352dab3f018b516d796d8cbad855ca9ee01a7a8cc925024501d2ecc"
     },
     {
       "path": "tools/capture-strategic-site-spawn-reference.ps1",
@@ -25,8 +25,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-site-spawn.rul",
-      "size": 3832,
-      "sha256": "7888bb87fd226da91e7aced7f88bcdd0ccddce30c255615903d4322ee4a7b95a"
+      "size": 4367,
+      "sha256": "5b6f951847c1fc5fe8f44579d77a705c4e5cf4ab5dfccdb8975f3d3d3ec733f4"
     }
   ],
   "normalization": [

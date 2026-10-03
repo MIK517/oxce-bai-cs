@@ -52,6 +52,7 @@ internal static class CampaignTimeOrder
     public const int HourCraftServicing = 100;
     public const int HourTransfers = 200;
     public const int HourProduction = 300;
+    public const int HourWorldSiteDiscovery = 400;
 
     // time30Minutes: missions, craft refuelling, then UFO activity and detection.
     public const int ThirtyMinutesWorldMissions = 50;

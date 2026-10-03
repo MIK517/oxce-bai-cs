@@ -27,7 +27,7 @@ internal sealed partial class CampaignWorld
         long cleanupWork = 0;
         long geometryWork = 0;
         long landWork = 0;
-        var siteMarkerReservations = new Dictionary<string, int>(StringComparer.Ordinal);
+        Dictionary<string, int>? siteMarkerReservations = null;
         var siteSpawns = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
@@ -55,6 +55,7 @@ internal sealed partial class CampaignWorld
                     return "Alien mission wave completion requires objective simulation.";
                 if (IsDirectSiteWave(step, rule))
                 {
+                    siteMarkerReservations ??= new(StringComparer.Ordinal);
                     if (DirectSiteSpawnReason(step, rule, siteMarkerReservations, ref geometryWork, ref siteSpawns) is { } siteReason)
                         return siteReason;
                     var finishes = step.NextWave + 1 == rule.Waves.Count &&

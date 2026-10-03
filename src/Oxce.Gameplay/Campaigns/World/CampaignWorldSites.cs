@@ -28,20 +28,63 @@ internal sealed partial class CampaignWorld
     private const string SiteUfoFollowerBoundary =
         "Targeted mission site despawn requires UFO follower destination repair.";
 
-    private void RegisterSiteOperations(CampaignCapabilityRegistry registry) =>
+    private void RegisterSiteOperations(CampaignCapabilityRegistry registry)
+    {
+        registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourWorldSiteDiscovery,
+            "mission site discovery", DiscoverSiteHourly);
         registry.Timed(CampaignTimeTrigger.ThirtyMinutes, CampaignTimeOrder.ThirtyMinutesWorldSites,
             "mission site activity and expiry", AdvanceSites);
+    }
+
+    private string? SiteDiscoveryReason(CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.OneHour) return null;
+        var first = true;
+        foreach (var site in _sites)
+        {
+            if (site.Detected) continue;
+            if (first) { first = false; continue; }
+            if (site.SecondsRemaining > int.MaxValue - 3600)
+                return "Mission site discovery postponement exceeds the supported timer range.";
+        }
+        return null;
+    }
+
+    private MissionSiteSnapshot? FirstSiteDiscoveredThisTick(CampaignTimeTrigger highest) =>
+        highest >= CampaignTimeTrigger.OneHour ? _sites.Find(site => !site.Detected) : null;
+
+    private static int SiteSecondsAfterDiscovery(MissionSiteSnapshot site, MissionSiteSnapshot? first) =>
+        first is null || site.Detected ? site.SecondsRemaining :
+        ReferenceEquals(site, first) ? Math.Max(3600, site.SecondsRemaining) : checked(site.SecondsRemaining + 3600);
+
+    private void DiscoverSiteHourly(CampaignState.TimeEffects effects)
+    {
+        var first = FirstSiteDiscoveredThisTick(CampaignTimeTrigger.OneHour);
+        if (first is null) return;
+        for (var index = 0; index < _sites.Count; index++)
+        {
+            var site = _sites[index];
+            if (site.Detected) continue;
+            _sites[index] = site with
+            {
+                Detected = ReferenceEquals(site, first),
+                SecondsRemaining = SiteSecondsAfterDiscovery(site, first),
+            };
+        }
+        effects.Notify(new MissionSiteDetected(first.Id, MarkerName(first.DeploymentId)));
+    }
 
     private string? SiteTimingReason(CampaignTimeTrigger highest)
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0) return null;
         var rules = campaign.Content.RuntimeRules;
         var counterChanges = new List<CustomCounterChange>();
+        var discovered = FirstSiteDiscoveredThisTick(highest);
         foreach (var site in _sites)
         {
             var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
             var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
-            var transition = WorldSiteTimer.Advance(site.SecondsRemaining, SiteHasFollowers(site),
+            var transition = WorldSiteTimer.Advance(SiteSecondsAfterDiscovery(site, discovered), SiteHasFollowers(site),
                 mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
             if (transition.ReturnFollowers)
             {
@@ -110,7 +153,8 @@ internal sealed partial class CampaignWorld
 
     private bool SiteExpiresThisTick(MissionSiteSnapshot site, CampaignTimeTrigger highest)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes || site.SecondsRemaining >= 30 * 60) return false;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || site.SecondsRemaining >= 30 * 60 ||
+            highest >= CampaignTimeTrigger.OneHour && !site.Detected) return false;
         var rule = campaign.Content.RuntimeRules.AlienMissions[
             campaign.Content.RuntimeRules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
         return rule.DespawnEvenIfTargeted || !SiteHasFollowers(site);
@@ -148,8 +192,9 @@ internal sealed partial class CampaignWorld
         if (deployment.DecreaseCounterAll.Length != 0) changes.Add(new(deployment.DecreaseCounterAll, false));
     }
 
-    private bool ReturnsFromSiteBeforeMovement(WorldTargetReference destination) =>
+    private bool ReturnsFromSiteBeforeMovement(WorldTargetReference destination, CampaignTimeTrigger highest) =>
         _sites.Any(site => FollowsSite(destination, site) && site.SecondsRemaining < 30 * 60 &&
+            !(highest >= CampaignTimeTrigger.OneHour && !site.Detected) &&
             campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(site.MissionRuleId)].Value.DespawnEvenIfTargeted);
 

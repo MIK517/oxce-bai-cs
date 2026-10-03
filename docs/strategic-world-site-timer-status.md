@@ -3,6 +3,15 @@
 Branch 4c incremental slice. Pinned reference:
 `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
 
+Hourly discovery now runs at the end of `GeoscapeState::time1Hour`, after
+production and before the half-hour site loop. One hidden site is revealed in
+saved order, with a minimum remaining hour; other hidden sites gain an hour.
+Postponement overflow stops before the tick. The discovery notification pauses
+following ticks while retaining current-tick fallthrough. Expiry, activity, UFO
+reactivation and craft-arrival forecasts account for the timer changes.
+The probe inserts the actual hourly discovery block; fresh/cache tests cover
+queue order, minimums, maximum timers, reload and post-hour creation.
+
 `GeoscapeState::time30Minutes` processes mission sites after UFO activity/detection
 and before scheduled events. `GeoscapeState::processMissionSite` subtracts 1800
 seconds when at least 1800 remain; a site at exactly 1800 becomes zero and

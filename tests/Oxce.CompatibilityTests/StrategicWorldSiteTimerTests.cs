@@ -351,6 +351,89 @@ public sealed class StrategicWorldSiteTimerTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HourlyDiscoveryMatchesCapturedQueueAndContinuesCurrentTick(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-timer");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"], cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "discoveryRows"))
+        {
+            var snapshot = CreateSnapshot(content, "Site discovery") with
+            {
+                Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+            };
+            snapshot = snapshot with
+            {
+                World = snapshot.World with
+                {
+                    MissionSites = row.GetProperty("before").EnumerateArray().Select((site, index) =>
+                        new MissionSiteSnapshot(index + 1, "MISSION_SITE", "SITE_TIMER", "RACE_A", 0.2, 0.1,
+                            site[1].GetInt32())
+                        { Detected = site[0].GetBoolean() }).ToArray(),
+                },
+            };
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+            Assert.Equal(row.GetProperty("popups").GetInt32(), result.Events.OfType<MissionSiteDetected>().Count());
+            var actual = JsonSerializer.SerializeToUtf8Bytes(campaign.Capture().World.MissionSites
+                .Select(site => new object[] { site.Detected, site.SecondsRemaining + 1800 }));
+            var expected = System.Text.Encoding.UTF8.GetBytes(row.GetProperty("after").GetRawText());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + snapshot.World.MissionSites.Count * 4,
+                campaign.Capture().Regions[0].ActivityAlien[^1]);
+            Reload(content, campaign, 17, "site-discovered.sav");
+        }
+    }
+
+    [Fact]
+    public void DiscoveryPostponementOverflowStopsBeforeTimeOrDetectionChanges()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
+        var snapshot = WithSite(CreateSnapshot(content, "Discovery overflow") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+        }, "SITE_TIMER", 0);
+        var first = snapshot.World.MissionSites[0] with { Detected = false };
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                MissionSites = [first, first with { Id = first.Id + 1, SecondsRemaining = int.MaxValue - 3599 }],
+            }
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        AssertTimeBlocked(campaign, "Mission site discovery postponement exceeds the supported timer range.");
+    }
+
+    [Fact]
+    public void DiscoveryMinimumPreventsPrematureDespawnEffectsAndBatchStopsAfterNotificationTick()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"]);
+        var snapshot = WithSite(CreateSnapshot(content, "Discovery before expiry") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+        }, "SITE_DEPLOY", 0);
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                MissionSites = [snapshot.World.MissionSites[0] with { Detected = false }],
+            }
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var result = campaign.Execute(new AdvanceCampaignTime(720));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Single(result.Events.OfType<MissionSiteDetected>());
+        Assert.Equal(1, Assert.Single(result.Events.OfType<CampaignTimeAdvanced>()).Summary.TickCount);
+        var site = Assert.Single(campaign.Capture().World.MissionSites);
+        Assert.True(site.Detected);
+        Assert.Equal(1800, site.SecondsRemaining);
+        Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + 4, campaign.Capture().Regions[0].ActivityAlien[^1]);
+    }
+
     private static CampaignSnapshot WithSite(CampaignSnapshot snapshot, string deployment, int seconds) =>
         snapshot with
         {
