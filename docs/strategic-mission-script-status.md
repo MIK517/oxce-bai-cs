@@ -254,3 +254,12 @@ together. The full suite identified three stale arrival guard tests. Two now pla
 the UFO on the actual conversion leg (the previous trajectory zone controls site
 creation); the third verifies the newly supported fixed-area land selection and
 reload. The strict unchanged-state assertions remain on unavailable conversion.
+
+### Batch 3, slice 7: live mission interruption
+
+Daily guaranteed research can interrupt missions with live ordinary UFOs. A pure
+daily mission projection is shared with craft preflight; interrupted arrivals
+destroy the UFO and preserve the reference current-tick early return before craft
+combat. Later cleanup releases live counts. Existing research uncertainty and
+orphan-link guards remain precise. GeoscapeState::time1Day, AlienMission::isOver
+and ufoReachedWaypoint back live oracle rows, reload and same-day research tests.

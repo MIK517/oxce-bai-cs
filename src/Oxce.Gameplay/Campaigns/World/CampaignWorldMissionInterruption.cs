@@ -4,6 +4,16 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
+    // Pure daily projection, shared by world and subsequent craft preflight.
+    // It is reset on each preflight and never appears in campaign persistence.
+    private IReadOnlySet<string>? _dailyResearchForecast;
+
+    private AlienMissionSnapshot ForecastMission(int id, CampaignTimeTrigger highest)
+    {
+        var mission = FindMission(id) ?? throw new InvalidDataException("UFO forecast requires a mission link.");
+        return highest >= CampaignTimeTrigger.OneDay ? MissionAfterDailyResearch(mission, _dailyResearchForecast) : mission;
+    }
+
     private void InterruptMissionsDaily(CampaignState.TimeEffects _)
     {
         var rules = campaign.Content.RuntimeRules;
@@ -37,10 +47,7 @@ internal sealed partial class CampaignWorld
             if (!possibleResearch.Contains(id)) continue;
             if (!guaranteedResearch.Contains(id))
                 return "Alien mission interruption depends on uncertain daily research outcomes.";
-            // Interruption changes waypoint arrival and pursuit in this same tick.
-            // Keep those combined live-UFO transitions guarded until forecast ownership expands.
-            if (mission.LiveUfos != 0)
-                return "Alien mission interruption with live UFOs requires world simulation.";
+
         }
         return null;
     }
