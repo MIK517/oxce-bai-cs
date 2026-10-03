@@ -146,10 +146,10 @@ std::cout << '[' << (fuel?"true":"false") << ',' << (complete?"true":"false") <<
 }
 std::cout << "],\"spawnEscortRows\":[";
 first=true;
-for(bool hunter:{false,true}) for(bool requested:{false,true}) for(int variant:{0,1,2,3}) for(int status:{0,1,2,3,4}) {
+for(bool hunter:{false,true}) for(bool requested:{false,true}) for(int variant:{0,1,2,3}) for(int status:{0,1,2,3,4}) for(int sourceStatus:{0,1}) {
 if(!first) std::cout << ','; first=false;
 Ufo ufo,firstTarget,secondTarget;
-ufo._isHunterKiller=hunter; ufo.lon=0.3; ufo.lat=0.1; ufo.speed=900;
+ufo.status=sourceStatus; ufo._isHunterKiller=hunter; ufo.lon=0.3; ufo.lat=0.1; ufo.speed=900;
 ufo._dest=new Waypoint(); ufo._dest->lon=0.4; ufo._dest->lat=0.2;
 firstTarget.uniqueId=10; firstTarget.status=status; firstTarget.lon=0.7; firstTarget.lat=0.3;
 secondTarget.uniqueId=11; secondTarget.lon=0.9; secondTarget.lat=0.4;
@@ -164,7 +164,7 @@ std::cout << '[' << (hunter?"true":"false") << ',' << (requested?"true":"false")
 << ufo.lon << ',' << ufo.lat << ',' << ufo.speed << ',';
 if(ufo._origWaypoint) std::cout << ufo._origWaypoint->lon << ',' << ufo._origWaypoint->lat;
 else std::cout << "null,null";
-std::cout << ']';
+std::cout << ',' << ufo.status << ']';
 if(ufo._origWaypoint) delete ufo._origWaypoint; else delete ufo._dest;
 }
 std::cout << "],\"spawnEscortSequenceRows\":[";

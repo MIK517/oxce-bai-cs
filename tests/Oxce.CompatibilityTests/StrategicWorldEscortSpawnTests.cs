@@ -23,7 +23,7 @@ public sealed class StrategicWorldEscortSpawnTests
             var requested = row[1].GetBoolean();
             var variant = row[2].GetInt32();
             var status = row[3].GetInt32();
-            var source = new UfoSnapshot(9, "UFO", 4, "TRAJ", 0, 0.3, 0.1, UfoStatus.Flying, WorldAltitudes.Low)
+            var source = new UfoSnapshot(9, "UFO", 4, "TRAJ", 0, 0.3, 0.1, (UfoStatus)row[12].GetInt32(), WorldAltitudes.Low)
             {
                 HunterKiller = hunter,
                 Speed = 900,
@@ -46,7 +46,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 hunter, requested, variant, status, result.Escort, result.Escorting,
                 result.Escorting ? result.Destination!.UniqueId : 0,
                 result.Longitude, result.Latitude, result.Speed,
-                result.OriginalWaypoint?.Longitude, result.OriginalWaypoint?.Latitude,
+                result.OriginalWaypoint?.Longitude, result.OriginalWaypoint?.Latitude, (int)result.Status,
             });
             Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())),
                 CanonicalJson.Normalize(actual));
@@ -427,6 +427,68 @@ public sealed class StrategicWorldEscortSpawnTests
         Assert.Equal(2200, restored.Speed);
         Assert.Equal(1, campaign.Capture().World.Missions[0].LiveUfos);
         Reload(content, campaign, 81, "escort-terminal-leader-deleted.sav");
+    }
+
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GroundedEscortSpawnsWithActiveCraftAndRetainsBackupThroughTakeoff(bool cache, bool leader)
+    {
+        var content = Load(cache);
+        var initial = SpawnSnapshot(content, UfoStatus.Flying).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Longitude = 0.45,
+                Latitude = 0.21,
+                Destination = null,
+            },
+        });
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { RuleId = "MISSION_ESCORT_GROUND", LiveUfos = leader ? 1 : 0 }],
+                Ufos = leader ? initial.World.Ufos : [],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        int[] expectedContacts = leader ? [9, 1] : [];
+        Assert.Equal(expectedContacts, result.Events.OfType<UfoContactDetected>().Select(item => item.UniqueId).ToArray());
+        Assert.Equal(leader ? 3 : 1, result.Events.Count);
+        var spawned = campaign.Capture().World.Ufos.Single(ufo => ufo.RuleId == "ESCORT_HUNTER");
+        Assert.Equal(UfoStatus.Landed, spawned.Status);
+        Assert.Equal(WorldAltitudes.Ground, spawned.Altitude);
+        Assert.Equal(55, spawned.SecondsRemaining);
+        Assert.True(spawned.HunterKiller);
+        Assert.True(spawned.Escort);
+        Assert.Equal(leader, spawned.Escorting);
+        Assert.Equal(leader ? 2200 : 550, spawned.Speed);
+        Assert.Equal(-1, spawned.Shield);
+        var start = spawned.Position;
+        var original = spawned.OriginalWaypoint;
+        campaign = Reload(content, campaign, 81, "ground-escort-birth.sav");
+        AdvanceUnblocked(campaign, 11);
+        var lifted = campaign.Capture().World.Ufos.Single(ufo => ufo.RuleId == "ESCORT_HUNTER");
+        Assert.Equal(UfoStatus.Flying, lifted.Status);
+        Assert.Equal(WorldAltitudes.VeryLow, lifted.Altitude);
+        Assert.Equal(start, lifted.Position);
+        Assert.Equal(550, lifted.Speed);
+        Assert.Equal(original, lifted.OriginalWaypoint);
+        Assert.Equal(-1, lifted.Shield);
+        campaign = Reload(content, campaign, 81, "ground-escort-takeoff.sav");
+        AdvanceOne(campaign);
+        Assert.Equal(leader, campaign.Capture().World.Ufos.Single(ufo => ufo.RuleId == "ESCORT_HUNTER").Escorting);
+        Reload(content, campaign, 81, "ground-escort-first-flight.sav");
     }
 
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
