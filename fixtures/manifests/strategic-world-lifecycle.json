@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-world-lifecycle",
-  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering. Transition rows cover all objective/operation combinations, linked and absent operation bases, and three non-terminal waypoints with objective flags disabled; aggressive retaliation is excluded. Normal lift rows cover all objective and operation combinations, including Base/Infiltration score suppression. Ordinary spawn rows cover all three objective-flag combinations without mission-site targeting. Spawn path rows include generic and Supply altitude combinations, using verbatim Supply spawn fragments and a linked base. Point destination rows select both ordered city areas and count exact regional RNG. Aggressive arrival rows retain the discarded base-near RNG and the second ordinary rectangle selection.",
+  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation spawning/assault effects and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering. Transition rows cover all objective/operation combinations, linked and absent operation bases, and three non-terminal waypoints with objective flags disabled; ordinary transition rows disable aggressive retaliation. Normal lift rows cover all objective and operation combinations, including Base/Infiltration score suppression. Ordinary spawn rows cover all three objective-flag combinations without mission-site targeting. Spawn path rows include generic and Supply altitude combinations, using verbatim Supply spawn fragments and a linked base. Point destination rows select both ordered city areas and count exact regional RNG. Aggressive arrival rows retain the discarded base-near RNG and the second ordinary rectangle selection. Origin rows include ordered points and rectangular Earth overrides; selected-site rows capture fixed-area land retries.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -71,8 +71,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-aggressive-arrivals.rul",
-      "size": 107,
-      "sha256": "81d66108ee4a4a83558d507b89f5ccba306237e08070bf42d5552cb59bfa5c35"
+      "size": 385,
+      "sha256": "c7b6ecea3e8a0177c71e998453f9e7365de7c59ccedeb176812501e4458b7c56"
     }
   ],
   "normalization": [

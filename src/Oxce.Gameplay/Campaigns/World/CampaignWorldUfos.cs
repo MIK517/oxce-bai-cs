@@ -136,7 +136,7 @@ internal sealed partial class CampaignWorld
                         trajectory.Zone(ufo.TrajectoryPoint + 1) != 5)
                     {
                         var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
-                        siteLinkWork += (long)campaign.BaseStates.Count * region.Areas.Count;
+                        siteLinkWork += (long)campaign.BaseStates.Count * (1L + region.Areas.Count);
                         if (siteLinkWork > MaximumAlienBaseChecks) return "Aggressive retaliation base selection exceeds the supported work limit.";
                     }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
