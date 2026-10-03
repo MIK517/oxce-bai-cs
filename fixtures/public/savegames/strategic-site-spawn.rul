@@ -54,6 +54,22 @@ alienDeployments:
   - type: DIRECT_ZERO_DURATION
     markerName: DIRECT_MARKER
     duration: [0, 0]
+  - type: DIRECT_ZERO_COUNTERS
+    markerName: DIRECT_MARKER
+    duration: [0, 0]
+    points: 4
+    despawnPenalty: 9
+    counterDespawn: shared
+    counterFailure: shared
+    counterAll: DIRECT_MARKER
+  - type: DIRECT_MIXED_DURATION
+    markerName: DIRECT_MARKER
+    duration: [0, 2]
+    points: 4
+    despawnPenalty: 9
+  - type: DIRECT_NEGATIVE_DURATION
+    markerName: DIRECT_MARKER
+    duration: [-1, 0]
   - type: DIRECT_OVERFLOW_DURATION
     markerName: DIRECT_MARKER
     duration: [1, 2147483647]
@@ -77,6 +93,21 @@ alienMissions:
   - type: DIRECT_ZERO_DURATION
     spawnZone: 0
     waves: [{ufo: DIRECT_ZERO_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_ZERO_COUNTERS
+    spawnZone: 0
+    waves: [{ufo: DIRECT_ZERO_COUNTERS, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_ZERO_CHAIN
+    spawnZone: 0
+    waves:
+      - {ufo: DIRECT_ZERO_COUNTERS, count: 1, trajectory: DIRECT_SITE, timer: 3000}
+      - {ufo: DIRECT_ZERO_COUNTERS, count: 1, trajectory: DIRECT_SITE, timer: 0}
+      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}
+  - type: DIRECT_MIXED_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_MIXED_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
+  - type: DIRECT_NEGATIVE_DURATION
+    spawnZone: 0
+    waves: [{ufo: DIRECT_NEGATIVE_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]
   - type: DIRECT_OVERFLOW_DURATION
     spawnZone: 0
     waves: [{ufo: DIRECT_OVERFLOW_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000}]

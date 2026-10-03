@@ -71,7 +71,7 @@ public sealed class StrategicWorldSiteSpawningTests
     }
 
     [Theory]
-    [InlineData("DIRECT_ZERO_DURATION")]
+    [InlineData("DIRECT_NEGATIVE_DURATION")]
     [InlineData("DIRECT_OVERFLOW_DURATION")]
     public void UnsafeDurationsStopBeforeAnyTickMutation(string mission)
     {
@@ -384,5 +384,74 @@ public sealed class StrategicWorldSiteSpawningTests
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], extraRules: overlay);
         var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_EMPTY_MARKER"), content, new QuarterChoices());
         AssertTimeBlocked(campaign, "Direct mission site marker names require a nonempty ID namespace.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ZeroHourCreationConsumesCapturedDrawsThenExpiresWithoutDiscovery(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
+        var row = TestFixtures.Rows(oracle.RootElement, "cases").Single(item => item.GetProperty("name").GetString() == "zero-duration");
+        var content = Load(cache);
+        var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_ZERO_DURATION").WithNextId("DIRECT_MARKER", 7),
+            content, new QuarterChoices());
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.MissionSites);
+        Assert.Empty(after.World.Missions);
+        Assert.Equal((ulong)row.GetProperty("calls").GetInt32(), after.RandomState);
+        Assert.Equal(row.GetProperty("site")[3].GetInt32() + 1, after.NextIds["DIRECT_MARKER"]);
+        Assert.Equal(0, row.GetProperty("site")[4].GetInt32());
+        Reload(content, campaign, 17, "zero-hour-site-deleted.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ZeroHourChainsAllocateAllIdsBeforeDespawnCountersAndUsePenalties(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = Snapshot(content, "DIRECT_ZERO_CHAIN");
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(3, Assert.Single(after.World.MissionSites).Id);
+        Assert.Equal(6, after.NextIds["DIRECT_MARKER"]);
+        Assert.Equal(5, after.NextIds["shared"]);
+        Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + 22, after.Regions[0].ActivityAlien[^1]);
+        Assert.Equal(14UL, after.RandomState);
+        Reload(content, campaign, 17, "zero-hour-site-chain.sav");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ZeroHourCounterReservationsIncludeBirthIdAllocation(bool markerNamespace)
+    {
+        var content = Load(false);
+        var snapshot = Snapshot(content, "DIRECT_ZERO_COUNTERS")
+            .WithNextId(markerNamespace ? "DIRECT_MARKER" : "shared", int.MaxValue - 1);
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AssertTimeBlocked(campaign, "Mission site custom counter exceeds the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MixedDurationForecastReservesEitherExpiryPenaltyOrLivePoints(bool maximum)
+    {
+        var content = Load(false);
+        var snapshot = Snapshot(content, "DIRECT_MIXED_DURATION");
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices(maximum));
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + (maximum ? 4 : 9), after.Regions[0].ActivityAlien[^1]);
+        Assert.Equal(maximum ? 1 : 0, after.World.MissionSites.Count);
+        var guarded = CampaignState.Restore(snapshot with
+        {
+            Regions = [snapshot.Regions[0] with { ActivityAlien = [int.MaxValue - 8] }],
+        }, content, new QuarterChoices(maximum));
+        AssertTimeBlocked(guarded, "UFO alien activity exceeds the supported range.");
     }
 }

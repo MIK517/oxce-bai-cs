@@ -56,7 +56,7 @@ internal sealed partial class CampaignWorld
                 if (IsDirectSiteWave(step, rule))
                 {
                     siteMarkerReservations ??= new(StringComparer.Ordinal);
-                    if (DirectSiteSpawnReason(step, rule, siteMarkerReservations, ref geometryWork, ref siteSpawns) is { } siteReason)
+                    if (DirectSiteSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork, ref siteSpawns) is { } siteReason)
                         return siteReason;
                     var finishes = step.NextWave + 1 == rule.Waves.Count &&
                         (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
