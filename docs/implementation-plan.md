@@ -689,3 +689,6 @@ next two slices. Combat and deployment remain branch 5.
 - Final escort-cycle root validation: 1,745 passed, zero failures/skips, including
   private classifications, endurance, checksum and allocation coverage. Code-map
   and diff checks pass, as does formatting verification; 4c remains open and 4d is untouched.
+
+- 4c grounded escort slice: extended pinned status traces and enabled long-timer
+  grounded births with active craft. Focused hunting/escort tests pass (87 cases).

@@ -174,3 +174,17 @@ skips, including private classifications, endurance, checksums and allocation
 checks. Formatting verification, code-map and diff validation pass. The pinned reference checkout remains
 clean; obsolete probe object output was removed. Branch 4c's headless gate remains
 open and branch 4d has not started.
+
+### Grounded escort births
+
+Grounded escort waves with a timer above one now initialize beside a saved
+ordinary leader, or keep their request and trajectory speed without a leader.
+The extended pinned spawn capture has 160 rows and confirms that escort
+initialization retains the source status. Active craft do not block a grounded
+birth because GeoscapeState skips landed UFOs in the retarget pass.
+
+Fresh/cache scenarios assert ordered detection notifications, stationary ground
+timers, untouched shields, preserved original waypoints, takeoff at trajectory
+speed and save/reload before and after flight. Reference: AlienMission::spawnUfo,
+GeoscapeState::ufoHuntingAndEscorting/time5Seconds and AlienMission::ufoLifting
+(the existing lift oracle). Creation-tick takeoff is the next slice.

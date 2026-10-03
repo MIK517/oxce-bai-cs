@@ -552,3 +552,7 @@ next two slices. Combat and deployment remain branch 5.
   and allocation/checksum coverage. Formatting, code-map and diff checks pass.
   The read-only reference checkout is clean;
   remaining 4c ownership is explicit and the 4d boundary is unchanged.
+
+- 4c grounded escorts: positive long-timer births initialize without craft-hunt
+  forecasts because landed UFOs miss retargeting. Ground status, contact order,
+  stationary timers, shields, trajectory takeoff speed and reload are verified.
