@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,18 +15,18 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 8496,
-      "sha256": "54dafb38a7ea8939a503ae9e2c439f98a46a123b270b4a96de71cec0002e6e29"
+      "size": 9851,
+      "sha256": "1060af5937ebf3947c998dd6844d759377d7d7da34c65a607f03fae8be6a7be4"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 5279,
-      "sha256": "592bfc49670b21e8b1d89a473fc3e727b04323add66335c3bbc7a9643e79c757"
+      "size": 5929,
+      "sha256": "c07cc7130724a9853dc0120e0dfd59fff7c8be5b99ba943eb02451fab7c8bc7d"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",
-      "size": 1211,
-      "sha256": "c5a2b39707003e1634d2021488b5022bfb802edc40528e3b376e1680ffa1d3e6"
+      "size": 1860,
+      "sha256": "cd116f4925744ed1e9cf9f64c0524bde4b850ef5757afd04cd378d493110d92b"
     }
   ],
   "normalization": [

@@ -429,7 +429,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     {
         if (reference is null) return;
         if (!Enum.IsDefined(reference.Kind)) throw new InvalidDataException($"A {what} has an unsupported kind.");
-        if (reference.Id <= 0 && reference.Kind is not (WorldTargetKind.Base or WorldTargetKind.Waypoint))
+        if (reference.Id <= 0 && reference.Kind is not (WorldTargetKind.Base or WorldTargetKind.Waypoint) &&
+            !(reference.Kind == WorldTargetKind.Ufo && reference.Id == 0 && reference.UniqueId > 0))
             throw new InvalidDataException($"A {what} must reference a positive identity.");
         ValidatePosition(reference.Position, what);
     }
