@@ -1,5 +1,10 @@
 # Selected objective UFOs convert at their ground waypoint.
 ufos:
+  - type: UFO_SITE_UNMANNED
+    speedMax: 2200
+    damageMax: 50
+    unmanned: true
+    fakeWaterLandingChance: 20
   - type: UFO_SITE_CUSTOM
     speedMax: 2200
     damageMax: 50

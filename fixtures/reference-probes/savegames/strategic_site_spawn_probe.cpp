@@ -61,14 +61,18 @@ struct MissionSite;
 struct Craft { int units = 0; MissionSite* destination = nullptr; bool returned = false;
 int getNumTotalUnits() const { return units; } void setDestination(MissionSite* site) { destination = site; } void returnToBase() { returned = true; } };
 struct Ufo {
-enum Status { FLYING, IGNORE_ME, DESTROYED }; Status status = FLYING;
-struct Stats { std::string missionCustomDeploy; }; Stats stats;
-Stats getCraftStats() const { return stats; }
+enum Status { FLYING, LANDED, CRASHED, IGNORE_ME, DESTROYED }; Status _status = FLYING;
+struct UfoRule { bool unmanned = false; bool isUnmanned() const { return unmanned; } } rule;
+const UfoRule* _rules = &rule; std::string _altitude; int _huntBehavior = 0, _damage = 0;
+void setAltitude(const std::string&); bool isCrashed() const; bool isDestroyed() const;
+struct Stats { std::string missionCustomDeploy; int damageMax = 50; }; Stats _stats;
+Stats getCraftStats() const { return _stats; }
 double getLongitude() const { return 0.25; } double getLatitude() const { return 0.15; }
-void setStatus(Status value) { status = value; } Status getStatus() const { return status; }
+void setStatus(Status value) { _status = value; } Status getStatus() const { return _status; }
 std::vector<Craft*> followers;
 std::vector<Craft*> getCraftFollowers() const { return followers; }
 };
+// ALTITUDE_AND_DAMAGE_METHODS
 struct UfoTrajectory { int getZone(int) const { return 0; } };
 struct MissionWave { std::string ufoType; bool objectiveOnXcomBase = false; bool objectiveOnTheLandingSite = false; };
 struct MissionSite {
@@ -152,13 +156,13 @@ Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY
 mod.deployments.emplace("CUSTOM_DEPLOY", AlienDeployment{"CUSTOM_DEPLOY", "CUSTOM_MARKER", 5, 6});
 mod.region.zones = {{{{0.1, 0.3, -0.2, 0.2, 10, "CITY"}}}};
 AlienMission mission; mission._rule.siteType = "DIRECT_DEPLOY"; mission._rule.respawn = respawn;
-mission._missionSiteZoneArea = 0; Ufo ufo; if (custom) ufo.stats.missionCustomDeploy = "CUSTOM_DEPLOY";
+mission._missionSiteZoneArea = 0; Ufo ufo; if (custom) ufo._stats.missionCustomDeploy = "CUSTOM_DEPLOY";
 SavedGame game; RNG::calls = 0; mission.convert(game, mod, ufo, landing);
 auto* site = game.sites.at(0);
 std::cout << "[" << (landing ? "true" : "false") << ',' << (respawn ? "true" : "false") << ',' << (custom ? "true" : "false")
 << ",\"" << site->lon << "\",\"" << site->lat << "\"," << site->seconds << ',' << RNG::calls << ',' << game.scoreCalls
 << ",\"" << (site->custom ? site->custom->type : "") << "\"," << (site->ufo == &ufo ? "true" : "false")
-<< ",\"" << (ufo.status == Ufo::IGNORE_ME ? "ignore" : "destroyed") << "\"]";
+<< ",\"" << (ufo._status == Ufo::IGNORE_ME ? "ignore" : "destroyed") << "\"]";
 delete site;
 }
 std::cout << "],\"suppressedConversionRows\":[";
@@ -169,7 +173,7 @@ Mod mod; mod.globe.textures[10]._deployments.clear();
 mod.region.zones = {{{{0.1, 0.3, -0.2, 0.2, 10, "CITY"}}}};
 AlienMission mission; mission._rule.respawn = respawn; mission._missionSiteZoneArea = 0;
 Ufo ufo; SavedGame game; RNG::calls = 0; mission.convert(game, mod, ufo, false);
-std::cout << "[" << (respawn ? "true" : "false") << ",\"" << (ufo.status == Ufo::DESTROYED ? "destroyed" : "ignore")
+std::cout << "[" << (respawn ? "true" : "false") << ",\"" << (ufo._status == Ufo::DESTROYED ? "destroyed" : "ignore")
 << "\"," << game.sites.size() << ',' << game.scoreCalls << ',' << RNG::calls << ']';
 }
 std::cout << "],\"counterConversionRows\":[";
@@ -198,6 +202,21 @@ SavedGame game; Ufo ufo; Craft craft; craft.units = units; ufo.followers.push_ba
 mission.convert(game,mod,ufo,false);
 std::cout << '[' << (respawn ? "true" : "false") << ',' << units << ',' << (craft.destination == game.sites.at(0) ? "true" : "false")
 << ',' << (craft.returned ? "true" : "false") << ']';
+for (auto* site : game.sites) delete site;
+}
+std::cout << "],\"damagedConversionRows\":[";
+first = true;
+for (bool unmanned : {false,true}) for (int hunt : {0,1}) for (int damage : {24,25,26,49,50}) for (bool respawn : {false,true}) {
+if (!first) std::cout << ','; first = false;
+Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY","DIRECT_MARKER",2,3});
+mod.region.zones = {{{{0.1,0.3,-0.2,0.2,10,"CITY"}}}};
+AlienMission mission; mission._rule.siteType = "DIRECT_DEPLOY"; mission._rule.respawn = respawn; mission._missionSiteZoneArea = 0;
+SavedGame game; Ufo ufo; ufo.rule.unmanned = unmanned; ufo._huntBehavior = hunt; ufo._damage = damage;
+ufo.setAltitude("STR_GROUND"); bool crash = ufo.getStatus() == Ufo::CRASHED;
+mission.convert(game,mod,ufo,false);
+std::cout << '[' << (unmanned ? "true" : "false") << ',' << hunt << ',' << damage << ',' << (respawn ? "true" : "false")
+<< ',' << (crash ? "true" : "false") << ",\"" << (ufo.getStatus() == Ufo::IGNORE_ME ? "ignore" : "destroyed")
+<< "\"," << game.sites.size() << ']';
 for (auto* site : game.sites) delete site;
 }
 std::cout << "]}\n";

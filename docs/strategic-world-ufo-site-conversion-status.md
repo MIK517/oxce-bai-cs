@@ -80,3 +80,12 @@ reload tests check stable site references and effective destination speed.
 Respawn conversions forecast every possible new-site position using the existing
 spherical area bound, stopping atomically before a possible branch 5 landing.
 Nonlanding craft transfer then use the existing arrival/recall behavior.
+
+Damaged selected-site arrivals now proceed because AlienMission::ufoReachedWaypoint
+replaces Ufo::setAltitude's transient crash/landed result before any later
+Geoscape callback. The expanded probe inserts setAltitude, isCrashed and
+isDestroyed verbatim. Forty captured combinations cover the half-damage boundary,
+destruction threshold, unmanned rules, kamikaze behavior and dormancy. Fresh/cache
+tests preserve damage and stable respawn links across reload. Ordinary damaged
+ground arrivals retain their atomic guard; this does not enable crash creation,
+interception or tactical deployment.

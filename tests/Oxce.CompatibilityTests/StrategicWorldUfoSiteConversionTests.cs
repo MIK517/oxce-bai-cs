@@ -480,6 +480,66 @@ public sealed class StrategicWorldUfoSiteConversionTests
         Reload(content, campaign, 17, "nonlanding-converted-follower.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamagedConversionsOverrideCapturedTransientCrashStatus(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "damagedConversionRows"))
+        {
+            var unmanned = row[0].GetBoolean();
+            var hunt = row[1].GetInt32();
+            var damage = row[2].GetInt32();
+            var respawn = row[3].GetBoolean();
+            // This intermediate state has no callback before conversion replaces it.
+            Assert.Equal(damage >= 50 || !unmanned && hunt != 1 && damage > 25, row[4].GetBoolean());
+            var initial = Snapshot(content, respawn: respawn);
+            initial = initial with
+            {
+                World = initial.World with
+                {
+                    Ufos = [initial.World.Ufos[0] with
+                    { RuleId = unmanned ? "UFO_SITE_UNMANNED" : "UFO_SCOUT", Damage = damage, HuntBehavior = hunt }],
+                },
+            };
+            var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+            Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                ufo.Status == UfoStatus.IgnoreMe ? "ignore" : "destroyed", after.World.MissionSites.Count,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Assert.Equal(damage, ufo.Damage);
+            Assert.Equal(WorldAltitudes.Ground, ufo.Altitude);
+            Assert.Equal(respawn ? 9 : 0, Assert.Single(after.World.MissionSites).UfoUniqueId);
+            Reload(content, campaign, 17, "damaged-converted-ufo.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(26)]
+    [InlineData(50)]
+    public void OrdinaryDamagedGroundOutcomesRemainAtomic(int damage)
+    {
+        var content = Load();
+        var initial = Snapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { MissionSiteZoneArea = -1 }],
+                Ufos = [initial.World.Ufos[0] with { Damage = damage }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new QuarterChoices()),
+            "UFO waypoint arrival requires mission simulation.");
+    }
+
     private sealed class QuarterChoices : IStatefulRandomSource
     {
         public ulong State { get; set; }
