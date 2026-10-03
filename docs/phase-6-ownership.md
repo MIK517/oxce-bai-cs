@@ -387,3 +387,9 @@ and tests verify missing sites/links, shield recharge and later-UFO movement.
 Final root validation passes 1,644 tests with no failures or skips, including
 checksums, private corpus and allocation checks. Formatting, code-map and diff
 verification pass. The C++ checkout remains clean; the headless gate is open.
+
+World now owns combined-tick UFO site conversion, using the gameplay custom
+counter capability to project daily research and preceding site transitions.
+Positive/zero site timers, saved-target collisions and ID exhaustion retain
+reference ordering and atomic guards. A shared marker decrease after direct
+births remains guarded precisely pending correlated-ID forecasting.

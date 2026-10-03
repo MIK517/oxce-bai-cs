@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "AlienMission::think direct-site branch and spawnMissionSite excluding diagnostic logging; Texture::getRandomDeployment; AlienMission::selectXcomBase; ufoReachedWaypoint conversion body (controlled score callback)",
+      "sources": "AlienMission::think direct-site branch and spawnMissionSite excluding diagnostic logging; Texture::getRandomDeployment; AlienMission::selectXcomBase; ufoReachedWaypoint conversion body (controlled score callback); SavedGame::getId/increaseCustomCounter/decreaseCustomCounter",
       "capture": "tools/capture-strategic-site-spawn-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_site_spawn_probe.cpp",
-      "size": 9665,
-      "sha256": "8ff6dc31c7aa7236ce8470d80740fc70733239877dbd5a8faf5a180a0c613bdb"
+      "size": 10736,
+      "sha256": "d6aac6c8a6b823aef4099418388dce53e95a590c706b1923d104daf5355d13fd"
     },
     {
       "path": "tools/capture-strategic-site-spawn-reference.ps1",
-      "size": 4736,
-      "sha256": "edfbc70675498e3ee6a1acc731213e59b8e15f83e5ad71ecc3311122f9c2e75b"
+      "size": 5634,
+      "sha256": "9c6c66c6569d1df5efdc7a4c06b324a714529003d621fda1df95896b057a4a1d"
     },
     {
       "path": "fixtures/public/savegames/strategic-site-spawn.rul",

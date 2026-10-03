@@ -175,7 +175,7 @@ internal sealed partial class CampaignWorld
             var mission = ForecastMission(ufo.MissionId, highest);
             var rule = MissionRule(mission);
             if (rule.Objective != RuntimeMissionObjective.Infiltration &&
-                CheckActivityScore(ufo.Destination!.Position, rule.Points, regionTotals, countryTotals) is { } conversionReason)
+                CheckActivityScore(UfoAfterTimedTransitions(ufo, highest).Destination!.Position, rule.Points, regionTotals, countryTotals) is { } conversionReason)
                 return conversionReason;
             // A destroyed conversion ends this pass before subsequent UFOs/crafts.
             if (!rule.RespawnUfoAfterSiteDespawn || _suppressedUfoSites?.Contains(ufo.UniqueId) == true) break;

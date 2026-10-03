@@ -58,3 +58,15 @@ guarded; this batch does not close the headless gate.
 Final validation: 1,644 root tests pass with zero failures or skips, including
 checksums, private corpus and allocation checks. Formatting verification,
 code-map and diff checks pass. The pinned reference checkout remains clean.
+
+Combined half-hour, hourly and daily ticks now include conversion after research,
+direct site births and existing-site expiry. The shared custom-counter operation
+forecasts ordered certain/possible changes without drawing RNG. Saved target
+collisions and overflow stop before mutation. A direct birth sharing a marker
+that is decreased later in the tick retains a precise collision guard; unrelated
+namespaces and safe increasing counters proceed. Converted sites begin after
+the half-hour timer loop and retain their full duration. Arrival activity uses
+the destination after site follower repair/reactivation. The probe now inserts
+SavedGame::getId and both custom-counter methods; fresh/cache counter-order
+rows, daily research, reload and atomic exhaustion tests pass (84 focused tests).
+Craft follower transfer and damaged ordinary ground outcomes remain guarded.

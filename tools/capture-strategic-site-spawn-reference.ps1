@@ -35,6 +35,14 @@ $baseStart = $source.IndexOf('Base* AlienMission::selectXcomBase(', [StringCompa
 $baseEnd = $source.IndexOf('/**', $baseStart, [StringComparison]::Ordinal)
 if ($baseStart -lt 0 -or $baseEnd -le $baseStart) { throw 'Missing reference base selection.' }
 $template = $template.Replace('// BASE_SELECTION', $source.Substring($baseStart, $baseEnd - $baseStart))
+$saveSource = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/SavedGame.cpp'))
+$idStart = $saveSource.IndexOf('int SavedGame::getId(', [StringComparison]::Ordinal)
+$idEnd = $saveSource.IndexOf('/**', $idStart, [StringComparison]::Ordinal)
+$counterStart = $saveSource.IndexOf('void SavedGame::increaseCustomCounter(', [StringComparison]::Ordinal)
+$decreaseStart = $saveSource.IndexOf('void SavedGame::decreaseCustomCounter(', $counterStart, [StringComparison]::Ordinal)
+$counterEnd = $saveSource.IndexOf('/**', $decreaseStart, [StringComparison]::Ordinal)
+if ($idStart -lt 0 -or $idEnd -le $idStart -or $counterStart -lt 0 -or $counterEnd -le $decreaseStart) { throw 'Missing reference ID/counter methods.' }
+$template = $template.Replace('// ID_AND_COUNTER_METHODS', $saveSource.Substring($idStart, $idEnd - $idStart) + $saveSource.Substring($counterStart, $counterEnd - $counterStart))
 $work = Join-Path $repository 'artifacts/reference-strategic-site-spawn'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_site_spawn_probe.cpp'

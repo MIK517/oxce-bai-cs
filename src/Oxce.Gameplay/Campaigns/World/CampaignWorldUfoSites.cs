@@ -6,6 +6,22 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private HashSet<int>? _suppressedUfoSites;
+    private List<CustomCounterForecast>? _siteConversionCounterForecast;
+
+    private string? UfoSiteConversionsReason(CampaignTimeTrigger highest)
+    {
+        Dictionary<string, int>? reservations = null;
+        long work = 0;
+        foreach (var saved in _ufos)
+        {
+            if (!ArrivesAtSite(saved, highest)) continue;
+            var ufo = UfoAfterTimedTransitions(saved, highest);
+            if (UfoSiteReason(ufo, ForecastMission(ufo.MissionId, highest), highest,
+                    reservations ??= new(StringComparer.Ordinal), ref work) is { } reason) return reason;
+        }
+        return null;
+    }
+
     private bool ArrivesAtSite(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
         ufo = UfoAfterTimedTransitions(ufo, highest);
@@ -45,8 +61,6 @@ internal sealed partial class CampaignWorld
     private string? UfoSiteReason(UfoSnapshot ufo, AlienMissionSnapshot mission, CampaignTimeTrigger highest,
         Dictionary<string, int> reservations, ref long work)
     {
-        if (highest >= CampaignTimeTrigger.ThirtyMinutes)
-            return "UFO site conversion requires combined half-hour counter forecasts.";
         var rules = campaign.Content.RuntimeRules;
         var rule = MissionRule(mission);
         foreach (var owner in campaign.BaseStates)
@@ -84,8 +98,26 @@ internal sealed partial class CampaignWorld
         {
             var count = reservations.GetValueOrDefault(marker) + 1;
             reservations[marker] = count;
-            var first = campaign.PeekNextId(marker);
-            var end = (long)first + count;
+            work += _siteConversionCounterForecast?.Count ?? 0;
+            if (highest >= CampaignTimeTrigger.OneDay)
+            {
+                work += (long)rules.Research.Count * campaign.BaseStates.Count;
+                foreach (var research in rules.Research.Rules)
+                    work += (research.Value.IncreaseCounters.Count + (long)research.Value.DecreaseCounters.Count) * campaign.BaseStates.Count;
+                foreach (var owner in campaign.BaseStates)
+                    foreach (var project in owner.Research)
+                    {
+                        var research = rules.Research[project.Rule].Value;
+                        work += 1L + research.GetOneFree.Count;
+                        foreach (var group in research.GetOneFreeProtected) work += 1L + group.Topics.Count;
+                    }
+            }
+            if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+            if (_siteBirthIdChanges?.Any(change => change.Name == marker) == true &&
+                _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+                return "UFO site conversion shares decreased marker counters with same-tick direct sites.";
+            var (first, maximum) = campaign.CustomCounters.BeforeWorldCreation(marker, highest, _siteConversionCounterForecast);
+            var end = maximum + count;
             if (first <= 0 || end > int.MaxValue ||
                 _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= first && site.Id < end) ||
                 _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= first && alienBase.Id < end))

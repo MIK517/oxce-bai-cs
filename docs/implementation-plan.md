@@ -531,3 +531,12 @@ pass. An unchanged patrol allocation assertion failed once before the updated
 conversion expectations were compiled; it passed in the focused rerun and both
 subsequent root runs without weakening its assertion. The pinned C++ checkout
 remains clean; the regenerated probe object was removed.
+
+### Combined-tick UFO site conversion (2026-10-03)
+
+Conversion now runs safely on half-hour/day ticks after ordered research, direct
+birth and expiry counter changes. Captured ID/counter methods and 84 focused
+conversion/spawn/timer tests verify fresh/cache ordering, reload and atomic
+collisions. Same-tick direct births followed by a shared marker decrease retain
+a specific guard. Craft follower transfer remains the next slice. Branch 4c is
+incomplete; branch 4d is untouched.
