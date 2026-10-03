@@ -35,6 +35,13 @@ $start=$mission.IndexOf('if (_nextWave >= _rule.getWaveCount())', $mission.Index
 $end=$mission.IndexOf('const MissionWave &wave',$start)
 if($start -lt 0 -or $end -le $start){throw 'Missing think countdown.'}
 $template=$template.Replace('// THINK_COUNTDOWN',$mission.Substring($start,$end-$start))
+$think=StatementBlock $mission 'void AlienMission::think('
+$counterStart=$think.IndexOf('++_nextUfoCounter;')
+$counterEnd=$think.IndexOf('if (_rule.getObjective() == OBJECTIVE_INFILTRATION')
+$timerStart=$think.LastIndexOf('if (_nextWave != _rule.getWaveCount())')
+if($counterStart -lt 0 -or $counterEnd -le $counterStart -or $timerStart -lt 0){throw 'Missing no-object counters.'}
+$template=$template.Replace('// THINK_COUNTERS',$think.Substring($counterStart,$counterEnd-$counterStart))
+$template=$template.Replace('// THINK_NEXT_TIMER',$think.Substring($timerStart).TrimEnd().TrimEnd('}'))
 $work=Join-Path $repository 'artifacts/reference-strategic-alien-base-hunt-generation'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe=Join-Path $work 'strategic_alien_base_hunt_generation_probe.cpp'

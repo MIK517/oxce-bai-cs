@@ -31,7 +31,7 @@ struct MissionArea{};struct Zone{std::vector<MissionArea> areas;};struct RuleReg
  const std::string& getType()const{return type;}const auto& getMissionZones()const{return zones;}};
 struct Region{RuleRegion rule;RuleRegion* getRules(){return &rule;}};
 constexpr int OBJECTIVE_SITE=3;
-struct RuleAlienMission{bool weighted=false;int objective=0;struct Wave{size_t spawnTimer=9000;}wave;
+struct RuleAlienMission{bool weighted=false,noObject=false;int objective=0;struct Wave{size_t spawnTimer=9000,ufoCount=1;}wave;
  bool hasRaceWeights()const{return weighted;}std::string generateRace(int)const{RNG::generate(1,1);return "RACE_B";}
  int getObjective()const{return objective;}int getSpawnZone()const{return 0;}const Wave& getWave(int)const{return wave;}
  size_t getWaveCount()const{return 1;}};
@@ -46,9 +46,12 @@ struct AlienMission{RuleAlienMission rule;int id=0,area=-1;std::string race;Alie
  void setMissionSiteZoneArea(int v){area=v;}void start(Game&,Globe&){
  const auto& _rule=rule;size_t initialCount=0;
  // START_TIMER
- }void think(Game&,Globe&){const auto& _rule=rule;
+ }void think(Game& engine,Globe& globe){const auto& _rule=rule;
  // THINK_COUNTDOWN
- throw Exception("immediate spawn boundary");
+ if(!rule.noObject)throw Exception("immediate spawn boundary");
+ const auto& wave=rule.wave;
+ // THINK_COUNTERS
+ // THINK_NEXT_TIMER
  } };
 struct SavedGame{std::vector<Base*> bases;std::vector<AlienBase*> alienBases;std::vector<AlienMission*> missions;
  auto* getBases(){return &bases;}auto* getAlienBases(){return &alienBases;}auto& getAlienMissions(){return missions;}
@@ -60,7 +63,8 @@ struct GeoscapeState{Game* _game;Globe* _globe;std::vector<Craft*> _activeCrafts
 // ACTIVE
 // HUNTING
 int main(){std::cout<<"{\"rows\":[";bool first=true;
- for(std::string name:{"disabled","waiting","grounded","undetectable","lowFuel","complete","outside","destroyed","emptyChoice","zeroChance","zeroTotal","multiple","delayed","weightedRace","site","short","twoCrafts"}){
+ for(std::string name:{"disabled","waiting","grounded","undetectable","lowFuel","complete","outside","destroyed","emptyChoice","zeroChance","zeroTotal","multiple","delayed","weightedRace","site","short","twoCrafts","immediate","immediateZero"}){
+ if(name=="immediate"){std::cout<<"],\"immediateRows\":[";first=true;}
  if(!first)std::cout<<',';first=false;RNG::calls.clear();
  WeightedOptions w;w.set("",1);AlienDeployment dep;dep._huntMissionDistribution={{0,&w}};
  AlienBase ab{&dep};Craft c,c2;Base b{{&c}};Game game;game.save.bases={&b};game.save.alienBases={&ab};Globe globe;
@@ -68,13 +72,14 @@ int main(){std::cout<<"{\"rows\":[";bool first=true;
  if(name=="undetectable")c.rule.undetectable=true;if(name=="lowFuel")c.low=true;if(name=="complete")c.complete=true;
  if(name=="outside")c.distance=Nautical(dep.range*2);if(name=="destroyed")c._damage=100;
  if(name=="zeroChance")dep.chance=0;if(name=="zeroTotal")w.set("",0);if(name=="multiple")b.crafts.push_back(&c2);
- if(name=="delayed"||name=="weightedRace"||name=="site"||name=="short"||name=="twoCrafts"){w.set("",0);w.set("HUNT_GEN",1);}
+ if(name=="delayed"||name=="weightedRace"||name=="site"||name=="short"||name=="twoCrafts"||name=="immediate"||name=="immediateZero"){w.set("",0);w.set("HUNT_GEN",1);}
  if(name=="weightedRace"){game.mod.rule.weighted=true;dep.fromBase=false;}
  if(name=="site")game.mod.rule.objective=3;if(name=="short")game.mod.rule.wave.spawnTimer=120;
  if(name=="twoCrafts")b.crafts.push_back(&c2);
+ if(name=="immediate"||name=="immediateZero"){game.mod.rule.noObject=true;game.mod.rule.wave.spawnTimer=name=="immediate"?90:0;}
  GeoscapeState state{&game,&globe};state.baseHunting();
  std::cout<<"[\""<<name<<"\","<<ab.timer<<",[";bool fc=true;for(auto p:RNG::calls){if(!fc)std::cout<<',';fc=false;std::cout<<'['<<p.first<<','<<p.second<<']';}std::cout<<"],"<<game.save.missions.size()<<',';
  if(game.save.missions.empty())std::cout<<"null";
- else{auto* m=game.save.missions[0];std::cout<<'['<<m->id<<",\""<<m->race<<"\","<<m->area<<','<<m->_spawnCountdown<<','<<(m->base==&ab)<<']';}
+ else{auto* m=game.save.missions[0];std::cout<<'['<<m->id<<",\""<<m->race<<"\","<<m->area<<','<<m->_spawnCountdown<<','<<(m->base==&ab);if(name=="immediate"||name=="immediateZero")std::cout<<','<<m->_nextWave<<','<<m->_nextUfoCounter;std::cout<<']';}
  std::cout<<']';for(auto* m:game.save.missions)delete m;
  }std::cout<<"]}\n";}

@@ -131,7 +131,8 @@ internal sealed partial class CampaignWorld
             return "Alien base hunting initial timer exceeds the supported range.";
         // time30Minutes precedes baseHunting. Its new mission receives just the
         // explicit immediate think pass, which must only subtract thirty minutes.
-        if (steps / 2 <= 1) return HuntGenerationReason;
+        if (steps / 2 <= 1 && ImmediateNoObjectReason(source, deployment, mission, ref work,
+                HuntGenerationReason) is { } immediateReason) return immediateReason;
         if (!deployment.HuntMissionRaceFromAlienBase && mission.HasRaceWeights)
         {
             var weights = WorldAlienMissionGeneration.WeightsAt(mission.RaceWeights,
@@ -176,9 +177,9 @@ internal sealed partial class CampaignWorld
             if (areas.Count != 0) area = campaign.Random.NextInclusive(0, areas.Count - 1);
         }
         var countdown = WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[0].SpawnTimer), campaign.Random);
-        if (countdown <= 30) throw new InvalidOperationException("Hunting mission timer changed after preflight.");
-        _missions.Add(new AlienMissionSnapshot(id, missionName, regionId, race, 0, 0, countdown - 30, 0, area)
-        { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) });
+        var created = new AlienMissionSnapshot(id, missionName, regionId, race, 0, 0, countdown, 0, area)
+        { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
+        _missions.Add(ThinkNoObjectMission(created, rule));
     }
 }
 
