@@ -16,8 +16,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
-      "size": 16650,
-      "sha256": "0c3946c32b5629e581fba307bde44f70c1e9a3b959dd89777bf667b735f118b8"
+      "size": 17636,
+      "sha256": "773064492fab771acd2017c8d2a4e2c62ae095cffa92ef16b6f0968e476597cb"
     },
     {
       "path": "tools/capture-strategic-world-lifecycle-reference.ps1",
@@ -53,6 +53,11 @@
       "path": "fixtures/public/savegames/strategic-point-origins.rul",
       "size": 404,
       "sha256": "ab94ba9332799ddeab149eb759bb8ea1bab2580d6992e4aee7860439e7c002eb"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-rectangle-destinations.rul",
+      "size": 395,
+      "sha256": "f1b9d5493d468f6065162a529e26ab4f9492466882b8df6137ce06f04317f084"
     }
   ],
   "normalization": [

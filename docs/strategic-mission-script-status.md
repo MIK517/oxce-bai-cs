@@ -227,3 +227,12 @@ negative scores, so an unchosen award cannot fund a later overflow. All origin a
 destination pairs are checked for same-tick arrivals, with bounded forecast work.
 AlienMission::spawnUfo/getWaypoint and RuleRegion::getRandomPoint back captured
 origin choices. Fresh/cache tests cover RNG, per-country activity and reload.
+
+### Batch 2, slice 5: rectangular spawn destinations
+
+Regional destination areas may be rectangles, including reversed bounds and
+wrapped longitudes. A conservative spherical bound proves separation from every
+origin before RNG; overlapping or pole-crossing unsafe domains remain rejected.
+Reference getRandomPoint selects raw bounds, and target setters normalize afterward.
+Captured rectangle rows and fresh/cache tests verify coordinates, draw counts,
+reload and atomic rejection. LandPoint remains bounded to its reference 100 attempts.
