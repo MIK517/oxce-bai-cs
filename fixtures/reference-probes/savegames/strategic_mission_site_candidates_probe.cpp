@@ -77,7 +77,7 @@ int main() {
  std::cout<<"]]";
  }
  std::cout<<"],\"selectionRows\":[";first=true;
- for(std::string name:{"normal","firstOccupied","allOccupied","repeatPoints","rectangle","noBase","twoRegions","uniform","secondRegion","weightedRetry","uniformRetry"}){
+ for(std::string name:{"normal","firstOccupied","allOccupied","repeatPoints","rectangle","noBase","twoRegions","uniform","secondRegion","weightedRetry","uniformRetry","emptyMission"}){
  if(!first)std::cout<<',';first=false;RNG::calls.clear();RNG::forced.clear();
  Mod mod;mod.regions.emplace("REGION",RuleRegion{"REGION",{{{{true,0},{true,0}}}}});
  mod.regions.emplace("REGION_SECOND",RuleRegion{"REGION_SECOND",{{{{true,0}}}}});
@@ -96,6 +96,7 @@ int main() {
   command.regions={"REGION","REGION_SECOND"};mod.regions.at("REGION_SECOND").zones[0].areas.clear();
   command.weighted=name=="weightedRetry";RNG::forced=command.weighted?std::vector<int>{1,0,2,1,0}:std::vector<int>{1,0,1,0,0};
  }
+ if(name=="emptyMission")command.missions.clear();
  auto result=select(&save,&mod,&command,strategy);
  std::cout<<"[\""<<name<<"\","<<(result.success?"true":"false")<<",\""<<result.mission<<"\",\""<<result.region<<"\","<<result.area<<",[";
  bool fc=true;for(auto call:RNG::calls){if(!fc)std::cout<<',';fc=false;std::cout<<'['<<call.first<<','<<call.second<<']';}

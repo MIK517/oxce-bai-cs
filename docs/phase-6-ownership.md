@@ -629,3 +629,11 @@ next two slices. Combat and deployment remain branch 5.
   timeline region sets must agree before RNG, and work reservations include
   earlier possible mission/history growth. Fresh/cache composed batches,
   default countdown draws and reloads pass in 72 focused scheduling cases.
+
+- 4c empty site-command slice: the pinned reference confirms an empty mission
+  listing returns false after target-base odds, without touching race, delay,
+  history or run counters. Shared monthly/adhoc execution now follows that
+  path, including negative conditional fallthrough and unchanged exhausted
+  counters. Fresh/cache reload coverage confirms future scheduling remains
+  available while due tagged event payloads still stop before mutation.
+  All 76 focused scheduling cases pass.
