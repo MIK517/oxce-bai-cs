@@ -1,5 +1,6 @@
 using System.Globalization;
 using Oxce.Core.Random;
+using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -11,6 +12,33 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldRectangleOriginTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExistingPointOriginsRetainReferencePoleNormalization(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var row = Assert.Single(TestFixtures.Rows(oracle.RootElement, "polePointOriginRows"));
+        var content = Load(cache);
+        var campaign = CampaignState.Restore(Snapshot(content, "POLE_POINT_ORIGIN") with { RandomState = 0 },
+            content, new FractionChoices(0));
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        var ufo = Assert.Single(after.World.Ufos);
+        var origin = WorldPosition.Create(Degrees(12), Degrees(100));
+        var actual = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new object[]
+        {
+            origin.Longitude.ToString("F9", CultureInfo.InvariantCulture),
+            origin.Latitude.ToString("F9", CultureInfo.InvariantCulture),
+            ufo.Destination!.Longitude.ToString("F9", CultureInfo.InvariantCulture),
+            ufo.Destination.Latitude.ToString("F9", CultureInfo.InvariantCulture),
+            (int)after.RandomState - 2,
+        });
+        Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+        Assert.Equal(WorldGeometry.Move(origin, ufo.Destination.Position, WorldGeometry.RadianSpeed(2200)), ufo.Position);
+        Reload(content, campaign, 17, "pole-point-origin.sav");
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

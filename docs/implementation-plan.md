@@ -437,3 +437,18 @@ and `git diff --check` pass. All 19 staged-save horizons remain explicit and
 unchanged (ten at 360 executable ticks, one blocked at 125 ticks, eight tactical
 saves preserved at zero ticks). The pinned C++ checkout is unchanged. Useful
 captures are retained; the four obsolete probe object files were removed.
+
+### Additional three-slice 4c batch (2026-10-03)
+
+Three committed slices extend origin spawning to separated Space rectangles,
+land-tested rectangular areas and selected objective rectangles. Pinned captures,
+fresh/cache tests, RNG accounting, transition reloads and atomic guards cover the
+new paths. The combined audit confirmed a point-origin pole-normalization
+regression; its correction and regression fixtures are implemented. Root tests
+passed 1,568 cases before the correction; the user reports all post-fix tests
+passing. Fixture input checksums, code-map validation and `git diff --check` pass.
+The changed pinned text inputs use LF bytes to match clean Git checkouts.
+Formatting verification remains blocked by sandbox named-pipe access and must
+be completed before a major push. See
+[mission status](strategic-mission-script-status.md) for evidence and remaining
+4c scope. Branch 4d remains untouched.

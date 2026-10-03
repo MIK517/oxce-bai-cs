@@ -378,6 +378,13 @@ internal sealed partial class CampaignWorld
         result = default;
         ValidateWaypointPosition(area.LongitudeMinimum, area.LatitudeMinimum);
         ValidateWaypointPosition(area.LongitudeMaximum, area.LatitudeMaximum);
+        // A point has no uncertain latitude interval. Preserve Target's pole
+        // normalization already supported by the former point-origin projection.
+        if (area.IsPoint)
+        {
+            result = new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0);
+            return true;
+        }
         // Keep the whole raw latitude interval within a single pole domain.
         if (Math.Min(area.LatitudeMinimum, area.LatitudeMaximum) < -Math.PI / 2 ||
             Math.Max(area.LatitudeMinimum, area.LatitudeMaximum) > Math.PI / 2) return false;
