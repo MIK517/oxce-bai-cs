@@ -438,11 +438,12 @@ public sealed class StrategicWorldUfoTransitTests
             TrajectoryPoint = 1,
             Damage = int.MaxValue,
         };
+        // Select an ordinary ground arrival: selected-site conversion now safely replaces crash status.
         var restored = CampaignState.Restore(snapshot with
         {
             World = snapshot.World with
             {
-                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 2, MissionSiteZoneArea = 0 }],
+                Missions = [Assert.Single(snapshot.World.Missions) with { LiveUfos = 2, MissionSiteZoneArea = -1 }],
                 Ufos = [arriving, later],
             },
         }, content, new SplitMix64RandomSource(62));

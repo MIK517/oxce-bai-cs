@@ -171,14 +171,15 @@ internal sealed partial class CampaignWorld
                 TryLiftUfo(ufo, fromSite: false, out _, out var points) && points != 0 &&
                 CheckActivityScore(ufo.Position, points, regionTotals, countryTotals) is { } reason)
                 return reason;
-            if (!ArrivesAtSite(ufo, highest)) continue;
-            var mission = ForecastMission(ufo.MissionId, highest);
-            var rule = MissionRule(mission);
-            if (rule.Objective != RuntimeMissionObjective.Infiltration &&
-                CheckActivityScore(UfoAfterTimedTransitions(ufo, highest).Destination!.Position, rule.Points, regionTotals, countryTotals) is { } conversionReason)
-                return conversionReason;
-            // A destroyed conversion ends this pass before subsequent UFOs/crafts.
-            if (!rule.RespawnUfoAfterSiteDespawn || _suppressedUfoSites?.Contains(ufo.UniqueId) == true) break;
+            if (ArrivesAtSite(ufo, highest))
+            {
+                var mission = ForecastMission(ufo.MissionId, highest);
+                var rule = MissionRule(mission);
+                if (rule.Objective != RuntimeMissionObjective.Infiltration &&
+                    CheckActivityScore(UfoAfterTimedTransitions(ufo, highest).Destination!.Position, rule.Points,
+                        regionTotals, countryTotals) is { } conversionReason) return conversionReason;
+            }
+            if (EndsUfoFlightPass(ufo, highest)) break;
         }
         if (!CanAllocateUfoMarkerIds(possibleMarkerIds))
             return "UFO contact marker IDs are exhausted or collide with a saved UFO.";

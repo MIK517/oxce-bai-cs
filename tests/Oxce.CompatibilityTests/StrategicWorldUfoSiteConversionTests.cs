@@ -375,8 +375,12 @@ public sealed class StrategicWorldUfoSiteConversionTests
         {
             Logistics = craft.Logistics! with
             {
-                Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 100,
-                Longitude = position.Longitude, Latitude = position.Latitude,
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 100,
+                Longitude = position.Longitude,
+                Latitude = position.Latitude,
                 Items = new Dictionary<string, int>(),
                 Vehicles = units == 1 ? [new CraftVehicleSnapshot("VEHICLE", 0) { Size = 1, PreservationKey = craft.PreservationKey + ":vehicle:0" }] : [],
                 Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.25, 0.15) { UniqueId = 9 },
@@ -538,6 +542,66 @@ public sealed class StrategicWorldUfoSiteConversionTests
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new QuarterChoices()),
             "UFO waypoint arrival requires mission simulation.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TerminalArrivalSkipsLaterConversionsAndAllCraftLandings(bool terminalFirst)
+    {
+        var content = Load();
+        var initial = Following(Snapshot(content, landing: true, respawn: true), 2, new(0.25, 0.15));
+        var terminal = initial.World.Ufos[0] with
+        {
+            UniqueId = 10,
+            Id = 4,
+            TrajectoryPoint = 2,
+            Destination = WorldTargetReference.ForWaypoint(0, new(0.25, 0.15)),
+        };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = 2 }],
+                Ufos = terminalFirst ? [terminal, initial.World.Ufos[0]] : [initial.World.Ufos[0], terminal],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        var after = campaign.Capture();
+        Assert.Equal(terminalFirst ? 0 : 1, after.World.MissionSites.Count);
+        Assert.Equal(UfoStatus.Destroyed, after.World.Ufos[terminalFirst ? 0 : 1].Status);
+        Assert.Equal(terminalFirst ? UfoStatus.Flying : UfoStatus.IgnoreMe, after.World.Ufos[terminalFirst ? 1 : 0].Status);
+        var craft = after.Bases[0].Crafts.Single(item => item.RuleId == "SHIP").Logistics!;
+        Assert.Equal(terminalFirst ? WorldTargetKind.Ufo : WorldTargetKind.MissionSite, craft.Destination!.Kind);
+        Assert.Equal(new WorldPosition(0.25, 0.15), new(craft.Longitude, craft.Latitude));
+        Reload(content, campaign, 17, "terminal-skips-converted-landing.sav");
+    }
+
+    [Fact]
+    public void EarlierTerminalArrivalDoesNotReserveSkippedConversionScoreOrMarker()
+    {
+        var content = Load();
+        var initial = Snapshot(content, respawn: true).WithNextId("DIRECT_MARKER", int.MaxValue);
+        var terminal = initial.World.Ufos[0] with { UniqueId = 10, Id = 4, TrajectoryPoint = 2 };
+        initial = initial with
+        {
+            Time = new(1, 1, 1, 1999, 1, 29, 55),
+            Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 6] }, .. initial.Regions.Skip(1)],
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = 2 }],
+                Ufos = [terminal, initial.World.Ufos[0]],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal(int.MaxValue, after.Regions[0].ActivityAlien[^1]);
+        Assert.Equal(int.MaxValue, after.NextIds["DIRECT_MARKER"]);
+        Reload(content, campaign, 17, "skipped-conversion-capacity.sav");
     }
 
     private sealed class QuarterChoices : IStatefulRandomSource
