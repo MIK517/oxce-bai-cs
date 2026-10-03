@@ -26,6 +26,23 @@ $decreaseStart = $saveSource.IndexOf('void SavedGame::decreaseCustomCounter(', $
 $counterEnd = $saveSource.IndexOf('/**', $decreaseStart, [StringComparison]::Ordinal)
 if ($counterStart -lt 0 -or $decreaseStart -lt 0 -or $counterEnd -le $decreaseStart) { throw 'Missing reference counter methods.' }
 $template = $template.Replace('// COUNTER_METHODS', $saveSource.Substring($counterStart, $counterEnd - $counterStart))
+function Read-Method([string]$RelativePath, [string]$Signature) {
+    $text = [IO.File]::ReadAllText((Join-Path $reference $RelativePath))
+    $start = $text.IndexOf($Signature, [StringComparison]::Ordinal)
+    if ($start -lt 0) { throw "Missing method $Signature" }
+    $opening = $text.IndexOf('{', $start)
+    $depth = 1; $end = $opening + 1
+    while ($depth -gt 0 -and $end -lt $text.Length) {
+        if ($text[$end] -eq '{') { $depth++ }
+        if ($text[$end] -eq '}') { $depth-- }
+        $end++
+    }
+    if ($depth -ne 0) { throw "Unbalanced method $Signature" }
+    return $text.Substring($start, $end - $start)
+}
+$template = $template.Replace('// TARGET_DESTRUCTOR', (Read-Method 'src/Savegame/Target.cpp' 'Target::~Target()'))
+$template = $template.Replace('// UFO_DESTINATION', (Read-Method 'src/Savegame/Ufo.cpp' 'void Ufo::setDestination(Target *dest)'))
+$template = $template.Replace('// UFO_RESET', (Read-Method 'src/Savegame/Ufo.cpp' 'void Ufo::resetOriginalDestination(bool debugHelper)'))
 $work = Join-Path $repository 'artifacts/reference-strategic-site-timer'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_site_timer_probe.cpp'
