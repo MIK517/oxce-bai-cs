@@ -155,5 +155,16 @@ std::cout << "[" << (landing ? "true" : "false") << ',' << (respawn ? "true" : "
 << ",\"" << (ufo.status == Ufo::IGNORE_ME ? "ignore" : "destroyed") << "\"]";
 delete site;
 }
+std::cout << "],\"suppressedConversionRows\":[";
+first = true;
+for (bool respawn : {false, true}) {
+if (!first) std::cout << ','; first = false;
+Mod mod; mod.globe.textures[10]._deployments.clear();
+mod.region.zones = {{{{0.1, 0.3, -0.2, 0.2, 10, "CITY"}}}};
+AlienMission mission; mission._rule.respawn = respawn; mission._missionSiteZoneArea = 0;
+Ufo ufo; SavedGame game; RNG::calls = 0; mission.convert(game, mod, ufo, false);
+std::cout << "[" << (respawn ? "true" : "false") << ",\"" << (ufo.status == Ufo::DESTROYED ? "destroyed" : "ignore")
+<< "\"," << game.sites.size() << ',' << game.scoreCalls << ',' << RNG::calls << ']';
+}
 std::cout << "]}\n";
 }

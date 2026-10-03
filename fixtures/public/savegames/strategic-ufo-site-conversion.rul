@@ -36,3 +36,12 @@ alienMissions:
     refNode: *conversion
     respawnUfoAfterSiteDespawn: true
     waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true, objectiveOnTheLandingSite: true}]
+  - type: UFO_SITE_SUPPRESSED
+    refNode: *conversion
+    siteType: ""
+    respawnUfoAfterSiteDespawn: true
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]
+  - type: UFO_SITE_SUPPRESSED_NO_RESPAWN
+    refNode: *conversion
+    siteType: ""
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]

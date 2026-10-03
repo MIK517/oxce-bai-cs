@@ -178,7 +178,7 @@ internal sealed partial class CampaignWorld
                 CheckActivityScore(ufo.Destination!.Position, rule.Points, regionTotals, countryTotals) is { } conversionReason)
                 return conversionReason;
             // A destroyed conversion ends this pass before subsequent UFOs/crafts.
-            if (!rule.RespawnUfoAfterSiteDespawn) break;
+            if (!rule.RespawnUfoAfterSiteDespawn || _suppressedUfoSites?.Contains(ufo.UniqueId) == true) break;
         }
         if (!CanAllocateUfoMarkerIds(possibleMarkerIds))
             return "UFO contact marker IDs are exhausted or collide with a saved UFO.";

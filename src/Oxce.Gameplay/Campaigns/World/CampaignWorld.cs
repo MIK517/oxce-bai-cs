@@ -438,6 +438,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _siteBirthIdChanges = null;
         _siteBirthExpiryIncreases = null;
         _siteDespawnResearchForecast = null;
+        _suppressedUfoSites = null;
         var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
         if (interruptionReason is not null) return interruptionReason;
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
