@@ -13,6 +13,12 @@ regions:
     missionZones:
       - [[12, 16, 1, 3, 10]]
       - [[8, 8, 2, 2, 10]]
+  - type: RECT_SELECTED_REGION
+    areas: [[0, 4, -20, 20]]
+    missionZones:
+      - [[10, 10, 8, 8, 10], [12, 16, 1, 3, 10]]
+      - [[8, 8, 2, 2, 10]]
+      - [[8.01, 8.01, 2, 2, 10]]
 countries:
   - type: NORTH
     fundingBase: 1
@@ -52,6 +58,8 @@ ufoTrajectories:
   - id: RECT_OUTSIDE
     groundTimer: 2
     waypoints: [[0, 3, 100], [1, 0, 80], [1, 4, 100]]
+  - id: RECT_SELECTED
+    waypoints: [[0, 3, 100], [1, 2, 80], [0, 2, 80], [2, 0, 50], [2, 4, 100]]
 alienMissions:
   - type: RECT_ORIGIN
     waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_ORIGIN, timer: 9000}]
@@ -69,3 +77,15 @@ alienMissions:
     waves: [{ufo: RECT_FAKE_UFO, count: 2, trajectory: RECT_ORIGIN_LAND, timer: 9000}]
   - type: RECT_OUTSIDE
     waves: [{ufo: RECT_LAND_UFO, count: 2, trajectory: RECT_OUTSIDE, timer: 9000}]
+  - type: RECT_SELECTED_MIN
+    objective: 3
+    spawnZone: 0
+    waves: [{ufo: RECT_LAND_UFO, count: 2, trajectory: RECT_SELECTED, timer: 9000, objective: true}]
+  - type: RECT_SELECTED_LAND
+    objective: 3
+    spawnZone: 0
+    waves: [{ufo: RECT_LAND_UFO, count: 2, trajectory: RECT_SELECTED, timer: 9000, objective: true, objectiveOnTheLandingSite: true}]
+  - type: RECT_SELECTED_FAKE
+    objective: 3
+    spawnZone: 0
+    waves: [{ufo: RECT_FAKE_UFO, count: 2, trajectory: RECT_SELECTED, timer: 9000, objective: true, objectiveOnTheLandingSite: true}]

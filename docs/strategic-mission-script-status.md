@@ -360,3 +360,14 @@ polygon vertices, region checks and all 100 possible retries before mutation.
 AlienMission::getLandPoint/getWaypoint/spawnUfo back landRectangleOriginRows;
 fresh/cache tests assert exact interpolation, draw counts, actual scoring and
 reload. A populated retry scenario checks atomic resource-limit rejection.
+
+### Additional batch, slice 3: selected rectangular mission-site origins
+
+Selected objective origin areas now project their full rectangle when the wave
+requests landing-site selection. The fixed-area MissionSiteLandPoint path keeps
+its fake-water roll and 100-attempt limit, consumes no area-selection RNG and
+ignores geographic region containment. Nonlanding selected areas still use the
+raw minimum coordinates without RNG. AlienMission::getLandPointForMissionSite,
+getWaypoint and spawnUfo back selectedRectangleOriginRows. Fresh/cache tests
+verify both paths, successful/forced retries, reload and atomic stopping before
+UFO-to-site conversion; event and tactical boundaries remain guarded.
