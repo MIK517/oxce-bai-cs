@@ -798,3 +798,15 @@ next two slices. Combat and deployment remain branch 5.
   discovered regional base; multi-UFO mode chooses uniformly among discoveries.
   Skip-scouting uses the first regional base regardless of discovery, while
   instant/site-wave selection considers all regional bases. All 96 traces pass.
+
+- Batch 3 audit reproduced legacy UFO wave inference changing across an endless
+  restart. A two-wave mission with a -1 UFO wave switched from ordinary landing
+  to site conversion after preflight and overflowed the site ID after mutation.
+  Multi-wave endless completion now checks these saved actors with a precise
+  forecast guard; single-wave and explicitly numbered UFOs retain their paths.
+  Fresh/cache unchanged-state regressions fail before the fix.
+
+- Batch 3 validation: all 1,872 root tests pass with no failures/skips. The
+  restart/pact and target-selection slices were audited against the pinned
+  caller order; the legacy-wave finding is fixed in a separate audit commit.
+  Formatting, code-map and diff checks pass; branch 4d remains untouched.
