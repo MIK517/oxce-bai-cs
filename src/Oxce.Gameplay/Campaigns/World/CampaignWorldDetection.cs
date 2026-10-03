@@ -21,7 +21,7 @@ internal sealed partial class CampaignWorld
         var hasUfoWork = false;
         foreach (var ufo in _ufos)
         {
-            if (halfHour && ufo.Status is UfoStatus.Flying or UfoStatus.Landed ||
+            if (ArrivesAtSite(ufo, highest) || halfHour && ufo.Status is UfoStatus.Flying or UfoStatus.Landed ||
                 ufo.Status == UfoStatus.Landed && ufo.SecondsRemaining == 5 ||
                 ufo.Detected && ufo.LandId == 0 && ArrivesOnGround(ufo))
             {
@@ -167,10 +167,18 @@ internal sealed partial class CampaignWorld
         // Share these totals so individually safe awards cannot overflow together.
         foreach (var ufo in _ufos)
         {
-            if (ufo.Status != UfoStatus.Landed || ufo.SecondsRemaining != 5) continue;
-            if (TryLiftUfo(ufo, fromSite: false, out _, out var points) && points != 0 &&
+            if (ufo.Status == UfoStatus.Landed && ufo.SecondsRemaining == 5 &&
+                TryLiftUfo(ufo, fromSite: false, out _, out var points) && points != 0 &&
                 CheckActivityScore(ufo.Position, points, regionTotals, countryTotals) is { } reason)
                 return reason;
+            if (!ArrivesAtSite(ufo, highest)) continue;
+            var mission = ForecastMission(ufo.MissionId, highest);
+            var rule = MissionRule(mission);
+            if (rule.Objective != RuntimeMissionObjective.Infiltration &&
+                CheckActivityScore(ufo.Destination!.Position, rule.Points, regionTotals, countryTotals) is { } conversionReason)
+                return conversionReason;
+            // A destroyed conversion ends this pass before subsequent UFOs/crafts.
+            if (!rule.RespawnUfoAfterSiteDespawn) break;
         }
         if (!CanAllocateUfoMarkerIds(possibleMarkerIds))
             return "UFO contact marker IDs are exhausted or collide with a saved UFO.";

@@ -69,6 +69,7 @@ internal sealed partial class CampaignWorld
             }
         }
         long siteLinkWork = 0;
+        Dictionary<string, int>? siteReservations = null;
         for (var index = 0; index < _ufos.Count; index++)
         {
             if (_ufos[index] is { Status: UfoStatus.Crashed, InBattlescape: true })
@@ -141,6 +142,9 @@ internal sealed partial class CampaignWorld
                     }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
+                    if (IsSiteConversion(ufo, mission, trajectory) &&
+                        UfoSiteReason(ufo, mission, highest, siteReservations ??= new(StringComparer.Ordinal), ref siteLinkWork) is { } siteReason)
+                        return siteReason;
                 }
             }
         }
@@ -179,6 +183,12 @@ internal sealed partial class CampaignWorld
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         throw new InvalidOperationException("UFO arrival changed after world preflight.");
                     var arrived = AdvanceOrdinaryWaypoint(ufo, mission, trajectory, moved);
+                    if (IsSiteConversion(ufo, mission, trajectory))
+                    {
+                        _ufos[index] = ConvertUfoToSite(arrived, mission, effects);
+                        _ufoArrivalEndedTick = true;
+                        break;
+                    }
                     // The switch entered its FLYING branch, so this also recharges on landing.
                     _ufos[index] = RechargeUfoShield(arrived);
                     if (campaign.Options.UfoLandingAlert && arrived.Status == UfoStatus.Landed &&
@@ -232,10 +242,10 @@ internal sealed partial class CampaignWorld
         // wave in the mission's spawn zone. The other objective flags do not affect
         // ordinary regional waypoint selection.
 
-        if (altitude == 0 && (ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
-            mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(ufo.TrajectoryPoint) == missionRule.SpawnZone))
+        var conversion = IsSiteConversion(ufo, mission, trajectory);
+        if (altitude == 0 && ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun && !conversion)
             return false;
-        if (altitude == 0 && missionRule.Objective == RuntimeMissionObjective.Base &&
+        if (!conversion && altitude == 0 && missionRule.Objective == RuntimeMissionObjective.Base &&
             wave.ObjectiveOnTheLandingSite && trajectory.Zone(ufo.TrajectoryPoint) == missionRule.SpawnZone)
             return false; // spawnAlienBase is a separate world consequence.
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
@@ -249,7 +259,7 @@ internal sealed partial class CampaignWorld
             if (ufo.Damage >= damageMaximum ||
                 !ufoRule.Unmanned && ufo.HuntBehavior != 1 && ufo.Damage > damageMaximum / 2)
                 return false; // Ufo::setAltitude would create a crash, owned by the later outcome slice.
-            if (LandingAllowed(ufo.Destination!.Position, ufoRule) &&
+            if (!conversion && LandingAllowed(ufo.Destination!.Position, ufoRule) &&
                 (trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5)) return false;
         }
         return trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum) >= 0;
@@ -300,6 +310,7 @@ internal sealed partial class CampaignWorld
         // Target::setLongitude/setLatitude, which wrap coordinates across the globe.
         var nextPosition = WorldPosition.Create(randomPosition.Longitude, randomPosition.Latitude);
         var landed = trajectory.Altitude(nextWaypoint) == 0;
+        var conversion = IsSiteConversion(ufo, mission, trajectory);
         var landingAllowed = landed && LandingAllowed(position, ufoRule);
         var speed = landed ? 0 : trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum);
         var speedRadian = WorldGeometry.RadianSpeed(speed);
@@ -311,9 +322,9 @@ internal sealed partial class CampaignWorld
             Latitude = position.Latitude,
             Altitude = WorldAltitudes.All[trajectory.Altitude(nextWaypoint)],
             Status = landed ? UfoStatus.Landed : UfoStatus.Flying,
-            LandId = !landed ? 0 : landingAllowed && ufo.Detected && ufo.LandId == 0
+            LandId = conversion ? ufo.LandId : !landed ? 0 : landingAllowed && ufo.Detected && ufo.LandId == 0
                 ? campaign.NextId("STR_LANDING_SITE") : ufo.LandId,
-            SecondsRemaining = landed ? (landingAllowed ? checked(trajectory.GroundTimer * 5) : 5) : ufo.SecondsRemaining,
+            SecondsRemaining = landed && !conversion ? (landingAllowed ? checked(trajectory.GroundTimer * 5) : 5) : ufo.SecondsRemaining,
             Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
                 WorldTargetReference.WaypointType, 0, nextPosition.Longitude, nextPosition.Latitude),
             Speed = speed,
@@ -361,6 +372,7 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
         var next = ufo.TrajectoryPoint + 1;
+        if (IsSiteConversion(ufo, FindMission(ufo.MissionId)!, trajectory)) return false;
         return next < trajectory.Waypoints.Count && trajectory.Altitude(next) == 0 &&
             !FindMission(ufo.MissionId)!.Interrupted;
     }

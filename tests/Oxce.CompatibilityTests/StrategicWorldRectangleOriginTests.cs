@@ -160,9 +160,10 @@ public sealed class StrategicWorldRectangleOriginTests
             Assert.Equal(WorldGeometry.Move(origin, ufo.Destination.Position, WorldGeometry.RadianSpeed(2200)), ufo.Position);
             var restored = Reload(content, campaign, 17, "selected-rectangle-origin.sav");
             var horizon = restored.Execute(new AdvanceCampaignTime(1_000));
-            Assert.Equal("UFO waypoint arrival requires mission simulation.", Assert.IsType<CampaignActionBlocked>(horizon.Events[^1]).Reason);
-            Assert.Empty(restored.Capture().World.MissionSites);
-            AssertTimeBlocked(restored, "UFO waypoint arrival requires mission simulation.");
+            Assert.DoesNotContain(horizon.Events, item => item is CampaignActionBlocked);
+            Assert.Contains(horizon.Events, item => item is MissionSiteDetected);
+            Assert.True(Assert.Single(restored.Capture().World.MissionSites).Detected);
+            Assert.Equal(UfoStatus.Destroyed, Assert.Single(restored.Capture().World.Ufos).Status);
         }
     }
 

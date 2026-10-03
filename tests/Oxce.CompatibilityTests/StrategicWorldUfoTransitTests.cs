@@ -39,7 +39,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void UnsupportedArrivalStopsWhileOrdinaryHalfHourTransitScoresActivity()
+    public void SiteArrivalConvertsWhileOrdinaryHalfHourTransitScoresActivity()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0));
@@ -56,13 +56,14 @@ public sealed class StrategicWorldUfoTransitTests
             World = snapshot.World with
             {
                 Missions = [Assert.Single(snapshot.World.Missions) with { RuleId = "MISSION_SITE", NextWave = 1, MissionSiteZoneArea = 0 }],
-                // Site airborne outbound legs are supported; the ground objective
-                // arrival still requires site creation and must stop before mutation.
+                // The selected ground objective arrival now creates a visible site.
                 Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0,
                     TrajectoryId = "TRAJ_PATROL", TrajectoryPoint = 1 }],
             },
         }, content, new SplitMix64RandomSource(42));
-        AssertTimeBlocked(near, "UFO waypoint arrival requires mission simulation.");
+        Assert.Contains(near.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+        Assert.True(Assert.Single(near.Capture().World.MissionSites).Detected);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(near.Capture().World.Ufos).Status);
 
         var boundary = CampaignState.Restore(snapshot with
         {
@@ -417,7 +418,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void LaterNonterminalArrivalBlocksBeforeAnEarlierTerminalArrival()
+    public void LaterUnsupportedCrashArrivalBlocksBeforeAnEarlierTerminalArrival()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
@@ -434,7 +435,8 @@ public sealed class StrategicWorldUfoTransitTests
             Longitude = 0.99999,
             Latitude = 0.6,
             TrajectoryId = "TRAJ_PATROL",
-            TrajectoryPoint = 1
+            TrajectoryPoint = 1,
+            Damage = int.MaxValue,
         };
         var restored = CampaignState.Restore(snapshot with
         {

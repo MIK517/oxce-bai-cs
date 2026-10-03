@@ -19,6 +19,13 @@ if (-not $direct.EndsWith('}')) { throw 'Unexpected direct selection ending.' }
 $direct = $direct.Substring(0, $direct.Length - 1)
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_site_spawn_probe.cpp'))
 $template = $template.Replace('// SPAWN_METHOD', $spawn).Replace('// DIRECT_SELECTION', $direct)
+$arrival = $source.IndexOf('void AlienMission::ufoReachedWaypoint(', [StringComparison]::Ordinal)
+$conversionStart = $source.IndexOf('addScore(ufo.getLongitude(), ufo.getLatitude(), game);', $arrival, [StringComparison]::Ordinal)
+$conversionEnd = $source.IndexOf('else if (trajectory.getID()', $conversionStart, [StringComparison]::Ordinal)
+if ($arrival -lt 0 -or $conversionStart -le $arrival -or $conversionEnd -le $conversionStart) { throw 'Missing UFO site-conversion body.' }
+$conversion = $source.Substring($conversionStart, $conversionEnd - $conversionStart).TrimEnd()
+if (-not $conversion.EndsWith('}')) { throw 'Unexpected conversion ending.' }
+$template = $template.Replace('// CONVERSION_BODY', $conversion.Substring(0, $conversion.Length - 1))
 $textureSource = [IO.File]::ReadAllText((Join-Path $reference 'src/Mod/Texture.cpp'))
 $textureStart = $textureSource.IndexOf('std::string Texture::getRandomDeployment() const', [StringComparison]::Ordinal)
 $textureEnd = $textureSource.IndexOf('// helper overloads', $textureStart, [StringComparison]::Ordinal)

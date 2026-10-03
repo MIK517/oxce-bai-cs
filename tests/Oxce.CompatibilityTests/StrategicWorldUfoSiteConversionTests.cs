@@ -1,0 +1,117 @@
+using System.Globalization;
+using System.Text.Json;
+using Oxce.Core.Random;
+using Oxce.FixtureSupport;
+using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
+using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
+using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
+
+namespace Oxce.CompatibilityTests;
+
+public sealed class StrategicWorldUfoSiteConversionTests
+{
+    private static RuntimeContent Load(bool cache = false, string? overlay = null) => StrategicReadinessTestContent.Load(
+        ["strategic-world.rul", "strategic-site-spawn.rul", "strategic-ufo-site-conversion.rul"], cache, extraRules: overlay);
+
+    private static CampaignSnapshot Snapshot(RuntimeContent content, bool landing = false)
+    {
+        var snapshot = CreateSnapshot(content, "UFO site conversion");
+        return snapshot.WithNextId("DIRECT_MARKER", 7) with
+        {
+            Time = new(1, 1, 1, 1999, 1, 0, 0),
+            RandomState = 0,
+            World = snapshot.World with
+            {
+                Missions = [new AlienMissionSnapshot(4, landing ? "UFO_SITE_AT_LANDING" : "UFO_SITE_CONVERSION",
+                    "SITE_SPAWN_REGION", "RACE_A", 1, 0, 1500, 1, 0)],
+                Ufos = [new UfoSnapshot(9, "UFO_SCOUT", 4, "UFO_SITE_CONVERSION", 0, 0.25, 0.15,
+                    UfoStatus.Flying, WorldAltitudes.Low)
+                {
+                    Speed = 2200, MissionWaveNumber = 0, Detected = true, Id = 3,
+                    Destination = WorldTargetReference.ForWaypoint(0, new(0.25, 0.15)),
+                }],
+            },
+        };
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectedObjectiveConversionMatchesCapturedSiteAndStopsFollowingTicks(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
+        var content = Load(cache);
+        var count = 0;
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
+        {
+            if (row[1].GetBoolean() || row[2].GetBoolean()) continue;
+            count++;
+            var landing = row[0].GetBoolean();
+            var initial = Snapshot(content, landing);
+            var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+            var result = campaign.Execute(new AdvanceCampaignTime(10));
+            Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+            Assert.IsType<MissionSiteDetected>(result.Events[1]);
+            var after = campaign.Capture();
+            var site = Assert.Single(after.World.MissionSites);
+            var ufo = Assert.Single(after.World.Ufos);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                site.Longitude.ToString("F9", CultureInfo.InvariantCulture),
+                site.Latitude.ToString("F9", CultureInfo.InvariantCulture), site.SecondsRemaining,
+                after.RandomState - (landing ? 402UL : 0), 1, site.CustomDeploymentId,
+                site.UfoUniqueId != 0, ufo.Status == UfoStatus.IgnoreMe ? "ignore" : "destroyed",
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Assert.True(site.Detected);
+            Assert.Equal(7, site.Id);
+            Assert.Equal("CITY", site.City);
+            Assert.Equal(10, site.Texture);
+            Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 5, after.Regions[0].ActivityAlien[^1]);
+            Assert.Equal(1, Assert.Single(after.World.Missions).LiveUfos);
+            var restored = Reload(content, campaign, 17, "ufo-converted.sav");
+            AdvanceOne(restored);
+            Assert.Empty(restored.Capture().World.Ufos);
+            Assert.Equal(0, Assert.Single(restored.Capture().World.Missions).LiveUfos);
+        }
+        Assert.Equal(2, count);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ConversionIdAndScoreFailuresAreAtomic(bool marker)
+    {
+        var content = Load();
+        var snapshot = Snapshot(content);
+        snapshot = marker ? snapshot.WithNextId("DIRECT_MARKER", int.MaxValue) : snapshot with
+        { Regions = [snapshot.Regions[0] with { ActivityAlien = [int.MaxValue - 4] }, .. snapshot.Regions.Skip(1)] };
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new QuarterChoices()), marker
+            ? "Mission site marker IDs are exhausted or collide with a saved target."
+            : "UFO alien activity exceeds the supported range.");
+    }
+
+    [Fact]
+    public void ConversionRetainsPreciseCombinedTickGuard()
+    {
+        var content = Load();
+        var snapshot = Snapshot(content) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new QuarterChoices()),
+            "UFO site conversion requires combined half-hour counter forecasts.");
+    }
+
+    private sealed class QuarterChoices : IStatefulRandomSource
+    {
+        public ulong State { get; set; }
+        public void Restore(ulong state) => State = state;
+        public int NextExclusive(int maximum) { State++; return 0; }
+        public uint NextUInt32() { State++; return 0; }
+        public ulong NextUInt64() { State++; return 0; }
+        public int NextInclusive(int minimum, int maximum) { State++; return minimum; }
+        public double NextUnit() { State++; return 0.25; }
+    }
+}

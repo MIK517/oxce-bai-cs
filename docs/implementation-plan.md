@@ -499,3 +499,12 @@ Final batch validation: root `dotnet test --no-restore --verbosity quiet` passes
 all 1,630 tests with zero failures or skips, including fixture checksums, the
 private corpus and allocation budgets. Formatting verification, code-map and
 diff checks pass. The pinned reference checkout remains clean.
+
+### Selected objective UFO site conversion (2026-10-03)
+
+The first slice implements selected objective UFO conversion, immediate site
+revelation and delayed UFO cleanup on five-second ticks below the half-hour
+trigger. Canonical pinned captures, fresh/cache reloads and atomic ID/score tests
+cover it. Custom deployment, respawn linkage, compound half-hour counter forecasts
+and craft follower transfer retain specific guards. See
+[conversion status](strategic-world-ufo-site-conversion-status.md).
