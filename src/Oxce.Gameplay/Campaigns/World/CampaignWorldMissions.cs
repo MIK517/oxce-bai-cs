@@ -280,8 +280,13 @@ internal sealed partial class CampaignWorld
             wave.Objective && trajectory.Zone(0) == rule.SpawnZone)
         {
             var area = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
-            if (wave.ObjectiveOnTheLandingSite && !area.IsPoint) { positions = []; return false; }
-            positions = [new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0)];
+            positions = [];
+            if (wave.ObjectiveOnTheLandingSite)
+            {
+                if (!TrySpawnArea(area, out var selected)) return false;
+                positions = [selected];
+            }
+            else positions = [new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0)];
         }
         else
         {

@@ -102,6 +102,43 @@ public sealed class StrategicWorldRectangleOriginTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectedRectangularOriginUsesFixedAreaAndIgnoresRegionContainment(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "selectedRectangleOriginRows"))
+        {
+            var landing = row[0].GetInt32() != 0;
+            var fake = row[1].GetInt32() != 0;
+            var fraction = row[2].GetDouble();
+            var rule = !landing ? "RECT_SELECTED_MIN" : fake ? "RECT_SELECTED_FAKE" : "RECT_SELECTED_LAND";
+            var snapshot = Snapshot(content, rule) with { RandomState = 0 };
+            snapshot = snapshot with
+            { World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { RegionId = "RECT_SELECTED_REGION", MissionSiteZoneArea = 1 }] } };
+            var campaign = CampaignState.Restore(snapshot, content, new FractionChoices(fraction));
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            var origin = landing ? new WorldPosition(Degrees(12) + fraction * (Degrees(16) - Degrees(12)),
+                Degrees(1) + fraction * (Degrees(3) - Degrees(1))) : new WorldPosition(Degrees(12), Degrees(1));
+            Assert.Equal(row[3].GetString(), origin.Longitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(row[4].GetString(), origin.Latitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(row[5].GetString(), ufo.Destination!.Longitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(row[6].GetString(), ufo.Destination.Latitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(landing ? fake ? 204 : 6 : 3, row[7].GetInt32());
+            Assert.Equal((ulong)(row[7].GetInt32() + 2), after.RandomState);
+            Assert.Equal(WorldGeometry.Move(origin, ufo.Destination.Position, WorldGeometry.RadianSpeed(2200)), ufo.Position);
+            var restored = Reload(content, campaign, 17, "selected-rectangle-origin.sav");
+            var horizon = restored.Execute(new AdvanceCampaignTime(1_000));
+            Assert.Equal("UFO waypoint arrival requires mission simulation.", Assert.IsType<CampaignActionBlocked>(horizon.Events[^1]).Reason);
+            Assert.Empty(restored.Capture().World.MissionSites);
+            AssertTimeBlocked(restored, "UFO waypoint arrival requires mission simulation.");
+        }
+    }
+
+    [Theory]
     [InlineData(0, false)]
     [InlineData(1, false)]
     [InlineData(0, true)]
