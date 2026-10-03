@@ -34,6 +34,11 @@ internal static class WorldMissionSiteSelection
         string firstMission, IReadOnlyList<string> missions,
         Func<string, IReadOnlyList<WorldSiteScriptCandidate>> candidates, out string selected)
     {
+        if (missions.Count == 0)
+        {
+            selected = "";
+            return null;
+        }
         var index = -1;
         for (var current = 0; current < missions.Count; current++)
             if (missions[current] == firstMission) { index = current; break; }

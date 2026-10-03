@@ -8,7 +8,7 @@ internal sealed partial class CampaignWorld
 
     private (string Region, string Mission, int Area)? SelectSiteTargetMission(RuntimeMissionScriptRule script, int month)
     {
-        var first = WorldScriptSelection.Generate(script.Missions, unchecked((ulong)month), campaign.Random)!.Id;
+        var first = WorldScriptSelection.Generate(script.Missions, unchecked((ulong)month), campaign.Random)?.Id ?? "";
         var types = WorldScriptSelection.Available(script.Missions, month)
             .Where(choice => choice.Weight != 0).Select(choice => choice.Rule.Id).ToArray();
         var targetBase = Percent(script.TargetBaseOdds);

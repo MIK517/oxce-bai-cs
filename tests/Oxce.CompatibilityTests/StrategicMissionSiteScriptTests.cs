@@ -54,7 +54,7 @@ public sealed class StrategicMissionSiteScriptTests
         {
             var name = row[0].GetString()!;
             var random = new TestFixtures.RecordingMinimumRandomSource();
-            random.NextInclusive(1, 3); // captured initial mission distribution
+            if (name != "emptyMission") random.NextInclusive(1, 3); // captured initial mission distribution
             random.NextInclusive(0, 99); // captured target-base odds
             var strategy = new AlienStrategyState();
             if (name == "repeatPoints") strategy.AddMissionLocation("RECENT", "REGION", 0, 10);
@@ -71,7 +71,8 @@ public sealed class StrategicMissionSiteScriptTests
                     false, strategy, "RECENT");
             }
             string[] types = ["MISSION_A", "MISSION_B"];
-            var candidates = WorldMissionSiteSelection.SelectMission(types[0], types, Candidates, out var mission);
+            var candidates = WorldMissionSiteSelection.SelectMission(name == "emptyMission" ? "" : types[0],
+                name == "emptyMission" ? [] : types, Candidates, out var mission);
             var region = "";
             var area = -1;
             if (candidates is not null)
@@ -440,6 +441,98 @@ public sealed class StrategicMissionSiteScriptTests
         Assert.Equal(2, after.World.Strategy.MissionRuns.Single(pair => pair.Key == "SHARED_CITIES").Value);
         Assert.Equal(2, after.World.Strategy.MissionLocations.Single(pair => pair.Key == "SHARED_CITIES").Value.Count);
         Reload(content, campaign, 17, "composed-multi-region-sites.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EmptySiteMissionListSetsFalseLabelWithoutUsingRaceDelayOrHistory(bool cache)
+    {
+        var content = LoadSite(cache, """
+            missionScripts:
+              - type: SITE_SCRIPT_START
+                executionOdds: 0
+              - type: SITE_EMPTY
+                label: 7
+                varName: EMPTY_SITE_RUN
+                avoidRepeats: 999
+                startDelay: -1
+                randomDelay: -1
+                missionWeights: {0: {}, 1: {SITE_SCRIPT_A: 1}}
+                regionWeights: {0: {MISSING_REGION: 1}}
+                raceWeights: {0: {MISSING_RACE: 1}}
+              - type: AFTER_EMPTY_SITE
+                conditionals: [-7]
+                startDelay: 120
+                missionWeights: {0: {MISSION_SCOUT: 1}}
+                regionWeights: {0: {REGION: 1}}
+                raceWeights: {0: {RACE_A: 1}}
+            """);
+        var empty = content.RuntimeRules.MissionScripts.Rules.Single(entry => entry.Id == "SITE_EMPTY").Value;
+        Assert.True(empty.SiteType);
+        Assert.Empty(WorldScriptSelection.Available(empty.Missions, 0));
+        var initial = CreateSnapshot(content, "Empty site mission command") with { RandomState = 17 };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Strategy = initial.World.Strategy with { MissionRuns = [new("EMPTY_SITE_RUN", int.MaxValue)] },
+            },
+        };
+        var expected = new SplitMix64RandomSource(17);
+        expected.NextInclusive(0, 99); // disabled original
+        expected.NextInclusive(0, 99); // empty command odds
+        expected.NextInclusive(0, 99); // empty command target-base odds
+        expected.NextInclusive(0, 99); // following command odds
+        expected.NextInclusive(0, 99); // following target-base odds
+        expected.NextInclusive(1, 1); // region
+        expected.NextInclusive(1, 1); // mission
+        expected.NextInclusive(1, 1); // race
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
+        var after = campaign.Capture();
+        Assert.Equal("MISSION_SCOUT", Assert.Single(after.World.Missions).RuleId);
+        Assert.Equal(int.MaxValue, after.World.Strategy.MissionRuns.Single(pair => pair.Key == "EMPTY_SITE_RUN").Value);
+        Assert.Empty(after.World.Strategy.MissionLocations);
+        Assert.Equal(expected.State, after.RandomState);
+        Reload(content, campaign, 17, "empty-site-command-failure-label.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TaggedEmptySiteCommandLeavesStateIntactAndDueEventRemainsGuarded(bool cache)
+    {
+        var content = LoadSite(cache, """
+            events:
+              - name: EVENT_EMPTY_SITE
+                adhocMissionScriptTags: [emptySite]
+            adhocScripts:
+              - type: ADHOC_EMPTY_SITE
+                adhocMissionScriptTags: [emptySite]
+                missionWeights: {0: {}, 1: {SITE_SCRIPT_A: 1}}
+            """);
+        var initial = CreateSnapshot(content, "Tagged empty site command") with
+        {
+            RandomState = 17,
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        Assert.Empty(campaign.Execute(new ScheduleAdhocWorldMissions("EVENT_EMPTY_SITE", 0, 0)).Events);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.Missions);
+        Assert.Empty(after.World.Events);
+        Assert.Empty(after.World.Strategy.MissionRuns);
+        Assert.Empty(after.World.Strategy.MissionLocations);
+        var expected = new SplitMix64RandomSource(17);
+        expected.NextInclusive(0, 99);
+        expected.NextInclusive(0, 99);
+        Assert.Equal(expected.State, after.RandomState);
+        campaign = Reload(content, campaign, 17, "empty-tagged-site-command.sav");
+        var scheduled = campaign.Capture();
+        scheduled = scheduled with { World = scheduled.World with { Events = [new("EVENT_EMPTY_SITE", 0)] } };
+        campaign = CampaignState.Restore(scheduled, content, new SplitMix64RandomSource(scheduled.RandomState));
+        AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
     }
     private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadSite(bool cache = false, string? overlay = null)
     {

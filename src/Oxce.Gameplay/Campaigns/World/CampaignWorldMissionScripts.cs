@@ -138,6 +138,17 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Mission script condition is outside the supported range.";
             if (script.Criteria.ExecutionOdds <= 0) continue;
             possible++;
+            if (script.SiteType && script.Missions.Count != 0 &&
+                WorldScriptSelection.Available(script.Missions, month).All(choice => choice.Weight == 0))
+            {
+                // processCommand still generates a mission and draws target-base
+                // odds, but returns false before region, race, delay or history.
+                work += WorldScriptSelection.ForMonth(script.Missions, unchecked((ulong)month), false).Count;
+                if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+                _ = Choices(script.Missions, month, static _ => true);
+                possible--;
+                continue;
+            }
             if (script.StartDelay < 0 || script.RandomDelay < 0 ||
                 (long)script.StartDelay + script.RandomDelay > int.MaxValue)
                 return "Mission script delay exceeds the supported range.";
