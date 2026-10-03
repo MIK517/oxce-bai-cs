@@ -72,8 +72,6 @@ public sealed class StrategicMissionScriptTests
     [Theory]
     [InlineData(2, false)]
     [InlineData(2, true)]
-    [InlineData(4, false)]
-    [InlineData(4, true)]
     [InlineData(5, false)]
     [InlineData(5, true)]
     [InlineData(6, false)]

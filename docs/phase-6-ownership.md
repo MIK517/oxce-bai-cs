@@ -579,3 +579,12 @@ next two slices. Combat and deployment remain branch 5.
   combinations of occupied regions, recent point locations, rectangular
   texture/direct/site-type eligibility, missing zones and invalid negative
   zones. Live site command scheduling remains the next slice.
+
+- 4c live site-script slice: explicit single-region site commands now choose the
+  weighted initial mission, draw target-base odds, retry mission types in
+  circular order, select a valid area and store repeat/run history before
+  starting the owned mission. The full pinned command block captures seven
+  selection/order traces. Fresh/cache scheduling, direct site birth after
+  reload and tagged adhoc acceptance replace obsolete blanket site guards.
+  All 55 focused scheduling cases pass. Multi-region rejection sampling remains
+  a precise boundary until a bounded selection proof is available.

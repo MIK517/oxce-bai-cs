@@ -34,8 +34,10 @@ public sealed class StrategicAdhocScriptTests
             if (eventName == "BAD")
             {
                 Assert.Equal("BAD_SITE", Assert.Single(row.GetProperty("scripts").EnumerateArray()).GetString());
-                Assert.IsType<CampaignActionBlocked>(Assert.Single(result.Events));
-                Assert.Equivalent(initial, campaign.Capture(), strict: true);
+                Assert.Empty(result.Events);
+                var siteMission = Assert.Single(campaign.Capture().World.Missions);
+                Assert.Equal("STR_ALIEN_TERROR", siteMission.RuleId);
+                Assert.InRange(siteMission.MissionSiteZoneArea, 0, 1);
                 continue;
             }
             Assert.Empty(result.Events);
@@ -95,14 +97,15 @@ public sealed class StrategicAdhocScriptTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UnsupportedTaggedMissionBlocksBeforeRandomnessOrMutation(bool fromCache)
+    public void TaggedSiteMissionSchedulesAndPersistsWithoutExecutingEventPayload(bool fromCache)
     {
         var content = Load(fromCache);
         var initial = CreateSnapshot(content, "Adhoc site guard") with { RandomState = 17 };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
-        Assert.IsType<CampaignActionBlocked>(Assert.Single(
-            campaign.Execute(new ScheduleAdhocWorldMissions("EVENT_BAD", 0, 0)).Events));
-        Assert.Equivalent(initial, campaign.Capture(), strict: true);
+        Assert.Empty(campaign.Execute(new ScheduleAdhocWorldMissions("EVENT_BAD", 0, 0)).Events);
+        Assert.Equal("STR_ALIEN_TERROR", Assert.Single(campaign.Capture().World.Missions).RuleId);
+        Assert.Empty(campaign.Capture().World.Events);
+        Reload(content, campaign, 17, "adhoc-site-mission.sav");
     }
 
     [Theory]
