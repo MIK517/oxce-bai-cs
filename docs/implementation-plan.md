@@ -700,3 +700,11 @@ next two slices. Combat and deployment remain branch 5.
 - 4c saved idle escort slice: replaced the blanket newborn-leader boundary with
   structural checks for craft pursuit, waypoint arrival and UFO followers.
   Ordered attachment and reload/resource-limit tests pass (146 focused cases).
+
+- Grounded/saved-escort batch audit: reviewed creation, landed/takeoff scoring,
+  retarget ordering, terminal fallthrough, follower repair and aggregate work
+  limits against the pinned C++ methods. No confirmed defect was found. All
+  1,761 root tests pass with zero failures/skips, including private corpus,
+  endurance, checksums and allocation checks. Formatting verification, code-map
+  and diff checks pass. The reference checkout is clean and obsolete probe
+  object output was removed. Branch 4c remains open; 4d has not started.
