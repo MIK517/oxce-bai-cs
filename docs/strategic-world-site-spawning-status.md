@@ -34,7 +34,12 @@ including suppressed outcomes. Eighteen focused tests pass, including captured
 choices, weighted tails, cache reconstruction, reload and malformed input.
 The probe now inserts the actual Texture method; its empty-rule lookup collaborator
 matches `Mod::getRule`'s null-name early return.
-Player-base targeting and UFO-to-site conversion remain guarded.
+Player-base targeting preserves regional base list order, skips the extra draw
+for a single eligible base, and suppresses creation when no base qualifies.
+It replaces coordinates and city while retaining the selected area's texture.
+Twenty-three focused tests pass, including the captured base choices, reload,
+unreachable invalid durations and maximum-integer score forecasts.
+UFO-to-site conversion remains guarded. Hourly discovery is pending batch audit.
 Site despawn research/event payloads and branch 5 deployment remain guarded.
 
 The reference checkout is read-only and unchanged. This is incremental 4c coverage;

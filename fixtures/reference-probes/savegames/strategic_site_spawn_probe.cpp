@@ -17,12 +17,18 @@ double generate(double minimum, double maximum) { ++calls; return minimum + frac
 }
 struct MissionArea { double lonMin, lonMax, latMin, latMax; int texture; std::string name; };
 struct MissionZone { std::vector<MissionArea> areas; };
-struct RuleRegion { std::vector<MissionZone> zones; const auto& getMissionZones() const { return zones; } };
+struct RuleRegion {
+std::vector<MissionZone> zones; const auto& getMissionZones() const { return zones; }
+bool insideRegion(double lon, double lat) const { return lon >= 0 && lon < 1 && lat >= -0.3 && lat < 0.3; }
+};
+constexpr int OBJECTIVE_RETALIATION = 2;
 struct RuleAlienMission {
 std::string siteType; int spawnZone = 0;
 const std::string& getSiteType() const { return siteType; }
 std::string getType() const { return "DIRECT"; }
 int getSpawnZone() const { return spawnZone; }
+int getObjective() const { return 0; }
+bool isMultiUfoRetaliation() const { return false; }
 };
 struct AlienDeployment {
 std::string type, marker; int minimum, maximum;
@@ -46,7 +52,10 @@ if (required) throw Exception("missing deployment"); return nullptr;
 }
 RuleRegion* getRegion(const std::string&, bool) const { return const_cast<RuleRegion*>(&region); }
 };
-struct Base { double lon, lat; double getLongitude() const { return lon; } double getLatitude() const { return lat; } };
+struct Base {
+double lon, lat; double getLongitude() const { return lon; } double getLatitude() const { return lat; }
+bool getRetaliationTarget() const { return false; }
+};
 struct Ufo { struct Stats { std::string missionCustomDeploy; }; Stats getCraftStats() const { return {}; } };
 struct UfoTrajectory { int getZone(int) const { return 0; } };
 struct MissionWave { std::string ufoType; bool objectiveOnXcomBase = false; };
@@ -62,35 +71,41 @@ void setTexture(int value) { texture = value; }
 void setCity(const std::string& value) { city = value; }
 };
 struct SavedGame {
-std::vector<MissionSite*> sites; Base* base = nullptr;
+std::vector<MissionSite*> sites; std::vector<Base*> bases;
 int getId(const std::string&) { return 7; }
 auto* getMissionSites() { return &sites; }
+auto* getBases() { return &bases; }
 };
 struct AlienMission {
 RuleAlienMission _rule; std::string _race = "RACE_A", _region = "REGION"; int _missionSiteZoneArea = -1;
 MissionSite* spawnMissionSite(SavedGame&, const Mod&, const MissionArea&, const Ufo*, AlienDeployment* = nullptr);
-Base* selectXcomBase(SavedGame& game, const RuleRegion&) { return game.base; }
+Base* selectXcomBase(SavedGame&, const RuleRegion&);
 void direct(SavedGame& game, const Mod& mod, const MissionWave& wave, const UfoTrajectory& trajectory) {
 // DIRECT_SELECTION
 }
 };
 // SPAWN_METHOD
+// BASE_SELECTION
 }
 int main() {
 using namespace OpenXcom;
 std::cout << std::fixed << std::setprecision(9) << "{\"cases\":[";
 bool first = true;
-for (const std::string name : {"override", "rule", "terrain", "single-zero", "all-zero", "selected", "base", "missing-base", "empty-terrain", "missing-texture"}) {
+for (const std::string name : {"override", "rule", "terrain", "single-zero", "all-zero", "selected", "base", "multiple-bases", "missing-base", "empty-terrain", "missing-texture"}) {
 if (!first) std::cout << ','; first = false;
 Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY", "DIRECT_MARKER", 2, 3});
 mod.deployments.emplace("RULE_DEPLOY", AlienDeployment{"RULE_DEPLOY", "RULE_MARKER", 3, 4});
 mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 3}, {"RULE_DEPLOY", 1}};
 mod.region.zones = {{{{0.1, 0.3, -0.2, 0.2, 10, "CITY"}, {0.5, 0.5, 0.1, 0.1, 10, "CITY_SELECTED"}}}};
-AlienMission mission; MissionWave wave; UfoTrajectory trajectory; SavedGame game; Base base{0.2,0.1};
-if (name == "override" || name == "selected" || name == "base" || name == "missing-base") wave.ufoType = "DIRECT_DEPLOY";
+AlienMission mission; MissionWave wave; UfoTrajectory trajectory; SavedGame game; Base base{0.2,0.1}, secondBase{0.4,0.1};
+if (name == "override" || name == "selected" || name == "base" || name == "multiple-bases" || name == "missing-base") wave.ufoType = "DIRECT_DEPLOY";
 if (name == "override" || name == "rule") mission._rule.siteType = "RULE_DEPLOY";
 if (name == "selected") mission._missionSiteZoneArea = 1;
-if (name == "base" || name == "missing-base") { wave.objectiveOnXcomBase = true; if (name == "base") game.base = &base; }
+if (name == "base" || name == "multiple-bases" || name == "missing-base") {
+wave.objectiveOnXcomBase = true;
+if (name != "missing-base") game.bases.push_back(&base);
+if (name == "multiple-bases") game.bases.push_back(&secondBase);
+}
 if (name == "single-zero") mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 0}};
 if (name == "all-zero") mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 0}, {"RULE_DEPLOY", 0}};
 if (name == "empty-terrain") mod.globe.textures[10]._deployments.clear();
