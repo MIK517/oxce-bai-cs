@@ -280,3 +280,19 @@ reject UFO/site creation or deferred objective completion before daily mutation.
 Generation IDs and history persist even when the mission finishes immediately.
 Captured initial timers, existing think-chain evidence, fresh/cache reloads and
 resource-limit tests cover the safe path; immediate UFO generation remains guarded.
+
+### Batch 3 audit
+
+Live interruption, linked base destruction and immediate generated no-object waves
+were reviewed together against the daily/half-hour/five-second caller order. No
+implementation issue was confirmed. Root `dotnet test --no-restore` passes all
+1,548 tests, including populated scenarios, checksum checks and all staged saves.
+
+### Batch 4, slice 10: immediate no-object hunting missions
+
+Hunting can immediately execute no-object waves using the shared bounded counter
+operation. Its explicit think occurs after the half-hour pass; finished missions
+therefore remain until the next half-hour cleanup. Hunting timers reset once and
+source/count history persists. Captured baseHunting plus verbatim no-object counter
+fragments, fresh/cache RNG and reload tests cover both zero and short first timers.
+Immediate UFO/site/effect outcomes remain guarded.

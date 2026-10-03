@@ -15,18 +15,18 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_alien_base_hunt_generation_probe.cpp",
-      "size": 6161,
-      "sha256": "f01eafd3dbb0b68b8540cbda0db7220891e137c84681e891681a14b0326ed81f"
+      "size": 6665,
+      "sha256": "cab24569ceab72f8f476051e2200a61b2dc683a1a0de023ab58d1cbf8c76e668"
     },
     {
       "path": "tools/capture-strategic-alien-base-hunt-generation-reference.ps1",
-      "size": 4249,
-      "sha256": "f647123759e30c2095cda011477e247e5ad3e28b55ed5cad1ec15c714a1f6058"
+      "size": 4841,
+      "sha256": "060c0c8d84e85643f44db66eebdc82133b124e80b86ddbf5671e3c0cfff1316f"
     },
     {
       "path": "fixtures/public/savegames/strategic-alien-base-hunt-generation.rul",
-      "size": 2251,
-      "sha256": "777790cf297023e93103ddcca126cae8993e8fe67e6cff3e2cc60908e899d37d"
+      "size": 2941,
+      "sha256": "3df6c05067cf47c0587cd5c902e3351cd7385916bf21e110bfee6ee64a17754a"
     },
     {
       "path": "fixtures/public/savegames/strategic-alien-base-hunt-timer.rul",

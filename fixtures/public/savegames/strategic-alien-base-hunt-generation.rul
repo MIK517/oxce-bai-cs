@@ -32,6 +32,10 @@ alienMissions:
     raceWeights: {0: {RACE_A: 1}}
     waves:
       - {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 30}
+  - type: HUNT_NO_OBJECT_90
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 90}]
+  - type: HUNT_NO_OBJECT_0
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 0}]
 alienDeployments:
   - type: HUNT_GENERATE
     alienBase: true
@@ -73,3 +77,19 @@ alienDeployments:
     huntMissionMaxFrequency: 60
     huntMissionRaceFromAlienBase: true
     huntMissionWeights: {0: {HUNT_GEN_IMMEDIATE: 1}}
+  - type: HUNT_NO_OBJECT_90
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionRaceFromAlienBase: true
+    huntMissionWeights: {0: {HUNT_NO_OBJECT_90: 1}}
+  - type: HUNT_NO_OBJECT_0
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    baseDetectionRange: 100
+    baseDetectionChance: 100
+    huntMissionMaxFrequency: 60
+    huntMissionRaceFromAlienBase: true
+    huntMissionWeights: {0: {HUNT_NO_OBJECT_0: 1}}

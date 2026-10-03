@@ -231,6 +231,39 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             "Alien mission IDs or population exceed the supported limit.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImmediateNoObjectHuntingPreservesOneThinkAndDefersCleanupUntilHalfHour(bool cache)
+    {
+        var content = Load(cache);
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "immediateRows"))
+        {
+            var timer = row[0].GetString() == "immediate" ? 90 : 0;
+            var snapshot = Snapshot(content, deployment: $"HUNT_NO_OBJECT_{timer}").WithNextId("ALIEN_MISSIONS", 1);
+            var random = new MinimumChoices();
+            var campaign = CampaignState.Restore(snapshot, content, random);
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var mission = Assert.Single(after.World.Missions);
+            var source = Assert.Single(after.World.AlienBases);
+            Assert.Equal(row[1].GetInt32(), source.MinutesSinceLastHuntMissionGeneration);
+            Assert.Equal(row[4][3].GetInt32(), mission.SpawnCountdown);
+            Assert.Equal(row[4][5].GetInt32(), mission.NextWave);
+            Assert.Equal(row[4][6].GetInt32(), mission.NextUfoCounter);
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row[2])),
+                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(random.Calls)));
+            Assert.Empty(after.World.Ufos);
+            campaign = Reload(content, campaign, 17, "immediate-hunt.sav");
+            var due = campaign.Capture() with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+            campaign = CampaignState.Restore(due, content, new MinimumChoices());
+            AdvanceOne(campaign);
+            Assert.Empty(campaign.Capture().World.Missions);
+            Reload(content, campaign, 17, "completed-hunt.sav");
+        }
+    }
+
     private static RuntimeContent Load(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");

@@ -112,26 +112,10 @@ internal sealed partial class CampaignWorld
                         throw new InvalidOperationException("Alien mission wave changed after world preflight.");
                     var wave = rule.Waves[mission.NextWave];
                     if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
-                    var counter = (ulong)mission.NextUfoCounter + 1;
-                    var nextWave = mission.NextWave;
-                    if (counter >= wave.UfoCount)
-                    {
-                        counter = 0;
-                        nextWave++;
-                    }
-                    var countdown = nextWave < rule.Waves.Count
-                        ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[nextWave].SpawnTimer), campaign.Random)
-                        : mission.SpawnCountdown;
-                    mission = mission with
-                    {
-                        NextWave = nextWave,
-                        NextUfoCounter = checked((int)counter),
-                        SpawnCountdown = countdown,
-                        LiveUfos = spawnsUfo ? checked(mission.LiveUfos + 1) : mission.LiveUfos,
-                    };
+                    mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
                     _missions[index] = mission;
                     // Recursion tests the original timer, not the rounded countdown.
-                    if (nextWave == rule.Waves.Count || rule.Waves[nextWave].SpawnTimer != 0) break;
+                    if (mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
                 }
             }
         }
@@ -147,6 +131,48 @@ internal sealed partial class CampaignWorld
                         if (owner.RetaliationMissionId == mission.Id) owner.RetaliationMissionId = null;
                 _missions.RemoveAt(index);
             }
+        }
+    }
+
+    private AlienMissionSnapshot AdvanceWaveCounters(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, bool spawnsUfo)
+    {
+        var counter = (ulong)mission.NextUfoCounter + 1;
+        var nextWave = mission.NextWave;
+        if (counter >= rule.Waves[nextWave].UfoCount) { counter = 0; nextWave++; }
+        var countdown = nextWave < rule.Waves.Count
+            ? WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[nextWave].SpawnTimer), campaign.Random)
+            : mission.SpawnCountdown;
+        return mission with
+        {
+            NextWave = nextWave,
+            NextUfoCounter = checked((int)counter),
+            SpawnCountdown = countdown,
+            LiveUfos = spawnsUfo ? checked(mission.LiveUfos + 1) : mission.LiveUfos,
+        };
+    }
+
+    private string? ImmediateNoObjectReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
+        RuntimeAlienMissionRule rule, ref long work, string boundary)
+    {
+        var candidate = new AlienMissionSnapshot(-1, string.Empty, string.Empty, source.Race, 0, 0, 0, 0, -1)
+        { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
+        foreach (var step in DueWaveSteps(candidate, rule))
+        {
+            if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (!CanAdvanceNoObjectWave(step, rule)) return boundary;
+        }
+        return null;
+    }
+
+    private AlienMissionSnapshot ThinkNoObjectMission(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    {
+        if (mission.SpawnCountdown > 30) return mission with { SpawnCountdown = mission.SpawnCountdown - 30 };
+        for (var work = 0; ; work++)
+        {
+            if (work >= MaximumImmediateWaveSteps || !CanAdvanceNoObjectWave(mission, rule))
+                throw new InvalidOperationException("Immediate no-object mission changed after preflight.");
+            mission = AdvanceWaveCounters(mission, rule, spawnsUfo: false);
+            if (mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) return mission;
         }
     }
 
