@@ -336,3 +336,16 @@ and `git diff --check` pass. All 19 staged-save horizons remain explicit and
 unchanged (ten at 360 executable ticks, one blocked at 125 ticks, eight tactical
 saves preserved at zero ticks). The pinned C++ checkout is unchanged. Useful
 captures are retained; the four obsolete probe object files were removed.
+
+### Additional batch, slice 1: airborne rectangular origins
+
+AlienMission::spawnUfo/getWaypoint and RuleRegion::getRandomPoint now support
+separated rectangular Space origins, including reversed raw and wrapped longitude
+bounds. Spawn forecasts carry bounded spherical origin/destination domains;
+uncertain rectangular activity reserves possible positive/negative awards before
+RNG, while actual scoring preserves first-containing owner order. Conservative
+score ranges can reject near-limit totals in unrelated owners; exact rectangular
+membership forecasts remain a refinement. Captured rectangleOriginRows,
+fresh/cache tests, crossing-country awards, overflow and overlap guards, and
+transition reloads cover the slice. Land-tested and selected landing rectangles
+remain separate capabilities. Fifteen focused compatibility tests pass.

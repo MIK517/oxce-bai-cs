@@ -288,7 +288,7 @@ internal sealed partial class CampaignWorld
         }
     }
 
-    private string? CheckSpawnActivity(string ruleId, IReadOnlyList<WorldPosition> positions,
+    private string? CheckSpawnActivity(string ruleId, IReadOnlyList<SpawnArea> positions,
         ActivityRange[] regions, ActivityRange[] countries, int multiplier)
     {
         var rules = campaign.Content.RuntimeRules;
@@ -299,7 +299,7 @@ internal sealed partial class CampaignWorld
         return CheckPossibleActivity(positions, (int)score, regions, countries);
     }
 
-    private string? CheckPossibleActivity(IReadOnlyList<WorldPosition> positions, int score,
+    private string? CheckPossibleActivity(IReadOnlyList<SpawnArea> positions, int score,
         ActivityRange[] regions, ActivityRange[] countries)
     {
         var regionHits = new int[regions.Length];
@@ -307,11 +307,20 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         foreach (var position in positions)
         {
+            if (position.Radius != 0)
+            {
+                // A regional rectangle may cross score boundaries. Reserve a possible
+                // award for each owner, never credit an uncertain negative score as
+                // overflow headroom. Actual scoring still uses ordered containment.
+                for (var index = 0; index < regions.Length; index++) regionHits[index] = -1;
+                for (var index = 0; index < countries.Length; index++) countryHits[index] = -1;
+                break;
+            }
             for (var index = 0; index < regions.Length; index++)
-                if (WorldGeometry.InsideRegion(rules.Regions[campaign.RegionStates[index].Rule].Value, position))
+                if (WorldGeometry.InsideRegion(rules.Regions[campaign.RegionStates[index].Rule].Value, position.Center))
                 { regionHits[index]++; break; }
             for (var index = 0; index < countries.Length; index++)
-                if (WorldGeometry.InsideCountry(rules.Countries[campaign.CountryStates[index].Rule].Value, position))
+                if (WorldGeometry.InsideCountry(rules.Countries[campaign.CountryStates[index].Rule].Value, position.Center))
                 { countryHits[index]++; break; }
         }
         for (var index = 0; index < regions.Length; index++)
