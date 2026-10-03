@@ -39,6 +39,50 @@ public sealed class StrategicRetaliationSpawnTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RetaliationWithoutDiscoveredBasesFallsThroughToOrdinaryScouting(bool cache)
+    {
+        var content = Load(cache, """
+            alienMissions:
+              - type: RETAL_SCOUT
+                objective: 4
+                waves: [{ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 60}]
+              - type: RETAL_EMPTY
+                objective: 4
+                waves: [{ufo: UNDEFINED, count: 1, trajectory: TRAJ_PATROL, timer: 60}]
+            """);
+        var initial = Initial(content, "RETAL_SCOUT");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal("UFO_SPAWN", ufo.RuleId);
+        Assert.Equal("TRAJ_SPAWN_FIXED", ufo.TrajectoryId);
+        Assert.False(ufo.HunterKiller);
+        Assert.Equal(1, Assert.Single(campaign.Capture().World.Missions).LiveUfos);
+        Reload(content, campaign, 17, "retaliation-scouting.sav");
+        initial = Initial(content, "RETAL_EMPTY");
+        campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Empty(campaign.Capture().World.Missions);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.Equal(initial.RandomState, campaign.Capture().RandomState);
+        Reload(content, campaign, 17, "retaliation-empty-wave.sav");
+    }
+
+    private static CampaignSnapshot Initial(RuntimeContent content, string rule)
+    {
+        var initial = CreateSnapshot(content, "Retaliation spawning");
+        return initial with
+        {
+            RandomState = 17,
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            Bases = initial.Bases.Select(owner => owner with { RetaliationTarget = false }).ToArray(),
+            World = initial.World with { Missions = [new(4, rule, "REGION", "RACE_A", 0, 0, 0, 0, -1)] },
+        };
+    }
+
     private static RuntimeContent Load(bool cache, string extra = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, extra);
 }

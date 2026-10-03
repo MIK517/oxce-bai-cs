@@ -810,3 +810,9 @@ next two slices. Combat and deployment remain branch 5.
   restart/pact and target-selection slices were audited against the pinned
   caller order; the legacy-wave finding is fixed in a separate audit commit.
   Formatting, code-map and diff checks pass; branch 4d remains untouched.
+
+- Five-cycle batch 4, slice 1: no-target normal retaliation now falls through
+  to the existing ordinary scouting spawn/no-object paths. The complete pinned
+  retaliation spawn block provides target, source and interruption evidence;
+  live fresh/cache UFO/no-object transitions and reloads pass. Targeted assaults,
+  instant termination and marked deployment waves retain precise boundaries.

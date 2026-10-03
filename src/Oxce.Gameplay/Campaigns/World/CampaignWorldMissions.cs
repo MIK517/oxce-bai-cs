@@ -70,6 +70,7 @@ internal sealed partial class CampaignWorld
                     if (ObjectiveBaseSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork) is { } baseReason)
                         return baseReason;
                 }
+                if (RetaliationWaveReason(step, rule, ref geometryWork) is { } retaliationReason) return retaliationReason;
                 if (IsDirectSiteWave(step, rule))
                 {
                     siteMarkerReservations ??= new(StringComparer.Ordinal);
@@ -307,7 +308,8 @@ internal sealed partial class CampaignWorld
 
     private bool CanAdvanceNoObjectWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
-        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
+        if (rule.Objective == RuntimeMissionObjective.InstantRetaliation ||
+            rule.Objective == RuntimeMissionObjective.Retaliation && RetaliationCandidates(mission, rule).Count != 0)
             return false;
         var wave = rule.Waves[mission.NextWave];
         if (SuppressedSupplyWave(mission, rule, wave))
@@ -325,7 +327,8 @@ internal sealed partial class CampaignWorld
 
     private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
-        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation ||
+        if (rule.Objective == RuntimeMissionObjective.InstantRetaliation ||
+            rule.Objective == RuntimeMissionObjective.Retaliation && RetaliationCandidates(mission, rule).Count != 0 ||
             mission.LiveUfos == int.MaxValue)
             return false;
         var wave = rule.Waves[mission.NextWave];

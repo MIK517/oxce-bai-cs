@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 92 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 93 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 92 files.
+`src/Oxce.Gameplay` - 93 files.
 
 ### `Oxce.Gameplay`
 
@@ -1406,6 +1406,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
 | [strategic-retaliation-cleanup](../fixtures/manifests/strategic-retaliation-cleanup.json) | cpp-reference | `savegames/strategic-retaliation-cleanup.expected.json` | `StrategicWorldRetaliationCleanupTests` ([StrategicWorldRetaliationCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRetaliationCleanupTests.cs)) |
+| [strategic-retaliation-spawn](../fixtures/manifests/strategic-retaliation-spawn.json) | cpp-reference | `savegames/strategic-retaliation-spawn.expected.json` | **none** |
 | [strategic-retaliation-target](../fixtures/manifests/strategic-retaliation-target.json) | cpp-reference | `savegames/strategic-retaliation-target.expected.json` | `StrategicRetaliationSpawnTests` ([StrategicRetaliationSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationSpawnTests.cs)) |
 | [strategic-script-rules](../fixtures/manifests/strategic-script-rules.json) | cpp-reference | `savegames/strategic-script-rules.expected.json` | `StrategicMissionScriptTests` ([StrategicMissionScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionScriptTests.cs))<br>`StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs)) |
 | [strategic-site-spawn](../fixtures/manifests/strategic-site-spawn.json) | cpp-reference | `savegames/strategic-site-spawn.expected.json` | `StrategicWorldSiteSpawningTests` ([StrategicWorldSiteSpawningTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteSpawningTests.cs))<br>`StrategicWorldUfoSiteConversionTests` ([StrategicWorldUfoSiteConversionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoSiteConversionTests.cs)) |
