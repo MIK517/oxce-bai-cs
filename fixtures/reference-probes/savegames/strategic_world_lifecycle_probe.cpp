@@ -5,7 +5,7 @@
 // GEOMETRY
 struct RuleUfoStats { int speedMax=2200, damageMax=50; };
 struct RuleUfo {
- int getFakeWaterLandingChance() const { return 20; }
+ int fakeChance=20; int getFakeWaterLandingChance() const { return fakeChance; }
  bool isUnmanned() const { return false; }
  std::string getType() const { return "UFO_SCOUT"; }
 };
@@ -290,5 +290,20 @@ void selectedSiteRows(){
  }
 }
 
+void earthRectangleRows(){
+ bool first=true;
+ for(int operation=1;operation<=6;operation++)for(bool groundNext:{false,true}){
+  if(!first)std::cout<<',';first=false;
+  Game game;Globe globe;AlienMission mission;Target base;
+  base.setLongitude(0.2);base.setLatitude(0.1);mission._base=&base;mission._rule.operation=operation;
+  game.mod.ufo.fakeChance=0;game.mod.trajectory.secondAltitude=groundNext?0:-1;
+  auto& region=game.mod.region;region._lonMin={0};region._lonMax={1};region._latMin={-1};region._latMax={1};
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  region._missionZones[4].areas[0]={Deg2Rad(8),Deg2Rad(12),Deg2Rad(1),Deg2Rad(3)};
+  RNG::calls=0;auto* ufo=mission.spawnUfo(game.save,game.mod,globe,mission._rule.wave,game.mod.trajectory);
+  std::cout<<'['<<operation<<','<<groundNext<<",\""<<number(ufo->_lon)<<"\",\""<<number(ufo->_lat)<<"\",\""<<number(ufo->_dest->_lon)<<"\",\""<<number(ufo->_dest->_lat)<<"\","<<RNG::calls<<']';delete ufo;
+ }
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"],\"selectedSiteRows\":[";selectedSiteRows();std::cout<<"]}\n";}
+
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"],\"selectedSiteRows\":[";selectedSiteRows();std::cout<<"],\"earthRectangleRows\":[";earthRectangleRows();std::cout<<"]}\n";}
