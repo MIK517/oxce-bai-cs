@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_mission_site_candidates_probe.cpp",
-      "size": 6851,
-      "sha256": "9baaedae1fd19465df13289fb0088eb91c1c8a0563ce2e4007b4661ba910fd40"
+      "size": 7449,
+      "sha256": "e5a40c1c34b335d2210502f533e9eaebf6d05b8af4b6ce143fc613ff565fc39d"
     },
     {
       "path": "tools/capture-strategic-mission-site-candidates-reference.ps1",
