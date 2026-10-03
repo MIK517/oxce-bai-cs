@@ -120,7 +120,11 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         var labels = new HashSet<int>();
         var runs = new Dictionary<string, int>(StringComparer.Ordinal);
         var possible = 0;
+        var executableCount = available.Count(entry => entry.Value.Criteria.ExecutionOdds > 0);
         long work = 0;
+        var locationCount = available.Any(entry => entry.Value.SiteType)
+            ? _strategy.MissionLocations.Sum(pair => (long)pair.Value.Count) : 0;
+        work += locationCount;
         var possibleRemoved = new HashSet<(string Region, string Mission)>();
         var removalCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var entry in available)
@@ -138,13 +142,16 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Mission script delay exceeds the supported range.";
             if (script.SiteType)
             {
-                if (SiteScriptReason(script, month, ref work, out var siteRegion) is { } siteReason) return siteReason;
-                foreach (var type in WorldScriptSelection.Available(script.Missions, month).Where(choice => choice.Weight != 0))
-                {
-                    if (type.Rule.Handle is not { } handle || !ValidMission(handle, script.Races.Count == 0, siteRegion))
-                        return MissionScriptBoundary;
-                    if (script.UseTable) RecordRemoval(siteRegion, type.Rule.Id, creditedRegions);
-                }
+                if (script.AvoidRepeats > 0 && ++locationCount > 100_000)
+                    return "Site mission location history exceeds the supported limit.";
+                if (SiteScriptReason(script, month, executableCount, ref work, out var siteRegions) is { } siteReason) return siteReason;
+                foreach (var siteRegion in siteRegions)
+                    foreach (var type in WorldScriptSelection.Available(script.Missions, month).Where(choice => choice.Weight != 0))
+                    {
+                        if (type.Rule.Handle is not { } handle || !ValidMission(handle, script.Races.Count == 0, siteRegion))
+                            return MissionScriptBoundary;
+                        if (script.UseTable) RecordRemoval(siteRegion, type.Rule.Id, creditedRegions);
+                    }
             }
             else if (script.TargetBaseOdds > 0)
             {

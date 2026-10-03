@@ -4,7 +4,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private const string SiteScriptRegionBoundary = "Site mission scripts require bounded multi-region selection.";
+    private const string SiteScriptRegionBoundary = "Site mission scripts require bounded region retry forecasts.";
 
     private (string Region, string Mission, int Area)? SelectSiteTargetMission(RuntimeMissionScriptRule script, int month)
     {
@@ -15,7 +15,10 @@ internal sealed partial class CampaignWorld
         var candidates = WorldMissionSiteSelection.SelectMission(first, types,
             type => SiteScriptCandidates(script, month, type, targetBase), out var mission);
         if (candidates is null) return null;
-        var region = WorldScriptSelection.Generate(script.Regions, unchecked((ulong)month), campaign.Random)!.Id;
+        var region = script.Regions.Count == 0
+            ? campaign.Content.RuntimeRules.Regions.Rules[campaign.Random.NextInclusive(0,
+                campaign.Content.RuntimeRules.Regions.Count - 1)].Id
+            : WorldScriptSelection.Generate(script.Regions, unchecked((ulong)month), campaign.Random)!.Id;
         var area = WorldMissionSiteSelection.SelectArea(candidates, region, campaign.Random);
         _strategy.AddMissionLocation(script.VariableName, region, area, script.AvoidRepeats);
         return (region, mission, area);
@@ -27,14 +30,13 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(missionId)].Value;
         var regions = new List<WorldSiteScriptRegion>();
-        foreach (var choice in WorldScriptSelection.Available(script.Regions, month))
+        foreach (var regionId in SiteScriptRegionIds(script, month))
         {
-            if (choice.Weight == 0) continue;
-            var region = rules.Regions[rules.Regions.GetRequired(choice.Rule.Id)].Value;
+            var region = rules.Regions[rules.Regions.GetRequired(regionId)].Value;
             if (targetBase && !campaign.BaseStates.Any(owner =>
-                    LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) == choice.Rule.Id)) continue;
-            regions.Add(new(choice.Rule.Id, region.MissionZones,
-                _missions.Any(existing => existing.RuleId == missionId && existing.RegionId == choice.Rule.Id)));
+                    LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) == regionId)) continue;
+            regions.Add(new(regionId, region.MissionZones,
+                _missions.Any(existing => existing.RuleId == missionId && existing.RegionId == regionId)));
         }
         var wave = mission.Waves[0];
         var direct = wave.Ufo is null && wave.Deployment is { } deployment &&
@@ -43,36 +45,84 @@ internal sealed partial class CampaignWorld
             mission.SiteTypeId.Length != 0, _strategy, script.VariableName);
     }
 
-    private string? SiteScriptReason(RuntimeMissionScriptRule script, int month, ref long work, out string regionId)
+    private string[] SiteScriptRegionIds(RuntimeMissionScriptRule script, int month) =>
+        script.Regions.Count == 0 ? campaign.Content.RuntimeRules.Regions.Rules.Select(entry => entry.Id).ToArray() :
+            WorldScriptSelection.Available(script.Regions, month).Where(choice => choice.Weight != 0)
+                .Select(choice => choice.Rule.Id).ToArray();
+
+    private string? SiteScriptReason(RuntimeMissionScriptRule script, int month, int batchSize,
+        ref long work, out IReadOnlyList<string> regionIds)
     {
-        regionId = "";
-        if (script.Regions.Count == 0 || script.Missions.Count == 0) return SiteScriptRegionBoundary;
-        if (Choices(script.Regions, month, choice => choice.Handle is not null) is { } regionReason) return regionReason;
-        var selectedRegions = WorldScriptSelection.ForMonth(script.Regions, unchecked((ulong)month), false)
-            .Where(choice => choice.Weight != 0).ToArray();
-        var listedRegions = WorldScriptSelection.Available(script.Regions, month).Where(choice => choice.Weight != 0).ToArray();
-        if (selectedRegions.Length != 1 || listedRegions.Length != 1 ||
-            selectedRegions[0].Rule.Id != listedRegions[0].Rule.Id) return SiteScriptRegionBoundary;
+        regionIds = SiteScriptRegionIds(script, month);
+        if (script.Missions.Count == 0) return "Site mission script has no valid mission distribution.";
+        if (script.Regions.Count != 0 && Choices(script.Regions, month, choice => choice.Handle is not null) is { } regionReason)
+            return regionReason;
+        var selectedRegions = script.Regions.Count == 0 ? regionIds.ToArray() :
+            WorldScriptSelection.ForMonth(script.Regions, unchecked((ulong)month), false)
+                .Where(choice => choice.Weight != 0).Select(choice => choice.Rule.Id).ToArray();
+        if (selectedRegions.Length == 0) return SiteScriptRegionBoundary;
+        work += regionIds.Count + (long)selectedRegions.Length;
+        if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+        var multiRegion = selectedRegions.Length != 1 || regionIds.Count != 1 || selectedRegions[0] != regionIds[0];
+        // An earlier command can occupy a region or change point repeat history.
+        // Single-region selection either succeeds immediately or has no candidates;
+        // broader batches need a future possible-location/mission projection.
+        if (multiRegion && batchSize != 1)
+            return "Site mission scripts require composed multi-region candidate forecasts.";
         var rules = campaign.Content.RuntimeRules;
-        regionId = selectedRegions[0].Rule.Id;
-        if (!rules.Regions.TryGet(regionId, out var regionHandle) ||
-            rules.Regions[regionHandle].Value is { MissionRegionId.Length: > 0, MissionRegion: null })
-            return "Site mission script references an unavailable region.";
-        var region = rules.Regions[regionHandle].Value;
+        foreach (var regionId in regionIds.Concat(selectedRegions).Distinct(StringComparer.Ordinal))
+            if (!rules.Regions.TryGet(regionId, out var regionHandle) ||
+                rules.Regions[regionHandle].Value is { MissionRegionId.Length: > 0, MissionRegion: null })
+                return "Site mission script references an unavailable region.";
         var types = WorldScriptSelection.Available(script.Missions, month).Where(choice => choice.Weight != 0).ToArray();
         if (types.Length == 0 || Choices(script.Missions, month, choice => choice.Handle is not null) is { })
             return "Site mission script has no valid mission distribution.";
-        foreach (var type in WorldScriptSelection.ForMonth(script.Missions, unchecked((ulong)month), false))
-            if (type.Weight != 0 && !types.Any(listed => listed.Rule.Id == type.Rule.Id))
+        var generatedTypes = WorldScriptSelection.ForMonth(script.Missions, unchecked((ulong)month), false);
+        work += types.Length + (long)generatedTypes.Count;
+        if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+        var listedTypes = types.Select(type => type.Rule.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var type in generatedTypes)
+            if (type.Weight != 0 && !listedTypes.Contains(type.Rule.Id))
                 return "Site script generated mission is outside its candidate list.";
+        long baseRegionWork = 0;
+        if (script.TargetBaseOdds > 0)
+        {
+            foreach (var state in campaign.RegionStates)
+                baseRegionWork += 1L + rules.Regions[state.Rule].Value.Areas.Count;
+            work += campaign.BaseStates.Count * baseRegionWork;
+            if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+            foreach (var owner in campaign.BaseStates)
+                if (LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) is null)
+                    return "Site mission script cannot locate a player base region.";
+        }
+        var recentCount = _strategy.MissionLocations.GetValueOrDefault(script.VariableName)?.Count ?? 0;
         foreach (var type in types)
         {
             if (type.Rule.Handle is not { } handle) return MissionScriptBoundary;
             var mission = rules.AlienMissions[handle].Value;
+            if (mission.Waves.Count == 0) return MissionScriptBoundary;
             if (mission.SpawnZone < 0) return "Cannot spawn mission site, invalid spawn zone.";
-            work += 1L + _missions.Count + campaign.BaseStates.Count * (1L + campaign.RegionStates.Count);
-            if (mission.SpawnZone < region.MissionZones.Count) work += region.MissionZones[mission.SpawnZone].Areas.Count;
-            if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+            foreach (var regionId in regionIds)
+            {
+                var region = rules.Regions[rules.Regions.GetRequired(regionId)].Value;
+                // Bound preflight plus runtime scans and every possible repeat lookup.
+                work += 3L * (1L + _missions.Count + campaign.BaseStates.Count * baseRegionWork);
+                if (mission.SpawnZone < region.MissionZones.Count)
+                    work += 3L * region.MissionZones[mission.SpawnZone].Areas.Count * (1L + recentCount + batchSize);
+                if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+            }
+            if (!multiRegion) continue;
+            for (var targetMode = 0; targetMode < 2; targetMode++)
+            {
+                var targetBase = targetMode != 0;
+                if (targetBase ? script.TargetBaseOdds <= 0 : script.TargetBaseOdds >= 100) continue;
+                var candidates = SiteScriptCandidates(script, month, type.Rule.Id, targetBase);
+                work += candidates.Count + (long)selectedRegions.Length;
+                if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
+                var candidateRegions = candidates.Select(candidate => candidate.Region).ToHashSet(StringComparer.Ordinal);
+                if (candidates.Count != 0 && selectedRegions.Any(region => !candidateRegions.Contains(region)))
+                    return SiteScriptRegionBoundary;
+            }
         }
         return null;
     }

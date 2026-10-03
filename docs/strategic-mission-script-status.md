@@ -411,3 +411,13 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   reload and tagged adhoc acceptance replace obsolete blanket site guards.
   All 55 focused scheduling cases pass. Multi-region rejection sampling remains
   a precise boundary until a bounded selection proof is available.
+
+- 4c bounded site-region/history slice: isolated commands now select weighted
+  or uniform regions when every possible selected region has candidates.
+  Unsafe retry paths and broader batches with changing multi-region candidates
+  stop before RNG. The pinned command capture includes uniform selection and
+  global candidate-index offsets. Point history persists across direct site
+  births and suppresses exhausted location sets; live batch occupancy produces
+  false labels for later conditionals. History capacity and all scan/repeat
+  checks are reserved before mutation. All 66 focused scheduling cases pass
+  fresh/cache and transition reloads. Due event effects remain branch 6.
