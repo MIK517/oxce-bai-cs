@@ -40,8 +40,8 @@ internal sealed partial class CampaignWorld
         }
         var dailyBases = highest >= CampaignTimeTrigger.OneDay && _alienBases.Count != 0;
         if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases) return null;
-        var regionTotals = campaign.RegionStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
-        var countryTotals = campaign.CountryStates.Select(static state => (long)state.ActivityAlien[^1]).ToArray();
+        var regionTotals = campaign.RegionStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
+        var countryTotals = campaign.CountryStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         if (dailyBases)
             foreach (var alienBase in _alienBases)
                 if (!BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch) && CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
@@ -91,7 +91,8 @@ internal sealed partial class CampaignWorld
                 possibleLandingIds++;
         }
         // AlienMission::think runs before the scoring and detection pass. Check its
-        // possible UFOs using their fixed first point without drawing RNG in preflight.
+        // possible UFOs using every candidate first point without drawing RNG in preflight.
+        long activityWork = 0;
         foreach (var savedMission in _missions)
         {
             if (!halfHour) break;
@@ -108,10 +109,12 @@ internal sealed partial class CampaignWorld
                 var wave = missionRule.Waves[step.NextWave];
                 var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
                 var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-                if (!TryOrdinarySpawnPosition(step, missionRule, trajectory, region, out var position))
+                if (!TryOrdinarySpawnPositions(step, missionRule, trajectory, region, out var positions))
                     return "Alien mission wave spawning requires world simulation.";
+                activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length) * 2;
+                if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
                 var grounded = trajectory.Altitude(0) == 0;
-                var reason = CheckHalfHourUfo(wave.UfoType, position, regionTotals, countryTotals, grounded ? 2 : 1);
+                var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1);
                 if (reason is not null) return reason;
                 if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert)
                 {
@@ -120,7 +123,7 @@ internal sealed partial class CampaignWorld
                 }
                 if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
                     missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) &&
-                    CheckActivityScore(position, missionRule.Points, regionTotals, countryTotals) is { } liftReason)
+                    CheckPossibleActivity(positions, missionRule.Points, regionTotals, countryTotals) is { } liftReason)
                     return liftReason;
             }
         }
@@ -172,7 +175,7 @@ internal sealed partial class CampaignWorld
 
     /// <summary>The detection-script gate and activity range for one half-hour UFO.</summary>
     private string? CheckHalfHourUfo(string ruleId, WorldPosition position,
-        long[] regionTotals, long[] countryTotals, int scoreMultiplier = 1)
+        ActivityRange[] regionTotals, ActivityRange[] countryTotals, int scoreMultiplier = 1)
     {
         var rules = campaign.Content.RuntimeRules;
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
@@ -250,15 +253,14 @@ internal sealed partial class CampaignWorld
         }
     }
 
-    private string? CheckActivityScore(WorldPosition position, int score, long[] regionTotals, long[] countryTotals)
+    private string? CheckActivityScore(WorldPosition position, int score, ActivityRange[] regionTotals, ActivityRange[] countryTotals)
     {
         var rules = campaign.Content.RuntimeRules;
         for (var index = 0; index < campaign.RegionStates.Count; index++)
         {
             var region = campaign.RegionStates[index];
             if (!WorldGeometry.InsideRegion(rules.Regions[region.Rule].Value, position)) continue;
-            regionTotals[index] += score;
-            if (regionTotals[index] is < int.MinValue or > int.MaxValue)
+            if (!regionTotals[index].Add(score, certain: true))
                 return "UFO alien activity exceeds the supported range.";
             break;
         }
@@ -266,11 +268,58 @@ internal sealed partial class CampaignWorld
         {
             var country = campaign.CountryStates[index];
             if (!WorldGeometry.InsideCountry(rules.Countries[country.Rule].Value, position)) continue;
-            countryTotals[index] += score;
-            if (countryTotals[index] is < int.MinValue or > int.MaxValue)
+            if (!countryTotals[index].Add(score, certain: true))
                 return "UFO alien activity exceeds the supported range.";
             break;
         }
+        return null;
+    }
+
+    private struct ActivityRange(long initial)
+    {
+        private long _minimum = initial;
+        private long _maximum = initial;
+
+        public bool Add(int score, bool certain)
+        {
+            _minimum += certain ? score : Math.Min(0, score);
+            _maximum += certain ? score : Math.Max(0, score);
+            return _minimum >= int.MinValue && _maximum <= int.MaxValue;
+        }
+    }
+
+    private string? CheckSpawnActivity(string ruleId, IReadOnlyList<WorldPosition> positions,
+        ActivityRange[] regions, ActivityRange[] countries, int multiplier)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
+        var score = (long)rule.MissionScore * multiplier;
+        if (rule.Scripts.Count != 0) return "UFO detection scripts require world simulation.";
+        if (score is < int.MinValue or > int.MaxValue) return "UFO alien activity exceeds the supported range.";
+        return CheckPossibleActivity(positions, (int)score, regions, countries);
+    }
+
+    private string? CheckPossibleActivity(IReadOnlyList<WorldPosition> positions, int score,
+        ActivityRange[] regions, ActivityRange[] countries)
+    {
+        var regionHits = new int[regions.Length];
+        var countryHits = new int[countries.Length];
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var position in positions)
+        {
+            for (var index = 0; index < regions.Length; index++)
+                if (WorldGeometry.InsideRegion(rules.Regions[campaign.RegionStates[index].Rule].Value, position))
+                { regionHits[index]++; break; }
+            for (var index = 0; index < countries.Length; index++)
+                if (WorldGeometry.InsideCountry(rules.Countries[campaign.CountryStates[index].Rule].Value, position))
+                { countryHits[index]++; break; }
+        }
+        for (var index = 0; index < regions.Length; index++)
+            if (regionHits[index] != 0 && !regions[index].Add(score, regionHits[index] == positions.Count))
+                return "UFO alien activity exceeds the supported range.";
+        for (var index = 0; index < countries.Length; index++)
+            if (countryHits[index] != 0 && !countries[index].Add(score, countryHits[index] == positions.Count))
+                return "UFO alien activity exceeds the supported range.";
         return null;
     }
 

@@ -218,3 +218,12 @@ getWaypoint and Ufo::think. The root suite exposed a stale fresh/cache test that
 expected generated Supply waves with city destinations to remain guarded. It now
 asserts the supported regional destination, live count, source linkage and reload,
 while retaining the no-object completion and its no-floating-draw collaborator.
+
+### Batch 2, slice 4: regional origin point choices
+
+Ordinary waves choose among ordered origin points. Activity preflight carries
+minimum/maximum totals for uncertain region and country membership, including
+negative scores, so an unchosen award cannot fund a later overflow. All origin and
+destination pairs are checked for same-tick arrivals, with bounded forecast work.
+AlienMission::spawnUfo/getWaypoint and RuleRegion::getRandomPoint back captured
+origin choices. Fresh/cache tests cover RNG, per-country activity and reload.
