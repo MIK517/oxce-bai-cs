@@ -657,3 +657,11 @@ Airborne hunter waves now accept existing airborne craft ignored by the pinned C
 New airborne hunters also accept undetectable existing craft, which the pinned saved-order selection trace excludes before attraction evaluation. Fresh/cache tests assert the effective rule, non-hunting spawn and reload. Original targets retain their separate reference semantics; transferred craft remain conservative.
 
 New flying hunter waves reserve their aggregate craft-scan work together with loaded retarget actors before the creation tick. A reproduced 1001-by-1001 workload previously threw after creation; it now blocks without state or RNG changes. The no-target structural scan is cached only for the current preflight/tick, keeping immediate chains bounded.
+
+The fourth batch audit checks returning/undetectable exclusions and per-tick cache lifetime. An hourly-production reservation test covers the finite queue upper bound. Suspected multi-craft output undercount was rejected: runtime linking already enforces exactly one craft per production unit. No additional gameplay defect was confirmed in these three slices.
+
+Final fourth-cycle validation passes all 1,710 root tests with zero failures or
+skips. Fixture checksums, private-corpus classifications, 72-hour scenarios,
+allocation budgets, formatting verification, code-map and diff checks pass.
+The pinned C++ checkout remains clean, and obsolete capture object output was
+removed. Branch 4c remains incomplete; branch 4d has not started.
