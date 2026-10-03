@@ -816,3 +816,9 @@ next two slices. Combat and deployment remain branch 5.
   retaliation spawn block provides target, source and interruption evidence;
   live fresh/cache UFO/no-object transitions and reloads pass. Targeted assaults,
   instant termination and marked deployment waves retain precise boundaries.
+
+- Five-cycle batch 4, slice 2: instant retaliation without a regional base now
+  interrupts, advances the current wave/countdown once and skips recursive
+  followups. Live UFOs keep the interrupted mission until safe cleanup. Fresh/cache
+  reloads preserve counters/RNG and dangling non-retaliation links stop atomically.
+  The pinned complete spawn block establishes the no-target interruption boundary.
