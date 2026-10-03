@@ -415,3 +415,25 @@ tests, with no failures or skips, including checksum, private corpus and populat
 world scenarios. Formatting verification, regenerated code-map validation and
 `git diff --check` pass. Captured probes remain available under artifacts; obsolete
 probe object files were removed. The pinned C++ checkout is clean.
+
+### Four-batch 4c checkpoint (2026-10-03)
+
+Twelve implementation slices, audited in four groups of three, add ordinary ground
+spawn paths, ordered origin/destination areas and rectangular Earth-operation
+origins; explicit mission-site waypoint selection; live research interruption and
+linked base destruction; immediate no-object generation and hunting; and aggressive
+retaliation arrival RNG. Each slice is committed with pinned evidence, focused
+fresh/cache tests, save/reload coverage and status updates. Audit corrections cover
+stale guard tests and a confirmed technical-region work-limit bypass.
+
+The branch remains incomplete. Outstanding world effects and final acceptance are
+listed in [mission status](strategic-mission-script-status.md). Interception,
+deployment, event payload execution and integrated month rollover retain branch
+5/6 guards. Branch 4d has not started.
+
+Validation: root `dotnet test --no-restore` passes all 1,554 tests with no failures
+or skips. Formatting verification, checksum tests, regenerated code-map validation
+and `git diff --check` pass. All 19 staged-save horizons remain explicit and
+unchanged (ten at 360 executable ticks, one blocked at 125 ticks, eight tactical
+saves preserved at zero ticks). The pinned C++ checkout is unchanged. Useful
+captures are retained; the four obsolete probe object files were removed.

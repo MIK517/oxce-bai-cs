@@ -427,8 +427,15 @@ public sealed class StrategicWorldUfoTransitTests
         var lastPoint = content.RuntimeRules.UfoTrajectories[
             content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value.Waypoints.Count - 1;
         var arriving = ufo with { Longitude = 0.99999, Latitude = 0.6, TrajectoryPoint = lastPoint };
-        var later = ufo with { UniqueId = 10, Id = 4, Longitude = 0.99999, Latitude = 0.6,
-            TrajectoryId = "TRAJ_PATROL", TrajectoryPoint = 1 };
+        var later = ufo with
+        {
+            UniqueId = 10,
+            Id = 4,
+            Longitude = 0.99999,
+            Latitude = 0.6,
+            TrajectoryId = "TRAJ_PATROL",
+            TrajectoryPoint = 1
+        };
         var restored = CampaignState.Restore(snapshot with
         {
             World = snapshot.World with

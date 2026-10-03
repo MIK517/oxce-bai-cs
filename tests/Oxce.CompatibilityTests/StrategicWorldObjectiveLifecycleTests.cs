@@ -153,6 +153,41 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         }
     }
 
+    [Fact]
+    public void AggressiveRetaliationBoundsBaseLoopsInTechnicalRegionsWithNoAreas()
+    {
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-objective-lifecycle.rul", "strategic-aggressive-arrivals.rul"]);
+        var initial = CreateLifecycleSnapshot(content);
+        var owner = initial.Bases[0];
+        var mission = initial.World.Missions[0] with
+        { RuleId = "LIFECYCLE_4_0", RegionId = "AGGRESSIVE_TECHNICAL", LiveUfos = 1000 };
+        var ufo = initial.World.Ufos[0] with
+        {
+            Status = UfoStatus.Flying,
+            Altitude = WorldAltitudes.High,
+            TrajectoryId = "AGGRESSIVE_RECT",
+            TrajectoryPoint = 2,
+            Id = 0,
+            LandId = 0,
+            Detected = false,
+            SecondsRemaining = 0,
+            Destination = WorldTargetReference.ForWaypoint(0, initial.World.Ufos[0].Position),
+        };
+        var snapshot = initial with
+        {
+            Options = initial.Options with { AggressiveRetaliation = true },
+            Bases = Enumerable.Range(0, 1001).Select(id => owner with { Id = id, Crafts = [], Soldiers = [] }).ToArray(),
+            World = initial.World with
+            {
+                Missions = [mission],
+                Ufos = Enumerable.Range(1, 1000).Select(id => ufo with { UniqueId = id }).ToArray(),
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        AssertTimeBlocked(campaign, "Aggressive retaliation base selection exceeds the supported work limit.");
+    }
+
     private static void AssertTransition(RuntimeContent content, JsonElement row)
     {
         var objective = row[0].GetInt32();

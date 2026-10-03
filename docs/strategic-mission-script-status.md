@@ -314,3 +314,25 @@ player base. The first point is discarded by the pinned reference's shadowed loc
 Base list order and bounded preflight work are preserved. Captured enabled/disabled
 and present/absent-base rows, fresh/cache rectangle destination RNG and reload tests
 cover the behavior. Retaliation spawning, assault outcomes and combat stay guarded.
+
+### Batch 4 audit
+
+The final three slices were reviewed together. A confirmed work-limit bypass was
+found in aggressive retaliation: an empty geographic area list charged zero for
+each visited base. The forecast now counts the base iteration as well as its area
+checks. A populated technical-region regression failed before the fix and passes
+after it, preserving the strict atomic state/RNG assertion. Formatting corrections
+from the earlier audit test changes are included.
+
+All twelve implementation slices and four batch audits are complete. The full 4c
+headless gate remains open: general Space-operation rectangular origins, direct
+site/deployment spawning, new alien-base objectives, infiltration/pacts, detection
+VM providers, hunter/escort behavior, immediate UFO hunting waves and composed
+initial/monthly world hooks remain outstanding. Branch 4d remains untouched.
+
+Validation: root `dotnet test --no-restore` passes all 1,554 tests with no failures
+or skips. Formatting verification, checksum tests, regenerated code-map validation
+and `git diff --check` pass. All 19 staged-save horizons remain explicit and
+unchanged (ten at 360 executable ticks, one blocked at 125 ticks, eight tactical
+saves preserved at zero ticks). The pinned C++ checkout is unchanged. Useful
+captures are retained; the four obsolete probe object files were removed.
