@@ -1,4 +1,5 @@
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Mods.Rulesets.CampaignStart;
 
 namespace Oxce.Gameplay.Campaigns.World;
 
@@ -217,7 +218,7 @@ internal sealed partial class CampaignWorld
             return false;
         foreach (var position in positions)
             foreach (var destination in destinations)
-                if (!(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed))) return false;
+                if (!(WorldGeometry.Distance(position, destination.Center) - destination.Radius > WorldGeometry.RadianSpeed(speed) + 1e-12)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -253,26 +254,48 @@ internal sealed partial class CampaignWorld
     }
 
     private bool TryOrdinarySpawnDestinations(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<WorldPosition> positions)
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<SpawnArea> positions)
     {
         if (rule.Objective == RuntimeMissionObjective.Supply && rule.Waves[mission.NextWave].Objective &&
             trajectory.Altitude(1) == 0 && MissionSourceBase(mission) is { } supplyBase)
         {
-            positions = [supplyBase.Position];
+            positions = [new(supplyBase.Position, 0)];
             return supplyBase.Position.IsNormalized;
         }
         _ = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
         if (rule.Objective != RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
             trajectory.Waypoints.Count == 2 && MissionSourceBase(mission) is { } source)
         {
-            positions = [source.Position];
+            positions = [new(source.Position, 0)];
             return source.Position.IsNormalized;
         }
         var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
         positions = [];
-        if (areas.Count > 256 || areas.Any(static area => !area.IsPoint)) return false;
-        positions = areas.Select(static area => WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum)).ToArray();
-        return positions.All(static point => point.IsNormalized);
+        if (areas.Count > 256) return false;
+        var result = new SpawnArea[areas.Count];
+        for (var index = 0; index < areas.Count; index++)
+            if (!TrySpawnArea(areas[index], out result[index])) return false;
+        positions = result;
+        return true;
+    }
+
+    private readonly record struct SpawnArea(WorldPosition Center, double Radius);
+
+    private static bool TrySpawnArea(MissionArea area, out SpawnArea result)
+    {
+        result = default;
+        ValidateWaypointPosition(area.LongitudeMinimum, area.LatitudeMinimum);
+        ValidateWaypointPosition(area.LongitudeMaximum, area.LatitudeMaximum);
+        // Keep the whole raw latitude interval within a single pole domain.
+        if (Math.Min(area.LatitudeMinimum, area.LatitudeMaximum) < -Math.PI / 2 ||
+            Math.Max(area.LatitudeMinimum, area.LatitudeMaximum) > Math.PI / 2) return false;
+        var longitudeWidth = Math.Abs(area.LongitudeMaximum - area.LongitudeMinimum);
+        var latitudeWidth = Math.Abs(area.LatitudeMaximum - area.LatitudeMinimum);
+        var center = WorldPosition.Create((area.LongitudeMinimum + area.LongitudeMaximum) / 2,
+            (area.LatitudeMinimum + area.LatitudeMaximum) / 2);
+        // A path along the meridian and parallel bounds every point in the rectangle.
+        result = new(center, Math.Min(Math.PI, (longitudeWidth + latitudeWidth) / 2));
+        return true;
     }
 
     private static bool TryGetFixedWaypoint(RuntimeRegionRule region, int zone, out WorldPosition position)

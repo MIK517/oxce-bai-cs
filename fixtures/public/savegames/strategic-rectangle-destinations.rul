@@ -1,0 +1,10 @@
+ufoTrajectories:
+  - id: RECT_DESTINATION
+    waypoints: [[4, 3, 100], [2, 2, 80], [6, 4, 100]]
+  - id: RECT_UNSAFE
+    waypoints: [[5, 3, 100], [0, 2, 80], [6, 4, 100]]
+alienMissions:
+  - type: RECT_DESTINATION
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_DESTINATION, timer: 9000}]
+  - type: RECT_UNSAFE
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_UNSAFE, timer: 9000}]
