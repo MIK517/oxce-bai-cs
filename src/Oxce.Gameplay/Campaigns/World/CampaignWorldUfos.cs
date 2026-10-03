@@ -224,8 +224,7 @@ internal sealed partial class CampaignWorld
         // AlienMission::getWaypoint only takes its mission-site path for an objective
         // wave in the mission's spawn zone. The other objective flags do not affect
         // ordinary regional waypoint selection.
-        if (mission.MissionSiteZoneArea != -1 && wave.Objective && zone == missionRule.SpawnZone)
-            return false;
+
         if (altitude == 0 && (ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
             mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(ufo.TrajectoryPoint) == missionRule.SpawnZone))
             return false;
@@ -234,6 +233,8 @@ internal sealed partial class CampaignWorld
             return false; // spawnAlienBase is a separate world consequence.
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         ValidateWaypointAreas(region, zone);
+        if (mission.MissionSiteZoneArea != -1 && wave.Objective && zone == missionRule.SpawnZone)
+            _ = SelectedMissionArea(region, zone, mission.MissionSiteZoneArea);
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         if (altitude == 0)
         {
@@ -275,7 +276,9 @@ internal sealed partial class CampaignWorld
         // Preserve both selections, including land retries and their random choices.
         var randomPosition = default(WorldPosition);
         for (var selection = 0; selection < 2; selection++)
-            randomPosition = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule);
+            randomPosition = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule,
+                rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value.Waves[MissionWaveIndex(ufo, mission,
+                    rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value)]);
         // AlienMission::ufoReachedWaypoint assigns the raw regional point through
         // Target::setLongitude/setLatitude, which wrap coordinates across the globe.
         var nextPosition = WorldPosition.Create(randomPosition.Longitude, randomPosition.Latitude);
@@ -305,12 +308,20 @@ internal sealed partial class CampaignWorld
     }
 
     private WorldPosition OrdinaryWaypoint(AlienMissionSnapshot mission, RuntimeUfoTrajectoryRule trajectory,
-        int point, RuntimeRegionRule region, RuntimeUfoRule ufoRule)
+        int point, RuntimeRegionRule region, RuntimeUfoRule ufoRule, RuntimeMissionWave wave)
     {
         var rules = campaign.Content.RuntimeRules;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
         // getWaypoint validates the zone before choosing the final operation-base destination.
-        _ = WorldGeometry.MissionAreas(region, trajectory.Zone(point));
+        var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(point));
+        if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(point) == missionRule.SpawnZone)
+        {
+            var area = SelectedMissionArea(region, missionRule.SpawnZone, mission.MissionSiteZoneArea);
+            return wave.ObjectiveOnTheLandingSite
+                ? WorldGeometry.MissionSiteLandPoint(region, rules.Campaign.Globe, missionRule.SpawnZone,
+                    mission.MissionSiteZoneArea, ufoRule.FakeWaterLandingChance, campaign.Random)
+                : new WorldPosition(area.LongitudeMinimum, area.LatitudeMinimum);
+        }
         if (missionRule.OperationType != RuntimeMissionOperationType.Space &&
             point >= trajectory.Waypoints.Count - 1 && MissionSourceBase(mission) is { } source)
             return source.Position;

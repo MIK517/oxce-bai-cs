@@ -199,9 +199,6 @@ internal sealed partial class CampaignWorld
             trajectory.Altitude(0) != 0 && !IsAirborne(trajectory.Altitude(0)) ||
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
-        if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 && wave.Objective &&
-            (trajectory.Zone(0) == rule.SpawnZone || trajectory.Zone(1) == rule.SpawnZone))
-            return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         if (trajectory.Altitude(0) == 0 &&
@@ -239,7 +236,15 @@ internal sealed partial class CampaignWorld
             positions = [source.Position];
             return source.Position.IsNormalized;
         }
-        if (!TryPointPositions(region, trajectory.Zone(0), out positions)) return false;
+        var wave = rule.Waves[mission.NextWave];
+        if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
+            wave.Objective && trajectory.Zone(0) == rule.SpawnZone)
+        {
+            var area = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+            if (wave.ObjectiveOnTheLandingSite && !area.IsPoint) { positions = []; return false; }
+            positions = [WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum)];
+        }
+        else if (!TryPointPositions(region, trajectory.Zone(0), out positions)) return false;
         if (source is not null) positions = [source.Position];
         return positions.All(static position => position.IsNormalized);
     }
@@ -263,6 +268,20 @@ internal sealed partial class CampaignWorld
             return supplyBase.Position.IsNormalized;
         }
         _ = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
+        var wave = rule.Waves[mission.NextWave];
+        if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
+            wave.Objective && trajectory.Zone(1) == rule.SpawnZone)
+        {
+            var area = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+            positions = [];
+            if (wave.ObjectiveOnTheLandingSite)
+            {
+                if (!TrySpawnArea(area, out var selected)) return false;
+                positions = [selected];
+            }
+            else positions = [new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0)];
+            return true;
+        }
         if (rule.Objective != RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
             trajectory.Waypoints.Count == 2 && MissionSourceBase(mission) is { } source)
         {
@@ -277,6 +296,16 @@ internal sealed partial class CampaignWorld
             if (!TrySpawnArea(areas[index], out result[index])) return false;
         positions = result;
         return true;
+    }
+
+    private static MissionArea SelectedMissionArea(RuntimeRegionRule region, int zone, int index)
+    {
+        var areas = WorldGeometry.MissionAreas(region, zone);
+        if ((uint)index >= (uint)areas.Count) throw new InvalidDataException($"Mission zone {zone} has no area {index}.");
+        var area = areas[index];
+        ValidateWaypointPosition(area.LongitudeMinimum, area.LatitudeMinimum);
+        ValidateWaypointPosition(area.LongitudeMaximum, area.LatitudeMaximum);
+        return area;
     }
 
     private readonly record struct SpawnArea(WorldPosition Center, double Radius);
@@ -332,13 +361,15 @@ internal sealed partial class CampaignWorld
         var source = missionRule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
         var position = source is not null && missionRule.Objective == RuntimeMissionObjective.Supply
             ? source.Position
-            : NormalizeWaypoint(WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random));
+            : NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
+                ? WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random)
+                : OrdinaryWaypoint(mission, trajectory, 0, region, ufoRule, wave));
         if (source is not null) position = source.Position;
         // Fixed-point eligibility implies getLandPoint's city bypass when the
         // following leg lands, consuming the same regional selection.
         var destination = NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
             ? SupplySpawnDestination(mission, wave, trajectory, region, ufoRule)
-            : OrdinaryWaypoint(mission, trajectory, 1, region, ufoRule));
+            : OrdinaryWaypoint(mission, trajectory, 1, region, ufoRule, wave));
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         var speedRadian = WorldGeometry.RadianSpeed(speed);

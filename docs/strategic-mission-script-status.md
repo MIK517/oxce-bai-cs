@@ -236,3 +236,13 @@ origin before RNG; overlapping or pole-crossing unsafe domains remain rejected.
 Reference getRandomPoint selects raw bounds, and target setters normalize afterward.
 Captured rectangle rows and fresh/cache tests verify coordinates, draw counts,
 reload and atomic rejection. LandPoint remains bounded to its reference 100 attempts.
+
+### Batch 2, slice 6: explicit mission-site waypoints
+
+Objective waves use their selected area before operation-base or random fallback.
+The ordinary path takes the area's minimum coordinates without RNG; landing-site
+selection uses fixed-area draws, no city bypass, no region containment and bounded
+100-attempt fake-water checks. Source and destination spawning, ordinary arrivals
+and invalid selected-area checks share this precedence. Captured getWaypoint and
+getLandPointForMissionSite rows, fresh/cache RNG and reload tests stop atomically
+before the still-unavailable site conversion.
