@@ -9,3 +9,16 @@ ufos:
     damageMax: 50
     radarRange: 0
     huntSpeed: 150
+
+ufoTrajectories:
+  - id: TRAJ_HUNTER_GROUND
+    groundTimer: 12
+    waypoints:
+      - [4, 0, 100]
+      - [3, 2, 80]
+      - [0, 3, 50]
+alienMissions:
+  - type: MISSION_HUNTER_GROUND
+    objective: 0
+    waves:
+      - {ufo: HUNTER, count: 1, trajectory: TRAJ_HUNTER_GROUND, timer: 9000, hunterKillerPercentage: 100, huntMode: 2, huntBehavior: 2}

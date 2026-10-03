@@ -237,8 +237,9 @@ internal sealed partial class CampaignWorld
         var ufoRule = rules.Ufos[ufoHandle].Value;
         var hunterKillerPercentage = wave.HunterKillerPercentage == -1
             ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage;
-        if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective)) return false;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
+        if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+            (wave.Escort || trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1)) return false;
         if (trajectory.Waypoints.Count < 2 ||
             trajectory.Altitude(0) != 0 && !IsAirborne(trajectory.Altitude(0)) ||
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
@@ -432,6 +433,11 @@ internal sealed partial class CampaignWorld
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
         var source = missionRule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
+        var hunter = missionRule.Objective == RuntimeMissionObjective.Supply && wave.Objective
+            ? (HunterKiller: false, Mode: 0, Behavior: 0)
+            : WorldHunting.Initialize(wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage,
+                wave.HuntMode == -1 ? ufoRule.HuntMode : wave.HuntMode,
+                wave.HuntBehavior == -1 ? ufoRule.HuntBehavior : wave.HuntBehavior, campaign.Random);
         var position = source is not null && missionRule.Objective == RuntimeMissionObjective.Supply
             ? source.Position
             : NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
@@ -450,6 +456,9 @@ internal sealed partial class CampaignWorld
             trajectory.Altitude(0) == 0 ? UfoStatus.Landed : UfoStatus.Flying,
             WorldAltitudes.All[trajectory.Altitude(0)])
         {
+            HunterKiller = hunter.HunterKiller,
+            HuntMode = hunter.Mode,
+            HuntBehavior = hunter.Behavior,
             MissionWaveNumber = mission.NextWave,
             SecondsRemaining = trajectory.Altitude(0) == 0 ? checked(trajectory.GroundTimer * 5) : 0,
             Speed = speed,
