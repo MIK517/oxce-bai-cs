@@ -23,7 +23,18 @@ creation statements into controlled asset-free collaborators, excluding only
 diagnostic logging. Eight focused tests cover explicit override, selected areas,
 three-site immediate chains, fresh/cache creation reloads and atomic limits.
 The captured terrain and player-base rows establish the next two slices.
-Terrain fallback, player-base targeting and UFO-to-site conversion remain guarded.
+Terrain fallback now follows `Texture::getRandomDeployment`: an explicit mission
+site type precedes the texture table; a singleton is chosen without RNG even at
+zero weight; multiple choices use ordinal weights and one integer draw. Empty
+and all-zero multi-entry tables return no deployment and still advance the wave.
+Only reachable choices require valid rules, duration and ID capacity. Missing
+textures and overflowing weight totals fail before tick mutation. Activity ranges
+reserve the possible positive and negative score for one selected deployment,
+including suppressed outcomes. Eighteen focused tests pass, including captured
+choices, weighted tails, cache reconstruction, reload and malformed input.
+The probe now inserts the actual Texture method; its empty-rule lookup collaborator
+matches `Mod::getRule`'s null-name early return.
+Player-base targeting and UFO-to-site conversion remain guarded.
 Site despawn research/event payloads and branch 5 deployment remain guarded.
 
 The reference checkout is read-only and unchanged. This is incremental 4c coverage;

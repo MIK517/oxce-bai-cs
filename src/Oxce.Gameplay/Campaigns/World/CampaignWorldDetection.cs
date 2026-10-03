@@ -159,16 +159,7 @@ internal sealed partial class CampaignWorld
                 foreach (var step in DueWaveSteps(mission, rule))
                 {
                     if (!IsDirectSiteWave(step, rule)) continue;
-                    var deployment = campaign.Content.RuntimeRules.AlienDeployments[rule.Waves[step.NextWave].Deployment!.Value].Value;
-                    var positions = new List<SpawnArea>();
-                    foreach (var area in DirectSiteAreas(step, rule))
-                    {
-                        _ = TrySpawnArea(area, out var position);
-                        positions.Add(position);
-                    }
-                    activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length);
-                    if (activityWork > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
-                    if (CheckPossibleActivity(positions, deployment.Points, regionTotals, countryTotals) is { } reason) return reason;
+                    if (DirectSiteActivityReason(step, rule, regionTotals, countryTotals, ref activityWork) is { } reason) return reason;
                 }
             }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
@@ -325,7 +316,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? CheckPossibleActivity(IReadOnlyList<SpawnArea> positions, int score,
-        ActivityRange[] regions, ActivityRange[] countries)
+        ActivityRange[] regions, ActivityRange[] countries, bool guaranteedAward = true)
     {
         var regionHits = new int[regions.Length];
         var countryHits = new int[countries.Length];
@@ -349,10 +340,10 @@ internal sealed partial class CampaignWorld
                 { countryHits[index]++; break; }
         }
         for (var index = 0; index < regions.Length; index++)
-            if (regionHits[index] != 0 && !regions[index].Add(score, regionHits[index] == positions.Count))
+            if (regionHits[index] != 0 && !regions[index].Add(score, guaranteedAward && regionHits[index] == positions.Count))
                 return "UFO alien activity exceeds the supported range.";
         for (var index = 0; index < countries.Length; index++)
-            if (countryHits[index] != 0 && !countries[index].Add(score, countryHits[index] == positions.Count))
+            if (countryHits[index] != 0 && !countries[index].Add(score, guaranteedAward && countryHits[index] == positions.Count))
                 return "UFO alien activity exceeds the supported range.";
         return null;
     }

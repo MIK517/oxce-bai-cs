@@ -19,6 +19,11 @@ if (-not $direct.EndsWith('}')) { throw 'Unexpected direct selection ending.' }
 $direct = $direct.Substring(0, $direct.Length - 1)
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_site_spawn_probe.cpp'))
 $template = $template.Replace('// SPAWN_METHOD', $spawn).Replace('// DIRECT_SELECTION', $direct)
+$textureSource = [IO.File]::ReadAllText((Join-Path $reference 'src/Mod/Texture.cpp'))
+$textureStart = $textureSource.IndexOf('std::string Texture::getRandomDeployment() const', [StringComparison]::Ordinal)
+$textureEnd = $textureSource.IndexOf('// helper overloads', $textureStart, [StringComparison]::Ordinal)
+if ($textureStart -lt 0 -or $textureEnd -le $textureStart) { throw 'Missing reference texture selection.' }
+$template = $template.Replace('// TEXTURE_SELECTION', $textureSource.Substring($textureStart, $textureEnd - $textureStart))
 $work = Join-Path $repository 'artifacts/reference-strategic-site-spawn'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_site_spawn_probe.cpp'

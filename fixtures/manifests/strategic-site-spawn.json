@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "AlienMission::think direct-site branch and spawnMissionSite excluding diagnostic logging",
+      "sources": "AlienMission::think direct-site branch and spawnMissionSite excluding diagnostic logging; Texture::getRandomDeployment",
       "capture": "tools/capture-strategic-site-spawn-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,18 +15,18 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_site_spawn_probe.cpp",
-      "size": 5950,
-      "sha256": "2481b0c2e0ea3f2f1a6dd006cb46720a2658b0a5ede1eee846980e808b97ac4a"
+      "size": 5977,
+      "sha256": "1e81f0151b91cae04acf2354b8af526911e2dfbed6d49d7c4945dcaf3347ce94"
     },
     {
       "path": "tools/capture-strategic-site-spawn-reference.ps1",
-      "size": 3065,
-      "sha256": "f47c99aec6b963dc96f1bfad2df9126307062b5789853b5ece19c32ad8af7f0e"
+      "size": 3607,
+      "sha256": "54684bb6a909743abed41ddf3b53328614a1c0b1d0b51094745ae582bc497b73"
     },
     {
       "path": "fixtures/public/savegames/strategic-site-spawn.rul",
-      "size": 1663,
-      "sha256": "0c814be923d16c1b196688e195653b14fc3db9af856d596c30351b36f09e2e46"
+      "size": 3262,
+      "sha256": "dd23529e6ef0688790e188270e837a9e17b1acf273093f214c74308a12ac2386"
     }
   ],
   "normalization": [

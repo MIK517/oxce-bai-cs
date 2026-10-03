@@ -35,29 +35,44 @@ internal sealed partial class CampaignWorld
         if (wave.Trajectory is null || !CanAdvanceWaveCounters(mission, rule, wave))
             return "Direct mission site wave counters or trajectory are invalid.";
         if (wave.ObjectiveOnXcomBase) return "Direct mission site player-base targeting is unavailable.";
-        // Explicit deployments own this first path. Terrain fallback is a separate capability.
-        if (wave.Deployment is not { } handle) return "Direct mission site requires terrain deployment selection.";
-        var deployment = campaign.Content.RuntimeRules.AlienDeployments[handle].Value;
-        if (deployment.DurationMinimum < 1 || deployment.DurationMaximum < deployment.DurationMinimum ||
-            deployment.DurationMaximum > int.MaxValue / 3600)
-            return "Direct mission site duration is outside the supported range.";
         var areas = DirectSiteAreas(mission, rule);
-        work += areas.Count + _sites.Count + (long)_alienBases.Count;
+        work += areas.Count;
         if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+        var markers = new HashSet<string>(StringComparer.Ordinal);
+        var rules = campaign.Content.RuntimeRules;
         foreach (var area in areas)
+        {
+            var candidates = SiteDeploymentCandidates(wave, rule, area);
+            work += candidates.Count;
+            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (candidates.Count == 0) continue;
             if (!TrySpawnArea(area, out _)) return "Direct mission site coordinates require an unsupported latitude domain.";
+            foreach (var handle in candidates)
+            {
+                var deployment = rules.AlienDeployments[handle].Value;
+                if (deployment.DurationMinimum < 1 || deployment.DurationMaximum < deployment.DurationMinimum ||
+                    deployment.DurationMaximum > int.MaxValue / 3600)
+                    return "Direct mission site duration is outside the supported range.";
+                markers.Add(deployment.MarkerName);
+            }
+        }
+        if (markers.Count == 0) return null;
         if ((long)_sites.Count + ++population > 100_000) return "World mission site population exceeds the supported limit.";
-        var marker = deployment.MarkerName;
-        if (marker is "STR_UFO_UNIQUE" or "STR_UFO" or "STR_LANDING_SITE" or "STR_CRASH_SITE")
-            return "Mission site and UFO creation share an unsupported ID namespace.";
-        var count = markerReservations.GetValueOrDefault(marker) + 1;
-        markerReservations[marker] = count;
-        var first = campaign.PeekNextId(marker);
-        var end = (long)first + count;
-        if (first <= 0 || end > int.MaxValue ||
-            _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= first && site.Id < end) ||
-            _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= first && alienBase.Id < end))
-            return "Mission site marker IDs are exhausted or collide with a saved target.";
+        foreach (var marker in markers)
+        {
+            work += _sites.Count + (long)_alienBases.Count;
+            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (marker is "STR_UFO_UNIQUE" or "STR_UFO" or "STR_LANDING_SITE" or "STR_CRASH_SITE")
+                return "Mission site and UFO creation share an unsupported ID namespace.";
+            var count = markerReservations.GetValueOrDefault(marker) + 1;
+            markerReservations[marker] = count;
+            var first = campaign.PeekNextId(marker);
+            var end = (long)first + count;
+            if (first <= 0 || end > int.MaxValue ||
+                _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= first && site.Id < end) ||
+                _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= first && alienBase.Id < end))
+                return "Mission site marker IDs are exhausted or collide with a saved target.";
+        }
         return null;
     }
 
@@ -66,8 +81,9 @@ internal sealed partial class CampaignWorld
         var wave = rule.Waves[mission.NextWave];
         var areas = DirectSiteAreas(mission, rule);
         var area = areas[mission.MissionSiteZoneArea == -1 ? campaign.Random.NextInclusive(0, areas.Count - 1) : 0];
-        var handle = wave.Deployment!.Value;
         var rules = campaign.Content.RuntimeRules;
+        var selected = SelectSiteDeployment(wave, rule, area);
+        if (selected is not { } handle) return;
         var deployment = rules.AlienDeployments[handle].Value;
         var longitude = WorldGeometry.RandomDouble(campaign.Random, area.LongitudeMinimum, area.LongitudeMaximum);
         var latitude = WorldGeometry.RandomDouble(campaign.Random, area.LatitudeMinimum, area.LatitudeMaximum);
@@ -80,5 +96,65 @@ internal sealed partial class CampaignWorld
             Texture = area.Texture,
             City = area.Name,
         });
+    }
+
+    private List<RuleHandle<AlienDeploymentRuleFamily>> SiteDeploymentCandidates(
+        RuntimeMissionWave wave, RuntimeAlienMissionRule rule, MissionArea area)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        if (wave.Deployment is { } explicitDeployment) return [explicitDeployment];
+        if (rules.AlienDeployments.TryGet(rule.SiteTypeId, out var missionDeployment)) return [missionDeployment];
+        if (!rules.Campaign.Globe.Textures.TryGetValue(area.Texture, out var texture))
+            throw new InvalidDataException($"Mission site texture {area.Texture} does not exist.");
+        var weights = texture.Deployments;
+        if (weights.Count == 0) return [];
+        if (weights.Count != 1) _ = WorldAlienMissionGeneration.Total(weights);
+        var result = new List<RuleHandle<AlienDeploymentRuleFamily>>();
+        foreach (var pair in weights)
+            if ((weights.Count == 1 || pair.Value != 0) && pair.Key.Length != 0 && pair.Key != "\0")
+                result.Add(rules.AlienDeployments.GetRequired(pair.Key));
+        return result;
+    }
+
+    private RuleHandle<AlienDeploymentRuleFamily>? SelectSiteDeployment(
+        RuntimeMissionWave wave, RuntimeAlienMissionRule rule, MissionArea area)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        if (wave.Deployment is { } explicitDeployment) return explicitDeployment;
+        if (rules.AlienDeployments.TryGet(rule.SiteTypeId, out var missionDeployment)) return missionDeployment;
+        var weights = rules.Campaign.Globe.Textures[area.Texture].Deployments;
+        var id = weights.Count == 1 ? weights.First().Key : WorldAlienMissionGeneration.Choose(weights, campaign.Random);
+        return id.Length == 0 || id == "\0" ? null : rules.AlienDeployments.GetRequired(id);
+    }
+
+    private string? DirectSiteActivityReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        ActivityRange[] regions, ActivityRange[] countries, ref long work)
+    {
+        var wave = rule.Waves[mission.NextWave];
+        var positions = new List<SpawnArea>();
+        var minimum = int.MaxValue;
+        var maximum = int.MinValue;
+        var suppressed = false;
+        foreach (var area in DirectSiteAreas(mission, rule))
+        {
+            var candidates = SiteDeploymentCandidates(wave, rule, area);
+            work += candidates.Count;
+            if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+            if (candidates.Count == 0) { suppressed = true; continue; }
+            _ = TrySpawnArea(area, out var position);
+            positions.Add(position);
+            foreach (var candidate in candidates)
+            {
+                var points = campaign.Content.RuntimeRules.AlienDeployments[candidate].Value.Points;
+                minimum = Math.Min(minimum, points);
+                maximum = Math.Max(maximum, points);
+            }
+        }
+        work += (long)positions.Count * (regions.Length + countries.Length) * 2;
+        if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+        if (positions.Count == 0) return null;
+        if (!suppressed && minimum == maximum) return CheckPossibleActivity(positions, maximum, regions, countries);
+        if (maximum > 0 && CheckPossibleActivity(positions, maximum, regions, countries, false) is { } reason) return reason;
+        return minimum < 0 ? CheckPossibleActivity(positions, minimum, regions, countries, false) : null;
     }
 }
