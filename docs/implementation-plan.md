@@ -748,3 +748,11 @@ next two slices. Combat and deployment remain branch 5.
   and history are accepted for these slices; arbitrary region rejection
   sampling, composed multi-region forecasts and the broader 4c gate remain
   open. Event payload execution and branch 4d remain deferred.
+
+- 4c bounded region-selector slice: the pinned site-command probe now captures
+  rejected weighted and uniform regions. WorldMissionSiteSelection conditions
+  the distribution on eligible regions, preserving relative weights, uniform
+  region order and per-region area choice. Fully eligible draw ranges remain
+  unchanged; rejected draws are omitted under the contract's RNG-stream
+  non-goal. ADR 0030 records the decision and safety requirements. Seventeen
+  focused site-script cases pass; live adoption follows next.

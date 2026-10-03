@@ -65,7 +65,8 @@ public sealed class StrategicMissionSiteScriptTests
                 MissionZone[] first = [new(name == "rectangle" ? [rectangle] : [point, point])];
                 var occupied = name == "allOccupied" || name == "firstOccupied" && mission == "MISSION_A" || name == "noBase";
                 var regions = new List<WorldSiteScriptRegion> { new("REGION", first, occupied) };
-                if (name is "twoRegions" or "uniform" or "secondRegion") regions.Add(new("REGION_SECOND", [new([point])], false));
+                if (name is "twoRegions" or "uniform" or "secondRegion" or "weightedRetry" or "uniformRetry")
+                    regions.Add(new("REGION_SECOND", [new(name.EndsWith("Retry", StringComparison.Ordinal) ? [] : [point])], false));
                 return WorldMissionSiteSelection.Candidates(regions, 0, name == "rectangle" && mission == "MISSION_A",
                     false, strategy, "RECENT");
             }
@@ -75,9 +76,19 @@ public sealed class StrategicMissionSiteScriptTests
             var area = -1;
             if (candidates is not null)
             {
-                if (name == "uniform") random.NextInclusive(0, 1);
-                else random.NextInclusive(1, 1); // captured weighted region distribution
-                region = name == "secondRegion" ? "REGION_SECOND" : "REGION";
+                if (name.EndsWith("Retry", StringComparison.Ordinal))
+                {
+                    string[] uniform = ["REGION", "REGION_SECOND"];
+                    KeyValuePair<string, ulong>[] weights = [new("REGION", 1), new("REGION_SECOND", 1)];
+                    region = WorldMissionSiteSelection.SelectRegion(candidates, uniform,
+                        name == "weightedRetry" ? weights : null, random);
+                }
+                else
+                {
+                    if (name == "uniform") random.NextInclusive(0, 1);
+                    else random.NextInclusive(1, name is "twoRegions" or "secondRegion" ? 2 : 1);
+                    region = name == "secondRegion" ? "REGION_SECOND" : "REGION";
+                }
                 area = WorldMissionSiteSelection.SelectArea(candidates, region, random);
             }
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
@@ -85,8 +96,36 @@ public sealed class StrategicMissionSiteScriptTests
                 name, candidates is not null, mission, region, area,
                 random.Calls.Select(call => new[] { call.Minimum, call.Maximum }).ToArray(),
             });
-            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            if (name.EndsWith("Retry", StringComparison.Ordinal))
+            {
+                // ADR 0030 preserves accepted outcomes and distributions while
+                // deliberately eliminating the rejected-region RNG draws.
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Take(5).ToArray());
+                using var parsed = JsonDocument.Parse(actual);
+                var accepted = JsonSerializer.SerializeToUtf8Bytes(parsed.RootElement.EnumerateArray().Take(5).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(accepted));
+                Assert.Equal(5, row[5].GetArrayLength());
+                Assert.Equal(4, random.Calls.Count);
+            }
+            else Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
         }
+    }
+
+    [Fact]
+    public void ConditionedRegionDistributionPreservesWeightsAndUniformOrderIndependentOfAreaCounts()
+    {
+        WorldSiteScriptCandidate[] candidates = [new("REGION", 0), new("REGION", 1), new("REGION_SECOND", 0)];
+        KeyValuePair<string, ulong>[] weights = [new("BLOCKED", 7), new("REGION", 2), new("REGION_SECOND", 1)];
+        var options = WorldMissionSiteSelection.RegionWeights(candidates, weights);
+        Assert.Equal(3UL, options.TotalWeight);
+        Assert.Equal(["REGION", "REGION", "REGION_SECOND"], Enumerable.Range(1, 3).Select(roll => options.ChooseAt((ulong)roll)));
+        string[] regions = ["BLOCKED", "REGION_SECOND", "REGION"];
+        var random = new TestFixtures.RecordingMinimumRandomSource();
+        Assert.Equal("REGION_SECOND", WorldMissionSiteSelection.SelectRegion(candidates, regions, null, random));
+        Assert.Equal((0, 1), Assert.Single(random.Calls));
+        var before = random.State;
+        Assert.Throws<InvalidOperationException>(() => WorldMissionSiteSelection.SelectRegion([], regions, weights, random));
+        Assert.Equal(before, random.State);
     }
 
     [Theory]

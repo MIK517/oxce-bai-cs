@@ -65,4 +65,27 @@ internal static class WorldMissionSiteSelection
         if (first == -1) throw new InvalidOperationException("Site script region lost its preflighted candidates.");
         return candidates[random.NextInclusive(first, last)].Area;
     }
+    /// <summary>Condition the reference's region retries on the regions with eligible areas.</summary>
+    internal static WorldWeightedOptions RegionWeights(IReadOnlyList<WorldSiteScriptCandidate> candidates,
+        IEnumerable<KeyValuePair<string, ulong>> weights)
+    {
+        var valid = candidates.Select(candidate => candidate.Region).ToHashSet(StringComparer.Ordinal);
+        return new WorldWeightedOptions(weights.Where(weight => valid.Contains(weight.Key)));
+    }
+
+    internal static string SelectRegion(IReadOnlyList<WorldSiteScriptCandidate> candidates,
+        IReadOnlyList<string> uniformRegions, IEnumerable<KeyValuePair<string, ulong>>? weights, IRandomSource random)
+    {
+        if (weights is not null)
+        {
+            var options = RegionWeights(candidates, weights);
+            if (options.IsEmpty) throw new InvalidOperationException("Site script has no selectable candidate region.");
+            return options.Choose(random);
+        }
+        var valid = candidates.Select(candidate => candidate.Region).ToHashSet(StringComparer.Ordinal);
+        var choices = uniformRegions.Where(valid.Contains).ToArray();
+        if (choices.Length == 0) throw new InvalidOperationException("Site script has no selectable candidate region.");
+        return choices[random.NextInclusive(0, choices.Length - 1)];
+    }
+
 }
