@@ -188,6 +188,57 @@ public sealed class StrategicInfiltrationTests
             "Infiltration country search exceeds the supported work limit.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CountryBorderBirthIgnoresRegionSpawnZoneAndUsesDummyTexture(bool cache)
+    {
+        var content = Load(cache, """
+            buildInfiltrationBaseCloseToTheCountry: true
+            countries:
+              - {type: INF_NEAR, labelLon: 8, labelLat: 2, areas: [[12, 12, 2, 2]]}
+            alienMissions:
+              - type: INF_NEAR_MISSION
+                objective: 1
+                endlessInfiltration: false
+                spawnZone: -1
+                siteType: ""
+                waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 60}]
+            globe:
+              textures:
+                - {id: 0, deployments: {INF_BASE: 0}}
+            """);
+        var initial = Initial(content);
+        initial = initial with
+        {
+            Countries = initial.Countries.Where(country => country.RuleId == "INF_NEAR").ToArray(),
+            World = initial.World with { Missions = [initial.World.Missions[0] with { RuleId = "INF_NEAR_MISSION" }] },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var alienBase = Assert.Single(campaign.Capture().World.AlienBases);
+        Assert.Equal(new WorldPosition(Degrees(12), Degrees(2)), alienBase.Position);
+        Assert.Equal("INF_NEAR", alienBase.PactCountryId);
+        Assert.Equal("INF_BASE", alienBase.DeploymentId);
+        Reload(content, campaign, 17, "country-border-pact.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CloseCountrySearchRejectsEmptyAreasBeforePendingPact(bool cache)
+    {
+        var content = Load(cache, """
+            buildInfiltrationBaseCloseToTheCountry: true
+            countries:
+              - {type: INF_EMPTY, labelLon: 8, labelLat: 2}
+            """);
+        var initial = Initial(content);
+        initial = initial with { Countries = [initial.Countries[0] with { RuleId = "INF_EMPTY" }] };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Infiltration country has no spawn areas.");
+    }
+
     private static RuntimeContent Load(bool cache, string extra = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], cache, extra);
 

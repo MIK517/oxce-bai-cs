@@ -765,3 +765,9 @@ next two slices. Combat and deployment remain branch 5.
   fixed through retries; wrapping areas split at zero/359.99 degrees with the
   reference 50% draw. Country containment replaces regional containment. Empty
   country areas fail intentionally; live country-border births follow next.
+
+- Five-cycle batch 2, slice 2: country-border infiltration now executes with
+  live pending-pact/base persistence. It ignores mission spawnZone, selects from
+  dummy texture 0, and reserves all possible country areas including wrapped
+  halves and suppressed retries. Empty areas fail before mutation. Fresh/cache
+  fixtures prove actual country placement and the zero-weight singleton lookup.
