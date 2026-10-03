@@ -305,6 +305,7 @@ public static class RuntimeRuleLinker
             HealthWoundThreshold = content.CampaignStart.Settings.HealthWoundThreshold,
             EscortRange = content.CampaignStart.Settings.EscortRange,
             HunterKillerFastRetarget = content.CampaignStart.Settings.HunterKillerFastRetarget,
+            AllowAlienBasesOnWrongTextures = content.CampaignStart.Settings.AllowAlienBasesOnWrongTextures,
             AllowCountriesToCancelAlienPact = content.CampaignStart.Settings.AllowCountriesToCancelAlienPact,
         };
         var compatibility = new RuntimeRuleCompatibilitySidecar(CompatibilityEntries(content));
