@@ -202,3 +202,20 @@ earlier UFO movement. A terminal earlier arrival skips both the newborn takeoff
 and its award. Fresh/cache takeoff, next-tick interception refusal, site
 underflow, exact-fit terminal scoring and transition reloads pass in the
 138-case focused suite. Combat remains guarded before the next affected tick.
+
+### Saved idle escort and newborn leader composition
+
+Saved idle escorts can now see ordinary UFOs appended by same-tick waves,
+using the pinned GeoscapeState::ufoHuntingAndEscorting attachment fragment and
+existing sequence oracle. They back up the old destination, use full effective
+speed and follow the later leader's current coordinates without creation-time
+relocation.
+
+The structural preflight proof permits this composition only when no current
+or potential airborne craft can depend on pursuit, the old waypoint would not
+be reached in this tick, and no existing UFO escort follows the saved source.
+Hidden/ignored craft still require pursuit forecasts. Scans and final-population
+movement work are bounded. Fresh/cache early/late leader ordering, unmarked
+unique references, transition reloads, three precise atomic boundaries and a
+resource-limit regression pass in 146 focused cases. Broader pursuit forecasts
+remain 4c work; this does not close the headless gate.
