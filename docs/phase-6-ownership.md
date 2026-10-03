@@ -393,3 +393,13 @@ counter capability to project daily research and preceding site transitions.
 Positive/zero site timers, saved-target collisions and ID exhaustion retain
 reference ordering and atomic guards. A shared marker decrease after direct
 births remains guarded precisely pending correlated-ID forecasting.
+
+Craft followers now transfer to a converted site when they carry any assigned
+soldier or vehicle instance, independently of AllowLanding/equipment checks.
+Empty followers return home only for dormant conversions. Fuel return precedes
+transfer, and terminal conversions still skip the later craft movement pass.
+The captured follower rows cover empty, vehicle and soldier totals; fresh/cache
+reload tests check stable site references and effective destination speed.
+Respawn conversions forecast every possible new-site position using the existing
+spherical area bound, stopping atomically before a possible branch 5 landing.
+Nonlanding craft transfer then use the existing arrival/recall behavior.

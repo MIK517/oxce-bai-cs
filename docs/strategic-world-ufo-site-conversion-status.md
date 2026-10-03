@@ -70,3 +70,13 @@ the destination after site follower repair/reactivation. The probe now inserts
 SavedGame::getId and both custom-counter methods; fresh/cache counter-order
 rows, daily research, reload and atomic exhaustion tests pass (84 focused tests).
 Craft follower transfer and damaged ordinary ground outcomes remain guarded.
+
+Craft followers now transfer to a converted site when they carry any assigned
+soldier or vehicle instance, independently of AllowLanding/equipment checks.
+Empty followers return home only for dormant conversions. Fuel return precedes
+transfer, and terminal conversions still skip the later craft movement pass.
+The captured follower rows cover empty, vehicle and soldier totals; fresh/cache
+reload tests check stable site references and effective destination speed.
+Respawn conversions forecast every possible new-site position using the existing
+spherical area bound, stopping atomically before a possible branch 5 landing.
+Nonlanding craft transfer then use the existing arrival/recall behavior.

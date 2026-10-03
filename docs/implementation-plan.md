@@ -540,3 +540,8 @@ conversion/spawn/timer tests verify fresh/cache ordering, reload and atomic
 collisions. Same-tick direct births followed by a shared marker decrease retain
 a specific guard. Craft follower transfer remains the next slice. Branch 4c is
 incomplete; branch 4d is untouched.
+
+Craft follower transfer now covers passengers, vehicle instances and empty-craft
+return for dormant conversions. Fuel-before-transfer, landing/equipment options,
+terminal current-tick fallthrough and transition reloads have focused coverage.
+Actual landing remains guarded for branch 5.
