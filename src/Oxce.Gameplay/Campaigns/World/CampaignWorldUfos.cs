@@ -226,6 +226,13 @@ internal sealed partial class CampaignWorld
                         _ufos[index] = RechargeUfoShield(_ufos[index]);
                         continue;
                     }
+                    if (CreatesLandingBase(ufo, mission, trajectory))
+                    {
+                        var rule = MissionRule(mission);
+                        var handle = WorldObjectiveBaseSpawn.Deployment(campaign.Content.RuntimeRules, rule,
+                            new(0, 0, 0, 0, 0, ""), campaign.Random);
+                        SpawnMissionAlienBase(mission, rule, handle, arrived.Position);
+                    }
                     // The switch entered its FLYING branch, so this also recharges on landing.
                     _ufos[index] = RechargeUfoShield(arrived);
                     if (campaign.Options.UfoLandingAlert && arrived.Status == UfoStatus.Landed &&
@@ -282,9 +289,6 @@ internal sealed partial class CampaignWorld
         var conversion = IsSiteConversion(ufo, mission, trajectory);
         if (altitude == 0 && ufo.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun && !conversion)
             return false;
-        if (!conversion && altitude == 0 && missionRule.Objective == RuntimeMissionObjective.Base &&
-            wave.ObjectiveOnTheLandingSite && trajectory.Zone(ufo.TrajectoryPoint) == missionRule.SpawnZone)
-            return false; // spawnAlienBase is a separate world consequence.
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         ValidateWaypointAreas(region, zone);
         if (mission.MissionSiteZoneArea != -1 && wave.Objective && zone == missionRule.SpawnZone)

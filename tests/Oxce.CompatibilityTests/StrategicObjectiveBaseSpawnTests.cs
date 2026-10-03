@@ -187,6 +187,166 @@ public sealed class StrategicObjectiveBaseSpawnTests
             "Base objective texture weights select an unavailable deployment.");
     }
 
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LandingObjectiveConditionAndDefaultTextureMatchPinnedReference(bool cache)
+    {
+        var contents = Enumerable.Range(0, 3).Select(kind => StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-objective-base.rul"], cache,
+            kind == 1 ? "globe:\n  textures:\n    - {id: 0, deployments: {TEXTURE: 2, Z_UNUSED: 3}}" : null)).ToArray();
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-objective-base-spawn");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "landingRows"))
+        {
+            var kind = row[7].GetInt32();
+            var rules = contents[kind].RuntimeRules;
+            var template = rules.AlienMissions[rules.AlienMissions.GetRequired("BASE_OBJECTIVE")].Value;
+            var rule = template with
+            {
+                Objective = (RuntimeMissionObjective)row[0].GetInt32(), SpawnZone = row[4].GetInt32(),
+                SiteTypeId = kind == 0 ? "EXPLICIT" : "",
+            };
+            var wave = rule.Waves[0] with
+            {
+                ObjectiveOnTheLandingSite = row[1].GetInt32() != 0, Objective = row[2].GetInt32() != 0,
+            };
+            var random = new TestFixtures.CountingMinimumRandomSource();
+            var creates = WorldObjectiveBaseSpawn.CreatesOnLanding(rule, wave, row[3].GetInt32(),
+                row[5].GetInt32() != 0, row[6].GetInt32() != 0);
+            var id = creates ? rules.AlienDeployments.GetExternalId(WorldObjectiveBaseSpawn.Deployment(rules, rule,
+                new(0, 0, 0, 0, 0, ""), random)) : "";
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32(), row[3].GetInt32(), row[4].GetInt32(),
+                row[5].GetInt32(), row[6].GetInt32(), kind, creates ? 1 : 0, random.IntegerCalls, random.UnitCalls, id,
+            });
+            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LandingCreatesAtActualPositionRegardlessOfObjectiveFlagAndPersistsThroughTakeoff(bool cache)
+    {
+        foreach (var objective in new[] { false, true })
+        {
+            // A 100% fake-water base rule does not prevent a normal-land birth here:
+            // this path makes no preference roll or search.
+            var content = LoadWorld(cache, chance: 100, landing: true, zone: 0, objectiveFlag: objective);
+            var initial = LandingInitial(content);
+            var rules = content.RuntimeRules;
+            var region = rules.Regions[rules.Regions.GetRequired("OBJECTIVE_REGION")].Value;
+            var expected = new SplitMix64RandomSource(17);
+            WorldGeometry.RandomPoint(region, 1, -1, expected);
+            WorldGeometry.RandomPoint(region, 1, -1, expected);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            campaign = Reload(content, campaign, 17, "before-landing-base.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var alienBase = Assert.Single(after.World.AlienBases);
+            var ufo = Assert.Single(after.World.Ufos);
+            Assert.Equal(new WorldPosition(Degrees(8), Degrees(2)), alienBase.Position);
+            Assert.Equal(ufo.Position, alienBase.Position);
+            Assert.Equal("EXPLICIT", alienBase.DeploymentId);
+            Assert.Equal("RACE_B", alienBase.Race);
+            Assert.Equal(90, alienBase.MinutesSinceLastHuntMissionGeneration);
+            Assert.False(alienBase.Discovered);
+            Assert.Equal(UfoStatus.Landed, ufo.Status);
+            Assert.Equal(10, ufo.SecondsRemaining);
+            Assert.Equal(expected.State, after.RandomState);
+            Assert.Equal(13, after.Regions.Sum(value => (long)value.ActivityAlien[^1]) -
+                initial.Regions.Sum(value => (long)value.ActivityAlien[^1]));
+            campaign = Reload(content, campaign, 17, "landing-base-created.sav");
+            AdvanceUnblocked(campaign, 2);
+            Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
+            Assert.Single(campaign.Capture().World.AlienBases);
+            Assert.Equal(1UL, campaign.Capture().World.AlienBaseBirthSequence);
+            Reload(content, campaign, 17, "landing-base-takeoff.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LandingBirthIsSkippedForInvalidTerrainWrongCurrentZoneAndAbsentFlag(bool cache)
+    {
+        foreach (var scenario in new[] { "water", "zone", "flag", "conversion" })
+        {
+            var content = LoadWorld(cache, landing: true, zone: scenario == "zone" ? 1 : 0,
+                landingFlag: scenario != "flag", objectiveFlag: scenario == "conversion");
+            var initial = LandingInitial(content);
+            if (scenario == "water") initial = initial with
+            {
+                World = initial.World with { Ufos = [initial.World.Ufos[0] with
+                {
+                    Longitude = Degrees(45), Latitude = Degrees(2),
+                    Destination = WorldTargetReference.ForWaypoint(0, new(Degrees(45), Degrees(2))),
+                }] },
+            };
+            if (scenario == "conversion") initial = initial with
+            {
+                World = initial.World with { Missions = [initial.World.Missions[0] with { MissionSiteZoneArea = 0 }] },
+            };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(campaign, 1);
+            Assert.Empty(campaign.Capture().World.AlienBases);
+            Assert.Equal(0UL, campaign.Capture().World.AlienBaseBirthSequence);
+            if (scenario == "conversion")
+            {
+                Assert.Single(campaign.Capture().World.MissionSites);
+                Assert.Equal(UfoStatus.Destroyed, Assert.Single(campaign.Capture().World.Ufos).Status);
+            }
+            else Assert.Equal(UfoStatus.Landed, Assert.Single(campaign.Capture().World.Ufos).Status);
+            Reload(content, campaign, 17, "landing-base-skipped.sav");
+        }
+    }
+
+    [Fact]
+    public void LandingAndFinalWaveBirthsShareScoreIdentityAndCounterReservations()
+    {
+        var content = LoadWorld(false, landing: true, zone: 0);
+        var initial = LandingInitial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55) };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Ufos = [initial.World.Ufos[0], initial.World.Ufos[0] with { UniqueId = 10 }],
+                Missions = [initial.World.Missions[0] with { LiveUfos = 2 },
+                    new(5, "FINAL_BASE_NO_OBJECT", "OBJECTIVE_REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal([1, 2, 3], campaign.Capture().World.AlienBases.Select(value => value.Id));
+        Assert.Equal(45, campaign.Capture().Regions.Sum(value => (long)value.ActivityAlien[^1]) -
+            initial.Regions.Sum(value => (long)value.ActivityAlien[^1])); // 2 UFOs*3 and 3 births*13
+        Reload(content, campaign, 17, "composed-landing-bases.sav");
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("OBJECTIVE_BASE", int.MaxValue - 2),
+            content, new SplitMix64RandomSource(17)), "Base objective IDs are exhausted or collide.");
+        var overflow = initial with { Regions = initial.Regions.Select(value => value with { ActivityAlien = [int.MaxValue - 39] }).ToArray() };
+        AssertTimeBlocked(CampaignState.Restore(overflow, content, new SplitMix64RandomSource(17)), "UFO alien activity exceeds the supported range.");
+    }
+
+    private static CampaignSnapshot LandingInitial(RuntimeContent content)
+    {
+        var initial = Initial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 0) };
+        return initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { NextWave = 1, LiveUfos = 1 }],
+                Ufos = [new(9, "UFO_SCOUT", 4, "OBJECTIVE_LAND", 0, Degrees(8), Degrees(2),
+                    UfoStatus.Flying, WorldAltitudes.High)
+                {
+                    MissionWaveNumber = 0, Shield = 0,
+                    Destination = WorldTargetReference.ForWaypoint(0, new(Degrees(8), Degrees(2))),
+                }],
+            },
+        };
+    }
+
     private static CampaignSnapshot Initial(RuntimeContent content)
     {
         var snapshot = CreateSnapshot(content, "Base objective") with
@@ -200,7 +360,8 @@ public sealed class StrategicObjectiveBaseSpawnTests
     }
 
     private static RuntimeContent LoadWorld(bool cache, string kind = "EXPLICIT", int chance = 0,
-        bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1)
+        bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1, bool landing = false,
+        bool objectiveFlag = false, bool landingFlag = true)
     {
         var table = kind switch
         {
@@ -211,6 +372,8 @@ public sealed class StrategicObjectiveBaseSpawnTests
         };
         var explicitType = marker == "OBJECTIVE_BASE" ? "EXPLICIT" : "COLLISION_BASE";
         var site = kind == "EXPLICIT" ? explicitType : "\"\"";
+        var waveType = landing ? "UFO_SCOUT" : ufo ? "UFO_SPAWN" : "UNDEFINED";
+        var trajectory = landing ? "OBJECTIVE_LAND" : "OBJECTIVE_AIR";
         var first = chain ? "- {count: 2, trajectory: TRAJ_PATROL, timer: 0}" : "";
         var rules = $$$"""
             allowAlienBasesOnWrongTextures: {{{allow.ToString().ToLowerInvariant()}}}
@@ -230,6 +393,9 @@ public sealed class StrategicObjectiveBaseSpawnTests
             ufoTrajectories:
               - id: OBJECTIVE_AIR
                 waypoints: [[0, 3, 100], [1, 2, 80], [0, 3, 50]]
+              - id: OBJECTIVE_LAND
+                groundTimer: 2
+                waypoints: [[0, 3, 100], [1, 0, 80], [0, 1, 50]]
             alienMissions:
               - type: FINAL_BASE
                 objective: 2
@@ -238,7 +404,13 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 points: 13
                 waves:
                   {{{first}}}
-                  - {ufo: {{{(ufo ? "UFO_SPAWN" : "UNDEFINED")}}}, count: 1, trajectory: OBJECTIVE_AIR, timer: 0}
+                  - {ufo: {{{waveType}}}, count: 1, trajectory: {{{trajectory}}}, timer: 0, objective: {{{objectiveFlag.ToString().ToLowerInvariant()}}}, objectiveOnTheLandingSite: {{{(landing && landingFlag).ToString().ToLowerInvariant()}}}}
+              - type: FINAL_BASE_NO_OBJECT
+                objective: 2
+                siteType: EXPLICIT
+                spawnZone: 1
+                points: 13
+                waves: [{count: 1, trajectory: OBJECTIVE_AIR, timer: 0}]
             """;
         return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], cache, rules);
     }

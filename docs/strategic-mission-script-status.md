@@ -553,3 +553,15 @@ affected tick. Fresh/cache tests cover reference RNG order, composed completion,
 reload before/after birth, no duplicate effects, collision/overflow and deliberate
 invalid-zone/table failures. Base-generated immediate missions still stop before
 unreserved objective creation. Landing-site creation remains the next slice.
+
+Landing-site base objectives now create at the UFO's actual accepted landing
+position. The pinned landing block uses the current trajectory zone, independently
+of wave.objective; mission-site conversion has priority, and rejected landings
+create nothing. Deployment selection uses MissionArea's default texture 0 and
+does not run a fake-water preference roll/search. The expanded oracle captures
+384 landing decisions, including the inspected conversion/accepted-landing
+envelope. Fresh/cache tests compare every decision and deployment draw, exercise
+real land/water arrivals and conversion precedence, reload through takeoff and
+verify composed final-wave/landing IDs and score limits. Arrival creation shares
+site-conversion counter forecasts and checks birth identity, population and
+marker collisions before mutation. Interception/deployment remains branch 5.

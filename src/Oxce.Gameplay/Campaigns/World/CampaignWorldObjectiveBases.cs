@@ -29,7 +29,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? ReserveObjectiveBase(RuntimeAlienMissionRule rule, IReadOnlyList<MissionArea> areas,
-        CampaignTimeTrigger highest, Dictionary<string, int> reservations, ref long work)
+        CampaignTimeTrigger highest, Dictionary<string, int> reservations, ref long work, bool landing = false)
     {
         if (++_objectiveBaseBirths > 100_000 - _alienBases.Count)
             return "Base objective population exceeds the supported limit.";
@@ -76,7 +76,11 @@ internal sealed partial class CampaignWorld
                     }
             }
             if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
-            var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest);
+            if (landing && _siteBirthIdChanges?.Any(change => change.Name == marker) == true &&
+                _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+                return "Landing base creation shares decreased marker counters with same-tick world births.";
+            var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest,
+                landing ? _siteConversionCounterForecast : null);
             var end = range.Maximum + count;
             if (range.Minimum <= 0 || end > int.MaxValue ||
                 _alienBases.Any(existing => MarkerName(existing.DeploymentId) == marker && existing.Id >= range.Minimum && existing.Id < end) ||
@@ -86,8 +90,10 @@ internal sealed partial class CampaignWorld
                     owner.Transfers.Any(transfer => !transfer.Delivered && transfer.Craft is { } craft &&
                         craft.RuleId == marker && craft.Id >= range.Minimum && craft.Id < end)))
                 return "Base objective IDs are exhausted or collide.";
-            (_siteBirthIdChanges ??= []).Add(new(marker, true));
+            if (!landing) (_siteBirthIdChanges ??= []).Add(new(marker, true));
         }
+        // Patrol discovery runs after these births, including delivered craft.
+        foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
         long scoreGeometry = campaign.RegionStates.Count + (long)campaign.CountryStates.Count;
         foreach (var state in campaign.RegionStates) scoreGeometry += rules.Regions[state.Rule].Value.Areas.Count;
         foreach (var state in campaign.CountryStates) scoreGeometry += rules.Countries[state.Rule].Value.Areas.Count;
@@ -114,6 +120,40 @@ internal sealed partial class CampaignWorld
             return [rules.AlienDeployments.GetRequired("STR_ALIEN_BASE_ASSAULT")];
         }
         catch (KeyNotFoundException error) { throw new InvalidDataException("Base objective references an unavailable deployment.", error); }
+    }
+
+    private bool CreatesLandingBase(UfoSnapshot ufo, AlienMissionSnapshot mission, RuntimeUfoTrajectoryRule trajectory)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var rule = MissionRule(mission);
+        var wave = MissionWaveIndex(ufo, mission, rule);
+        return (uint)wave < (uint)rule.Waves.Count && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
+            trajectory.Altitude(ufo.TrajectoryPoint + 1) == 0 &&
+            WorldObjectiveBaseSpawn.CreatesOnLanding(rule, rule.Waves[wave], trajectory.Zone(ufo.TrajectoryPoint),
+                LandingAllowed(ufo.Destination!.Position, rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value),
+                IsSiteConversion(ufo, mission, trajectory));
+    }
+
+    private string? LandingObjectiveBaseReason(UfoSnapshot saved, CampaignTimeTrigger highest,
+        ref Dictionary<string, int>? reservations, ref long work)
+    {
+        var ufo = ProjectFlightTarget(UfoForFlight(saved, highest), highest);
+        if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying || ufo.Destination is null ||
+            WorldGeometry.Distance(ufo.Position, ufo.Destination.Position) > WorldGeometry.RadianSpeed(ufo.Speed)) return null;
+        var mission = ForecastMission(ufo.MissionId, highest);
+        if (mission.Interrupted) return null;
+        var rules = campaign.Content.RuntimeRules;
+        var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
+        if (!CreatesLandingBase(ufo, mission, trajectory)) return null;
+        try
+        {
+            var position = ufo.Destination.Position;
+            // MissionArea's default texture is zero, rather than the arrival texture.
+            return ReserveObjectiveBase(MissionRule(mission),
+                [new(position.Longitude, position.Longitude, position.Latitude, position.Latitude, 0, "")],
+                highest, reservations ??= new(StringComparer.Ordinal), ref work, landing: true);
+        }
+        catch (InvalidDataException error) { return error.Message; }
     }
 
     private void CompleteBaseObjective(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
