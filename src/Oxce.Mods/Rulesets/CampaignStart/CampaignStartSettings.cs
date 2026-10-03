@@ -28,6 +28,8 @@ public sealed class CampaignStartSettings
         HunterKillerFastRetarget = builder.HunterKillerFastRetarget;
         AllowAlienBasesOnWrongTextures = builder.AllowAlienBasesOnWrongTextures;
         AllowCountriesToCancelAlienPact = builder.AllowCountriesToCancelAlienPact;
+        BuildInfiltrationBaseCloseToTheCountry = builder.BuildInfiltrationBaseCloseToTheCountry;
+        InfiltrateRandomCountryInTheRegion = builder.InfiltrateRandomCountryInTheRegion;
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(builder.StartingBases));
         StartingTime = new CampaignStartTime(
@@ -102,7 +104,8 @@ public sealed class CampaignStartSettings
         IReadOnlyList<YamlMappingNode> globeLayers,
         int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
-        double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true)
+        double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true,
+        bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false)
     {
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
@@ -113,6 +116,8 @@ public sealed class CampaignStartSettings
         HunterKillerFastRetarget = hunterKillerFastRetarget;
         AllowAlienBasesOnWrongTextures = allowAlienBasesOnWrongTextures;
         AllowCountriesToCancelAlienPact = allowCountriesToCancelAlienPact;
+        BuildInfiltrationBaseCloseToTheCountry = buildInfiltrationBaseCloseToTheCountry;
+        InfiltrateRandomCountryInTheRegion = infiltrateRandomCountryInTheRegion;
         GlobeLayers = Array.AsReadOnly(globeLayers.ToArray());
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(startingBases));
@@ -159,6 +164,8 @@ public sealed class CampaignStartSettings
     public bool HunterKillerFastRetarget { get; }
     public bool AllowAlienBasesOnWrongTextures { get; }
     public bool AllowCountriesToCancelAlienPact { get; }
+    public bool BuildInfiltrationBaseCloseToTheCountry { get; }
+    public bool InfiltrateRandomCountryInTheRegion { get; }
     public CampaignStartTime StartingTime { get; }
     public int StartingDifficulty { get; }
     public int CostHireEngineer { get; }
@@ -216,6 +223,8 @@ internal sealed class CampaignStartSettingsBuilder
     public bool HunterKillerFastRetarget { get; set; } = true;
     public bool AllowAlienBasesOnWrongTextures { get; set; } = true;
     public bool AllowCountriesToCancelAlienPact { get; set; }
+    public bool BuildInfiltrationBaseCloseToTheCountry { get; set; }
+    public bool InfiltrateRandomCountryInTheRegion { get; set; }
     public int[] BuyPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public int[] SellPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public Dictionary<StartingBaseVariant, YamlMappingNode> StartingBases { get; } = [];

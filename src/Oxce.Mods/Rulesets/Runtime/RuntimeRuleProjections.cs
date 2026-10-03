@@ -365,6 +365,8 @@ public sealed record RuntimeCampaignSettings(
     public bool HunterKillerFastRetarget { get; init; } = true;
     public bool AllowAlienBasesOnWrongTextures { get; init; } = true;
     public bool AllowCountriesToCancelAlienPact { get; init; }
+    public bool BuildInfiltrationBaseCloseToTheCountry { get; init; }
+    public bool InfiltrateRandomCountryInTheRegion { get; init; }
     public IReadOnlyList<int> BuyPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<int> SellPriceCoefficients { get; init; } = Array.AsReadOnly<int>([100, 100, 100, 100, 100]);
     public IReadOnlyList<string> HireScientistsBaseFunctions { get; init; } = [];
