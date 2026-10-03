@@ -26,7 +26,7 @@ check score, notifications, save/reload, delayed UFO cleanup and atomic ID/score
 guards. Existing selected-waypoint scenarios now continue through conversion.
 
 This first slice enables conversion on ticks below the half-hour trigger. Combined
-counter forecasts, dormant respawn links and craft follower
+counter forecasts and craft follower
 transfer retain specific guards. The branch 5 landing/interception and branch 6
 payload/month boundaries remain. The headless gate is open; branch 4d is untouched.
 
@@ -36,3 +36,12 @@ deployment, matching the reference's optional Mod lookup. This metadata does not
 replace the site's marker, duration or strategic deployment. Captured custom rows,
 race/missing-rule cases and transition reloads cover the behavior; existing save
 fields are reused without changing the external schema.
+
+The third slice links a converted site to its originating UFO when
+`respawnUfoAfterSiteDespawn` is enabled. The UFO remains dormant with its live
+mission count and prepared next destination. The arrival still recharges shields
+and continues current-tick fallthrough, matching the flying switch branch;
+subsequent dormant ticks do neither. Site expiry uses the existing lift capability
+to reactivate it. All captured respawn/custom/coordinate combinations and
+fresh/cache creation-to-expiry reloads pass. Missing terrain outcomes still
+destroy the UFO instead of creating a dangling dormant link.

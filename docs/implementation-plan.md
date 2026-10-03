@@ -512,3 +512,7 @@ and craft follower transfer retain specific guards. See
 The second conversion slice adds optional custom deployment metadata from
 effective UFO race stats. Captured custom rows, missing references, race overrides
 and reloads pass. It retains the primary strategic deployment and its duration.
+
+The third slice adds dormant respawn linkage for converted UFOs and transition
+reloads through site expiry/reactivation. Craft follower transfer and combined
+half-hour conversion remain specific guards; the headless gate remains open.
