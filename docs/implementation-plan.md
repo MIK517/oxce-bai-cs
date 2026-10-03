@@ -708,3 +708,9 @@ next two slices. Combat and deployment remain branch 5.
   endurance, checksums and allocation checks. Formatting verification, code-map
   and diff checks pass. The reference checkout is clean and obsolete probe
   object output was removed. Branch 4c remains open; 4d has not started.
+
+- 4c site-script candidate slice: pinned the exact processCommand pruning loop
+  in strategic-mission-site-candidates. The gameplay projection matches 256
+  combinations of occupied regions, recent point locations, rectangular
+  texture/direct/site-type eligibility, missing zones and invalid negative
+  zones. Live site command scheduling remains the next slice.
