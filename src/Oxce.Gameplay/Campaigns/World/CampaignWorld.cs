@@ -28,8 +28,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         registry.Restore(Restore);
         registry.Validate(Validate);
         registry.Initialize(Initialize);
-        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest) => LiveWorldReason(highest));
+        registry.Preflight(CampaignPreflightOrder.WorldSimulation, "world simulation", (_, highest, speed) => LiveWorldReason(highest, speed));
         RegisterUfoOperations(registry);
+        RegisterHunting(registry);
         RegisterMissionOperations(registry);
         RegisterUfoDetection(registry);
         RegisterSiteOperations(registry);
@@ -143,7 +144,9 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private WorldSnapshot Capture() => new()
     {
         Missions = CampaignSnapshot.ReadOnly(_missions),
-        Ufos = CampaignSnapshot.ReadOnly(_ufos),
+        Ufos = CampaignSnapshot.ReadOnly(_ufos.Select(ufo => ufo.Destination is { } destination &&
+            (ufo.Hunting || ufo.Escorting)
+            ? ufo with { Destination = Resolve(destination) ?? destination } : ufo)),
         Waypoints = CampaignSnapshot.ReadOnly(_waypoints),
         MissionSites = CampaignSnapshot.ReadOnly(_sites),
         AlienBases = CampaignSnapshot.ReadOnly(_alienBases),
@@ -432,7 +435,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     }
 
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
-    private string? LiveWorldReason(CampaignTimeTrigger highest)
+    private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
         _dailyResearchForecast = null;
         _siteBirthIdChanges = null;
@@ -449,6 +452,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
         if (SiteFollowerWorkReason(highest) is { } followerWorkReason) return followerWorkReason;
         if (SiteUfoRepairReason(highest) is { } repairReason) return repairReason;
+        if (HuntingReason(highest, speed) is { } huntingReason) return huntingReason;
         var ufoReason = UfoMovementReason(highest);
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest, guaranteedResearch);

@@ -23,3 +23,18 @@ is always due. Mod::hunterKillerFastRetarget defaults true and survives fresh/ca
 projection. The redundant-HK-alert option defaults true, honors fixed user options
 and persists through the save adapter. Compiler revision 33 invalidates stale caches.
 Eleven focused tests pass. The next slice connects live retargeting and movement.
+
+Live imported hunters and escorts now use registered ten-minute retargeting after
+base hunting, plus the explicit slow-speed fast path before five-second movement.
+Retargeting honors projected fuel returns, preserves original waypoints, allocates
+contact markers and publishes gameplay-owned hunt notifications. Alert suppression
+does not prevent revelation or targeting. Movement follows craft/UFO positions in
+reference list order; snapshot capture resolves final target coordinates without
+changing movement. Deleted escort targets restore their original waypoint.
+
+Combat arrivals stop atomically before mutation. Retargeting involving same-tick
+grounded auto-patrol relaunches or airborne craft transfers retains specific
+forecast guards. Escort chains/cycles and malformed originals fail intentionally.
+Deletion scans are bounded before nested work. Future hunter wave creation remains
+guarded until spawn/retarget forecasts compose; this slice enables loaded actors.
+The headless gate remains open and branch 4d is untouched.

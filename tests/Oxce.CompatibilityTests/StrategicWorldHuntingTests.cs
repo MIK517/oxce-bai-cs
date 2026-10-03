@@ -3,6 +3,7 @@ using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Core.Random;
+using Oxce.Mods.Rulesets.Content;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 using Oxce.TestSupport;
 using Xunit;
@@ -111,6 +112,208 @@ public sealed class StrategicWorldHuntingTests
         var campaign = CampaignState.Restore(CreateSnapshot(content, "Hunt settings"), content, new SplitMix64RandomSource(81));
         Assert.Equal(!disabled, campaign.Options.SuppressRedundantHunterAlert);
         Reload(content, campaign, 81, "hunting-settings.sav");
+    }
+
+    private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
+
+    private static CampaignSnapshot HuntingSnapshot(RuntimeContent content, bool escort = false)
+    {
+        var initial = CreateUfoTransitCampaign(content, new(1, 1, 1, 1999, 1, 0, 0),
+            ufoRuleId: escort ? "ESCORT_HUNTER" : "HUNTER", speed: 2200).Capture();
+        initial = initial with
+        {
+            World = initial.World with { Ufos = [initial.World.Ufos[0] with { HunterKiller = true, Escort = escort }] },
+        };
+        return initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 0,
+                Longitude = 0.45,
+                Latitude = 0.21,
+                Destination = null,
+            },
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LiveHuntersSelectRevealMoveAndReload(bool cache)
+    {
+        var content = Load(cache);
+        var initial = HuntingSnapshot(content);
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(10));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        var alert = Assert.Single(result.Events.OfType<UfoStartedHunting>());
+        Assert.Equal(9, alert.UniqueId);
+        var after = campaign.Capture();
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.True(ufo.Hunting);
+        Assert.True(ufo.Detected);
+        Assert.False(ufo.Escorting);
+        Assert.Equal(new WorldPosition(1, 0.6), ufo.OriginalWaypoint);
+        Assert.Equal(WorldTargetKind.Craft, ufo.Destination!.Kind);
+        Assert.Equal(3300, ufo.Speed);
+        Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, new(0.45, 0.21), WorldGeometry.RadianSpeed(3300)), ufo.Position);
+        var restored = Reload(content, campaign, 81, "live-hunter.sav");
+        AdvanceOne(restored);
+        Assert.True(Assert.Single(restored.Capture().World.Ufos).Hunting);
+    }
+
+    [Theory]
+    [InlineData(CampaignTimeSpeed.FiveSeconds, true, false, true)]
+    [InlineData(CampaignTimeSpeed.OneMinute, true, false, true)]
+    [InlineData(CampaignTimeSpeed.FiveMinutes, true, false, false)]
+    [InlineData(CampaignTimeSpeed.FiveSeconds, false, false, false)]
+    [InlineData(CampaignTimeSpeed.OneDay, false, true, true)]
+    public void LiveRetargetingUsesSelectedSpeedAndTenMinuteCaller(CampaignTimeSpeed speed, bool fast, bool tenMinutes, bool hunts)
+    {
+        var content = Load(overlay: fast ? null : "hunterKillerFastRetarget: false\n");
+        var initial = HuntingSnapshot(content);
+        if (tenMinutes) initial = initial with { Time = new(1, 1, 1, 1999, 1, 9, 55) };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(hunts ? 10 : 3) { SelectedSpeed = speed });
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Equal(hunts ? 1 : 3, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Equal(hunts, Assert.Single(campaign.Capture().World.Ufos).Hunting);
+        Assert.Equal(hunts ? 1 : 0, result.Events.OfType<UfoStartedHunting>().Count());
+        Reload(content, campaign, 81, "speed-selected-hunter.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EscortsFollowUfoListOrderAndRestoreAfterDeletion(bool targetFirst)
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content, escort: true);
+        var hunter = initial.World.Ufos[0];
+        var target = hunter with
+        { UniqueId = 10, Id = 4, RuleId = "UFO_SCOUT", HunterKiller = false, Escort = false, Longitude = 0.5, Latitude = 0.25 };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = 2 }],
+                Ufos = targetFirst ? [target, hunter] : [hunter, target],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        var escorted = after.World.Ufos.Single(ufo => ufo.UniqueId == 9);
+        var targetPosition = targetFirst ? after.World.Ufos.Single(ufo => ufo.UniqueId == 10).Position : target.Position;
+        Assert.True(escorted.Escorting);
+        Assert.False(escorted.Hunting);
+        Assert.Equal(10, escorted.Destination!.UniqueId);
+        Assert.Equal(WorldGeometry.Move(hunter.Position, targetPosition, WorldGeometry.RadianSpeed(2200)), escorted.Position);
+        var restored = Reload(content, campaign, 81, "live-escort.sav");
+        var deleted = restored.Capture();
+        deleted = deleted with { World = deleted.World with { Ufos =
+            deleted.World.Ufos.Select(ufo => ufo.UniqueId == 10 ? ufo with { Status = UfoStatus.Destroyed } : ufo).ToArray() } };
+        var cleanup = CampaignState.Restore(deleted, content, new SplitMix64RandomSource(81));
+        AdvanceOne(cleanup);
+        var survivor = Assert.Single(cleanup.Capture().World.Ufos);
+        Assert.False(survivor.Escorting);
+        Assert.Equal(new WorldPosition(1, 0.6), survivor.Destination!.Position);
+        Assert.Null(survivor.OriginalWaypoint);
+        Reload(content, cleanup, 81, "deleted-escort-target.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HunterInterceptionAndMarkerExhaustionAreAtomic(bool marker)
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content);
+        initial = initial with { World = initial.World with
+        { Ufos = [initial.World.Ufos[0] with { Id = marker ? 0 : 3, Longitude = marker ? 0.4 : 0.45, Latitude = marker ? 0.2 : 0.21 }] } };
+        if (marker) initial = initial.WithNextId("STR_UFO", int.MaxValue);
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), marker
+            ? "UFO contact marker IDs are exhausted or collide with a saved UFO."
+            : "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RedundantHunterAlertsFollowTheOption(bool suppress)
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content);
+        initial = initial with { Options = initial.Options with { SuppressRedundantHunterAlert = suppress } };
+        initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with
+        { Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.4, 0.2) { UniqueId = 9 } } });
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Equal(suppress ? 0 : 1, result.Events.OfType<UfoStartedHunting>().Count());
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Hunting);
+        Reload(content, campaign, 81, "redundant-hunt-alert.sav");
+    }
+
+    [Fact]
+    public void EscortCyclesStopBeforeRecursiveMovementForecasts()
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content, escort: true);
+        initial = initial with { World = initial.World with
+        {
+            Ufos = [initial.World.Ufos[0] with
+            {
+                Escorting = true,
+                OriginalWaypoint = new(1, 0.6),
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.4, 0.2) { UniqueId = 9 },
+            }],
+        } };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO escort chains require additional movement forecasts.");
+    }
+
+    [Fact]
+    public void IgnoredOriginalCraftRestoresThePreparedWaypoint()
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content);
+        initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { LowFuel = true } });
+        initial = initial with { World = initial.World with
+        {
+            Ufos = [initial.World.Ufos[0] with
+            {
+                Hunting = true,
+                OriginalWaypoint = new(1, 0.6),
+                Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21),
+            }],
+        } };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceOne(campaign);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.False(ufo.Hunting);
+        Assert.Null(ufo.OriginalWaypoint);
+        Assert.Equal(new WorldPosition(1, 0.6), ufo.Destination!.Position);
+        Reload(content, campaign, 81, "ignored-hunt-target.sav");
+    }
+
+    [Fact]
+    public void DestroyedFollowerCleanupIsBoundedBeforeItsNestedScan()
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content);
+        initial = initial with { World = initial.World with
+        {
+            Missions = [initial.World.Missions[0] with { LiveUfos = 1001 }],
+            Ufos = Enumerable.Range(0, 1001).Select(index => initial.World.Ufos[0] with
+            { UniqueId = 9 + index, Id = 3 + index, HunterKiller = false, Status = UfoStatus.Destroyed }).ToArray(),
+        } };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Destroyed UFO follower cleanup exceeds the supported work limit.");
     }
 
 }

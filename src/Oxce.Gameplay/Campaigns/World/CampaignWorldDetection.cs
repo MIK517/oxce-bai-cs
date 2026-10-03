@@ -80,7 +80,7 @@ internal sealed partial class CampaignWorld
                 if (reason is not null) return reason;
                 if (!ufo.Detected && !rule.NoAlert && !_ignoredUfoContacts.Contains(ufo.Id))
                 {
-                    if (ufo.Id == 0) possibleMarkerIds++;
+                    if (ufo.Id == 0 && !PlannedHuntMarker(ufo)) possibleMarkerIds++;
                     if (ufo.Status == UfoStatus.Landed && ufo.LandId == 0) possibleLandingIds++;
                 }
             }
@@ -181,7 +181,7 @@ internal sealed partial class CampaignWorld
             }
             if (EndsUfoFlightPass(ufo, highest)) break;
         }
-        if (!CanAllocateUfoMarkerIds(possibleMarkerIds))
+        if (!CanAllocateUfoMarkerIds(possibleMarkerIds + _possibleHuntMarkerIds))
             return "UFO contact marker IDs are exhausted or collide with a saved UFO.";
         return CanAllocateUfoMarkerIds(possibleLandingIds, landing: true)
             ? null : "UFO landing marker IDs are exhausted or collide with a saved UFO.";
