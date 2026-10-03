@@ -18,6 +18,8 @@ function StatementBlock([string]$Text,[string]$Match) {
  return $Text.Substring($start,$end-$start)
 }
 $template=$template.Replace('// ELIGIBILITY',(StatementBlock $country 'bool Country::canBeInfiltrated()'))
+$rng=[IO.File]::ReadAllText((Join-Path $reference 'src/Engine/RNG.h'))
+$template=$template.Replace('// SHUFFLE',(StatementBlock $rng 'void shuffle(std::vector<T> &list)'))
 $template=$template.Replace('// PACT',(StatementBlock $country 'void Country::setNewPact()'))
 $work=Join-Path $repository 'artifacts/reference-strategic-infiltration'
 [IO.Directory]::CreateDirectory($work) | Out-Null

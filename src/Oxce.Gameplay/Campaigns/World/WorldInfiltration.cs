@@ -9,6 +9,18 @@ internal static class WorldInfiltration
 {
     internal static bool CanInfiltrate(bool pact, bool newPact, bool cancelPact) =>
         !pact && !newPact || pact && cancelPact;
+    internal static IReadOnlyList<T> CountryOrder<T>(IReadOnlyList<T> countries, bool shuffle, IRandomSource random)
+    {
+        if (!shuffle) return countries;
+        var result = countries.ToArray();
+        for (var index = result.Length - 1; index > 0; index--)
+        {
+            var other = random.NextInclusive(0, index);
+            (result[index], result[other]) = (result[other], result[index]);
+        }
+        return result;
+    }
+
     internal static WorldObjectiveBaseSpawn.Selection? SelectRegion(RuntimeRuleCatalog rules,
         RuntimeAlienMissionRule mission, RuntimeRegionRule region, IRandomSource random) =>
         WorldObjectiveBaseSpawn.Select(region, mission.SpawnZone, mission.SiteTypeId.Length == 0,

@@ -14,8 +14,6 @@ internal sealed partial class CampaignWorld
     {
         if (rule.EndlessInfiltration) return "Endless infiltration requires repeating wave forecasts.";
         var rules = campaign.Content.RuntimeRules;
-        if (rules.Campaign.InfiltrateRandomCountryInTheRegion)
-            return "Infiltration country shuffle is unavailable.";
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         work += (long)campaign.CountryStates.Count * (region.Areas.Count + 1L);
         if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
@@ -75,7 +73,8 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        foreach (var country in campaign.CountryStates)
+        foreach (var country in WorldInfiltration.CountryOrder(campaign.CountryStates,
+            rules.Campaign.InfiltrateRandomCountryInTheRegion, campaign.Random))
         {
             if (!Eligible(country, region)) continue;
             var selection = rules.Campaign.BuildInfiltrationBaseCloseToTheCountry
