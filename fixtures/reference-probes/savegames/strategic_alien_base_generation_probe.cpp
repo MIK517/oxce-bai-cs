@@ -108,5 +108,12 @@ int main(){
   interruptDaily(game);
   std::cout<<'['<<researched<<','<<interrupted<<','<<mission._interrupted<<','<<mission.isOver()<<']';
  }
+ std::cout<<"],\"liveInterruptionRows\":[";first=true;
+ for(bool researched:{false,true})for(bool interrupted:{false,true}){
+  if(!first)std::cout<<',';first=false;RuleAlienMission rule;rule.objective=0;
+  AlienMission mission{rule};mission._interrupted=interrupted;mission._liveUfos=1;Game game;game.save.researched=researched;game.save.missions={&mission};
+  interruptDaily(game);
+  std::cout<<'['<<researched<<','<<interrupted<<','<<mission._interrupted<<','<<mission.isOver()<<']';
+ }
  std::cout<<"]}\n";
 }

@@ -119,8 +119,8 @@ internal sealed partial class CampaignWorld
             // not greater than one step, including the reference's NaN fallback.
             if (!(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
             {
-                var mission = FindMission(ufo.MissionId);
-                if (mission is null) return "UFO mission link requires world simulation.";
+                if (FindMission(ufo.MissionId) is null) return "UFO mission link requires world simulation.";
+                var mission = ForecastMission(ufo.MissionId, highest);
                 var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
                     campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
                 if (mission.AlienBase is not null)

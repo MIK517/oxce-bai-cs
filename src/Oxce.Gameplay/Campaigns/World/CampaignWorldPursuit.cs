@@ -116,7 +116,7 @@ internal sealed partial class CampaignWorld
         var position = WorldGeometry.Move(ufo.Position, ufo.Destination!.Position, WorldGeometry.RadianSpeed(ufo.Speed));
         if (WorldGeometry.Distance(ufo.Position, ufo.Destination.Position) > WorldGeometry.RadianSpeed(ufo.Speed))
             return (position, ufo.Status, ufo.Speed);
-        var mission = FindMission(ufo.MissionId)!;
+        var mission = ForecastMission(ufo.MissionId, highest);
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
         if (mission.Interrupted || ufo.TrajectoryPoint + 1 >= trajectory.Waypoints.Count)

@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_alien_base_generation_probe.cpp",
-      "size": 7459,
-      "sha256": "3a0bdfc7830c465273eb6e21670afc026b47c33ee7230ab068fd2e3327666c74"
+      "size": 7948,
+      "sha256": "a5c8474a11833d341c09c27eb065d154ceb1c5b86e3a72630b2d10aa8b5b91ad"
     },
     {
       "path": "tools/capture-strategic-alien-base-generation-reference.ps1",

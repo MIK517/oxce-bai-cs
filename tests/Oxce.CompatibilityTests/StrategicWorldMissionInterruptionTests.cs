@@ -125,13 +125,80 @@ public sealed class StrategicWorldMissionInterruptionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AGuaranteedInterruptionWithLiveUfosBlocksAtomically(bool sameDay)
+    public void AGuaranteedInterruptionWithLiveUfosContinuesUntilWaypointThenCleansUp(bool sameDay)
     {
         var content = Load();
         var snapshot = Live(content) with { CompletedResearch = sameDay ? [] : ["GEN_STOP"] };
         if (sameDay) snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Research = [new("GEN_STOP", 1, 0, 1)] }] };
-        AssertTimeBlocked(Restore(content, snapshot),
-            "Alien mission interruption with live UFOs requires world simulation.");
+        var campaign = Restore(content, snapshot);
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Missions).Interrupted);
+        Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
+        var restored = Reload(content, campaign, 40, "live-interruption.sav");
+        var beforeArrival = restored.Capture();
+        var ufo = Assert.Single(beforeArrival.World.Ufos);
+        restored = Restore(content, beforeArrival with
+        {
+            World = beforeArrival.World with { Ufos = [ufo with { Longitude = ufo.Destination!.Longitude, Latitude = ufo.Destination.Latitude }] },
+        });
+        AdvanceOne(restored);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(restored.Capture().World.Ufos).Status);
+        Assert.Equal(1, Assert.Single(restored.Capture().World.Missions).LiveUfos);
+        restored = Reload(content, restored, 40, "interrupted-arrival.sav");
+        AdvanceOne(restored);
+        Assert.Empty(restored.Capture().World.Ufos);
+        Assert.Equal(0, Assert.Single(restored.Capture().World.Missions).LiveUfos);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LiveInterruptionMatchesReferenceAndTerminalArrivalSkipsCraftCombat(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "liveInterruptionRows"))
+        {
+            var snapshot = Live(content);
+            var ufo = Assert.Single(snapshot.World.Ufos);
+            snapshot = snapshot with
+            {
+                CompletedResearch = row[0].GetInt32() != 0 ? ["GEN_STOP"] : [],
+                World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { Interrupted = row[1].GetInt32() != 0 }] },
+            };
+            var campaign = Restore(content, snapshot);
+            AdvanceOne(campaign);
+            Assert.Equal(row[2].GetInt32() != 0, Assert.Single(campaign.Capture().World.Missions).Interrupted);
+            Assert.Equal(0, row[3].GetInt32());
+            Reload(content, campaign, 40, "live-interruption-row.sav");
+        }
+        var arriving = Live(content) with { CompletedResearch = ["GEN_STOP"] };
+        var target = Assert.Single(arriving.World.Ufos) with { Destination = WorldTargetReference.ForWaypoint(0, new(0.2001, 0.1)) };
+        arriving = arriving with
+        {
+            World = arriving.World with { Ufos = [target with { Longitude = target.Destination!.Longitude, Latitude = target.Destination.Latitude, Detected = true }] },
+        };
+        arriving = arriving.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Speed = 6000,
+                Fuel = 100,
+                Longitude = target.Destination!.Longitude,
+                Latitude = target.Destination.Latitude,
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id, target.Longitude, target.Latitude) { UniqueId = target.UniqueId },
+            }
+        });
+        var terminal = Restore(content, arriving);
+        AdvanceUnblocked(terminal, 1);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(terminal.Capture().World.Ufos).Status);
+        var follower = terminal.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+        Assert.Equal(0.2001, follower.Longitude);
+        Assert.Equal(0.1, follower.Latitude);
+        Assert.Equal(40, follower.Fuel); // The ten-minute handler still precedes terminal flight.
+        Assert.Equal(WorldTargetKind.Ufo, follower.Destination!.Kind); // No craft target-loss pass yet.
     }
 
     [Fact]
