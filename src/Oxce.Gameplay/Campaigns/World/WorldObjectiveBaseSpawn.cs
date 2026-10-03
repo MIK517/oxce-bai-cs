@@ -7,6 +7,10 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>AlienMission::think's base objective and chooseAlienBaseType, without state effects.</summary>
 internal static class WorldObjectiveBaseSpawn
 {
+    internal static bool CreatesOnLanding(RuntimeAlienMissionRule rule, RuntimeMissionWave wave, int currentZone,
+        bool allowed, bool conversion) => allowed && !conversion && rule.Objective == RuntimeMissionObjective.Base &&
+        wave.ObjectiveOnTheLandingSite && currentZone == rule.SpawnZone;
+
     internal readonly record struct Selection(WorldPosition Position, RuleHandle<AlienDeploymentRuleFamily> Deployment);
 
     internal static RuleHandle<AlienDeploymentRuleFamily> Deployment(

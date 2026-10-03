@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "strategic-objective-base-spawn",
-  "description": "Exact final base-objective search and deployment precedence, dynamic retries, technical containment, weighted and invalid texture tables, fallback suppression.",
+  "description": "Exact final base-objective search and deployment precedence, dynamic retries, technical containment, weighted and invalid texture tables, fallback suppression. Landing-site flags, current zone, allowed landing and site-conversion precedence.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "AlienMission::think OBJECTIVE_BASE block, chooseAlienBaseType and Texture::getRandomDeployment inserted verbatim",
+      "sources": "AlienMission::think OBJECTIVE_BASE block, chooseAlienBaseType and Texture::getRandomDeployment inserted verbatim; landing base condition/payload with controlled accepted-landing and conversion envelope",
       "capture": "tools/capture-strategic-objective-base-spawn-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; controlled geometry and creation collaborators"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_objective_base_spawn_probe.cpp",
-      "size": 4121,
-      "sha256": "bf59d810a4a52d4ab2564f481353f2f7c7d350137077a7773c410147c22be4ef"
+      "size": 5470,
+      "sha256": "c19f71235255867de466cc569ddd639f94e6a528b8d7119167f715b7d58b1f73"
     },
     {
       "path": "tools/capture-strategic-objective-base-spawn-reference.ps1",
-      "size": 3055,
-      "sha256": "9245e75ae758b5c2983f6ff2d4cc89ecaec273733a44db527ad140d89bb49bc3"
+      "size": 3238,
+      "sha256": "efe34e9a21ed7aa23ee4bd3232679070908c2edc483c47dbceb75447a793cec6"
     },
     {
       "path": "fixtures/public/savegames/strategic-objective-base.rul",

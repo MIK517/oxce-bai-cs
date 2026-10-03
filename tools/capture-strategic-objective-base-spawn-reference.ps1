@@ -19,7 +19,8 @@ function StatementBlock([string]$Text,[string]$Match) {
 }
 $body=StatementBlock $mission 'if (_rule.getObjective() == OBJECTIVE_BASE && _nextWave == _rule.getWaveCount() && !wave.objectiveOnTheLandingSite)'
 $template=$template.Replace('// OBJECTIVE',$body)
-$template=$template.Replace('// CHOOSE',(StatementBlock $mission 'AlienDeployment *AlienMission::chooseAlienBaseType('))
+$template=$template.Replace('// LANDING',(StatementBlock $mission 'if (_rule.getObjective() == OBJECTIVE_BASE && wave.objectiveOnTheLandingSite && trajectory.getZone(curWaypoint)'))
+$template=$template.Replace('// CHOOSE' ,(StatementBlock $mission 'AlienDeployment *AlienMission::chooseAlienBaseType('))
 $texture=[IO.File]::ReadAllText((Join-Path $reference 'src/Mod/Texture.cpp'))
 $template=$template.Replace('// TEXTURE',(StatementBlock $texture 'std::string Texture::getRandomDeployment('))
 $work=Join-Path $repository 'artifacts/reference-strategic-objective-base-spawn'

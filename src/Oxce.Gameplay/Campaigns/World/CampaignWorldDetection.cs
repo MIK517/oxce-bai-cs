@@ -39,7 +39,7 @@ internal sealed partial class CampaignWorld
             break;
         }
         var dailyBases = highest >= CampaignTimeTrigger.OneDay && _alienBases.Count != 0;
-        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases) return null;
+        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases && _objectiveBaseScores is not { Count: > 0 }) return null;
         var regionTotals = campaign.RegionStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         var countryTotals = campaign.CountryStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         if (dailyBases)

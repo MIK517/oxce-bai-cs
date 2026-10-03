@@ -23,6 +23,8 @@ internal sealed partial class CampaignWorld
                 if (UfoSiteReason(ufo, ForecastMission(ufo.MissionId, highest), highest,
                         reservations ??= new(StringComparer.Ordinal), ref work) is { } reason) return reason;
             }
+            if (LandingObjectiveBaseReason(saved, highest, ref reservations, ref work) is { } landingReason)
+                return landingReason;
             if (!EndsUfoFlightPass(saved, highest)) continue;
             last = index;
             craftPassSkipped = true;
