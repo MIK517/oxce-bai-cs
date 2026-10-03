@@ -322,6 +322,22 @@ void rectangleOriginRows(){
  RNG::fraction=0.0;
 }
 
+void landRectangleOriginRows(){
+ bool first=true;
+ for(int mode=0;mode<3;mode++)for(double fraction:{0.0,0.25}){
+  if(!first)std::cout<<',';first=false;
+  Game game;Globe globe;AlienMission mission;
+  auto& region=game.mod.region;region._lonMin={0};region._lonMax={mode==2?0.1:1};region._latMin={-1};region._latMax={1};
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  region._missionZones[4].areas[0]={Deg2Rad(12),Deg2Rad(16),Deg2Rad(1),Deg2Rad(3)};
+  game.mod.trajectory.secondAltitude=0;game.mod.ufo.fakeChance=mode==1?100:0;
+  RNG::calls=0;RNG::fraction=fraction;
+  auto* ufo=mission.spawnUfo(game.save,game.mod,globe,mission._rule.wave,game.mod.trajectory);
+  std::cout<<'['<<mode<<','<<fraction<<",\""<<number(ufo->_lon)<<"\",\""<<number(ufo->_lat)<<"\",\""<<number(ufo->_dest->_lon)<<"\",\""<<number(ufo->_dest->_lat)<<"\","<<RNG::calls<<']';delete ufo;
+ }
+ RNG::fraction=0.0;
+}
+
 void aggressiveRows(){
  bool first=true;
  for(bool enabled:{false,true})for(bool inside:{false,true}){
@@ -342,4 +358,4 @@ void aggressiveRows(){
 }
 
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"],\"selectedSiteRows\":[";selectedSiteRows();std::cout<<"],\"earthRectangleRows\":[";earthRectangleRows();std::cout<<"],\"aggressiveRows\":[";aggressiveRows();std::cout<<"],\"rectangleOriginRows\":[";rectangleOriginRows();std::cout<<"]}\n";}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"],\"selectedSiteRows\":[";selectedSiteRows();std::cout<<"],\"earthRectangleRows\":[";earthRectangleRows();std::cout<<"],\"aggressiveRows\":[";aggressiveRows();std::cout<<"],\"rectangleOriginRows\":[";rectangleOriginRows();std::cout<<"],\"landRectangleOriginRows\":[";landRectangleOriginRows();std::cout<<"]}\n";}

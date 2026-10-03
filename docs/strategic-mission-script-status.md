@@ -349,3 +349,14 @@ membership forecasts remain a refinement. Captured rectangleOriginRows,
 fresh/cache tests, crossing-country awards, overflow and overlap guards, and
 transition reloads cover the slice. Land-tested and selected landing rectangles
 remain separate capabilities. Fifteen focused compatibility tests pass.
+
+### Additional batch, slice 2: land-tested rectangular origins
+
+Ordinary origin getWaypoint selection now accepts rectangular land candidates,
+including the fake-water choice, geographic region restriction and forced
+hundredth candidate. Existing LandPoint owns the draws; pure spherical forecasts
+still prove safe separation before spawning. A per-tick land-query budget counts
+polygon vertices, region checks and all 100 possible retries before mutation.
+AlienMission::getLandPoint/getWaypoint/spawnUfo back landRectangleOriginRows;
+fresh/cache tests assert exact interpolation, draw counts, actual scoring and
+reload. A populated retry scenario checks atomic resource-limit rejection.

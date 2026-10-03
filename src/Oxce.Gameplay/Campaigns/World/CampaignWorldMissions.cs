@@ -26,6 +26,7 @@ internal sealed partial class CampaignWorld
         long sourceBaseWork = 0;
         long cleanupWork = 0;
         long geometryWork = 0;
+        long landWork = 0;
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = MissionAfterDailyResearch(_missions[index], guaranteedResearch);
@@ -62,6 +63,8 @@ internal sealed partial class CampaignWorld
                 {
                     var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[rule.Waves[step.NextWave].Trajectory!.Value].Value;
                     var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
+                    landWork += SpawnOriginLandWork(step, rule, trajectory, region);
+                    if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
                     TryOrdinarySpawnPositions(step, rule, trajectory, region, out var origins);
                     TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
                     geometryWork += (long)origins.Count * destinations.Count;
@@ -285,10 +288,6 @@ internal sealed partial class CampaignWorld
             var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(0));
             positions = [];
             if (areas.Count > 256) return false;
-            // Land-point origins have a separate retry path, enabled by the next slice.
-            var landTested = rule.Objective != RuntimeMissionObjective.Supply && trajectory.Altitude(1) == 0 ||
-                rule.Objective == RuntimeMissionObjective.Supply && trajectory.Altitude(0) == 0;
-            if (landTested && areas.Any(static area => !area.IsPoint)) return false;
             var result = new SpawnArea[areas.Count];
             for (var index = 0; index < areas.Count; index++)
                 if (!TrySpawnArea(areas[index], out result[index])) return false;
@@ -348,6 +347,26 @@ internal sealed partial class CampaignWorld
     }
 
     private readonly record struct SpawnArea(WorldPosition Center, double Radius);
+
+    private const long MaximumSpawnLandWork = 10_000_000;
+
+    private long SpawnOriginLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
+    {
+        var wave = rule.Waves[mission.NextWave];
+        var selected = rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
+            wave.Objective && trajectory.Zone(0) == rule.SpawnZone;
+        if (selected && !wave.ObjectiveOnTheLandingSite) return 0;
+        if (!selected && (rule.Objective == RuntimeMissionObjective.Supply ? trajectory.Altitude(0) != 0 : trajectory.Altitude(1) != 0)) return 0;
+        if (rule.Objective == RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
+            MissionSourceBase(mission) is not null) return 0;
+        if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(0))[0].IsPoint) return 0;
+        long scan = 1;
+        foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
+            scan += 1L + 4L * polygon.Points.Count;
+        // Up to 100 attempts, with two polygon queries and an ordinary region query.
+        return 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
+    }
 
     private static bool TrySpawnArea(MissionArea area, out SpawnArea result)
     {
