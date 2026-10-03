@@ -1,0 +1,18 @@
+ufoTrajectories:
+  - id: MULTI_DESTINATION
+    waypoints:
+      - [4, 3, 100]
+      - [1, 2, 80]
+      - [6, 4, 100]
+  - id: UNSAFE_DESTINATION
+    waypoints:
+      - [5, 3, 100]
+      - [1, 2, 80]
+      - [6, 4, 100]
+alienMissions:
+  - type: MULTI_DESTINATION
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: MULTI_DESTINATION, timer: 9000}
+  - type: UNSAFE_DESTINATION
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: UNSAFE_DESTINATION, timer: 9000}

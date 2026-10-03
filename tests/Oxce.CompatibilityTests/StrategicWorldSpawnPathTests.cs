@@ -92,7 +92,8 @@ public sealed class StrategicWorldSpawnPathTests
         var initial = CreateSnapshot(content, "Spawn paths");
         var snapshot = initial with
         {
-            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55), RandomState = 17,
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            RandomState = 17,
             World = initial.World with
             {
                 Missions = [new AlienMissionSnapshot(4, $"SPAWN_PATH_{(supply ? 1 : 0)}_{first}_{second}",

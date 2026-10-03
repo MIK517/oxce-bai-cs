@@ -206,9 +206,10 @@ internal sealed partial class CampaignWorld
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         if (!TryOrdinarySpawnPosition(mission, rule, trajectory, region, out var position) ||
-            !TryOrdinarySpawnDestination(mission, rule, trajectory, region, out var destination) ||
-            !(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed)))
+            !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations))
             return false;
+        foreach (var destination in destinations)
+            if (!(WorldGeometry.Distance(position, destination) > WorldGeometry.RadianSpeed(speed))) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -234,23 +235,27 @@ internal sealed partial class CampaignWorld
         return position.IsNormalized;
     }
 
-    private bool TryOrdinarySpawnDestination(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out WorldPosition position)
+    private bool TryOrdinarySpawnDestinations(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<WorldPosition> positions)
     {
         if (rule.Objective == RuntimeMissionObjective.Supply && rule.Waves[mission.NextWave].Objective &&
             trajectory.Altitude(1) == 0 && MissionSourceBase(mission) is { } supplyBase)
         {
-            position = supplyBase.Position;
-            return position.IsNormalized;
+            positions = [supplyBase.Position];
+            return supplyBase.Position.IsNormalized;
         }
         _ = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
         if (rule.Objective != RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
             trajectory.Waypoints.Count == 2 && MissionSourceBase(mission) is { } source)
         {
-            position = source.Position;
-            return position.IsNormalized;
+            positions = [source.Position];
+            return source.Position.IsNormalized;
         }
-        return TryGetFixedWaypoint(region, trajectory.Zone(1), out position);
+        var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
+        positions = [];
+        if (areas.Count > 256 || areas.Any(static area => !area.IsPoint)) return false;
+        positions = areas.Select(static area => WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum)).ToArray();
+        return positions.All(static point => point.IsNormalized);
     }
 
     private static bool TryGetFixedWaypoint(RuntimeRegionRule region, int zone, out WorldPosition position)
