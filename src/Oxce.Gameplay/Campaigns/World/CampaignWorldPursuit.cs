@@ -160,10 +160,10 @@ internal sealed partial class CampaignWorld
         if (destination.Kind == WorldTargetKind.Ufo)
         {
             var original = TargetUfo(destination);
-            // Dormant UFOs miss the radar pass before processMissionSite. Reactivation
-            // cannot reveal a hidden contact before craft target-loss handling.
-            if (original is { Status: UfoStatus.IgnoreMe, Detected: false }) return null;
-            var ufo = original is null ? null : UfoAfterTimedTransitions(original, highest);
+            // Dormant UFOs miss the radar pass before processMissionSite. Only a
+            // later hunter retarget can reveal that hidden contact before craft movement.
+            var ufo = original is null ? null : UfoForFlight(original, highest);
+            if (original is { Status: UfoStatus.IgnoreMe, Detected: false } && ufo?.Detected != true) return null;
             // Detection may reveal an imported hidden destination at the half-hour boundary.
             if (ufo is null || !ufo.Detected && highest < CampaignTimeTrigger.ThirtyMinutes ||
                 ufo.Status is UfoStatus.Destroyed or UfoStatus.IgnoreMe) return null;
