@@ -42,8 +42,9 @@ Site scripts support point/rectangle candidate pruning, weighted or uniform
 region selection conditioned on eligible regions, circular mission fallback,
 base targeting, live batch occupancy and persisted repeat history. Empty
 mission listings set false labels before creation fields are used. Signed and
-unsigned timeline mismatches stop atomically. New-base creation when required,
-special objective effects and integrated campaign month progression retain
+unsigned timeline mismatches stop atomically. Mission-operation base creation
+supports bounded geographic search, fallback suppression and persisted links.
+Special objective effects and integrated campaign month progression retain
 capability guards; deployment and hunting/escort support is transition-specific. Existing regional/Earth base acquisition
 and missing-base interruption are owned. Ordinary airborne spawns remain limited
 to fixed first-leg points, and later special arrivals/takeoffs remain guarded.
@@ -489,3 +490,14 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   point or suppresses creation according to the projected option. All 72
   pinned traces match outcomes, land checks and draw counts/state. The selector
   has no state effects; live initialization follows in the next slice.
+
+- 4c live operation-base creation: scheduled mission/adhoc commands now create
+  and link operation bases for regional-new and missing fallback modes; Earth
+  new-base retains reference existing-base reuse. Base age, immediate hunting
+  timer, race, marker identity and mission links persist through creation and
+  no-object mission cleanup reloads. Mission points are awarded at creation,
+  except for infiltration. Composed batches reserve marker IDs, population,
+  geographic work and worst-case activity before RNG or mutation. Empty/missing
+  zones fail intentionally, and unused creation fields are skipped on reuse.
+  All 94 focused operation/scheduling tests pass. Shared mission/UFO/player marker
+  namespaces and broader unavailable transitions retain precise boundaries.

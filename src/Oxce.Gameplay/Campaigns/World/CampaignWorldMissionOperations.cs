@@ -7,11 +7,8 @@ internal sealed partial class CampaignWorld
     private string? MissionOperationReason(RuntimeAlienMissionRule rule, string selectedRegion)
     {
         if (rule.OperationType == RuntimeMissionOperationType.Space) return null;
-        if (rule.OperationType == RuntimeMissionOperationType.RegionNewBase)
-            return "Mission operation requires alien base creation.";
-        var candidates = MissionOperationBases(rule, selectedRegion).ToArray();
-        if (candidates.Length == 0 && rule.OperationType is RuntimeMissionOperationType.RegionNewBaseIfNecessary or
-            RuntimeMissionOperationType.EarthNewBaseIfNecessary or RuntimeMissionOperationType.EarthNewBase) return "Mission operation requires alien base creation.";
+        var candidates = rule.OperationType == RuntimeMissionOperationType.RegionNewBase
+            ? [] : MissionOperationBases(rule, selectedRegion).ToArray();
         var identities = new HashSet<(string Marker, int Id)>();
         var duplicates = new HashSet<(string Marker, int Id)>();
         foreach (var candidate in _alienBases)
@@ -41,8 +38,11 @@ internal sealed partial class CampaignWorld
         var region = regions[regions.GetRequired(mission.RegionId)].Value;
         var regional = rule.OperationType is RuntimeMissionOperationType.RegionExistingBase or
             RuntimeMissionOperationType.RegionNewBaseIfNecessary;
-        var candidates = (regional ? _alienBases.Where(candidate => WorldGeometry.InsideRegion(region, candidate.Position)) : _alienBases).ToArray();
-        if (candidates.Length == 0) return mission with { Interrupted = true };
+        var candidates = rule.OperationType == RuntimeMissionOperationType.RegionNewBase ? [] :
+            (regional ? _alienBases.Where(candidate => WorldGeometry.InsideRegion(region, candidate.Position)) : _alienBases).ToArray();
+        if (candidates.Length == 0)
+            return rule.OperationType is RuntimeMissionOperationType.RegionExistingBase or RuntimeMissionOperationType.EarthExistingBase
+                ? mission with { Interrupted = true } : CreateMissionOperationBase(mission, rule, region);
         var selected = candidates[campaign.Random.NextInclusive(0, candidates.Length - 1)];
         return mission with
         {
