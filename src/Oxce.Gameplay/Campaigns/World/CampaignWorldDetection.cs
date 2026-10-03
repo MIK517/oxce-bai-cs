@@ -93,6 +93,7 @@ internal sealed partial class CampaignWorld
         // AlienMission::think runs before the scoring and detection pass. Check its
         // possible UFOs using every candidate first point without drawing RNG in preflight.
         long activityWork = 0;
+        List<(IReadOnlyList<SpawnArea> Positions, int Points)>? newbornTakeoffScores = null;
         foreach (var savedMission in _missions)
         {
             if (!halfHour) break;
@@ -151,9 +152,8 @@ internal sealed partial class CampaignWorld
                     if (grounded) possibleLandingIds++;
                 }
                 if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
-                    missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) &&
-                    CheckPossibleActivity(positions, missionRule.Points, regionTotals, countryTotals) is { } liftReason)
-                    return liftReason;
+                    missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration))
+                    (newbornTakeoffScores ??= []).Add((positions, missionRule.Points));
             }
         }
         // processMissionSite follows UFO detection in the same half-hour handler.
@@ -194,6 +194,7 @@ internal sealed partial class CampaignWorld
             }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
         // Share these totals so individually safe awards cannot overflow together.
+        var terminalArrival = false;
         foreach (var ufo in _ufos)
         {
             if (ufo.Status == UfoStatus.Landed && ufo.SecondsRemaining == 5 &&
@@ -208,8 +209,18 @@ internal sealed partial class CampaignWorld
                     CheckActivityScore(UfoAfterTimedTransitions(ufo, highest).Destination!.Position, rule.Points,
                         regionTotals, countryTotals) is { } conversionReason) return conversionReason;
             }
-            if (EndsUfoFlightPass(ufo, highest)) break;
+            if (EndsUfoFlightPass(ufo, highest))
+            {
+                terminalArrival = true;
+                break;
+            }
         }
+        // Newborn UFOs are appended after the saved actors. Their landed
+        // takeoffs follow site processing and every earlier UFO's movement.
+        if (!terminalArrival && newbornTakeoffScores is not null)
+            foreach (var takeoff in newbornTakeoffScores)
+                if (CheckPossibleActivity(takeoff.Positions, takeoff.Points, regionTotals, countryTotals) is { } liftReason)
+                    return liftReason;
         if (!CanAllocateUfoMarkerIds(possibleMarkerIds + _possibleHuntMarkerIds))
             return "UFO contact marker IDs are exhausted or collide with a saved UFO.";
         return CanAllocateUfoMarkerIds(possibleLandingIds, landing: true)

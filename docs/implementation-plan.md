@@ -692,3 +692,7 @@ next two slices. Combat and deployment remain branch 5.
 
 - 4c grounded escort slice: extended pinned status traces and enabled long-timer
   grounded births with active craft. Focused hunting/escort tests pass (87 cases).
+
+- 4c creation-tick grounded takeoff slice: timer-one hunter/escort births with
+  active craft are enabled. Scoring follows site/earlier-UFO order, terminal
+  arrivals skip newborn lifts, and 138 focused cases pass with reload coverage.
