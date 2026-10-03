@@ -35,8 +35,10 @@ changing movement. Deleted escort targets restore their original waypoint.
 Combat arrivals stop atomically before mutation. Retargeting involving same-tick
 grounded auto-patrol relaunches or airborne craft transfers retains specific
 forecast guards. Escort chains/cycles and malformed originals fail intentionally.
-Deletion scans are bounded before nested work. Future hunter wave creation remains
-guarded until spawn/retarget forecasts compose; this slice enables loaded actors.
+Deletion scans are bounded before nested work. Grounded non-escort waves and
+airborne non-escort waves with no possible craft target execute through the
+constructor/spawn slices below. Creation-time escorts and candidate-bearing
+airborne waves retain their atomic forecast boundary.
 The headless gate remains open and branch 4d is untouched.
 
 The three-slice batch audit reproduced a same-tick boundary bypass: a hunter's
@@ -75,3 +77,21 @@ proof keeps the creation-tick path ordinary; later dispatch uses the loaded
 hunter retarget capability. Rule-derived hunter percentage/mode/behavior and
 fresh/cache creation/targeting reloads are covered. Candidate-bearing airborne
 spawns and creation-time escorts retain the existing atomic wave boundary.
+
+The constructor/spawn batch audit confirmed an empty hunter trajectory could
+index its first waypoint before the existing minimum-length guard. Length and
+altitude validation now precede hunter context checks. Empty/one-point regressions
+assert an unchanged campaign and RNG, and a separate auto-patrol regression
+checks that a possible same-tick relaunch cannot enter the no-candidate path.
+
+The previous supply constructor-choice fixture now executes its formerly guarded
+no-candidate hunter cases and asserts captured hunter flags, counts, live links
+and reload. Objective supply ships still assert the default non-hunter
+constructor. Mode/behavior capture draws now alternate so swapped draw order
+cannot pass the shared canonical oracle comparison.
+
+Final constructor/spawn cycle validation passes all 1,701 root tests with no
+failures or skips, including checksums, private classifications, endurance and
+populated allocation checks. Formatting verification, code-map validation and
+diff checks pass. The reference checkout is clean and obsolete probe object
+output was removed. The remaining 4c headless gate is open; 4d is untouched.

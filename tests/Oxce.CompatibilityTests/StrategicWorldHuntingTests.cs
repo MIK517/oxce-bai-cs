@@ -20,10 +20,13 @@ public sealed class StrategicWorldHuntingTests
         {
             var random = new ConstructorRandom(row[3].GetInt32());
             var result = WorldHunting.Initialize(row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32(), random);
-            Assert.Equal(row[4].GetBoolean(), result.HunterKiller);
-            Assert.Equal(row[5].GetInt32(), result.Mode);
-            Assert.Equal(row[6].GetInt32(), result.Behavior);
-            Assert.Equal(row[7].GetInt32(), random.Calls);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32(), row[3].GetInt32(),
+                result.HunterKiller, result.Mode, result.Behavior, random.Calls,
+            });
+            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())),
+                CanonicalJson.Normalize(actual));
         }
     }
 
@@ -35,7 +38,7 @@ public sealed class StrategicWorldHuntingTests
             Assert.Equal(0, minimum);
             Assert.True(maximum is 1 or 99);
             Calls++;
-            return maximum == 99 ? roll : 1;
+            return maximum == 99 ? roll : Calls % 2 == 0 ? 1 : 0;
         }
         public int NextExclusive(int exclusiveMaximum) => throw new InvalidOperationException();
         public double NextUnit() => throw new InvalidOperationException();
@@ -202,8 +205,12 @@ public sealed class StrategicWorldHuntingTests
         {
             Logistics = item.Logistics! with
             {
-                Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0,
-                Longitude = ufo.Longitude + 0.02, Latitude = ufo.Latitude,
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 0,
+                Longitude = ufo.Longitude + 0.02,
+                Latitude = ufo.Latitude,
                 Destination = null,
             },
         });
@@ -230,6 +237,44 @@ public sealed class StrategicWorldHuntingTests
                 Ufos = [],
                 Missions = [snapshot.World.Missions[0] with
                     { RuleId = "MISSION_HUNTER_AIR", NextWave = 0, LiveUfos = 0, SpawnCountdown = 0 }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
+            "Alien mission wave spawning requires world simulation.");
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("[[4, 0, 100]]")]
+    public void HunterSpawnRejectsIncompleteTrajectoriesBeforeIndexing(string waypoints)
+    {
+        var content = Load(overlay: $"ufoTrajectories:\n  - id: HUNTER_INCOMPLETE\n    waypoints: {waypoints}\nalienMissions:\n  - type: HUNTER_INCOMPLETE_MISSION\n    objective: 0\n    waves:\n      - {{ufo: SPAWN_HUNTER_DEFAULTS, count: 1, trajectory: HUNTER_INCOMPLETE, timer: 9000}}\n");
+        var snapshot = CreateSnapshot(content, "Incomplete hunter trajectory") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "HUNTER_INCOMPLETE_MISSION", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
+            "Alien mission wave spawning requires world simulation.");
+    }
+
+    [Fact]
+    public void AirborneHunterSpawnIncludesPossibleAutoPatrolTargetsInItsBoundary()
+    {
+        var content = Load();
+        var snapshot = CreateSnapshot(content, "Auto patrol hunter boundary");
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with { Status = "STR_REFUELLING", IsAutoPatrolling = true },
+        }) with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "MISSION_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
             },
         };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),

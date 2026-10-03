@@ -238,13 +238,13 @@ internal sealed partial class CampaignWorld
         var hunterKillerPercentage = wave.HunterKillerPercentage == -1
             ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
-        if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
-            (wave.Escort || (trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1) &&
-                !NoCraftCanBecomeHunterTarget())) return false;
         if (trajectory.Waypoints.Count < 2 ||
             trajectory.Altitude(0) != 0 && !IsAirborne(trajectory.Altitude(0)) ||
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
+        if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+            (wave.Escort || (trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1) &&
+                !NoCraftCanBecomeHunterTarget())) return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         if (trajectory.Altitude(0) == 0 &&

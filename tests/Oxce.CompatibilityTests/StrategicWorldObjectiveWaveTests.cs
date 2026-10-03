@@ -119,18 +119,13 @@ public sealed class StrategicWorldObjectiveWaveTests
                     },
                 };
                 var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
-                if (row[5].GetInt32() > 0)
-                    AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
-                else
-                {
-                    AdvanceOne(campaign);
-                    var after = campaign.Capture();
-                    Assert.Equal(row[4].GetInt32() * 2, after.World.Ufos.Count);
-                    Assert.All(after.World.Ufos, ufo => Assert.False(ufo.HunterKiller));
-                    if (after.World.Ufos.Count == 0) Assert.Empty(after.World.Missions);
-                    else Assert.Equal(2, Assert.Single(after.World.Missions).LiveUfos);
-                    Reload(content, campaign, 17, "supply-decision.sav");
-                }
+                AdvanceOne(campaign);
+                var after = campaign.Capture();
+                Assert.Equal(row[4].GetInt32() * 2, after.World.Ufos.Count);
+                Assert.All(after.World.Ufos, ufo => Assert.Equal(row[5].GetInt32() > 0, ufo.HunterKiller));
+                if (after.World.Ufos.Count == 0) Assert.Empty(after.World.Missions);
+                else Assert.Equal(2, Assert.Single(after.World.Missions).LiveUfos);
+                Reload(content, campaign, 17, "supply-decision.sav");
             }
     }
 
