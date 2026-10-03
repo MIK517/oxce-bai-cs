@@ -750,3 +750,12 @@ next two slices. Combat and deployment remain branch 5.
   completions, supports same-month recapture, and does not score or execute
   signed-pact events. Marker/population/hunting/work guards precede mutation.
   Close-country search, shuffled order and endless loops retain precise guards.
+
+- Batch 1 audit reproduced unreserved suppressed-country retries: 4,002 eligible
+  countries could each run a full 100-attempt search after one birth reservation.
+  Preflight now charges all possible searches, geometry and deployment selection
+  before mutation; the unchanged-state regression fails before the fix.
+
+- Batch 1 validation: root dotnet test --no-restore passes all 1,853 tests with
+  no failures/skips, including checksums, corpus and world scenarios. Code-map,
+  diff and formatting verification pass. Reference remains read-only and clean.
