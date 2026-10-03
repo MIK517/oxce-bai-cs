@@ -626,3 +626,10 @@ before geometry selection. Wave values inherit rule defaults only at -1.
 Initial ground timers above one keep retargeting outside the creation tick;
 fresh/cache tests cover constructor metadata, ground countdown, lift and reload.
 Airborne hunter creation and spawn escorts remain precisely guarded.
+
+Airborne non-escort hunter waves now execute when existing craft and undelivered
+craft transfers cannot supply a current or auto-patrol target. That structural
+proof keeps the creation-tick path ordinary; later dispatch uses the loaded
+hunter retarget capability. Rule-derived hunter percentage/mode/behavior and
+fresh/cache creation/targeting reloads are covered. Candidate-bearing airborne
+spawns and creation-time escorts retain the existing atomic wave boundary.

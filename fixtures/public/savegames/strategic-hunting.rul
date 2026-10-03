@@ -10,6 +10,13 @@ ufos:
     radarRange: 0
     huntSpeed: 150
 
+  - type: SPAWN_HUNTER_DEFAULTS
+    speedMax: 2200
+    damageMax: 50
+    radarRange: 300
+    hunterKillerPercentage: 100
+    huntMode: 1
+    huntBehavior: 1
 ufoTrajectories:
   - id: TRAJ_HUNTER_GROUND
     groundTimer: 12
@@ -22,3 +29,7 @@ alienMissions:
     objective: 0
     waves:
       - {ufo: HUNTER, count: 1, trajectory: TRAJ_HUNTER_GROUND, timer: 9000, hunterKillerPercentage: 100, huntMode: 2, huntBehavior: 2}
+  - type: MISSION_HUNTER_AIR
+    objective: 0
+    waves:
+      - {ufo: SPAWN_HUNTER_DEFAULTS, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}

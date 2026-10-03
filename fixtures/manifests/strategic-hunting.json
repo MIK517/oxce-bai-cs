@@ -25,8 +25,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",
-      "size": 546,
-      "sha256": "9e09269e123bca263070d754c7de3fff2b595ded2e19a9b335f82ae9c9cc50ed"
+      "size": 850,
+      "sha256": "8fd6296b6075674a869fbfaf2195559410fe58bfaa8659797b79863a0045b2eb"
     }
   ],
   "normalization": [
