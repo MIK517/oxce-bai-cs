@@ -1,0 +1,19 @@
+countries:
+  - {type: INF_A, labelLon: 8, labelLat: 2, areas: [[0, 20, -10, 10]]}
+  - {type: INF_B, labelLon: 12, labelLat: -2, areas: [[0, 20, -10, 10]]}
+regions:
+  - type: INF_REGION
+    areas: [[0, 30, -20, 20]]
+    missionZones:
+      - [[10, 10, 8, 8]]
+      - [[8, 8, 2, 2, 110]]
+alienDeployments:
+  - {type: INF_BASE, alienBase: true, markerName: INF_BASE, huntMissionMaxFrequency: 90}
+alienMissions:
+  - type: INFILTRATE
+    objective: 1
+    endlessInfiltration: false
+    spawnZone: 1
+    siteType: INF_BASE
+    points: 999
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 60}]

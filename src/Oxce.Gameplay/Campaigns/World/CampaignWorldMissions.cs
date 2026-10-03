@@ -58,8 +58,10 @@ internal sealed partial class CampaignWorld
                     sourceBaseWork += _alienBases.Count;
                     if (sourceBaseWork > MaximumAlienBaseChecks) return "Alien mission source base lookups exceed the supported work limit.";
                 }
-                if (DeferredWaveCompletion(step, rule, rule.Waves[step.NextWave]))
-                    return "Alien mission wave completion requires objective simulation.";
+                if (CompletesInfiltration(step, rule, rule.Waves[step.NextWave]) &&
+                    InfiltrationReason(step, rule, highest, siteMarkerReservations ??= new(StringComparer.Ordinal),
+                        ref geometryWork) is { } infiltrationReason)
+                    return infiltrationReason;
                 if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]))
                 {
                     siteMarkerReservations ??= new(StringComparer.Ordinal);
@@ -222,8 +224,10 @@ internal sealed partial class CampaignWorld
                     if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
                     if (spawnsSite) SpawnDirectSite(mission, rule);
                     var completesBase = CompletesBaseObjective(mission, rule, wave);
+                    var completesInfiltration = CompletesInfiltration(mission, rule, wave);
                     mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
                     if (completesBase) CompleteBaseObjective(mission, rule);
+                    if (completesInfiltration) CompleteInfiltration(mission, rule);
                     _missions[index] = mission;
                     // Recursion tests the original timer, not the rounded countdown.
                     if (mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
@@ -270,7 +274,8 @@ internal sealed partial class CampaignWorld
         foreach (var step in DueWaveSteps(candidate, rule))
         {
             if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-            if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]) || !CanAdvanceNoObjectWave(step, rule)) return boundary;
+            if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]) ||
+                CompletesInfiltration(step, rule, rule.Waves[step.NextWave]) || !CanAdvanceNoObjectWave(step, rule)) return boundary;
         }
         return null;
     }
@@ -299,7 +304,7 @@ internal sealed partial class CampaignWorld
         var wave = rule.Waves[mission.NextWave];
         if (SuppressedSupplyWave(mission, rule, wave))
             return wave.Trajectory is not null && CanAdvanceWaveCounters(mission, rule, wave);
-        if (DeferredWaveCompletion(mission, rule, wave) || wave.Ufo is not null || wave.Trajectory is null ||
+        if (wave.Ufo is not null || wave.Trajectory is null ||
             rule.Objective == RuntimeMissionObjective.Site && wave.Objective ||
             wave.Deployment is { } deployment && campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.MarkerName.Length != 0)
             return false;
@@ -310,19 +315,13 @@ internal sealed partial class CampaignWorld
         rule.Objective == RuntimeMissionObjective.Supply &&
         (wave.Ufo is null ? wave.Deployment is null : wave.Objective && MissionSourceBase(mission) is null);
 
-    private static bool DeferredWaveCompletion(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave)
-    {
-        var finishes = mission.NextWave + 1 == rule.Waves.Count && (ulong)mission.NextUfoCounter + 1 >= wave.UfoCount;
-        return finishes && rule.Objective == RuntimeMissionObjective.Infiltration;
-    }
-
     private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation ||
             mission.LiveUfos == int.MaxValue)
             return false;
         var wave = rule.Waves[mission.NextWave];
-        if (DeferredWaveCompletion(mission, rule, wave) || wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
+        if (wave.Ufo is not { } ufoHandle || wave.Trajectory is not { } trajectoryHandle ||
             SuppressedSupplyWave(mission, rule, wave))
             return false;
         var rules = campaign.Content.RuntimeRules;

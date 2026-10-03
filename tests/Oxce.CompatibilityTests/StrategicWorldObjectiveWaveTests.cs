@@ -62,7 +62,7 @@ public sealed class StrategicWorldObjectiveWaveTests
             if (objective is 4 or 6)
                 AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
             else if (objective == 1)
-                AssertTimeBlocked(campaign, "Alien mission wave completion requires objective simulation.");
+                AssertTimeBlocked(campaign, "Endless infiltration requires repeating wave forecasts.");
             else if (deployment != 0 && marker == 0 && objective == 3 && flag != 0)
                 AssertTimeBlocked(campaign, "Direct mission site marker names require a nonempty ID namespace.");
             else
@@ -145,7 +145,7 @@ public sealed class StrategicWorldObjectiveWaveTests
             if (row[3].GetInt32() != 0)
                 AssertTimeBlocked(campaign, objective == 2 ?
                     "A mission tried to use zone -1, but the region only defines 7 zones." :
-                    "Alien mission wave completion requires objective simulation.");
+                    "Endless infiltration requires repeating wave forecasts.");
             else if (objective is 4 or 6)
                 AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
             else
@@ -183,7 +183,7 @@ public sealed class StrategicWorldObjectiveWaveTests
             if (row[3].GetInt32() != 0)
                 AssertTimeBlocked(campaign, objective == 2 ?
                     "A mission tried to use zone -1, but the region only defines 7 zones." :
-                    "Alien mission wave completion requires objective simulation.");
+                    "Endless infiltration requires repeating wave forecasts.");
             else if (objective is 4 or 6)
                 AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
             else
