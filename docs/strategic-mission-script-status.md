@@ -644,3 +644,8 @@ and branch 4d is untouched.
   country selection without changing saved country order. Shuffling consumes
   the reference draws even when no country can be infiltrated. Fresh/cache
   live search, no-candidate RNG, chosen-country identity and reloads pass.
+
+- Batch 2 audit: close-country selection, wrapped longitude bounds, dummy-texture
+  projection, country eligibility and shuffled RNG order were checked together.
+  No confirmed implementation issue was found. All 1,862 root tests pass with
+  no failures/skips; formatting, code-map and diff checks pass. Reference is clean.
