@@ -15,6 +15,7 @@ function StatementBlock([string]$Text,[string]$Match) {
  if($depth -ne 0){throw 'Unbalanced source block.'}
  return $Text.Substring($start,$end-$start)
 }
+$template=$template.Replace('// SITE_COMMAND',(StatementBlock $geoscape 'if (command->getSiteType())'))
 $siteStart=$geoscape.IndexOf('if (command->getSiteType())',[StringComparison]::Ordinal)
 $summaryEnd=$geoscape.IndexOf('End of the summary',$siteStart,[StringComparison]::Ordinal)
 $siteTail=$geoscape.Substring($summaryEnd)

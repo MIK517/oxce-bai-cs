@@ -56,7 +56,17 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             {
                 var selectionMonth = unchecked((ulong)month);
                 string region, mission;
-                if (Percent(script.TargetBaseOdds))
+                var area = -1;
+                if (script.SiteType)
+                {
+                    if (SelectSiteTargetMission(script, month) is not { } selection)
+                    {
+                        if (script.Label > 0) conditions.Add(script.Label, false);
+                        continue;
+                    }
+                    (region, mission, area) = selection;
+                }
+                else if (Percent(script.TargetBaseOdds))
                 {
                     if (SelectBaseTargetMission(script, month) is not { } selection)
                     {
@@ -95,7 +105,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     campaign.Content.RuntimeRules.Regions.GetRequired(region)].Value;
                 var missionRegion = regionRule.MissionRegionId.Length == 0 ? region : regionRule.MissionRegionId;
                 _missions.Add(InitializeMissionOperation(
-                    new AlienMissionSnapshot(id, mission, missionRegion, race, 0, 0, countdown, 0, -1), rule));
+                    new AlienMissionSnapshot(id, mission, missionRegion, race, 0, 0, countdown, 0, area), rule));
                 if (script.UseTable) _strategy.RemoveMission(region, mission);
                 success = true;
             }
@@ -123,12 +133,20 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Mission script condition is outside the supported range.";
             if (script.Criteria.ExecutionOdds <= 0) continue;
             possible++;
-            if (script.SiteType)
-                return MissionScriptBoundary;
             if (script.StartDelay < 0 || script.RandomDelay < 0 ||
                 (long)script.StartDelay + script.RandomDelay > int.MaxValue)
                 return "Mission script delay exceeds the supported range.";
-            if (script.TargetBaseOdds > 0)
+            if (script.SiteType)
+            {
+                if (SiteScriptReason(script, month, ref work, out var siteRegion) is { } siteReason) return siteReason;
+                foreach (var type in WorldScriptSelection.Available(script.Missions, month).Where(choice => choice.Weight != 0))
+                {
+                    if (type.Rule.Handle is not { } handle || !ValidMission(handle, script.Races.Count == 0, siteRegion))
+                        return MissionScriptBoundary;
+                    if (script.UseTable) RecordRemoval(siteRegion, type.Rule.Id, creditedRegions);
+                }
+            }
+            else if (script.TargetBaseOdds > 0)
             {
                 var types = script.Missions.Count == 0 ? [] : WorldScriptSelection.Available(script.Missions, month);
                 work += Math.Max(1L, types.Count) * campaign.BaseStates.Count * (1L + _missions.Count + available.Length);
@@ -157,7 +175,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     }
                 }
             }
-            if (script.TargetBaseOdds < 100)
+            if (!script.SiteType && script.TargetBaseOdds < 100)
             {
                 if (script.Missions.Count != 0 && Choices(script.Missions, month, choice =>
                         choice.Handle is { } handle && ValidMission(handle, script.Races.Count == 0)) is { } missionReason)
