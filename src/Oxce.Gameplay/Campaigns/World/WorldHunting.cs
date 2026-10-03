@@ -73,9 +73,17 @@ internal static class WorldHunting
         if (!ufo.HunterKiller || !requested) return ufo;
         ufo = ufo with { Escort = true };
         if (EscortLeader(ufo.MissionId, ufos) is not { } target) return ufo;
-        ufo = ufo with { Longitude = target.Longitude, Latitude = target.Latitude };
-        return Escort(ufo, new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id,
-            target.Longitude, target.Latitude) { UniqueId = target.UniqueId }, speedMaximum);
+        ufo = ufo with
+        {
+            Longitude = target.Longitude,
+            Latitude = target.Latitude,
+        };
+        var reference = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id,
+            target.Longitude, target.Latitude)
+        {
+            UniqueId = target.UniqueId,
+        };
+        return Escort(ufo, reference, speedMaximum);
     }
 
     internal static UfoSnapshot Restore(UfoSnapshot ufo) => ufo.OriginalWaypoint is { } original ? ufo with
