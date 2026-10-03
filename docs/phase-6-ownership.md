@@ -792,3 +792,9 @@ next two slices. Combat and deployment remain branch 5.
   preserve reference order; fully zero-timer loops stop before tick/RNG mutation
   at the existing 4,096-step bound. Live pending-pact history, no-candidate repeats,
   random order and transition reloads are covered fresh/cache.
+
+- Five-cycle batch 3, slice 3: retaliation target selection is pinned and
+  projected into a pure ordered selector. Vanilla retaliation uses the first
+  discovered regional base; multi-UFO mode chooses uniformly among discoveries.
+  Skip-scouting uses the first regional base regardless of discovery, while
+  instant/site-wave selection considers all regional bases. All 96 traces pass.
