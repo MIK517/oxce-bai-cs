@@ -1,4 +1,16 @@
 # Selected objective UFOs convert at their ground waypoint.
+ufos:
+  - type: UFO_SITE_CUSTOM
+    speedMax: 2200
+    damageMax: 50
+    fakeWaterLandingChance: 20
+    missionCustomDeploy: CUSTOM_DEPLOY
+    raceBonus:
+      RACE_B: {missionCustomDeploy: RULE_DEPLOY}
+alienDeployments:
+  - type: CUSTOM_DEPLOY
+    markerName: CUSTOM_MARKER
+    duration: [5, 6]
 ufoTrajectories:
   - id: UFO_SITE_CONVERSION
     waypoints: [[0, 2, 100], [0, 0, 50], [0, 4, 100]]

@@ -26,6 +26,13 @@ check score, notifications, save/reload, delayed UFO cleanup and atomic ID/score
 guards. Existing selected-waypoint scenarios now continue through conversion.
 
 This first slice enables conversion on ticks below the half-hour trigger. Combined
-counter forecasts, custom deployment, dormant respawn links and craft follower
+counter forecasts, dormant respawn links and craft follower
 transfer retain specific guards. The branch 5 landing/interception and branch 6
 payload/month boundaries remain. The headless gate is open; branch 4d is untouched.
+
+The second slice preserves the UFO's effective `missionCustomDeploy`, including
+race overrides, as optional site metadata. Missing custom rules produce no custom
+deployment, matching the reference's optional Mod lookup. This metadata does not
+replace the site's marker, duration or strategic deployment. Captured custom rows,
+race/missing-rule cases and transition reloads cover the behavior; existing save
+fields are reused without changing the external schema.

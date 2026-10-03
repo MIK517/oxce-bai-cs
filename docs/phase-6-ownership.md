@@ -370,3 +370,7 @@ next-tick UFO cleanup. Fresh/cache captured scenarios cover selected-area and
 landing-position sites. Remaining compound ticks, custom deployment, dormant
 links and follower transfer are guarded precisely. See
 [conversion status](strategic-world-ufo-site-conversion-status.md).
+
+World also preserves optional custom deployment metadata from effective UFO
+race stats, reusing the existing save fields. Primary site deployment and duration
+remain controlled by the mission/terrain selection.

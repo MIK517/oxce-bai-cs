@@ -508,3 +508,7 @@ trigger. Canonical pinned captures, fresh/cache reloads and atomic ID/score test
 cover it. Custom deployment, respawn linkage, compound half-hour counter forecasts
 and craft follower transfer retain specific guards. See
 [conversion status](strategic-world-ufo-site-conversion-status.md).
+
+The second conversion slice adds optional custom deployment metadata from
+effective UFO race stats. Captured custom rows, missing references, race overrides
+and reloads pass. It retains the primary strategic deployment and its duration.
