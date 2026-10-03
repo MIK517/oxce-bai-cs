@@ -146,6 +146,31 @@ internal sealed partial class CampaignWorld
                     CheckActivityScore(siteUfo.Position, liftScore, regionTotals, countryTotals) is { } liftReason)
                     return liftReason;
             }
+        // Direct sites are appended during think, then processed after every existing
+        // site. Their positive durations lose 1800 seconds and award deployment points.
+        if (halfHour)
+            foreach (var savedMission in _missions)
+            {
+                var mission = MissionAfterDailyResearch(savedMission, guaranteedResearch);
+                var rule = campaign.Content.RuntimeRules.AlienMissions[
+                    campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
+                if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count ||
+                    mission.SpawnCountdown > 30 || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra) continue;
+                foreach (var step in DueWaveSteps(mission, rule))
+                {
+                    if (!IsDirectSiteWave(step, rule)) continue;
+                    var deployment = campaign.Content.RuntimeRules.AlienDeployments[rule.Waves[step.NextWave].Deployment!.Value].Value;
+                    var positions = new List<SpawnArea>();
+                    foreach (var area in DirectSiteAreas(step, rule))
+                    {
+                        _ = TrySpawnArea(area, out var position);
+                        positions.Add(position);
+                    }
+                    activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length);
+                    if (activityWork > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+                    if (CheckPossibleActivity(positions, deployment.Points, regionTotals, countryTotals) is { } reason) return reason;
+                }
+            }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
         // Share these totals so individually safe awards cannot overflow together.
         foreach (var ufo in _ufos)

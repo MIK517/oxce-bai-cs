@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 78 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 79 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 119 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 120 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 86 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 78 files.
+`src/Oxce.Gameplay` - 79 files.
 
 ### `Oxce.Gameplay`
 
@@ -1009,14 +1009,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 119 files.
+`tests/Oxce.CompatibilityTests` - 120 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>117 test classes</summary>
+<details><summary>118 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1118,6 +1118,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldRetaliationCleanupTests` ([StrategicWorldRetaliationCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRetaliationCleanupTests.cs))
 - `StrategicWorldRuleProjectionTests` ([StrategicWorldRuleProjectionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRuleProjectionTests.cs))
 - `StrategicWorldSelectedSiteWaypointTests` ([StrategicWorldSelectedSiteWaypointTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSelectedSiteWaypointTests.cs))
+- `StrategicWorldSiteSpawningTests` ([StrategicWorldSiteSpawningTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteSpawningTests.cs))
 - `StrategicWorldSiteTimerTests` ([StrategicWorldSiteTimerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteTimerTests.cs))
 - `StrategicWorldSiteUfoTests` ([StrategicWorldSiteUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteUfoTests.cs))
 - `StrategicWorldSpawnPathTests` ([StrategicWorldSpawnPathTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSpawnPathTests.cs))
@@ -1384,6 +1385,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
 | [strategic-retaliation-cleanup](../fixtures/manifests/strategic-retaliation-cleanup.json) | cpp-reference | `savegames/strategic-retaliation-cleanup.expected.json` | `StrategicWorldRetaliationCleanupTests` ([StrategicWorldRetaliationCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRetaliationCleanupTests.cs)) |
 | [strategic-script-rules](../fixtures/manifests/strategic-script-rules.json) | cpp-reference | `savegames/strategic-script-rules.expected.json` | `StrategicMissionScriptTests` ([StrategicMissionScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionScriptTests.cs))<br>`StrategicScriptRuleTests` ([StrategicScriptRuleTests.cs](../tests/Oxce.CompatibilityTests/StrategicScriptRuleTests.cs)) |
+| [strategic-site-spawn](../fixtures/manifests/strategic-site-spawn.json) | cpp-reference | `savegames/strategic-site-spawn.expected.json` | `StrategicWorldSiteSpawningTests` ([StrategicWorldSiteSpawningTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteSpawningTests.cs)) |
 | [strategic-site-timer](../fixtures/manifests/strategic-site-timer.json) | cpp-reference | `savegames/strategic-site-timer.expected.json` | `StrategicWorldSiteTimerTests` ([StrategicWorldSiteTimerTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteTimerTests.cs))<br>`StrategicWorldSiteUfoTests` ([StrategicWorldSiteUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteUfoTests.cs)) |
 | [strategic-time](../fixtures/manifests/strategic-time.json) | cpp-reference | `savegames/strategic-time.expected.json` | `StrategicTimeFixtureTests` ([StrategicTimeFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicTimeFixtureTests.cs)) |
 | [strategic-ufo-shield](../fixtures/manifests/strategic-ufo-shield.json) | cpp-reference | `savegames/strategic-ufo-shield.expected.json` | `StrategicWorldUfoShieldTests` ([StrategicWorldUfoShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldUfoShieldTests.cs)) |
