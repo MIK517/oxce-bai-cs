@@ -474,3 +474,11 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   allocation gates. Formatting verification, code-map and diff checks pass.
   The reference checkout is clean; the obsolete probe object was removed.
   Broader 4c acceptance remains open and branch 4d is untouched.
+
+- 4c operation-base evidence/option slice: a new pinned full AlienMission::start
+  capture records 72 controlled creation searches, including technical regions,
+  fake-water preferences, 99th-attempt acceptance and 100th fallback/suppression.
+  Mod.cpp defaults allowAlienBasesOnWrongTextures to true. Its explicit false
+  override now projects into immutable runtime settings; compiler revision 34
+  rebuilds older caches. The existing initialization-prefix oracle is retained.
+  Actual base creation remains guarded until the following gameplay slice.

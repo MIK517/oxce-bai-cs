@@ -26,6 +26,7 @@ public sealed class CampaignStartSettings
         HealthWoundThreshold = builder.HealthWoundThreshold;
         EscortRange = builder.EscortRange;
         HunterKillerFastRetarget = builder.HunterKillerFastRetarget;
+        AllowAlienBasesOnWrongTextures = builder.AllowAlienBasesOnWrongTextures;
         AllowCountriesToCancelAlienPact = builder.AllowCountriesToCancelAlienPact;
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
             new Dictionary<StartingBaseVariant, YamlMappingNode>(builder.StartingBases));
@@ -101,7 +102,7 @@ public sealed class CampaignStartSettings
         IReadOnlyList<YamlMappingNode> globeLayers,
         int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
-        double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true)
+        double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true)
     {
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
@@ -110,6 +111,7 @@ public sealed class CampaignStartSettings
         HealthWoundThreshold = healthWoundThreshold;
         EscortRange = escortRange;
         HunterKillerFastRetarget = hunterKillerFastRetarget;
+        AllowAlienBasesOnWrongTextures = allowAlienBasesOnWrongTextures;
         AllowCountriesToCancelAlienPact = allowCountriesToCancelAlienPact;
         GlobeLayers = Array.AsReadOnly(globeLayers.ToArray());
         StartingBases = new ReadOnlyDictionary<StartingBaseVariant, YamlMappingNode>(
@@ -155,6 +157,7 @@ public sealed class CampaignStartSettings
     public int HealthWoundThreshold { get; }
     public int EscortRange { get; }
     public bool HunterKillerFastRetarget { get; }
+    public bool AllowAlienBasesOnWrongTextures { get; }
     public bool AllowCountriesToCancelAlienPact { get; }
     public CampaignStartTime StartingTime { get; }
     public int StartingDifficulty { get; }
@@ -211,6 +214,7 @@ internal sealed class CampaignStartSettingsBuilder
     public int HealthWoundThreshold { get; set; } = 100;
     public int EscortRange { get; set; } = 20;
     public bool HunterKillerFastRetarget { get; set; } = true;
+    public bool AllowAlienBasesOnWrongTextures { get; set; } = true;
     public bool AllowCountriesToCancelAlienPact { get; set; }
     public int[] BuyPriceCoefficients { get; } = [100, 100, 100, 100, 100];
     public int[] SellPriceCoefficients { get; } = [100, 100, 100, 100, 100];

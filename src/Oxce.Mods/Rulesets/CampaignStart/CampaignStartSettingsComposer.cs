@@ -38,6 +38,7 @@ internal static class CampaignStartSettingsComposer
         b.CustomTrainingFactor = Read(root, "customTrainingFactor", b.CustomTrainingFactor);
         b.EscortRange = Read(root, "escortRange", b.EscortRange);
         b.HunterKillerFastRetarget = Read(root, "hunterKillerFastRetarget", b.HunterKillerFastRetarget);
+        b.AllowAlienBasesOnWrongTextures = Read(root, "allowAlienBasesOnWrongTextures", b.AllowAlienBasesOnWrongTextures);
         b.AllowCountriesToCancelAlienPact = Read(root, "allowCountriesToCancelAlienPact", b.AllowCountriesToCancelAlienPact);
         if (root.TryGet("mana", out var mana))
             b.ManaWoundThreshold = Read(mana as YamlMappingNode ?? throw new InvalidDataException("Mana settings require a mapping."), "woundThreshold", b.ManaWoundThreshold);
