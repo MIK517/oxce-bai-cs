@@ -3,6 +3,7 @@
 // radar contact at half hours (radar arithmetic has its own oracle), one region/country,
 // no followers or dogfights, and the reference handler order. GUI alerts become pause bits.
 // GEOMETRY
+namespace Options {bool aggressiveRetaliation=false;}
 struct RuleUfoStats { int speedMax=2200, damageMax=50; };
 struct RuleUfo {
  int fakeChance=20; int getFakeWaterLandingChance() const { return fakeChance; }
@@ -70,6 +71,7 @@ struct Ufo:MovingTarget {
 const char* Ufo::ALTITUDE_STRING[]={"STR_GROUND","STR_VERY_LOW","STR_LOW_UC","STR_HIGH_UC","STR_VERY_HIGH"};
 struct Globe {bool insideLand(double,double) const{return true;} bool insideFakeUnderwaterTexture(double,double) const{return false;}};
 struct SavedGame {
+ std::vector<Target*> bases; auto* getBases(){return &bases;}
  std::vector<Ufo*> ufos; int nextUnique=9,nextLand=40,activity=0;
  int getId(const std::string& type){return type=="STR_UFO_UNIQUE"?nextUnique++:nextLand++;}
  std::vector<Ufo*>* getUfos(){return &ufos;}
@@ -305,5 +307,24 @@ void earthRectangleRows(){
  }
 }
 
+void aggressiveRows(){
+ bool first=true;
+ for(bool enabled:{false,true})for(bool inside:{false,true}){
+  if(!first)std::cout<<',';first=false;
+  Game game;Globe globe;AlienMission mission;mission._rule.objective=OBJECTIVE_RETALIATION;mission._nextWave=1;
+  Target outsideBase,insideBase;outsideBase.setLongitude(2);outsideBase.setLatitude(0.1);insideBase.setLongitude(0.2);insideBase.setLatitude(0.1);
+  game.save.bases={&outsideBase};if(inside)game.save.bases.push_back(&insideBase);
+  auto& region=game.mod.region;region._lonMin={0};region._lonMax={1};region._latMin={-1};region._latMax={1};
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  region._missionZones[6].areas[0]={Deg2Rad(22),Deg2Rad(28),Deg2Rad(-8),Deg2Rad(8)};
+  Ufo ufo(&game.mod.ufo,9);ufo.setMissionInfo(&mission,&game.mod.trajectory);ufo.point=2;
+  ufo.setLongitude(Deg2Rad(8));ufo.setLatitude(Deg2Rad(2));
+  auto* destination=new Waypoint;destination->setLongitude(ufo._lon);destination->setLatitude(ufo._lat);ufo.setDestination(destination);
+  RNG::calls=0;Options::aggressiveRetaliation=enabled;mission.ufoReachedWaypoint(ufo,game,globe);
+  std::cout<<'['<<enabled<<','<<inside<<",\""<<number(ufo._dest->_lon)<<"\",\""<<number(ufo._dest->_lat)<<"\","<<RNG::calls<<']';
+ }
+ Options::aggressiveRetaliation=false;
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"],\"selectedSiteRows\":[";selectedSiteRows();std::cout<<"],\"earthRectangleRows\":[";earthRectangleRows();std::cout<<"]}\n";}
+
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"],\"pointDestinationRows\":[";pointDestinationRows();std::cout<<"],\"pointOriginRows\":[";pointOriginRows();std::cout<<"],\"rectangleDestinationRows\":[";rectangleDestinationRows();std::cout<<"],\"selectedSiteRows\":[";selectedSiteRows();std::cout<<"],\"earthRectangleRows\":[";earthRectangleRows();std::cout<<"],\"aggressiveRows\":[";aggressiveRows();std::cout<<"]}\n";}

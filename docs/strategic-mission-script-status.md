@@ -305,3 +305,12 @@ the actual base origin, while validating the discarded regional domain and selec
 site area before mutation. Captured rows cover all six Earth modes and ground/air
 following legs. Fresh/cache tests verify coordinates, RNG, reload and the remaining
 Space-operation rectangle-origin boundary.
+
+### Batch 4, slice 12: aggressive retaliation ordinary arrivals
+
+Ordinary retaliation arrivals retain both getWaypoint selections, with two base-near
+random draws between them when aggressive retaliation finds the first regional
+player base. The first point is discarded by the pinned reference's shadowed local.
+Base list order and bounded preflight work are preserved. Captured enabled/disabled
+and present/absent-base rows, fresh/cache rectangle destination RNG and reload tests
+cover the behavior. Retaliation spawning, assault outcomes and combat stay guarded.

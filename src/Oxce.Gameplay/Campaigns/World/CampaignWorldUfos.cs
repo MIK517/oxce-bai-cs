@@ -129,9 +129,19 @@ internal sealed partial class CampaignWorld
                     if (siteLinkWork > MaximumAlienBaseChecks)
                         return "UFO operation-base lookup exceeds the supported work limit.";
                 }
-                if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
-                    !CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
-                    return "UFO waypoint arrival requires mission simulation.";
+                if (!mission.Interrupted && ufo.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
+                {
+                    var rule = MissionRule(mission);
+                    if (rule.Objective == RuntimeMissionObjective.Retaliation && campaign.Options.AggressiveRetaliation &&
+                        trajectory.Zone(ufo.TrajectoryPoint + 1) != 5)
+                    {
+                        var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
+                        siteLinkWork += (long)campaign.BaseStates.Count * region.Areas.Count;
+                        if (siteLinkWork > MaximumAlienBaseChecks) return "Aggressive retaliation base selection exceeds the supported work limit.";
+                    }
+                    if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
+                        return "UFO waypoint arrival requires mission simulation.";
+                }
             }
         }
         return null;
@@ -214,9 +224,6 @@ internal sealed partial class CampaignWorld
             return false;
         var rules = campaign.Content.RuntimeRules;
         var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        if (missionRule.Objective == RuntimeMissionObjective.Retaliation &&
-            campaign.Options.AggressiveRetaliation && trajectory.Zone(nextWaypoint) != 5)
-            return false; // The discarded first waypoint still consumes aggressive retaliation RNG.
         var waveIndex = MissionWaveIndex(ufo, mission, missionRule);
         if ((uint)waveIndex >= (uint)missionRule.Waves.Count) return false;
         var wave = missionRule.Waves[waveIndex];
@@ -274,11 +281,21 @@ internal sealed partial class CampaignWorld
         // The pinned ufoReachedWaypoint calls getWaypoint twice: the first result is
         // discarded on the ordinary path, and the second becomes the destination.
         // Preserve both selections, including land retries and their random choices.
-        var randomPosition = default(WorldPosition);
-        for (var selection = 0; selection < 2; selection++)
-            randomPosition = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule,
-                rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value.Waves[MissionWaveIndex(ufo, mission,
-                    rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value)]);
+        var missionRule = MissionRule(mission);
+        var wave = missionRule.Waves[MissionWaveIndex(ufo, mission, missionRule)];
+        _ = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule, wave);
+        if (campaign.Options.AggressiveRetaliation && missionRule.Objective == RuntimeMissionObjective.Retaliation &&
+            trajectory.Zone(nextWaypoint) != 5)
+            foreach (var owner in campaign.BaseStates)
+                if (WorldGeometry.InsideRegion(region, new(owner.Longitude, owner.Latitude)))
+                {
+                    // The reference shadows this result with its second getWaypoint call.
+                    var radius = Math.PI / 12;
+                    _ = WorldGeometry.RandomDouble(campaign.Random, owner.Longitude - radius, owner.Longitude + radius);
+                    _ = WorldGeometry.RandomDouble(campaign.Random, owner.Latitude - radius, owner.Latitude + radius);
+                    break;
+                }
+        var randomPosition = OrdinaryWaypoint(mission, trajectory, nextWaypoint, region, ufoRule, wave);
         // AlienMission::ufoReachedWaypoint assigns the raw regional point through
         // Target::setLongitude/setLatitude, which wrap coordinates across the globe.
         var nextPosition = WorldPosition.Create(randomPosition.Longitude, randomPosition.Latitude);

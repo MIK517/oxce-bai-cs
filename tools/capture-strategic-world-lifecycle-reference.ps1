@@ -94,8 +94,6 @@ function Replace-UnsupportedBody([string]$Source, [string]$Condition) {
     return $Source.Substring(0,$open) + '{ throw std::runtime_error("Unsupported probe branch"); }' + $Source.Substring($end)
 }
 $arrival = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'void AlienMission::ufoReachedWaypoint('
-$arrival = Replace-UnsupportedBody $arrival 'if (Options::aggressiveRetaliation'
-$arrival = $arrival.Replace('Options::aggressiveRetaliation', 'false')
 $arrival = Replace-UnsupportedBody $arrival 'if (_missionSiteZoneArea != -1 && wave.objective'
 $arrival = Replace-UnsupportedBody $arrival 'else if (trajectory.getID() == UfoTrajectory::RETALIATION_ASSAULT_RUN)'
 $arrival = Replace-UnsupportedBody $arrival 'if (_rule.getObjective() == OBJECTIVE_BASE && wave.objectiveOnTheLandingSite'
