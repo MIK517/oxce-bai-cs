@@ -146,6 +146,116 @@ public sealed class StrategicWorldEscortSpawnTests
             "New UFO escorts require craft retarget forecasts.");
     }
 
+
+    [Fact]
+    public void ImmediateEscortOrderMatchesPinnedCreationAndRetargetFragments()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"))
+        {
+            var ordinaryFirst = row[0].GetBoolean();
+            var retarget = row[1].GetBoolean();
+            var source = new UfoSnapshot(9, "UFO", 4, "TRAJ", 0, 0.3, 0.1, UfoStatus.Flying, WorldAltitudes.Low)
+            {
+                HunterKiller = true, Speed = 550,
+                Destination = WorldTargetReference.ForWaypoint(0, new(0.4, 0.2)),
+            };
+            var leader = source with { UniqueId = 10, Longitude = 0.7, Latitude = 0.3, HunterKiller = false };
+            var result = WorldHunting.InitializeEscort(source, true, 2200, ordinaryFirst ? [leader] : []);
+            if (retarget && !result.Escorting)
+                result = WorldHunting.Escort(result, new(WorldTargetKind.Ufo, WorldTargetReference.UfoType,
+                    leader.Id, leader.Longitude, leader.Latitude) { UniqueId = leader.UniqueId }, 2200);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object?[]
+            {
+                ordinaryFirst, retarget, result.Escorting, result.Escorting ? result.Destination!.UniqueId : 0,
+                result.Longitude, result.Latitude, result.Speed,
+                result.OriginalWaypoint?.Longitude, result.OriginalWaypoint?.Latitude,
+            });
+            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())),
+                CanonicalJson.Normalize(actual));
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void ImmediateWavesKeepLeaderOrderOriginsAndUnmarkedIdentity(bool cache, bool earlyLeader)
+    {
+        var content = Load(cache);
+        var initial = SpawnSnapshot(content, UfoStatus.Flying);
+        initial = initial with { World = initial.World with
+        {
+            Ufos = [],
+            Missions = [initial.World.Missions[0] with
+            {
+                RuleId = earlyLeader ? "MISSION_ESCORT_CHAIN_EARLY_LEADER" : "MISSION_ESCORT_CHAIN_LATE_LEADER",
+                NextWave = 0, LiveUfos = 0,
+            }],
+        } };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceOne(campaign);
+        var world = campaign.Capture().World;
+        Assert.Equal(3, world.Ufos.Count);
+        var leader = Assert.Single(world.Ufos, ufo => !ufo.HunterKiller);
+        Assert.Equal(0, leader.Id);
+        Assert.Equal(earlyLeader ? 0 : 2, world.Ufos.ToList().IndexOf(leader));
+        foreach (var escort in world.Ufos.Where(ufo => ufo.HunterKiller))
+        {
+            Assert.True(escort.Escort);
+            Assert.True(escort.Escorting);
+            Assert.Equal(leader.UniqueId, escort.Destination!.UniqueId);
+            Assert.Equal(0, escort.Destination.Id);
+            Assert.Equal(2200, escort.Speed);
+            Assert.NotNull(escort.OriginalWaypoint);
+            if (earlyLeader) Assert.Equal(leader.Position, escort.Position);
+            else Assert.True(WorldGeometry.Distance(leader.Position, escort.Position) > WorldGeometry.RadianSpeed(2200));
+        }
+        Assert.Equal(3, world.Missions[0].LiveUfos);
+        Assert.Equal(2, world.Missions[0].NextWave);
+        campaign = Reload(content, campaign, 81, "immediate-escort-chain.sav");
+        AdvanceUnblocked(campaign, 120);
+        Reload(content, campaign, 81, "immediate-escort-chain-later.sav");
+    }
+
+    [Fact]
+    public void LoadedIdleEscortStopsBeforeNewbornLeaderChangesPursuitForecast()
+    {
+        var content = Load();
+        var initial = SpawnSnapshot(content, UfoStatus.Flying);
+        initial = initial with { World = initial.World with
+        {
+            Missions = [initial.World.Missions[0] with { RuleId = "MISSION_ESCORT_CHAIN_EARLY_LEADER", NextWave = 0 }],
+            Ufos = [initial.World.Ufos[0] with
+            {
+                RuleId = "ESCORT_HUNTER", HunterKiller = true, Escort = true, Speed = 550,
+            }],
+        } };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Loaded idle escorts require same-tick newborn leader forecasts.");
+    }
+
+    [Fact]
+    public void ImmediateEscortSelectionReservesWorkBeforeAnyBirth()
+    {
+        var content = Load(overlay: """
+            alienMissions:
+              - type: MANY_ESCORTS
+                objective: 0
+                waves:
+                  - {ufo: ESCORT_HUNTER, count: 1001, trajectory: TRAJ_ESCORT_SPAWN, timer: 0, hunterKillerPercentage: 100, escort: true}
+            """);
+        var initial = SpawnSnapshot(content, UfoStatus.Flying);
+        initial = initial with { World = initial.World with
+        {
+            Ufos = [],
+            Missions = [initial.World.Missions[0] with { RuleId = "MANY_ESCORTS", NextWave = 0, LiveUfos = 0 }],
+        } };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "New UFO escort selection exceeds the supported work limit.");
+    }
+
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
 

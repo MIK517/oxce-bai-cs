@@ -537,3 +537,9 @@ next two slices. Combat and deployment remain branch 5.
   deletion through shared target cleanup. Fresh/cache, persistence, malformed
   effective-speed and craft-retarget boundary tests pass. Immediate-wave leaders
   and grounded escort forecasts remain the next boundaries.
+
+- 4c immediate escort composition: same-tick earlier and later ordinary leaders
+  now attach in reference list order with the distinct creation/retarget origin
+  behavior. Positive unique UFO references permit an unassigned contact marker.
+  Fresh/cache persistence and aggregate work limits are verified. Loaded idle
+  escort/newborn-leader pursuit forecasts retain a precise boundary.

@@ -33,6 +33,19 @@ $start = $method.IndexOf('int newAttraction = INT_MAX;', [StringComparison]::Ord
 $end = $method.IndexOf('if (newTarget)', $start, [StringComparison]::Ordinal)
 if ($start -lt 0 -or $end -le $start) { throw 'Missing hunter selection fragment.' }
 $template = $template.Replace('// SELECTION', $method.Substring($start, $end - $start))
+$escortStart = $method.IndexOf('if (ufo->isEscort() && !ufo->isHunting() && !ufo->isEscorting())', [StringComparison]::Ordinal)
+if ($escortStart -lt 0) { throw 'Missing retarget escort fragment.' }
+$escortOpening = $method.IndexOf('{', $escortStart)
+$depth = 1
+$escortEnd = $escortOpening + 1
+while ($depth -gt 0 -and $escortEnd -lt $method.Length) {
+    if ($method[$escortEnd] -eq '{') { $depth++ }
+    if ($method[$escortEnd] -eq '}') { $depth-- }
+    $escortEnd++
+}
+if ($depth -ne 0) { throw 'Unbalanced retarget escort fragment.' }
+$template = $template.Replace('// RETARGET_ESCORT', $method.Substring($escortStart, $escortEnd - $escortStart))
+
 $retarget = ''
 foreach ($signature in @('void Ufo::backupOriginalDestination()', 'void Ufo::setTargetedXcomCraft(', 'void Ufo::setEscortedUfo(', 'void Ufo::resetOriginalDestination(bool', 'void Ufo::setDestination(')) {
     $retarget += (Read-ReferenceMethod 'src/Savegame/Ufo.cpp' $signature) + [Environment]::NewLine

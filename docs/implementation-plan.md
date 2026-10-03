@@ -677,3 +677,7 @@ next two slices. Combat and deployment remain branch 5.
 - Branch 4c escort creation slice: enabled single airborne escort births, including
   no-leader requests and same-tick expired-leader recovery. Focused hunting/escort
   verification passed (59 cases); immediate-wave composition follows separately.
+
+- Branch 4c immediate escort slice: finite wave chains preserve earlier/later
+  leader order and origin semantics, including unmarked leader reloads and bounded
+  population scans. Focused verification passed (66 hunting/escort cases).

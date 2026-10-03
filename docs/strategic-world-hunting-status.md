@@ -132,3 +132,21 @@ validates the effective full escort speed, and stops before craft retargeting or
 grounded escort takeoff needs further forecasts. Multiple same-tick births remain
 guarded for the immediate-wave slice. Reference: AlienMission::spawnUfo,
 Ufo::setEscortedUfo/resetOriginalDestination and GeoscapeState::time5Seconds.
+
+### Creation-time escorts: immediate wave chains
+
+Finite immediate waves now preserve the live saved-list order when leaders and
+escorts are created in the same half-hour tick. The reference capture adds four
+sequence rows from AlienMission::spawnUfo and the idle escort fragment of
+GeoscapeState::ufoHuntingAndEscorting. Earlier leaders relocate the initial escort
+origin; later leaders attach during retargeting without relocating it. Multiple
+escorts skip other hunters, follow the first ordinary leader and keep their own
+original waypoints.
+
+Fresh/cache integration advances both ordering variants, saves before and after
+subsequent movement, and preserves references to a leader whose contact ID is
+still zero using its positive STR_UFO_UNIQUE identity. Scheduling reserves newborn
+and existing escort scans over the final population. Excessive immediate escort
+work stops before any birth or RNG draw. Loaded idle escorts attaching to newborn
+leaders still stop at a specific pursuit-forecast boundary; grounded escorts and
+creation-time craft hunting remain explicit future 4c work.

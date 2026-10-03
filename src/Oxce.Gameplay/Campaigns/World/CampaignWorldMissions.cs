@@ -26,6 +26,7 @@ internal sealed partial class CampaignWorld
         var ufoSpawns = 0;
         var newFlyingHunters = 0;
         var newEscorts = 0;
+        HashSet<int>? possibleNewLeaderMissions = null;
         var work = 0;
         long sourceBaseWork = 0;
         long cleanupWork = 0;
@@ -97,6 +98,11 @@ internal sealed partial class CampaignWorld
                     ufoSpawns++;
                     var wave = rule.Waves[step.NextWave];
                     var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
+                    // Every non-hunter birth is an ordinary leader. A stochastic
+                    // hunter constructor may produce either outcome; no RNG is forecast.
+                    if (rule.Objective == RuntimeMissionObjective.Supply && wave.Objective ||
+                        (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) < 100)
+                        (possibleNewLeaderMissions ??= []).Add(step.Id);
                     if (trajectory.Altitude(0) != 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
                         (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0)
                         newFlyingHunters++;
@@ -108,11 +114,26 @@ internal sealed partial class CampaignWorld
                 return "Alien mission wave spawning requires world simulation.";
             }
         }
-        if (newEscorts != 0 && ufoSpawns > 1)
-            return "Creation-time escorts require immediate-wave leader forecasts.";
+        var savedIdleEscorts = 0;
+        var savedMovingEscorts = 0;
+        foreach (var saved in _ufos)
+        {
+            var projected = UfoForFlight(saved, highest);
+            if (projected.Escorting) savedMovingEscorts++;
+            if (projected.Status != UfoStatus.Flying || !projected.HunterKiller || !projected.Escort ||
+                projected.Hunting || projected.Escorting) continue;
+            savedIdleEscorts++;
+            // Attaching a loaded idle escort to a newborn leader changes this
+            // tick's craft pursuit forecast. Keep that composition explicit.
+            if (possibleNewLeaderMissions?.Contains(saved.MissionId) == true)
+                return "Loaded idle escorts require same-tick newborn leader forecasts.";
+        }
         var finalUfoCount = (long)_ufos.Count + ufoSpawns;
-        if (newEscorts != 0 && 2L * newEscorts * finalUfoCount > MaximumAlienBaseChecks)
+        var escortWork = 2L * newEscorts * finalUfoCount + (long)savedIdleEscorts * ufoSpawns;
+        if (_huntingForecastWork + escortWork > MaximumAlienBaseChecks)
             return "New UFO escort selection exceeds the supported work limit.";
+        if (2L * (savedMovingEscorts + newEscorts) * finalUfoCount > MaximumAlienBaseChecks)
+            return "New UFO escort movement exceeds the supported work limit.";
         if (ufoSpawns != 0 && HasDestroyedUfoAfterTransitions(highest))
         {
             var terminal = 0;
@@ -144,7 +165,7 @@ internal sealed partial class CampaignWorld
                 if (possibleCrafts > MaximumAlienBaseChecks)
                     return "New UFO retargeting exceeds the supported work limit.";
             }
-            if (_huntingForecastWork + possibleCrafts * newFlyingHunters + 2L * newEscorts * finalUfoCount > MaximumAlienBaseChecks)
+            if (_huntingForecastWork + possibleCrafts * newFlyingHunters + escortWork > MaximumAlienBaseChecks)
                 return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";

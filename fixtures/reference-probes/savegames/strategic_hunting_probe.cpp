@@ -35,6 +35,8 @@ struct Ufo : MovingTarget {
 Mission mission; int uniqueId=0, status=0; bool _isEscort=false;
 Mission* getMission() { return &mission; }
 bool isHunterKiller() const { return _isHunterKiller; }
+bool isEscort() const { return _isEscort; }
+bool isEscorting() const { return _isEscorting; }
 void setEscort(bool value) { _isEscort=value; }
 bool _isHunterKiller=false; int _huntMode=0, _huntBehavior=0;
 Ufo()=default;
@@ -60,6 +62,11 @@ struct SavedGame { std::vector<Ufo*> ufos; std::vector<Ufo*>* getUfos() { return
 void spawnEscort(Ufo* ufo,SavedGame& game,bool requested) {
 struct { bool escort; } wave{requested};
 // SPAWN_ESCORT
+}
+void retargetEscort(Ufo* ufo,SavedGame& saved) {
+struct Game { SavedGame* saved; SavedGame* getSavedGame() { return saved; } } game{&saved};
+Game* _game=&game;
+// RETARGET_ESCORT
 }
 struct FastSchedule {
 struct Mod { bool fast = true; bool getHunterKillerFastRetarget() const { return fast; } } mod;
@@ -154,6 +161,29 @@ spawnEscort(&ufo,game,requested);
 auto* followed=dynamic_cast<Ufo*>(ufo._dest);
 std::cout << '[' << (hunter?"true":"false") << ',' << (requested?"true":"false") << ',' << variant << ',' << status << ','
 << (ufo._isEscort?"true":"false") << ',' << (ufo._isEscorting?"true":"false") << ',' << (followed?followed->uniqueId:0) << ','
+<< ufo.lon << ',' << ufo.lat << ',' << ufo.speed << ',';
+if(ufo._origWaypoint) std::cout << ufo._origWaypoint->lon << ',' << ufo._origWaypoint->lat;
+else std::cout << "null,null";
+std::cout << ']';
+if(ufo._origWaypoint) delete ufo._origWaypoint; else delete ufo._dest;
+}
+std::cout << "],\"spawnEscortSequenceRows\":[";
+first=true;
+for(bool ordinaryFirst:{false,true}) for(bool retarget:{false,true}) {
+if(!first) std::cout << ','; first=false;
+Ufo ufo,leader;
+ufo._isHunterKiller=true; ufo.lon=0.3; ufo.lat=0.1; ufo.speed=550;
+ufo._dest=new Waypoint(); ufo._dest->lon=0.4; ufo._dest->lat=0.2;
+leader.uniqueId=10; leader.lon=0.7; leader.lat=0.3;
+SavedGame game;
+if(ordinaryFirst) game.ufos.push_back(&leader);
+spawnEscort(&ufo,game,true);
+game.ufos.push_back(&ufo);
+if(!ordinaryFirst) game.ufos.push_back(&leader);
+if(retarget) retargetEscort(&ufo,game);
+auto* followed=dynamic_cast<Ufo*>(ufo._dest);
+std::cout << '[' << (ordinaryFirst?"true":"false") << ',' << (retarget?"true":"false") << ','
+<< (ufo._isEscorting?"true":"false") << ',' << (followed?followed->uniqueId:0) << ','
 << ufo.lon << ',' << ufo.lat << ',' << ufo.speed << ',';
 if(ufo._origWaypoint) std::cout << ufo._origWaypoint->lon << ',' << ufo._origWaypoint->lat;
 else std::cout << "null,null";
