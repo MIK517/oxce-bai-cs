@@ -12,7 +12,19 @@ internal sealed partial class CampaignWorld
     private string? InfiltrationReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
         CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work)
     {
-        if (rule.EndlessInfiltration) return "Endless infiltration requires repeating wave forecasts.";
+        try { return InfiltrationPreparationReason(mission, rule, highest, markers, ref work); }
+        catch (InvalidDataException error) { return error.Message; }
+    }
+
+    private string? InfiltrationPreparationReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work)
+    {
+        if (rule.EndlessInfiltration)
+        {
+            var timer = rule.Waves[0].SpawnTimer;
+            if (timer > int.MaxValue || (timer / 30 / 2 + timer / 30) * 30 > int.MaxValue)
+                return "Endless infiltration restart timer exceeds the supported range.";
+        }
         var rules = campaign.Content.RuntimeRules;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         work += (long)campaign.CountryStates.Count * (region.Areas.Count + 1L);

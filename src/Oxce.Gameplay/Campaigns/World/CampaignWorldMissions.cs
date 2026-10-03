@@ -50,6 +50,8 @@ internal sealed partial class CampaignWorld
                 mission.NextWave >= rule.Waves.Count)
                 continue;
             if (mission.SpawnCountdown > 30) continue;
+            if (rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration &&
+                rule.Waves.All(wave => wave.SpawnTimer == 0)) return WaveWorkReason;
             foreach (var step in DueWaveSteps(mission, rule))
             {
                 if (++work > MaximumImmediateWaveSteps) return WaveWorkReason;
@@ -75,7 +77,8 @@ internal sealed partial class CampaignWorld
                         return siteReason;
                     var finishes = step.NextWave + 1 == rule.Waves.Count &&
                         (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
-                    if (finishes && step.LiveUfos == 0 &&
+                    if (finishes && !(rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration) &&
+                        step.LiveUfos == 0 &&
                         MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
                     continue;
                 }
@@ -83,7 +86,8 @@ internal sealed partial class CampaignWorld
                 {
                     var finishes = step.NextWave + 1 == rule.Waves.Count &&
                         (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
-                    if (finishes && step.LiveUfos == 0 &&
+                    if (finishes && !(rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration) &&
+                        step.LiveUfos == 0 &&
                         MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
                     continue;
                 }
@@ -227,7 +231,11 @@ internal sealed partial class CampaignWorld
                     var completesInfiltration = CompletesInfiltration(mission, rule, wave);
                     mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
                     if (completesBase) CompleteBaseObjective(mission, rule);
-                    if (completesInfiltration) CompleteInfiltration(mission, rule);
+                    if (completesInfiltration)
+                    {
+                        CompleteInfiltration(mission, rule);
+                        if (rule.EndlessInfiltration) mission = WorldInfiltration.Restart(mission, rule, campaign.Random);
+                    }
                     _missions[index] = mission;
                     // Recursion tests the original timer, not the rounded countdown.
                     if (mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
@@ -663,7 +671,11 @@ internal sealed partial class CampaignWorld
         var counter = (ulong)mission.NextUfoCounter + 1;
         if (counter > int.MaxValue && counter < wave.UfoCount) return false;
         var nextWave = counter >= wave.UfoCount ? mission.NextWave + 1 : mission.NextWave;
-        if (nextWave == rule.Waves.Count) return true;
+        if (nextWave == rule.Waves.Count)
+        {
+            if (rule.Objective != RuntimeMissionObjective.Infiltration || !rule.EndlessInfiltration) return true;
+            nextWave = 0;
+        }
         var timer = rule.Waves[nextWave].SpawnTimer;
         // DueWaveSteps validates the entire immediate chain before any mutation/RNG.
         if (timer > int.MaxValue) return false;
@@ -685,6 +697,8 @@ internal sealed partial class CampaignWorld
             var counter = (ulong)mission.NextUfoCounter + 1;
             var nextWave = mission.NextWave;
             if (counter >= wave.UfoCount) { counter = 0; nextWave++; }
+            if (nextWave == rule.Waves.Count && rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration)
+                nextWave = 0;
             if (nextWave == rule.Waves.Count || rule.Waves[nextWave].SpawnTimer != 0) yield break;
             mission = mission with
             {

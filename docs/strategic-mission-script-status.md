@@ -654,3 +654,9 @@ and branch 4d is untouched.
   separately from country effects. Short, rounded and long timers preserve the
   original-timer recursion rule and one reference countdown draw per restart.
   Pure runtime restart projection matches six steps of each fresh/cache trace.
+
+- Five-cycle batch 3, slice 2: endless missions now restart after pact/base
+  completion and then draw the first-wave countdown. Finite zero-timer followups
+  preserve reference order; fully zero-timer loops stop before tick/RNG mutation
+  at the existing 4,096-step bound. Live pending-pact history, no-candidate repeats,
+  random order and transition reloads are covered fresh/cache.
