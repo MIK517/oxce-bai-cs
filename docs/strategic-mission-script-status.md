@@ -296,3 +296,12 @@ therefore remain until the next half-hour cleanup. Hunting timers reset once and
 source/count history persists. Captured baseHunting plus verbatim no-object counter
 fragments, fresh/cache RNG and reload tests cover both zero and short first timers.
 Immediate UFO/site/effect outcomes remain guarded.
+
+### Batch 4, slice 11: rectangular Earth-operation origins
+
+Existing operation bases override ordinary rectangular starting regions after
+reference getWaypoint draws and land retries. Pure forecasts score and separate
+the actual base origin, while validating the discarded regional domain and selected
+site area before mutation. Captured rows cover all six Earth modes and ground/air
+following legs. Fresh/cache tests verify coordinates, RNG, reload and the remaining
+Space-operation rectangle-origin boundary.

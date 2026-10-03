@@ -263,6 +263,16 @@ internal sealed partial class CampaignWorld
             return source.Position.IsNormalized;
         }
         var wave = rule.Waves[mission.NextWave];
+        if (source is not null)
+        {
+            positions = [];
+            if (WorldGeometry.MissionAreas(region, trajectory.Zone(0)).Count > 256) return false;
+            ValidateWaypointAreas(region, trajectory.Zone(0));
+            if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone)
+                _ = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+            positions = [source.Position];
+            return source.Position.IsNormalized;
+        }
         if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
             wave.Objective && trajectory.Zone(0) == rule.SpawnZone)
         {
@@ -353,18 +363,6 @@ internal sealed partial class CampaignWorld
         return true;
     }
 
-    private static bool TryGetFixedWaypoint(RuntimeRegionRule region, int zone, out WorldPosition position)
-    {
-        var areas = WorldGeometry.MissionAreas(region, zone);
-        if (areas.Count != 1 || !areas[0].IsPoint)
-        {
-            position = default;
-            return false;
-        }
-        position = WorldPosition.Create(areas[0].LongitudeMinimum, areas[0].LatitudeMinimum);
-        return position.IsNormalized;
-    }
-
     private bool CanAllocateUfoIds(int count)
     {
         if (count == 0) return true;
@@ -391,8 +389,6 @@ internal sealed partial class CampaignWorld
                 ? WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random)
                 : OrdinaryWaypoint(mission, trajectory, 0, region, ufoRule, wave));
         if (source is not null) position = source.Position;
-        // Fixed-point eligibility implies getLandPoint's city bypass when the
-        // following leg lands, consuming the same regional selection.
         var destination = NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
             ? SupplySpawnDestination(mission, wave, trajectory, region, ufoRule)
             : OrdinaryWaypoint(mission, trajectory, 1, region, ufoRule, wave));
