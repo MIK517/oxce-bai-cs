@@ -65,22 +65,56 @@ public sealed class StrategicWorldObjectiveLifecycleTests
         AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
     }
 
-    [Fact]
-    public void AggressiveRetaliationArrivalsStayAtomicBeforeTheirAdditionalRandomChoices()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AggressiveRetaliationArrivalsPreserveDiscardedChoicesAndSecondWaypoint(bool cache)
     {
-        var content = Load(false);
-        var initial = CreateLifecycleSnapshot(content);
-        var mission = initial.World.Missions[0] with { RuleId = "LIFECYCLE_4_0" };
-        var ufo = initial.World.Ufos[0] with
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-objective-lifecycle.rul", "strategic-aggressive-arrivals.rul"], cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "aggressiveRows"))
         {
-            Status = UfoStatus.Flying,
-            Altitude = WorldAltitudes.High,
-            TrajectoryPoint = 2,
-            Destination = WorldTargetReference.ForWaypoint(0, initial.World.Ufos[0].Position),
-        };
-        var campaign = CampaignState.Restore(initial with
-        { World = initial.World with { Missions = [mission], Ufos = [ufo] } }, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+            var enabled = row[0].GetInt32() != 0;
+            var inside = row[1].GetInt32() != 0;
+            var initial = CreateLifecycleSnapshot(content);
+            var mission = initial.World.Missions[0] with { RuleId = "LIFECYCLE_4_0" };
+            var ufo = initial.World.Ufos[0] with
+            {
+                Status = UfoStatus.Flying,
+                Altitude = WorldAltitudes.High,
+                TrajectoryId = "AGGRESSIVE_RECT",
+                TrajectoryPoint = 2,
+                SecondsRemaining = 0,
+                Destination = WorldTargetReference.ForWaypoint(0, initial.World.Ufos[0].Position),
+            };
+            var owner = initial.Bases[0];
+            var snapshot = initial with
+            {
+                Options = initial.Options with { AggressiveRetaliation = enabled },
+                Bases = inside ? [owner with { Id = 2, Longitude = 2, Crafts = [], Soldiers = [] }, owner] : [owner with { Longitude = 2 }],
+                World = initial.World with { Missions = [mission], Ufos = [ufo] },
+            };
+            var rules = content.RuntimeRules;
+            var region = rules.Regions[rules.Regions.GetRequired("REGION")].Value;
+            Assert.Equal(row[2].GetString(), region.MissionZones[2].Areas[0].LongitudeMinimum.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(row[3].GetString(), region.MissionZones[2].Areas[0].LatitudeMinimum.ToString("F9", CultureInfo.InvariantCulture));
+            var random = new SplitMix64RandomSource(17);
+            WorldGeometry.RandomPoint(region, 2, -1, random);
+            if (enabled && inside) { random.NextUnit(); random.NextUnit(); }
+            var destination = WorldGeometry.RandomPoint(region, 2, -1, random);
+            Assert.Equal(enabled && inside ? 8 : 6, row[4].GetInt32());
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var actual = Assert.Single(after.World.Ufos);
+            Assert.Equal(destination, actual.Destination!.Position);
+            Assert.Equal(3, actual.TrajectoryPoint);
+            Assert.Equal(UfoStatus.Flying, actual.Status);
+            Assert.Equal(2200, actual.Speed);
+            Assert.Equal(random.State, after.RandomState);
+            Reload(content, campaign, 17, "aggressive-arrival.sav");
+        }
     }
 
     [Theory]
