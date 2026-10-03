@@ -117,6 +117,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
     private string? MissionScriptReason(
         RuntimeRule<RuntimeMissionScriptRule>[] available, int month)
     {
+        string? missionFailureReason = null;
         var labels = new HashSet<int>();
         var runs = new Dictionary<string, int>(StringComparer.Ordinal);
         var possible = 0;
@@ -170,7 +171,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     foreach (var type in WorldScriptSelection.Available(script.Missions, month).Where(choice => choice.Weight != 0))
                     {
                         if (type.Rule.Handle is not { } handle || !ValidMission(handle, script.Races.Count == 0, siteRegion))
-                            return MissionScriptBoundary;
+                            return missionFailureReason ?? MissionScriptBoundary;
                         if (script.UseTable) RecordRemoval(siteRegion, type.Rule.Id, creditedRegions);
                     }
             }
@@ -181,7 +182,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 work += (long)campaign.BaseStates.Count * campaign.RegionStates.Count;
                 if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
                 if (script.Missions.Count != 0 && (types.Count == 0 || types.Any(choice => choice.Rule.Handle is not { } handle ||
-                        !ValidMission(handle, script.Races.Count == 0)))) return MissionScriptBoundary;
+                        !ValidMission(handle, script.Races.Count == 0)))) return missionFailureReason ?? MissionScriptBoundary;
                 foreach (var owner in campaign.BaseStates)
                 {
                     if (LocateGenerationRegion(new(owner.Longitude, owner.Latitude)) is not { } region ||
@@ -197,7 +198,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     else
                     {
                         foreach (var type in types)
-                            if (!ValidMission(type.Rule.Handle!.Value, script.Races.Count == 0, region)) return MissionScriptBoundary;
+                            if (!ValidMission(type.Rule.Handle!.Value, script.Races.Count == 0, region)) return missionFailureReason ?? MissionScriptBoundary;
                         if (script.UseTable)
                             foreach (var type in types) RecordRemoval(region, type.Rule.Id, creditedRegions);
                     }
@@ -207,7 +208,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             {
                 if (script.Missions.Count != 0 && Choices(script.Missions, month, choice =>
                         choice.Handle is { } handle && ValidMission(handle, script.Races.Count == 0)) is { } missionReason)
-                    return missionReason;
+                    return missionFailureReason ?? missionReason;
                 var regions = new List<string>();
                 var resetOptions = new Dictionary<string, WorldWeightedOptions>(StringComparer.Ordinal);
                 if (script.Regions.Count == 0)
@@ -242,7 +243,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     if (script.Missions.Count != 0)
                         foreach (var choice in WorldScriptSelection.ForMonth(script.Missions, unchecked((ulong)month), false))
                             if (choice.Weight != 0 && !ValidMission(choice.Rule.Handle!.Value, script.Races.Count == 0, region))
-                                return MissionScriptBoundary;
+                                return missionFailureReason ?? MissionScriptBoundary;
                     if (script.Missions.Count == 0)
                     {
                         if (_strategy.RegionMissions.TryGetValue(region, out var options))
@@ -302,7 +303,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Earlier mission scripts can exhaust a required strategy region table.";
             foreach (var choice in options.Entries)
                 if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle) ||
-                    !ValidMission(handle, script.Races.Count == 0, region)) return MissionScriptBoundary;
+                    !ValidMission(handle, script.Races.Count == 0, region)) return missionFailureReason ?? MissionScriptBoundary;
             if (script.UseTable)
                 foreach (var name in options.Names) RecordRemoval(region, name, credited);
             return null;
@@ -328,8 +329,23 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return false;
             if (regionId is not null)
             {
-                work += 1L + (rule.OperationType == RuntimeMissionOperationType.Space ? 0 : 2L * _alienBases.Count);
-                if (work > MaximumMissionScriptChecks) return false;
+                work++;
+                if (rule.OperationType is not (RuntimeMissionOperationType.Space or RuntimeMissionOperationType.RegionNewBase))
+                {
+                    var region = campaign.Content.RuntimeRules.Regions[
+                        campaign.Content.RuntimeRules.Regions.GetRequired(regionId)].Value;
+                    if (region.MissionRegion is { } remap) region = campaign.Content.RuntimeRules.Regions[remap].Value;
+                    var regional = rule.OperationType is RuntimeMissionOperationType.RegionExistingBase or
+                        RuntimeMissionOperationType.RegionNewBaseIfNecessary;
+                    // Bound candidate collection, identity checks, the new fallback
+                    // predicate and live selection after earlier possible births.
+                    work += 6L * (_alienBases.Count + executableCount) * (1L + (regional ? region.Areas.Count : 0));
+                }
+                if (work > MaximumMissionScriptChecks)
+                {
+                    missionFailureReason = MissionScriptWorkReason;
+                    return false;
+                }
                 if (MissionOperationReason(rule, regionId) is not null) return false;
                 if (RequiresOperationBaseCreation(rule, regionId)) creationChoices.Add((handle, regionId));
             }

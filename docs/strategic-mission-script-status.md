@@ -501,3 +501,30 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   zones fail intentionally, and unused creation fields are skipped on reuse.
   All 94 focused operation/scheduling tests pass. Shared mission/UFO/player marker
   namespaces and broader unavailable transitions retain precise boundaries.
+
+- Operation-base batch audit reproduced deleted sidecar resurrection when a
+  replacement reused deployment and marker ID before rewrite. The regression
+  fails fresh/cache before the fix. A separate world-owned 64-bit birth sequence
+  now supplies persistent creation keys, survives deletion/reload and cannot be
+  changed through gameplay counters. Exhaustion blocks before RNG; inconsistent
+  saved birth identities fail intentionally. ADR 0031 records the save extension.
+
+- The same audit also confirmed missing craft-marker collision and legacy terror
+  namespace checks in creation. Both reproductions scheduled ambiguous targets
+  before the fix. Creation now reserves existing and incoming craft identities with bounded
+  scans and rejects the legacy namespace before RNG, matching the established
+  alien-base upgrade/save-resolution boundary.
+
+- The final resource audit also reproduced omitted regional containment costs.
+  Candidate preflight now reserves region-area scans, fallback checks, live
+  selection and earlier possible births before enumerating bases. Forced-new
+  operations skip irrelevant existing-base identity scans. The regression
+  exceeds the old budget and is now refused with unchanged campaign/RNG.
+
+- Operation-base cycle final validation: all 1,813 root tests pass with zero
+  failures/skips, including fixture checksums, staged-save classifications,
+  composed endurance scenarios and populated allocation checks. All 109 focused
+  scheduling tests pass. Formatting verification, regenerated code-map and diff
+  checks pass. Confirmed sidecar, marker-identity and geometry-work findings are
+  fixed with regressions; the reference checkout remains clean and the obsolete
+  probe object was removed. Broader 4c acceptance remains open; 4d is untouched.
