@@ -385,9 +385,10 @@ rectangles retain the single-pole-domain guard. The corrected project builds
 successfully, and the user reports all post-fix tests passing. Fixture input
 checksums, code-map validation and `git diff --check` pass. The changed pinned
 probe and rules text now use LF bytes, matching Git storage and clean checkouts.
-Formatting verification remains blocked because the sandbox denies .NET
-named-pipe connections; it remains required before a major push. No permissions
-were changed.
+The user verified formatting from normal PowerShell with
+`dotnet format Oxce.slnx --verify-no-changes --no-restore` (exit code 0).
+The audit fix is committed as `1d532c1`; this batch's validation is complete.
+The sandbox named-pipe failure remains unresolved. No permissions were changed.
 
 General separated Space rectangular origins are implemented. Direct site and
 deployment spawning, new alien-base objectives, infiltration/pacts, detection VM
