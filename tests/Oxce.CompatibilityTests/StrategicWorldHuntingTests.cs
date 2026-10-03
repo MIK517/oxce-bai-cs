@@ -174,6 +174,68 @@ public sealed class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "ground-hunter-lift.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AirborneHunterSpawnsWithoutCandidatesAndFindsLaterAirborneCraft(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = CreateSnapshot(content, "Air hunter") with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "MISSION_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(snapshot.RandomState));
+        AdvanceOne(campaign);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.True(ufo.HunterKiller);
+        Assert.Equal(1, ufo.HuntMode);
+        Assert.Equal(1, ufo.HuntBehavior);
+        Assert.False(ufo.Hunting);
+        Assert.False(ufo.Escort);
+        Reload(content, campaign, 81, "air-hunter-no-target.sav");
+        var craft = snapshot.Bases[0].Crafts.Single(item => item.RuleId == "SHIP");
+        var active = campaign.Capture().WithCraft("SHIP", item => item with
+        {
+            Logistics = item.Logistics! with
+            {
+                Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0,
+                Longitude = ufo.Longitude + 0.02, Latitude = ufo.Latitude,
+                Destination = null,
+            },
+        });
+        campaign = CampaignState.Restore(active, content, new SplitMix64RandomSource(active.RandomState));
+        var hunt = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(hunt.Events[0]).Summary.TickCount);
+        Assert.Single(hunt.Events.OfType<UfoStartedHunting>());
+        Assert.DoesNotContain(hunt.Events, item => item is CampaignActionBlocked);
+        Assert.Equal(craft.Id, Assert.Single(campaign.Capture().World.Ufos).Destination!.Id);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Hunting);
+        Reload(content, campaign, 81, "air-hunter-later-target.sav");
+    }
+
+    [Fact]
+    public void AirborneHunterSpawnStopsBeforeCandidateRetargetForecastIsRequired()
+    {
+        var content = Load();
+        var snapshot = HuntingSnapshot(content);
+        snapshot = snapshot with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            World = snapshot.World with
+            {
+                Ufos = [],
+                Missions = [snapshot.World.Missions[0] with
+                    { RuleId = "MISSION_HUNTER_AIR", NextWave = 0, LiveUfos = 0, SpawnCountdown = 0 }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
+            "Alien mission wave spawning requires world simulation.");
+    }
+
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
 

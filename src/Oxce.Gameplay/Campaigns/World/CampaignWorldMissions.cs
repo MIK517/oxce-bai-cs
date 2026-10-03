@@ -239,7 +239,8 @@ internal sealed partial class CampaignWorld
             ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
         if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
-            (wave.Escort || trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1)) return false;
+            (wave.Escort || (trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1) &&
+                !NoCraftCanBecomeHunterTarget())) return false;
         if (trajectory.Waypoints.Count < 2 ||
             trajectory.Altitude(0) != 0 && !IsAirborne(trajectory.Altitude(0)) ||
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
@@ -262,6 +263,28 @@ internal sealed partial class CampaignWorld
             foreach (var destination in destinations)
                 if (!(WorldGeometry.Distance(position.Center, destination.Center) - position.Radius - destination.Radius > WorldGeometry.RadianSpeed(speed) + 1e-12)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
+    }
+
+    // A new hunter has no original target. With no current or potential airborne
+    // craft and no escort request, the reference retarget pass cannot change its path.
+    private bool NoCraftCanBecomeHunterTarget()
+    {
+        long work = 0;
+        foreach (var owner in campaign.BaseStates)
+        {
+            work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            if (work > MaximumAlienBaseChecks) return false;
+            foreach (var craft in owner.Crafts)
+                if (craft.Logistics is { } state &&
+                    (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
+                        campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
+            foreach (var transfer in owner.Transfers)
+                if (!transfer.Delivered && transfer.Craft?.Logistics is { } state &&
+                    (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
+                        campaign.Content.RuntimeRules.Crafts[
+                            campaign.Content.RuntimeRules.Crafts.GetRequired(transfer.Craft.RuleId)].Value.AutoPatrol)) return false;
+        }
+        return true;
     }
 
     private AlienBaseSnapshot? MissionSourceBase(AlienMissionSnapshot mission)
