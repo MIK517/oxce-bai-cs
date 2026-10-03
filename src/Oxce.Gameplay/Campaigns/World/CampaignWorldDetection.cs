@@ -110,9 +110,18 @@ internal sealed partial class CampaignWorld
                 var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
                 if (!TryOrdinarySpawnPosition(step, missionRule, trajectory, region, out var position))
                     return "Alien mission wave spawning requires world simulation.";
-                var reason = CheckHalfHourUfo(wave.UfoType, position, regionTotals, countryTotals);
+                var grounded = trajectory.Altitude(0) == 0;
+                var reason = CheckHalfHourUfo(wave.UfoType, position, regionTotals, countryTotals, grounded ? 2 : 1);
                 if (reason is not null) return reason;
-                if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert) possibleMarkerIds++;
+                if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert)
+                {
+                    possibleMarkerIds++;
+                    if (grounded) possibleLandingIds++;
+                }
+                if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
+                    missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) &&
+                    CheckActivityScore(position, missionRule.Points, regionTotals, countryTotals) is { } liftReason)
+                    return liftReason;
             }
         }
         // processMissionSite follows UFO detection in the same half-hour handler.

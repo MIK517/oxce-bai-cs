@@ -27,7 +27,17 @@ ufoTrajectories:
       - [5, 0, 80]
       - [6, 0, 50]
       - [6, 1, 100]
+  - id: PATH_SHORT
+    groundTimer: 1
+    waypoints:
+      - [4, 0, 100]
+      - [5, 2, 80]
+      - [6, 1, 100]
 alienMissions:
+  - type: SPAWN_PATH_SHORT
+    points: 7
+    waves:
+      - {ufo: UFO_SCOUT, count: 2, trajectory: PATH_SHORT, timer: 9000}
   - type: SPAWN_PATH_0_0_0
     objective: 0
     waves:

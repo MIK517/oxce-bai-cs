@@ -192,3 +192,12 @@ selection retains getLandPoint semantics. AlienMission.cpp spawnUfo supplies the
 captured altitude rows. Fixed-point/source forecasts still reject same-tick arrivals
 and special objective consequences. Fresh/cache tests compare destination, movement,
 RNG, activity and transition reloads. Grounded starts are the next slice.
+
+### Batch 1, slice 2: ordinary grounded wave starts
+
+Generic waves initialize Landed status and groundTimer*5 on ground starts; the
+same tick decrements the timer or lifts normally. Half-hour forecasts reserve
+landing markers, doubled activity and any one-tick takeoff award together. Supply
+ground starts, zero/overflow timers and zero-capacity damage rules are rejected
+before mutation. Captured spawn rows, fresh/cache reloads and limit regressions
+cover the behavior. Reference: AlienMission.cpp spawnUfo and Ufo.cpp think/setAltitude.

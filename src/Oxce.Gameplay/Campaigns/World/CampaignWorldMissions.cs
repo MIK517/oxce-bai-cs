@@ -188,7 +188,7 @@ internal sealed partial class CampaignWorld
         if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective)) return false;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
         if (trajectory.Waypoints.Count < 2 ||
-            !IsAirborne(trajectory.Altitude(0)) ||
+            trajectory.Altitude(0) != 0 && !IsAirborne(trajectory.Altitude(0)) ||
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
         if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 && wave.Objective &&
@@ -196,6 +196,10 @@ internal sealed partial class CampaignWorld
             return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
+        if (trajectory.Altitude(0) == 0 &&
+            (rule.Objective == RuntimeMissionObjective.Supply || stats.DamageMaximum <= 0 ||
+             trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5))
+            return false;
         // The half-hour UFO handler scores and detects this ship after spawning.
         if (ufoRule.Scripts.Count != 0 ||
             !WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
@@ -295,10 +299,12 @@ internal sealed partial class CampaignWorld
         var speedRadian = WorldGeometry.RadianSpeed(speed);
         var vector = WorldGeometry.SpeedVector(position, destination, speedRadian);
         return new UfoSnapshot(campaign.NextId("STR_UFO_UNIQUE"), wave.UfoType, mission.Id,
-            wave.TrajectoryId, 0, position.Longitude, position.Latitude, UfoStatus.Flying,
+            wave.TrajectoryId, 0, position.Longitude, position.Latitude,
+            trajectory.Altitude(0) == 0 ? UfoStatus.Landed : UfoStatus.Flying,
             WorldAltitudes.All[trajectory.Altitude(0)])
         {
             MissionWaveNumber = mission.NextWave,
+            SecondsRemaining = trajectory.Altitude(0) == 0 ? checked(trajectory.GroundTimer * 5) : 0,
             Speed = speed,
             SpeedRadian = speedRadian,
             SpeedLongitude = vector.Longitude,
