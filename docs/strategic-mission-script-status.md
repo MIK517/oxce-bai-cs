@@ -201,3 +201,12 @@ landing markers, doubled activity and any one-tick takeoff award together. Suppl
 ground starts, zero/overflow timers and zero-capacity damage rules are rejected
 before mutation. Captured spawn rows, fresh/cache reloads and limit regressions
 cover the behavior. Reference: AlienMission.cpp spawnUfo and Ufo.cpp think/setAltitude.
+
+### Batch 1, slice 3: multiple point destinations
+
+Ordinary spawning may choose among up to 256 destination city/point areas in
+reference list order. Pure preflight verifies separation from every candidate,
+rejecting possible same-tick arrivals without consuming RNG. Supply-base and final
+operation-base destinations retain their precedence. Captured selected-area rows,
+seeded fresh/cache tests and reloads cover both choices and draw order. Origin
+regions remain fixed-point until their activity forecasts are expanded.
