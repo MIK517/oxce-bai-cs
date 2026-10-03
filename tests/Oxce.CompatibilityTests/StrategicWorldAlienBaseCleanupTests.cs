@@ -120,7 +120,7 @@ public sealed class StrategicWorldAlienBaseCleanupTests
     }
 
     [Fact]
-    public void LiveEarthOperationsAndPreDailyChecksRetainPreciseBoundaries()
+    public void LiveEarthOperationsInterruptAtDailyDeletionAndKeepPreDailyLinks()
     {
         var content = Load();
         var snapshot = Snapshot(content) with { CompletedResearch = ["UNLOCK"] };
@@ -132,8 +132,14 @@ public sealed class StrategicWorldAlienBaseCleanupTests
             mission.Id == 5 ? mission with { LiveUfos = 1 } : mission)]
             }
         };
-        AssertTimeBlocked(Restore(content, snapshot),
-            "Alien base self-destruction with live Earth-operation UFOs requires combined forecasts.");
+        var deleted = Restore(content, snapshot);
+        AdvanceOne(deleted);
+        Assert.Empty(deleted.Capture().World.AlienBases);
+        var interrupted = deleted.Capture().World.Missions.Single(mission => mission.Id == 5);
+        Assert.True(interrupted.Interrupted);
+        Assert.Null(interrupted.AlienBase);
+        Assert.Equal(1, interrupted.LiveUfos);
+        Reload(content, deleted, 40, "live-earth-links.sav");
         snapshot = snapshot with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
         var campaign = Restore(content, snapshot);
         AdvanceOne(campaign);
@@ -189,7 +195,7 @@ public sealed class StrategicWorldAlienBaseCleanupTests
             World = snapshot.World with
             {
                 AlienBases = [new(2, "CLEANUP_BASE", "RACE_A", 0.2001, 0.1)],
-                Missions = [snapshot.World.Missions[0] with { Interrupted = true }],
+                Missions = [snapshot.World.Missions[0] with { RuleId = "CLEANUP_EARTH", Interrupted = false, AlienBase = BaseTarget() }],
                 Ufos = [snapshot.World.Ufos[0] with { Destination = WorldTargetReference.ForWaypoint(0, snapshot.World.Ufos[0].Position) }]
             }
         };
@@ -238,6 +244,36 @@ public sealed class StrategicWorldAlienBaseCleanupTests
             Assert.Equal(row[1].GetInt32(), after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP")
                 .Logistics!.Destination?.Kind == WorldTargetKind.Base ? 1 : 0);
             Assert.Equal(2, after.World.AlienBases.Count); // Atomic port guard keeps both bases; reference safely deletes one pointer.
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LiveOperationLinksAndInterruptionMatchReferenceAcrossReload(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-cleanup");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "liveOperationRows"))
+        {
+            var operation = row[0].GetInt32();
+            var initial = Snapshot(content) with { CompletedResearch = ["UNLOCK"] };
+            var transit = CreateUfoTransitCampaign(content, initial.Time, "UFO_SCOUT", 2200,
+                $"CLEANUP_LIVE_{operation}", missionWaveNumber: 0).Capture();
+            var mission = transit.World.Missions[0] with { AlienBase = BaseTarget() };
+            var campaign = Restore(content, initial with
+            {
+                World = initial.World with { Missions = [mission], Ufos = transit.World.Ufos },
+            });
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            Assert.Empty(after.World.AlienBases);
+            var retained = Assert.Single(after.World.Missions);
+            Assert.Equal(row[1].GetInt32(), retained.AlienBase is null ? 0 : 1);
+            Assert.Equal(row[2].GetInt32(), retained.Interrupted ? 1 : 0);
+            Assert.Equal(row[3].GetInt32(), retained.LiveUfos);
+            Assert.Equal(UfoStatus.Flying, Assert.Single(after.World.Ufos).Status);
+            Reload(content, campaign, 40, "live-operation-deletion.sav");
         }
     }
 

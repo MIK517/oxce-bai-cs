@@ -24,7 +24,7 @@ struct AlienBase : Target {
 };
 struct MissionRule { int operation; int getOperationType() const { return operation; } };
 struct Mission {
- MissionRule rule; AlienBase* base; bool interrupted = false;
+ MissionRule rule; AlienBase* base; bool interrupted = false; int live = 0;
  AlienBase* getAlienBase() { return base; } void setAlienBase(AlienBase* value) { base = value; }
  MissionRule& getRules() { return rule; } void setInterrupted(bool value) { interrupted = value; }
 };
@@ -73,6 +73,14 @@ int main() {
   daily(&game,&save,&game.mod);
   std::cout << '[' << (mission.base == firstBase) << ',' << follower.returned << ',' << save.bases.size() << ']';
   delete firstBase;
+ }
+ std::cout << "],\"liveOperationRows\":[";first=true;
+ for(int operation=0;operation<=6;operation++){
+  if(!first)std::cout<<',';first=false;
+  AlienBase* base=new AlienBase;Mission mission{{operation},base,false,1};
+  SavedGame save{{&mission},{},{base},true};Game game{{false}};
+  daily(&game,&save,&game.mod);
+  std::cout<<'['<<operation<<','<<(mission.base!=nullptr)<<','<<mission.interrupted<<','<<mission.live<<']';
  }
  std::cout << "]}\n";
 }

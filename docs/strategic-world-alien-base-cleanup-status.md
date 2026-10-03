@@ -53,3 +53,10 @@ including 15 cleanup, seven retaliation and 13 crash cases. Formatting, fixture
 checksum/private-corpus, allocation, code-map and diff checks pass. The pinned
 reference checkout is unchanged. Three implementation/audit cycles are complete;
 branch 4c still has outstanding capabilities and branch 4d is untouched.
+
+Live Earth-operation UFOs now share the daily mission projection with movement
+and craft guards. Deletion clears source links and interrupts before same-tick
+arrivals; current-tick terminal fallthrough, later live-count cleanup and follower
+return are preserved. The earlier combined-forecast blanket guard is removed.
+SavedGame::clearLinksForAlienBase is captured with live-count rows for all seven
+operation modes. Fresh/cache tests cover terminal arrivals and reload after deletion.
