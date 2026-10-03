@@ -655,3 +655,10 @@ next two slices. Combat and deployment remain branch 5.
   override now projects into immutable runtime settings; compiler revision 34
   rebuilds older caches. The existing initialization-prefix oracle is retained.
   Actual base creation remains guarded until the following gameplay slice.
+
+- 4c bounded operation-base selector: gameplay now owns the reference's
+  fake-water odds, ordered area and coordinate draws, technical-region bypass
+  and finite 100-attempt search. The final attempt either returns the forced
+  point or suppresses creation according to the projected option. All 72
+  pinned traces match outcomes, land checks and draw counts/state. The selector
+  has no state effects; live initialization follows in the next slice.
