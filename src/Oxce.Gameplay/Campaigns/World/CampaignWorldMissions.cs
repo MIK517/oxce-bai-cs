@@ -241,7 +241,7 @@ internal sealed partial class CampaignWorld
             return false;
         foreach (var position in positions)
             foreach (var destination in destinations)
-                if (!(WorldGeometry.Distance(position, destination.Center) - destination.Radius > WorldGeometry.RadianSpeed(speed) + 1e-12)) return false;
+                if (!(WorldGeometry.Distance(position.Center, destination.Center) - position.Radius - destination.Radius > WorldGeometry.RadianSpeed(speed) + 1e-12)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -254,12 +254,12 @@ internal sealed partial class CampaignWorld
     }
 
     private bool TryOrdinarySpawnPositions(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<WorldPosition> positions)
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out IReadOnlyList<SpawnArea> positions)
     {
         var source = rule.OperationType == RuntimeMissionOperationType.Space ? null : MissionSourceBase(mission);
         if (source is not null && rule.Objective == RuntimeMissionObjective.Supply)
         {
-            positions = [source.Position];
+            positions = [new(source.Position, 0)];
             return source.Position.IsNormalized;
         }
         var wave = rule.Waves[mission.NextWave];
@@ -270,7 +270,7 @@ internal sealed partial class CampaignWorld
             ValidateWaypointAreas(region, trajectory.Zone(0));
             if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone)
                 _ = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
-            positions = [source.Position];
+            positions = [new(source.Position, 0)];
             return source.Position.IsNormalized;
         }
         if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
@@ -278,20 +278,23 @@ internal sealed partial class CampaignWorld
         {
             var area = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
             if (wave.ObjectiveOnTheLandingSite && !area.IsPoint) { positions = []; return false; }
-            positions = [WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum)];
+            positions = [new(WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum), 0)];
         }
-        else if (!TryPointPositions(region, trajectory.Zone(0), out positions)) return false;
-        if (source is not null) positions = [source.Position];
-        return positions.All(static position => position.IsNormalized);
-    }
-
-    private static bool TryPointPositions(RuntimeRegionRule region, int zone, out IReadOnlyList<WorldPosition> positions)
-    {
-        var areas = WorldGeometry.MissionAreas(region, zone);
-        positions = [];
-        if (areas.Count > 256 || areas.Any(static area => !area.IsPoint)) return false;
-        positions = areas.Select(static area => WorldPosition.Create(area.LongitudeMinimum, area.LatitudeMinimum)).ToArray();
-        return positions.All(static position => position.IsNormalized);
+        else
+        {
+            var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(0));
+            positions = [];
+            if (areas.Count > 256) return false;
+            // Land-point origins have a separate retry path, enabled by the next slice.
+            var landTested = rule.Objective != RuntimeMissionObjective.Supply && trajectory.Altitude(1) == 0 ||
+                rule.Objective == RuntimeMissionObjective.Supply && trajectory.Altitude(0) == 0;
+            if (landTested && areas.Any(static area => !area.IsPoint)) return false;
+            var result = new SpawnArea[areas.Count];
+            for (var index = 0; index < areas.Count; index++)
+                if (!TrySpawnArea(areas[index], out result[index])) return false;
+            positions = result;
+        }
+        return positions.All(static position => position.Center.IsNormalized);
     }
 
     private bool TryOrdinarySpawnDestinations(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,

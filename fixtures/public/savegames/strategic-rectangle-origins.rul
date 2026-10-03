@@ -1,0 +1,44 @@
+regions:
+  - type: REGION
+    missionZones:
+      - [[12, 16, 1, 3, 10]]
+      - [[8, 12, -3, 3, 10]]
+      - [[7, 9, 1, 3, 10]]
+      - [[376, 372, 3, 1, 10]]
+      - [[10, 10, 8, 8, 10]]
+      - [[8, 8, 2, 2, 10]]
+      - [[8.01, 8.01, 2, 2, 10]]
+countries:
+  - type: NORTH
+    fundingBase: 1
+    fundingCap: 100
+    areas: [[0, 30, 0, 20]]
+  - type: SOUTH
+    fundingBase: 1
+    fundingCap: 100
+    areas: [[0, 30, -20, 0]]
+ufos:
+  - type: RECT_NEGATIVE
+    speedMax: 2200
+    damageMax: 50
+    missionScore: -3
+ufoTrajectories:
+  - id: RECT_ORIGIN
+    waypoints: [[0, 3, 100], [5, 2, 80], [6, 0, 50], [6, 4, 100]]
+  - id: RECT_ORIGIN_REVERSED
+    waypoints: [[3, 3, 100], [5, 2, 80], [6, 0, 50], [6, 4, 100]]
+  - id: RECT_ORIGIN_CROSSING
+    waypoints: [[1, 3, 100], [4, 2, 80], [6, 4, 100]]
+  - id: RECT_ORIGIN_UNSAFE
+    waypoints: [[2, 3, 100], [5, 2, 80], [6, 4, 100]]
+alienMissions:
+  - type: RECT_ORIGIN
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_ORIGIN, timer: 9000}]
+  - type: RECT_ORIGIN_REVERSED
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_ORIGIN_REVERSED, timer: 9000}]
+  - type: RECT_ORIGIN_CROSSING
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_ORIGIN_CROSSING, timer: 9000}]
+  - type: RECT_ORIGIN_NEGATIVE
+    waves: [{ufo: RECT_NEGATIVE, count: 2, trajectory: RECT_ORIGIN_CROSSING, timer: 9000}]
+  - type: RECT_ORIGIN_UNSAFE
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_ORIGIN_UNSAFE, timer: 9000}]
