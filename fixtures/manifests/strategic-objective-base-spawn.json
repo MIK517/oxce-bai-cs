@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-objective-base-spawn",
+  "description": "Exact final base-objective search and deployment precedence, dynamic retries, technical containment, weighted and invalid texture tables, fallback suppression.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "AlienMission::think OBJECTIVE_BASE block, chooseAlienBaseType and Texture::getRandomDeployment inserted verbatim",
+      "capture": "tools/capture-strategic-objective-base-spawn-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; controlled geometry and creation collaborators"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_objective_base_spawn_probe.cpp",
+      "size": 4121,
+      "sha256": "bf59d810a4a52d4ab2564f481353f2f7c7d350137077a7773c410147c22be4ef"
+    },
+    {
+      "path": "tools/capture-strategic-objective-base-spawn-reference.ps1",
+      "size": 3055,
+      "sha256": "9245e75ae758b5c2983f6ff2d4cc89ecaec273733a44db527ad140d89bb49bc3"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-objective-base.rul",
+      "size": 793,
+      "sha256": "a684c3da27b9bdd25afa44c5317aa7f8f91cb89423cdb5b609a4a43cbe97097e"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-objective-base-spawn.expected.json"
+}

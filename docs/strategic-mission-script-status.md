@@ -528,3 +528,16 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   checks pass. Confirmed sidecar, marker-identity and geometry-work findings are
   fixed with regressions; the reference checkout remains clean and the obsolete
   probe object was removed. Broader 4c acceptance remains open; 4d is untouched.
+
+### Base-objective search evidence
+
+The base objective in AlienMission::think, chooseAlienBaseType and
+Texture::getRandomDeployment are captured verbatim at 4df3a5e. The 432-row
+strategic-objective-base-spawn oracle covers fixed/texture/emergency deployment
+selection, single zero-weight selection, malformed multi-entry zero weights,
+technical regions, fake-water preference, 99th acceptance and 100th fallback.
+WorldObjectiveBaseSpawn implements this pure search. Unlike operation creation,
+it draws coordinates before deployment/preference, repeating the latter for
+every dynamic attempt. Fresh/cache tests execute the actual linked deployment
+selector and compare counters/errors with every captured row. Live final-wave
+and landing-site creation remain guarded until their atomic reservations exist.
