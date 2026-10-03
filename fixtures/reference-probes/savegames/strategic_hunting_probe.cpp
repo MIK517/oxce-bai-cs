@@ -20,12 +20,15 @@ struct Craft : Target {
 struct Rule { bool landing = false, hidden = false; bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; } } rule;
 const Rule* _rules = &rule;
 struct Stats { int speedMax = 2000, damageMax = 100; } _stats;
-int _damage = 0, units = 0, id = 0; bool ignored = false;
+int _damage = 0, units = 0, id = 0; bool ignored = false, _lowFuel = false, _missionComplete = false;
 int getMaxUnitsClamped() const { return units; }
-bool isIgnoredByHK() const { return ignored; }
+bool isIgnoredByHK() const;
+bool getLowFuel() const { return _lowFuel; }
+bool getMissionComplete() const { return _missionComplete; }
 const Rule* getRules() const { return _rules; }
 int getHunterKillerAttraction(int huntMode) const;
 };
+// IGNORED_METHOD
 // ATTRACTION
 struct Ufo : MovingTarget {
 bool _isHunterKiller=false; int _huntMode=0, _huntBehavior=0;
@@ -79,11 +82,11 @@ Craft a,b; a.id = 1; b.id = 2; a._stats.speedMax = 2000; b._stats.speedMax = 600
 a.distance = Nautical(100); b.distance = Nautical(100);
 Ufo ufo; ufo.mode = mode; std::vector<Craft*> crafts{&a,&b};
 if (variant == 1) { ufo.original = &a; ufo.hunting = true; b._stats.speedMax = a._stats.speedMax; }
-if (variant == 2) { ufo.original = &a; ufo.hunting = true; a.rule.hidden = true; b.ignored = true; }
-if (variant == 3) { a.ignored = true; b.rule.hidden = true; }
+if (variant == 2) { ufo.original = &a; ufo.hunting = true; a.rule.hidden = true; b._missionComplete = true; }
+if (variant == 3) { a._lowFuel = true; b.rule.hidden = true; }
 if (variant == 4) { a.distance = Nautical(301); b.distance = Nautical(300); }
 if (variant == 5) { ufo._stats.radarRange = 0; }
-if (variant == 6) { ufo.original = &a; ufo.hunting = true; a.ignored = true; }
+if (variant == 6) { ufo.original = &a; ufo.hunting = true; a._lowFuel = true; }
 auto* selected = select(&ufo,crafts);
 std::cout << '[' << mode << ',' << variant << ',' << (selected ? selected->id : 0) << ']';
 }
@@ -117,6 +120,12 @@ if(!first) std::cout << ','; first=false; RNG::roll=roll; RNG::calls=0;
 Ufo ufo(percent,mode,behavior);
 std::cout << '[' << percent << ',' << mode << ',' << behavior << ',' << roll << ','
 << (ufo._isHunterKiller?"true":"false") << ',' << ufo._huntMode << ',' << ufo._huntBehavior << ',' << RNG::calls << ']';
+}
+std::cout << "],\"ignoredRows\":[";
+first=true;
+for(bool fuel:{false,true}) for(bool complete:{false,true}) {
+if(!first) std::cout << ','; first=false; Craft craft; craft._lowFuel=fuel; craft._missionComplete=complete;
+std::cout << '[' << (fuel?"true":"false") << ',' << (complete?"true":"false") << ',' << (craft.isIgnoredByHK()?"true":"false") << ']';
 }
 std::cout << "]}\n";
 }
