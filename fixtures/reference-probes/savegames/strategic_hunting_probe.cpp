@@ -9,7 +9,7 @@ namespace OpenXcom {
 using Exception = std::runtime_error;
 struct RNG { static inline int roll=0, calls=0;
 static bool percent(int value) { ++calls; return roll < value; }
-static int generate(int,int) { ++calls; return 1; } };
+static int generate(int,int) { ++calls; return calls % 2 == 0 ? 1 : 0; } };
 double Nautical(double x) { return x / 60.0 * 3.14159265358979323846 / 180.0; }
 struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = default;
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }

@@ -491,3 +491,21 @@ proof keeps the creation-tick path ordinary; later dispatch uses the loaded
 hunter retarget capability. Rule-derived hunter percentage/mode/behavior and
 fresh/cache creation/targeting reloads are covered. Candidate-bearing airborne
 spawns and creation-time escorts retain the existing atomic wave boundary.
+
+The constructor/spawn batch audit confirmed an empty hunter trajectory could
+index its first waypoint before the existing minimum-length guard. Length and
+altitude validation now precede hunter context checks. Empty/one-point regressions
+assert an unchanged campaign and RNG, and a separate auto-patrol regression
+checks that a possible same-tick relaunch cannot enter the no-candidate path.
+
+The previous supply constructor-choice fixture now executes its formerly guarded
+no-candidate hunter cases and asserts captured hunter flags, counts, live links
+and reload. Objective supply ships still assert the default non-hunter
+constructor. Mode/behavior capture draws now alternate so swapped draw order
+cannot pass the shared canonical oracle comparison.
+
+Final constructor/spawn cycle validation passes all 1,701 root tests with no
+failures or skips, including checksums, private classifications, endurance and
+populated allocation checks. Formatting verification, code-map validation and
+diff checks pass. The reference checkout is clean and obsolete probe object
+output was removed. The remaining 4c headless gate is open; 4d is untouched.

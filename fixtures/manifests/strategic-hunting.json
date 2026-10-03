@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 6163,
-      "sha256": "2f734baf7e9322a607064e983322e48c79ef6ba388dfbb48e66a1f14d76fb0a6"
+      "size": 6184,
+      "sha256": "4b137b37a3933d6ab8378b05623cd7358c404e4d78284b0e70825cf8184df71f"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
