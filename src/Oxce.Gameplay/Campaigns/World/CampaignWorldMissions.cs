@@ -226,6 +226,7 @@ internal sealed partial class CampaignWorld
                     if (!spawnsUfo && !spawnsSite && !CanAdvanceNoObjectWave(mission, rule))
                         throw new InvalidOperationException("Alien mission wave changed after world preflight.");
                     var wave = rule.Waves[mission.NextWave];
+                    if (InstantRetaliationWithoutTarget(mission, rule)) mission = mission with { Interrupted = true };
                     if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
                     if (spawnsSite) SpawnDirectSite(mission, rule);
                     var completesBase = CompletesBaseObjective(mission, rule, wave);
@@ -239,7 +240,7 @@ internal sealed partial class CampaignWorld
                     }
                     _missions[index] = mission;
                     // Recursion tests the original timer, not the rounded countdown.
-                    if (mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
+                    if (mission.Interrupted || mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
                 }
             }
         }
@@ -278,6 +279,7 @@ internal sealed partial class CampaignWorld
     private string? ImmediateNoObjectReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
         RuntimeAlienMissionRule rule, ref long work, string boundary)
     {
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) return boundary;
         var candidate = new AlienMissionSnapshot(-1, string.Empty, string.Empty, source.Race, 0, 0, 0, 0, -1)
         { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
         foreach (var step in DueWaveSteps(candidate, rule))
@@ -308,10 +310,14 @@ internal sealed partial class CampaignWorld
 
     private bool CanAdvanceNoObjectWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
-        if (rule.Objective == RuntimeMissionObjective.InstantRetaliation ||
-            rule.Objective == RuntimeMissionObjective.Retaliation && RetaliationCandidates(mission, rule).Count != 0)
-            return false;
         var wave = rule.Waves[mission.NextWave];
+        if (InstantRetaliationWithoutTarget(mission, rule))
+            return wave.Trajectory is not null &&
+                !(wave.Ufo is null && wave.Deployment is { } instantDeployment &&
+                    campaign.Content.RuntimeRules.AlienDeployments[instantDeployment].Value.MarkerName.Length != 0) &&
+                CanAdvanceWaveCounters(mission, rule, wave);
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation &&
+            RetaliationCandidates(mission, rule).Count != 0) return false;
         if (SuppressedSupplyWave(mission, rule, wave))
             return wave.Trajectory is not null && CanAdvanceWaveCounters(mission, rule, wave);
         if (wave.Ufo is not null || wave.Trajectory is null ||
@@ -697,6 +703,7 @@ internal sealed partial class CampaignWorld
             if (work >= MaximumImmediateWaveSteps) throw new InvalidDataException(WaveWorkReason);
             yield return mission;
             var wave = rule.Waves[mission.NextWave];
+            if (InstantRetaliationWithoutTarget(mission, rule)) yield break;
             var counter = (ulong)mission.NextUfoCounter + 1;
             var nextWave = mission.NextWave;
             if (counter >= wave.UfoCount) { counter = 0; nextWave++; }

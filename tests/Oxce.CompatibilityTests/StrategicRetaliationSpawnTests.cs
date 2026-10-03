@@ -71,6 +71,56 @@ public sealed class StrategicRetaliationSpawnTests
         Reload(content, campaign, 17, "retaliation-empty-wave.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NoRegionalBaseInterruptsInstantRetaliationAfterOneWaveAndPersistsWithLiveUfo(bool cache)
+    {
+        var content = Load(cache, """
+            regions:
+              - type: RETAL_EMPTY_REGION
+                areas: [[100, 110, -10, 10]]
+                missionZones: [[[8, 8, 2, 2]], [[12, 12, 2, 2]]]
+            alienMissions:
+              - type: RETAL_INSTANT
+                objective: 6
+                waves: [{ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}, {ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
+            """);
+        var initial = Initial(content, "RETAL_INSTANT");
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { RegionId = "RETAL_EMPTY_REGION", LiveUfos = 1 }],
+                Ufos = [new(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, 0.4, 0.2, UfoStatus.Flying, WorldAltitudes.High)
+                {
+                    Shield = 0, MissionWaveNumber = 0,
+                    Destination = WorldTargetReference.ForWaypoint(0, new(1.0, 0.6)),
+                }],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var mission = Assert.Single(after.World.Missions);
+        Assert.True(mission.Interrupted);
+        Assert.Equal((1, 0, 1), (mission.NextWave, mission.NextUfoCounter, mission.LiveUfos));
+        Assert.Single(after.World.Ufos);
+        var expected = new SplitMix64RandomSource(17);
+        expected.NextInclusive(0, 0);
+        Assert.Equal(expected.State, after.RandomState);
+        Reload(content, campaign, 17, "instant-retaliation-interrupted.sav");
+        initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { LiveUfos = 0 }], Ufos = [] } };
+        campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Empty(campaign.Capture().World.Missions);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Reload(content, campaign, 17, "instant-retaliation-expired.sav");
+        initial = initial with { Bases = [initial.Bases[0] with { RetaliationMissionId = 4 }] };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "A non-retaliation mission cannot expire while a base links it as retaliation.");
+    }
+
     private static CampaignSnapshot Initial(RuntimeContent content, string rule)
     {
         var initial = CreateSnapshot(content, "Retaliation spawning");
