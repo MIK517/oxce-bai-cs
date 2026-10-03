@@ -40,7 +40,7 @@ internal static class WorldObjectiveBaseSpawn
         bool allowWrongTextures, IRandomSource random,
         Func<MissionArea, RuleHandle<AlienDeploymentRuleFamily>> deployment,
         Func<RuleHandle<AlienDeploymentRuleFamily>, int> fakeChance,
-        Func<WorldPosition, bool> insideLand, Func<WorldPosition, bool> insideFakeWater)
+        Func<WorldPosition, bool> insideLand, Func<WorldPosition, bool> insideFakeWater, bool ignoreTechnicalRegion = true)
     {
         var areas = WorldGeometry.MissionAreas(region, zone);
         RuleHandle<AlienDeploymentRuleFamily> selected = default;
@@ -61,7 +61,7 @@ internal static class WorldObjectiveBaseSpawn
                 wantsFake = RandomChance.Percent(random, fakeChance(selected));
             }
             if (attempt == 100) return allowWrongTextures ? new(point, selected) : null;
-            if (insideLand(point) && WorldGeometry.InsideRegion(region, point, ignoreTechnicalRegion: true) &&
+            if (insideLand(point) && WorldGeometry.InsideRegion(region, point, ignoreTechnicalRegion) &&
                 insideFakeWater(point) == wantsFake) return new(point, selected);
         }
         throw new InvalidOperationException("Base objective search exceeded its finite bound.");

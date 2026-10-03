@@ -605,3 +605,9 @@ and branch 4d is untouched.
   both Mod infiltration options are pinned. Defaults are false; immutable runtime
   projections and cache revision 35 preserve loaded options. All eight country
   flag combinations and fresh/cache options are covered. Live completion follows.
+
+- Five-cycle batch 1, slice 2: the verbatim AlienMission::think infiltration
+  completion block supplies 432 regional-search traces. Unlike base objectives,
+  infiltration respects technical-region containment for country labels and
+  search points. The shared selector now exposes that distinction; deployment,
+  coordinate, fake-water and suppression draws remain reference ordered.
