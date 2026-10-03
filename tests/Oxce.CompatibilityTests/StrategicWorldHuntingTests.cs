@@ -13,6 +13,35 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Fact]
+    public void HunterInitializationMatchesPinnedConditionalDraws()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "constructorRows"))
+        {
+            var random = new ConstructorRandom(row[3].GetInt32());
+            var result = WorldHunting.Initialize(row[0].GetInt32(), row[1].GetInt32(), row[2].GetInt32(), random);
+            Assert.Equal(row[4].GetBoolean(), result.HunterKiller);
+            Assert.Equal(row[5].GetInt32(), result.Mode);
+            Assert.Equal(row[6].GetInt32(), result.Behavior);
+            Assert.Equal(row[7].GetInt32(), random.Calls);
+        }
+    }
+
+    private sealed class ConstructorRandom(int roll) : IRandomSource
+    {
+        public int Calls { get; private set; }
+        public int NextInclusive(int minimum, int maximum)
+        {
+            Assert.Equal(0, minimum);
+            Assert.True(maximum is 1 or 99);
+            Calls++;
+            return maximum == 99 ? roll : 1;
+        }
+        public int NextExclusive(int exclusiveMaximum) => throw new InvalidOperationException();
+        public double NextUnit() => throw new InvalidOperationException();
+    }
+
+    [Fact]
     public void AttractionMatchesPinnedMethods()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");

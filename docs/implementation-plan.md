@@ -612,3 +612,11 @@ including fixture checksums, all 19 staged-save classifications, 72-hour compose
 scenarios and populated allocation budgets. Formatting verification, code-map
 validation and diff checks pass. The pinned C++ checkout remains clean; obsolete
 probe object output was removed. Branch 4c remains incomplete and 4d is untouched.
+
+Hunter constructor initialization is now an executable gameplay operation.
+The pinned Ufo constructor capture has 192 rows covering nonpositive percentages,
+failed/successful rolls, percentages above 100, literal modes/behaviors and the
+ordered optional random selections. Failed rolls consume no mode/behavior draws;
+nonpositive percentages consume no RNG. Supply objective callers retain the
+reference constructor defaults. Positive hunter spawning remains guarded until
+the following slices connect safe wave contexts.

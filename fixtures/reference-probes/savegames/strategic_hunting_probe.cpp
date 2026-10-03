@@ -7,6 +7,9 @@
 #include <stdexcept>
 namespace OpenXcom {
 using Exception = std::runtime_error;
+struct RNG { static inline int roll=0, calls=0;
+static bool percent(int value) { ++calls; return roll < value; }
+static int generate(int,int) { ++calls; return 1; } };
 double Nautical(double x) { return x / 60.0 * 3.14159265358979323846 / 180.0; }
 struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = default;
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
@@ -25,6 +28,11 @@ int getHunterKillerAttraction(int huntMode) const;
 };
 // ATTRACTION
 struct Ufo : MovingTarget {
+bool _isHunterKiller=false; int _huntMode=0, _huntBehavior=0;
+Ufo()=default;
+Ufo(int hunterKillerPercentage,int huntMode,int huntBehavior) {
+// CONSTRUCTOR_FLAGS
+}
 struct Stats { int radarRange = 300, speedMax = 2200; } _stats;
 struct Rule { int huntSpeed = 100; int getHuntSpeed() const { return huntSpeed; } } rule;
 const Rule* _rules = &rule; Waypoint* _origWaypoint = nullptr; bool _isHunting = false, _isEscorting = false; int speed = 0;
@@ -101,6 +109,14 @@ for (bool fast : {false,true}) for (int speed = 0; speed < 6; ++speed) {
 if (!first) std::cout << ','; first = false;
 FastSchedule schedule; schedule.mod.fast = fast; schedule._timeSpeed = speed;
 std::cout << '[' << (fast ? "true" : "false") << ',' << speed << ',' << (schedule.due() ? "true" : "false") << ']';
+}
+std::cout << "],\"constructorRows\":[";
+first=true;
+for(int percent:{-1,0,1,50,100,200}) for(int mode:{-1,0,1,2}) for(int behavior:{-1,0,1,2}) for(int roll:{0,99}) {
+if(!first) std::cout << ','; first=false; RNG::roll=roll; RNG::calls=0;
+Ufo ufo(percent,mode,behavior);
+std::cout << '[' << percent << ',' << mode << ',' << behavior << ',' << roll << ','
+<< (ufo._isHunterKiller?"true":"false") << ',' << ufo._huntMode << ',' << ufo._huntBehavior << ',' << RNG::calls << ']';
 }
 std::cout << "]}\n";
 }

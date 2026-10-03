@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 5354,
-      "sha256": "1389eb012f3836c7a1e465fe969fda8c146130fe3ad3349dd6722683896ee322"
+      "size": 6163,
+      "sha256": "2f734baf7e9322a607064e983322e48c79ef6ba388dfbb48e66a1f14d76fb0a6"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 4161,
-      "sha256": "bdb197edbdb0563c8e72ebd55470a960cc70e0ffc3e32fc502f3732434b19022"
+      "size": 4627,
+      "sha256": "e4da0b704fe53a5030f6fb3041fe0af043ccc4ba5271ebda9c6776fe6a648fdb"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",

@@ -22,6 +22,10 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
 }
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_hunting_probe.cpp'))
 $template = $template.Replace('// ATTRACTION', (Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'int Craft::getHunterKillerAttraction(int huntMode) const'))
+$constructor = Read-ReferenceMethod 'src/Savegame/Ufo.cpp' 'Ufo::Ufo(const RuleUfo *rules, int uniqueId, int hunterKillerPercentage, int huntMode, int huntBehavior)'
+$flagStart = $constructor.IndexOf('if (hunterKillerPercentage > 0)', [StringComparison]::Ordinal)
+if ($flagStart -lt 0) { throw 'Missing constructor hunter flags.' }
+$template = $template.Replace('// CONSTRUCTOR_FLAGS', $constructor.Substring($flagStart, $constructor.LastIndexOf('}') - $flagStart))
 $template = $template.Replace('// RADAR', (Read-ReferenceMethod 'src/Savegame/Ufo.cpp' 'bool Ufo::insideRadarRange(Target *target) const'))
 $method = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::ufoHuntingAndEscorting()'
 $start = $method.IndexOf('int newAttraction = INT_MAX;', [StringComparison]::Ordinal)
