@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-infiltration-country",
+  "description": "Infiltration close-country search: selection before coordinates, static dummy texture, wrapped longitude split, bounded fallback.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "Verbatim AlienMission infiltration block in close-country mode, chooseAlienBaseType and Texture selector; controlled country/land collaborators",
+      "capture": "tools/capture-strategic-infiltration-country-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; controlled geometry and creation collaborators"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_infiltration_country_probe.cpp",
+      "size": 5799,
+      "sha256": "ea3de664124f0d9203e028d3b2d91594423521f6ab8b768a56a4d012edc82aa0"
+    },
+    {
+      "path": "tools/capture-strategic-infiltration-country-reference.ps1",
+      "size": 3032,
+      "sha256": "93daf8d71ce8fa16ee581e0aef300bc099d3cf82be77e89a9a58d36f17134959"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-objective-base.rul",
+      "size": 793,
+      "sha256": "a684c3da27b9bdd25afa44c5317aa7f8f91cb89423cdb5b609a4a43cbe97097e"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-infiltration-country.expected.json"
+}
