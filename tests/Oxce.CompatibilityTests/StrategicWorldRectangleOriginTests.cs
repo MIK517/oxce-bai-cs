@@ -57,6 +57,51 @@ public sealed class StrategicWorldRectangleOriginTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LandTestedOriginsPreserveFakeWaterChoiceAndForcedHundredthCandidate(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "landRectangleOriginRows"))
+        {
+            var mode = row[0].GetInt32();
+            var rule = mode switch { 0 => "RECT_ORIGIN_LAND", 1 => "RECT_ORIGIN_FAKE", _ => "RECT_OUTSIDE" };
+            var snapshot = Snapshot(content, rule) with { RandomState = 0 };
+            if (mode == 2) snapshot = snapshot with
+            { World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { RegionId = "RECT_OUTSIDE" }] } };
+            var campaign = CampaignState.Restore(snapshot, content, new FractionChoices(row[1].GetDouble()));
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            var fraction = row[1].GetDouble();
+            var origin = new WorldPosition(Degrees(12) + fraction * (Degrees(16) - Degrees(12)),
+                Degrees(1) + fraction * (Degrees(3) - Degrees(1)));
+            Assert.Equal(row[2].GetString(), origin.Longitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(row[3].GetString(), origin.Latitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(row[4].GetString(), ufo.Destination!.Longitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(row[5].GetString(), ufo.Destination.Latitude.ToString("F9", CultureInfo.InvariantCulture));
+            Assert.Equal(mode == 0 ? 7 : 304, row[6].GetInt32());
+            Assert.Equal((ulong)(row[6].GetInt32() + 2), after.RandomState);
+            Assert.Equal(WorldGeometry.Move(origin, ufo.Destination.Position, WorldGeometry.RadianSpeed(2200)), ufo.Position);
+            Assert.Equal(UfoStatus.Flying, ufo.Status);
+            Reload(content, campaign, 17, "land-rectangle-origin.sav");
+        }
+    }
+
+    [Fact]
+    public void PopulatedLandRetriesAreBoundedBeforeCreatingAnyUfo()
+    {
+        var content = Load(false);
+        var snapshot = Snapshot(content, "RECT_ORIGIN_FAKE");
+        var template = snapshot.World.Missions[0];
+        snapshot = snapshot with
+        { World = snapshot.World with { Missions = Enumerable.Range(1, 1_000).Select(id => template with { Id = id }).ToArray() } };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        AssertTimeBlocked(campaign, "Alien mission land selection exceeds the supported work limit.");
+    }
+
+    [Theory]
     [InlineData(0, false)]
     [InlineData(1, false)]
     [InlineData(0, true)]
