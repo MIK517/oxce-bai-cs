@@ -545,3 +545,12 @@ Craft follower transfer now covers passengers, vehicle instances and empty-craft
 return for dormant conversions. Fuel-before-transfer, landing/equipment options,
 terminal current-tick fallthrough and transition reloads have focused coverage.
 Actual landing remains guarded for branch 5.
+
+Damaged selected-site arrivals now proceed because AlienMission::ufoReachedWaypoint
+replaces Ufo::setAltitude's transient crash/landed result before any later
+Geoscape callback. The expanded probe inserts setAltitude, isCrashed and
+isDestroyed verbatim. Forty captured combinations cover the half-damage boundary,
+destruction threshold, unmanned rules, kamikaze behavior and dormancy. Fresh/cache
+tests preserve damage and stable respawn links across reload. Ordinary damaged
+ground arrivals retain their atomic guard; this does not enable crash creation,
+interception or tactical deployment.

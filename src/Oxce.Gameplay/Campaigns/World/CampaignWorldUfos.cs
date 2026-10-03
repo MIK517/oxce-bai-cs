@@ -257,9 +257,9 @@ internal sealed partial class CampaignWorld
         if (altitude == 0)
         {
             var damageMaximum = ufoRule.StatsForRace(mission.Race).DamageMaximum;
-            if (ufo.Damage >= damageMaximum ||
-                !ufoRule.Unmanned && ufo.HuntBehavior != 1 && ufo.Damage > damageMaximum / 2)
-                return false; // Ufo::setAltitude would create a crash, owned by the later outcome slice.
+            if (!conversion && (ufo.Damage >= damageMaximum ||
+                !ufoRule.Unmanned && ufo.HuntBehavior != 1 && ufo.Damage > damageMaximum / 2))
+                return false; // Ordinary crash outcomes remain guarded. Conversion replaces the transient altitude status.
             if (!conversion && LandingAllowed(ufo.Destination!.Position, ufoRule) &&
                 (trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5)) return false;
         }

@@ -43,6 +43,15 @@ $decreaseStart = $saveSource.IndexOf('void SavedGame::decreaseCustomCounter(', $
 $counterEnd = $saveSource.IndexOf('/**', $decreaseStart, [StringComparison]::Ordinal)
 if ($idStart -lt 0 -or $idEnd -le $idStart -or $counterStart -lt 0 -or $counterEnd -le $decreaseStart) { throw 'Missing reference ID/counter methods.' }
 $template = $template.Replace('// ID_AND_COUNTER_METHODS', $saveSource.Substring($idStart, $idEnd - $idStart) + $saveSource.Substring($counterStart, $counterEnd - $counterStart))
+$ufoSource = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/Ufo.cpp'))
+$altitudeStart = $ufoSource.IndexOf('void Ufo::setAltitude(', [StringComparison]::Ordinal)
+$altitudeEnd = $ufoSource.IndexOf('/**', $altitudeStart, [StringComparison]::Ordinal)
+$crashedStart = $ufoSource.IndexOf('bool Ufo::isCrashed() const', [StringComparison]::Ordinal)
+$crashedEnd = $ufoSource.IndexOf('/**', $crashedStart, [StringComparison]::Ordinal)
+$destroyedStart = $ufoSource.IndexOf('bool Ufo::isDestroyed() const', [StringComparison]::Ordinal)
+$destroyedEnd = $ufoSource.IndexOf('/**', $destroyedStart, [StringComparison]::Ordinal)
+if ($altitudeStart -lt 0 -or $altitudeEnd -le $altitudeStart -or $crashedEnd -le $crashedStart -or $destroyedEnd -le $destroyedStart) { throw 'Missing reference UFO altitude/damage methods.' }
+$template = $template.Replace('// ALTITUDE_AND_DAMAGE_METHODS', $ufoSource.Substring($altitudeStart, $altitudeEnd - $altitudeStart) + $ufoSource.Substring($crashedStart, $crashedEnd - $crashedStart) + $ufoSource.Substring($destroyedStart, $destroyedEnd - $destroyedStart))
 $work = Join-Path $repository 'artifacts/reference-strategic-site-spawn'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_site_spawn_probe.cpp'
