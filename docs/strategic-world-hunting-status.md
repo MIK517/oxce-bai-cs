@@ -219,3 +219,11 @@ movement work are bounded. Fresh/cache early/late leader ordering, unmarked
 unique references, transition reloads, three precise atomic boundaries and a
 resource-limit regression pass in 146 focused cases. Broader pursuit forecasts
 remain 4c work; this does not close the headless gate.
+
+- Grounded/saved-escort batch audit: reviewed creation, landed/takeoff scoring,
+  retarget ordering, terminal fallthrough, follower repair and aggregate work
+  limits against the pinned C++ methods. No confirmed defect was found. All
+  1,761 root tests pass with zero failures/skips, including private corpus,
+  endurance, checksums and allocation checks. Formatting verification, code-map
+  and diff checks pass. The reference checkout is clean and obsolete probe
+  object output was removed. Branch 4c remains open; 4d has not started.
