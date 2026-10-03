@@ -425,3 +425,8 @@ selects an ordinary arrival, retaining its strict atomic assertion.
 Root validation passes all 1,662 tests with no failures or skips, including
 fixture checksums, all private-corpus classifications and allocation budgets.
 The headless 4c gate remains open; branch 4d is untouched.
+
+Hunter target selection now has pinned executable evidence and a gameplay-owned
+operation for attraction, saved-order selection and original-target retention.
+See [hunting status](strategic-world-hunting-status.md). Live retargeting and
+movement are the next two slices; the 4c gate remains open.
