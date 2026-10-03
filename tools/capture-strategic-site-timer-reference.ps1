@@ -15,6 +15,11 @@ if ($method -lt 0 -or $start -lt 0 -or $end -lt 0 -or $score -lt 0 -or $scoreEnd
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_site_timer_probe.cpp'))
 $template = $template.Replace('// TIMER_AND_FOLLOWERS', $source.Substring($start, $end - $start))
 $template = $template.Replace('// SCORE', $source.Substring($score, $scoreEnd - $score))
+$hour = $source.IndexOf('void GeoscapeState::time1Hour()', [StringComparison]::Ordinal)
+$discovery = $source.IndexOf('bool postpone = false;', $hour, [StringComparison]::Ordinal)
+$discoveryEnd = $source.IndexOf('updateSlackingIndicator();', $discovery, [StringComparison]::Ordinal)
+if ($hour -lt 0 -or $discovery -lt 0 -or $discoveryEnd -le $discovery) { throw 'Missing hourly site discovery statements.' }
+$template = $template.Replace('// DISCOVERY', $source.Substring($discovery, $discoveryEnd - $discovery))
 $saveSource = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/SavedGame.cpp'))
 $counterStart = $saveSource.IndexOf('void SavedGame::increaseCustomCounter(', [StringComparison]::Ordinal)
 $decreaseStart = $saveSource.IndexOf('void SavedGame::decreaseCustomCounter(', $counterStart, [StringComparison]::Ordinal)

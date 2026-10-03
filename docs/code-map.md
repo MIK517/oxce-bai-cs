@@ -458,6 +458,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `UfoStatus` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Ufo::UfoStatus`.
 - `UfoLanded` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The optional oxceUfoLandingAlert notification after a detected UFO lands.
 - `MissionSiteLost` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - A forced site despawn returns craft followers and displays one lost-site alert.
+- `MissionSiteDetected` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs)
 - `AlienMissionSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/AlienMission.cpp` save nodes.
 - `UfoSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/Ufo.cpp` save nodes.
 - `WaypointSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - Reference: `Savegame/Waypoint.cpp`; a bare globe marker crafts can be sent to.

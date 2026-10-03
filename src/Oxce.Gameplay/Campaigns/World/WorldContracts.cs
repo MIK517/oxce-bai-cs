@@ -57,6 +57,7 @@ public sealed record UfoLanded(int UfoUniqueId, int LandingId) : ICampaignEvent;
 /// and format it with <see cref="SiteId"/>, as <c>Target::getName</c> does.
 /// </summary>
 public sealed record MissionSiteLost(int SiteId, string MarkerName, string CustomName) : ICampaignEvent;
+public sealed record MissionSiteDetected(int SiteId, string MarkerName) : ICampaignEvent;
 
 /// <summary>Reference: <c>Savegame/AlienMission.cpp</c> save nodes.</summary>
 public sealed record AlienMissionSnapshot(

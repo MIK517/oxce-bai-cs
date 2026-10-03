@@ -440,6 +440,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
         if (destructionReason is not null) return destructionReason;
         _dailyResearchForecast = guaranteedResearch;
+        if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
         var ufoReason = UfoMovementReason(highest);
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest, guaranteedResearch);

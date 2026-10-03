@@ -334,3 +334,16 @@ tests, with no failures or skips, including checksum, private corpus and populat
 world scenarios. Formatting verification, regenerated code-map validation and
 `git diff --check` pass. Captured probes remain available under artifacts; obsolete
 probe object files were removed. The pinned C++ checkout is clean.
+
+### Direct mission-site generation batch (2026-10-03)
+
+Branch 4c now owns direct marked-deployment waves, mission-rule/terrain site
+selection and player-base targeting, including no-base suppression. The
+`strategic-site-spawn` capture pins AlienMission::think/spawnMissionSite/selectXcomBase
+and Texture::getRandomDeployment. The batch audit adds reference-backed hourly
+site discovery, forecasts its postponements and corrects null-outcome activity
+reservations. Idle allocations and deployment-table work bounds are corrected;
+fresh/cache reload, score ordering and atomic regressions pass. See
+[site generation status](strategic-world-site-spawning-status.md). UFO conversion,
+immediate despawn and other remaining 4c world effects are still guarded precisely.
+The headless acceptance gate remains open; branch 4d is untouched.

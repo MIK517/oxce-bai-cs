@@ -59,16 +59,31 @@ public sealed class StrategicWorldObjectiveWaveTests
             var mission = new AlienMissionSnapshot(4, $"NO_OBJECT_{deployment}_{marker}_{objective}_{flag}",
                 "REGION", "RACE_A", 0, 0, 0, 0, -1);
             var campaign = Restore(content, mission);
-            if (row[4].GetInt32() != 0 || objective is 4 or 6)
+            if (objective is 4 or 6)
                 AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
             else if (objective == 1)
                 AssertTimeBlocked(campaign, "Alien mission wave completion requires objective simulation.");
+            else if (deployment != 0 && marker == 0 && objective == 3 && flag != 0)
+                AssertTimeBlocked(campaign, "Direct mission site duration is outside the supported range.");
             else
             {
                 AdvanceOne(campaign);
                 Assert.Empty(campaign.Capture().World.Missions);
                 Assert.Empty(campaign.Capture().World.Ufos);
-                Assert.Empty(campaign.Capture().World.MissionSites);
+                var sites = campaign.Capture().World.MissionSites;
+                if (row[4].GetInt32() != 0 && !(objective == 5 && deployment == 0))
+                {
+                    Assert.Equal(2, sites.Count);
+                    Assert.All(sites, site =>
+                    {
+                        Assert.Equal(0.2, site.Longitude);
+                        Assert.Equal(0.1, site.Latitude);
+                        Assert.False(site.Detected);
+                        Assert.Equal(string.Empty, site.City);
+                        Assert.InRange(site.SecondsRemaining, 0, 6 * 3600 - 1800);
+                    });
+                }
+                else Assert.Empty(sites);
                 Reload(content, campaign, 17, "no-object-flags.sav");
             }
         }

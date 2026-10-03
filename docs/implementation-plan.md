@@ -453,3 +453,26 @@ The user also verified formatting from normal PowerShell with
 The audit fix is committed as `1d532c1`; this batch's validation is complete. See
 [mission status](strategic-mission-script-status.md) for evidence and remaining
 4c scope. Branch 4d remains untouched.
+
+### Direct mission-site generation batch (2026-10-03)
+
+Three slices implement explicit deployment waves, mission-rule/terrain deployment
+selection and player-base targeting. The pinned `strategic-site-spawn` capture
+includes actual AlienMission creation/base selection and Texture selection blocks.
+Fresh/cache tests cover RNG order, immediate chains, marker IDs, activity, suppression
+and transition reloads. The batch audit fixes idle dictionary allocations, missing
+hourly discovery and an atomic activity forecast for weighted null outcomes, and
+bounds scans of unreachable deployment entries. Existing objective decision tests
+now verify direct-site execution and precise remaining guards.
+See [site generation status](strategic-world-site-spawning-status.md).
+
+The headless gate remains open. UFO-to-site conversion, zero-hour immediate despawn,
+empty marker namespaces, site scheduling scripts, new-base objectives,
+infiltration/pacts, detection VM providers, UFO hunting/escorts and composed world
+hooks remain outstanding. Branch 5/6 boundaries remain; branch 4d is untouched.
+
+Validation: root `dotnet test --no-restore --no-build` passes all 1,605 tests
+without failures or skips after the final regressions were compiled. Earlier
+root runs and focused tests built the changes. Checksums, private corpus,
+allocation budgets, formatting verification, code-map validation and `git diff --check` pass. The reference
+checkout remains clean; obsolete probe objects were removed.

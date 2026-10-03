@@ -356,6 +356,32 @@ public sealed class StrategicWorldSiteUfoTests
         Assert.Contains("same dormant UFO", error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HourlyDiscoveryKeepsAssociatedUfoDormantUntilTheLaterExpiry(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul"], cache);
+        var snapshot = LinkedSnapshot(content, 0);
+        snapshot = snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 1, 59, 55),
+            World = snapshot.World with
+            {
+                MissionSites = [snapshot.World.MissionSites[0] with { Detected = false }],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Single(result.Events.OfType<MissionSiteDetected>());
+        Assert.Equal(1800, Assert.Single(campaign.Capture().World.MissionSites).SecondsRemaining);
+        Assert.Equivalent(snapshot.World.Ufos[0], Assert.Single(campaign.Capture().World.Ufos), strict: true);
+        Assert.Equal(snapshot.NextIds, campaign.Capture().NextIds);
+        Reload(content, campaign, 17, "site-discovery-dormant-ufo.sav");
+    }
+
     private static CampaignSnapshot LinkedSnapshot(RuntimeContent content, int seconds)
     {
         var snapshot = CreateLifecycleSnapshot(content);

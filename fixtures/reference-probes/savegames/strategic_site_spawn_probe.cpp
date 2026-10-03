@@ -91,7 +91,7 @@ int main() {
 using namespace OpenXcom;
 std::cout << std::fixed << std::setprecision(9) << "{\"cases\":[";
 bool first = true;
-for (const std::string name : {"override", "rule", "terrain", "single-zero", "all-zero", "selected", "base", "multiple-bases", "missing-base", "empty-terrain", "missing-texture"}) {
+for (const std::string name : {"override", "rule", "terrain", "single-zero", "all-zero", "selected", "base", "multiple-bases", "missing-base", "empty-terrain", "null-choice", "missing-texture"}) {
 if (!first) std::cout << ','; first = false;
 Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY", "DIRECT_MARKER", 2, 3});
 mod.deployments.emplace("RULE_DEPLOY", AlienDeployment{"RULE_DEPLOY", "RULE_MARKER", 3, 4});
@@ -109,6 +109,7 @@ if (name == "multiple-bases") game.bases.push_back(&secondBase);
 if (name == "single-zero") mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 0}};
 if (name == "all-zero") mod.globe.textures[10]._deployments = {{"DIRECT_DEPLOY", 0}, {"RULE_DEPLOY", 0}};
 if (name == "empty-terrain") mod.globe.textures[10]._deployments.clear();
+if (name == "null-choice") mod.globe.textures[10]._deployments = {{"", 1}, {"DIRECT_DEPLOY", 1}};
 if (name == "missing-texture") mod.globe.textures.clear();
 RNG::calls = 0; bool error = false; try { mission.direct(game, mod, wave, trajectory); } catch (const Exception&) { error = true; }
 std::cout << "{\"name\":\"" << name << "\",\"error\":" << (error ? "true" : "false") << ",\"calls\":" << RNG::calls << ",\"site\":[";

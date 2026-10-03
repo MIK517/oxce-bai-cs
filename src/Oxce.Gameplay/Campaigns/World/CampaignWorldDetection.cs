@@ -130,13 +130,14 @@ internal sealed partial class CampaignWorld
         // processMissionSite follows UFO detection in the same half-hour handler.
         // Every site scores, including one whose timer remains above zero or whose
         // expiry is held by followers.
+        var discoveredSite = FirstSiteDiscoveredThisTick(highest);
         if (halfHour)
             foreach (var site in _sites)
             {
                 var rules = campaign.Content.RuntimeRules;
                 var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
                 var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
-                var transition = WorldSiteTimer.Advance(site.SecondsRemaining, SiteHasFollowers(site),
+                var transition = WorldSiteTimer.Advance(SiteSecondsAfterDiscovery(site, discoveredSite), SiteHasFollowers(site),
                     mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
                 if (CheckActivityScore(site.Position, transition.Score, regionTotals, countryTotals) is { } reason)
                     return reason;

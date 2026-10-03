@@ -39,8 +39,28 @@ for a single eligible base, and suppresses creation when no base qualifies.
 It replaces coordinates and city while retaining the selected area's texture.
 Twenty-three focused tests pass, including the captured base choices, reload,
 unreachable invalid durations and maximum-integer score forecasts.
-UFO-to-site conversion remains guarded. Hourly discovery is pending batch audit.
+UFO-to-site conversion remains guarded. Hourly discovery now runs after production,
+before half-hour spawning, and reveals one existing site in saved order. The
+reference minimum-hour timer and postponement of other hidden sites are forecast
+before mutation. Its notification interrupts subsequent ticks while the current
+tick continues. Newly created sites wait for the next hourly pass.
 Site despawn research/event payloads and branch 5 deployment remain guarded.
 
 The reference checkout is read-only and unchanged. This is incremental 4c coverage;
 branch 4c acceptance remains open and branch 4d is untouched.
+
+The combined audit confirmed and fixed idle mission-preflight allocations and
+missing hourly discovery. A failing regression also confirmed that a weighted
+null deployment could incorrectly provide negative-score headroom for a later
+wave; null outcomes now remain uncertain. Deployment-table scans count toward
+the work limit even when every rule is unreachable. Empty marker namespaces
+retain a precise guard because campaign ID allocation requires a nonempty key.
+Twenty-nine creation tests cover these corrections and existing-site score order;
+hourly discovery uses the expanded `strategic-site-timer` capture and reload tests.
+
+Final root validation passes all 1,605 tests without failures or skips, including
+checksums, private corpus and allocation budgets. An unchanged rendering allocation
+test failed once during an earlier full run, then passed in isolation and in two
+subsequent full runs; its strict assertion remains unchanged. Code-map and diff
+validation and formatting verification pass. Useful captures remain; obsolete
+object files were removed.
