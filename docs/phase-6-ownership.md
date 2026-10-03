@@ -374,3 +374,8 @@ links and follower transfer are guarded precisely. See
 World also preserves optional custom deployment metadata from effective UFO
 race stats, reusing the existing save fields. Primary site deployment and duration
 remain controlled by the mission/terrain selection.
+
+World now creates dormant UFO/site respawn links, preserves mission live counts
+and resumes the prepared trajectory through the existing site-expiry lift
+capability. Creation and expiry reloads cover those transitions. Combined
+half-hour conversion and craft follower transfer remain guarded.

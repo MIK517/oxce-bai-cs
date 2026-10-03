@@ -121,7 +121,8 @@ internal sealed partial class CampaignWorld
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
         if (mission.Interrupted || ufo.TrajectoryPoint + 1 >= trajectory.Waypoints.Count)
             return (position, UfoStatus.Destroyed, 0);
-        if (IsSiteConversion(ufo, mission, trajectory)) return (position, UfoStatus.Destroyed, 0);
+        if (IsSiteConversion(ufo, mission, trajectory))
+            return (position, MissionRule(mission).RespawnUfoAfterSiteDespawn ? UfoStatus.IgnoreMe : UfoStatus.Destroyed, 0);
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         var landing = trajectory.Altitude(ufo.TrajectoryPoint + 1) == 0;
         return (position, landing ? UfoStatus.Landed : UfoStatus.Flying,

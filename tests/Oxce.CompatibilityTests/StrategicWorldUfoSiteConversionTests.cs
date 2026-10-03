@@ -16,7 +16,7 @@ public sealed class StrategicWorldUfoSiteConversionTests
     private static RuntimeContent Load(bool cache = false, string? overlay = null) => StrategicReadinessTestContent.Load(
         ["strategic-world.rul", "strategic-site-spawn.rul", "strategic-ufo-site-conversion.rul"], cache, extraRules: overlay);
 
-    private static CampaignSnapshot Snapshot(RuntimeContent content, bool landing = false, bool custom = false)
+    private static CampaignSnapshot Snapshot(RuntimeContent content, bool landing = false, bool custom = false, bool respawn = false)
     {
         var snapshot = CreateSnapshot(content, "UFO site conversion");
         return snapshot.WithNextId("DIRECT_MARKER", 7) with
@@ -25,7 +25,8 @@ public sealed class StrategicWorldUfoSiteConversionTests
             RandomState = 0,
             World = snapshot.World with
             {
-                Missions = [new AlienMissionSnapshot(4, landing ? "UFO_SITE_AT_LANDING" : "UFO_SITE_CONVERSION",
+                Missions = [new AlienMissionSnapshot(4, respawn ? landing ? "UFO_SITE_RESPAWN_LANDING" : "UFO_SITE_RESPAWN" :
+                    landing ? "UFO_SITE_AT_LANDING" : "UFO_SITE_CONVERSION",
                     "SITE_SPAWN_REGION", "RACE_A", 1, 0, 1500, 1, 0)],
                 Ufos = [new UfoSnapshot(9, custom ? "UFO_SITE_CUSTOM" : "UFO_SCOUT", 4, "UFO_SITE_CONVERSION", 0, 0.25, 0.15,
                     UfoStatus.Flying, WorldAltitudes.Low)
@@ -47,10 +48,10 @@ public sealed class StrategicWorldUfoSiteConversionTests
         var count = 0;
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
         {
-            if (row[1].GetBoolean()) continue;
             count++;
             var landing = row[0].GetBoolean();
-            var initial = Snapshot(content, landing, row[2].GetBoolean());
+            var respawn = row[1].GetBoolean();
+            var initial = Snapshot(content, landing, row[2].GetBoolean(), respawn);
             var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
             var result = campaign.Execute(new AdvanceCampaignTime(10));
             Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
@@ -75,10 +76,50 @@ public sealed class StrategicWorldUfoSiteConversionTests
             Assert.Equal(1, Assert.Single(after.World.Missions).LiveUfos);
             var restored = Reload(content, campaign, 17, "ufo-converted.sav");
             AdvanceOne(restored);
-            Assert.Empty(restored.Capture().World.Ufos);
-            Assert.Equal(0, Assert.Single(restored.Capture().World.Missions).LiveUfos);
+            if (respawn)
+            {
+                Assert.Equal(UfoStatus.IgnoreMe, Assert.Single(restored.Capture().World.Ufos).Status);
+                Assert.Equal(9, Assert.Single(restored.Capture().World.MissionSites).UfoUniqueId);
+                Assert.Equal(1, Assert.Single(restored.Capture().World.Missions).LiveUfos);
+            }
+            else
+            {
+                Assert.Empty(restored.Capture().World.Ufos);
+                Assert.Equal(0, Assert.Single(restored.Capture().World.Missions).LiveUfos);
+            }
         }
-        Assert.Equal(4, count);
+        Assert.Equal(8, count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConvertedDormantUfoReactivatesAfterSiteExpiryAndReload(bool cache)
+    {
+        var content = Load(cache);
+        var campaign = CampaignState.Restore(Snapshot(content, respawn: true), content, new QuarterChoices());
+        Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+        var converted = Reload(content, campaign, 17, "converted-dormant.sav").Capture();
+        var dormant = Assert.Single(converted.World.Ufos);
+        Assert.Equal(UfoStatus.IgnoreMe, dormant.Status);
+        Assert.Equal(WorldAltitudes.Ground, dormant.Altitude);
+        Assert.Equal(0, dormant.Speed);
+        var due = converted with
+        {
+            Time = new(1, 1, 1, 1999, 1, 29, 55),
+            World = converted.World with { MissionSites = [converted.World.MissionSites[0] with { SecondsRemaining = 0 }] },
+        };
+        var restored = CampaignState.Restore(due, content, new QuarterChoices());
+        AdvanceOne(restored);
+        var after = restored.Capture();
+        Assert.Empty(after.World.MissionSites);
+        var lifted = Assert.Single(after.World.Ufos);
+        Assert.Equal(UfoStatus.Flying, lifted.Status);
+        Assert.Equal(WorldAltitudes.VeryLow, lifted.Altitude);
+        Assert.Equal(1100, lifted.Speed);
+        Assert.NotEqual(dormant.Position, lifted.Position);
+        Assert.Equal(1, Assert.Single(after.World.Missions).LiveUfos);
+        Reload(content, restored, 17, "converted-reactivated.sav");
     }
 
     [Theory]

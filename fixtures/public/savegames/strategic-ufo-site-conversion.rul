@@ -28,3 +28,11 @@ alienMissions:
       siteType: DIRECT_DEPLOY
       spawnZone: 0
     waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true, objectiveOnTheLandingSite: true}]
+  - type: UFO_SITE_RESPAWN
+    refNode: *conversion
+    respawnUfoAfterSiteDespawn: true
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true}]
+  - type: UFO_SITE_RESPAWN_LANDING
+    refNode: *conversion
+    respawnUfoAfterSiteDespawn: true
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: UFO_SITE_CONVERSION, timer: 3000, objective: true, objectiveOnTheLandingSite: true}]

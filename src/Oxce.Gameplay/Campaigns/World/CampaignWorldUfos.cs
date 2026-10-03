@@ -186,8 +186,13 @@ internal sealed partial class CampaignWorld
                     if (IsSiteConversion(ufo, mission, trajectory))
                     {
                         _ufos[index] = ConvertUfoToSite(arrived, mission, effects);
-                        _ufoArrivalEndedTick = true;
-                        break;
+                        if (_ufos[index].Status == UfoStatus.Destroyed)
+                        {
+                            _ufoArrivalEndedTick = true;
+                            break;
+                        }
+                        _ufos[index] = RechargeUfoShield(_ufos[index]);
+                        continue;
                     }
                     // The switch entered its FLYING branch, so this also recharges on landing.
                     _ufos[index] = RechargeUfoShield(arrived);

@@ -48,7 +48,6 @@ internal sealed partial class CampaignWorld
             return "UFO site conversion requires combined half-hour counter forecasts.";
         var rules = campaign.Content.RuntimeRules;
         var rule = MissionRule(mission);
-        if (rule.RespawnUfoAfterSiteDespawn) return "UFO site conversion requires dormant UFO linkage.";
         foreach (var owner in campaign.BaseStates)
             foreach (var craft in owner.Crafts)
             {
@@ -117,8 +116,10 @@ internal sealed partial class CampaignWorld
                 City = area.Name,
                 Detected = true,
                 CustomDeploymentId = rules.AlienDeployments.TryGet(custom, out _) ? custom : string.Empty,
+                UfoUniqueId = rule.RespawnUfoAfterSiteDespawn ? arrived.UniqueId : 0,
             });
             effects.Notify(new MissionSiteDetected(id, deployment.MarkerName));
+            if (rule.RespawnUfoAfterSiteDespawn) return arrived with { Status = UfoStatus.IgnoreMe };
         }
         return arrived with { Status = UfoStatus.Destroyed };
     }
