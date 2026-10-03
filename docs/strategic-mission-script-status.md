@@ -246,3 +246,11 @@ selection uses fixed-area draws, no city bypass, no region containment and bound
 and invalid selected-area checks share this precedence. Captured getWaypoint and
 getLandPointForMissionSite rows, fresh/cache RNG and reload tests stop atomically
 before the still-unavailable site conversion.
+
+### Batch 2 audit
+
+The regional-origin, rectangle-destination and selected-area slices were reviewed
+together. The full suite identified three stale arrival guard tests. Two now place
+the UFO on the actual conversion leg (the previous trajectory zone controls site
+creation); the third verifies the newly supported fixed-area land selection and
+reload. The strict unchanged-state assertions remain on unavailable conversion.

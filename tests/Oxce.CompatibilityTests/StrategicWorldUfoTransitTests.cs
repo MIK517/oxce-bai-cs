@@ -59,7 +59,7 @@ public sealed class StrategicWorldUfoTransitTests
                 // Site airborne outbound legs are supported; the ground objective
                 // arrival still requires site creation and must stop before mutation.
                 Ufos = [ufo with { Longitude = 0.99999, Latitude = 0.6, MissionWaveNumber = 0,
-                    TrajectoryId = "TRAJ_SITE" }],
+                    TrajectoryId = "TRAJ_PATROL", TrajectoryPoint = 1 }],
             },
         }, content, new SplitMix64RandomSource(42));
         AssertTimeBlocked(near, "UFO waypoint arrival requires mission simulation.");
@@ -250,7 +250,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void ObjectiveWaveArrivalInMissionSpawnZoneRemainsBlocked()
+    public void ObjectiveWaveArrivalUsesSelectedAreaBeforeFutureSiteConsequences()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
@@ -273,7 +273,17 @@ public sealed class StrategicWorldUfoTransitTests
             },
         }, content, new SplitMix64RandomSource(73));
 
-        AssertTimeBlocked(arriving, "UFO waypoint arrival requires mission simulation.");
+        var random = new SplitMix64RandomSource(snapshot.RandomState);
+        var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
+        var expected = WorldGeometry.MissionSiteLandPoint(region, content.RuntimeRules.Campaign.Globe, 0, 0, 20, random);
+        expected = WorldGeometry.MissionSiteLandPoint(region, content.RuntimeRules.Campaign.Globe, 0, 0, 20, random);
+        AdvanceOne(arriving);
+        var after = arriving.Capture();
+        Assert.Equal(WorldPosition.Create(expected.Longitude, expected.Latitude), Assert.Single(after.World.Ufos).Destination!.Position);
+        Assert.Equal(1, after.World.Ufos[0].TrajectoryPoint);
+        Assert.Equal(random.State, after.RandomState);
+        Assert.Empty(after.World.MissionSites);
+        Reload(content, arriving, 73, "selected-arrival.sav");
     }
 
     [Theory]
@@ -417,7 +427,8 @@ public sealed class StrategicWorldUfoTransitTests
         var lastPoint = content.RuntimeRules.UfoTrajectories[
             content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value.Waypoints.Count - 1;
         var arriving = ufo with { Longitude = 0.99999, Latitude = 0.6, TrajectoryPoint = lastPoint };
-        var later = ufo with { UniqueId = 10, Id = 4, Longitude = 0.99999, Latitude = 0.6 };
+        var later = ufo with { UniqueId = 10, Id = 4, Longitude = 0.99999, Latitude = 0.6,
+            TrajectoryId = "TRAJ_PATROL", TrajectoryPoint = 1 };
         var restored = CampaignState.Restore(snapshot with
         {
             World = snapshot.World with
