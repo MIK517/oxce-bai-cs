@@ -11,6 +11,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private bool? _newHunterHasNoTarget;
+    private bool? _newLeaderHasNoCraftPursuer;
 
     private void RegisterMissionOperations(CampaignCapabilityRegistry registry)
     {
@@ -114,6 +115,7 @@ internal sealed partial class CampaignWorld
                 return "Alien mission wave spawning requires world simulation.";
             }
         }
+        long newbornFollowerWork = 0;
         var savedIdleEscorts = 0;
         var savedMovingEscorts = 0;
         foreach (var saved in _ufos)
@@ -123,14 +125,17 @@ internal sealed partial class CampaignWorld
             if (projected.Status != UfoStatus.Flying || !projected.HunterKiller || !projected.Escort ||
                 projected.Hunting || projected.Escorting) continue;
             savedIdleEscorts++;
-            // Attaching a loaded idle escort to a newborn leader changes this
-            // tick's craft pursuit forecast. Keep that composition explicit.
-            if (possibleNewLeaderMissions?.Contains(saved.MissionId) == true)
-                return "Loaded idle escorts require same-tick newborn leader forecasts.";
+            if (possibleNewLeaderMissions?.Contains(saved.MissionId) != true) continue;
+            // The live retarget pass sees appended leaders. It does not relocate
+            // this saved source, but replaces its waypoint and speed. Prove that
+            // no arrival, craft pursuit or UFO follower forecast depends on them.
+            if (LoadedEscortNewLeaderReason(projected, ref newbornFollowerWork) is { } leaderReason)
+                return leaderReason;
+            savedMovingEscorts++;
         }
         var finalUfoCount = (long)_ufos.Count + ufoSpawns;
         var escortWork = 2L * newEscorts * finalUfoCount + (long)savedIdleEscorts * ufoSpawns;
-        if (_huntingForecastWork + escortWork > MaximumAlienBaseChecks)
+        if (_huntingForecastWork + escortWork + newbornFollowerWork > MaximumAlienBaseChecks)
             return "New UFO escort selection exceeds the supported work limit.";
         if (2L * (savedMovingEscorts + newEscorts) * finalUfoCount > MaximumAlienBaseChecks)
             return "New UFO escort movement exceeds the supported work limit.";
@@ -165,7 +170,7 @@ internal sealed partial class CampaignWorld
                 if (possibleCrafts > MaximumAlienBaseChecks)
                     return "New UFO retargeting exceeds the supported work limit.";
             }
-            if (_huntingForecastWork + possibleCrafts * newFlyingHunters + escortWork > MaximumAlienBaseChecks)
+            if (_huntingForecastWork + possibleCrafts * newFlyingHunters + escortWork + newbornFollowerWork > MaximumAlienBaseChecks)
                 return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
@@ -380,6 +385,40 @@ internal sealed partial class CampaignWorld
                 if (!campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.Undetectable &&
                     craft.Logistics is { } state &&
                     (state.Status == "STR_OUT" && !WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) || state.IsAutoPatrolling &&
+                        campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
+            foreach (var transfer in owner.Transfers)
+                if (!transfer.Delivered && transfer.Craft?.Logistics is { } state &&
+                    (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
+                        campaign.Content.RuntimeRules.Crafts[
+                            campaign.Content.RuntimeRules.Crafts.GetRequired(transfer.Craft.RuleId)].Value.AutoPatrol)) return false;
+        }
+        return true;
+    }
+
+    private string? LoadedEscortNewLeaderReason(UfoSnapshot escort, ref long work)
+    {
+        if (!(_newLeaderHasNoCraftPursuer ??= CalculateNoCraftPursuer(ref work)))
+            return "Loaded idle escorts require same-tick newborn craft pursuit forecasts.";
+        if (escort.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
+            !(WorldGeometry.Distance(escort.Position, destination.Position) > WorldGeometry.RadianSpeed(escort.Speed) + 1e-12))
+            return "Loaded idle escorts require same-tick newborn waypoint forecasts.";
+        work += _ufos.Count;
+        if (work > MaximumAlienBaseChecks) return "New UFO escort selection exceeds the supported work limit.";
+        foreach (var follower in _ufos)
+            if (follower.Escorting && FollowsUfo(follower.Destination, escort))
+                return "Loaded idle escorts require same-tick newborn UFO follower forecasts.";
+        return null;
+    }
+
+    private bool CalculateNoCraftPursuer(ref long work)
+    {
+        foreach (var owner in campaign.BaseStates)
+        {
+            work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            if (work > MaximumAlienBaseChecks) return false;
+            foreach (var craft in owner.Crafts)
+                if (craft.Logistics is { } state &&
+                    (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
                         campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
             foreach (var transfer in owner.Transfers)
                 if (!transfer.Delivered && transfer.Craft?.Logistics is { } state &&

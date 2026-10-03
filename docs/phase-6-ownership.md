@@ -560,3 +560,8 @@ next two slices. Combat and deployment remain branch 5.
 - 4c creation-tick takeoff: timer-one grounded hunter/escort births now reach
   the five-second lift handler after skipping retarget. Site-before-lift scoring,
   terminal-arrival fallthrough, save/reload and next-tick combat refusal pass.
+
+- 4c saved idle escorts/newborn leaders: enabled the bounded composition with
+  no craft or dependent UFO pursuit and no cancelled waypoint arrival. Ordered
+  attachment, distinct origin semantics, fresh/cache reload and atomic specific
+  boundaries pass; broader changed pursuit forecasts remain 4c-owned.

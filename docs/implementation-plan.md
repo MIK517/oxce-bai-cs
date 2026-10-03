@@ -696,3 +696,7 @@ next two slices. Combat and deployment remain branch 5.
 - 4c creation-tick grounded takeoff slice: timer-one hunter/escort births with
   active craft are enabled. Scoring follows site/earlier-UFO order, terminal
   arrivals skip newborn lifts, and 138 focused cases pass with reload coverage.
+
+- 4c saved idle escort slice: replaced the blanket newborn-leader boundary with
+  structural checks for craft pursuit, waypoint arrival and UFO followers.
+  Ordered attachment and reload/resource-limit tests pass (146 focused cases).

@@ -440,6 +440,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     {
         _dailyResearchForecast = null;
         _newHunterHasNoTarget = null;
+        _newLeaderHasNoCraftPursuer = null;
         _siteBirthIdChanges = null;
         _siteBirthExpiryIncreases = null;
         _siteBirthExpiryDecreases = null;
