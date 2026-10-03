@@ -444,3 +444,11 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   unchanged; rejected draws are omitted under the contract's RNG-stream
   non-goal. ADR 0030 records the decision and safety requirements. Seventeen
   focused site-script cases pass; live adoption follows next.
+
+- 4c live conditioned-region slice: weighted and uniform site scripts now
+  filter regions removed by occupancy, base targeting and repeat history
+  without an unbounded retry loop. Composed commands observe live candidate
+  changes; earlier multi-region guards are removed. Positive selected/listed
+  timeline region sets must agree before RNG, and work reservations include
+  earlier possible mission/history growth. Fresh/cache composed batches,
+  default countdown draws and reloads pass in 72 focused scheduling cases.
