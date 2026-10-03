@@ -491,6 +491,110 @@ public sealed class StrategicWorldEscortSpawnTests
         Reload(content, campaign, 81, "ground-escort-first-flight.sav");
     }
 
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CreationTickGroundEscortLiftsBeforeItsNextCraftHunt(bool cache)
+    {
+        var content = Load(cache);
+        var initial = SpawnSnapshot(content, UfoStatus.Flying).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 0,
+                Longitude = 0.401,
+                Latitude = 0.2,
+                Destination = null,
+            },
+        });
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { RuleId = "MISSION_ESCORT_GROUND_IMMEDIATE" }],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked or UfoStartedHunting);
+        var escort = campaign.Capture().World.Ufos.Single(ufo => ufo.RuleId == "HUNTER");
+        Assert.Equal(UfoStatus.Flying, escort.Status);
+        Assert.Equal(WorldAltitudes.VeryLow, escort.Altitude);
+        Assert.Equal(0, escort.SecondsRemaining);
+        Assert.Equal(initial.World.Ufos[0].Position, escort.Position);
+        Assert.Equal(550, escort.Speed);
+        Assert.True(escort.Escorting);
+        Assert.NotNull(escort.OriginalWaypoint);
+        Assert.Equal(-1, escort.Shield);
+        var rules = content.RuntimeRules.Ufos;
+        var expectedScore = rules[rules.GetRequired("UFO_SCOUT")].Value.MissionScore +
+            2 * rules[rules.GetRequired("HUNTER")].Value.MissionScore + 7;
+        Assert.Equal(initial.Regions[0].ActivityAlien[^1] + expectedScore, campaign.Capture().Regions[0].ActivityAlien[^1]);
+        campaign = Reload(content, campaign, 81, "creation-tick-escort-takeoff.sav");
+        AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Fact]
+    public void NewbornTakeoffCannotProvideHeadroomForEarlierSiteUnderflow()
+    {
+        var content = Load(overlay: """
+            alienDeployments:
+              - type: NEGATIVE_TAKEOFF_SITE
+                markerName: STR_TERROR_SITE
+                points: -4
+            """);
+        Assert.Equal(-4, content.RuntimeRules.AlienDeployments[content.RuntimeRules.AlienDeployments.GetRequired("NEGATIVE_TAKEOFF_SITE")].Value.Points);
+        var initial = SpawnSnapshot(content, UfoStatus.IgnoreMe);
+        initial = initial with
+        {
+            Regions = [initial.Regions[0] with { ActivityAlien = [int.MinValue + 1] }],
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { RuleId = "MISSION_ESCORT_GROUND_IMMEDIATE" }],
+                MissionSites = [new(1, "MISSION_SCOUT", "NEGATIVE_TAKEOFF_SITE", "RACE_A", 0.4, 0.2, 3600)],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO alien activity exceeds the supported range.");
+    }
+
+    [Fact]
+    public void TerminalLeaderSkipsNewbornGroundTakeoffAndItsScoreReservation()
+    {
+        var content = Load();
+        var initial = SpawnSnapshot(content, UfoStatus.Flying);
+        var scoutScore = content.RuntimeRules.Ufos[content.RuntimeRules.Ufos.GetRequired("UFO_SCOUT")].Value.MissionScore;
+        var birthScore = 2 * content.RuntimeRules.Ufos[content.RuntimeRules.Ufos.GetRequired("HUNTER")].Value.MissionScore;
+        Assert.Equal(3, content.RuntimeRules.UfoTrajectories[content.RuntimeRules.UfoTrajectories.GetRequired("TRAJ_SPAWN_FIXED")].Value.Waypoints.Count);
+        initial = initial with
+        {
+            Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - scoutScore - birthScore] }],
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { RuleId = "MISSION_ESCORT_GROUND_IMMEDIATE" }],
+                Ufos = [initial.World.Ufos[0] with
+                {
+                    TrajectoryPoint = 2,
+                    Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)),
+                }],
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(int.MaxValue, after.Regions[0].ActivityAlien[^1]);
+        Assert.Equal(UfoStatus.Destroyed, after.World.Ufos[0].Status);
+        Assert.Equal(UfoStatus.Landed, after.World.Ufos[1].Status);
+        Assert.Equal(5, after.World.Ufos[1].SecondsRemaining);
+        campaign = Reload(content, campaign, 81, "terminal-ground-escort-before-lift.sav");
+        AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
+    }
+
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
 

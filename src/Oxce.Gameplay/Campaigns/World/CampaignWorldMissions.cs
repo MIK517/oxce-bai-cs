@@ -323,8 +323,7 @@ internal sealed partial class CampaignWorld
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
         if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
-            ((trajectory.Altitude(0) != 0 || trajectory.GroundTimer <= 1) &&
-                !NoCraftCanBecomeHunterTarget())) return false;
+            (trajectory.Altitude(0) != 0 && !NoCraftCanBecomeHunterTarget())) return false;
         if (NewEscortSpawnReason(mission, rule) is not null) return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
@@ -357,8 +356,6 @@ internal sealed partial class CampaignWorld
         if (!NewEscortWave(rule, wave) || wave.Trajectory is not { } trajectory) return null;
         var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
         var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
-        if (path.Waypoints.Count != 0 && path.Altitude(0) == 0 && path.GroundTimer <= 1)
-            return "Creation-tick escort takeoff requires additional forecasts.";
         var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
         if (maximum is < 0 or > int.MaxValue) return "UFO escort speed exceeds the supported range.";
         if (path.Waypoints.Count != 0 && path.Altitude(0) != 0 && !NoCraftCanBecomeHunterTarget())

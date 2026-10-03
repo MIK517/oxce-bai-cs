@@ -40,6 +40,12 @@ ufoTrajectories:
       - [4, 0, 25]
       - [3, 2, 80]
       - [0, 3, 50]
+  - id: TRAJ_ESCORT_GROUND_IMMEDIATE
+    groundTimer: 1
+    waypoints:
+      - [4, 0, 25]
+      - [3, 2, 80]
+      - [0, 3, 50]
 alienMissions:
   - type: MISSION_HUNTER_GROUND
     objective: 0
@@ -69,3 +75,9 @@ alienMissions:
     waves:
       - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
       - {ufo: ESCORT_HUNTER, count: 1, trajectory: TRAJ_ESCORT_GROUND, timer: 9000, hunterKillerPercentage: 100, escort: true}
+  - type: MISSION_ESCORT_GROUND_IMMEDIATE
+    objective: 0
+    points: 7
+    waves:
+      - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+      - {ufo: HUNTER, count: 1, trajectory: TRAJ_ESCORT_GROUND_IMMEDIATE, timer: 9000, hunterKillerPercentage: 100, escort: true}

@@ -556,3 +556,7 @@ next two slices. Combat and deployment remain branch 5.
 - 4c grounded escorts: positive long-timer births initialize without craft-hunt
   forecasts because landed UFOs miss retargeting. Ground status, contact order,
   stationary timers, shields, trajectory takeoff speed and reload are verified.
+
+- 4c creation-tick takeoff: timer-one grounded hunter/escort births now reach
+  the five-second lift handler after skipping retarget. Site-before-lift scoring,
+  terminal-arrival fallthrough, save/reload and next-tick combat refusal pass.

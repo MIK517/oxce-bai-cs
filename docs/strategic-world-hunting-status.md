@@ -188,3 +188,17 @@ timers, untouched shields, preserved original waypoints, takeoff at trajectory
 speed and save/reload before and after flight. Reference: AlienMission::spawnUfo,
 GeoscapeState::ufoHuntingAndEscorting/time5Seconds and AlienMission::ufoLifting
 (the existing lift oracle). Creation-tick takeoff is the next slice.
+
+### Creation-tick grounded escort takeoff
+
+Ground timer one now permits grounded hunter and escort births with active
+craft. The reference retarget pass skips these landed actors, then
+AlienMission::ufoLifting takes off at the current trajectory speed without
+movement, shield recharge or a new craft hunt. Existing lift fixtures and the
+pinned grounded spawn rows establish the two operations.
+
+Activity preflight reserves newborn takeoff points after site processing and
+earlier UFO movement. A terminal earlier arrival skips both the newborn takeoff
+and its award. Fresh/cache takeoff, next-tick interception refusal, site
+underflow, exact-fit terminal scoring and transition reloads pass in the
+138-case focused suite. Combat remains guarded before the next affected tick.
