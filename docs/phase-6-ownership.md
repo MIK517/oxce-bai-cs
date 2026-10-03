@@ -379,3 +379,11 @@ World now creates dormant UFO/site respawn links, preserves mission live counts
 and resumes the prepared trajectory through the existing site-expiry lift
 capability. Creation and expiry reloads cover those transitions. Combined
 half-hour conversion and craft follower transfer remain guarded.
+
+The combined conversion audit fixes suppressed respawn forecasts so unrelated
+craft landing guards do not block a reference-terminal tick. Additional captures
+and tests verify missing sites/links, shield recharge and later-UFO movement.
+
+Final root validation passes 1,644 tests with no failures or skips, including
+checksums, private corpus and allocation checks. Formatting, code-map and diff
+verification pass. The C++ checkout remains clean; the headless gate is open.

@@ -5,6 +5,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
+    private HashSet<int>? _suppressedUfoSites;
     private bool ArrivesAtSite(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
         ufo = UfoAfterTimedTransitions(ufo, highest);
@@ -61,6 +62,7 @@ internal sealed partial class CampaignWorld
         work += SiteDeploymentSelectionWork(wave, rule, area);
         if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
         var candidates = SiteDeploymentCandidates(wave, rule, area);
+        if (candidates.Count == 0) (_suppressedUfoSites ??= []).Add(ufo.UniqueId);
         work += (long)candidates.Count * (1L + _sites.Count + _alienBases.Count);
         if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
         if (candidates.Count != 0 && (long)_sites.Count + _ufos.Count > 100_000)

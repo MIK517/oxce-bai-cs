@@ -168,6 +168,121 @@ public sealed class StrategicWorldUfoSiteConversionTests
             "UFO site conversion requires combined half-hour counter forecasts.");
     }
 
+    [Fact]
+    public void SuppressedRespawnConversionEndsThePassBeforeAnUnrelatedGuardedLanding()
+    {
+        var content = Load();
+        var snapshot = Snapshot(content);
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [snapshot.World.Missions[0] with { RuleId = "UFO_SITE_SUPPRESSED", RegionId = "SITE_EMPTY" }],
+                MissionSites = [new MissionSiteSnapshot(8, "DIRECT_OVERRIDE", "DIRECT_DEPLOY", "RACE_A", 0.2, 0.1, 7200)
+                { Detected = true }],
+            },
+        };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Speed = 6000,
+                Longitude = 0.2,
+                Latitude = 0.1,
+                Destination = new(WorldTargetKind.MissionSite, "DIRECT_MARKER", 8, 0.2, 0.1),
+            },
+        });
+        var owner = snapshot.Bases[0];
+        snapshot = snapshot with
+        {
+            Bases = [owner with { Soldiers =
+            [owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } },
+                .. owner.Soldiers.Skip(1)] }, .. snapshot.Bases.Skip(1)],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(after.World.Ufos).Status);
+        Assert.Single(after.World.MissionSites); // No new site or dormant link was created.
+        Assert.Equivalent(snapshot.Bases[0].Crafts, after.Bases[0].Crafts, strict: true);
+        Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + 5, after.Regions[0].ActivityAlien[^1]);
+        Reload(content, campaign, 17, "suppressed-conversion.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OnlyDormantConversionsRechargeAndAllowLaterUfoMovement(bool respawn)
+    {
+        const string overlay = "ufos:\n  - type: UFO_SITE_SHIELDS\n    speedMax: 2200\n    damageMax: 50\n" +
+            "    shieldCapacity: 10\n    shieldRechargeInGeoscape: 100\n";
+        var content = Load(overlay: overlay);
+        var snapshot = Snapshot(content, respawn: respawn);
+        var later = snapshot.World.Ufos[0] with
+        {
+            UniqueId = 10,
+            Id = 4,
+            TrajectoryId = "TRAJ_PATROL",
+            TrajectoryPoint = 0,
+            Longitude = 0.4,
+            Latitude = 0.2,
+            Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
+        };
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [snapshot.World.Missions[0] with { LiveUfos = 2 }],
+                Ufos = [snapshot.World.Ufos[0] with { RuleId = "UFO_SITE_SHIELDS", Shield = 0 }, later],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        var result = campaign.Execute(new AdvanceCampaignTime(10));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.IsType<MissionSiteDetected>(result.Events[1]);
+        var after = campaign.Capture();
+        Assert.Equal(respawn ? 1 : 0, after.World.Ufos[0].Shield);
+        Assert.Equal(respawn ? WorldGeometry.Move(later.Position, later.Destination.Position,
+            WorldGeometry.RadianSpeed(later.Speed)) : later.Position, after.World.Ufos[1].Position);
+        Assert.Equal(2, Assert.Single(after.World.Missions).LiveUfos);
+        Reload(content, campaign, 17, "conversion-fallthrough.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SuppressedSiteConversionMatchesCapturedTerminalOutcome(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "suppressedConversionRows"))
+        {
+            var respawn = row[0].GetBoolean();
+            var snapshot = Snapshot(content);
+            snapshot = snapshot with
+            {
+                World = snapshot.World with
+                {
+                    Missions = [snapshot.World.Missions[0] with
+                    { RuleId = respawn ? "UFO_SITE_SUPPRESSED" : "UFO_SITE_SUPPRESSED_NO_RESPAWN", RegionId = "SITE_EMPTY" }],
+                },
+            };
+            var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                respawn, Assert.Single(after.World.Ufos).Status == UfoStatus.Destroyed ? "destroyed" : "ignore",
+                after.World.MissionSites.Count, 1, after.RandomState,
+            });
+            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            Assert.Equal(snapshot.Regions[0].ActivityAlien[^1] + 5, after.Regions[0].ActivityAlien[^1]);
+            Reload(content, campaign, 17, "suppressed-captured-conversion.sav");
+        }
+    }
+
     private sealed class QuarterChoices : IStatefulRandomSource
     {
         public ulong State { get; set; }

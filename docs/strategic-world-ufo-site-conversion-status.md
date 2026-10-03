@@ -43,5 +43,18 @@ mission count and prepared next destination. The arrival still recharges shields
 and continues current-tick fallthrough, matching the flying switch branch;
 subsequent dormant ticks do neither. Site expiry uses the existing lift capability
 to reactivate it. All captured respawn/custom/coordinate combinations and
-fresh/cache creation-to-expiry reloads pass. Missing terrain outcomes still
+fresh/cache creation-to-expiry reloads pass. Null deployment outcomes still
 destroy the UFO instead of creating a dangling dormant link.
+
+The batch audit reproduced a false landing guard when a respawn-enabled mission
+had no reachable terrain deployment. Preflight now records that suppressed
+outcome for the craft and activity forecasts: the UFO is terminal and the later
+craft/UFO pass is skipped. The regression confirms the tick proceeds atomically,
+creates no site or link, and preserves the skipped craft state. Additional cases
+check shield recharge and later-UFO movement only on dormant conversions. Compound
+half-hour conversion, craft follower transfer and damaged ground outcomes remain
+guarded; this batch does not close the headless gate.
+
+Final validation: 1,644 root tests pass with zero failures or skips, including
+checksums, private corpus and allocation checks. Formatting verification,
+code-map and diff checks pass. The pinned reference checkout remains clean.

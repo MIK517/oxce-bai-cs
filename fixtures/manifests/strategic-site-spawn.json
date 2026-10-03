@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-site-spawn",
-  "description": "Pinned AlienMission direct mission-site selection and creation. Explicit override, mission-rule and terrain precedence; selected area, player-base replacement, no-base suppression and missing terrain errors. Minimum integer draws and quarter-fraction coordinates; controlled geography and deployment collaborators.",
+  "description": "Pinned AlienMission direct site selection, creation and selected objective UFO conversion. Explicit override, mission-rule and terrain precedence; selected area, player-base replacement, custom deployment, respawn and suppressed conversion. Minimum integer draws and quarter-fraction coordinates; controlled geography, score and deployment collaborators.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_site_spawn_probe.cpp",
-      "size": 9032,
-      "sha256": "4528ecd0d542f36b5acac4babdc029c00f640305d4937a70906c0f3bc4e8f37e"
+      "size": 9665,
+      "sha256": "8ff6dc31c7aa7236ce8470d80740fc70733239877dbd5a8faf5a180a0c613bdb"
     },
     {
       "path": "tools/capture-strategic-site-spawn-reference.ps1",
@@ -30,8 +30,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-ufo-site-conversion.rul",
-      "size": 1379,
-      "sha256": "944ce559e041901c8c0dfb9a20021c8b204aa81c5b8870dd99db09de4a1a9225"
+      "size": 1777,
+      "sha256": "3c6bd63082322226a54ec5aa455c8906cedf19d08efa07ec7d7ea269fdef7689"
     }
   ],
   "normalization": [

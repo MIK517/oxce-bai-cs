@@ -516,3 +516,18 @@ and reloads pass. It retains the primary strategic deployment and its duration.
 The third slice adds dormant respawn linkage for converted UFOs and transition
 reloads through site expiry/reactivation. Craft follower transfer and combined
 half-hour conversion remain specific guards; the headless gate remains open.
+
+The conversion batch audit confirmed a false landing guard when terrain always
+suppressed a respawn-enabled site. The forecast now treats that UFO as terminal,
+matching the reference's return before later UFO/craft movement. Pinned suppression
+rows and regressions cover no-site/no-link outcomes, skipped craft state, shield
+recharge and current-tick fallthrough. Branch 4c remains incomplete; branch 4d is
+untouched.
+
+Final batch validation: root `dotnet test --no-restore --verbosity quiet` passes
+all 1,644 tests with zero failures or skips, including checksums, all 19 staged
+saves and allocation checks. Formatting verification, code-map and diff checks
+pass. An unchanged patrol allocation assertion failed once before the updated
+conversion expectations were compiled; it passed in the focused rerun and both
+subsequent root runs without weakening its assertion. The pinned C++ checkout
+remains clean; the regenerated probe object was removed.
