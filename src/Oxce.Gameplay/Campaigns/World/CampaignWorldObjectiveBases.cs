@@ -250,7 +250,7 @@ internal sealed partial class CampaignWorld
     }
 
     private AlienBaseSnapshot SpawnMissionAlienBase(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        RuleHandle<AlienDeploymentRuleFamily> handle, WorldPosition raw)
+        RuleHandle<AlienDeploymentRuleFamily> handle, WorldPosition raw, string pactCountry = "")
     {
         var rules = campaign.Content.RuntimeRules;
         var deployment = rules.AlienDeployments[handle].Value;
@@ -261,6 +261,7 @@ internal sealed partial class CampaignWorld
             PreservationKey = "alien-base:generated:" + checked(++_alienBaseBirthSequence)
                 .ToString(System.Globalization.CultureInfo.InvariantCulture),
             StartMonth = campaign.MonthsPassed,
+            PactCountryId = pactCountry,
             MinutesSinceLastHuntMissionGeneration = deployment.HuntMissionMaxFrequency,
         };
         _alienBases.Add(alienBase);

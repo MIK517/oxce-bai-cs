@@ -743,3 +743,10 @@ next two slices. Combat and deployment remain branch 5.
   infiltration respects technical-region containment for country labels and
   search points. The shared selector now exposes that distinction; deployment,
   coordinate, fake-water and suppression draws remain reference ordered.
+
+- Five-cycle batch 1, slice 3: non-endless regional infiltration now creates
+  a pending pact and independently identified base after a successful search.
+  It retries suppressed countries, observes live pending-pact flags across
+  completions, supports same-month recapture, and does not score or execute
+  signed-pact events. Marker/population/hunting/work guards precede mutation.
+  Close-country search, shuffled order and endless loops retain precise guards.
