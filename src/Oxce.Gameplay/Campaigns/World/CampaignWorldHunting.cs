@@ -174,9 +174,15 @@ internal sealed partial class CampaignWorld
         var position = target.Position;
         // Reference UFOs move in list order. Ordinary earlier targets have moved
         // before this escort; later targets still use their previous coordinates.
-        if (_ufos.FindIndex(candidate => candidate.UniqueId == target.UniqueId) <
-            _ufos.FindIndex(candidate => candidate.UniqueId == ufo.UniqueId))
+        if (UfoIndex(target.UniqueId) < UfoIndex(ufo.UniqueId))
             position = ForecastUfo(target, highest).Position;
         return ufo with { Destination = reference with { Longitude = position.Longitude, Latitude = position.Latitude } };
+    }
+
+    private int UfoIndex(int uniqueId)
+    {
+        for (var index = 0; index < _ufos.Count; index++)
+            if (_ufos[index].UniqueId == uniqueId) return index;
+        return -1;
     }
 }

@@ -596,3 +596,19 @@ forecast guards. Escort chains/cycles and malformed originals fail intentionally
 Deletion scans are bounded before nested work. Future hunter wave creation remains
 guarded until spawn/retarget forecasts compose; this slice enables loaded actors.
 The headless gate remains open and branch 4d is untouched.
+
+The three-slice batch audit reproduced a same-tick boundary bypass: a hunter's
+new revelation was absent from an imported pursuer's craft-arrival forecast.
+Craft interception checks now use the retarget projection before any mutation.
+Regression tests also reject signed 32-bit intermediate attraction overflow even
+when later terms would produce an in-range result; each C++ operation is bounded.
+The root allocation gate caught eager closure allocation in the escort forecast
+on ordinary flight. An explicit identity scan removes that allocation, preserving
+the existing 8/32/128-UFO budgets. Handler-order assertions include both registered
+retarget callers without weakening their exact ordering.
+
+Final cycle validation passes all 1,692 root tests with no failures or skips,
+including fixture checksums, all 19 staged-save classifications, 72-hour composed
+scenarios and populated allocation budgets. Formatting verification, code-map
+validation and diff checks pass. The pinned C++ checkout remains clean; obsolete
+probe object output was removed. Branch 4c remains incomplete and 4d is untouched.

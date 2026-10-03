@@ -61,23 +61,33 @@ internal static class WorldHunting
     {
         attraction = 0;
         if (units < 0 || mode == 0 && damageMaximum <= 0) return false;
-        long value = 0;
+        var unitTerm = units * 1000L;
+        if (!Fits(unitTerm)) return false;
+        long value = allowLanding == (mode == 0) ? 1_000_000 : 0;
         if (mode == 0)
         {
-            if (allowLanding) value += 1_000_000;
-            if (units > 0) value += 500_000L + units * 1000L;
-            value += 100_000L - speed;
-            value += damage * 100L / damageMaximum;
+            if (units > 0)
+            {
+                var capacityTerm = 500_000L + unitTerm;
+                if (!Fits(capacityTerm) || !Fits(value += capacityTerm)) return false;
+            }
+            var speedTerm = 100_000L - speed;
+            var damageTerm = damage * 100L;
+            if (!Fits(speedTerm) || !Fits(value += speedTerm) || !Fits(damageTerm)) return false;
+            value += damageTerm / damageMaximum;
         }
         else
         {
-            if (!allowLanding) value += 1_000_000;
-            value += 500_000L - units * 1000L;
-            value += 100_000L + speed;
+            var capacityTerm = 500_000L - unitTerm;
+            var speedTerm = 100_000L + speed;
+            if (!Fits(capacityTerm) || !Fits(value += capacityTerm) || !Fits(speedTerm)) return false;
+            value += speedTerm;
         }
-        if (value is < int.MinValue or > int.MaxValue) return false;
+        if (!Fits(value)) return false;
         attraction = (int)value;
         return true;
+
+        static bool Fits(long candidate) => candidate is >= int.MinValue and <= int.MaxValue;
     }
 
     internal static WorldTargetReference? Select(UfoSnapshot ufo, int radarRange, IReadOnlyList<WorldHuntCraft> crafts)

@@ -10,10 +10,9 @@ rows pin both hunt modes, strict saved-order comparisons, original-target ties,
 ignored/undetectable exclusions, zero radar and inclusive range.
 
 The gameplay-owned selection operation preserves those rules. Arithmetic outside
-signed 32-bit range and zero divisors fail intentionally. Five focused tests
-verify captured outputs and malformed inputs. Live retargeting and movement
-remain guarded until the next two slices connect this operation. Combat remains
-branch 5; branch 4d is untouched and the headless gate remains open.
+signed 32-bit range and zero divisors fail intentionally. Captured outputs and
+malformed inputs have focused compatibility tests. The retarget and integration slices below connect the operation to loaded actors.
+Combat remains branch 5; branch 4d is untouched and the headless gate remains open.
 
 The retarget slice adds reference destination backup, hunt speed, escort speed and
 waypoint restoration operations. Captured transitions retain the original waypoint
@@ -22,7 +21,8 @@ selected speed controls the five-second/one-minute fast path; ten-minute retarge
 is always due. Mod::hunterKillerFastRetarget defaults true and survives fresh/cache
 projection. The redundant-HK-alert option defaults true, honors fixed user options
 and persists through the save adapter. Compiler revision 33 invalidates stale caches.
-Eleven focused tests pass. The next slice connects live retargeting and movement.
+The option and transition fixtures cover fresh/cache projection and reload;
+the live integration is described below.
 
 Live imported hunters and escorts now use registered ten-minute retargeting after
 base hunting, plus the explicit slow-speed fast path before five-second movement.
@@ -38,3 +38,19 @@ forecast guards. Escort chains/cycles and malformed originals fail intentionally
 Deletion scans are bounded before nested work. Future hunter wave creation remains
 guarded until spawn/retarget forecasts compose; this slice enables loaded actors.
 The headless gate remains open and branch 4d is untouched.
+
+The three-slice batch audit reproduced a same-tick boundary bypass: a hunter's
+new revelation was absent from an imported pursuer's craft-arrival forecast.
+Craft interception checks now use the retarget projection before any mutation.
+Regression tests also reject signed 32-bit intermediate attraction overflow even
+when later terms would produce an in-range result; each C++ operation is bounded.
+The root allocation gate caught eager closure allocation in the escort forecast
+on ordinary flight. An explicit identity scan removes that allocation, preserving
+the existing 8/32/128-UFO budgets. Handler-order assertions include both registered
+retarget callers without weakening their exact ordering.
+
+Final cycle validation passes all 1,692 root tests with no failures or skips,
+including fixture checksums, all 19 staged-save classifications, 72-hour composed
+scenarios and populated allocation budgets. Formatting verification, code-map
+validation and diff checks pass. The pinned C++ checkout remains clean; obsolete
+probe object output was removed. Branch 4c remains incomplete and 4d is untouched.
