@@ -772,3 +772,13 @@ next two slices. Combat and deployment remain branch 5.
   counters. Fresh/cache reload coverage confirms future scheduling remains
   available while due tagged event payloads still stop before mutation.
   All 76 focused scheduling cases pass.
+
+- Conditioned site-scheduling batch audit found no confirmed implementation
+  defect. Added fresh/cache regression coverage for divergent signed listing
+  and unsigned region-selection timelines: the whole batch blocks before any
+  command mutates state or draws RNG. Corrected the current site status summary.
+  Final validation passes all 1,786 root tests with zero failures/skips,
+  including private classifications, endurance, fixture checksums and populated
+  allocation gates. Formatting verification, code-map and diff checks pass.
+  The reference checkout is clean; the obsolete probe object was removed.
+  Broader 4c acceptance remains open and branch 4d is untouched.

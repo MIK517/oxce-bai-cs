@@ -38,9 +38,13 @@ table also deletes the region; the audit added that missing guard. Work is bound
 at 4,096 scripts, 100,000 missions and one million candidate checks. Uncertain
 conditionals, removals and possible refresh paths are checked conservatively.
 
-Site-script scheduling, new-base creation when required, deployment waves, special
-objective effects, hunting/escort UFO behavior and integrated campaign month
-progression retain capability guards. Existing regional/Earth base acquisition
+Site scripts support point/rectangle candidate pruning, weighted or uniform
+region selection conditioned on eligible regions, circular mission fallback,
+base targeting, live batch occupancy and persisted repeat history. Empty
+mission listings set false labels before creation fields are used. Signed and
+unsigned timeline mismatches stop atomically. New-base creation when required,
+special objective effects and integrated campaign month progression retain
+capability guards; deployment and hunting/escort support is transition-specific. Existing regional/Earth base acquisition
 and missing-base interruption are owned. Ordinary airborne spawns remain limited
 to fixed first-leg points, and later special arrivals/takeoffs remain guarded.
 This subsystem does not claim complete branch 4c acceptance.
@@ -460,3 +464,13 @@ domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
   counters. Fresh/cache reload coverage confirms future scheduling remains
   available while due tagged event payloads still stop before mutation.
   All 76 focused scheduling cases pass.
+
+- Conditioned site-scheduling batch audit found no confirmed implementation
+  defect. Added fresh/cache regression coverage for divergent signed listing
+  and unsigned region-selection timelines: the whole batch blocks before any
+  command mutates state or draws RNG. Corrected the current site status summary.
+  Final validation passes all 1,786 root tests with zero failures/skips,
+  including private classifications, endurance, fixture checksums and populated
+  allocation gates. Formatting verification, code-map and diff checks pass.
+  The reference checkout is clean; the obsolete probe object was removed.
+  Broader 4c acceptance remains open and branch 4d is untouched.

@@ -534,6 +534,37 @@ public sealed class StrategicMissionSiteScriptTests
         campaign = CampaignState.Restore(scheduled, content, new SplitMix64RandomSource(scheduled.RandomState));
         AssertTimeBlocked(campaign, "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
     }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DivergentSignedRegionListingIsBlockedBeforeAnyCommandMutatesState(bool cache)
+    {
+        var content = LoadSite(cache, """
+            regions:
+              - type: SITE_SECOND
+                areas: [[90, 180, -20, 20]]
+                missionZones:
+                  - []
+                  - [[100, 100, 2, 2, 10]]
+            missionScripts:
+              - type: SITE_DIVERGENT_TIMELINE
+                startDelay: 30
+                missionWeights: {0: {SITE_SCRIPT_A: 1}}
+                regionWeights: {0: {REGION: 1}, 2147483648: {SITE_SECOND: 1}}
+                raceWeights: {0: {RACE_A: 1}}
+            """);
+        var script = content.RuntimeRules.MissionScripts.Rules.Single(entry => entry.Id == "SITE_DIVERGENT_TIMELINE").Value;
+        Assert.Equal("SITE_SECOND", Assert.Single(WorldScriptSelection.Available(script.Regions, 0)).Rule.Id);
+        Assert.Equal("REGION", Assert.Single(WorldScriptSelection.ForMonth(script.Regions, 0, false)).Rule.Id);
+        var initial = CreateSnapshot(content, "Divergent site region timeline") with { RandomState = 17 };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var before = JsonSerializer.SerializeToUtf8Bytes(campaign.Capture());
+        var blocked = Assert.IsType<CampaignActionBlocked>(
+            Assert.Single(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events));
+        Assert.Equal("Site mission script region listing and selection timelines disagree.", blocked.Reason);
+        Assert.Equal(CanonicalJson.Normalize(before), CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(campaign.Capture())));
+    }
+
     private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadSite(bool cache = false, string? overlay = null)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-site-candidates");
