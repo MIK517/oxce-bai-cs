@@ -16,7 +16,7 @@ public sealed class StrategicWorldUfoSiteConversionTests
     private static RuntimeContent Load(bool cache = false, string? overlay = null) => StrategicReadinessTestContent.Load(
         ["strategic-world.rul", "strategic-site-spawn.rul", "strategic-ufo-site-conversion.rul"], cache, extraRules: overlay);
 
-    private static CampaignSnapshot Snapshot(RuntimeContent content, bool landing = false)
+    private static CampaignSnapshot Snapshot(RuntimeContent content, bool landing = false, bool custom = false)
     {
         var snapshot = CreateSnapshot(content, "UFO site conversion");
         return snapshot.WithNextId("DIRECT_MARKER", 7) with
@@ -27,7 +27,7 @@ public sealed class StrategicWorldUfoSiteConversionTests
             {
                 Missions = [new AlienMissionSnapshot(4, landing ? "UFO_SITE_AT_LANDING" : "UFO_SITE_CONVERSION",
                     "SITE_SPAWN_REGION", "RACE_A", 1, 0, 1500, 1, 0)],
-                Ufos = [new UfoSnapshot(9, "UFO_SCOUT", 4, "UFO_SITE_CONVERSION", 0, 0.25, 0.15,
+                Ufos = [new UfoSnapshot(9, custom ? "UFO_SITE_CUSTOM" : "UFO_SCOUT", 4, "UFO_SITE_CONVERSION", 0, 0.25, 0.15,
                     UfoStatus.Flying, WorldAltitudes.Low)
                 {
                     Speed = 2200, MissionWaveNumber = 0, Detected = true, Id = 3,
@@ -47,10 +47,10 @@ public sealed class StrategicWorldUfoSiteConversionTests
         var count = 0;
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
         {
-            if (row[1].GetBoolean() || row[2].GetBoolean()) continue;
+            if (row[1].GetBoolean()) continue;
             count++;
             var landing = row[0].GetBoolean();
-            var initial = Snapshot(content, landing);
+            var initial = Snapshot(content, landing, row[2].GetBoolean());
             var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
             var result = campaign.Execute(new AdvanceCampaignTime(10));
             Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
@@ -78,7 +78,30 @@ public sealed class StrategicWorldUfoSiteConversionTests
             Assert.Empty(restored.Capture().World.Ufos);
             Assert.Equal(0, Assert.Single(restored.Capture().World.Missions).LiveUfos);
         }
-        Assert.Equal(2, count);
+        Assert.Equal(4, count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CustomDeploymentUsesEffectiveRaceStatsAndOptionalLookup(bool missing)
+    {
+        var content = Load(overlay: missing ? "ufos:\n  - type: UFO_SITE_MISSING\n    speedMax: 2200\n    damageMax: 50\n    missionCustomDeploy: MISSING_CUSTOM\n" : null);
+        if (missing) Assert.Equal("MISSING_CUSTOM", content.RuntimeRules.Ufos[
+            content.RuntimeRules.Ufos.GetRequired("UFO_SITE_MISSING")].Value.Stats.MissionCustomDeployment);
+        var snapshot = Snapshot(content, custom: true);
+        if (missing) snapshot = snapshot with
+        { World = snapshot.World with { Ufos = [snapshot.World.Ufos[0] with { RuleId = "UFO_SITE_MISSING" }] } };
+        if (!missing) snapshot = snapshot with
+        { World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { Race = "RACE_B" }] } };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        Assert.Contains(campaign.Execute(new AdvanceCampaignTime(1)).Events, item => item is MissionSiteDetected);
+        var site = Assert.Single(campaign.Capture().World.MissionSites);
+        Assert.Equal(missing ? string.Empty : "RULE_DEPLOY", site.CustomDeploymentId);
+        Assert.Equal("DIRECT_DEPLOY", site.DeploymentId);
+        Assert.Equal(7200, site.SecondsRemaining);
+        Assert.Equal(7, site.Id);
+        Reload(content, campaign, 17, "ufo-custom-deployment.sav");
     }
 
     [Theory]

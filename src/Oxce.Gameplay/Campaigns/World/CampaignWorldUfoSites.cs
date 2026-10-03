@@ -49,9 +49,6 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var rule = MissionRule(mission);
         if (rule.RespawnUfoAfterSiteDespawn) return "UFO site conversion requires dormant UFO linkage.";
-        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
-        if (ufoRule.StatsForRace(mission.Race).MissionCustomDeployment.Length != 0)
-            return "UFO site conversion requires custom deployment metadata.";
         foreach (var owner in campaign.BaseStates)
             foreach (var craft in owner.Crafts)
             {
@@ -112,9 +109,15 @@ internal sealed partial class CampaignWorld
                 WorldGeometry.RandomDouble(campaign.Random, area.LatitudeMinimum, area.LatitudeMaximum));
             var id = campaign.NextId(deployment.MarkerName);
             var seconds = checked(campaign.Random.NextInclusive(deployment.DurationMinimum, deployment.DurationMaximum) * 3600);
+            var custom = rules.Ufos[rules.Ufos.GetRequired(arrived.RuleId)].Value.StatsForRace(mission.Race).MissionCustomDeployment;
             _sites.Add(new MissionSiteSnapshot(id, mission.RuleId, rules.AlienDeployments.GetExternalId(handle),
                 mission.Race, position.Longitude, position.Latitude, seconds)
-            { Texture = area.Texture, City = area.Name, Detected = true });
+            {
+                Texture = area.Texture,
+                City = area.Name,
+                Detected = true,
+                CustomDeploymentId = rules.AlienDeployments.TryGet(custom, out _) ? custom : string.Empty,
+            });
             effects.Notify(new MissionSiteDetected(id, deployment.MarkerName));
         }
         return arrived with { Status = UfoStatus.Destroyed };
