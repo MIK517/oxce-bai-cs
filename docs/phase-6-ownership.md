@@ -771,3 +771,8 @@ next two slices. Combat and deployment remain branch 5.
   dummy texture 0, and reserves all possible country areas including wrapped
   halves and suppressed retries. Empty areas fail before mutation. Fresh/cache
   fixtures prove actual country placement and the zero-weight singleton lookup.
+
+- Five-cycle batch 2, slice 3: RNG::shuffle is captured verbatim and used for
+  country selection without changing saved country order. Shuffling consumes
+  the reference draws even when no country can be infiltrated. Fresh/cache
+  live search, no-candidate RNG, chosen-country identity and reloads pass.

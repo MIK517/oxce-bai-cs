@@ -239,6 +239,53 @@ public sealed class StrategicInfiltrationTests
             "Infiltration country has no spawn areas.");
     }
 
+    [Fact]
+    public void CountryShuffleMatchesReferenceAndPreservesSavedList()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-infiltration");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "shuffle"))
+        {
+            var count = row[0].GetInt32();
+            var countries = Enumerable.Range(0, count).ToArray();
+            var random = new TestFixtures.CountingMinimumRandomSource();
+            var shuffled = WorldInfiltration.CountryOrder(countries, true, random);
+            Assert.Equal(Enumerable.Range(0, count), countries);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { count, random.IntegerCalls, shuffled });
+            Assert.Equal(CanonicalJson.Normalize(Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+            Assert.Same(countries, WorldInfiltration.CountryOrder(countries, false, random));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ShuffledInfiltrationConsumesCountryDrawsBeforeSearchAndAlsoWithoutEligibleCountries(bool cache)
+    {
+        var content = Load(cache, "infiltrateRandomCountryInTheRegion: true\n");
+        var initial = Initial(content);
+        var expected = new SplitMix64RandomSource(17);
+        var order = WorldInfiltration.CountryOrder(initial.Countries, true, expected);
+        var rules = content.RuntimeRules;
+        var rule = rules.AlienMissions[rules.AlienMissions.GetRequired("INFILTRATE")].Value;
+        var selected = WorldInfiltration.SelectRegion(rules, rule, rules.Regions[rules.Regions.GetRequired("INF_REGION")].Value, expected);
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(initial.Countries.Select(country => country.RuleId), after.Countries.Select(country => country.RuleId));
+        Assert.Equal(order[0].RuleId, Assert.Single(after.World.AlienBases).PactCountryId);
+        Assert.Equal(selected!.Value.Position, after.World.AlienBases[0].Position);
+        Assert.Equal(expected.State, after.RandomState);
+        Reload(content, campaign, 17, "shuffled-pact.sav");
+        initial = initial with { Countries = initial.Countries.Select(country => country with { NewPact = true }).ToArray() };
+        expected = new SplitMix64RandomSource(17);
+        _ = WorldInfiltration.CountryOrder(initial.Countries, true, expected);
+        campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Empty(campaign.Capture().World.AlienBases);
+        Assert.Equal(expected.State, campaign.Capture().RandomState);
+        Reload(content, campaign, 17, "shuffled-no-candidates.sav");
+    }
+
     private static RuntimeContent Load(bool cache, string extra = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-infiltration.rul"], cache, extra);
 
