@@ -16,8 +16,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
-      "size": 24893,
-      "sha256": "73edca0b1405a02e49127e21aaf137821e9e32e0d8beb887db3365c3138d68b5"
+      "size": 25190,
+      "sha256": "c785a154fd905ddc5e42616210e3192d39fa726f4492b334ae77db56f498dc93"
     },
     {
       "path": "tools/capture-strategic-world-lifecycle-reference.ps1",
@@ -76,8 +76,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-rectangle-origins.rul",
-      "size": 3261,
-      "sha256": "20d087e39c266caf114f0edc013afd94960c318d5cb7a46aff091a058abc2ea7"
+      "size": 3433,
+      "sha256": "7191884c8b77d5f9183f4f1e4910668fd22db31407e0f36ebc711172f6f04906"
     }
   ],
   "normalization": [

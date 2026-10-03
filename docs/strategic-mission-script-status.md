@@ -371,3 +371,27 @@ raw minimum coordinates without RNG. AlienMission::getLandPointForMissionSite,
 getWaypoint and spawnUfo back selectedRectangleOriginRows. Fresh/cache tests
 verify both paths, successful/forced retries, reload and atomic stopping before
 UFO-to-site conversion; event and tactical boundaries remain guarded.
+
+### Additional batch audit (2026-10-03)
+
+The three origin slices were reviewed together against the pinned spawnUfo,
+getWaypoint, getLandPoint, getLandPointForMissionSite and target setter paths.
+Root tests passed all 1,568 cases before the audit correction. A regression was
+confirmed: reusing the rectangle projection rejected point origins beyond a pole,
+although the previous point projection and reference Target setters normalize
+them. A captured polePointOriginRows fixture and fresh/cache regression cases
+fail before the fix. Point domains now preserve that normalization; uncertain
+rectangles retain the single-pole-domain guard. The corrected project builds
+successfully, and the user reports all post-fix tests passing. Fixture input
+checksums, code-map validation and `git diff --check` pass. The changed pinned
+probe and rules text now use LF bytes, matching Git storage and clean checkouts.
+Formatting verification remains blocked because the sandbox denies .NET
+named-pipe connections; it remains required before a major push. No permissions
+were changed.
+
+General separated Space rectangular origins are implemented. Direct site and
+deployment spawning, new alien-base objectives, infiltration/pacts, detection VM
+providers, hunter/escort behavior, immediate generated/hunting UFO waves and
+composed initial/monthly world hooks remain outstanding. Conservative rectangular
+activity and geometry forecasts still reject uncertain near-limit or overlapping
+domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.

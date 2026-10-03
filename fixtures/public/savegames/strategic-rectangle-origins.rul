@@ -8,6 +8,7 @@ regions:
       - [[10, 10, 8, 8, 10]]
       - [[8, 8, 2, 2, 10]]
       - [[8.01, 8.01, 2, 2, 10]]
+      - [[12, 12, 100, 100, 10]]
   - type: RECT_OUTSIDE
     areas: [[0, 4, -20, 20]]
     missionZones:
@@ -60,6 +61,8 @@ ufoTrajectories:
     waypoints: [[0, 3, 100], [1, 0, 80], [1, 4, 100]]
   - id: RECT_SELECTED
     waypoints: [[0, 3, 100], [1, 2, 80], [0, 2, 80], [2, 0, 50], [2, 4, 100]]
+  - id: POLE_POINT_ORIGIN
+    waypoints: [[7, 3, 100], [5, 2, 80], [6, 0, 50], [6, 4, 100]]
 alienMissions:
   - type: RECT_ORIGIN
     waves: [{ufo: UFO_SCOUT, count: 2, trajectory: RECT_ORIGIN, timer: 9000}]
@@ -89,3 +92,5 @@ alienMissions:
     objective: 3
     spawnZone: 0
     waves: [{ufo: RECT_FAKE_UFO, count: 2, trajectory: RECT_SELECTED, timer: 9000, objective: true, objectiveOnTheLandingSite: true}]
+  - type: POLE_POINT_ORIGIN
+    waves: [{ufo: UFO_SCOUT, count: 2, trajectory: POLE_POINT_ORIGIN, timer: 9000}]
