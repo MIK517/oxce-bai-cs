@@ -448,7 +448,8 @@ regression; its correction and regression fixtures are implemented. Root tests
 passed 1,568 cases before the correction; the user reports all post-fix tests
 passing. Fixture input checksums, code-map validation and `git diff --check` pass.
 The changed pinned text inputs use LF bytes to match clean Git checkouts.
-Formatting verification remains blocked by sandbox named-pipe access and must
-be completed before a major push. See
+The user also verified formatting from normal PowerShell with
+`dotnet format Oxce.slnx --verify-no-changes --no-restore` (exit code 0).
+The audit fix is committed as `1d532c1`; this batch's validation is complete. See
 [mission status](strategic-mission-script-status.md) for evidence and remaining
 4c scope. Branch 4d remains untouched.
