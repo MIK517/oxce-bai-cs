@@ -23,6 +23,8 @@ $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-pr
 $template = $template.Replace('// ADD_GENERATED_EVENT', (Read-Method 'src/Savegame/SavedGame.cpp' 'void SavedGame::addGeneratedEvent(const RuleEvent* event)'))
 $template = $template.Replace('// SPAWN_EVENT', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool SavedGame::spawnEvent(const RuleEvent* eventRules)'))
 $template = $template.Replace('// THINK_EVENT', (Read-Method 'src/Savegame/GeoscapeEvent.cpp' 'void GeoscapeEvent::think()'))
+$template = $template.Replace('// INSTANT_EVENT', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool SavedGame::canSpawnInstantEvent(const RuleEvent* eventRules)'))
+$template = $template.Replace('// WEIGHTED_CHOICE', (Read-Method 'src/Savegame/WeightedOptions.cpp' 'std::string WeightedOptions::choose() const'))
 $work = Join-Path $repository 'artifacts/reference-strategic-event'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_event_probe.cpp'

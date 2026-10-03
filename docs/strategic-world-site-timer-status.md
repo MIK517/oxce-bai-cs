@@ -12,6 +12,17 @@ reactivation and craft-arrival forecasts account for the timer changes.
 The probe inserts the actual hourly discovery block; fresh/cache tests cover
 queue order, minimums, maximum timers, reload and post-hour creation.
 
+Despawning sites now consume the reference weighted event choice when every
+reachable event is missing or interrupted. No future event is scheduled and no
+generated-event history changes: this caller uses `canSpawnInstantEvent`, not
+`spawnEvent`. An available instant payload still blocks the entire tick before
+mutation, regardless of its configured future timer. Missing despawn research
+also follows the reference's null-research no-op. Known mission-unlock research
+remains guarded until its full reward and interruption caller is implemented.
+The expanded `strategic-event` capture pins instant-event eligibility and ordinal
+weighted choice; fresh/cache expiry, daily interruption, debug-mode and malformed
+weight tests cover the slice.
+
 `GeoscapeState::time30Minutes` processes mission sites after UFO activity/detection
 and before scheduled events. `GeoscapeState::processMissionSite` subtracts 1800
 seconds when at least 1800 remain; a site at exactly 1800 becomes zero and
