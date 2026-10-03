@@ -30,7 +30,12 @@ int getHunterKillerAttraction(int huntMode) const;
 };
 // IGNORED_METHOD
 // ATTRACTION
+struct Mission { int id=4; int getId() const { return id; } };
 struct Ufo : MovingTarget {
+Mission mission; int uniqueId=0, status=0; bool _isEscort=false;
+Mission* getMission() { return &mission; }
+bool isHunterKiller() const { return _isHunterKiller; }
+void setEscort(bool value) { _isEscort=value; }
 bool _isHunterKiller=false; int _huntMode=0, _huntBehavior=0;
 Ufo()=default;
 Ufo(int hunterKillerPercentage,int huntMode,int huntBehavior) {
@@ -51,6 +56,11 @@ bool insideRadarRange(Target* target) const;
 };
 // RADAR
 // RETARGET_METHODS
+struct SavedGame { std::vector<Ufo*> ufos; std::vector<Ufo*>* getUfos() { return &ufos; } };
+void spawnEscort(Ufo* ufo,SavedGame& game,bool requested) {
+struct { bool escort; } wave{requested};
+// SPAWN_ESCORT
+}
 struct FastSchedule {
 struct Mod { bool fast = true; bool getHunterKillerFastRetarget() const { return fast; } } mod;
 struct Game { const Mod* mod; const Mod* getMod() const { return mod; } } game{&mod};
@@ -126,6 +136,29 @@ first=true;
 for(bool fuel:{false,true}) for(bool complete:{false,true}) {
 if(!first) std::cout << ','; first=false; Craft craft; craft._lowFuel=fuel; craft._missionComplete=complete;
 std::cout << '[' << (fuel?"true":"false") << ',' << (complete?"true":"false") << ',' << (craft.isIgnoredByHK()?"true":"false") << ']';
+}
+std::cout << "],\"spawnEscortRows\":[";
+first=true;
+for(bool hunter:{false,true}) for(bool requested:{false,true}) for(int variant:{0,1,2,3}) for(int status:{0,1,2,3,4}) {
+if(!first) std::cout << ','; first=false;
+Ufo ufo,firstTarget,secondTarget;
+ufo._isHunterKiller=hunter; ufo.lon=0.3; ufo.lat=0.1; ufo.speed=900;
+ufo._dest=new Waypoint(); ufo._dest->lon=0.4; ufo._dest->lat=0.2;
+firstTarget.uniqueId=10; firstTarget.status=status; firstTarget.lon=0.7; firstTarget.lat=0.3;
+secondTarget.uniqueId=11; secondTarget.lon=0.9; secondTarget.lat=0.4;
+SavedGame game;
+if(variant!=0) game.ufos={&firstTarget,&secondTarget};
+if(variant==1) firstTarget.mission.id=5;
+if(variant==2) firstTarget._isHunterKiller=true;
+spawnEscort(&ufo,game,requested);
+auto* followed=dynamic_cast<Ufo*>(ufo._dest);
+std::cout << '[' << (hunter?"true":"false") << ',' << (requested?"true":"false") << ',' << variant << ',' << status << ','
+<< (ufo._isEscort?"true":"false") << ',' << (ufo._isEscorting?"true":"false") << ',' << (followed?followed->uniqueId:0) << ','
+<< ufo.lon << ',' << ufo.lat << ',' << ufo.speed << ',';
+if(ufo._origWaypoint) std::cout << ufo._origWaypoint->lon << ',' << ufo._origWaypoint->lat;
+else std::cout << "null,null";
+std::cout << ']';
+if(ufo._origWaypoint) delete ufo._origWaypoint; else delete ufo._dest;
 }
 std::cout << "]}\n";
 }

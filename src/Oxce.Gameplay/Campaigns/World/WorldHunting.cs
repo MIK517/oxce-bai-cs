@@ -60,6 +60,24 @@ internal static class WorldHunting
         SpeedLatitude = 0,
     };
 
+    internal static UfoSnapshot? EscortLeader(int missionId, IReadOnlyList<UfoSnapshot> ufos)
+    {
+        foreach (var target in ufos)
+            if (target.MissionId == missionId && !target.HunterKiller) return target;
+        return null;
+    }
+
+    internal static UfoSnapshot InitializeEscort(UfoSnapshot ufo, bool requested, int speedMaximum,
+        IReadOnlyList<UfoSnapshot> ufos)
+    {
+        if (!ufo.HunterKiller || !requested) return ufo;
+        ufo = ufo with { Escort = true };
+        if (EscortLeader(ufo.MissionId, ufos) is not { } target) return ufo;
+        ufo = ufo with { Longitude = target.Longitude, Latitude = target.Latitude };
+        return Escort(ufo, new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id,
+            target.Longitude, target.Latitude) { UniqueId = target.UniqueId }, speedMaximum);
+    }
+
     internal static UfoSnapshot Restore(UfoSnapshot ufo) => ufo.OriginalWaypoint is { } original ? ufo with
     {
         Destination = WorldTargetReference.ForWaypoint(0, original),

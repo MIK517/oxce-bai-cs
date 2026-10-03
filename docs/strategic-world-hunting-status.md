@@ -109,3 +109,11 @@ skips. Fixture checksums, private-corpus classifications, 72-hour scenarios,
 allocation budgets, formatting verification, code-map and diff checks pass.
 The pinned C++ checkout remains clean, and obsolete capture object output was
 removed. Branch 4c remains incomplete; branch 4d has not started.
+
+Creation-time escort initialization now has pinned executable evidence from
+AlienMission::spawnUfo and Ufo::setEscortedUfo/backupOriginalDestination.
+Eighty captured rows cover successful/failed hunter status, the escort flag,
+missing leaders, mission filtering, hunter exclusions, first saved-order leader,
+all leader statuses, origin relocation, original destination and full speed.
+The owning gameplay operation reproduces those rows; live wave callers are the
+next two slices. Combat and deployment remain branch 5.
