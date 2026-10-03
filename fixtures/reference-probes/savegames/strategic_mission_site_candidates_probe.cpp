@@ -34,9 +34,9 @@ struct Mod { std::map<std::string,RuleRegion> regions; std::map<std::string,Miss
  void* getUfo(const std::string& id){return id=="UFO"?this:nullptr;} };
 struct Command { std::string var="RECENT",type="COMMAND"; const auto& getVarName() const { return var; }
  std::vector<std::string> missions={"MISSION_A","MISSION_B"},regions={"REGION"};
- int baseOdds=0; bool weighted=true;
+ int baseOdds=0; bool weighted=true,preferSecond=false;
  const auto& getType() const { return type; } bool getSiteType()const{return true;}
- std::string generate(int,Generation g)const{RNG::generate(1,g==GEN_MISSION?3:1);return g==GEN_MISSION?missions.front():regions.front();}
+ std::string generate(int,Generation g)const{RNG::generate(1,g==GEN_MISSION?3:1);return g==GEN_MISSION?missions.front():regions[preferSecond?regions.size()-1:0];}
  auto getMissionTypes(int)const{return missions;} bool hasRegionWeights()const{return weighted;}
  auto getRegions(int)const{return regions;} int getTargetBaseOdds()const{return baseOdds;} int getRepeatAvoidance()const{return 2;} };
 struct Strategy { int repeat; bool validMissionLocation(const std::string&,const std::string& r,int n) const {
@@ -75,7 +75,7 @@ int main() {
  std::cout<<"]]";
  }
  std::cout<<"],\"selectionRows\":[";first=true;
- for(std::string name:{"normal","firstOccupied","allOccupied","repeatPoints","rectangle","noBase","twoRegions"}){
+ for(std::string name:{"normal","firstOccupied","allOccupied","repeatPoints","rectangle","noBase","twoRegions","uniform","secondRegion"}){
  if(!first)std::cout<<',';first=false;RNG::calls.clear();
  Mod mod;mod.regions.emplace("REGION",RuleRegion{"REGION",{{{{true,0},{true,0}}}}});
  mod.regions.emplace("REGION_SECOND",RuleRegion{"REGION_SECOND",{{{{true,0}}}}});
@@ -87,7 +87,9 @@ int main() {
  if(name=="repeatPoints")strategy.repeat=1;
  if(name=="rectangle"){mod.regions.at("REGION").zones[0].areas={{{false,0}}};mod.missions.at("MISSION_A").wave.ufoType="DEPLOY";}
  if(name=="noBase")command.baseOdds=100;
- if(name=="twoRegions")command.regions={"REGION","REGION_SECOND"};
+ if(name=="twoRegions"||name=="secondRegion")command.regions={"REGION","REGION_SECOND"};
+ if(name=="uniform")command.weighted=false;
+ if(name=="secondRegion")command.preferSecond=true;
  auto result=select(&save,&mod,&command,strategy);
  std::cout<<"[\""<<name<<"\","<<(result.success?"true":"false")<<",\""<<result.mission<<"\",\""<<result.region<<"\","<<result.area<<",[";
  bool fc=true;for(auto call:RNG::calls){if(!fc)std::cout<<',';fc=false;std::cout<<'['<<call.first<<','<<call.second<<']';}
