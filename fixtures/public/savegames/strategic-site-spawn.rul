@@ -39,6 +39,10 @@ alienDeployments:
     markerName: RULE_MARKER
     duration: [3, 4]
     points: 7
+  - type: DIRECT_MAX_SCORE
+    markerName: DIRECT_MARKER
+    duration: [2, 2]
+    points: 2147483647
   - type: DIRECT_ZERO_DURATION
     markerName: DIRECT_MARKER
     duration: [0, 0]
@@ -77,3 +81,12 @@ alienMissions:
     objective: 3
     spawnZone: 0
     waves: [{ufo: UNKNOWN_DIRECT_UFO, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}]
+  - type: DIRECT_BASE
+    spawnZone: 0
+    waves: [{ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 3000, objectiveOnXcomBase: true}]
+  - type: DIRECT_BASE_ZERO
+    spawnZone: 0
+    waves: [{ufo: DIRECT_ZERO_DURATION, count: 1, trajectory: DIRECT_SITE, timer: 3000, objectiveOnXcomBase: true}]
+  - type: DIRECT_BASE_MAX_SCORE
+    spawnZone: 0
+    waves: [{ufo: DIRECT_MAX_SCORE, count: 1, trajectory: DIRECT_SITE, timer: 3000, objectiveOnXcomBase: true}]

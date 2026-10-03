@@ -220,4 +220,81 @@ public sealed class StrategicWorldSiteSpawningTests
         public int NextExclusive(int maximum) => NextInclusive(0, maximum - 1);
         public double NextUnit() { State++; return 0.25; }
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PlayerBaseSitesMatchCapturedSingleMultipleAndSuppressedChoices(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
+        var content = Load(cache);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
+        {
+            var name = row.GetProperty("name").GetString();
+            if (name is not ("base" or "multiple-bases" or "missing-base")) continue;
+            var snapshot = Snapshot(content, "DIRECT_BASE").WithNextId("DIRECT_MARKER", 7);
+            var owner = snapshot.Bases[0];
+            if (name == "multiple-bases") snapshot = snapshot with
+            {
+                Bases = [owner, owner with { Id = 2, Name = "Beta", Longitude = 0.4, Crafts = [], Soldiers = [] }],
+            };
+            if (name == "missing-base") snapshot = snapshot with { Bases = [owner with { Longitude = 2 }] };
+            var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var actual = JsonSerializer.SerializeToUtf8Bytes(after.World.MissionSites.Count == 0 ? [] : new object[]
+            {
+                after.World.MissionSites[0].DeploymentId,
+                after.World.MissionSites[0].Longitude.ToString("F9", CultureInfo.InvariantCulture),
+                after.World.MissionSites[0].Latitude.ToString("F9", CultureInfo.InvariantCulture),
+                after.World.MissionSites[0].Id, after.World.MissionSites[0].SecondsRemaining + 1800,
+                after.World.MissionSites[0].Race, after.World.MissionSites[0].Texture, after.World.MissionSites[0].City,
+            });
+            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetProperty("site").GetRawText())),
+                CanonicalJson.Normalize(actual));
+            Assert.Equal((ulong)row.GetProperty("calls").GetInt32(), after.RandomState);
+            Assert.Empty(after.World.Missions);
+            Reload(content, campaign, 17, "base-site.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MissingBaseSuppressesEvenInvalidDurationAndMultipleChoicesCanSelectLastBase(bool cache)
+    {
+        var content = Load(cache);
+        var snapshot = Snapshot(content, "DIRECT_BASE_ZERO");
+        snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Longitude = 2 }] };
+        var absent = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AdvanceOne(absent);
+        Assert.Empty(absent.Capture().World.MissionSites);
+        Assert.Equal(1UL, absent.Capture().RandomState);
+
+        snapshot = Snapshot(content, "DIRECT_BASE");
+        var owner = snapshot.Bases[0];
+        snapshot = snapshot with
+        {
+            Bases = [owner, owner with { Id = 2, Name = "Beta", Longitude = 0.4, Crafts = [], Soldiers = [] },
+                owner with { Id = 3, Name = "Outside", Longitude = 2, Crafts = [], Soldiers = [] }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices(true));
+        AdvanceOne(campaign);
+        var site = Assert.Single(campaign.Capture().World.MissionSites);
+        Assert.Equal(0.4, site.Longitude);
+        Assert.Equal(owner.Latitude, site.Latitude);
+        Assert.Equal(string.Empty, site.City);
+        Assert.Equal(5UL, campaign.Capture().RandomState);
+        Reload(content, campaign, 17, "last-base-site.sav");
+    }
+
+    [Fact]
+    public void MaximumIntegerSiteScoreIsForecastAsARealChoice()
+    {
+        var content = Load(false);
+        var snapshot = Snapshot(content, "DIRECT_BASE_MAX_SCORE");
+        snapshot = snapshot with { Regions = [snapshot.Regions[0] with { ActivityAlien = [1] }] };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
+    }
 }

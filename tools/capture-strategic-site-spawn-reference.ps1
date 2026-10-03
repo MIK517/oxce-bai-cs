@@ -24,6 +24,10 @@ $textureStart = $textureSource.IndexOf('std::string Texture::getRandomDeployment
 $textureEnd = $textureSource.IndexOf('// helper overloads', $textureStart, [StringComparison]::Ordinal)
 if ($textureStart -lt 0 -or $textureEnd -le $textureStart) { throw 'Missing reference texture selection.' }
 $template = $template.Replace('// TEXTURE_SELECTION', $textureSource.Substring($textureStart, $textureEnd - $textureStart))
+$baseStart = $source.IndexOf('Base* AlienMission::selectXcomBase(', [StringComparison]::Ordinal)
+$baseEnd = $source.IndexOf('/**', $baseStart, [StringComparison]::Ordinal)
+if ($baseStart -lt 0 -or $baseEnd -le $baseStart) { throw 'Missing reference base selection.' }
+$template = $template.Replace('// BASE_SELECTION', $source.Substring($baseStart, $baseEnd - $baseStart))
 $work = Join-Path $repository 'artifacts/reference-strategic-site-spawn'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_site_spawn_probe.cpp'

@@ -34,9 +34,14 @@ internal sealed partial class CampaignWorld
         var wave = rule.Waves[mission.NextWave];
         if (wave.Trajectory is null || !CanAdvanceWaveCounters(mission, rule, wave))
             return "Direct mission site wave counters or trajectory are invalid.";
-        if (wave.ObjectiveOnXcomBase) return "Direct mission site player-base targeting is unavailable.";
         var areas = DirectSiteAreas(mission, rule);
         work += areas.Count;
+        if (wave.ObjectiveOnXcomBase)
+        {
+            work += DirectSiteBaseWork(mission);
+            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (DirectSiteBases(mission).Count == 0) return null;
+        }
         if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
         var markers = new HashSet<string>(StringComparer.Ordinal);
         var rules = campaign.Content.RuntimeRules;
@@ -46,7 +51,8 @@ internal sealed partial class CampaignWorld
             work += candidates.Count;
             if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
             if (candidates.Count == 0) continue;
-            if (!TrySpawnArea(area, out _)) return "Direct mission site coordinates require an unsupported latitude domain.";
+            if (!wave.ObjectiveOnXcomBase && !TrySpawnArea(area, out _))
+                return "Direct mission site coordinates require an unsupported latitude domain.";
             foreach (var handle in candidates)
             {
                 var deployment = rules.AlienDeployments[handle].Value;
@@ -81,6 +87,18 @@ internal sealed partial class CampaignWorld
         var wave = rule.Waves[mission.NextWave];
         var areas = DirectSiteAreas(mission, rule);
         var area = areas[mission.MissionSiteZoneArea == -1 ? campaign.Random.NextInclusive(0, areas.Count - 1) : 0];
+        if (wave.ObjectiveOnXcomBase)
+        {
+            var bases = DirectSiteBases(mission);
+            if (bases.Count == 0) return;
+            var owner = bases[bases.Count == 1 ? 0 : campaign.Random.NextInclusive(0, bases.Count - 1)];
+            area = area with
+            {
+                LongitudeMinimum = owner.Longitude, LongitudeMaximum = owner.Longitude,
+                LatitudeMinimum = owner.Latitude, LatitudeMaximum = owner.Latitude,
+                Name = string.Empty,
+            };
+        }
         var rules = campaign.Content.RuntimeRules;
         var selected = SelectSiteDeployment(wave, rule, area);
         if (selected is not { } handle) return;
@@ -135,14 +153,27 @@ internal sealed partial class CampaignWorld
         var minimum = int.MaxValue;
         var maximum = int.MinValue;
         var suppressed = false;
+        var hasCandidates = false;
+        List<CampaignState.BaseState>? bases = null;
+        if (wave.ObjectiveOnXcomBase)
+        {
+            work += DirectSiteBaseWork(mission);
+            if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+            bases = DirectSiteBases(mission);
+            if (bases.Count == 0) return null;
+        }
         foreach (var area in DirectSiteAreas(mission, rule))
         {
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
             if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
             if (candidates.Count == 0) { suppressed = true; continue; }
-            _ = TrySpawnArea(area, out var position);
-            positions.Add(position);
+            hasCandidates = true;
+            if (bases is null)
+            {
+                _ = TrySpawnArea(area, out var position);
+                positions.Add(position);
+            }
             foreach (var candidate in candidates)
             {
                 var points = campaign.Content.RuntimeRules.AlienDeployments[candidate].Value.Points;
@@ -150,11 +181,30 @@ internal sealed partial class CampaignWorld
                 maximum = Math.Max(maximum, points);
             }
         }
+        if (bases is not null && hasCandidates)
+            foreach (var owner in bases) positions.Add(new SpawnArea(new(owner.Longitude, owner.Latitude), 0));
         work += (long)positions.Count * (regions.Length + countries.Length) * 2;
         if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
         if (positions.Count == 0) return null;
         if (!suppressed && minimum == maximum) return CheckPossibleActivity(positions, maximum, regions, countries);
         if (maximum > 0 && CheckPossibleActivity(positions, maximum, regions, countries, false) is { } reason) return reason;
         return minimum < 0 ? CheckPossibleActivity(positions, minimum, regions, countries, false) : null;
+    }
+
+    private long DirectSiteBaseWork(AlienMissionSnapshot mission)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        return (long)campaign.BaseStates.Count * (region.Areas.Count + 1L);
+    }
+
+    private List<CampaignState.BaseState> DirectSiteBases(AlienMissionSnapshot mission)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var result = new List<CampaignState.BaseState>();
+        foreach (var owner in campaign.BaseStates)
+            if (WorldGeometry.InsideRegion(region, new(owner.Longitude, owner.Latitude))) result.Add(owner);
+        return result;
     }
 }
