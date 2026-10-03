@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_alien_base_generation_probe.cpp",
-      "size": 7948,
-      "sha256": "a5c8474a11833d341c09c27eb065d154ceb1c5b86e3a72630b2d10aa8b5b91ad"
+      "size": 8147,
+      "sha256": "b4ede65d17e7acc81999550044fa97eb8c14c809e3959fc0a2707bee53f1fcce"
     },
     {
       "path": "tools/capture-strategic-alien-base-generation-reference.ps1",
@@ -25,8 +25,8 @@
     },
     {
       "path": "fixtures/public/savegames/strategic-alien-base-generation.rul",
-      "size": 10047,
-      "sha256": "1cd5e43a8ddc5f5cc56f938a12b37c4c3ff534f398928100e8dc4f57d05a4141"
+      "size": 11133,
+      "sha256": "3bb6fc964f567830a94d3960dbcbaa6423aaa441a288946598467ae29a80eea3"
     },
     {
       "path": "fixtures/public/savegames/strategic-world.rul",

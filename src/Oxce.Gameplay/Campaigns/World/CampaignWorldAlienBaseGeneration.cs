@@ -21,7 +21,20 @@ internal sealed partial class CampaignWorld
         // time1Day falls through to AlienMission::think in this very tick. Until
         // creation candidates join all wave/scoring/detection forecasts, reserve
         // only timers guaranteed to count down without spawning in that pass.
-        if (steps / 2 <= 1) return BaseGenerationImmediateReason;
+        if (steps / 2 <= 1)
+        {
+            var candidate = new AlienMissionSnapshot(-1, string.Empty, string.Empty, alienBase.Race, 0, 0, 0, 0, -1)
+            {
+                AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, alienBase.Id, alienBase.Longitude, alienBase.Latitude),
+            };
+            var immediate = 0;
+            foreach (var step in DueWaveSteps(candidate, mission))
+            {
+                if (++immediate > MaximumImmediateWaveSteps) return WaveWorkReason;
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (!CanAdvanceNoObjectWave(step, mission)) return BaseGenerationImmediateReason;
+            }
+        }
         if (!deployment.GenMissionRaceFromAlienBase && mission.HasRaceWeights)
         {
             var weights = WorldAlienMissionGeneration.WeightsAt(mission.RaceWeights,
