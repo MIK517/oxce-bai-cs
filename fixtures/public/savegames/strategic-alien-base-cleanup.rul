@@ -23,6 +23,34 @@ alienMissions:
     operationType: 1
     operationBaseType: CLEANUP_BASE
     waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_LIVE_0
+    operationType: 0
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_LIVE_1
+    operationType: 1
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_LIVE_2
+    operationType: 2
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_LIVE_3
+    operationType: 3
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_LIVE_4
+    operationType: 4
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_LIVE_5
+    operationType: 5
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: CLEANUP_LIVE_6
+    operationType: 6
+    operationBaseType: CLEANUP_BASE
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
 research:
   - name: CLEANUP_SOURCE
     cost: 1

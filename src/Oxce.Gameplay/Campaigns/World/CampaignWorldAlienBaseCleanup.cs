@@ -28,10 +28,7 @@ internal sealed partial class CampaignWorld
             foreach (var other in _alienBases)
                 if (!ReferenceEquals(other, alienBase) && other.Id == alienBase.Id && MarkerName(other.DeploymentId) == marker)
                     return "Alien base self-destruction cannot resolve an ambiguous marker identity.";
-            foreach (var mission in _missions)
-                if (FollowsAlienBase(mission.AlienBase, alienBase) &&
-                    MissionRule(mission).OperationType != RuntimeMissionOperationType.Space && mission.LiveUfos != 0)
-                    return "Alien base self-destruction with live Earth-operation UFOs requires combined forecasts.";
+
         }
         if (guaranteedResearch is not null && (long)_alienBases.Count *
             _missions.Count(mission => mission.AlienBase is not null) > MaximumAlienBaseChecks) return AlienBaseWorkReason;

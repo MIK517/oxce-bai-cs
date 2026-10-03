@@ -263,3 +263,11 @@ destroy the UFO and preserve the reference current-tick early return before craf
 combat. Later cleanup releases live counts. Existing research uncertainty and
 orphan-link guards remain precise. GeoscapeState::time1Day, AlienMission::isOver
 and ufoReachedWaypoint back live oracle rows, reload and same-day research tests.
+
+### Batch 3, slice 8: base deletion with live Earth operations
+
+Daily base self-destruction no longer blanket-blocks live Earth missions. Shared
+forecasts clear links and interrupt before UFO arrivals and craft pursuit. Space
+missions retain their reference continuation. Captured live operation rows for all
+seven modes, fresh/cache transition reloads, pre-daily links and terminal follower
+return cover deletion; ambiguous marker identities still stop atomically.
