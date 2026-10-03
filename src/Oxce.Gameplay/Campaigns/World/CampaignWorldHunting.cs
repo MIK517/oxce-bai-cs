@@ -8,6 +8,7 @@ internal sealed partial class CampaignWorld
 {
     private Dictionary<int, UfoSnapshot>? _retargetForecast;
     private int _possibleHuntMarkerIds;
+    private long _huntingForecastWork;
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
     private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
 
@@ -25,6 +26,7 @@ internal sealed partial class CampaignWorld
     {
         _retargetForecast = null;
         _possibleHuntMarkerIds = 0;
+        _huntingForecastWork = 0;
         var due = WorldHunting.RetargetDue(highest, speed, campaign.Content.RuntimeRules.Campaign.HunterKillerFastRetarget);
         long work = 0;
         foreach (var saved in _ufos)
@@ -49,6 +51,7 @@ internal sealed partial class CampaignWorld
             if (projected != ufo) (_retargetForecast ??= []).Add(saved.UniqueId, projected);
             if (alert && ufo.Id == 0) _possibleHuntMarkerIds++;
         }
+        _huntingForecastWork = work;
         return CanAllocateUfoMarkerIds(_possibleHuntMarkerIds)
             ? null : "UFO contact marker IDs are exhausted or collide with a saved UFO.";
     }

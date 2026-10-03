@@ -340,6 +340,29 @@ public sealed class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "undetectable-target-hunter-spawn.sav");
     }
 
+    [Fact]
+    public void NewHunterRetargetWorkIsReservedBeforeTheCreationTickMutates()
+    {
+        var content = Load(overlay: "alienMissions:\n  - type: MASS_HUNTER_AIR\n    objective: 0\n    waves:\n      - {ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}\n");
+        var snapshot = CreateSnapshot(content, "Hunter work reservation");
+        var craft = snapshot.Bases[0].Crafts.Single(item => item.RuleId == "SHIP");
+        snapshot = snapshot with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+            Bases = [snapshot.Bases[0] with
+            {
+                Soldiers = [],
+                Crafts = Enumerable.Range(1, 1001).Select(id => craft with { Id = id }).ToArray(),
+            }],
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "MASS_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
+            "New UFO retargeting exceeds the supported work limit.");
+    }
+
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
 

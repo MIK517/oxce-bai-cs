@@ -10,6 +10,8 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
+    private bool? _newHunterHasNoTarget;
+
     private void RegisterMissionOperations(CampaignCapabilityRegistry registry)
     {
         registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayWorldMissionInterruption,
@@ -22,6 +24,7 @@ internal sealed partial class CampaignWorld
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var ufoSpawns = 0;
+        var newFlyingHunters = 0;
         var work = 0;
         long sourceBaseWork = 0;
         long cleanupWork = 0;
@@ -83,10 +86,40 @@ internal sealed partial class CampaignWorld
                     geometryWork += (long)origins.Count * destinations.Count;
                     if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
                     ufoSpawns++;
+                    var wave = rule.Waves[step.NextWave];
+                    var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
+                    if (trajectory.Altitude(0) != 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+                        (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0)
+                        newFlyingHunters++;
                     continue;
                 }
                 return "Alien mission wave spawning requires world simulation.";
             }
+        }
+        if (newFlyingHunters != 0)
+        {
+            long possibleCrafts = 0;
+            foreach (var owner in campaign.BaseStates)
+            {
+                possibleCrafts += owner.Crafts.Count;
+                foreach (var transfer in owner.Transfers)
+                    if (!transfer.Delivered && transfer.Craft is not null) possibleCrafts++;
+                // Production precedes this wave on an hourly tick. Reserve the
+                // finite queue as an upper bound without predicting staff or stocks.
+                if (highest >= CampaignTimeTrigger.OneHour)
+                    foreach (var production in owner.Productions)
+                        foreach (var material in campaign.Content.RuntimeRules.Manufacture[production.Rule].Value.ProducedMaterials)
+                            if (material.Craft is not null)
+                            {
+                                if (production.Infinite) return "New UFO retargeting requires finite craft production forecasts.";
+                                possibleCrafts += production.Amount;
+                                break;
+                            }
+                if (possibleCrafts > MaximumAlienBaseChecks)
+                    return "New UFO retargeting exceeds the supported work limit.";
+            }
+            if (_huntingForecastWork + possibleCrafts * newFlyingHunters > MaximumAlienBaseChecks)
+                return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
         return CanAllocateUfoIds(ufoSpawns) ? null : "UFO unique IDs are exhausted or collide with a saved UFO.";
@@ -267,7 +300,9 @@ internal sealed partial class CampaignWorld
 
     // A new hunter has no original target. With no current or potential airborne
     // craft and no escort request, the reference retarget pass cannot change its path.
-    private bool NoCraftCanBecomeHunterTarget()
+    private bool NoCraftCanBecomeHunterTarget() => _newHunterHasNoTarget ??= CalculateNoHunterTarget();
+
+    private bool CalculateNoHunterTarget()
     {
         long work = 0;
         foreach (var owner in campaign.BaseStates)
