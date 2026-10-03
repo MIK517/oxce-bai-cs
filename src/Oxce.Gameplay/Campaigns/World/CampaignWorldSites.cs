@@ -76,9 +76,10 @@ internal sealed partial class CampaignWorld
 
     private string? SiteTimingReason(CampaignTimeTrigger highest)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0) return null;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0 && _siteBirthExpiryIncreases is not { Count: > 0 }) return null;
         var rules = campaign.Content.RuntimeRules;
         var counterChanges = new List<CustomCounterChange>();
+        if (_siteBirthIdChanges is not null) counterChanges.AddRange(_siteBirthIdChanges);
         var discovered = FirstSiteDiscoveredThisTick(highest);
         foreach (var site in _sites)
         {
@@ -111,6 +112,7 @@ internal sealed partial class CampaignWorld
                 return despawnReason;
             if (transition.Remove) AddSiteCounterChanges(counterChanges, deployment);
         }
+        if (_siteBirthExpiryIncreases is not null) counterChanges.AddRange(_siteBirthExpiryIncreases);
         return campaign.CustomCounters.CapacityReason(counterChanges, highest);
     }
 

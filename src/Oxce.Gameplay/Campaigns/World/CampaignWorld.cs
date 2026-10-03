@@ -435,6 +435,8 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private string? LiveWorldReason(CampaignTimeTrigger highest)
     {
         _dailyResearchForecast = null;
+        _siteBirthIdChanges = null;
+        _siteBirthExpiryIncreases = null;
         var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
         if (interruptionReason is not null) return interruptionReason;
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);

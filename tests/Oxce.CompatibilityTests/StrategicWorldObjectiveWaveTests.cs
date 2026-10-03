@@ -64,7 +64,7 @@ public sealed class StrategicWorldObjectiveWaveTests
             else if (objective == 1)
                 AssertTimeBlocked(campaign, "Alien mission wave completion requires objective simulation.");
             else if (deployment != 0 && marker == 0 && objective == 3 && flag != 0)
-                AssertTimeBlocked(campaign, "Direct mission site duration is outside the supported range.");
+                AssertTimeBlocked(campaign, "Direct mission site marker names require a nonempty ID namespace.");
             else
             {
                 AdvanceOne(campaign);

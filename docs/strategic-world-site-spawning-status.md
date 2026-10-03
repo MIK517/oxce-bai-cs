@@ -14,8 +14,8 @@ seconds and awards deployment points after all existing sites.
 Finite immediate chains reserve sites, shared marker IDs and combined activity
 before time or RNG changes. Invalid coordinates, exhausted/colliding IDs,
 populations above 100,000 and work above one million checks stop intentionally.
-Zero-hour durations remain guarded at their immediate despawn consequences;
-overflowing duration values are refused. Mission cleanup retains its existing
+Zero-hour durations now expire in the creation half-hour when their despawn
+consequences are supported; overflowing duration values are refused. Mission cleanup retains its existing
 UFO and retaliation-link checks.
 
 Evidence: `strategic-site-spawn` inserts the reference direct selection and site
@@ -44,7 +44,8 @@ before half-hour spawning, and reveals one existing site in saved order. The
 reference minimum-hour timer and postponement of other hidden sites are forecast
 before mutation. Its notification interrupts subsequent ticks while the current
 tick continues. Newly created sites wait for the next hourly pass.
-Site despawn research/event payloads and branch 5 deployment remain guarded.
+Known site-unlock research, available instant-event payloads and branch 5 deployment
+remain guarded. Missing/interrupted despawn events execute their suppression path.
 
 The reference checkout is read-only and unchanged. This is incremental 4c coverage;
 branch 4c acceptance remains open and branch 4d is untouched.
@@ -64,3 +65,11 @@ test failed once during an earlier full run, then passed in isolation and in two
 subsequent full runs; its strict assertion remains unchanged. Code-map and diff
 validation and formatting verification pass. Useful captures remain; obsolete
 object files were removed.
+
+The expiry batch extends creation to zero-hour and mixed zero/positive durations.
+All wave IDs are allocated before site despawn counters, existing sites are
+processed before newborn sites, and zero-hour sites award despawn penalties.
+Counter forecasts include possible marker allocations and immediate increases;
+uncertain decreases are not credited as overflow headroom. Shared UFO ID/counter
+namespaces remain guarded. Captured zero-hour creation, fresh/cache chains,
+reload, mixed-duration choices and atomic counter/score limits cover this slice.

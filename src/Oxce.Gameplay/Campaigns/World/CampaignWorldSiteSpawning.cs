@@ -5,6 +5,8 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
+    private List<CustomCounterChange>? _siteBirthIdChanges;
+    private List<CustomCounterChange>? _siteBirthExpiryIncreases;
     private bool IsDirectSiteWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         var wave = rule.Waves[mission.NextWave];
@@ -28,7 +30,7 @@ internal sealed partial class CampaignWorld
         return [areas[mission.MissionSiteZoneArea]];
     }
 
-    private string? DirectSiteSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+    private string? DirectSiteSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, CampaignTimeTrigger highest,
         Dictionary<string, int> markerReservations, ref long work, ref int population)
     {
         var wave = rule.Waves[mission.NextWave];
@@ -44,6 +46,7 @@ internal sealed partial class CampaignWorld
         }
         if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
         var markers = new HashSet<string>(StringComparer.Ordinal);
+        HashSet<RuleHandle<AlienDeploymentRuleFamily>>? expiryCandidates = null;
         var rules = campaign.Content.RuntimeRules;
         foreach (var area in areas)
         {
@@ -58,9 +61,26 @@ internal sealed partial class CampaignWorld
             foreach (var handle in candidates)
             {
                 var deployment = rules.AlienDeployments[handle].Value;
-                if (deployment.DurationMinimum < 1 || deployment.DurationMaximum < deployment.DurationMinimum ||
+                if (deployment.DurationMinimum < 0 || deployment.DurationMaximum < deployment.DurationMinimum ||
                     deployment.DurationMaximum > int.MaxValue / 3600)
                     return "Direct mission site duration is outside the supported range.";
+                if (deployment.DurationMinimum == 0)
+                {
+                    work += 6 + 2L * deployment.DespawnEvents.Count;
+                    if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+                    if (SiteDespawnReason(deployment, highest) is { } despawnReason) return despawnReason;
+                    if (IsUfoIdNamespace(deployment.CounterDespawn) || IsUfoIdNamespace(deployment.CounterFailure) ||
+                        IsUfoIdNamespace(deployment.CounterAll) || IsUfoIdNamespace(deployment.DecreaseCounterDespawn) ||
+                        IsUfoIdNamespace(deployment.DecreaseCounterFailure) || IsUfoIdNamespace(deployment.DecreaseCounterAll))
+                        return "Direct mission site counters share an unsupported UFO ID namespace.";
+                    if ((expiryCandidates ??= []).Add(handle))
+                    {
+                        _siteBirthExpiryIncreases ??= [];
+                        if (deployment.CounterDespawn.Length != 0) _siteBirthExpiryIncreases.Add(new(deployment.CounterDespawn, true));
+                        if (deployment.CounterFailure.Length != 0) _siteBirthExpiryIncreases.Add(new(deployment.CounterFailure, true));
+                        if (deployment.CounterAll.Length != 0) _siteBirthExpiryIncreases.Add(new(deployment.CounterAll, true));
+                    }
+                }
                 markers.Add(deployment.MarkerName);
             }
         }
@@ -76,6 +96,7 @@ internal sealed partial class CampaignWorld
                 return "Mission site and UFO creation share an unsupported ID namespace.";
             var count = markerReservations.GetValueOrDefault(marker) + 1;
             markerReservations[marker] = count;
+            (_siteBirthIdChanges ??= []).Add(new(marker, true));
             var first = campaign.PeekNextId(marker);
             var end = (long)first + count;
             if (first <= 0 || end > int.MaxValue ||
@@ -85,6 +106,9 @@ internal sealed partial class CampaignWorld
         }
         return null;
     }
+
+    private static bool IsUfoIdNamespace(string name) =>
+        name is "STR_UFO_UNIQUE" or "STR_UFO" or "STR_LANDING_SITE" or "STR_CRASH_SITE";
 
     private void SpawnDirectSite(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
@@ -201,8 +225,16 @@ internal sealed partial class CampaignWorld
             foreach (var candidate in candidates)
             {
                 var points = campaign.Content.RuntimeRules.AlienDeployments[candidate].Value.Points;
-                minimum = Math.Min(minimum, points);
-                maximum = Math.Max(maximum, points);
+                var deployment = campaign.Content.RuntimeRules.AlienDeployments[candidate].Value;
+                var lower = deployment.DurationMaximum == 0 ? deployment.DespawnPenalty : points;
+                var upper = lower;
+                if (deployment.DurationMinimum == 0)
+                {
+                    lower = Math.Min(lower, deployment.DespawnPenalty);
+                    upper = Math.Max(upper, deployment.DespawnPenalty);
+                }
+                minimum = Math.Min(minimum, lower);
+                maximum = Math.Max(maximum, upper);
             }
         }
         if (bases is not null && hasCandidates)
