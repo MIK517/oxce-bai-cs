@@ -122,9 +122,10 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         var possible = 0;
         var executableCount = available.Count(entry => entry.Value.Criteria.ExecutionOdds > 0);
         long work = 0;
-        var locationCount = available.Any(entry => entry.Value.SiteType)
-            ? _strategy.MissionLocations.Sum(pair => (long)pair.Value.Count) : 0;
-        work += locationCount;
+        var hasSiteScripts = available.Any(entry => entry.Value.SiteType);
+        var locationCount = hasSiteScripts ? _strategy.MissionLocations.Sum(pair => (long)pair.Value.Count) : 0;
+        var newLocationKeys = new HashSet<string>(StringComparer.Ordinal);
+        work += locationCount + (hasSiteScripts ? _strategy.MissionLocations.Count : 0);
         var possibleRemoved = new HashSet<(string Region, string Mission)>();
         var removalCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var entry in available)
@@ -142,8 +143,12 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 return "Mission script delay exceeds the supported range.";
             if (script.SiteType)
             {
-                if (script.AvoidRepeats > 0 && ++locationCount > 100_000)
-                    return "Site mission location history exceeds the supported limit.";
+                if (script.AvoidRepeats > 0)
+                {
+                    if (!_strategy.MissionLocations.ContainsKey(script.VariableName)) newLocationKeys.Add(script.VariableName);
+                    if (++locationCount > 100_000 || (long)_strategy.MissionLocations.Count + newLocationKeys.Count > 100_000)
+                        return "Site mission location history exceeds the supported limit.";
+                }
                 if (SiteScriptReason(script, month, executableCount, ref work, out var siteRegions) is { } siteReason) return siteReason;
                 foreach (var siteRegion in siteRegions)
                     foreach (var type in WorldScriptSelection.Available(script.Missions, month).Where(choice => choice.Weight != 0))

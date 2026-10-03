@@ -318,6 +318,30 @@ public sealed class StrategicMissionSiteScriptTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
+    [Fact]
+    public void EmptyHistoryKeysAlsoConsumeSiteHistoryCapacityBeforeMutation()
+    {
+        var content = LoadSite();
+        var initial = CreateSnapshot(content, "Site empty history key limit") with { RandomState = 17 };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Strategy = initial.World.Strategy with
+                {
+                    MissionLocations = Enumerable.Range(0, 100_000).Select(index =>
+                        new KeyValuePair<string, IReadOnlyList<AlienStrategyState.MissionLocation>>(
+                            $"LEGACY_{index:000000}", [])).ToArray(),
+                },
+            },
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        var blocked = Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events));
+        Assert.Equal("Site mission location history exceeds the supported limit.", blocked.Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
     private static Oxce.Mods.Rulesets.Content.RuntimeContent LoadSite(bool cache = false, string? overlay = null)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-site-candidates");
