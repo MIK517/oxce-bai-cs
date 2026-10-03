@@ -396,3 +396,9 @@ providers, hunter/escort behavior, immediate generated/hunting UFO waves and
 composed initial/monthly world hooks remain outstanding. Conservative rectangular
 activity and geometry forecasts still reject uncertain near-limit or overlapping
 domains before mutation. Branch 4c remains incomplete; branch 4d is untouched.
+
+- 4c site-script candidate slice: pinned the exact processCommand pruning loop
+  in strategic-mission-site-candidates. The gameplay projection matches 256
+  combinations of occupied regions, recent point locations, rectangular
+  texture/direct/site-type eligibility, missing zones and invalid negative
+  zones. Live site command scheduling remains the next slice.

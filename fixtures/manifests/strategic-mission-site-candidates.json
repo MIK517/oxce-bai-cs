@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-mission-site-candidates",
+  "description": "Exact site-command region and area pruning from GeoscapeState::processCommand. Ordered candidates, occupied regions, repeat suppression for points, rectangular texture/site/direct eligibility and invalid or absent zones.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::processCommand site candidate loop; AlienStrategy::validMissionLocation controlled predicate",
+      "capture": "tools/capture-strategic-mission-site-candidates-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; loop inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_mission_site_candidates_probe.cpp",
+      "size": 2850,
+      "sha256": "5233da215282957c29bb94b6e31b323063e54655e48d28c624789f7249ccee9e"
+    },
+    {
+      "path": "tools/capture-strategic-mission-site-candidates-reference.ps1",
+      "size": 2727,
+      "sha256": "6cbc2492fba63226f61d0bbebc79a72f00efaf60f0f4756c9a6fe242dd5502e5"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-mission-site-candidates.expected.json"
+}
