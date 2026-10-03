@@ -88,8 +88,6 @@ internal sealed partial class CampaignWorld
                 mission.DespawnEvenIfTargeted, deployment.Points, deployment.DespawnPenalty);
             if (transition.ReturnFollowers)
             {
-                if (_ufos.Any(ufo => FollowsSite(ufo.Destination, site)))
-                    return SiteUfoFollowerBoundary;
                 foreach (var owner in campaign.BaseStates)
                     foreach (var craft in owner.Crafts)
                     {
@@ -146,7 +144,13 @@ internal sealed partial class CampaignWorld
                 var ufoIndex = _ufos.FindIndex(candidate => candidate.UniqueId == site.UfoUniqueId);
                 _ufos[ufoIndex] = LiftUfo(_ufos[ufoIndex], fromSite: true);
             }
-            if (transition.Remove) _sites.RemoveAt(index);
+            if (transition.Remove)
+            {
+                for (var ufoIndex = 0; ufoIndex < _ufos.Count; ufoIndex++)
+                    if (FollowsSite(_ufos[ufoIndex].Destination, site))
+                        _ufos[ufoIndex] = RestoreUfoOriginalWaypoint(_ufos[ufoIndex]);
+                _sites.RemoveAt(index);
+            }
             else _sites[index++] = site with { SecondsRemaining = transition.SecondsRemaining };
         }
     }
@@ -190,15 +194,54 @@ internal sealed partial class CampaignWorld
             throw new InvalidOperationException(SiteDespawnBoundary);
     }
 
+    private string? SiteUfoRepairReason(CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || _ufos.Count == 0) return null;
+        long work = 0;
+        foreach (var site in _sites)
+        {
+            if (!SiteExpiresThisTick(site, highest)) continue;
+            work += _ufos.Count;
+            if (work > MaximumAlienBaseChecks) return "Mission site UFO follower repair exceeds the supported work limit.";
+            foreach (var ufo in _ufos)
+                if (FollowsSite(ufo.Destination, site) && ufo.OriginalWaypoint is null)
+                    return SiteUfoFollowerBoundary;
+        }
+        return null;
+    }
+
+    private string? SiteFollowerWorkReason(CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0) return null;
+        long followers = _ufos.Count + 1L;
+        foreach (var owner in campaign.BaseStates) followers += owner.Crafts.Count;
+        return followers * _sites.Count > MaximumAlienBaseChecks
+            ? "Mission site follower lookups exceed the supported work limit." : null;
+    }
+
+    internal static UfoSnapshot RestoreUfoOriginalWaypoint(UfoSnapshot ufo) => ufo.OriginalWaypoint is { } waypoint ?
+        ufo with
+        {
+            Destination = WorldTargetReference.ForWaypoint(0, waypoint),
+            OriginalWaypoint = null,
+            Hunting = false,
+            Escorting = false,
+        } : ufo;
+
     // Pure forecast for handlers that run after the half-hour site loop: ten-minute
     // base detection, five-second flight and craft interception/deployment guards.
     private UfoSnapshot UfoAfterTimedTransitions(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
         ufo = WorldCrashedUfo.FiveSeconds(highest >= CampaignTimeTrigger.ThirtyMinutes ? WorldCrashedUfo.HalfHour(ufo) : ufo);
-        if (ufo.Status != UfoStatus.IgnoreMe || highest < CampaignTimeTrigger.ThirtyMinutes) return ufo;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes) return ufo;
+        if (ufo.Status != UfoStatus.IgnoreMe && ufo.Destination?.Kind != WorldTargetKind.MissionSite) return ufo;
         foreach (var site in _sites)
-            if (site.UfoUniqueId == ufo.UniqueId && SiteExpiresThisTick(site, highest) &&
-                TryLiftUfo(ufo, fromSite: true, out var lifted, out _)) return lifted;
+        {
+            if (!SiteExpiresThisTick(site, highest)) continue;
+            if (ufo.Status == UfoStatus.IgnoreMe && site.UfoUniqueId == ufo.UniqueId &&
+                TryLiftUfo(ufo, fromSite: true, out var lifted, out _)) ufo = lifted;
+            if (FollowsSite(ufo.Destination, site)) ufo = RestoreUfoOriginalWaypoint(ufo);
+        }
         return ufo;
     }
 

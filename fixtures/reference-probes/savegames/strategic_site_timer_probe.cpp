@@ -3,6 +3,8 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <stdexcept>
+using Exception = std::runtime_error;
 
 struct Site;
 class SavedGame {
@@ -33,6 +35,33 @@ struct Craft {
     bool returned = false;
     void returnToBase() { returned = true; }
 };
+struct Ufo;
+struct Target {
+    std::vector<Ufo*> ufos;
+    virtual ~Target();
+    std::vector<Craft*> getCraftFollowers() const { return {}; }
+    std::vector<Ufo*> getUfoFollowers() const { return ufos; }
+};
+struct Waypoint : Target {
+    double lon = 0, lat = 0;
+    double getLongitude() const { return lon; }
+    double getLatitude() const { return lat; }
+    void setLongitude(double value) { lon = value; }
+    void setLatitude(double value) { lat = value; }
+};
+struct MovingTarget {
+    Target* _dest = nullptr;
+    void setDestination(Target* value) { _dest = value; }
+};
+struct Ufo : MovingTarget {
+    Waypoint* _origWaypoint = nullptr;
+    bool _isHunting = false, _isEscorting = false;
+    void resetOriginalDestination(bool debugHelper);
+    void setDestination(Target* dest);
+};
+// TARGET_DESTRUCTOR
+// UFO_DESTINATION
+// UFO_RESET
 struct Site {
     int remaining;
     Rule* rule;
@@ -160,6 +189,21 @@ int main() {
             std::cout << '[' << site.detected << ',' << site.remaining << ']';
         }
         std::cout << "],\"popups\":" << geoscape.popups << '}';
+    }
+    std::cout << "],\"ufoFollowerRows\":[";
+    first = true;
+    for (bool original : {false, true}) for (bool hunting : {false, true}) for (bool escorting : {false, true}) {
+        if (!first) std::cout << ','; first = false;
+        auto* target = new Target();
+        Ufo ufo; ufo._dest = target; ufo._isHunting = hunting; ufo._isEscorting = escorting;
+        if (original) { ufo._origWaypoint = new Waypoint(); ufo._origWaypoint->lon = 0.4; ufo._origWaypoint->lat = 0.2; }
+        target->ufos.push_back(&ufo);
+        delete target;
+        auto* waypoint = original ? dynamic_cast<Waypoint*>(ufo._dest) : nullptr;
+        std::cout << '[' << original << ',' << hunting << ',' << escorting << ',' << (ufo._origWaypoint != nullptr)
+            << ',' << (waypoint ? waypoint->lon : 0) << ',' << (waypoint ? waypoint->lat : 0)
+            << ',' << ufo._isHunting << ',' << ufo._isEscorting << ']';
+        if (waypoint) delete waypoint;
     }
     std::cout << "]}\n";
 }

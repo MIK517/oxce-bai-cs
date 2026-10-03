@@ -23,6 +23,17 @@ The expanded `strategic-event` capture pins instant-event eligibility and ordina
 weighted choice; fresh/cache expiry, daily interruption, debug-mode and malformed
 weight tests cover the slice.
 
+Forced site expiry now restores live UFO followers to their saved original
+anonymous waypoint, clears that backup and resets hunting/escorting flags before
+the subsequent flight pass. It preserves current speed and other UFO state.
+`strategic-site-timer` inserts Target's destructor and Ufo's destination/reset
+methods; all flag combinations are captured. Fresh/cache live-callback tests
+cover same-tick movement, reload and an atomic missing-backup guard. UFO load
+continues to convert site destinations to anonymous coordinates as the reference
+does; the integrated test deliberately assigns the live follower after restore.
+Follower scans have a one-million-work guard. General hunting/escort selection
+and missing-backup deletion remain outside this slice.
+
 `GeoscapeState::time30Minutes` processes mission sites after UFO activity/detection
 and before scheduled events. `GeoscapeState::processMissionSite` subtracts 1800
 seconds when at least 1800 remain; a site at exactly 1800 becomes zero and

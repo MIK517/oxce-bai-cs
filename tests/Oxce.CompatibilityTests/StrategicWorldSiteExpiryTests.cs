@@ -121,6 +121,81 @@ public sealed class StrategicWorldSiteExpiryTests
         Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
     }
 
+    [Fact]
+    public void UfoFollowerRestorationMatchesCapturedDestructorAndReset()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-timer");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "ufoFollowerRows"))
+        {
+            var original = row[0].GetBoolean();
+            var ufo = new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, 0.2, 0.1,
+                UfoStatus.Flying, WorldAltitudes.High)
+            {
+                OriginalWaypoint = original ? new(0.4, 0.2) : null,
+                Hunting = row[1].GetBoolean(), Escorting = row[2].GetBoolean(),
+                Destination = new(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 1, 0.2, 0.1),
+            };
+            var after = CampaignWorld.RestoreUfoOriginalWaypoint(ufo);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                original, ufo.Hunting, ufo.Escorting, after.OriginalWaypoint is not null,
+                original ? after.Destination!.Longitude : 0, original ? after.Destination!.Latitude : 0,
+                after.Hunting, after.Escorting,
+            });
+            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())), CanonicalJson.Normalize(actual));
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ForcedSiteExpiryRestoresUfoWaypointBeforeMovementAndReload(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-timer.rul", "strategic-site-expiry.rul"], cache);
+        var snapshot = CreateSnapshot(content, "UFO follows site") with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+        var ufo = new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, 0.4, 0.2, UfoStatus.Flying, WorldAltitudes.High)
+        {
+            Speed = 2200, MissionWaveNumber = 1, Shield = 0, Hunting = true, Escorting = true,
+            OriginalWaypoint = new(1, 0.6), Destination = new(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 1, 0.2, 0.1),
+        };
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [new AlienMissionSnapshot(4, "MISSION_SCOUT", "REGION", "RACE_A", 2, 0, 1500, 1, -1)],
+                Ufos = [ufo],
+                MissionSites = [new MissionSiteSnapshot(1, "MISSION_SITE_FORCE", "SITE_NO_EVENT", "RACE_A", 0.2, 0.1, 0)
+                { Detected = true }],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        // finishLoading restores site destinations as anonymous waypoints. This
+        // assignment models a live follower before Target's deletion callback.
+        ((List<UfoSnapshot>)((CampaignWorld)campaign.GetQuery<ICampaignWorldQuery>()!).Ufos)[0] = ufo;
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Single(result.Events.OfType<MissionSiteLost>());
+        Assert.Empty(campaign.Capture().World.MissionSites);
+        var after = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Null(after.OriginalWaypoint);
+        Assert.False(after.Hunting);
+        Assert.False(after.Escorting);
+        Assert.Equal(WorldTargetKind.Waypoint, after.Destination!.Kind);
+        Assert.Equal(0, after.Destination.Id);
+        Assert.Equal(new WorldPosition(1, 0.6), after.Destination.Position);
+        Assert.Equal(WorldGeometry.Move(ufo.Position, new(1, 0.6), WorldGeometry.RadianSpeed(2200)), after.Position);
+        Reload(content, campaign, 17, "site-ufo-follower-restored.sav");
+
+        var unsafeCampaign = CampaignState.Restore(snapshot with
+        {
+            World = snapshot.World with { Ufos = [ufo with { OriginalWaypoint = null }] },
+        }, content, new SplitMix64RandomSource(17));
+        ((List<UfoSnapshot>)((CampaignWorld)unsafeCampaign.GetQuery<ICampaignWorldQuery>()!).Ufos)[0] =
+            ufo with { OriginalWaypoint = null };
+        AssertTimeBlocked(unsafeCampaign, "Targeted mission site despawn requires UFO follower destination repair.");
+    }
+
     private sealed class MinimumChoices : IStatefulRandomSource
     {
         public ulong State { get; set; }
