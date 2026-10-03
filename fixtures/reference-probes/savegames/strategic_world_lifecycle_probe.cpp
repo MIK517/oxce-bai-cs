@@ -12,16 +12,16 @@ struct RuleUfo {
 struct MissionWave { int ufoCount=1; size_t spawnTimer=9000; bool objective=false,objectiveOnTheLandingSite=false,objectiveOnXcomBase=false; std::string trajectory="ordinary"; };
 struct UfoTrajectory {
  static const std::string RETALIATION_ASSAULT_RUN;
- int timer=2;
+ int timer=2,firstAltitude=-1,secondAltitude=-1;
  size_t getWaypointCount() const { return 4; }
  size_t getZone(size_t i) const { return std::vector<size_t>{4,5,6,6}.at(i); }
- std::string getAltitude(size_t i) const { return std::vector<std::string>{"STR_HIGH_UC","STR_LOW_UC","STR_GROUND","STR_VERY_LOW"}.at(i); }
+ std::string getAltitude(size_t i) const { if(i==0 && firstAltitude==0 || i==1 && secondAltitude==0)return "STR_GROUND"; return std::vector<std::string>{"STR_HIGH_UC","STR_LOW_UC","STR_GROUND","STR_VERY_LOW"}.at(i); }
  int applySpeedPercentage(size_t i,int speed) const { return speed*std::vector<int>{100,80,50,100}.at(i)/100; }
  int groundTimer() const {return timer;}
  std::string getID() const {return "ordinary";}
 };
 const std::string UfoTrajectory::RETALIATION_ASSAULT_RUN="__RETALIATION_ASSAULT_RUN";
-constexpr int OBJECTIVE_SCORE=0,OBJECTIVE_INFILTRATION=1,OBJECTIVE_BASE=2,OBJECTIVE_RETALIATION=4,AMOT_SPACE=0;
+constexpr int OBJECTIVE_SCORE=0,OBJECTIVE_INFILTRATION=1,OBJECTIVE_BASE=2,OBJECTIVE_RETALIATION=4,OBJECTIVE_SUPPLY=5,AMOT_SPACE=0;
 struct MissionRule {
  int objective=OBJECTIVE_SCORE,points=7,operation=AMOT_SPACE;
  std::string getType() const {return "MISSION_LANDING";}
@@ -217,5 +217,19 @@ void spawnFlagRows(){
  }
 }
 
+void spawnPathRows(){
+ bool first=true;
+ for(bool supply:{false,true})for(bool groundFirst:{false,true})for(bool groundSecond:{false,true}){
+  if(!first)std::cout<<',';first=false;
+  Game game;Globe globe;AlienMission mission;Target base;base.setLongitude(0.2);base.setLatitude(0.1);
+  mission._rule.objective=supply?OBJECTIVE_SUPPLY:OBJECTIVE_SCORE;mission._rule.wave.objective=supply;mission._base=supply?&base:nullptr;
+  game.mod.trajectory.firstAltitude=groundFirst?0:-1;game.mod.trajectory.secondAltitude=groundSecond?0:-1;
+  for(int i=0;i<7;i++){double lon=Deg2Rad(i==4?10:i==5?8:8.01),lat=Deg2Rad(i==4?8:2);game.mod.region._missionZones.push_back({{{lon,lon,lat,lat}}});}
+  RNG::calls=0;auto* ufo=mission.spawnUfo(game.save,game.mod,globe,mission._rule.wave,game.mod.trajectory);
+  std::cout<<'['<<supply<<','<<groundFirst<<','<<groundSecond<<','<<ufo->_status<<','<<ufo->_secondsRemaining<<','<<ufo->_speed
+   <<",\""<<number(ufo->_lon)<<"\",\""<<number(ufo->_lat)<<"\",\""<<number(ufo->_dest->_lon)<<"\",\""<<number(ufo->_dest->_lat)<<"\","<<RNG::calls<<']';delete ufo;
+ }
 }
-int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"]}\n";}
+
+}
+int main(){using namespace OpenXcom;std::cout<<"{\"cases\":[";run("ordinary",2,false,false);std::cout<<',';run("long",360,false,false);std::cout<<',';run("interrupted",2,true,false);std::cout<<',';run("multiple",2,false,true);std::cout<<"],\"siteLiftRows\":[";siteLiftRows();std::cout<<"],\"transitionRows\":[";transitionRows();std::cout<<"],\"normalLiftRows\":[";normalLiftRows();std::cout<<"],\"spawnFlagRows\":[";spawnFlagRows();std::cout<<"],\"spawnPathRows\":[";spawnPathRows();std::cout<<"]}\n";}
