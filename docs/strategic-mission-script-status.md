@@ -627,3 +627,9 @@ and branch 4d is untouched.
 - Batch 1 validation: root dotnet test --no-restore passes all 1,853 tests with
   no failures/skips, including checksums, corpus and world scenarios. Code-map,
   diff and formatting verification pass. Reference remains read-only and clean.
+
+- Five-cycle batch 2, slice 1: close-country infiltration search matches 432
+  pinned traces. Deployment/preference draws precede coordinates and remain
+  fixed through retries; wrapping areas split at zero/359.99 degrees with the
+  reference 50% draw. Country containment replaces regional containment. Empty
+  country areas fail intentionally; live country-border births follow next.
