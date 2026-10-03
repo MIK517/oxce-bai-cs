@@ -5,7 +5,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>
 /// Ordinary UFO flight, landing and takeoff. Reference: Ufo::think/calculateSpeed,
 /// AlienMission::ufoReachedWaypoint/ufoLifting and GeoscapeState::time5Seconds.
-/// Special arrivals and hunting/escort retargeting remain guarded.
+/// Special mission outcomes and combat arrivals remain guarded.
 /// </summary>
 internal sealed partial class CampaignWorld
 {
@@ -58,6 +58,19 @@ internal sealed partial class CampaignWorld
         {
             if ((long)_missions.Count * _ufos.Count > MaximumAlienBaseChecks)
                 return "Destroyed UFO cleanup exceeds the supported work limit.";
+            var terminal = 0;
+            foreach (var target in _ufos)
+            {
+                if (!UfoDestroyedAfterTimers(target, highest)) continue;
+                terminal++;
+                if ((long)terminal * _ufos.Count > MaximumAlienBaseChecks)
+                    return "Destroyed UFO follower cleanup exceeds the supported work limit.";
+                foreach (var follower in _ufos)
+                    if (follower.Escorting && FollowsUfo(follower.Destination, target) &&
+                        follower.OriginalWaypoint is not { IsNormalized: true }) return HuntStateReason;
+            }
+            if ((long)terminal * _ufos.Count > MaximumAlienBaseChecks)
+                return "Destroyed UFO follower cleanup exceeds the supported work limit.";
             foreach (var mission in _missions)
             {
                 var destroyed = 0;
@@ -73,7 +86,7 @@ internal sealed partial class CampaignWorld
         {
             if (_ufos[index] is { Status: UfoStatus.Crashed, InBattlescape: true })
                 return "Crashed UFO battlescape transitions require tactical simulation.";
-            var ufo = UfoAfterTimedTransitions(_ufos[index], highest);
+            var ufo = ProjectFlightTarget(UfoForFlight(_ufos[index], highest), highest);
             if (_ufos[index].Status == UfoStatus.Crashed && ufo.Status == UfoStatus.Destroyed)
             {
                 siteLinkWork += _sites.Count;
@@ -90,12 +103,13 @@ internal sealed partial class CampaignWorld
                 // The ten-minute scan also inspects these before five-second cleanup.
                 continue;
             }
-            if (ufo.Status is not (UfoStatus.Flying or UfoStatus.Landed) || ufo.InBattlescape || ufo.Hunting ||
-                ufo.Escorting || ufo.HunterKiller || ufo.Escort)
+            if (ufo.Status is not (UfoStatus.Flying or UfoStatus.Landed) || ufo.InBattlescape)
                 return "UFO state requires world simulation.";
             // Ufo::load and AlienMission::spawnUfo own this waypoint; unlike a player
             // waypoint, it is never assigned a STR_WAY_POINT identity.
-            if (ufo.Destination is not { Kind: WorldTargetKind.Waypoint, Id: 0 } destination)
+            if (ufo.Destination is not { } destination)
+                return "UFO destination requires world simulation.";
+            if (!ufo.Hunting && !ufo.Escorting && destination is not { Kind: WorldTargetKind.Waypoint, Id: 0 })
                 return "UFO destination requires world simulation.";
             // Ordinary saves validate this link at restore, and supported time handlers
             // cannot remove a mission while one of its UFOs is still flying.
@@ -112,6 +126,26 @@ internal sealed partial class CampaignWorld
                 var mission = FindMission(ufo.MissionId)!;
                 if (!TryUfoLiftSpeed(ufo, mission, out _))
                     return "UFO speed is invalid.";
+                continue;
+            }
+            if (ufo.Hunting || ufo.Escorting)
+            {
+                if (ufo.OriginalWaypoint is not { IsNormalized: true }) return HuntStateReason;
+                if (ufo.Hunting && destination.Kind != WorldTargetKind.Craft ||
+                    ufo.Escorting && destination.Kind != WorldTargetKind.Ufo)
+                    return HuntStateReason;
+                if (ufo.Escorting && TargetUfo(destination) is { } escorted)
+                {
+                    siteLinkWork += 2L * _ufos.Count;
+                    if (siteLinkWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (escorted.Hunting || escorted.Escorting)
+                        return "UFO escort chains require additional movement forecasts.";
+                }
+                if (ufo.Hunting && TargetCraft(destination) is { Logistics: { } targetState } targetCraft &&
+                    targetState.Damage < CraftLogistics.EffectiveDamageMaximum(targetState,
+                        campaign.Content.RuntimeRules.Crafts[targetCraft.Rule].Value, campaign.Content.RuntimeRules) &&
+                    WorldGeometry.Distance(ufo.Position, destination.Position) <= WorldGeometry.RadianSpeed(ufo.Speed))
+                    return HuntCombatReason;
                 continue;
             }
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
@@ -165,11 +199,13 @@ internal sealed partial class CampaignWorld
                 continue;
             }
             if (ufo.Status != UfoStatus.Flying) continue;
+            if ((ufo.Hunting || ufo.Escorting) && Resolve(ufo.Destination) is { } target)
+                ufo = ufo with { Destination = target };
             var destination = ufo.Destination!;
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
             var vector = WorldGeometry.SpeedVector(ufo.Position, destination.Position, speedRadian);
             var moved = WorldGeometry.Move(ufo.Position, destination.Position, speedRadian, vector);
-            if (!(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
+            if (!ufo.Hunting && !ufo.Escorting && !(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
             {
                 var mission = FindMission(ufo.MissionId)!;
                 var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
@@ -367,7 +403,7 @@ internal sealed partial class CampaignWorld
 
     private bool ArrivesOnGround(UfoSnapshot ufo)
     {
-        if (ufo.Status != UfoStatus.Flying ||
+        if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying ||
             WorldGeometry.Distance(ufo.Position, ufo.Destination!.Position) > WorldGeometry.RadianSpeed(ufo.Speed))
             return false;
         var rules = campaign.Content.RuntimeRules;
@@ -449,6 +485,9 @@ internal sealed partial class CampaignWorld
                 _missions[missionIndex] = mission with { LiveUfos = mission.LiveUfos - 1 };
                 break;
             }
+            for (var followerIndex = 0; followerIndex < _ufos.Count; followerIndex++)
+                if (_ufos[followerIndex].Escorting && FollowsUfo(_ufos[followerIndex].Destination, ufo))
+                    _ufos[followerIndex] = WorldHunting.Restore(_ufos[followerIndex]);
             _ufos.RemoveAt(index);
         }
     }

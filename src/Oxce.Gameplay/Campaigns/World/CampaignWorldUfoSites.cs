@@ -19,7 +19,7 @@ internal sealed partial class CampaignWorld
             var saved = _ufos[index];
             if (ArrivesAtSite(saved, highest))
             {
-                var ufo = UfoAfterTimedTransitions(saved, highest);
+                var ufo = UfoForFlight(saved, highest);
                 if (UfoSiteReason(ufo, ForecastMission(ufo.MissionId, highest), highest,
                         reservations ??= new(StringComparer.Ordinal), ref work) is { } reason) return reason;
             }
@@ -35,7 +35,7 @@ internal sealed partial class CampaignWorld
         {
             var saved = _ufos[index];
             if (!ArrivesAtSite(saved, highest) || _suppressedUfoSites?.Contains(saved.UniqueId) == true) continue;
-            var ufo = UfoAfterTimedTransitions(saved, highest);
+            var ufo = UfoForFlight(saved, highest);
             var mission = ForecastMission(ufo.MissionId, highest);
             if (UfoSiteFollowersReason(ufo, MissionRule(mission), UfoSiteArea(ufo, mission, ufo.Destination!.Position),
                     highest, craftPassSkipped, ref work) is { } reason) return reason;
@@ -45,8 +45,8 @@ internal sealed partial class CampaignWorld
 
     private bool ArrivesAtSite(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
-        ufo = UfoAfterTimedTransitions(ufo, highest);
-        if (ufo.Status != UfoStatus.Flying || ufo.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
+        ufo = ProjectFlightTarget(UfoForFlight(ufo, highest), highest);
+        if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying || ufo.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
             WorldGeometry.Distance(ufo.Position, destination.Position) > WorldGeometry.RadianSpeed(ufo.Speed)) return false;
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;

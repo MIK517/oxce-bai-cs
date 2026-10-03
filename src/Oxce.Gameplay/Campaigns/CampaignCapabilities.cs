@@ -29,6 +29,7 @@ internal delegate string? CampaignTimePreflight(CampaignTime next, CampaignTimeT
 internal static class CampaignTimeOrder
 {
     // time5Seconds: UFO processing precedes craft movement.
+    public const int FiveSecondsWorldUfoRetarget = 50;
     public const int FiveSecondsWorldUfos = 100;
     public const int FiveSecondsWorldCrafts = 200;
     public const int FiveSecondsWorldUfoCleanup = 300;
@@ -37,6 +38,7 @@ internal static class CampaignTimeOrder
     public const int TenMinutesWorldCraftFuel = 100;
     public const int TenMinutesWorldBaseDetection = 200;
     public const int TenMinutesWorldAlienBaseHunting = 300;
+    public const int TenMinutesWorldUfoRetarget = 400;
 
     // time1Month: SavedGame::addMonth runs first.
     public const int MonthCalendar = 100;

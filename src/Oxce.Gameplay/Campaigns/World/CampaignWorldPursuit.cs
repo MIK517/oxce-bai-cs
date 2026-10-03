@@ -104,7 +104,7 @@ internal sealed partial class CampaignWorld
     private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfo(UfoSnapshot ufo,
         CampaignTimeTrigger highest)
     {
-        ufo = UfoAfterTimedTransitions(ufo, highest);
+        ufo = ProjectFlightTarget(UfoForFlight(ufo, highest), highest);
         if (ufo.Status == UfoStatus.Landed)
             return ufo.SecondsRemaining == 5 ? (ufo.Position, UfoStatus.Flying,
                 campaign.Content.RuntimeRules.UfoTrajectories[
@@ -116,6 +116,7 @@ internal sealed partial class CampaignWorld
         var position = WorldGeometry.Move(ufo.Position, ufo.Destination!.Position, WorldGeometry.RadianSpeed(ufo.Speed));
         if (WorldGeometry.Distance(ufo.Position, ufo.Destination.Position) > WorldGeometry.RadianSpeed(ufo.Speed))
             return (position, ufo.Status, ufo.Speed);
+        if (ufo.Hunting || ufo.Escorting) return (position, ufo.Status, ufo.Speed);
         var mission = ForecastMission(ufo.MissionId, highest);
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
@@ -131,7 +132,7 @@ internal sealed partial class CampaignWorld
     }
 
     private bool EndsUfoFlightPass(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
-        UfoAfterTimedTransitions(ufo, highest).Status == UfoStatus.Flying &&
+        UfoForFlight(ufo, highest).Status == UfoStatus.Flying &&
         ForecastUfo(ufo, highest).Status == UfoStatus.Destroyed;
 
     private string? CraftArrivalReason(CampaignState.BaseState owner, CampaignState.CraftState craft,

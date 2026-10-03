@@ -452,7 +452,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Theory]
-    [InlineData("hunter", "UFO state requires world simulation.")]
+    [InlineData("hunter", "UFO hunting or escort state requires a valid original waypoint.")]
     [InlineData("shield", "UFO shield arithmetic exceeds the supported range.")]
     [InlineData("speed", "UFO speed is invalid.")]
     public void UnsupportedUfoStateReportsItsPreflightReason(string condition, string reason)
@@ -463,7 +463,7 @@ public sealed class StrategicWorldUfoTransitTests
         var ufo = Assert.Single(snapshot.World.Ufos);
         ufo = condition switch
         {
-            "hunter" => ufo with { HunterKiller = true },
+            "hunter" => ufo with { HunterKiller = true, Hunting = true, OriginalWaypoint = null },
             "shield" => ufo with { Shield = -2 },
             "speed" => ufo with { Speed = -1 },
             _ => throw new ArgumentOutOfRangeException(nameof(condition)),

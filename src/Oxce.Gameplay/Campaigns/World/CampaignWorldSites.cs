@@ -242,14 +242,7 @@ internal sealed partial class CampaignWorld
             ? "Mission site follower lookups exceed the supported work limit." : null;
     }
 
-    internal static UfoSnapshot RestoreUfoOriginalWaypoint(UfoSnapshot ufo) => ufo.OriginalWaypoint is { } waypoint ?
-        ufo with
-        {
-            Destination = WorldTargetReference.ForWaypoint(0, waypoint),
-            OriginalWaypoint = null,
-            Hunting = false,
-            Escorting = false,
-        } : ufo;
+    internal static UfoSnapshot RestoreUfoOriginalWaypoint(UfoSnapshot ufo) => WorldHunting.Restore(ufo);
 
     // Pure forecast for handlers that run after the half-hour site loop: ten-minute
     // base detection, five-second flight and craft interception/deployment guards.
