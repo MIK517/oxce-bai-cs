@@ -89,3 +89,18 @@ destruction threshold, unmanned rules, kamikaze behavior and dormancy. Fresh/cac
 tests preserve damage and stable respawn links across reload. Ordinary damaged
 ground arrivals retain their atomic guard; this does not enable crash creation,
 interception or tactical deployment.
+
+The batch audit reproduced premature landing guards both before and after a
+terminal UFO arrival. Conversion validation now stops at the actual UFO-pass
+boundary, while follower transfer validates the reachable conversions separately
+from craft arrival. A later terminal arrival still permits earlier transfers but
+skips all craft landings. Activity forecasts honor ordinary terminal arrivals too.
+Regressions verify unchanged skipped craft positions, reload, and no reservation
+of skipped conversion scores or markers. The previous crash-guard fixture now
+selects an ordinary arrival, retaining its strict atomic assertion.
+
+Root validation passes all 1,662 tests with no failures or skips, including
+fixture checksums, all private-corpus classifications and allocation budgets.
+The headless 4c gate remains open; branch 4d is untouched.
+Formatting verification, code-map validation and diff checks pass. The pinned
+reference checkout remains clean; obsolete probe object output was removed.

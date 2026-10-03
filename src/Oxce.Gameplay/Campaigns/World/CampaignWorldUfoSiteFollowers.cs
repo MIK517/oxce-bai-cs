@@ -20,7 +20,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? UfoSiteFollowersReason(UfoSnapshot ufo, RuntimeAlienMissionRule mission, MissionArea area,
-        CampaignTimeTrigger highest, ref long work)
+        CampaignTimeTrigger highest, bool craftPassSkipped, ref long work)
     {
         if (!TrySpawnArea(area, out var positions)) return "UFO site conversion coordinates require an unsupported latitude domain.";
         foreach (var owner in campaign.BaseStates)
@@ -36,7 +36,7 @@ internal sealed partial class CampaignWorld
                 if (highest >= CampaignTimeTrigger.TenMinutes)
                     state = AdvanceCraftFuel(owner, craft, state);
                 if (!FollowsUfo(state.Destination, ufo)) continue;
-                if (!mission.RespawnUfoAfterSiteDespawn || !CraftHasUnits(owner, craft, state) || !CanLand(owner, craft, state)) continue;
+                if (craftPassSkipped || !mission.RespawnUfoAfterSiteDespawn || !CraftHasUnits(owner, craft, state) || !CanLand(owner, craft, state)) continue;
                 // Conversion resets destination speed before the craft movement pass.
                 // The spherical rectangle radius bounds every possible random site.
                 var from = new WorldPosition(state.Longitude, state.Latitude);

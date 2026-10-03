@@ -12,12 +12,33 @@ internal sealed partial class CampaignWorld
     {
         Dictionary<string, int>? reservations = null;
         long work = 0;
-        foreach (var saved in _ufos)
+        var last = _ufos.Count - 1;
+        var craftPassSkipped = false;
+        for (var index = 0; index < _ufos.Count; index++)
         {
-            if (!ArrivesAtSite(saved, highest)) continue;
+            var saved = _ufos[index];
+            if (ArrivesAtSite(saved, highest))
+            {
+                var ufo = UfoAfterTimedTransitions(saved, highest);
+                if (UfoSiteReason(ufo, ForecastMission(ufo.MissionId, highest), highest,
+                        reservations ??= new(StringComparer.Ordinal), ref work) is { } reason) return reason;
+            }
+            if (!EndsUfoFlightPass(saved, highest)) continue;
+            last = index;
+            craftPassSkipped = true;
+            break;
+        }
+        // Suppressed conversions must be known before forecasting any craft arrivals.
+        // A terminal arrival later in the list skips craft movement too, while earlier
+        // conversions still transfer followers during the UFO pass.
+        for (var index = 0; index <= last; index++)
+        {
+            var saved = _ufos[index];
+            if (!ArrivesAtSite(saved, highest) || _suppressedUfoSites?.Contains(saved.UniqueId) == true) continue;
             var ufo = UfoAfterTimedTransitions(saved, highest);
-            if (UfoSiteReason(ufo, ForecastMission(ufo.MissionId, highest), highest,
-                    reservations ??= new(StringComparer.Ordinal), ref work) is { } reason) return reason;
+            var mission = ForecastMission(ufo.MissionId, highest);
+            if (UfoSiteFollowersReason(ufo, MissionRule(mission), UfoSiteArea(ufo, mission, ufo.Destination!.Position),
+                    highest, craftPassSkipped, ref work) is { } reason) return reason;
         }
         return null;
     }
@@ -75,8 +96,6 @@ internal sealed partial class CampaignWorld
             return "World mission site population exceeds the supported limit.";
         if (candidates.Count != 0 && !TrySpawnArea(area, out _))
             return "UFO site conversion coordinates require an unsupported latitude domain.";
-        if (candidates.Count != 0 && UfoSiteFollowersReason(ufo, rule, area, highest, ref work) is { } followerReason)
-            return followerReason;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         foreach (var handle in candidates)
         {

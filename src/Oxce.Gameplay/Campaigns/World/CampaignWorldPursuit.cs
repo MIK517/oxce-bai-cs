@@ -130,6 +130,10 @@ internal sealed partial class CampaignWorld
             landing ? 0 : trajectory.Speed(ufo.TrajectoryPoint + 1, rule.StatsForRace(mission.Race).SpeedMaximum));
     }
 
+    private bool EndsUfoFlightPass(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
+        UfoAfterTimedTransitions(ufo, highest).Status == UfoStatus.Flying &&
+        ForecastUfo(ufo, highest).Status == UfoStatus.Destroyed;
+
     private string? CraftArrivalReason(CampaignState.BaseState owner, CampaignState.CraftState craft,
         CraftLogisticsState state, CampaignTimeTrigger highest)
     {
@@ -169,8 +173,7 @@ internal sealed partial class CampaignWorld
         }
         // A terminal UFO arrival skips the entire craft pass, regardless of list order.
         foreach (var candidate in _ufos)
-            if (ForecastUfo(candidate, highest).Status == UfoStatus.Destroyed &&
-                UfoAfterTimedTransitions(candidate, highest).Status == UfoStatus.Flying) return null;
+            if (EndsUfoFlightPass(candidate, highest)) return null;
         var from = new WorldPosition(state.Longitude, state.Latitude);
         var position = state.Takeoff > 0 ? from : WorldGeometry.Move(from, targetPosition, WorldGeometry.RadianSpeed(state.Speed));
         if (!WorldGeometry.ReachedDestination(position, targetPosition)) return null;
