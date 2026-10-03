@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-world-lifecycle",
-  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering. Transition rows cover all objective/operation combinations, linked and absent operation bases, and three non-terminal waypoints with objective flags disabled; aggressive retaliation is excluded. Normal lift rows cover all objective and operation combinations, including Base/Infiltration score suppression. Ordinary spawn rows cover all three objective-flag combinations without mission-site targeting.",
+  "description": "Ordinary UFO lifecycle traces and associated mission-site UFO release rows with pinned C++ transition methods and bounded mission fragments; controlled successful radar collaborator and asset-free region. GUI, pursuit, combat, scripts, retaliation and scheduling excluded. Ordinary traces record every five-second state; site rows isolate timer retention and objective score filtering. Transition rows cover all objective/operation combinations, linked and absent operation bases, and three non-terminal waypoints with objective flags disabled; aggressive retaliation is excluded. Normal lift rows cover all objective and operation combinations, including Base/Infiltration score suppression. Ordinary spawn rows cover all three objective-flag combinations without mission-site targeting. Spawn path rows include generic and Supply altitude combinations, using verbatim Supply spawn fragments and a linked base.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_lifecycle_probe.cpp",
-      "size": 13788,
-      "sha256": "be849d01b44ea2ef6afddb55236c83b9d3adaeb31689d1ca8909a855d9fd584c"
+      "size": 15056,
+      "sha256": "0f38e3fe0e83ac4f7d7fbdb4861318077ee4d7cd3e72d84974a4cf4ed7e6feef"
     },
     {
       "path": "tools/capture-strategic-world-lifecycle-reference.ps1",
-      "size": 13219,
-      "sha256": "ebef353f53f9a32e4339dab40c7a7237afe9426133174fd1e262aa5d76899179"
+      "size": 13626,
+      "sha256": "37dc4bd7c186b7829bc1173082c8196f71b1f7c206de49a4888f3618fb6a29e5"
     },
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
@@ -38,6 +38,11 @@
       "path": "fixtures/public/savegames/strategic-flagged-spawn.rul",
       "size": 9075,
       "sha256": "6f6dc2e2f7d310a55144003c099752e70c19931ddf24cc5424bf5ca67b93b1bb"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-spawn-paths.rul",
+      "size": 1688,
+      "sha256": "e188084d320fbd1862b22601688e0e4c4a75308c33f61d56ecd46b9de64ef4bd"
     }
   ],
   "normalization": [

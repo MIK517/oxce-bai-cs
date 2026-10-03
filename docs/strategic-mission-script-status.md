@@ -183,3 +183,12 @@ tests, with no failures or skips, including checksum, private corpus and populat
 world scenarios. Formatting verification, regenerated code-map validation and
 `git diff --check` pass. Captured probes remain available under artifacts; obsolete
 probe object files were removed. The pinned C++ checkout is clean.
+
+### Batch 1, slice 1: ground destinations during spawning
+
+Generic airborne waves may target ground trajectory points. Supply objective waves
+choose their linked base without regional destination RNG; ordinary supply land
+selection retains getLandPoint semantics. AlienMission.cpp spawnUfo supplies the
+captured altitude rows. Fixed-point/source forecasts still reject same-tick arrivals
+and special objective consequences. Fresh/cache tests compare destination, movement,
+RNG, activity and transition reloads. Grounded starts are the next slice.

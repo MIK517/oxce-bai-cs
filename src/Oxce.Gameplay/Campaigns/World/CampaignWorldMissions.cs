@@ -188,7 +188,8 @@ internal sealed partial class CampaignWorld
         if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective)) return false;
         var trajectory = rules.UfoTrajectories[trajectoryHandle].Value;
         if (trajectory.Waypoints.Count < 2 ||
-            !IsAirborne(trajectory.Altitude(0)) || !IsAirborne(trajectory.Altitude(1)))
+            !IsAirborne(trajectory.Altitude(0)) ||
+            trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
         if (rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 && wave.Objective &&
             (trajectory.Zone(0) == rule.SpawnZone || trajectory.Zone(1) == rule.SpawnZone))
@@ -232,6 +233,12 @@ internal sealed partial class CampaignWorld
     private bool TryOrdinarySpawnDestination(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, out WorldPosition position)
     {
+        if (rule.Objective == RuntimeMissionObjective.Supply && rule.Waves[mission.NextWave].Objective &&
+            trajectory.Altitude(1) == 0 && MissionSourceBase(mission) is { } supplyBase)
+        {
+            position = supplyBase.Position;
+            return position.IsNormalized;
+        }
         _ = WorldGeometry.MissionAreas(region, trajectory.Zone(1));
         if (rule.Objective != RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
             trajectory.Waypoints.Count == 2 && MissionSourceBase(mission) is { } source)
@@ -281,7 +288,7 @@ internal sealed partial class CampaignWorld
         // Fixed-point eligibility implies getLandPoint's city bypass when the
         // following leg lands, consuming the same regional selection.
         var destination = NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
-            ? WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random)
+            ? SupplySpawnDestination(mission, wave, trajectory, region, ufoRule)
             : OrdinaryWaypoint(mission, trajectory, 1, region, ufoRule));
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
@@ -299,6 +306,16 @@ internal sealed partial class CampaignWorld
             Destination = new WorldTargetReference(WorldTargetKind.Waypoint,
                 WorldTargetReference.WaypointType, 0, destination.Longitude, destination.Latitude),
         };
+    }
+
+    private WorldPosition SupplySpawnDestination(AlienMissionSnapshot mission, RuntimeMissionWave wave,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, RuntimeUfoRule ufoRule)
+    {
+        if (trajectory.Altitude(1) != 0)
+            return WorldGeometry.RandomPoint(region, trajectory.Zone(1), -1, campaign.Random);
+        if (wave.Objective) return MissionSourceBase(mission)!.Position;
+        return WorldGeometry.LandPoint(region, campaign.Content.RuntimeRules.Campaign.Globe,
+            trajectory.Zone(1), ufoRule.FakeWaterLandingChance, campaign.Random);
     }
 
     private static WorldPosition NormalizeWaypoint(WorldPosition position) =>

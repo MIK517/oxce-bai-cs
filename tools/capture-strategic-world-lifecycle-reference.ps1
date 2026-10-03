@@ -103,7 +103,12 @@ $spawn = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'Ufo *AlienMission
 $start = $spawn.LastIndexOf('Ufo *ufo = new Ufo(ufoRule, game.getId("STR_UFO_UNIQUE"), hunterKillerPercentage, huntMode, huntBehavior);')
 $end = $spawn.IndexOf('// Only hunter-killers can escort', $start)
 if ($start -lt 0 -or $end -lt 0) { throw 'Ordinary spawn fragment missing.' }
-$spawn = 'Ufo* AlienMission::spawnUfo(SavedGame& game,const Mod& mod,const Globe& globe,const MissionWave& wave,const UfoTrajectory& trajectory) { const RuleUfo* ufoRule=&mod.ufo; int hunterKillerPercentage=0,huntMode=0,huntBehavior=0;' + $spawn.Substring($start,$end-$start) + 'return ufo;}'
+$ordinary = $spawn.Substring($start,$end-$start)
+$supplyStart = $spawn.IndexOf('if (ufoRule == 0 || (wave.objective && !_base))')
+$supplyEnd = $spawn.IndexOf('// Only hunter-killers can escort', $supplyStart)
+if ($supplyStart -lt 0 -or $supplyEnd -lt 0) { throw 'Supply spawn fragment missing.' }
+$supply = $spawn.Substring($supplyStart,$supplyEnd-$supplyStart)
+$spawn = 'Ufo* AlienMission::spawnUfo(SavedGame& game,const Mod& mod,const Globe& globe,const MissionWave& wave,const UfoTrajectory& trajectory) { const RuleUfo* ufoRule=&mod.ufo; int hunterKillerPercentage=0,huntMode=0,huntBehavior=0; if(_rule.getObjective()==OBJECTIVE_SUPPLY){' + $supply + 'return ufo;} ' + $ordinary + 'return ufo;}'
 $template = $template.Replace('// MISSION_SPAWN', $spawn)
 $think = Read-ReferenceMethod 'src/Savegame/AlienMission.cpp' 'void AlienMission::think('
 $prefixEnd = $think.IndexOf('else if ((mod.getDeployment')
