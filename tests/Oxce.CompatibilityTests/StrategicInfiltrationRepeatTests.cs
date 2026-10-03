@@ -32,7 +32,11 @@ public sealed class StrategicInfiltrationRepeatTests
             foreach (var row in TestFixtures.Rows(example, "rows"))
             {
                 if (mission.SpawnCountdown > 30) mission = mission with { SpawnCountdown = mission.SpawnCountdown - 30 };
-                else { spawns++; mission = WorldInfiltration.Restart(mission, rule, random); }
+                else
+                {
+                    spawns++;
+                    mission = WorldInfiltration.Restart(mission, rule, random);
+                }
                 actual.Add([mission.NextWave, mission.NextUfoCounter, mission.SpawnCountdown, spawns, random.IntegerCalls]);
             }
             Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(example.GetProperty("rows"))),
@@ -114,6 +118,42 @@ public sealed class StrategicInfiltrationRepeatTests
             """);
         AssertTimeBlocked(CampaignState.Restore(Initial(content, "INF_REPEAT") with { Countries = [] }, content, new SplitMix64RandomSource(17)),
             "Immediate mission waves exceed the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EndlessLegacyUfoWaveInferenceStopsBeforeUnreservedSiteConversion(bool cache)
+    {
+        var content = Load(cache, """
+            ufoTrajectories:
+              - id: INF_ARRIVAL
+                groundTimer: 60
+                waypoints: [[0, 3, 0], [0, 0, 0], [0, 3, 0]]
+            alienMissions:
+              - type: INF_REPEAT
+                objective: 1
+                endlessInfiltration: true
+                spawnZone: 0
+                siteType: INF_BASE
+                waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 60}, {count: 1, trajectory: TRAJ_PATROL, timer: 60, objective: true}]
+            """);
+        var initial = Initial(content, "INF_REPEAT").WithNextId("INF_BASE", int.MaxValue) with { Countries = [] };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { NextWave = 1, LiveUfos = 1, MissionSiteZoneArea = 0 }],
+                Ufos = [new(9, "UFO_SCOUT", 4, "INF_ARRIVAL", 0, Degrees(8), Degrees(2), UfoStatus.Flying, WorldAltitudes.High)
+                {
+                    Shield = 0,
+                    MissionWaveNumber = -1,
+                    Destination = WorldTargetReference.ForWaypoint(0, new(Degrees(8), Degrees(2))),
+                }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Endless infiltration completion requires legacy UFO wave forecasts.");
     }
 
     private static CampaignSnapshot Initial(RuntimeContent content, string rule)
