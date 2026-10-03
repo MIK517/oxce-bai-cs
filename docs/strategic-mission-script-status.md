@@ -210,3 +210,11 @@ rejecting possible same-tick arrivals without consuming RNG. Supply-base and fin
 operation-base destinations retain their precedence. Captured selected-area rows,
 seeded fresh/cache tests and reloads cover both choices and draw order. Origin
 regions remain fixed-point until their activity forecasts are expanded.
+
+### Batch 1 audit
+
+The three spawning slices were reviewed together against AlienMission::spawnUfo,
+getWaypoint and Ufo::think. The root suite exposed a stale fresh/cache test that
+expected generated Supply waves with city destinations to remain guarded. It now
+asserts the supported regional destination, live count, source linkage and reload,
+while retaining the no-object completion and its no-floating-draw collaborator.

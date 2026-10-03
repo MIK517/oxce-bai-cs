@@ -152,7 +152,7 @@ public sealed class StrategicWorldAlienBaseGenerationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GeneratedNoObjectSupplyWaveCompletesWhileObjectiveWaveRemainsGuarded(bool cache)
+    public void GeneratedSupplyWavesCompleteWithoutObjectsOrSpawnTowardRegionalDestinations(bool cache)
     {
         var content = Load(cache);
         var campaign = CampaignState.Restore(Snapshot(content, "local"), content, new MinimumChoices());
@@ -174,8 +174,22 @@ public sealed class StrategicWorldAlienBaseGenerationTests
             World = due.World with
             { Missions = [due.World.Missions[0] with { RuleId = "MISSION_SUPPLY" }] }
         };
-        AssertTimeBlocked(CampaignState.Restore(objective, content, new MinimumChoices()),
-            "Alien mission wave spawning requires world simulation.");
+        var spawned = CampaignState.Restore(objective with { RandomState = 40 }, content, new SplitMix64RandomSource(40));
+        AdvanceOne(spawned);
+        var ufo = Assert.Single(spawned.Capture().World.Ufos);
+        var mission = Assert.Single(spawned.Capture().World.Missions);
+        Assert.Equal(1, mission.LiveUfos);
+        Assert.Equal(1, mission.NextWave);
+        Assert.Equal(after.World.Missions[0].AlienBase, mission.AlienBase);
+        Assert.Equal("UFO_SCOUT", ufo.RuleId);
+        Assert.Equal(mission.Id, ufo.MissionId);
+        Assert.Equal(UfoStatus.Flying, ufo.Status);
+        Assert.Contains(ufo.Destination!.Position, new[]
+        {
+            new WorldPosition(Degrees(8), Degrees(2)),
+            new WorldPosition(Degrees(12), Degrees(-2)),
+        });
+        Reload(content, spawned, 40, "spawned-generated-supply.sav");
     }
 
     [Theory]
