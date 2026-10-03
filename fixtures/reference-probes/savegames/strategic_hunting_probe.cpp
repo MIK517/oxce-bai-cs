@@ -4,9 +4,15 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include <stdexcept>
 namespace OpenXcom {
+using Exception = std::runtime_error;
 double Nautical(double x) { return x / 60.0 * 3.14159265358979323846 / 180.0; }
-struct Target { double distance = 0; virtual ~Target() = default; };
+struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = default;
+double getLongitude() const { return lon; } double getLatitude() const { return lat; }
+void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
+struct Waypoint : Target {};
+struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
 struct Craft : Target {
 struct Rule { bool landing = false, hidden = false; bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; } } rule;
 const Rule* _rules = &rule;
@@ -18,8 +24,13 @@ const Rule* getRules() const { return _rules; }
 int getHunterKillerAttraction(int huntMode) const;
 };
 // ATTRACTION
-struct Ufo {
-struct Stats { int radarRange = 300; } _stats;
+struct Ufo : MovingTarget {
+struct Stats { int radarRange = 300, speedMax = 2200; } _stats;
+struct Rule { int huntSpeed = 100; int getHuntSpeed() const { return huntSpeed; } } rule;
+const Rule* _rules = &rule; Waypoint* _origWaypoint = nullptr; bool _isHunting = false, _isEscorting = false; int speed = 0;
+void setSpeed(int value) { speed = value; }
+void backupOriginalDestination(); void setTargetedXcomCraft(Craft*); void setEscortedUfo(Ufo*);
+void resetOriginalDestination(bool); void setDestination(Target*);
 Craft* original = nullptr; int mode = 0; bool hunting = false;
 bool isHunting() const { return hunting; }
 Craft* getTargetedXcomCraft() const { return original; }
@@ -28,6 +39,14 @@ double getDistance(Target* target) const { return target->distance; }
 bool insideRadarRange(Target* target) const;
 };
 // RADAR
+// RETARGET_METHODS
+struct FastSchedule {
+struct Mod { bool fast = true; bool getHunterKillerFastRetarget() const { return fast; } } mod;
+struct Game { const Mod* mod; const Mod* getMod() const { return mod; } } game{&mod};
+const Game* _game = &game; int _timeSpeed = 0, _btn5Secs = 0, _btn1Min = 1;
+bool due() const { return // FAST_CONDITION
+; }
+};
 Craft* select(Ufo* ufo, const std::vector<Craft*>& crafts) {
 const auto* activeCrafts = &crafts;
 // SELECTION
@@ -59,6 +78,29 @@ if (variant == 5) { ufo._stats.radarRange = 0; }
 if (variant == 6) { ufo.original = &a; ufo.hunting = true; a.ignored = true; }
 auto* selected = select(&ufo,crafts);
 std::cout << '[' << mode << ',' << variant << ',' << (selected ? selected->id : 0) << ']';
+}
+std::cout << "],\"retargetRows\":[";
+first = true;
+for (int percent : {0,50,100,150}) {
+if (!first) std::cout << ','; first = false;
+Ufo ufo; ufo.rule.huntSpeed = percent; ufo.speed = 900;
+auto* waypoint = new Waypoint(); waypoint->lon = 0.4; waypoint->lat = 0.2; ufo._dest = waypoint;
+Craft craft; craft.lon = 0.8; craft.lat = 0.3;
+ufo.setTargetedXcomCraft(&craft); int huntSpeed = ufo.speed;
+Ufo escorted; escorted.lon = 1; escorted.lat = 0.5;
+ufo.setEscortedUfo(&escorted);
+int escortSpeed = ufo.speed;
+ufo.resetOriginalDestination(true);
+std::cout << '[' << percent << ',' << huntSpeed << ',' << escortSpeed << ',' << ufo._dest->getLongitude()
+<< ',' << ufo._dest->getLatitude() << ',' << (ufo._isHunting ? "true" : "false") << ',' << (ufo._isEscorting ? "true" : "false") << ']';
+delete ufo._dest;
+}
+std::cout << "],\"fastRows\":[";
+first = true;
+for (bool fast : {false,true}) for (int speed = 0; speed < 6; ++speed) {
+if (!first) std::cout << ','; first = false;
+FastSchedule schedule; schedule.mod.fast = fast; schedule._timeSpeed = speed;
+std::cout << '[' << (fast ? "true" : "false") << ',' << speed << ',' << (schedule.due() ? "true" : "false") << ']';
 }
 std::cout << "]}\n";
 }

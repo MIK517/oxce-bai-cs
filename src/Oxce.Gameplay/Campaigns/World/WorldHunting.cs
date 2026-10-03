@@ -6,6 +6,56 @@ internal readonly record struct WorldHuntCraft(WorldTargetReference Reference, W
 
 internal static class WorldHunting
 {
+    internal static bool RetargetDue(CampaignTimeTrigger highest, CampaignTimeSpeed speed, bool fast) =>
+        highest >= CampaignTimeTrigger.TenMinutes || fast &&
+        speed is CampaignTimeSpeed.FiveSeconds or CampaignTimeSpeed.OneMinute;
+
+    internal static bool TryHunt(UfoSnapshot ufo, WorldTargetReference target, int speedMaximum, int percentage,
+        out UfoSnapshot hunted)
+    {
+        hunted = ufo;
+        var speed = ufo.Speed;
+        if (percentage > 0)
+        {
+            var product = (long)speedMaximum * percentage;
+            if (product is < 0 or > int.MaxValue) return false;
+            speed = (int)(product / 100);
+        }
+        if (!ufo.Hunting && !ufo.Escorting && ufo.Destination is null) return false;
+        hunted = ufo with
+        {
+            OriginalWaypoint = ufo.Hunting || ufo.Escorting ? ufo.OriginalWaypoint : ufo.Destination!.Position,
+            Destination = target,
+            Hunting = true,
+            Escorting = false,
+            Speed = speed,
+            SpeedRadian = WorldGeometry.RadianSpeed(speed),
+            SpeedLongitude = 0,
+            SpeedLatitude = 0,
+        };
+        return true;
+    }
+
+    internal static UfoSnapshot Escort(UfoSnapshot ufo, WorldTargetReference target, int speedMaximum) => ufo with
+    {
+        OriginalWaypoint = ufo.Hunting || ufo.Escorting ? ufo.OriginalWaypoint : ufo.Destination!.Position,
+        Destination = target,
+        Hunting = false,
+        Escorting = true,
+        Speed = speedMaximum,
+        SpeedRadian = WorldGeometry.RadianSpeed(speedMaximum),
+        SpeedLongitude = 0,
+        SpeedLatitude = 0,
+    };
+
+    internal static UfoSnapshot Restore(UfoSnapshot ufo) => ufo.OriginalWaypoint is { } original ? ufo with
+    {
+        Destination = WorldTargetReference.ForWaypoint(0, original),
+        OriginalWaypoint = null,
+        Hunting = false,
+        Escorting = false,
+    } : ufo;
+
     internal static bool TryAttraction(int mode, bool allowLanding, int units, int speed, int damage, int damageMaximum,
         out int attraction)
     {

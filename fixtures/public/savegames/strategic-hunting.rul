@@ -1,0 +1,11 @@
+ufos:
+  - type: HUNTER
+    speedMax: 2200
+    damageMax: 50
+    radarRange: 300
+    huntSpeed: 150
+  - type: ESCORT_HUNTER
+    speedMax: 2200
+    damageMax: 50
+    radarRange: 0
+    huntSpeed: 150
