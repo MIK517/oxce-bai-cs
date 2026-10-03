@@ -8,6 +8,7 @@ internal interface ICampaignCustomCounters
 {
     string? CapacityReason(IReadOnlyList<CustomCounterChange> changes, CampaignTimeTrigger highest);
     void Apply(CustomCounterChange change);
+    (long Minimum, long Maximum) BeforeWorldCreation(string name, CampaignTimeTrigger highest);
 }
 
 internal static class CustomCounterValue
@@ -20,6 +21,40 @@ internal static class CustomCounterValue
 public sealed partial class CampaignState : ICampaignCustomCounters
 {
     internal ICampaignCustomCounters CustomCounters => _handlers.Operation<ICampaignCustomCounters>();
+
+    (long Minimum, long Maximum) ICampaignCustomCounters.BeforeWorldCreation(string name, CampaignTimeTrigger highest)
+    {
+        long minimum = _nextIds.GetValueOrDefault(name, 1);
+        var maximum = minimum;
+        if (highest < CampaignTimeTrigger.OneDay) return (minimum, maximum);
+        HashSet<string>? earlierSources = null;
+        foreach (var owner in _bases)
+        {
+            HashSet<string>? possible = null;
+            HashSet<string>? certain = null;
+            foreach (var project in owner.Research)
+            {
+                if ((long)project.Spent + project.Assigned < project.Cost) continue;
+                var source = _content.RuntimeRules.Research[project.Rule];
+                (possible ??= []).Add(source.Id);
+                if (earlierSources is null || !earlierSources.Contains(source.Id)) (certain ??= []).Add(source.Id);
+                possible.UnionWith(source.Value.GetOneFree);
+                foreach (var group in source.Value.GetOneFreeProtected) possible.UnionWith(group.Topics);
+            }
+            if (possible is null) continue;
+            foreach (var source in _content.RuntimeRules.Research.Rules)
+            {
+                if (!possible.Contains(source.Id)) continue;
+                var guaranteed = certain?.Contains(source.Id) == true;
+                foreach (var counter in source.Value.IncreaseCounters)
+                    if (counter == name) { maximum++; if (guaranteed) minimum++; }
+                foreach (var counter in source.Value.DecreaseCounters)
+                    if (counter == name) { minimum = Math.Max(1, minimum - 1); if (guaranteed) maximum = Math.Max(1, maximum - 1); }
+            }
+            (earlierSources ??= []).UnionWith(possible);
+        }
+        return (minimum, maximum);
+    }
 
     string? ICampaignCustomCounters.CapacityReason(
         IReadOnlyList<CustomCounterChange> changes, CampaignTimeTrigger highest)

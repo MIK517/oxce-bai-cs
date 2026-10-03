@@ -454,4 +454,72 @@ public sealed class StrategicWorldSiteSpawningTests
         }, content, new QuarterChoices(maximum));
         AssertTimeBlocked(guarded, "UFO alien activity exceeds the supported range.");
     }
+
+    [Fact]
+    public void DailyResearchCannotShiftMarkerAllocationIntoAnExistingSite()
+    {
+        const string overlay = "research:\n  - name: SHIFT_MARKER\n    cost: 1\n    increaseCounter: [DIRECT_MARKER]\n";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], extraRules: overlay);
+        var snapshot = Snapshot(content, "DIRECT_OVERRIDE").WithNextId("DIRECT_MARKER", 1);
+        snapshot = snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            Bases = [snapshot.Bases[0] with { Research = [new ResearchProjectSnapshot("SHIFT_MARKER", 0, 1, 1)] }],
+            World = snapshot.World with
+            {
+                MissionSites = [new MissionSiteSnapshot(2, "DIRECT_OVERRIDE", "DIRECT_DEPLOY", "RACE_A", 0.2, 0.1, 3600)
+                { Detected = true }],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        AssertTimeBlocked(campaign, "Mission site marker IDs are exhausted or collide with a saved target.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void DailyMarkerCounterRangesAllowFreeIdsAndRejectShiftedCollisions(bool decrease, bool collision)
+    {
+        var overlay = "research:\n  - name: SHIFT_MARKER\n    cost: 1\n    " +
+            (decrease ? "decreaseCounter" : "increaseCounter") + ": [DIRECT_MARKER]\n";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], extraRules: overlay);
+        var selectedId = decrease ? 1 : 2;
+        var snapshot = Snapshot(content, "DIRECT_OVERRIDE").WithNextId("DIRECT_MARKER", decrease ? 2 : 1);
+        snapshot = snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            Bases = [snapshot.Bases[0] with { Research = [new ResearchProjectSnapshot("SHIFT_MARKER", 0, 1, 1)] }],
+            World = snapshot.World with
+            {
+                MissionSites = [new MissionSiteSnapshot(collision ? selectedId : 3, "DIRECT_OVERRIDE", "DIRECT_DEPLOY", "RACE_A", 0.2, 0.1, 3600)
+                { Detected = true }],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new QuarterChoices());
+        if (collision)
+        {
+            AssertTimeBlocked(campaign, "Mission site marker IDs are exhausted or collide with a saved target.");
+            return;
+        }
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        Assert.Equal(selectedId, campaign.Capture().World.MissionSites[1].Id);
+        Assert.Equal(selectedId + 1, campaign.Capture().NextIds["DIRECT_MARKER"]);
+        Reload(content, campaign, 17, "research-shifted-free-marker.sav");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NewZeroHourSiteStopsBeforeUnavailableResearchOrInstantPayload(bool research)
+    {
+        var overlay = "alienDeployments:\n  - type: DIRECT_ZERO_COUNTERS\n    " +
+            (research ? "unlockedResearchOnDespawn: UNLOCK\n" : "despawnEvents: {INSTANT: 1}\n");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-site-expiry.rul", "strategic-site-spawn.rul"], extraRules: overlay);
+        var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_ZERO_COUNTERS"), content, new QuarterChoices());
+        AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+    }
 }

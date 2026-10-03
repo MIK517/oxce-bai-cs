@@ -27,6 +27,7 @@ internal sealed partial class CampaignWorld
         "Mission site despawn requires research or event payloads.";
     private const string SiteUfoFollowerBoundary =
         "Targeted mission site despawn requires UFO follower destination repair.";
+    private IReadOnlySet<string>? _siteDespawnResearchForecast;
 
     private void RegisterSiteOperations(CampaignCapabilityRegistry registry)
     {
@@ -81,6 +82,7 @@ internal sealed partial class CampaignWorld
         var counterChanges = new List<CustomCounterChange>();
         if (_siteBirthIdChanges is not null) counterChanges.AddRange(_siteBirthIdChanges);
         var discovered = FirstSiteDiscoveredThisTick(highest);
+        long despawnWork = 0;
         foreach (var site in _sites)
         {
             var mission = rules.AlienMissions[rules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
@@ -108,8 +110,12 @@ internal sealed partial class CampaignWorld
                 if (!TryLiftUfo(ufo, fromSite: true, out _, out _))
                     return "Mission site UFO reactivation speed exceeds the supported range.";
             }
-            if (transition.Remove && SiteDespawnReason(deployment, highest) is { } despawnReason)
-                return despawnReason;
+            if (transition.Remove)
+            {
+                despawnWork += 6 + 2L * deployment.DespawnEvents.Count;
+                if (despawnWork > MaximumAlienBaseChecks) return "Mission site despawn checks exceed the supported work limit.";
+                if (SiteDespawnReason(deployment, highest) is { } despawnReason) return despawnReason;
+            }
             if (transition.Remove) AddSiteCounterChanges(counterChanges, deployment);
         }
         if (_siteBirthExpiryIncreases is not null) counterChanges.AddRange(_siteBirthExpiryIncreases);
@@ -172,7 +178,6 @@ internal sealed partial class CampaignWorld
         if (campaign.BaseStates.Count != 0 && rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _))
             return SiteDespawnBoundary;
         _ = WorldAlienMissionGeneration.Total(deployment.DespawnEvents);
-        IReadOnlySet<string>? research = null;
         foreach (var pair in deployment.DespawnEvents)
         {
             if (pair.Value == 0 || !rules.Events.TryGet(pair.Key, out var handle)) continue;
@@ -180,8 +185,8 @@ internal sealed partial class CampaignWorld
             if (rule.InterruptResearch.Length == 0) return SiteDespawnBoundary;
             if (highest >= CampaignTimeTrigger.OneDay)
             {
-                research ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
-                if (!research.Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
+                _siteDespawnResearchForecast ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+                if (!_siteDespawnResearchForecast.Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
             }
             else if (!campaign.HasCompletedResearch(rule.InterruptResearch)) return SiteDespawnBoundary;
         }

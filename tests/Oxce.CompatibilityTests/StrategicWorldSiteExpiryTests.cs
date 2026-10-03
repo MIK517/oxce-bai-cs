@@ -101,7 +101,8 @@ public sealed class StrategicWorldSiteExpiryTests
         Assert.Empty(campaign.Capture().World.GeneratedEvents);
         var debug = CampaignState.Restore(snapshot with
         {
-            Time = new(1, 1, 1, 1999, 1, 29, 55), DebugMode = true,
+            Time = new(1, 1, 1, 1999, 1, 29, 55),
+            DebugMode = true,
         }, content, new SplitMix64RandomSource(17));
         AssertTimeBlocked(debug, "Mission site despawn requires research or event payloads.");
     }
@@ -111,11 +112,14 @@ public sealed class StrategicWorldSiteExpiryTests
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-expiry.rul"]);
         var snapshot = CreateSnapshot(content, "Malformed despawn weights") with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
-        snapshot = snapshot with { World = snapshot.World with
+        snapshot = snapshot with
         {
-            MissionSites = [new MissionSiteSnapshot(1, "MISSION_SITE", "SITE_OVERFLOW_EVENT", "RACE_A", 0.2, 0.1, 0)
-            { Detected = true }],
-        } };
+            World = snapshot.World with
+            {
+                MissionSites = [new MissionSiteSnapshot(1, "MISSION_SITE", "SITE_OVERFLOW_EVENT", "RACE_A", 0.2, 0.1, 0)
+                { Detected = true }],
+            }
+        };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
         Assert.Throws<InvalidDataException>(() => campaign.Execute(new AdvanceCampaignTime(1)));
         Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
@@ -132,7 +136,8 @@ public sealed class StrategicWorldSiteExpiryTests
                 UfoStatus.Flying, WorldAltitudes.High)
             {
                 OriginalWaypoint = original ? new(0.4, 0.2) : null,
-                Hunting = row[1].GetBoolean(), Escorting = row[2].GetBoolean(),
+                Hunting = row[1].GetBoolean(),
+                Escorting = row[2].GetBoolean(),
                 Destination = new(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 1, 0.2, 0.1),
             };
             var after = CampaignWorld.RestoreUfoOriginalWaypoint(ufo);
@@ -156,8 +161,13 @@ public sealed class StrategicWorldSiteExpiryTests
         var snapshot = CreateSnapshot(content, "UFO follows site") with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
         var ufo = new UfoSnapshot(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 0, 0.4, 0.2, UfoStatus.Flying, WorldAltitudes.High)
         {
-            Speed = 2200, MissionWaveNumber = 1, Shield = 0, Hunting = true, Escorting = true,
-            OriginalWaypoint = new(1, 0.6), Destination = new(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 1, 0.2, 0.1),
+            Speed = 2200,
+            MissionWaveNumber = 1,
+            Shield = 0,
+            Hunting = true,
+            Escorting = true,
+            OriginalWaypoint = new(1, 0.6),
+            Destination = new(WorldTargetKind.MissionSite, "STR_TERROR_SITE", 1, 0.2, 0.1),
         };
         snapshot = snapshot with
         {
@@ -194,6 +204,60 @@ public sealed class StrategicWorldSiteExpiryTests
         ((List<UfoSnapshot>)((CampaignWorld)unsafeCampaign.GetQuery<ICampaignWorldQuery>()!).Ufos)[0] =
             ufo with { OriginalWaypoint = null };
         AssertTimeBlocked(unsafeCampaign, "Targeted mission site despawn requires UFO follower destination repair.");
+    }
+
+    [Fact]
+    public void InstantEligibilityCaptureAgreesWithTheDeferredPayloadBoundary()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-event");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-expiry.rul"]);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "instantRows"))
+        {
+            var snapshot = CreateSnapshot(content, "Instant eligibility") with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            snapshot = snapshot with
+            {
+                CompletedResearch = row[1].GetBoolean() ? [.. snapshot.CompletedResearch, "STOP"] : snapshot.CompletedResearch,
+                World = snapshot.World with
+                {
+                    MissionSites = [new MissionSiteSnapshot(1, "MISSION_SITE",
+                        row[0].GetBoolean() ? "SITE_INTERRUPTED_EVENT" : "SITE_MISSING_EVENT", "RACE_A", 0.2, 0.1, 0)
+                    { Detected = true }],
+                },
+            };
+            var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
+            if (row[2].GetBoolean())
+            {
+                Assert.Equal(1, row[3].GetInt32()); // Reference would record generation immediately before executing its payload.
+                AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+            }
+            else
+            {
+                Assert.Equal(0, row[3].GetInt32());
+                AdvanceOne(campaign);
+                Assert.Empty(campaign.Capture().World.GeneratedEvents);
+            }
+        }
+    }
+
+    [Fact]
+    public void ExistingSiteDespawnChoicesHaveAnAggregateWorkLimit()
+    {
+        var weights = string.Join(", ", Enumerable.Range(0, 1000).Select(index => $"MISSING_{index}: 1"));
+        var overlay = "alienDeployments:\n  - type: SITE_LARGE_EVENTS\n    markerName: STR_TERROR_SITE\n" +
+            $"    despawnEvents: {{{weights}}}\n";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-expiry.rul"], extraRules: overlay);
+        var snapshot = CreateSnapshot(content, "Bounded site despawn") with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                MissionSites = Enumerable.Range(1, 1000).Select(id => new MissionSiteSnapshot(id, "MISSION_SITE", "SITE_LARGE_EVENTS",
+                    "RACE_A", 0.2, 0.1, 0)
+                { Detected = true }).ToArray(),
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new MinimumChoices());
+        AssertTimeBlocked(campaign, "Mission site despawn checks exceed the supported work limit.");
     }
 
     private sealed class MinimumChoices : IStatefulRandomSource

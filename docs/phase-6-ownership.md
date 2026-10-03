@@ -347,3 +347,18 @@ fresh/cache reload, score ordering and atomic regressions pass. See
 [site generation status](strategic-world-site-spawning-status.md). UFO conversion,
 immediate despawn and other remaining 4c world effects are still guarded precisely.
 The headless acceptance gate remains open; branch 4d is untouched.
+
+### Mission-site expiry batch (2026-10-03)
+
+Branch 4c now executes suppressed instant despawn choices and safe zero-hour site
+expiry. Live UFO followers restore their original waypoint on forced deletion;
+save-load destination conversion remains unchanged. Reference probes cover the
+caller boundaries and reset methods. Combined counter/ID/activity guards and
+fresh/cache reloads cover same-tick creation/deletion. The batch audit fixes
+same-day research shifting marker allocations and bounds aggregate despawn work.
+Known mission-unlock research and reachable instant-event payloads still stop
+before mutation. The headless gate remains open; branch 4d is untouched.
+
+Final root validation passes 1,630 tests with no failures or skips; formatting,
+fixture checksums, private corpus, allocation budgets, code-map and diff checks
+pass. The pinned C++ checkout remains clean.

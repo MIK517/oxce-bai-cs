@@ -97,11 +97,28 @@ internal sealed partial class CampaignWorld
             var count = markerReservations.GetValueOrDefault(marker) + 1;
             markerReservations[marker] = count;
             (_siteBirthIdChanges ??= []).Add(new(marker, true));
-            var first = campaign.PeekNextId(marker);
-            var end = (long)first + count;
-            if (first <= 0 || end > int.MaxValue ||
-                _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= first && site.Id < end) ||
-                _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= first && alienBase.Id < end))
+            if (highest >= CampaignTimeTrigger.OneDay)
+            {
+                work += (long)rules.Research.Count * campaign.BaseStates.Count;
+                if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+                long counterFields = 0;
+                foreach (var research in rules.Research.Rules)
+                    counterFields += research.Value.IncreaseCounters.Count + (long)research.Value.DecreaseCounters.Count;
+                work += counterFields * campaign.BaseStates.Count;
+                foreach (var owner in campaign.BaseStates)
+                    foreach (var project in owner.Research)
+                    {
+                        var research = rules.Research[project.Rule].Value;
+                        work += 1L + research.GetOneFree.Count;
+                        foreach (var group in research.GetOneFreeProtected) work += 1L + group.Topics.Count;
+                    }
+                if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+            }
+            var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest);
+            var end = range.Maximum + count;
+            if (range.Minimum <= 0 || end > int.MaxValue ||
+                _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= range.Minimum && site.Id < end) ||
+                _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= range.Minimum && alienBase.Id < end))
                 return "Mission site marker IDs are exhausted or collide with a saved target.";
         }
         return null;

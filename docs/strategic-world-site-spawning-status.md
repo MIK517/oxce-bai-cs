@@ -73,3 +73,11 @@ Counter forecasts include possible marker allocations and immediate increases;
 uncertain decreases are not credited as overflow headroom. Shared UFO ID/counter
 namespaces remain guarded. Captured zero-hour creation, fresh/cache chains,
 reload, mixed-duration choices and atomic counter/score limits cover this slice.
+
+The expiry batch audit reproduced a marker collision caused by same-day research
+changing the marker counter before allocation. The shared counter capability now
+forecasts an ordered minimum/maximum ID range, with reward uncertainty and the
+one-based decrease floor. Site collision and exhaustion checks use that range;
+safe increments/decrements proceed. Projection work includes research counter and
+reward fields. Immediate research/payload guards and aggregate existing-site
+despawn limits have additional regressions.
