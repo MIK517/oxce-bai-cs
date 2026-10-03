@@ -13,7 +13,7 @@ public sealed class StrategicWorldSelectedSiteWaypointTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SelectedSiteAreaPreservesDestinationAndStopsBeforeSiteConversion(bool cache)
+    public void SelectedSiteAreaPreservesDestinationAndConvertsOnArrival(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"], cache);
@@ -52,8 +52,9 @@ public sealed class StrategicWorldSelectedSiteWaypointTests
             Assert.Equal(random.State, after.RandomState);
             var restored = Reload(content, campaign, 17, "selected-area.sav");
             var horizon = restored.Execute(new AdvanceCampaignTime(500));
-            Assert.Equal("UFO waypoint arrival requires mission simulation.", Assert.IsType<CampaignActionBlocked>(horizon.Events[^1]).Reason);
-            Assert.Empty(restored.Capture().World.MissionSites);
+            Assert.DoesNotContain(horizon.Events, item => item is CampaignActionBlocked);
+            Assert.Contains(horizon.Events, item => item is MissionSiteDetected);
+            Assert.True(Assert.Single(restored.Capture().World.MissionSites).Detected);
         }
     }
 }

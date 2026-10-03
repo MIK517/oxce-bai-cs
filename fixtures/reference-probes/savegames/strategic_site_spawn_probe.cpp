@@ -23,12 +23,13 @@ bool insideRegion(double lon, double lat) const { return lon >= 0 && lon < 1 && 
 };
 constexpr int OBJECTIVE_RETALIATION = 2;
 struct RuleAlienMission {
-std::string siteType; int spawnZone = 0;
+std::string siteType; int spawnZone = 0; bool respawn = false;
 const std::string& getSiteType() const { return siteType; }
 std::string getType() const { return "DIRECT"; }
 int getSpawnZone() const { return spawnZone; }
 int getObjective() const { return 0; }
 bool isMultiUfoRetaliation() const { return false; }
+bool respawnUfoAfterSiteDespawn() const { return respawn; }
 };
 struct AlienDeployment {
 std::string type, marker; int minimum, maximum;
@@ -56,12 +57,23 @@ struct Base {
 double lon, lat; double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 bool getRetaliationTarget() const { return false; }
 };
-struct Ufo { struct Stats { std::string missionCustomDeploy; }; Stats getCraftStats() const { return {}; } };
+struct MissionSite;
+struct Craft { int getNumTotalUnits() const { return 0; } void setDestination(MissionSite*) {} void returnToBase() {} };
+struct Ufo {
+enum Status { FLYING, IGNORE_ME, DESTROYED }; Status status = FLYING;
+struct Stats { std::string missionCustomDeploy; }; Stats stats;
+Stats getCraftStats() const { return stats; }
+double getLongitude() const { return 0.25; } double getLatitude() const { return 0.15; }
+void setStatus(Status value) { status = value; } Status getStatus() const { return status; }
+std::vector<Craft*> getCraftFollowers() const { return {}; }
+};
 struct UfoTrajectory { int getZone(int) const { return 0; } };
-struct MissionWave { std::string ufoType; bool objectiveOnXcomBase = false; };
+struct MissionWave { std::string ufoType; bool objectiveOnXcomBase = false; bool objectiveOnTheLandingSite = false; };
 struct MissionSite {
-const AlienDeployment* deployment; double lon = 0, lat = 0; int id = 0, seconds = 0, texture = -1; std::string race, city;
-MissionSite(const RuleAlienMission*, const AlienDeployment* d, const AlienDeployment*) : deployment(d) {}
+const AlienDeployment* deployment; const AlienDeployment* custom; Ufo* ufo = nullptr;
+double lon = 0, lat = 0; int id = 0, seconds = 0, texture = -1; std::string race, city;
+MissionSite(const RuleAlienMission*, const AlienDeployment* d, const AlienDeployment* c) : deployment(d), custom(c) {}
+void setUfo(Ufo* value) { ufo = value; }
 void setLongitude(double value) { lon = value; }
 void setLatitude(double value) { lat = value; }
 void setId(int value) { id = value; }
@@ -71,7 +83,7 @@ void setTexture(int value) { texture = value; }
 void setCity(const std::string& value) { city = value; }
 };
 struct SavedGame {
-std::vector<MissionSite*> sites; std::vector<Base*> bases;
+std::vector<MissionSite*> sites; std::vector<Base*> bases; int scoreCalls = 0;
 int getId(const std::string&) { return 7; }
 auto* getMissionSites() { return &sites; }
 auto* getBases() { return &bases; }
@@ -80,6 +92,12 @@ struct AlienMission {
 RuleAlienMission _rule; std::string _race = "RACE_A", _region = "REGION"; int _missionSiteZoneArea = -1;
 MissionSite* spawnMissionSite(SavedGame&, const Mod&, const MissionArea&, const Ufo*, AlienDeployment* = nullptr);
 Base* selectXcomBase(SavedGame&, const RuleRegion&);
+void addScore(double, double, SavedGame& game) { ++game.scoreCalls; }
+void convert(SavedGame& game, const Mod& mod, Ufo& ufo, bool landing) {
+const RuleRegion& regionRules = mod.region; const UfoTrajectory trajectory;
+const size_t curWaypoint = 0; MissionWave wave; wave.objectiveOnTheLandingSite = landing;
+// CONVERSION_BODY
+}
 void direct(SavedGame& game, const Mod& mod, const MissionWave& wave, const UfoTrajectory& trajectory) {
 // DIRECT_SELECTION
 }
@@ -119,6 +137,23 @@ RNG::calls = 0; bool error = false; try { mission.direct(game, mod, wave, trajec
 std::cout << "{\"name\":\"" << name << "\",\"error\":" << (error ? "true" : "false") << ",\"calls\":" << RNG::calls << ",\"site\":[";
 if (!game.sites.empty()) { auto* site = game.sites.front(); std::cout << '\"' << site->deployment->type << "\",\"" << site->lon << "\",\"" << site->lat << "\"," << site->id << ',' << site->seconds << ",\"" << site->race << "\"," << site->texture << ",\"" << site->city << '\"'; }
 std::cout << "]}"; for (auto* site : game.sites) delete site;
+}
+std::cout << "],\"conversionRows\":[";
+first = true;
+for (bool landing : {false, true}) for (bool respawn : {false, true}) for (bool custom : {false, true}) {
+if (!first) std::cout << ','; first = false;
+Mod mod; mod.deployments.emplace("DIRECT_DEPLOY", AlienDeployment{"DIRECT_DEPLOY", "DIRECT_MARKER", 2, 3});
+mod.deployments.emplace("CUSTOM_DEPLOY", AlienDeployment{"CUSTOM_DEPLOY", "CUSTOM_MARKER", 5, 6});
+mod.region.zones = {{{{0.1, 0.3, -0.2, 0.2, 10, "CITY"}}}};
+AlienMission mission; mission._rule.siteType = "DIRECT_DEPLOY"; mission._rule.respawn = respawn;
+mission._missionSiteZoneArea = 0; Ufo ufo; if (custom) ufo.stats.missionCustomDeploy = "CUSTOM_DEPLOY";
+SavedGame game; RNG::calls = 0; mission.convert(game, mod, ufo, landing);
+auto* site = game.sites.at(0);
+std::cout << "[" << (landing ? "true" : "false") << ',' << (respawn ? "true" : "false") << ',' << (custom ? "true" : "false")
+<< ",\"" << site->lon << "\",\"" << site->lat << "\"," << site->seconds << ',' << RNG::calls << ',' << game.scoreCalls
+<< ",\"" << (site->custom ? site->custom->type : "") << "\"," << (site->ufo == &ufo ? "true" : "false")
+<< ",\"" << (ufo.status == Ufo::IGNORE_ME ? "ignore" : "destroyed") << "\"]";
+delete site;
 }
 std::cout << "]}\n";
 }

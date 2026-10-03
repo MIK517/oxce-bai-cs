@@ -362,3 +362,11 @@ before mutation. The headless gate remains open; branch 4d is untouched.
 Final root validation passes 1,630 tests with no failures or skips; formatting,
 fixture checksums, private corpus, allocation budgets, code-map and diff checks
 pass. The pinned C++ checkout remains clean.
+
+### Selected objective UFO site conversion (2026-10-03)
+
+World owns selected objective UFO conversion, immediate site revelation and
+next-tick UFO cleanup. Fresh/cache captured scenarios cover selected-area and
+landing-position sites. Remaining compound ticks, custom deployment, dormant
+links and follower transfer are guarded precisely. See
+[conversion status](strategic-world-ufo-site-conversion-status.md).
