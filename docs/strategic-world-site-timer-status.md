@@ -34,6 +34,13 @@ does; the integrated test deliberately assigns the live follower after restore.
 Follower scans have a one-million-work guard. General hunting/escort selection
 and missing-backup deletion remain outside this slice.
 
+The combined expiry audit bounds aggregate despawn-event scans and shares one
+guaranteed daily research forecast across sites. Immediate zero-hour creation
+reserves its counter increases together with existing expiry and all possible
+site marker allocations, before the clock or RNG changes. See
+[creation status](strategic-world-site-spawning-status.md) for the same-day marker
+counter correction and remaining guards.
+
 `GeoscapeState::time30Minutes` processes mission sites after UFO activity/detection
 and before scheduled events. `GeoscapeState::processMissionSite` subtracts 1800
 seconds when at least 1800 remain; a site at exactly 1800 becomes zero and

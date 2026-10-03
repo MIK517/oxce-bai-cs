@@ -476,3 +476,26 @@ without failures or skips after the final regressions were compiled. Earlier
 root runs and focused tests built the changes. Checksums, private corpus,
 allocation budgets, formatting verification, code-map validation and `git diff --check` pass. The reference
 checkout remains clean; obsolete probe objects were removed.
+
+### Mission-site expiry batch (2026-10-03)
+
+Three slices implement missing/interrupted instant-event suppression, live UFO
+follower restoration and safe zero-hour creation/expiry. Instant event payloads
+remain branch 6 work and are never converted to scheduled events. Known mission
+unlock research still guards before the tick. Pinned event and timer captures
+cover eligibility, weighted choice and target/UFO destination reset; creation
+captures include zero-hour durations. Fresh/cache transition reloads and atomic
+limits cover each slice. The audit corrects a reproduced same-day research/marker
+collision through the shared counter range forecast, and bounds aggregate despawn
+scans. See [expiry status](strategic-world-site-timer-status.md) and
+[creation status](strategic-world-site-spawning-status.md).
+
+Branch 4c remains incomplete: UFO-to-site conversion, empty marker namespaces,
+mission-unlock research, site script scheduling, new-base objectives,
+infiltration/pacts, real detection VM providers, UFO hunting/escorts and composed
+world hooks remain open. Branch 5/6 guards remain; branch 4d is untouched.
+
+Final batch validation: root `dotnet test --no-restore --verbosity quiet` passes
+all 1,630 tests with zero failures or skips, including fixture checksums, the
+private corpus and allocation budgets. Formatting verification, code-map and
+diff checks pass. The pinned reference checkout remains clean.
