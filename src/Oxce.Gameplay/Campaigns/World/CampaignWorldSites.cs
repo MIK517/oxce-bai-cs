@@ -109,9 +109,8 @@ internal sealed partial class CampaignWorld
                 if (!TryLiftUfo(ufo, fromSite: true, out _, out _))
                     return "Mission site UFO reactivation speed exceeds the supported range.";
             }
-            if (transition.Remove && (deployment.UnlockedResearchOnDespawnId.Length != 0 ||
-                deployment.DespawnEvents.Count != 0))
-                return SiteDespawnBoundary;
+            if (transition.Remove && SiteDespawnReason(deployment, highest) is { } despawnReason)
+                return despawnReason;
             if (transition.Remove) AddSiteCounterChanges(counterChanges, deployment);
         }
         return campaign.CustomCounters.CapacityReason(counterChanges, highest);
@@ -139,6 +138,7 @@ internal sealed partial class CampaignWorld
                 counterChanges.Clear();
                 AddSiteCounterChanges(counterChanges, deployment);
                 foreach (var change in counterChanges) campaign.CustomCounters.Apply(change);
+                ConsumeSuppressedSiteEvent(deployment);
             }
             ScoreUfoActivity(site.Position, transition.Score, rules);
             if (transition.Remove && site.UfoUniqueId != 0)
@@ -158,6 +158,36 @@ internal sealed partial class CampaignWorld
         var rule = campaign.Content.RuntimeRules.AlienMissions[
             campaign.Content.RuntimeRules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
         return rule.DespawnEvenIfTargeted || !SiteHasFollowers(site);
+    }
+
+    private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        if (campaign.BaseStates.Count != 0 && rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _))
+            return SiteDespawnBoundary;
+        _ = WorldAlienMissionGeneration.Total(deployment.DespawnEvents);
+        IReadOnlySet<string>? research = null;
+        foreach (var pair in deployment.DespawnEvents)
+        {
+            if (pair.Value == 0 || !rules.Events.TryGet(pair.Key, out var handle)) continue;
+            var rule = rules.Events[handle].Value;
+            if (rule.InterruptResearch.Length == 0) return SiteDespawnBoundary;
+            if (highest >= CampaignTimeTrigger.OneDay)
+            {
+                research ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+                if (!research.Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
+            }
+            else if (!campaign.HasCompletedResearch(rule.InterruptResearch)) return SiteDespawnBoundary;
+        }
+        return null;
+    }
+
+    private void ConsumeSuppressedSiteEvent(RuntimeAlienDeploymentRule deployment)
+    {
+        var id = WorldAlienMissionGeneration.Choose(deployment.DespawnEvents, campaign.Random);
+        if (campaign.Content.RuntimeRules.Events.TryGet(id, out var handle) &&
+            !IsEventInterrupted(campaign.Content.RuntimeRules.Events[handle].Value))
+            throw new InvalidOperationException(SiteDespawnBoundary);
     }
 
     // Pure forecast for handlers that run after the half-hour site loop: ten-minute
