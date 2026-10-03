@@ -193,7 +193,7 @@ public sealed class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData("GEN_IMMEDIATE", "Alien base mission can spawn during its creation tick; immediate generated waves require world simulation.")]
+    [InlineData("GEN_IMMEDIATE_UFO", "Alien base mission can spawn during its creation tick; immediate generated waves require world simulation.")]
     [InlineData("GEN_FUTURE_REGION", "Alien base mission region timeline has no entry for the current month.")]
     [InlineData("GEN_INVALID_ZONE", "Alien base site mission has an invalid spawn zone.")]
     [InlineData("GEN_WEIGHT_OVERFLOW", "Alien base mission weights exceed the supported range.")]
@@ -240,6 +240,33 @@ public sealed class StrategicWorldAlienBaseGenerationTests
             World = snapshot.World with { AlienBases = [snapshot.World.AlienBases[0] with { DeploymentId = "GEN_BASE_target" }] },
         };
         AdvanceOne(CampaignState.Restore(snapshot, content, new MinimumChoices()));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImmediateGeneratedNoObjectWavesCompleteInTheirCreationTick(bool cache)
+    {
+        var content = Load(cache);
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "immediateRows"))
+        {
+            var name = row[0].GetString()!;
+            if (name is not ("immediate" or "immediateZero")) continue;
+            var snapshot = Snapshot(content, name);
+            var random = new MinimumChoices();
+            var campaign = CampaignState.Restore(snapshot, content, random);
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            Assert.Equal(row[1].GetInt32(), Assert.Single(after.World.AlienBases).GenMissionCount);
+            Assert.Empty(after.World.Missions);
+            Assert.Empty(after.World.Ufos);
+            Assert.Equal(row[3][0].GetInt32() + 1, after.NextIds["ALIEN_MISSIONS"]);
+            Assert.Equal((ulong)row[4].GetArrayLength(), after.RandomState);
+            Reload(content, campaign, 40, "immediate-generated-no-object.sav");
+        }
+        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, "immediateLimit"), content, new MinimumChoices()),
+            "Immediate mission waves exceed the supported work limit.");
     }
 
     private static RuntimeContent Load(bool cache = false)

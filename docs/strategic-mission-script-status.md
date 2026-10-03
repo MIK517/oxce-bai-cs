@@ -271,3 +271,12 @@ forecasts clear links and interrupt before UFO arrivals and craft pursuit. Space
 missions retain their reference continuation. Captured live operation rows for all
 seven modes, fresh/cache transition reloads, pre-daily links and terminal follower
 return cover deletion; ambiguous marker identities still stop atomically.
+
+### Batch 3, slice 9: immediate generated no-object waves
+
+Base-generated missions whose possible first timers are due in the creation tick
+join no-object wave preflight. Finite zero-timer chains reserve bounded work and
+reject UFO/site creation or deferred objective completion before daily mutation.
+Generation IDs and history persist even when the mission finishes immediately.
+Captured initial timers, existing think-chain evidence, fresh/cache reloads and
+resource-limit tests cover the safe path; immediate UFO generation remains guarded.

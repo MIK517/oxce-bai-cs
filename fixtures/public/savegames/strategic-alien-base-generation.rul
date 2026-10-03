@@ -209,6 +209,30 @@ alienDeployments:
     genMission: {GEN_INTERRUPT: 1}
     genMissionFreq: 100
     genMissionLimit: 1
+  - type: GEN_BASE_immediate
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_immediate: 1}
+    genMissionFreq: 100
+    genMissionLimit: 1
+  - type: GEN_BASE_immediateZero
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_immediateZero: 1}
+    genMissionFreq: 100
+    genMissionLimit: 1
+  - type: GEN_BASE_GEN_IMMEDIATE_UFO
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_GEN_IMMEDIATE_UFO: 1}
+    genMissionFreq: 100
+    genMissionLimit: 1
+  - type: GEN_BASE_immediateLimit
+    alienBase: true
+    markerName: STR_ALIEN_BASE
+    genMission: {GEN_immediateLimit: 1}
+    genMissionFreq: 100
+    genMissionLimit: 1
 alienMissions:
   - type: GEN_local
     objective: 5
@@ -332,6 +356,16 @@ alienMissions:
     objective: 4
     interruptResearch: UNLOCK
     waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 9000}]
+  - type: GEN_immediate
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 90}]
+  - type: GEN_immediateZero
+    objective: 5
+    waves: [{count: 1, trajectory: TRAJ_PATROL, timer: 0}]
+  - type: GEN_GEN_IMMEDIATE_UFO
+    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 90}]
+  - type: GEN_immediateLimit
+    waves: [{count: 4097, trajectory: TRAJ_PATROL, timer: 0}]
 research:
   - name: GEN_STOP
     cost: 5

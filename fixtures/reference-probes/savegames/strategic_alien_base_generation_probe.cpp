@@ -75,7 +75,8 @@ void interruptDaily(Game& game){auto* saveGame=game.getSavedGame();auto* mod=gam
 }
 int main(){
  std::cout<<"{\"rows\":[";bool first=true;
- for(std::string name:{"local","weighted","target","baseRace","noRaceWeights","site","futureRace","exhausted","zeroFrequency","empty","operation1","operation2","operation3","operation4","operation5","operation6","objective0","objective1","objective2","objective3","objective4","objective5","objective6"}){
+ for(std::string name:{"local","weighted","target","baseRace","noRaceWeights","site","futureRace","exhausted","zeroFrequency","empty","operation1","operation2","operation3","operation4","operation5","operation6","objective0","objective1","objective2","objective3","objective4","objective5","objective6","immediate","immediateZero"}){
+  if(name=="immediate"){std::cout<<"],\"immediateRows\":[";first=true;}
   if(!first)std::cout<<',';first=false;RNG::calls.clear();
   RuleAlienMission rule;rule.id="GEN_"+name;Deployment dep;dep.choices.choices={{rule.id,1}};
   WeightedOptions regions{{{"REGION_SECOND",1}}},races{{{"RACE_B",1}}};
@@ -83,6 +84,8 @@ int main(){
   Game game;game.mod.rule=&rule;game.mod.regions={{r0.id,&r0},{r1.id,&r1}};
   Base b0{&region},b1{&region},b2{&second};game.save.bases={&b0,&b1,&b2};
   AlienBase base{&dep,&region};Globe globe;
+  if(name=="immediate")rule.wave.spawnTimer=90;
+  if(name=="immediateZero")rule.wave.spawnTimer=0;
   if(name=="weighted"){rule.objective=0;rule._regionWeights={{0,&regions}};rule._raceDistribution={{0,&races}};dep.fromBase=false;}
   if(name=="target"){rule.target=100;rule._regionWeights={{0,&regions}};}
   if(name=="baseRace"){rule._raceDistribution={{0,&races}};}
