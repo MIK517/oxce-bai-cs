@@ -286,7 +286,12 @@ public sealed class StrategicWorldHuntingTests
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "ignoredRows"))
-            Assert.Equal(row[2].GetBoolean(), WorldHunting.IsIgnored(row[0].GetBoolean(), row[1].GetBoolean()));
+        {
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new[]
+                { row[0].GetBoolean(), row[1].GetBoolean(), WorldHunting.IsIgnored(row[0].GetBoolean(), row[1].GetBoolean()) });
+            Assert.Equal(CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(row.GetRawText())),
+                CanonicalJson.Normalize(actual));
+        }
     }
 
     [Theory]
@@ -357,6 +362,29 @@ public sealed class StrategicWorldHuntingTests
             World = new WorldSnapshot
             {
                 Missions = [new(4, "MASS_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
+            "New UFO retargeting exceeds the supported work limit.");
+    }
+
+    [Fact]
+    public void NewHunterWorkReservesFiniteCraftProductionBeforeSpawning()
+    {
+        var content = Load(overlay: $"alienMissions:\n  - type: PRODUCTION_HUNTER_WAVE\n    objective: 0\n    waves:\n      - {{ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}}\nmanufacture:\n  - name: HUNTER_CRAFT_PRODUCT\n    category: STR_CRAFT\n    time: 1\n    producedItems: {{SHIP: 1}}\nfacilities:\n  - type: HUNTER_WORKSHOP\n    mapName: LOGISTICS\n    size: 1\n    workshops: 2000\n");
+        var snapshot = CreateSnapshot(content, "Produced craft hunter work");
+        snapshot = snapshot with
+        {
+            Time = new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+            Bases = [snapshot.Bases[0] with
+            {
+                Facilities = [.. snapshot.Bases[0].Facilities, new("HUNTER_WORKSHOP", 5, 5, 0, 0, false, false, false)],
+                Productions = [new("HUNTER_CRAFT_PRODUCT", 1001, 0, 1001, false, false, false,
+                    new Dictionary<string, int>())],
+            }],
+            World = new WorldSnapshot
+            {
+                Missions = [new(4, "PRODUCTION_HUNTER_WAVE", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
             },
         };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
