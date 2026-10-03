@@ -118,17 +118,8 @@ internal sealed partial class CampaignWorld
         var raw = WorldOperationBaseSpawn.Select(region, rules.Campaign.Globe, rule.OperationSpawnZone,
             deployment.FakeUnderwaterSpawnChance, rules.Campaign.AllowAlienBasesOnWrongTextures, campaign.Random);
         if (raw is not { } point) return mission with { Interrupted = true };
-        var position = WorldPosition.Create(point.Longitude, point.Latitude);
-        var alienBase = new AlienBaseSnapshot(campaign.NextId(deployment.MarkerName), rule.OperationBaseTypeId,
-            mission.Race, position.Longitude, position.Latitude)
-        {
-            PreservationKey = "alien-base:generated:" + checked(++_alienBaseBirthSequence)
-                .ToString(System.Globalization.CultureInfo.InvariantCulture),
-            StartMonth = campaign.MonthsPassed,
-            MinutesSinceLastHuntMissionGeneration = deployment.HuntMissionMaxFrequency,
-        };
-        _alienBases.Add(alienBase);
-        if (rule.Objective != RuntimeMissionObjective.Infiltration) ScoreUfoActivity(position, rule.Points, rules);
+        var alienBase = SpawnMissionAlienBase(mission, rule, rule.OperationBaseType!.Value, point);
+        var position = alienBase.Position;
         return mission with
         {
             AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, alienBase.Id,

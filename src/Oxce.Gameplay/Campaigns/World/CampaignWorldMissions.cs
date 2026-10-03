@@ -60,6 +60,12 @@ internal sealed partial class CampaignWorld
                 }
                 if (DeferredWaveCompletion(step, rule, rule.Waves[step.NextWave]))
                     return "Alien mission wave completion requires objective simulation.";
+                if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]))
+                {
+                    siteMarkerReservations ??= new(StringComparer.Ordinal);
+                    if (ObjectiveBaseSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork) is { } baseReason)
+                        return baseReason;
+                }
                 if (IsDirectSiteWave(step, rule))
                 {
                     siteMarkerReservations ??= new(StringComparer.Ordinal);
@@ -215,7 +221,9 @@ internal sealed partial class CampaignWorld
                     var wave = rule.Waves[mission.NextWave];
                     if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
                     if (spawnsSite) SpawnDirectSite(mission, rule);
+                    var completesBase = CompletesBaseObjective(mission, rule, wave);
                     mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
+                    if (completesBase) CompleteBaseObjective(mission, rule);
                     _missions[index] = mission;
                     // Recursion tests the original timer, not the rounded countdown.
                     if (mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
@@ -262,7 +270,7 @@ internal sealed partial class CampaignWorld
         foreach (var step in DueWaveSteps(candidate, rule))
         {
             if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-            if (!CanAdvanceNoObjectWave(step, rule)) return boundary;
+            if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]) || !CanAdvanceNoObjectWave(step, rule)) return boundary;
         }
         return null;
     }
@@ -305,8 +313,7 @@ internal sealed partial class CampaignWorld
     private static bool DeferredWaveCompletion(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave)
     {
         var finishes = mission.NextWave + 1 == rule.Waves.Count && (ulong)mission.NextUfoCounter + 1 >= wave.UfoCount;
-        return finishes && (rule.Objective == RuntimeMissionObjective.Infiltration ||
-            rule.Objective == RuntimeMissionObjective.Base && !wave.ObjectiveOnTheLandingSite);
+        return finishes && rule.Objective == RuntimeMissionObjective.Infiltration;
     }
 
     private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)

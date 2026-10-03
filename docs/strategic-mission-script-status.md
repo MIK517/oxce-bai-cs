@@ -541,3 +541,15 @@ it draws coordinates before deployment/preference, repeating the latter for
 every dynamic attempt. Fresh/cache tests execute the actual linked deployment
 selector and compare counters/errors with every captured row. Live final-wave
 and landing-site creation remain guarded until their atomic reservations exist.
+
+Final-wave base objectives now execute after the wave counter advances, including
+ordinary UFO, no-object and direct-site waves and finite immediate chains.
+Explicit, texture-weighted and emergency deployments share persistent birth
+identity and constructor defaults with operation bases. The objective birth
+does not become the mission's operation-base link; a suppressed search completes
+without interruption or allocation. Preflight reserves IDs with daily research,
+population, birth sequence, geometry work and combined score ranges before the
+affected tick. Fresh/cache tests cover reference RNG order, composed completion,
+reload before/after birth, no duplicate effects, collision/overflow and deliberate
+invalid-zone/table failures. Base-generated immediate missions still stop before
+unreserved objective creation. Landing-site creation remains the next slice.

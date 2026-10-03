@@ -143,7 +143,9 @@ public sealed class StrategicWorldObjectiveWaveTests
             var mission = new AlienMissionSnapshot(4, $"EMPTY_OBJECTIVE_{objective}", "REGION", "RACE_A", final ? 1 : 0, 0, 0, 0, -1);
             var campaign = Restore(content, mission);
             if (row[3].GetInt32() != 0)
-                AssertTimeBlocked(campaign, "Alien mission wave completion requires objective simulation.");
+                AssertTimeBlocked(campaign, objective == 2 ?
+                    "A mission tried to use zone -1, but the region only defines 7 zones." :
+                    "Alien mission wave completion requires objective simulation.");
             else if (objective is 4 or 6)
                 AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
             else
@@ -179,7 +181,9 @@ public sealed class StrategicWorldObjectiveWaveTests
             var final = row[1].GetInt32() != 0;
             var campaign = Restore(content, new AlienMissionSnapshot(4, $"AIR_OBJECTIVE_{objective}", "REGION", "RACE_A", final ? 1 : 0, 0, 0, 0, -1));
             if (row[3].GetInt32() != 0)
-                AssertTimeBlocked(campaign, "Alien mission wave completion requires objective simulation.");
+                AssertTimeBlocked(campaign, objective == 2 ?
+                    "A mission tried to use zone -1, but the region only defines 7 zones." :
+                    "Alien mission wave completion requires objective simulation.");
             else if (objective is 4 or 6)
                 AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
             else

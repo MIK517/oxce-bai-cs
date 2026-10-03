@@ -47,6 +47,10 @@ internal sealed partial class CampaignWorld
                 if (!BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch) && CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
                         regionTotals, countryTotals) is { } reason)
                     return reason;
+        if (_objectiveBaseScores is not null)
+            foreach (var birth in _objectiveBaseScores)
+                if (CheckPossibleActivity(birth.Positions, birth.Points, regionTotals, countryTotals, guaranteedAward: false) is { } reason)
+                    return reason;
         // Marker capacity is reserved for every contact that could be made, whatever the
         // radar coverage: only exhausted ID ranges can block, and they never occur in play.
         var possibleMarkerIds = 0;
