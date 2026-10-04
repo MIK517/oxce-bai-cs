@@ -1,5 +1,7 @@
+using System.Collections.Frozen;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text;
 using Oxce.Core.Diagnostics;
 using Oxce.Formats.Yaml;
 using Oxce.Mods.Resources;
@@ -230,6 +232,7 @@ public static class RuntimeRuleLinker
             });
 
         cancellationToken.ThrowIfCancellationRequested();
+        var categoryReplacements = ItemCategoryReplacements(content);
         var items = BuildFamily<ItemRuleFamily, ItemRule, RuntimeItemRule>(
             generation, content.Items.Items, rule => new RuntimeItemRule(
                 rule.Value.Values.GetString("name"),
@@ -252,6 +255,11 @@ public static class RuntimeRuleLinker
                 MeleePower = rule.Value.Values.GetInteger("meleePower"),
                 ArmorValue = rule.Value.Values.GetInteger("armor"),
                 Waypoints = rule.Value.Values.GetInteger("waypoints"),
+                TwoHanded = rule.Value.Values.Boolean("twoHanded"),
+                BlockingBothHands = rule.Value.Values.Boolean("blockBothHands"),
+                WaterOnly = rule.Value.Values.Boolean("underwaterOnly"),
+                Categories = rule.Value.Categories.Select(category => categoryReplacements.GetValueOrDefault(category, category))
+                    .ToFrozenSet(StringComparer.Ordinal),
                 Accuracy = new(rule.Value.Actions["Aimed"].Accuracy, rule.Value.Actions["Auto"].Accuracy,
                     rule.Value.Actions["Snap"].Accuracy, rule.Value.Actions["Melee"].Accuracy,
                     rule.Value.Values.GetInteger("accuracyUse"), rule.Value.Values.GetInteger("accuracyMindControl"),
@@ -903,6 +911,21 @@ public static class RuntimeRuleLinker
     private static RuleHandle<ItemRuleFamily>? OptionalItem(
         Dictionary<string, RuleHandle<ItemRuleFamily>> handles,
         string id) => id.Length != 0 && id != "STR_NONE" && handles.TryGetValue(id, out var handle) ? handle : null;
+
+    private static Dictionary<string, string> ItemCategoryReplacements(Phase3ContentCatalog content)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        // C++ applies each std::map replacement once in UTF-8 byte order. Resolve
+        // the same forward-only chains in reverse order, avoiding a scan of every
+        // replacement for every item category. Backward links and cycles stop.
+        var byteOrder = Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right));
+        foreach (var rule in content.EquipmentProduction.ItemCategories.Rules
+            .Where(static rule => rule.Value.ReplaceBy.Length != 0)
+            .Select(static rule => (rule.Id, rule.Value.ReplaceBy, Key: Encoding.UTF8.GetBytes(rule.Id)))
+            .OrderByDescending(static rule => rule.Key, byteOrder))
+            result[rule.Id] = result.GetValueOrDefault(rule.ReplaceBy, rule.ReplaceBy);
+        return result;
+    }
 
     private static RuntimeIndexedResourceReference Resource(
         RuleIndexReference reference,

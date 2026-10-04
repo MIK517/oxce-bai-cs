@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Oxce.Mods.Resources;
 using System.Collections.ObjectModel;
 using Oxce.Mods.Rulesets.CampaignStart;
@@ -256,6 +257,10 @@ public sealed record RuntimeItemRule(
 {
     public string Type { get; init; } = "";
     public RuntimeItemAccuracy Accuracy { get; init; } = RuntimeItemAccuracy.Default;
+    public bool TwoHanded { get; init; }
+    public bool BlockingBothHands { get; init; }
+    public bool WaterOnly { get; init; }
+    public IReadOnlySet<string> Categories { get; init; } = FrozenSet<string>.Empty;
     public int Power { get; init; }
     public int MeleePower { get; init; }
     public int ArmorValue { get; init; } = 20;

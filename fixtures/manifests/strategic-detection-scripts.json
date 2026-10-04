@@ -16,8 +16,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
-      "size": 29673,
-      "sha256": "9734fe22913ed7e14511a097a21e4e335b4e43ce528215de1a25ac6e424e1244"
+      "size": 29838,
+      "sha256": "8f3348241245f1d87974b8aa2129a21024aaa3a3693cf37638e6b9e382e14e01"
     },
     {
       "path": "tools/capture-strategic-detection-scripts-reference.ps1",
