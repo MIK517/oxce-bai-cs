@@ -23,6 +23,9 @@ internal sealed partial class CampaignWorld
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getAccuracyAimed" or "RuleItem.getAccuracyAuto" or "RuleItem.getAccuracySnap" or "RuleItem.getAccuracyMelee" or
         "RuleItem.getAccuracyUse" or "RuleItem.getAccuracyMind" or "RuleItem.getAccuracyPanic" or "RuleItem.getAccuracyThrow" or
+        "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" or "RuleItem.isSingleTarget" or
+        "RuleDamageType.getRandomType" or "RuleDamageType.getResistType" or "RuleDamageType.getArmorIgnore" or
+        "RuleDamageType.isDirect" or "RuleDamageType.isAreaOfEffect" or
         "RuleItem.isTwoHanded" or "RuleItem.isBlockingBothHands" or "RuleItem.isWaterOnly" or "RuleItem.hasCategory" or
         "RuleItem.getPower" or "RuleItem.getMeleePower" or "RuleItem.getArmorValue" or "RuleItem.getWaypoints" or
         "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
@@ -61,6 +64,28 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         switch (name)
         {
+            case "RuleItem.getDamageType":
+            case "RuleItem.getMeleeDamageType":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeItemRule damageItem
+                    ? name == "RuleItem.getDamageType" ? damageItem.Damage : damageItem.MeleeDamage : null);
+                break;
+            case "RuleItem.isSingleTarget":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemRule singleItem && singleItem.Damage.FixedRadius == 0 ? 1 : 0);
+                break;
+            case "RuleDamageType.getRandomType":
+            case "RuleDamageType.getResistType":
+            case "RuleDamageType.getArmorIgnore":
+            case "RuleDamageType.isDirect":
+            case "RuleDamageType.isAreaOfEffect":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemDamageRule damageRule ? name switch
+                {
+                    "RuleDamageType.getRandomType" => damageRule.RandomType,
+                    "RuleDamageType.getResistType" => damageRule.ResistType,
+                    "RuleDamageType.getArmorIgnore" => damageRule.ArmorIgnore,
+                    "RuleDamageType.isDirect" => damageRule.FixedRadius == 0 ? 1 : 0,
+                    _ => damageRule.FixedRadius != 0 ? 1 : 0,
+                } : 0);
+                break;
             case "RuleItem.hasCategory":
                 args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemRule categoryItem &&
                     categoryItem.Categories.Contains(args[2].Text ?? "") ? 1 : 0);

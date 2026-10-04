@@ -251,6 +251,8 @@ public static class RuntimeRuleLinker
                 ScriptsFor(scriptBuild.ByOwner, "items", rule.Id))
             {
                 Type = rule.Id,
+                Damage = RuntimeItemDamageProjection.Create(rule.Value.Damage),
+                MeleeDamage = RuntimeItemDamageProjection.Create(rule.Value.MeleeDamage),
                 Power = rule.Value.Values.GetInteger("power"),
                 MeleePower = rule.Value.Values.GetInteger("meleePower"),
                 ArmorValue = rule.Value.Values.GetInteger("armor"),

@@ -257,6 +257,8 @@ public sealed record RuntimeItemRule(
 {
     public string Type { get; init; } = "";
     public RuntimeItemAccuracy Accuracy { get; init; } = RuntimeItemAccuracy.Default;
+    public RuntimeItemDamageRule Damage { get; init; } = new(0, 8, 0, 0, 1, new(0, 0.1f, 0, 1, 0, 0, 0, 0.25f, 0.5f, 0, 1));
+    public RuntimeItemDamageRule MeleeDamage { get; init; } = new(0, 8, 0, 0, 1, new(0, 0.1f, 0, 1, 0, 0, 0, 0.25f, 0.5f, 0, 1));
     public bool TwoHanded { get; init; }
     public bool BlockingBothHands { get; init; }
     public bool WaterOnly { get; init; }
