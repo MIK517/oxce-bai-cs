@@ -173,6 +173,11 @@ $countryList = @(
     ('template<typename T, typename V, typename... Args, auto... X, bool (*Func)(T*, V* v, Args...)>' + [Environment]::NewLine + (Read-Method 'src/Engine/ScriptBind.h' 'struct BindListLoopImpl<bool (*)(T*, V* v, Args...), Func, X...>') + ';')
 )
 $template = $template.Replace('// COUNTRY_LIST', ($countryList -join [Environment]::NewLine))
+$nullMembers = @(
+    ('template<typename T, typename R, typename... Args, R(T::*X)(Args...) const>' + [Environment]::NewLine + (Read-Method 'src/Engine/ScriptBind.h' 'struct BindFuncImpl<R(T::*)(Args...) const, X>') + ';'),
+    ('template<typename T, typename P, typename... Args, P*(T::*X)(Args...) const>' + [Environment]::NewLine + (Read-Method 'src/Engine/ScriptBind.h' 'struct BindFuncImpl<P*(T::*)(Args...) const, X>') + ';')
+)
+$template = $template.Replace('// NULL_MEMBER_BINDINGS', ($nullMembers -join [Environment]::NewLine))
 $template = $template.Replace('// RESEARCH_FIND', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool haveReserchVector(const std::vector<const RuleResearch*> &vec, const RuleResearch *res)'))
 $template = $template.Replace('// RESEARCH_METHOD', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool SavedGame::isResearched(const RuleResearch *research, bool considerDebugMode) const'))
 $template = $template.Replace('// RESEARCH_WRAPPER', (Read-Method 'src/Savegame/SavedGame.cpp' 'void isResearchedScript('))

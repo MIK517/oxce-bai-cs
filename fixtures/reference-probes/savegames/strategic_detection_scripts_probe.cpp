@@ -125,6 +125,8 @@ bool isResearched(const RuleResearch*,bool considerDebugMode) const;
 };
 enum RetEnum { RetContinue };
 struct ScriptArgSeparator {};
+template<typename T,T X> struct BindFuncImpl;
+// NULL_MEMBER_BINDINGS
 template<auto X> struct BindMemberInvoke {
 template<typename T> static auto& f(T* t) { return t->*X; }
 };
@@ -502,6 +504,12 @@ if(!firstSmoke)std::cout<<',';firstSmoke=false;
 mod._maxViewDistance=view;int smoke=density;getSmokeReduction(&mod,smoke);array({view,density,smoke});
 }
 mod._maxViewDistance=20;
+std::cout<<"],\"nullMemberOutputs\":[";
+int nullFunding=77;const RuleCountry* nullCountryRule=&countryRule;
+using NullFunding=BindFuncImpl<decltype(&Country::getCurrentFunding),&Country::getCurrentFunding>;
+using NullRule=BindFuncImpl<decltype(&Country::getRules),&Country::getRules>;
+NullFunding::func(nullptr,nullFunding);NullRule::func(nullptr,nullCountryRule);
+array({nullFunding,nullCountryRule?1:0});
 std::cout<<"],\"modSettings\":[";
 array({mod.getMaxViewDistance(),mod.getMaxDarknessToSeeUnits()});
 for(int value: {-7,0,31,INT_MAX}) {
