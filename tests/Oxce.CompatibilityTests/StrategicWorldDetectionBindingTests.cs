@@ -12,6 +12,64 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void SoldierRuleStatsPreserveNativePrefixesAndSignedWidths(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "unitStats");
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["getTimeUnits"] = "tu",
+            ["getStamina"] = "stamina",
+            ["getHealth"] = "health",
+            ["getBravery"] = "bravery",
+            ["getReactions"] = "reactions",
+            ["getFiring"] = "firing",
+            ["getThrowing"] = "throwing",
+            ["getStrength"] = "strength",
+            ["getPsiStrength"] = "psiStrength",
+            ["getPsiSkill"] = "psiSkill",
+            ["getMelee"] = "melee",
+            ["getManaPool"] = "mana",
+        };
+        var prefixes = new[] { "StatsMin.", "StatsMax.", "StatsCap." };
+        var yamlNames = new[] { "minStats", "maxStats", "statCaps" };
+        var fields = "";
+        var code = "var ptr RuleSoldier rule; var ptr RuleSoldier absent null; var int value; rules.getRuleSoldier rule \"SOLDIER_STAT_READS\"; ";
+        for (var group = 0; group < 3; group++)
+        {
+            Assert.Equal(12, rows[group].EnumerateObject().Count());
+            fields += $"    {yamlNames[group]}: {{ " + string.Join(", ", keys.Select(pair =>
+                $"{pair.Value}: {rows[group].GetProperty(prefixes[group] + pair.Key).GetInt32()}")) + " }\n";
+            foreach (var pair in keys)
+            {
+                var method = prefixes[group] + pair.Key;
+                code += $"rule.{method} value; if neq value {rows[group].GetProperty(method).GetInt32()}; return DETECTION_NONE 0; end; ";
+                code += $"absent.{method} value; if neq value {oracle.RootElement.GetProperty("unitStatsNull").GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
+            }
+        }
+        code += "return DETECTION_RADAR 100;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            soldiers:
+              - type: SOLDIER_STAT_READS
+                armor: ARMOR
+            {{fields}}
+            ufos:
+              - type: UFO_SOLDIER_STAT_READS
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: '{{code}}'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_SOLDIER_STAT_READS", 2200);
+        campaign = Reload(content, campaign, 200, "soldier-stats-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 200, "soldier-stats-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void UnsupportedItemProvidersRemainGuardedBeforeMutation(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
