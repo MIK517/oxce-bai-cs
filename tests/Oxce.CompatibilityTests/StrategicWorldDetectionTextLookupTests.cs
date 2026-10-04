@@ -83,7 +83,7 @@ public sealed class StrategicWorldDetectionTextLookupTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UnforecastHostTextOutputRetainsConservativeDamageGuard(bool fromCache)
+    public void UnsafeHostIdentityOutputRetainsDamageGuard(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, Items + """
 
@@ -139,6 +139,43 @@ public sealed class StrategicWorldDetectionTextLookupTests
         Assert.Null(WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 8));
         Assert.Null(WorldDetectionTextForecast.Build(program, visits, 8, out var work));
         Assert.True(work > 8);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ImmutableMetadataNamesExcludeUnrelatedItemFamilies(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        Assert.Equal("", TestFixtures.Rows(oracle.RootElement, "ruleMetadata")[4].GetString());
+        AssertDetectionReadScript("var ptr RuleUnit unit; var ptr RuleItem item; var ptr RuleDamageType damage; " +
+            "var text name; var int value; rules.getRuleUnit unit \"TYPE_CHAIN\"; unit.getType name; " +
+            "rules.getRuleItem item name; item.getDamageType damage; damage.getDamageToHealth value 39; " +
+            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, Items + """
+
+              - type: TYPE_CHAIN
+                damageAlter: {ToHealth: 0.5}
+            units: [{type: TYPE_CHAIN, armor: ARMOR}]
+            """);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "inventoryMetadata"))
+        {
+            var id = row.GetProperty("id").GetString()!;
+            AssertDetectionReadScript("var ptr RuleInventory inventory; var ptr RuleItem item; var ptr RuleDamageType damage; " +
+                $"var text name; var int value; rules.getRuleInventory inventory \"{id}\"; inventory.getId name; " +
+                "rules.getRuleItem item name; item.getDamageType damage; damage.getDamageToHealth value detection_chance; " +
+                "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, Items + """
+
+                invs:
+                  - id: STR_RIGHT_HAND
+                  - id: STR_LEFT_HAND
+                  - id: STR_BACK_PACK
+                  - id: STR_BELT
+                  - id: STR_GROUND
+                  - id: STR_NONE
+                """);
+        }
     }
 
     private const string Items = """

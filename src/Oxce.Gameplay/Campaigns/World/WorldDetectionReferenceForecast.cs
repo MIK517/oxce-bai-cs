@@ -41,7 +41,7 @@ internal sealed class WorldDetectionReferenceForecast
             (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall &&
             NamedLookup(bindings[instruction.Operands[0].Scalar].Name) &&
             instruction.Operands[3].Kind == ScriptOperandKind.Register);
-        var names = needsNames ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work) : null;
+        var names = needsNames ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work, rules) : null;
         if (needsNames && names is null) return null;
         while (queue.TryDequeue(out var index))
         {

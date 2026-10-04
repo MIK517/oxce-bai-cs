@@ -82,6 +82,11 @@ internal sealed partial class CampaignWorld
             args[1] = ScriptRuntimeValue.FromScalar(WorldDetectionRuleQueries.Value(name, receiver, campaign.Content.RuntimeRules));
             return ScriptBindingResult.Success;
         }
+        if (WorldDetectionTextQueries.Supports(name))
+        {
+            args[1] = ScriptRuntimeValue.FromText(WorldDetectionTextQueries.Value(receiver));
+            return ScriptBindingResult.Success;
+        }
         var ufo = receiver as UfoSnapshot;
         var craft = receiver as CampaignState.CraftState;
         var rules = campaign.Content.RuntimeRules;
@@ -109,25 +114,6 @@ internal sealed partial class CampaignWorld
                     ? ReferenceEquals(sourceInventory, args[2].Reference) ? 0
                         : args[2].Reference is RuntimeInventoryRule targetInventory ? sourceInventory.Costs[targetInventory.Id]
                         : throw new InvalidOperationException("Detection inventory destination was not preflighted.") : 0);
-                break;
-            case "RuleInventory.getId":
-                args[1] = ScriptRuntimeValue.FromText(receiver is RuntimeInventoryRule inventoryId ? inventoryId.Id : "");
-                break;
-            case "RuleUnit.getType":
-            case "RuleCraft.getType":
-            case "RuleItem.getType":
-            case "RuleArmor.getType":
-            case "RuleSkill.getType":
-            case "RuleSoldier.getType":
-                args[1] = ScriptRuntimeValue.FromText(receiver switch
-                {
-                    RuntimeUnitRule typeUnit => typeUnit.Type,
-                    RuntimeCraftRule typeCraft => typeCraft.Type,
-                    RuntimeItemRule typeItem => typeItem.Type,
-                    RuntimeArmorRule typeArmor => typeArmor.Type,
-                    RuntimeIdentityRule typeSkill => typeSkill.Id,
-                    _ => "",
-                });
                 break;
             case "Ufo.getRules":
             case "Ufo.getRuleUfo":
