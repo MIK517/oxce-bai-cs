@@ -540,6 +540,41 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void HourlyMaintenancePreservesRepairAndRearmDelayBeforeHunting(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: HOURLY_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, repairRate: 10, autoPatrol: true}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "hourlyMaintenanceRows"))
+        {
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "HOURLY_REFUEL_HUNT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = row[0].GetString()!, Fuel = row[1].GetInt32(), Damage = row[2].GetInt32(),
+                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                },
+            }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            initial = initial with { Bases = [initial.Bases[0] with { Longitude = 0.45, Latitude = 0.21 }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "hourly-hunt-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "HOURLY_REFUEL_HUNT").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                craft.Fuel + (craft.Status == "STR_OUT" ? 20 : 0), craft.Status, craft.Damage,
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "hourly-hunt-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void LiveHuntersSelectRevealMoveAndReload(bool cache)
     {
         var content = Load(cache);
