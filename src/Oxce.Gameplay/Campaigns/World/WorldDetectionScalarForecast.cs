@@ -103,7 +103,8 @@ internal sealed class WorldDetectionScalarForecast
                 CoreScriptOperation.Jump or CoreScriptOperation.BranchCondition))
                 Write(operands[0], WorldDetectionScalarRanges.Apply(operation, Read(operands[0], incoming),
                     operands.Count > 1 ? Read(operands[1], incoming) : WorldDetectionScalarRanges.Full,
-                    operands.Count > 2 ? Read(operands[2], incoming) : WorldDetectionScalarRanges.Full));
+                    operands.Count > 2 ? Read(operands[2], incoming) : WorldDetectionScalarRanges.Full,
+                    operands.Count > 3 ? Read(operands[3], incoming) : WorldDetectionScalarRanges.Full));
             if (operation is CoreScriptOperation.Exit or CoreScriptOperation.Return) continue;
             if (operation == CoreScriptOperation.Jump) Join(operands[0].Scalar);
             else

@@ -10,6 +10,37 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionNumericTests
 {
     [Fact]
+    public void SignedDivisionAndModuloIntervalsContainEverySmallDomainResult()
+    {
+        var domains = new[] { (-6, -2), (-3, 3), (2, 6), (-5, -5), (5, 5) };
+        foreach (var a in domains)
+            foreach (var b in domains.Where(static range => range.Item1 > 0 || range.Item2 < 0))
+                foreach (var c in domains.Where(static range => range.Item1 > 0 || range.Item2 < 0))
+                    foreach (var operation in new[] { CoreScriptOperation.Divide, CoreScriptOperation.Modulo,
+                                 CoreScriptOperation.MultiplyDivide, CoreScriptOperation.OffsetModulo })
+                    {
+                        var range = WorldDetectionScalarRanges.Apply(operation, a, b, c, b);
+                        for (var x = a.Item1; x <= a.Item2; x++)
+                            for (var y = b.Item1; y <= b.Item2; y++)
+                                for (var z = c.Item1; z <= c.Item2; z++)
+                                {
+                                    var value = operation switch
+                                    {
+                                        CoreScriptOperation.Divide => x / y,
+                                        CoreScriptOperation.Modulo => x % y,
+                                        CoreScriptOperation.MultiplyDivide => (long)x * y / z,
+                                        _ => (((long)x * y + z) % y + y) % y,
+                                    };
+                                    Assert.InRange(value, range.Min, range.Max);
+                                }
+                    }
+        Assert.Equal(WorldDetectionScalarRanges.Full,
+            WorldDetectionScalarRanges.Apply(CoreScriptOperation.Divide, (1, 39), (-1, 1), (0, 0)));
+        Assert.Equal((2, 2), WorldDetectionScalarRanges.Apply(CoreScriptOperation.MultiplyDivide,
+            (int.MaxValue, int.MaxValue), (2, 2), (int.MaxValue, int.MaxValue)));
+    }
+
+    [Fact]
     public void NativeArithmeticAndCalculatedOperandCasesExecuteInTheCoreVm()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
