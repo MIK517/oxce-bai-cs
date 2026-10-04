@@ -14,11 +14,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldEnduranceTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SeventyTwoHoursComposeFiniteMissionsCraftOperationsAndReloads(bool fromCache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SeventyTwoHoursComposeFiniteMissionsCraftOperationsAndReloads(bool fromCache, bool initializeWorld)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul", fromCache);
+        if (initializeWorld) TestFixtures.LoadVerifiedManifest("strategic-world-composition");
+        var content = StrategicReadinessTestContent.Load(initializeWorld
+            ? ["strategic-world.rul", "strategic-world-entry-endurance.rul"] : ["strategic-world.rul"], fromCache);
         var snapshot = CreateLifecycleSnapshot(content);
         var owner = snapshot.Bases[0];
         var craft = owner.Crafts.Single(item => item.RuleId == "SHIP");
@@ -42,6 +46,11 @@ public sealed class StrategicWorldEnduranceTests
                     { RuleId = "MISSION_ENDURANCE", NextWave = 0, LiveUfos = 0, SpawnCountdown = 30 }],
             },
         };
+        if (initializeWorld) snapshot = snapshot with
+        {
+            MonthsPassed = -1,
+            World = snapshot.World with { Missions = [] },
+        };
         var stepped = Run(1, false);
         var batched = Run(120, false);
         var reloaded = Run(120, true);
@@ -51,6 +60,15 @@ public sealed class StrategicWorldEnduranceTests
         CampaignSnapshot Run(int maximumBatch, bool reload)
         {
             var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            if (initializeWorld)
+            {
+                Assert.Equal("ENTRY_UNLOCK", Assert.IsType<CampaignArcUnlocked>(
+                    Assert.Single(campaign.Execute(new EnterCampaignWorld()).Events)).RuleId);
+                Assert.Equal(0, campaign.MonthsPassed);
+                Assert.Equal(snapshot.DaysPassed + 1, campaign.DaysPassed);
+                Assert.Single(campaign.Capture().World.Missions);
+                Assert.Single(campaign.Capture().World.Events);
+            }
             var ticks = 0;
             var contacts = 0;
             var landings = 0;
@@ -113,7 +131,18 @@ public sealed class StrategicWorldEnduranceTests
             Assert.Equal(2, peak);
             Assert.Empty(after.World.Ufos);
             Assert.Empty(after.World.Missions);
-            Assert.Equal(snapshot.DaysPassed + 3, after.DaysPassed);
+            Assert.Equal(snapshot.DaysPassed + 3 + (initializeWorld ? 1 : 0), after.DaysPassed);
+            if (initializeWorld)
+            {
+                Assert.Contains("ENTRY_UNLOCK", after.CompletedResearch);
+                Assert.Equal(snapshot.ResearchScores[^1] + 100, after.ResearchScores[^1]);
+                Assert.Equal(1, after.World.Strategy.MissionRuns.Single(pair => pair.Key == "ENTRY_RUN").Value);
+                Assert.Equal(1, after.World.GeneratedEvents["ENTRY_FUTURE"]);
+                Assert.Equal(1440, Assert.Single(after.World.Events).SpawnCountdown);
+                var beforeEntryRetry = campaign.Capture();
+                Assert.Empty(campaign.Execute(new EnterCampaignWorld()).Events);
+                Assert.Equivalent(beforeEntryRetry, campaign.Capture(), strict: true);
+            }
             Assert.Equal(0, Assert.Single(after.Bases[0].Facilities,
                 facility => facility.RuleId == "MIND_SCREEN_TEST").BuildTime);
             Assert.Equal(snapshot.NextIds.GetValueOrDefault("STR_UFO_UNIQUE", 1) + 36, after.NextIds["STR_UFO_UNIQUE"]);

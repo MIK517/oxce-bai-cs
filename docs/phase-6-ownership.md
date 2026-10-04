@@ -1327,3 +1327,6 @@ Branch 4c newborn monthly processing: removed the composed caller's newborn upgr
 
 
 Branch 4c registered monthly hook: the handler now runs after calendar month advancement and before purchase-limit reset, matching the captured GeoscapeState::time1Month prefix. World preflight uses the prospective next month before mutation. Isolated registered-handler tests compare calendar-month scheduling to the native capture and reload its transitions; the ordinary campaign dispatcher retains its branch 6 month boundary. Full later-month fallthrough coordination remains protected by that guard.
+
+
+Branch 4c startup endurance: the 72-hour world scenario now also starts from month -1 through EnterCampaignWorld, rather than injecting its mission. Arc research enables mission scheduling; the mission counter enables a future event. Stepped, batched and transition-reloaded runs agree for fresh/cache content across craft dispatch/patrol/recall, servicing/fuel return, 36 UFO detections/landings and finite cleanup. The future event remains scheduled with 1,440 minutes after 72 hours, generated history and run counters persist, and repeated entry remains a no-op. The existing populated allocation checks still pass.

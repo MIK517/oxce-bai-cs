@@ -27,6 +27,11 @@
       "path": "fixtures/public/savegames/strategic-world-composition.rul",
       "size": 1043,
       "sha256": "89a190d6001e1cc6b0abf85b240178727e95f46dfc8548bb68311ad809d827ab"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world-entry-endurance.rul",
+      "size": 804,
+      "sha256": "f5497b40b11fb7b68065f236423b98af722d36050c2912d194facdeec6b5202c"
     }
   ],
   "normalization": [
