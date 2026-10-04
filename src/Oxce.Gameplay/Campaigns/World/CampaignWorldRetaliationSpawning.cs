@@ -60,7 +60,10 @@ internal sealed partial class CampaignWorld
             Ufo = rule.SpawnUfo ?? wave.Ufo,
             TrajectoryId = RuntimeUfoTrajectoryRule.RetaliationAssaultRun,
             Trajectory = campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(RuntimeUfoTrajectoryRule.RetaliationAssaultRun),
-            HunterKillerPercentage = 0, HuntMode = 0, HuntBehavior = 0, Escort = false,
+            HunterKillerPercentage = 0,
+            HuntMode = 0,
+            HuntBehavior = 0,
+            Escort = false,
         };
     }
 

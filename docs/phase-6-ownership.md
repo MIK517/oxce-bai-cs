@@ -829,3 +829,9 @@ next two slices. Combat and deployment remain branch 5.
   and linked/regional origin evidence. Fresh/cache live traces and reloads preserve
   assault identity and omit hunter/escort rolls. Instant base-defense arrival,
   ground starts and regional ground origins retain explicit capability boundaries.
+
+- Batch 4 audit: no additional semantic issue was confirmed across scouting,
+  interruption and safe assault births. All 1,878 root tests pass (no skips),
+  including oracle checksums; source/RNG ordering and fresh/cache rewrite tests pass.
+  Formatting verification identified initializer whitespace, corrected separately.
+  The reference checkout remains read-only and branch 4d is untouched.
