@@ -98,7 +98,16 @@ StatsOwner* owner;
 std::map<std::string,int> values;
 template<auto Root,auto Field> void addField(const std::string& name) { values[name]=((owner->*Root).*Field); }
 };
-struct RuleUfo { template<class T> int getScript() const { return 0; } };
+struct RuleUfo {
+int _radius=-1,_range=0,_power=0,_reload=0;
+std::string _size;
+int getRadius() const;
+int getWeaponRange() const;
+int getWeaponPower() const;
+int getWeaponReload() const;
+template<class T> int getScript() const { return 0; }
+};
+// UFO_RULE_METHODS
 struct Ufo {
 int visibility=0;
 int _damage=14,_shield=3,_huntMode=2,_huntBehavior=1;
@@ -295,5 +304,19 @@ if(cap!=-10)std::cout<<',';
 countryRule._fundingCap=cap;
 array({countryA.getRules()->getFundingCap(),countryA.getRules()==&countryRule?1:0});
 }
-std::cout<<"]}\n";
+std::cout<<"],\"ufoRules\":[";
+RuleUfo ruleRead;
+const char* sizes[]={"STR_VERY_SMALL","STR_SMALL","STR_MEDIUM_UC","STR_LARGE","STR_VERY_LARGE","UNKNOWN"};
+for(int i=0;i<6;++i) {
+if(i)std::cout<<',';
+ruleRead._size=sizes[i];ruleRead._radius=-1;
+array({i,-1,ruleRead.getRadius()});
+}
+for(int radius: {-2,0,17,INT_MAX}) {
+std::cout<<',';ruleRead._radius=radius;
+array({5,radius,ruleRead.getRadius()});
+}
+ruleRead._range=-7;ruleRead._power=INT_MAX;ruleRead._reload=11;
+std::cout<<"],\"ufoWeapons\":";array({ruleRead.getWeaponRange(),ruleRead.getWeaponPower(),ruleRead.getWeaponReload()});
+std::cout<<"}\n";
 }

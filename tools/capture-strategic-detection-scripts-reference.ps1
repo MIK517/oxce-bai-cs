@@ -25,6 +25,13 @@ $methods = @(
     (Read-Method 'src/Savegame/Craft.cpp' 'UfoDetection Craft::detect(')
 )
 $template = $template.Replace('// METHODS', ($methods -join [Environment]::NewLine))
+$ufoRuleMethods = @(
+    (Read-Method 'src/Mod/RuleUfo.cpp' 'int RuleUfo::getRadius()'),
+    (Read-Method 'src/Mod/RuleUfo.cpp' 'int RuleUfo::getWeaponRange()'),
+    (Read-Method 'src/Mod/RuleUfo.cpp' 'int RuleUfo::getWeaponPower()'),
+    (Read-Method 'src/Mod/RuleUfo.cpp' 'int RuleUfo::getWeaponReload()')
+)
+$template = $template.Replace('// UFO_RULE_METHODS', ($ufoRuleMethods -join [Environment]::NewLine))
 $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamagePercentage()'),

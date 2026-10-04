@@ -553,3 +553,15 @@ country-loop work is shared across detection callers and explicit unsafe iterato
 calls stop before mutation. All 2,002 root tests pass with zero failures/skips,
 including private corpus and checksum tests. Formatting, code-map validation and
 diff checks pass. The 4c headless gate remains open; branch 4d is untouched.
+
+## Complete UFO rule scalar detection getters (2026-10-04)
+
+Immutable UFO projections and read-only detection providers expose radius and
+weapon range/power/reload, alongside all nineteen stat getters. Native methods
+cover the five size defaults, unknown sizes, negative radius fallback and explicit
+zero/large radii; signed weapon fields retain their original keys and values.
+A failing-before-fix regression corrects the typed unknown-size radius from two
+to the reference zero. Fresh/cache VM execution and transition reloads cover all
+rows and null receivers. Cache/compiler revision is 38.
+Reference: RuleUfo.cpp::load/getRadius/getWeaponRange/getWeaponPower/getWeaponReload/
+ScriptRegister. This adds read access only; interception remains in branch 5.
