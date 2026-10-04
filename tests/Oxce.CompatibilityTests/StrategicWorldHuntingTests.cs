@@ -455,6 +455,91 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void HalfHourItemRefuellingPrecedesHunterSelection(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: ITEM_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => row[0].GetBoolean() && !row[4].GetBoolean()))
+        {
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "ITEM_REFUEL_HUNT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING", Fuel = row[1].GetInt32(), LowFuel = row[3].GetBoolean(),
+                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                },
+            }) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            initial = initial with { Bases = [initial.Bases[0] with
+            { Longitude = 0.45, Latitude = 0.21, Items = row[2].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[2].GetInt32() } }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "item-refuel-hunt-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "ITEM_REFUEL_HUNT").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                craft.Fuel + (craft.Status == "STR_OUT" ? 1 : 0), craft.Status,
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY"), craft.LowFuel,
+                result.Events.OfType<CraftArrivalServiceMessage>().Any(message => message.Message == "STR_NOT_ENOUGH_ITEM_TO_REFUEL_CRAFT_AT_BASE"),
+                craft.Takeoff + (craft.Status == "STR_OUT" ? 1 : 0),
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "item-refuel-hunt-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SharedFuelStocksPreserveCraftOrderBeforeHunting(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: SHARED_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "sharedFuelRows"))
+        {
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+            CraftSnapshot Craft(int id, int fuel, bool auto) => template with
+            {
+                RuleId = "SHARED_REFUEL_HUNT", Id = id,
+                Logistics = template.Logistics! with
+                {
+                    Status = "STR_REFUELLING", Fuel = fuel, IsAutoPatrolling = auto,
+                    AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                },
+            };
+            initial = initial with { Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21,
+                Items = row[1].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[1].GetInt32() },
+                Crafts = [Craft(1, row[0].GetInt32(), row[2].GetBoolean()), Craft(2, 60, true)],
+                Soldiers = [],
+            }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "shared-refuel-hunt-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var first = after.Bases[0].Crafts[0].Logistics!;
+            var second = after.Bases[0].Crafts[1].Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                first.Fuel + (first.Status == "STR_OUT" ? 1 : 0), first.Status,
+                second.Fuel + (second.Status == "STR_OUT" ? 1 : 0), second.Status,
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY"),
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "shared-refuel-hunt-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void LiveHuntersSelectRevealMoveAndReload(bool cache)
     {
         var content = Load(cache);

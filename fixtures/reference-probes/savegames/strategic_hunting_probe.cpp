@@ -127,6 +127,28 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
+std::cout << "],\"sharedFuelRows\":[";
+serviceFirst=true;
+for(int firstFuel:{0,60,100}) for(int stock:{0,1,2}) for(bool firstAuto:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft firstCraft,secondCraft; Item item; Base base; ServiceGame game; Ufo hunter;
+base.storage.count=stock;
+firstCraft._base=secondCraft._base=&base; firstCraft.rule.fuelItem=secondCraft.rule.fuelItem=&item;
+firstCraft.id=1; secondCraft.id=2; firstCraft._fuel=firstFuel; secondCraft._fuel=60;
+firstCraft.autoPatrol=firstAuto;
+firstCraft.distance=secondCraft.distance=Nautical(100);
+std::vector<Craft*> active;
+for(Craft* craft:{&firstCraft,&secondCraft}) {
+const auto missing=craft->refuel();
+if(missing.empty()) autoPatrol(craft,&game);
+if(craft->_status=="STR_OUT" && craft->_damage<craft->_stats.damageMax) active.push_back(craft);
+}
+Craft* target=select(&hunter,active);
+std::cout << '[' << firstFuel << ',' << stock << ',' << (firstAuto?"true":"false") << ','
+<< firstCraft._fuel << ",\"" << firstCraft._status << "\"," << secondCraft._fuel << ",\"" << secondCraft._status
+<< "\"," << base.storage.count << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
 std::cout << "],\"attractionRows\":[";
 bool first = true;
 for (int mode : {0,1}) for (bool landing : {false,true}) for (int capacity : {0,2,8}) for (int speed : {2000,6000}) for (int damage : {0,50}) {

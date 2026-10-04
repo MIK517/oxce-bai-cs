@@ -76,12 +76,20 @@ internal sealed partial class CampaignWorld
             return "UFO hunting stats exceed the supported range.";
         var crafts = new List<WorldHuntCraft>();
         foreach (var owner in campaign.BaseStates)
+        {
+            Dictionary<RuleHandle<ItemRuleFamily>, int>? fuelStocks = null;
+            if (forecastFuel && highest >= CampaignTimeTrigger.ThirtyMinutes)
+            {
+                work += owner.Items.Count;
+                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                fuelStocks = new(owner.Items);
+            }
             foreach (var craft in owner.Crafts)
             {
                 if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 if (craft.Logistics is not { } state) continue;
                 var craftRule = rules.Crafts[craft.Rule].Value;
-                if (forecastFuel && ForecastHuntingCraftState(owner, craft, highest, out state) is { } serviceReason)
+                if (forecastFuel && ForecastHuntingCraftState(owner, craft, highest, fuelStocks, out state) is { } serviceReason)
                     return serviceReason;
                 var original = projected.Hunting && projected.Destination is { } destination &&
                     destination.TypeId == rules.Crafts.GetExternalId(craft.Rule) && destination.Id == craft.Id;
@@ -106,6 +114,7 @@ internal sealed partial class CampaignWorld
                     craft.Id, state.Longitude, state.Latitude);
                 crafts.Add(new(reference, reference.Position, attraction, ignored, craftRule.Undetectable, active));
             }
+        }
         var selected = WorldHunting.Select(projected, (int)radar, crafts);
         if (selected is not null)
         {
