@@ -148,7 +148,8 @@ internal sealed partial class CampaignWorld
                     } :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
                     receiver is RuntimeItemRule itemRule ? name == "RuleItem.getWeight" ? itemRule.Weight : itemRule.BattleType :
-                    receiver is RuntimeArmorRule armorRule ? armorRule.Size :
+                    receiver is RuntimeArmorRule armorRule ? DetectionUnitRuleStat(name) is (4, { } armorKey)
+                        ? armorRule.Stats.GetValueOrDefault(armorKey) : armorRule.Size :
                     receiver is RuntimeSoldierRule soldierRule ? DetectionSoldierStat(name, soldierRule) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch
