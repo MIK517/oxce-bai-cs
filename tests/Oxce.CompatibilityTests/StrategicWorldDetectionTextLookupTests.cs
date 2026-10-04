@@ -218,6 +218,45 @@ public sealed class StrategicWorldDetectionTextLookupTests
             }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void IdentityChainsUseExactReceiversAcrossSeveralLookupPasses(bool fromCache, bool fromCraft)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        var code = "var text name; var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+            "rules.getRuleItem item \"SAFE\"; ";
+        for (var index = 0; index < 4; index++) code += "item.getType name; rules.getRuleItem item name; ";
+        code += "item.getDamageType damage; damage.getDamageToHealth value 39; " +
+            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+        AssertDetectionReadScript(code, fromCache, fromCraft, Items);
+        AssertDetectionReadScript("var text name \"SAFE\"; var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+            "loop var i 3; rules.getRuleItem item name; item.getType name; if neq name \"SAFE\"; return DETECTION_NONE 0; end; end; " +
+            "item.getDamageType damage; damage.getDamageToHealth value 39; " +
+            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;", fromCache, fromCraft, Items);
+        AssertDetectionReadScript("var ptr RuleItem absent null; var ptr RuleItem item; var ptr RuleDamageType damage; var text name; " +
+            "var int value; absent.getType name; rules.getRuleItem item name; item.getDamageType damage; " +
+            "damage.getDamageToHealth value detection_chance; if neq value 0; return DETECTION_NONE 0; end; " +
+            "return DETECTION_RADAR 100;", fromCache, fromCraft, Items);
+    }
+
+    [Fact]
+    public void IdentityFeedbackChargesEveryPassAndConvergesWithinItsWorkBudget()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: Items);
+        var program = ScriptCompiler.Compile("var text name; var ptr RuleItem item; rules.getRuleItem item \"SAFE\"; " +
+            "item.getType name; rules.getRuleItem item name; return;", ScriptParserDefinition.FromCatalog("detectUfoFromBase")).Program!;
+        var visits = Enumerable.Repeat(1, program.Instructions.Count).ToArray();
+        var references = WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 10000)!;
+        var last = program.Instructions.Select((instruction, index) => (instruction, index)).Last(pair =>
+            (CoreScriptOperation)pair.instruction.Operation.Value == CoreScriptOperation.HostCall);
+        Assert.Same(content.RuntimeRules.Items[content.RuntimeRules.Items.GetRequired("SAFE")].Value,
+            Assert.Single(references.At(last.index + 1, last.instruction.Operands[2])!));
+        Assert.Null(WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 100));
+    }
+
     private const string Items = """
         items:
           - type: SAFE

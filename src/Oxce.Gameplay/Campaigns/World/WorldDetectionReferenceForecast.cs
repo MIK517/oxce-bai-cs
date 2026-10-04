@@ -24,8 +24,42 @@ internal sealed class WorldDetectionReferenceForecast
 
     internal static WorldDetectionReferenceForecast? Build(ScriptProgram program, RuntimeRuleCatalog rules, int[] visits, long maximumWork)
     {
+        var bindings = program.Bindings.ToDictionary(static binding => binding.Id.Value);
+        var needsNames = program.Instructions.Any(instruction =>
+            (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall &&
+            NamedLookup(bindings[instruction.Operands[0].Scalar].Name) &&
+            instruction.Operands[3].Kind == ScriptOperandKind.Register);
+        var needsTextConditions = program.Registers.Any(static register => register.Type.Id == ScriptPrimitiveTypes.Text) &&
+            program.Instructions.Any(static instruction => (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.BranchCondition);
+        var needsText = needsNames || needsTextConditions;
+        var metadata = program.Bindings.Any(static binding => WorldDetectionTextQueries.Supports(binding.Name));
+        long work = 0;
+        var names = needsText ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work, metadata ? null : rules) : null;
+        if (needsText && names is null) return null;
+        while (true)
+        {
+            var built = BuildCore(program, rules, visits, maximumWork - work, names);
+            work += built.Work;
+            if (built.Forecast is null) return null;
+            if (!metadata || names is null) return built.Forecast;
+            // Alternate conservative text/reference proofs until immutable identity chains stabilize.
+            // Every pass and comparison consumes the same budget; no VM, RNG or campaign mutation runs.
+            var refined = WorldDetectionTextForecast.Build(program, visits, maximumWork - work, out var textWork, rules, built.Forecast);
+            work += textWork;
+            if (refined is null) return null;
+            var stable = names.Equivalent(refined, ref work, maximumWork);
+            if (work > maximumWork) return null;
+            if (stable) return built.Forecast;
+            names = refined;
+        }
+    }
+
+    private static (WorldDetectionReferenceForecast? Forecast, long Work) BuildCore(ScriptProgram program,
+        RuntimeRuleCatalog rules, int[] visits, long maximumWork, WorldDetectionTextForecast? names)
+    {
+        long work = 0;
         var states = new Dictionary<int, HashSet<object?>?>?[program.Instructions.Count];
-        if (states.Length == 0) return new(states);
+        if (states.Length == 0) return (new(states), work);
         states[0] = program.Registers.Where(static register => register.Type.IsReference)
             .DistinctBy(static register => register.Offset)
             .ToDictionary(static register => register.Offset, register => register.IsInput && register.Name == "rules"
@@ -35,25 +69,15 @@ internal sealed class WorldDetectionReferenceForecast
         var queued = new bool[states.Length];
         queue.Enqueue(0);
         queued[0] = true;
-        long work = 0;
         var bindings = program.Bindings.ToDictionary(static binding => binding.Id.Value);
-        var needsNames = program.Instructions.Any(instruction =>
-            (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall &&
-            NamedLookup(bindings[instruction.Operands[0].Scalar].Name) &&
-            instruction.Operands[3].Kind == ScriptOperandKind.Register);
-        var needsTextConditions = program.Registers.Any(static register => register.Type.Id == ScriptPrimitiveTypes.Text) &&
-            program.Instructions.Any(static instruction => (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.BranchCondition);
-        var needsText = needsNames || needsTextConditions;
-        var names = needsText ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work, rules) : null;
-        if (needsText && names is null) return null;
         while (queue.TryDequeue(out var index))
         {
             queued[index] = false;
-            if (++work > maximumWork) return null;
+            if (++work > maximumWork) return (null, work);
             if (visits[index] == 0 || names is not null && !names.Reachable(index)) continue;
             var incoming = states[index]!;
             work += Size(incoming);
-            if (work > maximumWork) return null;
+            if (work > maximumWork) return (null, work);
             var state = new Dictionary<int, HashSet<object?>?>(incoming);
             var instruction = program.Instructions[index];
             var operands = instruction.Operands;
@@ -86,7 +110,7 @@ internal sealed class WorldDetectionReferenceForecast
                         else if (possibleNames is not null)
                         {
                             work += possibleNames.Sum(static name => 1L + name.Length);
-                            if (work > maximumWork) return null;
+                            if (work > maximumWork) return (null, work);
                             values = new(ReferenceEqualityComparer.Instance);
                             foreach (var name in possibleNames)
                             {
@@ -115,14 +139,14 @@ internal sealed class WorldDetectionReferenceForecast
                         else
                         {
                             work += rules.Countries.Count + 1L;
-                            if (work > maximumWork) return null;
+                            if (work > maximumWork) return (null, work);
                             values = new(rules.Countries.Rules.Select(static rule => (object?)rule.Value), ReferenceEqualityComparer.Instance) { null };
                         }
                     }
                     else if (binding.Name is "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" && source is not null)
                     {
                         work += source.Count;
-                        if (work > maximumWork) return null;
+                        if (work > maximumWork) return (null, work);
                         values = new(ReferenceEqualityComparer.Instance);
                         foreach (var item in source)
                             values.Add(item is RuntimeItemRule rule
@@ -132,7 +156,7 @@ internal sealed class WorldDetectionReferenceForecast
                         "RuleUnit.getCivilianRecoveryItemType" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" && source is not null)
                     {
                         work += source.Count + source.OfType<string>().Sum(static name => (long)name.Length);
-                        if (work > maximumWork) return null;
+                        if (work > maximumWork) return (null, work);
                         values = new(ReferenceEqualityComparer.Instance);
                         foreach (var candidate in source) values.Add(LinkedValue(rules, binding.Name, candidate));
                     }
@@ -146,7 +170,7 @@ internal sealed class WorldDetectionReferenceForecast
                 Join(index + 1, operation == CoreScriptOperation.BranchCondition ? true : null);
                 if (operation == CoreScriptOperation.BranchCondition) Join(operands[^1].Scalar, false);
             }
-            if (work > maximumWork) return null;
+            if (work > maximumWork) return (null, work);
 
             void Write(ScriptOperand target, HashSet<object?>? value)
             {
@@ -212,7 +236,7 @@ internal sealed class WorldDetectionReferenceForecast
                 }
             }
         }
-        return new(states);
+        return (new(states), work);
     }
 
     private static bool NamedLookup(string name) => name is
