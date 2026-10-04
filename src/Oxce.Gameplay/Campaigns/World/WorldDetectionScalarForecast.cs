@@ -56,6 +56,14 @@ internal sealed class WorldDetectionScalarForecast
             {
                 var binding = bindings[operands[0].Scalar];
                 var range = (Min: int.MinValue, Max: int.MaxValue);
+                if (WorldDetectionBoundedQueries.Range(binding.Name) is { } bounded)
+                    range = WorldDetectionReferenceForecast.OnlyNull(references.At(index, operands[1])) ? (0, 0) : bounded;
+                if (binding.Name == "RuleMod.getSmokeReduction" && references.At(index, operands[1]) is { Count: 1 } mod && mod.Contains(rules))
+                {
+                    var product = WorldDetectionScalarRanges.Apply(CoreScriptOperation.Multiply, Read(operands[2], incoming),
+                        (rules.Campaign.MaximumViewDistance, rules.Campaign.MaximumViewDistance), (0, 0));
+                    range = WorldDetectionScalarRanges.Apply(CoreScriptOperation.Divide, product, (60, 60), (0, 0));
+                }
                 if (WorldDetectionItemQueries.Supports(binding.Name))
                 {
                     var candidates = references.At(index, operands[1]);

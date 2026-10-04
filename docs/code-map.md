@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 118 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 119 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 151 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 152 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 86 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 118 files.
+`src/Oxce.Gameplay` - 119 files.
 
 ### `Oxce.Gameplay`
 
@@ -1024,14 +1024,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 151 files.
+`tests/Oxce.CompatibilityTests` - 152 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>149 test classes</summary>
+<details><summary>150 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1127,6 +1127,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldCraftShieldTests` ([StrategicWorldCraftShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftShieldTests.cs))
 - `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs))
 - `StrategicWorldDetectionBindingTests` ([StrategicWorldDetectionBindingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBindingTests.cs))
+- `StrategicWorldDetectionBoundedQueriesTests` ([StrategicWorldDetectionBoundedQueriesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBoundedQueriesTests.cs))
 - `StrategicWorldDetectionCountryTests` ([StrategicWorldDetectionCountryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionCountryTests.cs))
 - `StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))
 - `StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs))
@@ -1425,7 +1426,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-detection-damage](../fixtures/manifests/strategic-detection-damage.json) | cpp-reference | `savegames/strategic-detection-damage.expected.json` | `StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs))<br>`StrategicWorldDetectionTextLookupTests` ([StrategicWorldDetectionTextLookupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTextLookupTests.cs)) |
 | [strategic-detection-inventory-cost](../fixtures/manifests/strategic-detection-inventory-cost.json) | cpp-reference | `savegames/strategic-detection-inventory-cost.expected.json` | `StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))<br>`StrategicWorldDetectionTextLookupTests` ([StrategicWorldDetectionTextLookupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTextLookupTests.cs)) |
 | [strategic-detection-numeric](../fixtures/manifests/strategic-detection-numeric.json) | cpp-reference | `scripting/strategic-detection-numeric.expected.json` | `StrategicWorldDetectionNumericTests` ([StrategicWorldDetectionNumericTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionNumericTests.cs)) |
-| [strategic-detection-scripts](../fixtures/manifests/strategic-detection-scripts.json) | cpp-reference | `savegames/strategic-detection-scripts.expected.json` | `StrategicWorldDetectionBindingTests` ([StrategicWorldDetectionBindingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBindingTests.cs))<br>`StrategicWorldDetectionCountryTests` ([StrategicWorldDetectionCountryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionCountryTests.cs))<br>`StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))<br>`StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs))<br>`StrategicWorldDetectionReferenceLinksTests` ([StrategicWorldDetectionReferenceLinksTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionReferenceLinksTests.cs))<br>`StrategicWorldDetectionResearchTests` ([StrategicWorldDetectionResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionResearchTests.cs))<br>`StrategicWorldDetectionRuleQueriesTests` ([StrategicWorldDetectionRuleQueriesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionRuleQueriesTests.cs))<br>`StrategicWorldDetectionScriptInputsTests` ([StrategicWorldDetectionScriptInputsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionScriptInputsTests.cs))<br>`StrategicWorldDetectionTagTests` ([StrategicWorldDetectionTagTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTagTests.cs))<br>`StrategicWorldDetectionUnitRulesTests` ([StrategicWorldDetectionUnitRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionUnitRulesTests.cs)) |
+| [strategic-detection-scripts](../fixtures/manifests/strategic-detection-scripts.json) | cpp-reference | `savegames/strategic-detection-scripts.expected.json` | `StrategicWorldDetectionBindingTests` ([StrategicWorldDetectionBindingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBindingTests.cs))<br>`StrategicWorldDetectionBoundedQueriesTests` ([StrategicWorldDetectionBoundedQueriesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBoundedQueriesTests.cs))<br>`StrategicWorldDetectionCountryTests` ([StrategicWorldDetectionCountryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionCountryTests.cs))<br>`StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))<br>`StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs))<br>`StrategicWorldDetectionReferenceLinksTests` ([StrategicWorldDetectionReferenceLinksTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionReferenceLinksTests.cs))<br>`StrategicWorldDetectionResearchTests` ([StrategicWorldDetectionResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionResearchTests.cs))<br>`StrategicWorldDetectionRuleQueriesTests` ([StrategicWorldDetectionRuleQueriesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionRuleQueriesTests.cs))<br>`StrategicWorldDetectionScriptInputsTests` ([StrategicWorldDetectionScriptInputsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionScriptInputsTests.cs))<br>`StrategicWorldDetectionTagTests` ([StrategicWorldDetectionTagTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTagTests.cs))<br>`StrategicWorldDetectionUnitRulesTests` ([StrategicWorldDetectionUnitRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionUnitRulesTests.cs)) |
 | [strategic-detection-value-copy](../fixtures/manifests/strategic-detection-value-copy.json) | cpp-reference | `savegames/strategic-detection-value-copy.expected.json` | `StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs)) |
 | [strategic-event-scripts](../fixtures/manifests/strategic-event-scripts.json) | cpp-reference | `savegames/strategic-event-scripts.expected.json` | `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs)) |
 | [strategic-event](../fixtures/manifests/strategic-event.json) | cpp-reference | `savegames/strategic-event.expected.json` | `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))<br>`StrategicWorldSiteExpiryTests` ([StrategicWorldSiteExpiryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteExpiryTests.cs)) |
