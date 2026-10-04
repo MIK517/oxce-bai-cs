@@ -88,7 +88,6 @@ public sealed class StrategicWorldDetectionItemRulesTests
         }
     }
 
-
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -112,7 +111,7 @@ public sealed class StrategicWorldDetectionItemRulesTests
                 "if eq damage different; return DETECTION_NONE 0; end; " +
                 "if neq missing null; return DETECTION_NONE 0; end; ";
             foreach (var (reader, index) in new[] { ("getRandomType", 2), ("getResistType", 3), ("isDirect", 4),
-                         ("isAreaOfEffect", 5), ("getArmorIgnore", 6) })
+                         ("isAreaOfEffect", 5), ("getArmorIgnore", 6), ("getArmorEffectiveness", 7) })
             {
                 code += $"damage.{reader} value; if neq value {row[index].GetInt32()}; return DETECTION_NONE 0; end; " +
                     $"missing.{reader} value; if neq value 0; return DETECTION_NONE 0; end; ";
@@ -122,6 +121,101 @@ public sealed class StrategicWorldDetectionItemRulesTests
             RunItemScript(code, fields, fromCache, fromCraft);
         }
     }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DamageConversionsMatchNativeFloatTruncation(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
+        {
+            var type = row[0].GetInt32();
+            var fields = type switch
+            {
+                -1 => "",
+                20 => CustomDamageFields,
+                _ => $"damageType: {type}",
+            };
+            var code = "var ptr RuleItem item; var ptr RuleDamageType damage; var ptr RuleDamageType absent null; " +
+                "var int value; rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; ";
+            for (var index = 0; index < DamageReaders.Length; index++)
+                code += $"damage.{DamageReaders[index]} value {row[1].GetInt32()}; " +
+                    $"if neq value {row[2][index].GetInt32()}; return DETECTION_NONE 0; end; " +
+                    $"absent.{DamageReaders[index]} value 2147483647; if neq value 0; return DETECTION_NONE 0; end; ";
+            code += "return DETECTION_RADAR 100;";
+            RunItemScript(code, fields, fromCache, fromCraft);
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DamageArmorPercentAndFloatBoundariesMatchNative(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "armorPercent"))
+            RunItemScript(
+                $"var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+                $"rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; damage.getArmorEffectiveness value; " +
+                $"if neq value {row[1].GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+                $"damageAlter: {{ArmorEffectiveness: {row[0].GetRawText()}}}", fromCache, fromCraft);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "floatBoundaries"))
+            RunItemScript(
+                $"var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+                $"rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; damage.getDamageToHealth value {row[0].GetInt32()}; " +
+                $"if neq value {row[2].GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+                $"damageAlter: {{ToHealth: {row[1].GetRawText()}}}", fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData(false, "getDamageToHealth", "ToHealth: 1", "2147483647", "integer range")]
+    [InlineData(true, "getDamageToHealth", "ToHealth: 1", "2147483647", "integer range")]
+    [InlineData(false, "getDamageToHealth", "ToHealth: 1e100", "1", "integer range")]
+    [InlineData(true, "getArmorEffectiveness", "ArmorEffectiveness: 1e100", "", "integer range")]
+    [InlineData(false, "getDamageToHealth", "ToHealth: 1", "detection_chance", "bounded power forecast")]
+    public void UnsafeDamageQueriesStopBeforeTickMutation(bool fromCache, string reader, string fields, string power, string reason)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            items:
+              - type: ITEM_DAMAGE_GUARD
+                damageAlter: { {{fields}} }
+            ufos:
+              - type: UFO_DAMAGE_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleItem item; var ptr RuleDamageType damage; rules.getRuleItem item "ITEM_DAMAGE_GUARD"; item.getDamageType damage; damage.{{reader}} detection_chance {{power}}; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_DAMAGE_GUARD", 2200);
+        AssertTimeBlocked(campaign, reason == "integer range"
+            ? "Detection damage query exceeds the supported integer range."
+            : "Detection damage conversion requires a bounded power forecast.");
+    }
+
+    private static readonly string[] DamageReaders =
+        ["getDamageToArmorPre", "getDamageToArmor", "getDamageToEnergy", "getDamageToHealth",
+         "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",
+         "getDamageToTile", "getDamageToTime", "getDamageToWound"];
+
+    private const string CustomDamageFields = """
+        damageAlter:
+          ToArmorPre: -0.125
+          ToArmor: 0.375
+          ToEnergy: -1.125
+          ToHealth: 0.5
+          ToItem: 1.25
+          ToMana: -0.75
+          ToMorale: 2.125
+          ToStun: 0.025
+          ToTile: -0.01
+          ToTime: 0.1
+          ToWound: 0.33333333
+        """;
 
     private static void RunItemReaderFixture(string prefix, bool fromCache, bool fromCraft)
     {

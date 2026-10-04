@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -59,6 +59,15 @@ internal sealed partial class CampaignWorld
         var name = binding.Name;
         if (name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokeDetectionTag(binding, args);
         var receiver = args[0].Reference;
+        if (WorldDetectionDamageQueries.Supports(name))
+        {
+            var value = receiver is RuntimeItemDamageRule queryRule
+                ? WorldDetectionDamageQueries.Result(name, queryRule, args.Length > 2 ? args[2].Scalar : 0) : 0;
+            if (!WorldDetectionDamageQueries.InIntegerRange(value))
+                throw new InvalidOperationException("Detection damage query was not preflighted.");
+            args[1] = ScriptRuntimeValue.FromScalar((int)value);
+            return ScriptBindingResult.Success;
+        }
         var ufo = receiver as UfoSnapshot;
         var craft = receiver as CampaignState.CraftState;
         var rules = campaign.Content.RuntimeRules;

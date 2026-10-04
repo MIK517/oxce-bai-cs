@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "strategic-detection-damage",
-  "description": "Pinned native damage defaults, Mod built-in damage table, RuleItem damage-pointer identity and classification script helpers. Controlled item copies replace YAML loading; predefined selection and overrides have separate typed/runtime tests.",
+  "description": "Pinned native damage defaults, Mod built-in damage table, RuleItem damage-pointer identity and classification script helpers. Controlled item copies replace YAML loading; predefined selection and overrides have separate typed/runtime tests. Includes raw float conversions, truncation, half-away armor-percent rounding and defined int-range boundaries; undefined native float-to-int cases are excluded and guarded by the port.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "RuleDamageType constructor/isDirect; Mod built-in damage table; RuleItem getDamageType/getMeleeType and classification/armor script helpers",
+      "sources": "RuleDamageType constructor/isDirect; Mod built-in damage table; RuleItem getDamageType/getMeleeType and classification/armor script helpers; exact getDamageToScript template",
       "capture": "tools/capture-strategic-detection-damage-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_damage_probe.cpp",
-      "size": 1567,
-      "sha256": "fa8fa923058c70c081374bb9d7c35c153ec0def91c424b9d633e68d2797cb748"
+      "size": 3996,
+      "sha256": "b5a8d382b5082eaa1e19982a1cb9ca85f8b3e737d62719a575745f3bbaa55b66"
     },
     {
       "path": "tools/capture-strategic-detection-damage-reference.ps1",
-      "size": 4080,
-      "sha256": "19f8c29261f4e7d03c2b71eefae0b5f79b1b9e966d60730ccfb1f80bc2679a4c"
+      "size": 4214,
+      "sha256": "272c8479d39edbd73660cdf07fbecaf3340a689a1b82a782fad7bdf08cfe853b"
     }
   ],
   "normalization": [
