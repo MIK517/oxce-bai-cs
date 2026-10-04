@@ -527,3 +527,15 @@ malformed arities intentionally. A failing-before-fix VM regression and actual
 cached country-loop execution cover the repair. Compiler/cache revision is 37.
 Reference: ScriptBind.h::BindListInitImpl/BindListLoopImpl,
 SavedGame.cpp::filterCountryConstScript/ScriptRegister, Country.cpp/h getters.
+
+## Country and country-rule detection tags (2026-10-04)
+
+Read-only detection providers expose Country.getRuleCountry and RuleCountry's
+funding cap in its original thousands-of-currency units. Typed Country instance
+tags and RuleCountry initial rule tags retain separate owners even when their
+indexes coincide. Stable country/rule identities, absent slots and null receivers
+preserve pointer/scalar defaults. The native probe captures getRules and
+getFundingCap verbatim across signed/zero/large caps. Fresh/cache live list-loop
+scripts validate every owner and reload before and after execution.
+Reference: Country.cpp::getRules/ScriptRegister, RuleCountry.cpp::getFundingCap/
+ScriptRegister, ScriptValuesBase::getBase and BindPropCustomGet.

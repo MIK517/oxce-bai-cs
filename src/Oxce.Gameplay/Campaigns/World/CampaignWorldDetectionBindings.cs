@@ -25,7 +25,7 @@ internal sealed partial class CampaignWorld
         "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
         "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list" or
-        "Country.getPact" or "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
+        "Country.getRuleCountry" or "RuleCountry.getFundingCap" or "Country.getPact" or "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
         "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
         "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
@@ -83,6 +83,9 @@ internal sealed partial class CampaignWorld
                     ? name == "RuleResearch.getCost" ? rules.Research[rules.Research.GetRequired(topic)].Value.Cost
                         : rules.Research[rules.Research.GetRequired(topic)].Value.Points : 0);
                 break;
+            case "Country.getRuleCountry":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is CampaignState.CountryState owner ? rules.Countries[owner.Rule].Value : null);
+                break;
             case "GeoscapeGame.getCountries.init":
                 args[1] = ScriptRuntimeValue.FromScalar(0);
                 args[2] = ScriptRuntimeValue.FromScalar(receiver is null ? 0 : campaign.CountryStates.Count);
@@ -119,6 +122,7 @@ internal sealed partial class CampaignWorld
                     } :
                     receiver is RuntimeCraftRule rule ? DetectionCraftRuleValue(name, rule) :
                     receiver is RuntimeUfoRule ufoRule ? DetectionUfoStat(ufoRule.Stats, DetectionUfoStatIndex(name)) :
+                    receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch
                     {

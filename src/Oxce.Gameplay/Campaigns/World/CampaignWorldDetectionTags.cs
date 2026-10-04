@@ -14,7 +14,7 @@ internal sealed partial class CampaignWorld
     private bool DetectionTagSupported(ScriptBindingDeclaration binding)
     {
         if (binding.Name is not ("Ufo.getTag" or "Craft.getTag" or "RuleUfo.getTag" or
-            "RuleCraft.getTag" or "RuleResearch.getTag" or "RuleMod.getTag" or "GeoscapeGame.getTag")) return false;
+            "Country.getTag" or "RuleCountry.getTag" or "RuleCraft.getTag" or "RuleResearch.getTag" or "RuleMod.getTag" or "GeoscapeGame.getTag")) return false;
         var owner = binding.Parameters[2].Type.Id.Value;
         for (var index = 0; index < campaign.Content.Tags.Types.Count; index++)
         {
@@ -27,6 +27,8 @@ internal sealed partial class CampaignWorld
                 "RuleUfo.getTag" => type.Name == "RuleUfo",
                 "RuleCraft.getTag" => type.Name == "RuleCraft",
                 "RuleResearch.getTag" => type.Name == "RuleResearch",
+                "Country.getTag" => type.Name == "Country",
+                "RuleCountry.getTag" => type.Name == "RuleCountry",
                 "RuleMod.getTag" => type.Name == "RuleMod",
                 "GeoscapeGame.getTag" => type.Name == "GeoscapeGame",
                 _ => false,
@@ -56,13 +58,15 @@ internal sealed partial class CampaignWorld
             else if (receiver is CampaignState.CraftState craft)
                 value = tag.Owner == "RuleCraft" ? DetectionRuleTag(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value, tag.Qualified)
                     : craft.ScriptValues?.Get(tag.Qualified) ?? 0;
+            else if (receiver is CampaignState.CountryState country)
+                value = country.ScriptValues?.Get(tag.Qualified) ?? 0;
             else if (receiver is CampaignState state)
                 value = state.ScriptValue(tag.Qualified);
             else if (receiver is RuntimeRuleCatalog)
                 value = _detectionModTags.GetValueOrDefault(tag.Qualified);
             else if (receiver is string researchId && tag.Owner == "RuleResearch")
                 value = DetectionRuleTag(researchId, tag.Qualified);
-            else if (receiver is RuntimeUfoRule or RuntimeCraftRule)
+            else if (receiver is RuntimeUfoRule or RuntimeCraftRule or RuntimeCountryRule)
                 value = DetectionRuleTag(receiver, tag.Qualified);
         }
         args[1] = ScriptRuntimeValue.FromScalar(value);
@@ -102,6 +106,8 @@ internal sealed partial class CampaignWorld
                 owner = rules.Crafts[craft].Value;
             if (initial.OwnerSection == "research" && rules.Research.TryGet(initial.OwnerId, out var research))
                 owner = rules.Research.GetExternalId(research);
+            if (initial.OwnerSection == "countries" && rules.Countries.TryGet(initial.OwnerId, out var country))
+                owner = rules.Countries[country].Value;
             if (owner is null) continue;
             if (!_detectionRuleTags.TryGetValue(owner, out var values))
                 _detectionRuleTags.Add(owner, values = new(StringComparer.Ordinal));
