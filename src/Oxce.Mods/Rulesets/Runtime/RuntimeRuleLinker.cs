@@ -192,6 +192,7 @@ public static class RuntimeRuleLinker
             {
                 Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
                     rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
+                DefaultStats = rule.Value.Stats.Integers,
                 HangarType = rule.Value.Integers["hangarType"],
                 WeaponSlots = rule.Value.Integers["weapons"],
                 RefuelRate = rule.Value.Integers["refuelRate"],

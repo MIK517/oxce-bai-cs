@@ -12,6 +12,77 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void EveryCraftRuleStatUsesNativeRawFieldsAndReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var native = oracle.RootElement.GetProperty("craftStats");
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Stats.getFuelMax"] = "fuelMax",
+            ["Stats.getDamageMax"] = "damageMax",
+            ["Stats.getSpeedMax"] = "speedMax",
+            ["Stats.getAccel"] = "accel",
+            ["Stats.getRadarRange"] = "radarRange",
+            ["Stats.getRadarChance"] = "radarChance",
+            ["Stats.getSightRange"] = "sightRange",
+            ["Stats.getHitBonus"] = "hitBonus",
+            ["Stats.getAvoidBonus"] = "avoidBonus",
+            ["Stats.getAvoidBonus2"] = "avoidBonus2",
+            ["Stats.getPowerBonus"] = "powerBonus",
+            ["Stats.getArmor"] = "armor",
+            ["Stats.getShieldCapacity"] = "shieldCapacity",
+            ["Stats.getShieldRecharge"] = "shieldRecharge",
+            ["Stats.getShieldRechargeInGeoscape"] = "shieldRechargeInGeoscape",
+            ["Stats.getShieldBleedThrough"] = "shieldBleedThrough",
+            ["Stats.getMaxUnits"] = "soldiers",
+            ["Stats.getMaxVehiclesAndLargeSoldiers"] = "vehicles",
+            ["Stats.getMaxItems"] = "maxItems",
+        };
+        Assert.Equal(19, native.EnumerateObject().Count());
+        var fields = string.Join("\n", keys.Select(pair => $"    {pair.Value}: {native.GetProperty(pair.Key).GetInt32()}"));
+        var code = "var int value; var ptr RuleCraft rule; var ptr RuleCraft absent null; craft.getRuleCraft rule; ";
+        foreach (var pair in keys)
+        {
+            code += $"rule.{pair.Key} value; if neq value {native.GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += $"absent.{pair.Key} value; if neq value 0; return DETECTION_NONE 0; end; ";
+        }
+        code += "return DETECTION_RADAR 100;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            crafts:
+              - type: CRAFT_RULE_STATS
+            {{fields}}
+                weapons: 2
+                maxUnitsLimit: 99
+                maxHWPUnitsLimit: 98
+            ufos:
+              - type: UFO_CRAFT_RULE_STATS
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromCraft: "{{code}}"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_CRAFT_RULE_STATS", 2200).Capture()
+            .WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "CRAFT_RULE_STATS",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_OUT",
+                    Speed = 0,
+                    Destination = null,
+                    Weapons = [new CraftWeaponSnapshot("RADAR_BOOST", 1)],
+                },
+            });
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(196));
+        campaign = Reload(content, campaign, 196, "craft-rule-stats-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 196, "craft-rule-stats-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ModDetectionConstantsPreserveDefaultsOverridesAndReload(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

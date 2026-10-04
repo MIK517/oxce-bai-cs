@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionBindingNameSupported(binding.Name) || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        DetectionBindingNameSupported(binding.Name) || DetectionCraftRuleStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -200,15 +200,38 @@ internal sealed partial class CampaignWorld
         return name == "Craft.Stats.getRadarRange" ? range : chance;
     }
 
-    private static int DetectionCraftRuleValue(string name, RuntimeCraftRule rule) => name switch
+    private static int DetectionCraftRuleValue(string name, RuntimeCraftRule rule) =>
+        DetectionCraftRuleStatKey(name) is { } key ? rule.DefaultStats.GetValueOrDefault(key) : name switch
     {
-        "RuleCraft.Stats.getRadarRange" => rule.RadarRange,
-        "RuleCraft.Stats.getRadarChance" => rule.RadarChance,
         "RuleCraft.getPilotsMax" => rule.Pilots,
         "RuleCraft.getSoldiersMax" => rule.SoldierCapacity,
         "RuleCraft.getVehiclesMax" => rule.VehicleCapacity,
         "RuleCraft.getWeaponsMax" => rule.WeaponSlots,
         _ => throw new InvalidOperationException("Detection craft rule provider was not preflighted."),
+    };
+
+    private static string? DetectionCraftRuleStatKey(string name) => name switch
+    {
+        "RuleCraft.Stats.getFuelMax" => "fuelMax",
+        "RuleCraft.Stats.getDamageMax" => "damageMax",
+        "RuleCraft.Stats.getSpeedMax" => "speedMax",
+        "RuleCraft.Stats.getAccel" => "accel",
+        "RuleCraft.Stats.getRadarRange" => "radarRange",
+        "RuleCraft.Stats.getRadarChance" => "radarChance",
+        "RuleCraft.Stats.getSightRange" => "sightRange",
+        "RuleCraft.Stats.getHitBonus" => "hitBonus",
+        "RuleCraft.Stats.getAvoidBonus" => "avoidBonus",
+        "RuleCraft.Stats.getAvoidBonus2" => "avoidBonus2",
+        "RuleCraft.Stats.getPowerBonus" => "powerBonus",
+        "RuleCraft.Stats.getArmor" => "armor",
+        "RuleCraft.Stats.getShieldCapacity" => "shieldCapacity",
+        "RuleCraft.Stats.getShieldRecharge" => "shieldRecharge",
+        "RuleCraft.Stats.getShieldRechargeInGeoscape" => "shieldRechargeInGeoscape",
+        "RuleCraft.Stats.getShieldBleedThrough" => "shieldBleedThrough",
+        "RuleCraft.Stats.getMaxUnits" => "soldiers",
+        "RuleCraft.Stats.getMaxVehiclesAndLargeSoldiers" => "vehicles",
+        "RuleCraft.Stats.getMaxItems" => "maxItems",
+        _ => null,
     };
 
     private static int DetectionTimeValue(string name, CampaignTime time) => name switch

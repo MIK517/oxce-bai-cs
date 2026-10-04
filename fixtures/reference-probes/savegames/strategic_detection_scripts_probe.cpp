@@ -262,6 +262,7 @@ bonus.fuelMax=1;bonus.damageMax=5;bonus.speedMax=100;bonus.accel=2;bonus.radarRa
 bonus.hitBonus=-1;bonus.avoidBonus=1;bonus.avoidBonus2=2;bonus.powerBonus=3;bonus.armor=4;
 bonus.shieldCapacity=5;bonus.shieldRecharge=1;bonus.shieldBleedThrough=2;
 bonus.soldiers=3;bonus.vehicles=4;bonus.maxItems=5;
+RuleCraftStats rawStats=stats.stats;
 for(int stage=0;stage<2;++stage) {
 if(stage) { std::cout<<',';stats.stats+=bonus; }
 StatsBinding bindings{&stats};
@@ -322,7 +323,14 @@ array({5,radius,ruleRead.getRadius()});
 }
 ruleRead._range=-7;ruleRead._power=INT_MAX;ruleRead._reload=11;
 std::cout<<"],\"ufoWeapons\":";array({ruleRead.getWeaponRange(),ruleRead.getWeaponPower(),ruleRead.getWeaponReload()});
-std::cout<<",\"modSettings\":[";
+stats.stats=rawStats;
+StatsBinding craftStats{&stats};
+RuleCraftStats::addGetStatsScript<&StatsOwner::stats>(craftStats,"Stats.");
+std::cout<<",\"craftStats\":{";bool firstCraftStat=true;
+for(const auto& [name,value]: craftStats.values) {
+if(!firstCraftStat)std::cout<<',';firstCraftStat=false;std::cout<<'\"'<<name<<"\":"<<value;
+}
+std::cout<<"},\"modSettings\":[";
 array({mod.getMaxViewDistance(),mod.getMaxDarknessToSeeUnits()});
 for(int value: {-7,0,31,INT_MAX}) {
 mod._maxViewDistance=value;mod._maxDarknessToSeeUnits=value;

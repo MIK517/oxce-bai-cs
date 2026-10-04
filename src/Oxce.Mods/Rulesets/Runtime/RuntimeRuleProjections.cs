@@ -147,6 +147,9 @@ public sealed record RuntimeFacilityRule(
     public float SickBayRelativeBonus { get; init; }
     public IReadOnlyList<string> RequiredBaseFunctions { get; init; } = [];
     public IReadOnlyList<string> ForbiddenBaseFunctions { get; init; } = [];
+    /// <summary>RuleCraft::_stats, before installed weapon bonuses and capacity limits.</summary>
+    public IReadOnlyDictionary<string, int> DefaultStats { get; init; } =
+        new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public int HangarType { get; init; }
     public IReadOnlyList<string> ProvidedBaseFunctions { get; init; } = [];
     public int SightRange { get; init; }
@@ -178,6 +181,9 @@ public sealed record RuntimeCraftRule(
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
+    /// <summary>RuleCraft::_stats, before installed weapon bonuses and capacity limits.</summary>
+    public IReadOnlyDictionary<string, int> DefaultStats { get; init; } =
+        new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public int HangarType { get; init; }
     public int WeaponSlots { get; init; }
     public int RefuelRate { get; init; }
