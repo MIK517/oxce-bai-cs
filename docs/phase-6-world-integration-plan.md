@@ -657,3 +657,11 @@ capture covers missing/empty IDs, null Mod and the literal STR_NONE ID; fresh/ca
 base/craft VM tests cover lookup identity and save/reload around detection.
 Inventory movement remains guarded. Compiler/cache revision is 45.
 The 4c gate remains open; 4d is untouched.
+
+## Inventory type and hand readers (2026-10-04)
+
+RuleInventory::getType/isRightHand/isLeftHand now execute in both world detection
+callers. Raw type integers and ID-derived right/left hand flags retain reference
+defaults; null Inventory receivers return zero. Native metadata traces and
+fresh/cache base/craft VM tests cover every conventional slot and reloads.
+Inventory movement remains guarded. The 4c gate remains open.
