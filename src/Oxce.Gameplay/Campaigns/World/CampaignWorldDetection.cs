@@ -4,7 +4,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 /// <summary>
 /// The ordinary flying/landed UFO portion of GeoscapeState::time30Minutes: alien activity
-/// and Base::detect/Craft::detect. Detection scripts remain a preflight gate.
+/// and Base::detect/Craft::detect. Detection scripts execute through the bounded VM caller.
 /// </summary>
 internal sealed partial class CampaignWorld
 {
@@ -249,8 +249,7 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
-        if (ufoRule.Scripts.Count != 0)
-            return "UFO detection scripts require world simulation.";
+        if (DetectionScriptsReason(ruleId) is { } scriptReason) return scriptReason;
         var score = (long)ufoRule.MissionScore * scoreMultiplier;
         if (score is < int.MinValue or > int.MaxValue)
             return "UFO alien activity exceeds the supported range.";
@@ -364,7 +363,7 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
         var score = (long)rule.MissionScore * multiplier;
-        if (rule.Scripts.Count != 0) return "UFO detection scripts require world simulation.";
+        if (DetectionScriptsReason(ruleId) is { } scriptReason) return scriptReason;
         if (score is < int.MinValue or > int.MaxValue) return "UFO alien activity exceeds the supported range.";
         return CheckPossibleActivity(positions, (int)score, regions, countries);
     }
@@ -431,8 +430,8 @@ internal sealed partial class CampaignWorld
             var end = _baseRadarEnds[index];
             var distance = WorldGeometry.XcomDistance(WorldGeometry.Distance(
                 new WorldPosition(owner.Longitude, owner.Latitude), ufo.Position));
-            var (type, chance) = WorldDetection.BaseDetection(radars[start..end], distance, visibility,
-                ufo.Detected, percent);
+            var caller = WorldDetection.BaseScriptInputs(radars[start..end], distance, visibility, ufo.Detected, percent);
+            var (type, chance) = RunDetectionScript(ufo, caller);
             if (Percent(chance)) detected |= type;
             start = end;
         }
@@ -447,8 +446,8 @@ internal sealed partial class CampaignWorld
         foreach (var craft in crafts)
         {
             var distance = WorldGeometry.XcomDistance(WorldGeometry.Distance(craft.Position, ufo.Position));
-            var (type, chance) = WorldDetection.CraftDetection(craft.Range, craft.Chance,
-                distance, visibility, ufo.Detected);
+            var caller = WorldDetection.CraftScriptInputs(craft.Range, craft.Chance, distance, visibility, ufo.Detected);
+            var (type, chance) = RunDetectionScript(ufo, caller, craft.Craft);
             if (Percent(chance)) detected |= type;
         }
         return detected;
@@ -466,12 +465,12 @@ internal sealed partial class CampaignWorld
                 var rule = rules.Crafts[craft.Rule].Value;
                 if (CraftLogistics.IsDestroyed(state, rule, rules)) continue;
                 CraftLogistics.EffectiveRadar(rule, state.Weapons, rules, out var range, out var chance);
-                sources.Add(new WorldCraftRadar(new WorldPosition(state.Longitude, state.Latitude), range, chance));
+                sources.Add(new WorldCraftRadar(new WorldPosition(state.Longitude, state.Latitude), range, chance, craft));
             }
         }
     }
 
-    private readonly record struct WorldCraftRadar(WorldPosition Position, int Range, int Chance);
+    private readonly record struct WorldCraftRadar(WorldPosition Position, int Range, int Chance, CampaignState.CraftState Craft);
 
     private bool Percent(int chance) => RandomChance.Percent(campaign.Random, chance);
 

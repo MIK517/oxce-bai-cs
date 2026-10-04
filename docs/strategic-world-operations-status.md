@@ -361,3 +361,15 @@ verbatim and records the worker's initial outputs, scalar inputs, radar boundary
 and hyperwave/final-roll order. Completed facilities contribute maximum ranges
 even outside coverage; unfinished facilities are excluded by the owning caller.
 The live detection VM remains the next slice.
+
+## Bounded live detection VM (2026-10-04)
+
+Base and active-craft callers execute compiled UFO detection programs after radar
+arithmetic and before the final roll, including global before/after events with an
+identity main fallback. Reusable frames and scalar buffers avoid per-contact VM
+allocations after preparation. Saved and newborn UFO preflights replace blanket
+script guards with precise unsupported binding, loop, divisor and wave-period
+checks. Forward-only scalar programs with safe literal divisors are enabled;
+unproven loops, input-dependent divisors and host providers remain guarded.
+Fresh/cache cases cover scalar input branches, out-of-range detection, event
+ordering, unchanged-state refusal and save reloads.

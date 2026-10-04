@@ -23,6 +23,11 @@
       "path": "tools/capture-strategic-detection-scripts-reference.ps1",
       "size": 2766,
       "sha256": "0d6b5d33aaddf94a7f7e20d0b9b51f34b09fae477c3721ac2bdf37799ad3f42e"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-detection-scripts.rul",
+      "size": 991,
+      "sha256": "e1f91fd8fce1f61b41e0574fa7a1780ad9b83c1388a9743ea6a95bd3bcf72aef"
     }
   ],
   "normalization": [
