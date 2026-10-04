@@ -129,7 +129,7 @@ public sealed class StrategicRetaliationSpawnTests
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row =>
             row[0].GetInt32() == 4 && row[1].GetInt32() == 0 && row[4].GetInt32() == 0 &&
-            row[6].GetInt32() == 0 && row[8].GetInt32() == 1))
+            row[8].GetInt32() == 1))
         {
             var skip = row[2].GetInt32() != 0;
             var mask = row[3].GetInt32();
@@ -155,7 +155,7 @@ public sealed class StrategicRetaliationSpawnTests
                     hunterKillerPercentage: 100
                 ufoTrajectories:
                   - id: RETAL_ORIGIN
-                    waypoints: [[0, 3, 100], [0, 2, 100]]
+                    waypoints: [[0, {{{(row[6].GetInt32() == 0 ? 3 : 0)}}}, 100], [0, 2, 100]]
                 alienMissions:
                   - type: RETAL_ASSAULT
                     objective: 4
@@ -200,6 +200,57 @@ public sealed class StrategicRetaliationSpawnTests
             AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO_UNIQUE", int.MaxValue), content, new SplitMix64RandomSource(17)),
                 "UFO unique IDs are exhausted or collide with a saved UFO.");
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundAssaultOriginUsesBoundedLandSearchAndIgnoresSelectedSiteFlags(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "rows"), row => row[0].GetInt32() == 4 && row[6].GetInt32() == 1 && row[8].GetInt32() == 1);
+        var content = Load(cache, """
+            regions:
+              - type: RETAL_LAND_REGION
+                areas: [[0, 60, -30, 30]]
+                missionZones: [[[100, 101, 5, 6]]]
+            ufos:
+              - type: RETAL_LAND_SHIP
+                speedMax: 100
+                damageMax: 50
+                fakeWaterLandingChance: 100
+                noAlert: true
+                missionScore: 0
+            ufoTrajectories:
+              - id: RETAL_LAND_ORIGIN
+                waypoints: [[0, 0, 100], [0, 3, 100]]
+            alienMissions:
+              - type: RETAL_LAND
+                objective: 4
+                skipScoutingPhase: true
+                waves: [{ufo: RETAL_LAND_SHIP, count: 1, trajectory: RETAL_LAND_ORIGIN, timer: 60, objective: true, objectiveOnTheLandingSite: true}]
+            """);
+        var initial = Initial(content, "RETAL_LAND");
+        initial = initial with { Bases = [initial.Bases[0] with { Facilities = [] }],
+            World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "RETAL_LAND_REGION", MissionSiteZoneArea = 99 }] } };
+        var expected = new SplitMix64RandomSource(17);
+        expected.NextInclusive(0, 99); // fake-water preference
+        WorldPosition origin = default;
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            expected.NextInclusive(0, 0);
+            origin = new(Degrees(100 + expected.NextUnit()), Degrees(5 + expected.NextUnit()));
+        }
+        expected.NextInclusive(0, 99); // base radar detection
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var ufo = Assert.Single(campaign.Capture().World.Ufos);
+        var moved = WorldGeometry.Move(origin, new(0.2, 0.1), WorldGeometry.RadianSpeed(100));
+        Assert.Equal(moved.Longitude, ufo.Longitude, 12);
+        Assert.Equal(moved.Latitude, ufo.Latitude, 12);
+        Assert.Equal(UfoStatus.Flying, ufo.Status);
+        Assert.Equal(expected.State, campaign.Capture().RandomState);
+        Reload(content, campaign, 17, "retaliation-ground-origin.sav");
     }
 
     private static CampaignSnapshot Initial(RuntimeContent content, string rule)
