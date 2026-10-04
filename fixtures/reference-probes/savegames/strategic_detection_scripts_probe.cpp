@@ -59,6 +59,9 @@ template<typename T,auto Func,auto... X> struct BindListLoopImpl;
 // RESEARCH_METHOD
 // RESEARCH_WRAPPER
 struct Mod {
+int _maxViewDistance=20,_maxDarknessToSeeUnits=9;
+int getMaxViewDistance() const;
+int getMaxDarknessToSeeUnits() const;
 std::map<std::string,RuleResearch*> _research;
 std::map<std::string,RuleItem*> _items;
 std::map<std::string,Armor*> _armors;
@@ -74,6 +77,7 @@ RuleSoldier* getSoldier(const std::string&,bool error=false) const;
 RuleSkill* getSkill(const std::string&,bool error=false) const;
 };
 const std::string Mod::STR_NULL={ '\0' };
+// MOD_SETTINGS
 // MOD_METHODS
 // RESEARCH_LOOKUP
 // RULE_LOOKUPS
@@ -318,5 +322,11 @@ array({5,radius,ruleRead.getRadius()});
 }
 ruleRead._range=-7;ruleRead._power=INT_MAX;ruleRead._reload=11;
 std::cout<<"],\"ufoWeapons\":";array({ruleRead.getWeaponRange(),ruleRead.getWeaponPower(),ruleRead.getWeaponReload()});
-std::cout<<"}\n";
+std::cout<<",\"modSettings\":[";
+array({mod.getMaxViewDistance(),mod.getMaxDarknessToSeeUnits()});
+for(int value: {-7,0,31,INT_MAX}) {
+mod._maxViewDistance=value;mod._maxDarknessToSeeUnits=value;
+std::cout<<',';array({mod.getMaxViewDistance(),mod.getMaxDarknessToSeeUnits()});
+}
+std::cout<<"]}\n";
 }

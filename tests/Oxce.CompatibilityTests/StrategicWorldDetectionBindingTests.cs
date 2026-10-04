@@ -12,6 +12,47 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ModDetectionConstantsPreserveDefaultsOverridesAndReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "modSettings");
+        for (var index = 0; index < rows.Length; index++)
+        {
+            var values = rows[index].EnumerateArray().Select(value => value.GetInt32()).ToArray();
+            var overrides = index == 0 ? "" : $"maxViewDistance: {values[0]}\nmaxDarknessToSeeUnits: {values[1]}";
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                {{overrides}}
+                ufos:
+                  - type: UFO_MOD_READS
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      detectUfoFromBase: |
+                        var int value;
+                        var ptr RuleMod absent null;
+                        absent.getMaxViewDistance value;
+                        if neq value 0; return DETECTION_NONE 0; end;
+                        absent.getMaxDarknessToSeeUnits value;
+                        if neq value 0; return DETECTION_NONE 0; end;
+                        rules.getMaxViewDistance value;
+                        if neq value {{values[0]}}; return DETECTION_NONE 0; end;
+                        rules.getMaxDarknessToSeeUnits value;
+                        if neq value {{values[1]}}; return DETECTION_NONE 0; end;
+                        return DETECTION_RADAR 100;
+                """);
+            Assert.Equal(values[0], content.RuntimeRules.Campaign.MaximumViewDistance);
+            Assert.Equal(values[1], content.RuntimeRules.Campaign.MaximumDarknessToSeeUnits);
+            var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_MOD_READS", 2200);
+            campaign = Reload(content, campaign, 195, "mod-settings-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 195, "mod-settings-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void UfoRuleGettersMatchNativeDefaultsAndReload(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

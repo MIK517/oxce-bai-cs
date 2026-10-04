@@ -32,6 +32,11 @@ $ufoRuleMethods = @(
     (Read-Method 'src/Mod/RuleUfo.cpp' 'int RuleUfo::getWeaponReload()')
 )
 $template = $template.Replace('// UFO_RULE_METHODS', ($ufoRuleMethods -join [Environment]::NewLine))
+$modSettings = @(
+    (Read-Method 'src/Mod/Mod.h' 'int getMaxViewDistance()'),
+    (Read-Method 'src/Mod/Mod.h' 'int getMaxDarknessToSeeUnits()')
+)
+$template = $template.Replace('// MOD_SETTINGS', ($modSettings -join [Environment]::NewLine).Replace('int getMaxViewDistance()', 'int Mod::getMaxViewDistance()').Replace('int getMaxDarknessToSeeUnits()', 'int Mod::getMaxDarknessToSeeUnits()'))
 $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamagePercentage()'),

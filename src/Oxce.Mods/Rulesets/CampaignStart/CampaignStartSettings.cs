@@ -25,6 +25,8 @@ public sealed class CampaignStartSettings
         ManaWoundThreshold = builder.ManaWoundThreshold;
         HealthWoundThreshold = builder.HealthWoundThreshold;
         EscortRange = builder.EscortRange;
+        MaximumViewDistance = builder.MaximumViewDistance;
+        MaximumDarknessToSeeUnits = builder.MaximumDarknessToSeeUnits;
         HunterKillerFastRetarget = builder.HunterKillerFastRetarget;
         AllowAlienBasesOnWrongTextures = builder.AllowAlienBasesOnWrongTextures;
         AllowCountriesToCancelAlienPact = builder.AllowCountriesToCancelAlienPact;
@@ -105,7 +107,7 @@ public sealed class CampaignStartSettings
         int buildTimeReductionScaling, int customTrainingFactor, int manaWoundThreshold, int healthWoundThreshold,
         IReadOnlyDictionary<string, string>? fixedUserOptions = null, int escortRange = 20,
         double performanceBonusFactor = 0, bool allowCountriesToCancelAlienPact = false, bool hunterKillerFastRetarget = true, bool allowAlienBasesOnWrongTextures = true,
-        bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false)
+        bool buildInfiltrationBaseCloseToTheCountry = false, bool infiltrateRandomCountryInTheRegion = false, int maximumViewDistance = 20, int maximumDarknessToSeeUnits = 9)
     {
         FixedUserOptions = Sorted(fixedUserOptions ?? new Dictionary<string, string>());
         BuildTimeReductionScaling = buildTimeReductionScaling;
@@ -113,6 +115,8 @@ public sealed class CampaignStartSettings
         ManaWoundThreshold = manaWoundThreshold;
         HealthWoundThreshold = healthWoundThreshold;
         EscortRange = escortRange;
+        MaximumViewDistance = maximumViewDistance;
+        MaximumDarknessToSeeUnits = maximumDarknessToSeeUnits;
         HunterKillerFastRetarget = hunterKillerFastRetarget;
         AllowAlienBasesOnWrongTextures = allowAlienBasesOnWrongTextures;
         AllowCountriesToCancelAlienPact = allowCountriesToCancelAlienPact;
@@ -161,6 +165,8 @@ public sealed class CampaignStartSettings
     public int ManaWoundThreshold { get; }
     public int HealthWoundThreshold { get; }
     public int EscortRange { get; }
+    public int MaximumViewDistance { get; }
+    public int MaximumDarknessToSeeUnits { get; }
     public bool HunterKillerFastRetarget { get; }
     public bool AllowAlienBasesOnWrongTextures { get; }
     public bool AllowCountriesToCancelAlienPact { get; }
@@ -220,6 +226,8 @@ internal sealed class CampaignStartSettingsBuilder
     public int ManaWoundThreshold { get; set; } = 200;
     public int HealthWoundThreshold { get; set; } = 100;
     public int EscortRange { get; set; } = 20;
+    public int MaximumViewDistance { get; set; } = 20;
+    public int MaximumDarknessToSeeUnits { get; set; } = 9;
     public bool HunterKillerFastRetarget { get; set; } = true;
     public bool AllowAlienBasesOnWrongTextures { get; set; } = true;
     public bool AllowCountriesToCancelAlienPact { get; set; }

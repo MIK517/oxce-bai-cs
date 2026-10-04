@@ -304,6 +304,8 @@ public static class RuntimeRuleLinker
             ManaWoundThreshold = content.CampaignStart.Settings.ManaWoundThreshold,
             HealthWoundThreshold = content.CampaignStart.Settings.HealthWoundThreshold,
             EscortRange = content.CampaignStart.Settings.EscortRange,
+            MaximumViewDistance = content.CampaignStart.Settings.MaximumViewDistance,
+            MaximumDarknessToSeeUnits = content.CampaignStart.Settings.MaximumDarknessToSeeUnits,
             HunterKillerFastRetarget = content.CampaignStart.Settings.HunterKillerFastRetarget,
             AllowAlienBasesOnWrongTextures = content.CampaignStart.Settings.AllowAlienBasesOnWrongTextures,
             AllowCountriesToCancelAlienPact = content.CampaignStart.Settings.AllowCountriesToCancelAlienPact,
