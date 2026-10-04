@@ -13,6 +13,7 @@ public sealed class StrategicWorldDetectionNumericTests
     public void NativeArithmeticAndCalculatedOperandCasesExecuteInTheCoreVm()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
+        var actual = new List<object>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
             var compiled = ScriptCompiler.Compile(row.GetProperty("source").GetString()!, new("Probe", ["result"]));
@@ -23,7 +24,18 @@ public sealed class StrategicWorldDetectionNumericTests
             });
             Assert.Equal(ScriptExecutionStatus.Completed, executed.Status);
             Assert.Equal(row.GetProperty("result").GetInt32(), executed.Outputs["result"]);
+            actual.Add(new
+            {
+                compiled = compiled.Succeeded,
+                diagnostics = compiled.Diagnostics.Select(static diagnostic => diagnostic.Message).ToArray(),
+                name = row.GetProperty("name").GetString(),
+                result = executed.Outputs["result"],
+                seed = row.GetProperty("seed").GetInt32(),
+                source = row.GetProperty("source").GetString(),
+            });
         }
+        Assert.Equal(Oxce.FixtureSupport.CanonicalJson.Normalize(System.Text.Encoding.UTF8.GetBytes(oracle.RootElement.GetRawText())),
+            Oxce.FixtureSupport.CanonicalJson.Normalize(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { cases = actual })));
     }
 
     [Theory]
