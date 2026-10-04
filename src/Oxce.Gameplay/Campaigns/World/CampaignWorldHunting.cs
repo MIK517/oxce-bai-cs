@@ -39,7 +39,9 @@ internal sealed partial class CampaignWorld
                     work += owner.Crafts.Count + (long)owner.Transfers.Count;
                     if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                     if (highest >= CampaignTimeTrigger.OneHour && owner.Transfers.Any(transfer =>
-                            !transfer.Delivered && transfer.Hours <= 1 && transfer.Craft?.Logistics?.Status == "STR_OUT"))
+                            !transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { Logistics: { } state } incoming &&
+                            (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
+                                campaign.Content.RuntimeRules.Crafts[campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value.AutoPatrol)))
                         return "UFO retargeting requires arriving craft forecasts.";
                 }
             if (ProjectHunting(ufo, highest, due, forecastFuel: true, ref work, out var projected, out var alert) is { } reason)
@@ -75,6 +77,7 @@ internal sealed partial class CampaignWorld
         if (maximum is < 0 or > int.MaxValue || radar is < int.MinValue or > int.MaxValue)
             return "UFO hunting stats exceed the supported range.";
         var crafts = new List<WorldHuntCraft>();
+        var craftLookupWork = campaign.BaseStates.Sum(owner => (long)owner.Crafts.Count);
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? fuelStocks = null;
@@ -99,7 +102,18 @@ internal sealed partial class CampaignWorld
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(craftRule, state.Weapons, rules, out var craftSpeed))
                     return SpeedRangeReason;
                 if (forecastFuel && highest >= CampaignTimeTrigger.TenMinutes && state.Status == "STR_OUT")
+                {
+                    if (state.Destination is { Kind: WorldTargetKind.Craft })
+                    {
+                        work += (highest >= CampaignTimeTrigger.ThirtyMinutes ? 2 : 1) * craftLookupWork;
+                        if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    }
+                    if (highest >= CampaignTimeTrigger.ThirtyMinutes && state.Destination is { Kind: WorldTargetKind.Craft } escort &&
+                        TargetCraft(escort) is { Logistics: { Status: not "STR_OUT", IsAutoPatrolling: true } } leader &&
+                        rules.Crafts[leader.Rule].Value.AutoPatrol)
+                        return "UFO retargeting requires same-tick craft escort fuel forecasts.";
                     state = AdvanceCraftFuel(owner, craft, state);
+                }
                 var ignored = WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete);
                 var attraction = 0;
                 if (!ignored && (original || !craftRule.Undetectable))

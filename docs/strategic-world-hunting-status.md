@@ -227,3 +227,25 @@ remain 4c work; this does not close the headless gate.
   endurance, checksums and allocation checks. Formatting verification, code-map
   and diff checks pass. The reference checkout is clean and obsolete probe
   object output was removed. Branch 4c remains open; 4d has not started.
+
+### Maintenance before hunter selection
+
+Half-hour forecasts apply ordinary and item refuelling and auto-patrol relaunch
+in saved craft order before fuel use and hunter selection. Private fuel-stock
+copies include grounded consumers and native fuel refunds. Missing-fuel messages
+prevent that craft's relaunch but preserve the current tick's fallthrough. Hourly
+repair and empty-rearming transitions preserve the native extra service hour.
+Preflight allocates no identity, draws no RNG and mutates no campaign state.
+
+The pinned capture now includes Craft::setFuel/refuel/setDestination/repair/rearm
+and the GeoscapeState::time30Minutes auto-patrol fragment: 48 single-craft,
+18 shared-stock and 24 hourly rows retain all earlier traces. Fresh/cache cases
+compare canonical native rows and reload before/after the transitions.
+
+The batch audit confirmed missing incoming-craft and escort-speed compositions.
+Due grounded auto-patrol arrivals and escorts of potential relaunching leaders
+now stop atomically with precise reasons until their forecasts are implemented.
+Hourly item stocks and production ammunition reuse also remain explicit guards.
+Craft-reference fuel scans are reserved against the shared work bound. Negative
+fuel capacity and overflowing service rates refuse the tick intentionally.
+Combat, deployment, event payloads and campaign month progression remain deferred.

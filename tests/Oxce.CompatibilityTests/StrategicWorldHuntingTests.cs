@@ -431,10 +431,16 @@ public sealed class StrategicWorldHuntingTests
                 RuleId = "REFUEL_HUNT",
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_REFUELLING", Fuel = row[1].GetInt32(), LowFuel = row[3].GetBoolean(),
-                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                    Status = "STR_REFUELLING",
+                    Fuel = row[1].GetInt32(),
+                    LowFuel = row[3].GetBoolean(),
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = [],
                 },
-            }) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            }) with
+            { Time = new(1, 1, 1, 1999, 1, 29, 55) };
             initial = initial with { Bases = [initial.Bases[0] with { Longitude = 0.45, Latitude = 0.21 }] };
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
             campaign = Reload(content, campaign, 81, "refuel-hunting-before.sav");
@@ -466,12 +472,21 @@ public sealed class StrategicWorldHuntingTests
                 RuleId = "ITEM_REFUEL_HUNT",
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_REFUELLING", Fuel = row[1].GetInt32(), LowFuel = row[3].GetBoolean(),
-                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                    Status = "STR_REFUELLING",
+                    Fuel = row[1].GetInt32(),
+                    LowFuel = row[3].GetBoolean(),
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = [],
                 },
-            }) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
-            initial = initial with { Bases = [initial.Bases[0] with
-            { Longitude = 0.45, Latitude = 0.21, Items = row[2].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[2].GetInt32() } }] };
+            }) with
+            { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            { Longitude = 0.45, Latitude = 0.21, Items = row[2].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[2].GetInt32() } }]
+            };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "item-refuel-hunt-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -504,20 +519,28 @@ public sealed class StrategicWorldHuntingTests
             var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
             CraftSnapshot Craft(int id, int fuel, bool auto) => template with
             {
-                RuleId = "SHARED_REFUEL_HUNT", Id = id,
+                RuleId = "SHARED_REFUEL_HUNT",
+                Id = id,
                 Logistics = template.Logistics! with
                 {
-                    Status = "STR_REFUELLING", Fuel = fuel, IsAutoPatrolling = auto,
-                    AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                    Status = "STR_REFUELLING",
+                    Fuel = fuel,
+                    IsAutoPatrolling = auto,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = [],
                 },
             };
-            initial = initial with { Bases = [initial.Bases[0] with
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
             {
                 Longitude = 0.45, Latitude = 0.21,
                 Items = row[1].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[1].GetInt32() },
                 Crafts = [Craft(1, row[0].GetInt32(), row[2].GetBoolean()), Craft(2, 60, true)],
                 Soldiers = [],
-            }] };
+            }]
+            };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "shared-refuel-hunt-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -551,10 +574,16 @@ public sealed class StrategicWorldHuntingTests
                 RuleId = "HOURLY_REFUEL_HUNT",
                 Logistics = craft.Logistics! with
                 {
-                    Status = row[0].GetString()!, Fuel = row[1].GetInt32(), Damage = row[2].GetInt32(),
-                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                    Status = row[0].GetString()!,
+                    Fuel = row[1].GetInt32(),
+                    Damage = row[2].GetInt32(),
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = [],
                 },
-            }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            }) with
+            { Time = new(1, 1, 1, 1999, 1, 59, 55) };
             initial = initial with { Bases = [initial.Bases[0] with { Longitude = 0.45, Latitude = 0.21 }] };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "hourly-hunt-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
@@ -570,6 +599,106 @@ public sealed class StrategicWorldHuntingTests
             Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
             Reload(content, campaign, 81, "hourly-hunt-after.sav");
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedIncomingAutoPatrolIsGuardedBeforeHunting(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        var incoming = template with
+        {
+            RuleId = "INCOMING_HUNT",
+            Id = 2,
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
+                Weapons = [],
+            },
+        };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21,
+            Crafts = initial.Bases[0].Crafts.Where(craft => craft.RuleId != "SHIP").ToArray(),
+            Transfers = [new(1, 1, CampaignTransferKind.Craft, "INCOMING_HUNT", 1, Craft: incoming)],
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO retargeting requires arriving craft forecasts.");
+    }
+
+    [Fact]
+    public void RelaunchingLeaderSpeedCannotBypassEscortFuelForecast()
+    {
+        var content = Load(overlay: "crafts: [{type: RELAUNCH_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+        var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        var leader = template with
+        {
+            RuleId = "RELAUNCH_LEADER",
+            Id = 2,
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
+                Weapons = [],
+            },
+        };
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Fuel = 50,
+                Speed = 6000,
+                Weapons = [],
+                Destination = new(WorldTargetKind.Craft, "RELAUNCH_LEADER", 2, 0.45, 0.21),
+            },
+        });
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21, Crafts = [.. initial.Bases[0].Crafts, leader],
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO retargeting requires same-tick craft escort fuel forecasts.");
+    }
+
+    [Theory]
+    [InlineData(-1, 40)]
+    [InlineData(100, int.MaxValue)]
+    public void MalformedRefuellingForecastIsRefusedBeforeMutation(int maximum, int rate)
+    {
+        var content = Load(overlay: $"crafts: [{{type: INVALID_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: {maximum}, refuelRate: {rate}, autoPatrol: true}}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "INVALID_REFUEL_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
+                Weapons = [],
+            },
+        }) with
+        { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Craft service capacity exceeds the supported range.");
     }
 
     [Theory]
