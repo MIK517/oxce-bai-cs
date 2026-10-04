@@ -233,6 +233,37 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NativeMovementCostOutputsFeedCalculatedQueries(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
+        var rows = TestFixtures.Rows(oracle.RootElement, "costs");
+        var pairs = new[] { ("RIGHT", "RIGHT"), ("RIGHT", "LEFT"), ("RIGHT", "GROUND"),
+            ("LEFT", "RIGHT"), ("MISSING", "RIGHT"), ("MISSING", "MISSING"), ("GROUND", "GROUND") };
+        Assert.Equal(rows.Length, pairs.Length);
+        var code = "var ptr RuleInventory source; var ptr RuleInventory target; var int cost; var int value; var int quotient; " +
+            "var ptr RuleItem item; var ptr RuleDamageType damage; rules.getRuleItem item \"HALF_DAMAGE\"; item.getDamageType damage; ";
+        for (var index = 0; index < pairs.Length; index++)
+        {
+            var expected = rows[index][0].GetInt32();
+            code += $"rules.getRuleInventory source \"{pairs[index].Item1}\"; " +
+                $"rules.getRuleInventory target \"{pairs[index].Item2}\"; source.getMoveToCost cost target; " +
+                "damage.getDamageToHealth value cost; " +
+                $"if neq value {(int)(0.5f * expected)}; return DETECTION_NONE 0; end; ";
+            if (expected != 0)
+                code += $"set quotient {expected}; div quotient cost; if neq quotient 1; return DETECTION_NONE 0; end; ";
+        }
+        code += "return DETECTION_RADAR 100;";
+        RunInventoryScript(code, fromCache, fromCraft, MovementRules + """
+
+            items: [{type: HALF_DAMAGE, damageAlter: {ToHealth: 0.5}}]
+            """);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void ConditionalSameRegisterMovementAlwaysPreservesIdentity(bool fromCache)
