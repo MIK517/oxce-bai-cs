@@ -1117,3 +1117,14 @@ field bindings and signed values. Fresh/cache execution and reload tests exercis
 all fields. Consumed sums are checked before the tick; host work includes weapon
 scans. Caller forecast precision and craft condition percentages follow in this
 cycle. The 4c gate remains open and 4d is untouched.
+
+## Craft condition detection readers (2026-10-04)
+
+Craft damage/shield maxima and percentages now execute through the VM with exact
+Craft.cpp arithmetic: floating-point floor for damage and integer division with
+zero-capacity handling for shields. A verbatim native capture, fresh/cache script
+tests, installed disabled-weapon bonuses and reloads cover the six condition
+getters and null defaults. Invalid percentage domains stop before mutation.
+Grounded craft without an auto-patrol order are excluded from numeric preflight;
+same-tick relaunches and due arrivals remain included. All 42 focused binding
+tests pass. Caller-specific script/work forecasts are the next slice.

@@ -36,7 +36,7 @@ internal sealed partial class CampaignWorld
         var plan = campaign.Content.EventPlans.FirstOrDefault(candidate => candidate.ParserName == parser)?.Plan;
         if (artifact is null && (plan is null || plan.Count == 0))
         {
-            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false, [], []);
+            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false, [], [], false);
             return identity;
         }
         if (!_detectionDefaults.TryGetValue(fromCraft, out var fallback))
@@ -57,6 +57,7 @@ internal sealed partial class CampaignWorld
         var shieldStats = false;
         var damageStats = false;
         var damagePercentage = false;
+        var craftDamagePercentage = false;
         HashSet<int> ufoStats = [];
         HashSet<string> craftStats = [];
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
@@ -85,6 +86,12 @@ internal sealed partial class CampaignWorld
                         craftStats.Add(craftKey);
                         craftStatQueries += visits[instructionIndex];
                     }
+                    if (bindingName is "Craft.getDamageMax" or "Craft.getDamagePercentage" or "Craft.getShieldMax" or "Craft.getShieldPercentage")
+                    {
+                        craftStats.Add(bindingName is "Craft.getDamageMax" or "Craft.getDamagePercentage" ? "damageMax" : "shieldCapacity");
+                        craftStatQueries += visits[instructionIndex];
+                    }
+                    if (bindingName == "Craft.getDamagePercentage") craftDamagePercentage = true;
                     if (bindingName is "Ufo.getDamageMax" or "Ufo.getDamagePercentage") damageStats = true;
                     if (bindingName == "Ufo.getDamagePercentage") damagePercentage = true;
                     if (bindingName is "Ufo.getShieldMax" or "Ufo.getShieldPercentage") shieldStats = true;
@@ -98,7 +105,7 @@ internal sealed partial class CampaignWorld
                 }
             _detectionFrame.Prepare(candidate);
         }
-        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, craftStatQueries, ufoTagQueries, shieldStats, damageStats, damagePercentage, ufoStats.Order().ToArray(), craftStats.Order(StringComparer.Ordinal).ToArray());
+        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, craftStatQueries, ufoTagQueries, shieldStats, damageStats, damagePercentage, ufoStats.Order().ToArray(), craftStats.Order(StringComparer.Ordinal).ToArray(), craftDamagePercentage);
         return result;
     }
 
@@ -225,24 +232,42 @@ internal sealed partial class CampaignWorld
                 foreach (var owner in campaign.BaseStates)
                 {
                     foreach (var craft in owner.Crafts)
-                        foreach (var key in fromCraft.CraftStats)
-                            if (DetectionCraftStat(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
-                                craft.Logistics, key) is < int.MinValue or > int.MaxValue)
-                                return "Detection craft statistics exceed the supported range.";
+                        if (DetectionCraftStatsReason(fromCraft, campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+                            craft.Logistics) is { } reason) return reason;
                     if (highest < CampaignTimeTrigger.OneHour) continue;
                     foreach (var transfer in owner.Transfers)
-                        if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming)
-                            foreach (var key in fromCraft.CraftStats)
-                                if (DetectionCraftStat(campaign.Content.RuntimeRules.Crafts[
-                                    campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value,
-                                    incoming.Logistics, key) is < int.MinValue or > int.MaxValue)
-                                    return "Detection craft statistics exceed the supported range.";
+                        if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming &&
+                            DetectionCraftStatsReason(fromCraft, campaign.Content.RuntimeRules.Crafts[
+                                campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value,
+                                incoming.Logistics) is { } reason) return reason;
                 }
             work += (fromCraft.StepBound + (long)fromCraft.CraftStatQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
         }
         return work > MaximumAlienBaseChecks ? "Detection script work exceeds the supported half-hour limit." : null;
     }
 
+    private string? DetectionCraftStatsReason(DetectionScript script, RuntimeCraftRule rule, CraftLogisticsState? state)
+    {
+        // Grounded craft without an auto-patrol order cannot become callers in
+        // this tick. Servicing and due transfers can relaunch an existing order.
+        if (!PossibleDetectionCraft(rule, state)) return null;
+        foreach (var key in script.CraftStats)
+            if (DetectionCraftStat(rule, state, key) is < int.MinValue or > int.MaxValue)
+                return "Detection craft statistics exceed the supported range.";
+        if (script.CraftDamagePercentage)
+        {
+            var maximum = DetectionCraftStat(rule, state, "damageMax");
+            var percentage = Math.Floor((double)(state?.Damage ?? 0) / maximum * 100);
+            // Repair can reduce damage before this pass; zero is the other endpoint.
+            if (maximum == 0 || !double.IsFinite(percentage) || percentage is < int.MinValue or > int.MaxValue)
+                return "Detection craft damage percentage exceeds the supported range.";
+        }
+        return null;
+    }
+
+    private static bool PossibleDetectionCraft(RuntimeCraftRule rule, CraftLogisticsState? state) =>
+        state is { Status: "STR_OUT" } || state is { IsAutoPatrolling: true } && rule.AutoPatrol;
+
     private sealed record DetectionScript(ScriptProgram? Program, ScriptEventPlan? Plan, string? Unavailable,
-        ScriptHostBindings Providers, string[] InputNames, long StepBound, int CraftStatQueries, int UfoTagQueries, bool ShieldStats, bool DamageStats, bool DamagePercentage, int[] UfoStats, string[] CraftStats);
+        ScriptHostBindings Providers, string[] InputNames, long StepBound, int CraftStatQueries, int UfoTagQueries, bool ShieldStats, bool DamageStats, bool DamagePercentage, int[] UfoStats, string[] CraftStats, bool CraftDamagePercentage);
 }

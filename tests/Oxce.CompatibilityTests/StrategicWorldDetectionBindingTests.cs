@@ -12,6 +12,92 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void CraftConditionsMatchNativeGettersWithWeaponBonuses(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "craftConditions"))
+        {
+            var damage = row[0].GetInt32();
+            var maximum = row[1].GetInt32();
+            var shield = row[3].GetInt32();
+            var capacity = row[4].GetInt32();
+            var getters = new[] { "getDamage", "getDamageMax", "getDamagePercentage", "getShield", "getShieldMax", "getShieldPercentage" };
+            var code = "var ptr Craft absent null; var int value; ";
+            for (var index = 0; index < getters.Length; index++)
+            {
+                code += $"craft.{getters[index]} value; if neq value {row[index].GetInt32()}; return DETECTION_NONE 0; end; ";
+                code += $"absent.{getters[index]} value; if neq value 0; return DETECTION_NONE 0; end; ";
+            }
+            code += "return DETECTION_RADAR 100;";
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                crafts:
+                  - type: CRAFT_CONDITIONS
+                    speedMax: 6000
+                    fuelMax: 100
+                    damageMax: {{maximum - 5}}
+                    shieldCapacity: {{capacity}}
+                    weapons: 2
+                craftWeapons:
+                  - type: CONDITION_BONUS
+                    ammoMax: 1
+                    launcher: SUPPLY
+                    stats: {damageMax: 5}
+                ufos:
+                  - type: UFO_CRAFT_CONDITIONS
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      detectUfoFromCraft: '{{code}}'
+                """);
+            var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_CRAFT_CONDITIONS", 2200).Capture()
+                .WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "CRAFT_CONDITIONS",
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_OUT", Speed = 0, Destination = null, Damage = damage, Shield = shield,
+                        Weapons = [new CraftWeaponSnapshot("CONDITION_BONUS", 1, Disabled: true)],
+                    },
+                });
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(205));
+            campaign = Reload(content, campaign, 205, "craft-conditions-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 205, "craft-conditions-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CraftZeroDamageMaximumPercentageStopsBeforeMutation(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            crafts:
+              - type: CRAFT_ZERO_DAMAGE
+                speedMax: 6000
+                fuelMax: 100
+                damageMax: 0
+            ufos:
+              - type: UFO_CRAFT_ZERO_DAMAGE
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromCraft: "craft.getDamagePercentage detection_chance; return;"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_CRAFT_ZERO_DAMAGE", 2200).Capture()
+            .WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "CRAFT_ZERO_DAMAGE",
+                Logistics = craft.Logistics! with { Status = "STR_OUT", Speed = 0, Destination = null, Damage = 0 },
+            });
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(206));
+        AssertTimeBlocked(campaign, "Detection craft damage percentage exceeds the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void EveryCraftInstanceStatIncludesInstalledDisabledWeaponBonuses(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

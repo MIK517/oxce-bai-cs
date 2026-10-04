@@ -64,6 +64,15 @@ $armorVision = @(
     ((Read-Method 'src/Mod/Armor.h' 'int getVisibilityThroughFire()').Replace('int getVisibilityThroughFire()', 'int Armor::getVisibilityThroughFire()'))
 )
 $template = $template.Replace('// ARMOR_VISION', ($armorVision -join [Environment]::NewLine))
+$craftMethods = @(
+    (Read-Method 'src/Savegame/Craft.cpp' 'int Craft::getDamage()'),
+    (Read-Method 'src/Savegame/Craft.cpp' 'int Craft::getDamageMax()'),
+    (Read-Method 'src/Savegame/Craft.cpp' 'int Craft::getDamagePercentage()'),
+    (Read-Method 'src/Savegame/Craft.cpp' 'int Craft::getShield()'),
+    (Read-Method 'src/Savegame/Craft.cpp' 'int Craft::getShieldCapacity()'),
+    (Read-Method 'src/Savegame/Craft.cpp' 'int Craft::getShieldPercentage()')
+)
+$template = $template.Replace('// CRAFT_METHODS', ($craftMethods -join [Environment]::NewLine))
 $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamagePercentage()'),
