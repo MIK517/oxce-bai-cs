@@ -12,6 +12,12 @@ public enum UfoDetectionResult
 /// <summary>A completed radar facility as seen by <c>Base::detect</c>.</summary>
 public readonly record struct WorldRadarFacility(int RadarRange, int RadarChance, bool Hyperwave);
 
+/// <summary>The outputs and scalar inputs passed to the UFO detection script worker.</summary>
+public readonly record struct WorldUfoDetectionInputs(
+    UfoDetectionResult Type, int Chance, int Distance, bool AlreadyTracked,
+    int RadarTotalStrength, int RadarMaxDistance,
+    int HyperwaveTotalStrength = 0, int HyperwaveMaxDistance = 0);
+
 /// <summary>A completed facility as seen by <c>Base::getDetectionChance</c>.</summary>
 public readonly record struct WorldBaseFacility(int SizeX, int SizeY, bool MindShield, int MindShieldPower, bool Disabled);
 
@@ -65,12 +71,25 @@ public static class WorldDetection
         bool alreadyTracked,
         Func<int, bool> percent)
     {
+        var inputs = BaseScriptInputs(completedFacilities, distance, visibility, alreadyTracked, percent);
+        return (inputs.Type, inputs.Chance);
+    }
+
+    /// <summary>Base::detect worker inputs, including completed radars outside detection range.</summary>
+    public static WorldUfoDetectionInputs BaseScriptInputs(
+        ReadOnlySpan<WorldRadarFacility> completedFacilities,
+        int distance, int visibility, bool alreadyTracked, Func<int, bool> percent)
+    {
         ArgumentNullException.ThrowIfNull(percent);
         var hyperwave = false;
         long hyperwaveSum = 0;
         long radarSum = 0;
+        var radarRange = 0;
+        var hyperwaveRange = 0;
         foreach (var facility in completedFacilities)
         {
+            if (facility.Hyperwave) hyperwaveRange = Math.Max(hyperwaveRange, facility.RadarRange);
+            else radarRange = Math.Max(radarRange, facility.RadarRange);
             if (facility.RadarRange >= distance)
             {
                 if (facility.Hyperwave)
@@ -87,14 +106,20 @@ public static class WorldDetection
         // Base::detect accumulates ints; the port clamps instead of overflowing.
         var hyperwaveChance = Clamp(hyperwaveSum);
         var radarChance = Clamp(radarSum);
+        var type = UfoDetectionResult.None;
+        var chance = 0;
         if (alreadyTracked)
         {
             if (hyperwave || hyperwaveChance > 0)
-                return (hyperwave ? UfoDetectionResult.Hyperwave : UfoDetectionResult.Radar, 100);
-            return radarChance > 0 ? (UfoDetectionResult.Radar, 100) : (UfoDetectionResult.None, 0);
+            {
+                type = hyperwave ? UfoDetectionResult.Hyperwave : UfoDetectionResult.Radar;
+                chance = 100;
+            }
+            else if (radarChance > 0) { type = UfoDetectionResult.Radar; chance = 100; }
         }
-        if (hyperwave) return (UfoDetectionResult.Hyperwave, 100);
-        return radarChance > 0 ? (UfoDetectionResult.Radar, DetectionChance(radarChance, visibility)) : (UfoDetectionResult.None, 0);
+        else if (hyperwave) { type = UfoDetectionResult.Hyperwave; chance = 100; }
+        else if (radarChance > 0) { type = UfoDetectionResult.Radar; chance = DetectionChance(radarChance, visibility); }
+        return new(type, chance, distance, alreadyTracked, radarChance, radarRange, hyperwaveChance, hyperwaveRange);
     }
 
     /// <summary>Craft::detect without its script hook.</summary>
@@ -104,6 +129,14 @@ public static class WorldDetection
         if (distance >= radarRange) return (UfoDetectionResult.None, 0);
         if (radarChance == 100) return (UfoDetectionResult.Radar, 100);
         return (UfoDetectionResult.Radar, alreadyTracked ? 100 : DetectionChance(radarChance, visibility));
+    }
+
+    /// <summary>Craft::detect worker inputs retain radar stats even outside the strict range boundary.</summary>
+    public static WorldUfoDetectionInputs CraftScriptInputs(
+        int radarRange, int radarChance, int distance, int visibility, bool alreadyTracked)
+    {
+        var (type, chance) = CraftDetection(radarRange, radarChance, distance, visibility, alreadyTracked);
+        return new(type, chance, distance, alreadyTracked, radarChance, radarRange);
     }
 
     /// <summary>
