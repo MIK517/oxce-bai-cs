@@ -10,6 +10,119 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionBindingTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EveryCraftInstanceStatIncludesInstalledDisabledWeaponBonuses(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var native = TestFixtures.Rows(oracle.RootElement, "stats");
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Stats.getFuelMax"] = "fuelMax",
+            ["Stats.getDamageMax"] = "damageMax",
+            ["Stats.getSpeedMax"] = "speedMax",
+            ["Stats.getAccel"] = "accel",
+            ["Stats.getRadarRange"] = "radarRange",
+            ["Stats.getRadarChance"] = "radarChance",
+            ["Stats.getSightRange"] = "sightRange",
+            ["Stats.getHitBonus"] = "hitBonus",
+            ["Stats.getAvoidBonus"] = "avoidBonus",
+            ["Stats.getAvoidBonus2"] = "avoidBonus2",
+            ["Stats.getPowerBonus"] = "powerBonus",
+            ["Stats.getArmor"] = "armor",
+            ["Stats.getShieldCapacity"] = "shieldCapacity",
+            ["Stats.getShieldRecharge"] = "shieldRecharge",
+            ["Stats.getShieldRechargeInGeoscape"] = "shieldRechargeInGeoscape",
+            ["Stats.getShieldBleedThrough"] = "shieldBleedThrough",
+            ["Stats.getMaxUnits"] = "soldiers",
+            ["Stats.getMaxVehiclesAndLargeSoldiers"] = "vehicles",
+            ["Stats.getMaxItems"] = "maxItems",
+        };
+        var fields = string.Join("\n", keys.Select(pair => $"    {pair.Value}: {native[0].GetProperty(pair.Key[6..]).GetInt32()}"));
+        var bonuses = string.Join(", ", keys.Select(pair => $"{pair.Value}: {native[1].GetProperty(pair.Key[6..]).GetInt32() - native[0].GetProperty(pair.Key[6..]).GetInt32()}"));
+        var code = "var ptr Craft absent null; var int value; ";
+        foreach (var pair in keys)
+        {
+            code += $"craft.{pair.Key} value; if neq value {native[1].GetProperty(pair.Key[6..]).GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += $"absent.{pair.Key} value; if neq value 0; return DETECTION_NONE 0; end; ";
+        }
+        code += "return DETECTION_RADAR 100;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            crafts:
+              - type: CRAFT_EFFECTIVE_STATS
+            {{fields}}
+                weapons: 3
+                maxUnitsLimit: 2
+                maxHWPUnitsLimit: 1
+            craftWeapons:
+              - type: ALL_STAT_BONUSES
+                ammoMax: 1
+                launcher: SUPPLY
+                stats: { {{bonuses}} }
+            ufos:
+              - type: UFO_CRAFT_EFFECTIVE_STATS
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromCraft: '{{code}}'
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_CRAFT_EFFECTIVE_STATS", 2200).Capture()
+            .WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "CRAFT_EFFECTIVE_STATS",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_OUT", Speed = 0, Destination = null,
+                    Weapons = [null, new CraftWeaponSnapshot("ALL_STAT_BONUSES", 1, Disabled: true), null],
+                },
+            });
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(203));
+        campaign = Reload(content, campaign, 203, "craft-effective-stats-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 203, "craft-effective-stats-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CraftInstanceStatOverflowStopsBeforeMutation(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            crafts:
+              - type: CRAFT_STAT_OVERFLOW
+                speedMax: 6000
+                fuelMax: 100
+                damageMax: 100
+                weapons: 2
+                armor: 2147483647
+            craftWeapons:
+              - type: ARMOR_OVERFLOW
+                ammoMax: 1
+                launcher: SUPPLY
+                stats: {armor: 1}
+            ufos:
+              - type: UFO_CRAFT_STAT_OVERFLOW
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromCraft: "craft.Stats.getArmor detection_chance; return;"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_CRAFT_STAT_OVERFLOW", 2200).Capture()
+            .WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "CRAFT_STAT_OVERFLOW",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_OUT", Speed = 0, Destination = null,
+                    Weapons = [new CraftWeaponSnapshot("ARMOR_OVERFLOW", 1)],
+                },
+            });
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(204));
+        AssertTimeBlocked(campaign, "Detection craft statistics exceed the supported range.");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]

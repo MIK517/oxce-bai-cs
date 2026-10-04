@@ -1106,3 +1106,14 @@ corpus, checksum and existing allocation checks. Formatting verification,
 code-map validation and diff checks pass. The reference remains clean at the
 pinned commit. This timed run completes seven three-slice cycles and seven batch
 audits, with confirmed issues repaired in their owning slices or audit commits.
+
+## Effective craft detection statistics (2026-10-04)
+
+All nineteen Craft.Stats getters now read the raw craft rule plus every installed
+weapon bonus, including disabled weapons and ignoring empty slots. Evidence is
+Craft.cpp::getCraftStats/load/ScriptRegister and RuleCraft.h::operator+= at the
+pinned reference; the existing strategic-detection-scripts stat fixture pins all
+field bindings and signed values. Fresh/cache execution and reload tests exercise
+all fields. Consumed sums are checked before the tick; host work includes weapon
+scans. Caller forecast precision and craft condition percentages follow in this
+cycle. The 4c gate remains open and 4d is untouched.

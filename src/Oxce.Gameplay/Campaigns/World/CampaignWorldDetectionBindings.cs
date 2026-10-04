@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionBindingNameSupported(binding.Name) || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftRuleStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        DetectionBindingNameSupported(binding.Name) || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -213,14 +213,25 @@ internal sealed partial class CampaignWorld
     {
         if (name == "Craft.getDamage") return craft.Logistics?.Damage ?? 0;
         if (name == "Craft.getShield") return craft.Logistics?.Shield ?? 0;
+        var key = DetectionCraftStatKey(name)
+            ?? throw new InvalidOperationException("Detection craft provider was not preflighted.");
+        return checked((int)DetectionCraftStat(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+            craft.Logistics, key));
+    }
+
+    private long DetectionCraftStat(RuntimeCraftRule rule, CraftLogisticsState? state, string key)
+    {
+        long value = rule.DefaultStats.GetValueOrDefault(key);
+        if (state is null) return value;
         var rules = campaign.Content.RuntimeRules;
-        CraftLogistics.EffectiveRadar(rules.Crafts[craft.Rule].Value, craft.Logistics?.Weapons ?? [],
-            rules, out var range, out var chance);
-        return name == "Craft.Stats.getRadarRange" ? range : chance;
+        for (var index = 0; index < state.Weapons.Count; index++)
+            if (state.Weapons[index] is { } weapon)
+                value += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault(key);
+        return value;
     }
 
     private static int DetectionCraftRuleValue(string name, RuntimeCraftRule rule) =>
-        DetectionCraftRuleStatKey(name) is { } key ? rule.DefaultStats.GetValueOrDefault(key) : name switch
+        DetectionCraftStatKey(name) is { } key ? rule.DefaultStats.GetValueOrDefault(key) : name switch
         {
             "RuleCraft.getPilotsMax" => rule.Pilots,
             "RuleCraft.getSoldiersMax" => rule.SoldierCapacity,
@@ -229,27 +240,27 @@ internal sealed partial class CampaignWorld
             _ => throw new InvalidOperationException("Detection craft rule provider was not preflighted."),
         };
 
-    private static string? DetectionCraftRuleStatKey(string name) => name switch
+    private static string? DetectionCraftStatKey(string name) => name switch
     {
-        "RuleCraft.Stats.getFuelMax" => "fuelMax",
-        "RuleCraft.Stats.getDamageMax" => "damageMax",
-        "RuleCraft.Stats.getSpeedMax" => "speedMax",
-        "RuleCraft.Stats.getAccel" => "accel",
-        "RuleCraft.Stats.getRadarRange" => "radarRange",
-        "RuleCraft.Stats.getRadarChance" => "radarChance",
-        "RuleCraft.Stats.getSightRange" => "sightRange",
-        "RuleCraft.Stats.getHitBonus" => "hitBonus",
-        "RuleCraft.Stats.getAvoidBonus" => "avoidBonus",
-        "RuleCraft.Stats.getAvoidBonus2" => "avoidBonus2",
-        "RuleCraft.Stats.getPowerBonus" => "powerBonus",
-        "RuleCraft.Stats.getArmor" => "armor",
-        "RuleCraft.Stats.getShieldCapacity" => "shieldCapacity",
-        "RuleCraft.Stats.getShieldRecharge" => "shieldRecharge",
-        "RuleCraft.Stats.getShieldRechargeInGeoscape" => "shieldRechargeInGeoscape",
-        "RuleCraft.Stats.getShieldBleedThrough" => "shieldBleedThrough",
-        "RuleCraft.Stats.getMaxUnits" => "soldiers",
-        "RuleCraft.Stats.getMaxVehiclesAndLargeSoldiers" => "vehicles",
-        "RuleCraft.Stats.getMaxItems" => "maxItems",
+        "RuleCraft.Stats.getFuelMax" or "Craft.Stats.getFuelMax" => "fuelMax",
+        "RuleCraft.Stats.getDamageMax" or "Craft.Stats.getDamageMax" => "damageMax",
+        "RuleCraft.Stats.getSpeedMax" or "Craft.Stats.getSpeedMax" => "speedMax",
+        "RuleCraft.Stats.getAccel" or "Craft.Stats.getAccel" => "accel",
+        "RuleCraft.Stats.getRadarRange" or "Craft.Stats.getRadarRange" => "radarRange",
+        "RuleCraft.Stats.getRadarChance" or "Craft.Stats.getRadarChance" => "radarChance",
+        "RuleCraft.Stats.getSightRange" or "Craft.Stats.getSightRange" => "sightRange",
+        "RuleCraft.Stats.getHitBonus" or "Craft.Stats.getHitBonus" => "hitBonus",
+        "RuleCraft.Stats.getAvoidBonus" or "Craft.Stats.getAvoidBonus" => "avoidBonus",
+        "RuleCraft.Stats.getAvoidBonus2" or "Craft.Stats.getAvoidBonus2" => "avoidBonus2",
+        "RuleCraft.Stats.getPowerBonus" or "Craft.Stats.getPowerBonus" => "powerBonus",
+        "RuleCraft.Stats.getArmor" or "Craft.Stats.getArmor" => "armor",
+        "RuleCraft.Stats.getShieldCapacity" or "Craft.Stats.getShieldCapacity" => "shieldCapacity",
+        "RuleCraft.Stats.getShieldRecharge" or "Craft.Stats.getShieldRecharge" => "shieldRecharge",
+        "RuleCraft.Stats.getShieldRechargeInGeoscape" or "Craft.Stats.getShieldRechargeInGeoscape" => "shieldRechargeInGeoscape",
+        "RuleCraft.Stats.getShieldBleedThrough" or "Craft.Stats.getShieldBleedThrough" => "shieldBleedThrough",
+        "RuleCraft.Stats.getMaxUnits" or "Craft.Stats.getMaxUnits" => "soldiers",
+        "RuleCraft.Stats.getMaxVehiclesAndLargeSoldiers" or "Craft.Stats.getMaxVehiclesAndLargeSoldiers" => "vehicles",
+        "RuleCraft.Stats.getMaxItems" or "Craft.Stats.getMaxItems" => "maxItems",
         _ => null,
     };
 
