@@ -677,3 +677,23 @@ flows remain conservatively guarded when a role is absent.
 All 17 focused inventory tests pass, with fresh/cache and transition reloads.
 Inventory movement remains unavailable pending safe target/cost forecasts.
 The three inventory slices are ready for batch audit; 4c remains open.
+
+## Inventory detection cycle audit (2026-10-04)
+
+The three inventory slices match pinned RuleInventory.cpp, Mod.cpp/Mod.h and
+ScriptBind.h member-wrapper behavior. The audit found no additional runtime
+defect. Added fresh/cache regressions prove hand flags depend on ID rather than
+type, non-null Mod aliases cannot bypass missing-role guards, and inventory
+movement retains its precise unsupported-binding boundary. Each VM call clears
+locals; the null-receiver proof rejects aliases and host-written registers.
+
+All 2,087 root tests pass with zero failures/skips, including private corpus,
+fixture checksums and allocation gates. An earlier run reported a 1,064-byte
+polygon-fill allocation difference; the unchanged isolated test and repeated
+root run both pass. No cause was established and no assertion was weakened.
+Compiler/cache revision is 45. The obsolete native object was removed; useful
+generated source, executable and trace remain. The pinned C++ tree is clean.
+The 4c gate remains open; initial/monthly caller composition, remaining detection
+providers/forecasts and composed acceptance still need work. 4d is untouched.
+
+Formatting verification, code-map validation and diff checks pass.

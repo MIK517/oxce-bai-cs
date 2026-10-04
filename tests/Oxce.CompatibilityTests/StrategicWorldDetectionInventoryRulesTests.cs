@@ -128,6 +128,60 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
           - delete: STR_GROUND
         """;
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryTypeAndHandAreIndependent(bool fromCache)
+    {
+        RunInventoryScript("""
+            var ptr RuleInventory inventory; var int type; var int hand;
+            rules.getRuleInventory inventory "STR_RIGHT_HAND";
+            inventory.getType type; if neq type 0; return DETECTION_NONE 0; end;
+            inventory.isRightHand hand; if neq hand 1; return DETECTION_NONE 0; end;
+            rules.getRuleInventory inventory "CUSTOM_HAND";
+            inventory.getType type; if neq type 1; return DETECTION_NONE 0; end;
+            inventory.isRightHand hand; if neq hand 0; return DETECTION_NONE 0; end;
+            inventory.isLeftHand hand; if neq hand 0; return DETECTION_NONE 0; end;
+            return DETECTION_RADAR 100;
+            """.ReplaceLineEndings(" "), fromCache, false, """
+            invs:
+              - id: STR_RIGHT_HAND
+                type: 0
+              - id: CUSTOM_HAND
+                type: 1
+            """);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NonNullModAliasCannotBypassMissingInventoryGuard(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MissingInventoryRules + """
+
+            ufos:
+              - type: UFO_SCOUT
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleMod actual rules; var ptr RuleInventory inventory; actual.getRuleInventoryGround inventory; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
+        AssertTimeBlocked(campaign, "Detection script requires missing inventory STR_GROUND.");
+    }
+
+    [Fact]
+    public void InventoryMovementRemainsPreciselyGuarded()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, InventoryRules + """
+
+            ufos:
+              - type: UFO_SCOUT
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleInventory source; var ptr RuleInventory target null; var int cost; rules.getRuleInventory source "STR_RIGHT_HAND"; source.getMoveToCost cost target; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
+        AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleInventory.getMoveToCost.");
+    }
+
     private static void RunInventoryScript(string code, bool fromCache, bool fromCraft, string? inventoryRules = null)
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";

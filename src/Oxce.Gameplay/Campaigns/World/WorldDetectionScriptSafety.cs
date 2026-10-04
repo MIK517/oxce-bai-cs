@@ -72,6 +72,9 @@ internal static class WorldDetectionScriptSafety
 
     public static HashSet<int> GuaranteedNullReferences(ScriptProgram program)
     {
+        // Each VM invocation clears locals. Only locals whose every possible write
+        // keeps null can bypass a required-rule lookup; aliases and host outputs
+        // deliberately fail this whole-program invariant.
         var result = program.Registers.Where(static register =>
             register.Type.IsReference && !register.IsInput && !register.IsOutput)
             .Select(static register => register.Offset).ToHashSet();
