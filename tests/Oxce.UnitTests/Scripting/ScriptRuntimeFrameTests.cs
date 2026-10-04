@@ -249,6 +249,37 @@ public sealed class ScriptRuntimeFrameTests
     }
 
     [Fact]
+    public void PackedHostCallsWithSeparatorsRetainArgumentsWhenReconstructed()
+    {
+        var id = new ScriptBindingId(30_003);
+        var writable = new ScriptTypeRef(ScriptPrimitiveTypes.Scalar, ScriptTypeModifier.Register | ScriptTypeModifier.Writable);
+        var declaration = new ScriptBindingDeclaration(id, "separated",
+        [
+            new("target", writable, true),
+            new("separator", new ScriptTypeRef(ScriptPrimitiveTypes.Separator), false),
+            new("value", new ScriptTypeRef(ScriptPrimitiveTypes.Scalar), false),
+        ], ["Probe"], new("probe", 1));
+        var program = Compile("separated result __ 1; return result;",
+            new ScriptParserDefinition("Probe", ["result"], new ScriptApiCatalog([declaration]), ["Probe"]));
+        var providers = new ScriptHostBindingsBuilder();
+        providers.Add(id, (_, arguments) =>
+        {
+            if (arguments.Length != 2) return ScriptBindingResult.Failure("Packed call lost an argument.");
+            arguments[0] = ScriptRuntimeValue.FromScalar(arguments[0].Scalar + arguments[1].Scalar);
+            return ScriptBindingResult.Success;
+        });
+        var rebuilt = new ScriptProgram(program.ParserName, program.Instructions, program.Outputs,
+            program.RegisterBytes, program.Registers, program.Bindings);
+        var initial = new[] { ScriptRuntimeValue.FromScalar(10) };
+        var output = new ScriptRuntimeValue[1];
+
+        var outcome = ScriptVm.Execute(rebuilt, initial, output, new ScriptExecutionFrame(), hostBindings: providers.Build());
+
+        Assert.True(outcome.Succeeded, outcome.FailureMessage);
+        Assert.Equal(11, output[0].Scalar);
+    }
+
+    [Fact]
     public void EventFrameCommitsOnlyAfterTheCompleteChainSucceeds()
     {
         var before = Compile("add result 2; return result;", Definition());

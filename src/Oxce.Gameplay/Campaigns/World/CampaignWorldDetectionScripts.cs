@@ -61,7 +61,7 @@ internal sealed partial class CampaignWorld
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
             .Append(program).Concat(plan?.After.Select(item => item.Program) ?? []))
         {
-            var candidateReason = WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported, out var visits);
+            var candidateReason = WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported, out var visits, campaign.CountryStates.Count);
             reason ??= candidateReason;
             if (candidateReason is not null) continue;
             stepBound += visits.Sum(static count => (long)count);

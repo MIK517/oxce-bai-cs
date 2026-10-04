@@ -510,3 +510,20 @@ items and same-name fallback preserve identity, and legacy missing items stay nu
 Native Mod getter/wrapper captures and fresh/cache VM/reload tests cover the slice.
 Reference: Mod.cpp::getItem/getArmor/getSoldier/getSkill and script wrappers,
 RuleResearch.cpp::afterLoad/ScriptRegister, RuleResearch.h::getNeededItem.
+
+## Ordered country detection iteration (2026-10-04)
+
+Detection scripts execute SavedGame's ordered, unfiltered country list through
+bounded compiler-owned list loops, including null/empty lists, nesting and
+continue. Country providers expose current funding/activity histories and the
+signed pact flag. Loop forecasts use the immutable campaign country population;
+manual iterator calls retain an explicit guard. Native captures insert the
+reference list init/step templates, filter and country getters verbatim.
+Fresh/cache base and craft callers preserve country order through save reloads.
+
+This slice reproduces and fixes packed-program separator loss on reconstruction:
+the constructor distinguishes source calls from already packed calls and rejects
+malformed arities intentionally. A failing-before-fix VM regression and actual
+cached country-loop execution cover the repair. Compiler/cache revision is 37.
+Reference: ScriptBind.h::BindListInitImpl/BindListLoopImpl,
+SavedGame.cpp::filterCountryConstScript/ScriptRegister, Country.cpp/h getters.

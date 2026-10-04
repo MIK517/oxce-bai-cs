@@ -48,6 +48,22 @@ $tagMethods = @(
 $template = $template.Replace('// STATS_ADD', (Read-Method 'src/Mod/RuleCraft.h' 'RuleCraftStats& operator+=('))
 $template = $template.Replace('// STATS_BIND', ('template<auto Stat, typename TBind>' + [Environment]::NewLine + (Read-Method 'src/Mod/RuleCraft.h' 'static void addGetStatsScript(')))
 $template = $template.Replace('// TAG_METHODS', ($tagMethods -join [Environment]::NewLine))
+$countryMethods = @(
+    (Read-Method 'src/Savegame/Country.h' 'int getCurrentFunding()'),
+    (Read-Method 'src/Savegame/Country.h' 'int getCurrentActivityAlien()'),
+    (Read-Method 'src/Savegame/Country.h' 'int getCurrentActivityXcom()')
+)
+$template = $template.Replace('// COUNTRY_METHODS', (Read-Method 'src/Savegame/Country.cpp' 'bool Country::getPact()'))
+foreach ($method in $countryMethods) {
+    $signature = [regex]::Replace($method.Substring(0, $method.IndexOf('{')).Trim(), '\s+', ' ')
+    $template = $template.Replace($signature + ';', $method)
+}
+$template = $template.Replace('// COUNTRY_FILTER', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool filterCountryConstScript('))
+$countryList = @(
+    ('template<typename T, typename V, typename... Args, auto... X, bool (*Func)(T*, V* v, Args...)>' + [Environment]::NewLine + (Read-Method 'src/Engine/ScriptBind.h' 'struct BindListInitImpl<bool (*)(T*, V* v, Args...), Func, X...>') + ';'),
+    ('template<typename T, typename V, typename... Args, auto... X, bool (*Func)(T*, V* v, Args...)>' + [Environment]::NewLine + (Read-Method 'src/Engine/ScriptBind.h' 'struct BindListLoopImpl<bool (*)(T*, V* v, Args...), Func, X...>') + ';')
+)
+$template = $template.Replace('// COUNTRY_LIST', ($countryList -join [Environment]::NewLine))
 $template = $template.Replace('// RESEARCH_FIND', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool haveReserchVector(const std::vector<const RuleResearch*> &vec, const RuleResearch *res)'))
 $template = $template.Replace('// RESEARCH_METHOD', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool SavedGame::isResearched(const RuleResearch *research, bool considerDebugMode) const'))
 $template = $template.Replace('// RESEARCH_WRAPPER', (Read-Method 'src/Savegame/SavedGame.cpp' 'void isResearchedScript('))
