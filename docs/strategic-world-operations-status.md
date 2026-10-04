@@ -445,3 +445,15 @@ Actual craft transfer orders, hourly arrivals and repeated source-preserving
 rewrites retain tags and opaque fields, while deleted tags stay deleted.
 All 1,966 root tests pass with zero failures/skips, including private corpus and
 oracle checksum tests. The 4c headless gate remains open; 4d is untouched.
+
+## Literal detection loop forecasts (2026-10-04)
+
+Detection callers accept compiler-owned scalar counted loops with literal limits,
+including nested loops, break/continue and changes to the exposed loop variable.
+The forecast recognizes exact hidden-register initialization/check/increment/back
+edges and rejects any body access to control registers. Per-instruction visit
+bounds feed both VM step limits and aggregate contact/radar/tag work reservations.
+Pinned script-core counted-loop/control fixtures run at the live detection call
+site; zero/negative bounds, nesting and oversized inputs have focused coverage.
+Input-dependent/list loops retain explicit bounded-forecast capability refusals.
+Reference: Engine/Script.cpp::parseLoop/parseBreak/parseContinue.

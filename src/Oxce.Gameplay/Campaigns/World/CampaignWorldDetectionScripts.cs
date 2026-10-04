@@ -58,19 +58,24 @@ internal sealed partial class CampaignWorld
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
             .Append(program).Concat(plan?.After.Select(item => item.Program) ?? []))
         {
-            stepBound += candidate.Instructions.Count;
-            foreach (var instruction in candidate.Instructions)
+            var candidateReason = WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported, out var visits);
+            reason ??= candidateReason;
+            if (candidateReason is not null) continue;
+            stepBound += visits.Sum(static count => (long)count);
+            for (var instructionIndex = 0; instructionIndex < candidate.Instructions.Count; instructionIndex++)
+            {
+                var instruction = candidate.Instructions[instructionIndex];
                 if ((CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall)
                 {
                     var bindingId = instruction.Operands[0].Scalar;
                     var declaration = candidate.Bindings.First(binding => binding.Id.Value == bindingId);
                     var bindingName = declaration.Name;
                     if (bindingName == "Ufo.getTag" && campaign.Content.Tags.Types.Any(type =>
-                        type.Id.Value == declaration.Parameters[2].Type.Id.Value && type.Name == "Ufo")) ufoTagQueries++;
-                    if (bindingName is "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance") radarQueries++;
+                        type.Id.Value == declaration.Parameters[2].Type.Id.Value && type.Name == "Ufo")) ufoTagQueries += visits[instructionIndex];
+                    if (bindingName is "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance") radarQueries += visits[instructionIndex];
                     if (bindingName is "Ufo.getShieldMax" or "Ufo.getShieldPercentage") shieldStats = true;
                 }
-            reason ??= WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported);
+            }
             foreach (var binding in candidate.Bindings)
                 if (DetectionBindingSupported(binding) && providers.Add(binding.Id.Value))
                 {

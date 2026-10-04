@@ -1,6 +1,7 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
+using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
@@ -69,7 +70,7 @@ public sealed class StrategicWorldDetectionScriptsTests
     }
 
     [Theory]
-    [InlineData("loop var i 10; end; return;", "Detection script requires a bounded loop forecast.")]
+    [InlineData("loop var i distance; end; return;", "Detection script requires a bounded loop forecast.")]
     [InlineData("div detection_chance distance; return;", "Detection script requires a nonzero divisor forecast.")]
     [InlineData("div detection_chance 0; return;", "Detection script requires a nonzero divisor forecast.")]
     [InlineData("ufo.getDamagePercentage detection_chance; return;", "Detection script requires unsupported binding Ufo.getDamagePercentage.")]
@@ -173,6 +174,85 @@ public sealed class StrategicWorldDetectionScriptsTests
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(97));
 
         AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LiteralLoopsAndControlFlowMatchThePinnedVmOracle(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("script-core");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
+            row.GetProperty("name").GetString() is "counted-loop" or "loop-control"))
+        {
+            var expected = row.GetProperty("result").GetInt32();
+            var code = row.GetProperty("source").GetString()!.Replace("result", "detection_chance", StringComparison.Ordinal)
+                .Replace("return detection_chance;", $"if eq detection_chance {expected}; return DETECTION_RADAR 100; end; return DETECTION_NONE 0;", StringComparison.Ordinal);
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                ufos:
+                  - type: UFO_LITERAL_LOOP
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      detectUfoFromBase: "{{code}}"
+                """);
+            var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_LITERAL_LOOP", 2200);
+
+            AdvanceUnblocked(campaign, 1);
+
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 110, "literal-loop-detection.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-10)]
+    [InlineData(4)]
+    public void NestedLoopsIgnoreVisibleCounterMutationAndZeroBounds(int limit)
+    {
+        var expected = Math.Max(0, limit) * 6;
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: $$"""
+            ufos:
+              - type: UFO_NESTED_LOOP
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    var int sum;
+                    loop var outer {{limit}};
+                      set outer -100;
+                      loop var inner 4;
+                        add sum inner;
+                        set inner 10000;
+                      end;
+                    end;
+                    if eq sum {{expected}}; return DETECTION_RADAR 100; end;
+                    return DETECTION_NONE 0;
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_NESTED_LOOP", 2200);
+
+        AdvanceUnblocked(campaign, 1);
+
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+    }
+
+    [Theory]
+    [InlineData(300000)]
+    [InlineData(2147483647)]
+    public void OversizedLiteralLoopStopsBeforeMutation(int limit)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: $$"""
+            ufos:
+              - type: UFO_OVERSIZED_LOOP
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: "loop var i {{limit}}; add detection_chance 0; end; return;"
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_OVERSIZED_LOOP", 2200);
+
+        AssertTimeBlocked(campaign, "Detection script exceeds the supported instruction limit.");
     }
 
     private static CampaignTime HalfHour => new(1, 1, 1, 1999, 1, 29, 55);
