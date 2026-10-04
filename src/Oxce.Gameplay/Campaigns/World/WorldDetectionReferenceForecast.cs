@@ -38,7 +38,7 @@ internal sealed class WorldDetectionReferenceForecast
         var bindings = program.Bindings.ToDictionary(static binding => binding.Id.Value);
         var needsNames = program.Instructions.Any(instruction =>
             (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall &&
-            bindings[instruction.Operands[0].Scalar].Name is "RuleMod.getRuleItem" or "RuleMod.getRuleInventory" &&
+            NamedLookup(bindings[instruction.Operands[0].Scalar].Name) &&
             instruction.Operands[3].Kind == ScriptOperandKind.Register);
         var names = needsNames ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work) : null;
         if (needsNames && names is null) return null;
@@ -71,7 +71,7 @@ internal sealed class WorldDetectionReferenceForecast
                     var source = Read(operands[1], incoming);
                     if (binding.Name == "set" && binding.Parameters.Count == 2)
                         values = Read(operands[2], incoming);
-                    else if (binding.Name is "RuleMod.getRuleItem" or "RuleMod.getRuleInventory")
+                    else if (NamedLookup(binding.Name))
                     {
                         var possibleNames = operands[3].Kind == ScriptOperandKind.Text
                             ? new HashSet<string>(StringComparer.Ordinal) { operands[3].Text! } : names?.At(index, operands[3]);
@@ -83,9 +83,7 @@ internal sealed class WorldDetectionReferenceForecast
                             values = new(ReferenceEqualityComparer.Instance);
                             foreach (var name in possibleNames)
                             {
-                                object? found = binding.Name == "RuleMod.getRuleItem"
-                                    ? name != "STR_NONE" && rules.Items.TryGet(name, out var item) ? rules.Items[item].Value : null
-                                    : rules.Inventories.TryGet(name, out var inventory) ? rules.Inventories[inventory].Value : null;
+                                var found = Lookup(rules, binding.Name, name);
                                 values.Add(found);
                             }
                             if (source is null || source.Contains(null)) values.Add(null);
@@ -110,6 +108,14 @@ internal sealed class WorldDetectionReferenceForecast
                         foreach (var item in source)
                             values.Add(item is RuntimeItemRule rule
                                 ? binding.Name == "RuleItem.getDamageType" ? rule.Damage : rule.MeleeDamage : null);
+                    }
+                    else if (binding.Name is "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or
+                        "RuleUnit.getCivilianRecoveryItemType" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" && source is not null)
+                    {
+                        work += source.Count + source.OfType<string>().Sum(static name => (long)name.Length);
+                        if (work > maximumWork) return null;
+                        values = new(ReferenceEqualityComparer.Instance);
+                        foreach (var candidate in source) values.Add(LinkedValue(rules, binding.Name, candidate));
                     }
                     Write(operands[parameter + 1], values);
                 }
@@ -188,6 +194,45 @@ internal sealed class WorldDetectionReferenceForecast
             }
         }
         return new(states);
+    }
+
+    private static bool NamedLookup(string name) => name is
+        "RuleMod.getRuleItem" or "RuleMod.getRuleInventory" or "RuleMod.getRuleArmor" or
+        "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or "RuleMod.getRuleUnit" or "RuleMod.getRuleResearch";
+
+    private static object? Lookup(RuntimeRuleCatalog rules, string binding, string? name)
+    {
+        if (string.IsNullOrEmpty(name) || name == "\0") return null;
+        return binding switch
+        {
+            "RuleMod.getRuleItem" => name != "STR_NONE" && rules.Items.TryGet(name, out var item) ? rules.Items[item].Value : null,
+            "RuleMod.getRuleInventory" => rules.Inventories.TryGet(name, out var inventory) ? rules.Inventories[inventory].Value : null,
+            "RuleMod.getRuleArmor" => rules.Armors.TryGet(name, out var armor) ? rules.Armors[armor].Value : null,
+            "RuleMod.getRuleSoldier" => rules.Soldiers.TryGet(name, out var soldier) ? rules.Soldiers[soldier].Value : null,
+            "RuleMod.getRuleSkill" => rules.Skills.TryGet(name, out var skill) ? rules.Skills[skill].Value : null,
+            "RuleMod.getRuleUnit" => rules.Units.TryGet(name, out var unit) ? rules.Units[unit].Value : null,
+            "RuleMod.getRuleResearch" => rules.Research.TryGet(name, out var research) ? rules.Research.GetExternalId(research) : null,
+            _ => throw new InvalidOperationException("Unknown detection rule lookup."),
+        };
+    }
+
+    private static object? LinkedValue(RuntimeRuleCatalog rules, string binding, object? source)
+    {
+        if (source is RuntimeUnitRule unit)
+            return binding switch
+            {
+                "RuleUnit.getSpawnUnit" => unit.SpawnUnit is { } spawn ? rules.Units[spawn].Value : null,
+                "RuleUnit.getLiveAlienGeoscape" => unit.LiveAlien is { } live ? rules.Items[live].Value : null,
+                "RuleUnit.getCivilianRecoveryItemType" => unit.CivilianRecoveryItem is { } recovery ? rules.Items[recovery].Value : null,
+                _ => null,
+            };
+        if (source is string id && rules.Research.TryGet(id, out var handle))
+        {
+            var topic = rules.Research[handle].Value;
+            return binding == "RuleResearch.getLookup" ? topic.Lookup is { } lookup ? Lookup(rules, "RuleMod.getRuleResearch", lookup) : null
+                : topic.NeedItem && topic.NeededItem != "STR_NONE" ? Lookup(rules, "RuleMod.getRuleItem", topic.NeededItem) : null;
+        }
+        return null;
     }
 
     private static long Size(Dictionary<int, HashSet<object?>?> state) =>
