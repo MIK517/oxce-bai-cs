@@ -177,6 +177,7 @@ public sealed record RuntimeCraftRule(
     RuleHandleList<CraftWeaponRuleFamily> FixedWeapons,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    public string Type { get; init; } = "";
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     /// <summary>RuleCraft::_stats, before installed weapon bonuses and capacity limits.</summary>
     public IReadOnlyDictionary<string, int> DefaultStats { get; init; } =
@@ -236,6 +237,7 @@ public sealed record RuntimeItemRule(
     IReadOnlyList<RuleHandleList<ItemRuleFamily>> CompatibleAmmo,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    public string Type { get; init; } = "";
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public bool IsAlien { get; init; }
     public int VehicleFixedAmmoSlot { get; init; }
@@ -252,6 +254,7 @@ public sealed record RuntimeArmorRule(
     string StoreItemId,
     RuleHandle<ItemRuleFamily>? StoreItem)
 {
+    public string Type { get; init; } = "";
     public int Group { get; init; }
     public IReadOnlyDictionary<string, short> Stats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
 }

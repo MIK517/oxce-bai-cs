@@ -37,6 +37,17 @@ $modSettings = @(
     (Read-Method 'src/Mod/Mod.h' 'int getMaxDarknessToSeeUnits()')
 )
 $template = $template.Replace('// MOD_SETTINGS', ($modSettings -join [Environment]::NewLine).Replace('int getMaxViewDistance()', 'int Mod::getMaxViewDistance()').Replace('int getMaxDarknessToSeeUnits()', 'int Mod::getMaxDarknessToSeeUnits()'))
+$ruleMetadata = @(
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getWeight()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'BattleType RuleItem::getBattleType()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getSize()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'void getTypeScript(const RuleItem*'),
+    (Read-Method 'src/Mod/Armor.cpp' 'void getTypeScript(const Armor*'),
+    (Read-Method 'src/Mod/RuleSkill.cpp' 'void getTypeScript(const RuleSkill*'),
+    (Read-Method 'src/Mod/RuleCraft.cpp' 'void getTypeScript(const RuleCraft*'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'void getBattleTypeScript(')
+)
+$template = $template.Replace('// RULE_METADATA', ($ruleMetadata -join [Environment]::NewLine))
 $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamagePercentage()'),

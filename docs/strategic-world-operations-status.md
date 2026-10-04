@@ -628,3 +628,17 @@ return zero. Shared pinned ScriptValuesBase slot traces and fresh/cache VM/reloa
 fixtures cover signed values and rule switching. Setters remain unavailable.
 Reference: RuleSoldier.cpp::ScriptRegister (OnlyGet), RuleSkill.cpp::ScriptRegister
 and Engine/Script.cpp::ScriptValuesBase::getBase.
+
+## Rule text and simple scalar detection metadata (2026-10-04)
+
+Read-only providers expose item weight/battle type, armor size, and type-name text
+for item, armor, skill and craft rule pointers. Canonical immutable projections
+carry external type IDs without per-call reverse lookups. The exact native
+getTypeScript wrappers preserve empty text for null, and getBattleTypeScript
+preserves BT_NONE. Verbatim getter captures, actual text VM comparisons and
+fresh/cache craft detection/reload tests cover signed weights and null receivers.
+Compiler/cache revision is 41.
+Reference: RuleItem.cpp::getTypeScript/getWeight/getBattleType/getBattleTypeScript,
+Armor.cpp::getTypeScript/getSize, RuleSkill.cpp/RuleCraft.cpp::getTypeScript and
+their ScriptRegister bindings. Soldier type-name binding retains its existing
+guard: the pinned wrapper has a different declared receiver type.

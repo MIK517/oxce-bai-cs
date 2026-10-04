@@ -17,11 +17,25 @@ int XcomDistance(double value) { return (int)value; }
 namespace OpenXcom {
 using Exception = std::runtime_error;
 enum UfoDetection { DETECTION_NONE=0, DETECTION_RADAR=1, DETECTION_HYPERWAVE=3 };
-struct RuleItem {};
-struct Armor { static const std::string NONE; };
+enum BattleType { BT_NONE=0 };
+struct ScriptText { std::string value; static const ScriptText empty; ScriptText()=default; ScriptText(const char* s):value(s){} };
+const ScriptText ScriptText::empty;
+struct RuleItem {
+std::string _type="ITEM_METADATA"; int _weight=-7; BattleType _battleType=(BattleType)3;
+const std::string& getType() const { return _type; }
+int getWeight() const;
+BattleType getBattleType() const;
+};
+struct Armor {
+static const std::string NONE; std::string _type="ARMOR_METADATA"; int _size=2;
+const std::string& getType() const { return _type; }
+int getSize() const;
+};
 const std::string Armor::NONE="STR_NONE";
 struct RuleSoldier {};
-struct RuleSkill {};
+struct RuleSkill { std::string _type="SKILL_METADATA"; const std::string& getType() const { return _type; } };
+struct RuleCraft { std::string _type="CRAFT_METADATA"; const std::string& getType() const { return _type; } };
+// RULE_METADATA
 struct RuleResearch {};
 bool researchLess(const RuleResearch* a, const RuleResearch* b) { return std::less<const RuleResearch*>{}(a,b); }
 // RESEARCH_FIND
@@ -336,5 +350,19 @@ for(int value: {-7,0,31,INT_MAX}) {
 mod._maxViewDistance=value;mod._maxDarknessToSeeUnits=value;
 std::cout<<',';array({mod.getMaxViewDistance(),mod.getMaxDarknessToSeeUnits()});
 }
-std::cout<<"]}\n";
+std::cout<<"],\"ruleMetadata\":[";
+RuleCraft craftMetadata;
+ScriptText typeText;
+getTypeScript(&item,typeText);std::cout<<'\"'<<typeText.value<<"\",";
+getTypeScript(&armor,typeText);std::cout<<'\"'<<typeText.value<<"\",";
+getTypeScript(&skill,typeText);std::cout<<'\"'<<typeText.value<<"\",";
+getTypeScript(&craftMetadata,typeText);std::cout<<'\"'<<typeText.value<<"\",";
+getTypeScript((const RuleItem*)nullptr,typeText);std::cout<<'\"'<<typeText.value<<"\",";
+getTypeScript((const Armor*)nullptr,typeText);std::cout<<'\"'<<typeText.value<<"\",";
+getTypeScript((const RuleSkill*)nullptr,typeText);std::cout<<'\"'<<typeText.value<<"\",";
+getTypeScript((const RuleCraft*)nullptr,typeText);std::cout<<'\"'<<typeText.value<<"\"";
+int battleType=99;getBattleTypeScript(&item,battleType);
+std::cout<<"],\"ruleScalars\":";array({item.getWeight(),battleType,armor.getSize()});
+getBattleTypeScript(nullptr,battleType);std::cout<<",\"nullBattleType\":"<<battleType;
+std::cout<<"}\n";
 }

@@ -12,6 +12,96 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void RuleMetadataReadsPreserveTextAndScalarDefaultsAcrossReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var types = TestFixtures.Rows(oracle.RootElement, "ruleMetadata").Select(value => value.GetString()!).ToArray();
+        var scalars = TestFixtures.Rows(oracle.RootElement, "ruleScalars").Select(value => value.GetInt32()).ToArray();
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            items:
+              - type: {{types[0]}}
+                weight: {{scalars[0]}}
+                battleType: {{scalars[1]}}
+                clipSize: -1
+            armors:
+              - type: {{types[1]}}
+                size: {{scalars[2]}}
+                corpseBattle: [CORPSE, CORPSE, CORPSE, CORPSE]
+                corpseGeo: CORPSE
+                loftempsSet: [0, 0, 0, 0]
+            skills:
+              - type: {{types[2]}}
+            crafts:
+              - type: {{types[3]}}
+                speedMax: 6000
+                damageMax: 100
+                fuelMax: 100
+            ufos:
+              - type: UFO_RULE_METADATA
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromCraft: |
+                    var ptr RuleItem item;
+                    var ptr RuleItem absentItem null;
+                    var ptr RuleArmor armor;
+                    var ptr RuleArmor absentArmor null;
+                    var ptr RuleSkill skill;
+                    var ptr RuleSkill absentSkill null;
+                    var ptr RuleCraft craftRule;
+                    var ptr RuleCraft absentCraft null;
+                    var text typeName;
+                    var int value;
+                    rules.getRuleItem item "{{types[0]}}";
+                    item.getType typeName;
+                    if neq typeName "{{types[0]}}"; return DETECTION_NONE 0; end;
+                    item.getWeight value;
+                    if neq value {{scalars[0]}}; return DETECTION_NONE 0; end;
+                    item.getBattleType value;
+                    if neq value {{scalars[1]}}; return DETECTION_NONE 0; end;
+                    absentItem.getWeight value;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    absentItem.getBattleType value;
+                    if neq value {{oracle.RootElement.GetProperty("nullBattleType").GetInt32()}}; return DETECTION_NONE 0; end;
+                    absentItem.getType typeName;
+                    if neq typeName "{{types[4]}}"; return DETECTION_NONE 0; end;
+                    rules.getRuleArmor armor "{{types[1]}}";
+                    armor.getType typeName;
+                    if neq typeName "{{types[1]}}"; return DETECTION_NONE 0; end;
+                    armor.getSize value;
+                    if neq value {{scalars[2]}}; return DETECTION_NONE 0; end;
+                    absentArmor.getSize value;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    absentArmor.getType typeName;
+                    if neq typeName "{{types[5]}}"; return DETECTION_NONE 0; end;
+                    rules.getRuleSkill skill "{{types[2]}}";
+                    skill.getType typeName;
+                    if neq typeName "{{types[2]}}"; return DETECTION_NONE 0; end;
+                    absentSkill.getType typeName;
+                    if neq typeName "{{types[6]}}"; return DETECTION_NONE 0; end;
+                    craft.getRuleCraft craftRule;
+                    craftRule.getType typeName;
+                    if neq typeName "{{types[3]}}"; return DETECTION_NONE 0; end;
+                    absentCraft.getType typeName;
+                    if neq typeName "{{types[7]}}"; return DETECTION_NONE 0; end;
+                    return DETECTION_RADAR 100;
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_RULE_METADATA", 2200).Capture()
+            .WithCraft("SHIP", craft => craft with
+            {
+                RuleId = types[3],
+                Logistics = craft.Logistics! with { Status = "STR_OUT", Destination = null, Speed = 0, Weapons = [] },
+            });
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(199));
+        campaign = Reload(content, campaign, 199, "rule-metadata-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 199, "rule-metadata-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void EveryCraftRuleStatUsesNativeRawFieldsAndReload(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

@@ -190,6 +190,7 @@ public static class RuntimeRuleLinker
                     "crafts", rule, "fixedWeapons"),
                 ScriptsFor(scriptBuild.ByOwner, "crafts", rule.Id))
             {
+                Type = rule.Id,
                 Purchase = new(rule.Value.Integers["monthlyBuyLimit"], rule.Value.Strings["monthlyBuyLimitMessage"],
                     rule.Value.Strings["requiresBuyCountry"], rule.Value.RequiredBuyBaseFunctions, []),
                 DefaultStats = rule.Value.Stats.Integers,
@@ -245,6 +246,7 @@ public static class RuntimeRuleLinker
                     .ToArray()),
                 ScriptsFor(scriptBuild.ByOwner, "items", rule.Id))
             {
+                Type = rule.Id,
                 Purchase = new(rule.Value.Values.GetInteger("monthlyBuyLimit"), rule.Value.Values.GetString("monthlyBuyLimitMessage"),
                     rule.Value.Values.GetString("requiresBuyCountry"), rule.Value.RequiredBuyBaseFunctions, rule.Value.BuyRequirements),
                 IsAlien = rule.Value.Values.Boolean("liveAlien"),
@@ -264,7 +266,7 @@ public static class RuntimeRuleLinker
                 rule.Value.EffectiveSpaceOccupied,
                 rule.Value.Strings["storeItem"],
                 OptionalItem(itemHandles, rule.Value.Strings["storeItem"]))
-            { Group = rule.Value.Integers["group"], Stats = rule.Value.Stats.Values });
+            { Type = rule.Id, Group = rule.Value.Integers["group"], Stats = rule.Value.Stats.Values });
 
         cancellationToken.ThrowIfCancellationRequested();
         var soldiers = BuildFamily<SoldierRuleFamily, SoldierRule, RuntimeSoldierRule>(
