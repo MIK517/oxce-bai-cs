@@ -420,6 +420,41 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void HalfHourRefuellingAndRelaunchPrecedeHunterSelection(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: REFUEL_HUNT, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[4].GetBoolean()))
+        {
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "REFUEL_HUNT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING", Fuel = row[1].GetInt32(), LowFuel = row[3].GetBoolean(),
+                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                },
+            }) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            initial = initial with { Bases = [initial.Bases[0] with { Longitude = 0.45, Latitude = 0.21 }] };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+            campaign = Reload(content, campaign, 81, "refuel-hunting-before.sav");
+            Assert.Empty(campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "REFUEL_HUNT").Logistics!.Weapons);
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var ship = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "REFUEL_HUNT").Logistics!;
+            Assert.Equal(row[6].GetString(), ship.Status);
+            Assert.Equal(row[5].GetInt32() - (ship.Status == "STR_OUT" ? 60 : 0), ship.Fuel);
+            Assert.Equal(Math.Max(0, row[10].GetInt32() - 1), ship.Takeoff);
+            Assert.Equal(row[11].GetInt32() != 0, Assert.Single(after.World.Ufos).Hunting);
+            Assert.Equal(row[11].GetInt32() != 0 ? 1 : 0, result.Events.OfType<UfoStartedHunting>().Count());
+            Reload(content, campaign, 81, "refuel-hunting-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void LiveHuntersSelectRevealMoveAndReload(bool cache)
     {
         var content = Load(cache);
