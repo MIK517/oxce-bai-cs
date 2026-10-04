@@ -438,7 +438,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void BaseMarkerNamespaceWithHourlyCraftProductionStopsBeforeIdForecastChanges(bool cache, bool landing)
+    public void SharedCraftProductionMarkersReserveThePostProductionBaseId(bool cache, bool landing)
     {
         var content = LoadWorld(cache, marker: "SHIP", landing: landing, zone: landing ? 0 : 1);
         var initial = landing ? LandingInitial(content) : Initial(content);
@@ -455,7 +455,18 @@ public sealed class StrategicObjectiveBaseSpawnTests
             World = initial.World with { AlienBases = [new(nextCraft + 1, "COLLISION_BASE", "RACE_A", 0.2, 0.1)] },
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Base objective markers shared with same-tick craft production require ID forecasts.");
+            landing ? "Base objective markers shared with same-tick craft production require ID forecasts." : "Base objective IDs are exhausted or collide.");
+        if (landing) return;
+        initial = initial with { World = initial.World with { AlienBases = [] } };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Contains(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP" && craft.Id == nextCraft);
+        Assert.Equal(nextCraft + 1, Assert.Single(after.World.AlienBases).Id);
+        Assert.Equal(nextCraft + 2, after.NextIds["SHIP"]);
+        campaign = Reload(content, campaign, 17, "produced-craft-base.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Single(campaign.Capture().World.AlienBases);
     }
 
     private static CampaignSnapshot LandingInitial(RuntimeContent content)

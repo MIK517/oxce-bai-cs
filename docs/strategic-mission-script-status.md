@@ -773,3 +773,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   craft consumption and excessive work/population retain precise guards.
   Reference: Production::step/getAmountProduced and existing pinned production
   fixture. Fresh/cache proofs check bounds, unchanged RNG/state and reload.
+
+- Batch 2 slice 2: final-wave base births now reserve shared markers after hourly
+  craft production through the production capability. Existing future-ID collisions
+  stop the whole tick; valid craft/base births allocate consecutively and survive
+  reload without duplicate effects. Reference: production preceding half-hour
+  AlienMission::think and the pinned base-objective fixture. Landing integration
+  remains the next slice.
