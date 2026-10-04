@@ -23,6 +23,7 @@ internal sealed partial class CampaignWorld
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getAccuracyAimed" or "RuleItem.getAccuracyAuto" or "RuleItem.getAccuracySnap" or "RuleItem.getAccuracyMelee" or
         "RuleItem.getAccuracyUse" or "RuleItem.getAccuracyMind" or "RuleItem.getAccuracyPanic" or "RuleItem.getAccuracyThrow" or
+        "RuleItem.isTwoHanded" or "RuleItem.isBlockingBothHands" or "RuleItem.isWaterOnly" or "RuleItem.hasCategory" or
         "RuleItem.getPower" or "RuleItem.getMeleePower" or "RuleItem.getArmorValue" or "RuleItem.getWaypoints" or
         "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
@@ -60,6 +61,10 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         switch (name)
         {
+            case "RuleItem.hasCategory":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemRule categoryItem &&
+                    categoryItem.Categories.Contains(args[2].Text ?? "") ? 1 : 0);
+                break;
             case "RuleInventory.getId":
                 args[1] = ScriptRuntimeValue.FromText(receiver is RuntimeInventoryRule inventoryId ? inventoryId.Id : "");
                 break;
@@ -221,6 +226,9 @@ internal sealed partial class CampaignWorld
 
     private static int DetectionItemValue(string name, RuntimeItemRule rule) => name switch
     {
+        "RuleItem.isTwoHanded" => rule.TwoHanded ? 1 : 0,
+        "RuleItem.isBlockingBothHands" => rule.BlockingBothHands ? 1 : 0,
+        "RuleItem.isWaterOnly" => rule.WaterOnly ? 1 : 0,
         "RuleItem.getPower" => rule.Power,
         "RuleItem.getMeleePower" => rule.MeleePower,
         "RuleItem.getArmorValue" => rule.ArmorValue,

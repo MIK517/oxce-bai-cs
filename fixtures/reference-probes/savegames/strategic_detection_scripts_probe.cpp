@@ -582,15 +582,16 @@ for(const auto& [name,value]:fields){if(!firstItem)std::cout<<',';firstItem=fals
 std::cout<<'}';
 }
 std::cout<<"],\"itemCategoryReplacement\":[";
-for(int stage=0;stage<2;++stage){
+for(int stage=0;stage<3;++stage){
 if(stage)std::cout<<',';
 itemReader._categories={"A","B","C","FREE","A"};
 std::map<std::string,std::string> replacements=stage==0?
 std::map<std::string,std::string>{{"A","B"},{"B","C"},{"C","A"}}:
 std::map<std::string,std::string>{{"C","B"},{"B","A"}};
+if(stage==2){itemReader._categories={"\xF0\x90\x80\x80"};replacements={{"\xF0\x90\x80\x80","\xEE\x80\x80"},{"\xEE\x80\x80","A"}};}
 itemReader.updateCategories(&replacements);
 std::cout<<'[';bool firstCategory=true;
-for(const char* cat: {"A","B","C","FREE","MISSING","free"}){if(!firstCategory)std::cout<<',';firstCategory=false;int result=-1;hasCategoryScript(&itemReader,result,cat);std::cout<<"[\""<<cat<<"\","<<result<<"]";}
+for(const char* cat: {"A","B","C","FREE","MISSING","free","\xF0\x90\x80\x80","\xEE\x80\x80"}){if(!firstCategory)std::cout<<',';firstCategory=false;int result=-1;hasCategoryScript(&itemReader,result,cat);std::cout<<"[\""<<cat<<"\","<<result<<"]";}
 int result=-1;hasCategoryScript(nullptr,result,"A");std::cout<<",[\"NULL\","<<result<<"]]";
 }
 std::cout<<"]}\n";

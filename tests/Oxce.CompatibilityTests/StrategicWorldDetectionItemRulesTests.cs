@@ -25,6 +25,69 @@ public sealed class StrategicWorldDetectionItemRulesTests
     public void ItemRawPowerArmorAndWaypointsMatchNative(bool fromCache, bool fromCraft) =>
         RunItemReaderFixture("get", fromCache, fromCraft);
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ItemHandlingFlagsMatchNative(bool fromCache, bool fromCraft) =>
+        RunItemReaderFixture("is", fromCache, fromCraft);
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void CategoriesMatchOrderedNativeReplacementIncludingCyclesAndUnicode(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "itemCategoryReplacement");
+        for (var stage = 0; stage < rows.Length; stage++)
+        {
+            var categories = stage == 2 ? "[𐀀]" : "[A, B, C, FREE, A]";
+            var definitions = stage switch
+            {
+                0 => """
+                    itemCategories:
+                      - type: C
+                        replaceBy: A
+                      - type: A
+                        replaceBy: B
+                      - type: B
+                        replaceBy: C
+                      - type: FREE
+                    """,
+                1 => """
+                    itemCategories:
+                      - type: C
+                        replaceBy: B
+                      - type: B
+                        replaceBy: A
+                      - type: A
+                      - type: FREE
+                    """,
+                2 => """
+                    itemCategories:
+                      - type: 𐀀
+                        replaceBy: 
+                      - type: 
+                        replaceBy: A
+                      - type: A
+                    """,
+                _ => throw new InvalidOperationException("Unknown native category scenario."),
+            };
+            var code = "var ptr RuleItem item; var ptr RuleItem absent null; var int found; rules.getRuleItem item \"ITEM_READ\"; ";
+            foreach (var row in rows[stage].EnumerateArray())
+            {
+                var category = row[0].GetString();
+                var source = category == "NULL" ? "absent" : "item";
+                code += $"{source}.hasCategory found \"{category}\"; if neq found {row[1].GetInt32()}; return DETECTION_NONE 0; end; ";
+            }
+            code += "return DETECTION_RADAR 100;";
+            RunItemScript(code, $"categories: {categories}", fromCache, fromCraft, definitions);
+        }
+    }
+
     private static void RunItemReaderFixture(string prefix, bool fromCache, bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

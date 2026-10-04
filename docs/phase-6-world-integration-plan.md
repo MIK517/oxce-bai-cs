@@ -713,3 +713,15 @@ runtime values without tactical modifiers. Native default/signed-extreme
 fixtures, null pointers and fresh/cache base/craft reload tests pass (eight
 focused cases). Damage-type execution and combat remain guarded.
 The 4c gate remains open.
+
+## Item handling flags and category membership (2026-10-04)
+
+RuleItem handling/water flags and hasCategory now execute in detection scripts.
+Runtime categories preserve Mod.cpp's ordered, single-pass replacement semantics:
+forward chains, backward links and cycles match the verbatim native trace.
+Replacement ordering uses UTF-8 bytes, including a supplementary-Unicode case
+that differs from UTF-16 ordering. Replacements are resolved once in reverse
+order, and immutable membership sets avoid contact-time category scans.
+All 16 focused item tests pass with fresh/cache base/craft execution, null
+receivers and reloads. Combat/damage readers remain precisely guarded.
+The three item slices are ready for batch audit; the 4c gate remains open.
