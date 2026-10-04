@@ -877,3 +877,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   counters without consuming scheduling RNG or normalizing the saved wave number.
   Pinned AlienMission::think/ufoReachedWaypoint fragments and fresh/cache reloads
   verify ordinary arrival when the saved counter previously implied a site conversion.
+
+- Four-cycle continuation, batch 1 slice 2: endless infiltration no longer
+  blocks merely because a saved UFO uses legacy wave inference. Restart counters
+  flow into site conversion, identity reservations and UFO cleanup forecasts.
+  The earlier overflow reproduction now reaches the precise exhausted-site guard;
+  valid fresh/cache cases convert, reload and release live counts without changing
+  the persisted -1 wave number. Reference: think restart and arrival fallback.

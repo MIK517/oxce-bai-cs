@@ -123,7 +123,7 @@ public sealed class StrategicInfiltrationRepeatTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void EndlessLegacyUfoWaveInferenceStopsBeforeUnreservedSiteConversion(bool cache)
+    public void EndlessLegacyUfoWaveInferenceUsesRestartCountersAndReservesSiteConversion(bool cache)
     {
         var content = Load(cache, """
             ufoTrajectories:
@@ -153,7 +153,20 @@ public sealed class StrategicInfiltrationRepeatTests
             },
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Endless infiltration completion requires legacy UFO wave forecasts.");
+            "Mission site marker IDs are exhausted or collide with a saved target.");
+        initial = initial.WithNextId("INF_BASE", 1);
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(0, Assert.Single(after.World.Missions).NextWave);
+        Assert.Equal("INF_REPEAT", Assert.Single(after.World.MissionSites).MissionRuleId);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(after.World.Ufos).Status);
+        Assert.Equal(-1, after.World.Ufos[0].MissionWaveNumber);
+        campaign = Reload(content, campaign, 17, "endless-legacy-conversion.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.Equal(0, Assert.Single(campaign.Capture().World.Missions).LiveUfos);
+        Reload(content, campaign, 17, "endless-legacy-cleanup.sav");
     }
 
     private static CampaignSnapshot Initial(RuntimeContent content, string rule)
