@@ -32,7 +32,7 @@ internal static class WorldMonthlySchedulingMath
 public sealed partial class CampaignState
 {
     /// <summary>Called only after month advancement for monthly scheduling, or at the current month for adhoc events.</summary>
-    internal WorldSchedulingInputs WorldSchedulingInputs(bool isNewMonth)
+    internal WorldSchedulingInputs WorldSchedulingInputs(bool isNewMonth, int? schedulingMonth = null)
     {
         var index = _funds.Count - 1;
         if (index >= _researchScores.Count || _regions.Any(region =>
@@ -44,7 +44,7 @@ public sealed partial class CampaignState
             ? checked((int)_countries.Sum(country => (long)country.Funding[^1])) : 0;
         var baseMaintenance = isNewMonth
             ? checked((int)_bases.Sum(owner => CalculateMaintenance(owner).Total)) : 0;
-        return WorldMonthlySchedulingMath.Calculate(MonthsPassed, _researchScores[index], xcom, alien,
+        return WorldMonthlySchedulingMath.Calculate(schedulingMonth ?? MonthsPassed, _researchScores[index], xcom, alien,
             _funds[index], countryFunding, baseMaintenance,
             _content.RuntimeRules.Campaign.PerformanceBonusFactor, isNewMonth);
     }

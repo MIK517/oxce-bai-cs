@@ -118,4 +118,65 @@ public sealed class StrategicWorldCompositionTests
         AssertTimeBlocked(campaign, "Monthly campaign simulation is not implemented yet; time stopped before the month boundary.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InitialEntrySchedulesOnceAndChargesAfterSchedulingAcrossReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-composition");
+        var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(entry => entry.GetProperty("case").GetString() == "initial");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-world-composition.rul"], fromCache,
+            "events: [{name: E, timer: 60}]");
+        var snapshot = CreateSnapshot(content, "Initial world entry") with
+        { MonthsPassed = -1, DaysPassed = 0, RandomState = 17, Funds = [1000], ResearchScores = [0] };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var maintenance = campaign.QueryBaseManagement(snapshot.Bases[0].Id).Maintenance;
+        Assert.Equal(2, campaign.Execute(new EnterCampaignWorld()).Events.Count);
+        var after = campaign.Capture();
+        Assert.Equal(row.GetProperty("month").GetInt32(), after.MonthsPassed);
+        Assert.Equal(row.GetProperty("days").GetInt32(), after.DaysPassed);
+        Assert.Equal(row.GetProperty("runs").GetInt32(), after.World.Strategy.MissionRuns.Single(pair => pair.Key == "RUN").Value);
+        Assert.Equal(row.GetProperty("events").GetInt32(), after.World.Events.Count);
+        Assert.Equal(snapshot.Funds[^1] - (maintenance.Total - maintenance.Personnel), after.Funds[^1]);
+        Assert.Equal(snapshot.Expenditures, after.Expenditures); // setFunds, not an expenditure.
+        Assert.Equal(snapshot.Time, after.Time);
+        campaign = Reload(content, campaign, 17, "initial-world-entry.sav");
+        Assert.Empty(campaign.Execute(new EnterCampaignWorld()).Events);
+        Assert.Equivalent(after, campaign.Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InitialEntryBlocksBeforeChangingCalendarResearchFundsOrRandom(bool accountingFailure)
+    {
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-world-composition.rul"],
+            extraRules: accountingFailure ? "events: [{name: E, timer: 60}]" : null);
+        var snapshot = CreateSnapshot(content, "Initial entry preflight") with
+        { MonthsPassed = -1, RandomState = 17, DaysPassed = accountingFailure ? int.MaxValue : 0 };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(new EnterCampaignWorld()).Events));
+        Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void EntryBeforePlacementIsANoOpAndLegacyOrphansAreGuarded()
+    {
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-world-composition.rul"],
+            extraRules: "events: [{name: E, timer: 60}]");
+        var campaign = TestFixtures.CreateLogisticsCampaign(content, "Unplaced initial entry", CampaignDifficulty.Veteran);
+        var before = campaign.Capture();
+        Assert.Empty(campaign.Execute(new EnterCampaignWorld()).Events);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        var legacy = CreateUfoTransitCampaign(content, before.Time).Capture() with { MonthsPassed = -1 };
+        legacy = legacy with { World = legacy.World with { Missions = [] } };
+        campaign = CampaignState.Restore(legacy, content, new SplitMix64RandomSource(17));
+        Assert.Contains("UFO", Assert.IsType<CampaignActionBlocked>(
+            Assert.Single(campaign.Execute(new EnterCampaignWorld()).Events)).Reason);
+        Assert.Equivalent(legacy, campaign.Capture(), strict: true);
+    }
+
 }

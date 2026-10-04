@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 105 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 106 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 105 files.
+`src/Oxce.Gameplay` - 106 files.
 
 ### `Oxce.Gameplay`
 
@@ -404,6 +404,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignSoldierTransformed` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
 - `CampaignTransformationEventSelected` (record) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
 - `CampaignState` (class) [CampaignTransformations.cs](../src/Oxce.Gameplay/Campaigns/CampaignTransformations.cs)
+- `CampaignState` (class) [CampaignWorldEntryCalendar.cs](../src/Oxce.Gameplay/Campaigns/CampaignWorldEntryCalendar.cs)
 - `CampaignState` (class) [CampaignWorldMonthlyContext.cs](../src/Oxce.Gameplay/Campaigns/CampaignWorldMonthlyContext.cs)
 - `CampaignState` (class) [CampaignWorldScriptContext.cs](../src/Oxce.Gameplay/Campaigns/CampaignWorldScriptContext.cs)
 - `CraftWeaponSnapshot` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
@@ -454,6 +455,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignWorldCraft` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
 - `CampaignWorldOverview` (record) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs) - The alien activity the player can act on plus the scheduled work behind it.
 - `ICampaignWorldQuery` (interface) [CampaignWorldQueries.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldQueries.cs)
+- `EnterCampaignWorld` (record) [CampaignWorldScheduling.cs](../src/Oxce.Gameplay/Campaigns/World/CampaignWorldScheduling.cs) - Enters the strategic world after first-base placement, like GeoscapeState::init.
 - `WorldAlienBaseSight` (class) [WorldAlienBaseSight.cs](../src/Oxce.Gameplay/Campaigns/World/WorldAlienBaseSight.cs) - GeoscapeState::time1Day/time10Minutes alien-base sight checks at 4df3a5e.
 - `WorldAltitudes` (class) [WorldAltitudes.cs](../src/Oxce.Gameplay/Campaigns/World/WorldAltitudes.cs) - UFO altitude and heading vocabulary.
 - `WorldTargetKind` (enum) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The kinds of globe target a moving target can be sent to.
