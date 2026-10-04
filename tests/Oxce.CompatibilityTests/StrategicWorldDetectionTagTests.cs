@@ -14,6 +14,65 @@ public sealed class StrategicWorldDetectionTagTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ItemAndArmorRuleTagsRetainTypedOwnersAndReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "tagValues");
+        var itemValue = rows[2][1].GetInt32();
+        var armorValue = rows[3][1].GetInt32();
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            extended:
+              tags:
+                RuleItem: {DETECT_ITEM: int, DETECT_ITEM_ABSENT: int}
+                RuleArmor: {DETECT_ARMOR: int}
+            items:
+              - type: ITEM_DETECT_TAG
+                tags: {DETECT_ITEM: {{itemValue}}}
+              - type: ITEM_DETECT_EMPTY
+            armors:
+              - type: ARMOR_DETECT_TAG
+                corpseBattle: [CORPSE]
+                corpseGeo: CORPSE
+                loftempsSet: [0]
+                tags: {DETECT_ARMOR: {{armorValue}}}
+            ufos:
+              - type: UFO_ITEM_ARMOR_TAGS
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    var ptr RuleItem item;
+                    var ptr RuleItem absentItem null;
+                    var ptr RuleArmor armor;
+                    var ptr RuleArmor absentArmor null;
+                    var int value;
+                    rules.getRuleItem item "ITEM_DETECT_TAG";
+                    item.getTag value Tag.DETECT_ITEM;
+                    if neq value {{itemValue}}; return DETECTION_NONE 0; end;
+                    item.getTag value Tag.DETECT_ITEM_ABSENT;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    absentItem.getTag value Tag.DETECT_ITEM;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    rules.getRuleItem item "ITEM_DETECT_EMPTY";
+                    item.getTag value Tag.DETECT_ITEM;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    rules.getRuleArmor armor "ARMOR_DETECT_TAG";
+                    armor.getTag value Tag.DETECT_ARMOR;
+                    if neq value {{armorValue}}; return DETECTION_NONE 0; end;
+                    absentArmor.getTag value Tag.DETECT_ARMOR;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    return DETECTION_RADAR 100;
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_ITEM_ARMOR_TAGS", 2200);
+        campaign = Reload(content, campaign, 197, "item-armor-tags-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 197, "item-armor-tags-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void UfoInstanceTagAndAbsentTagExecuteAcrossReloads(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

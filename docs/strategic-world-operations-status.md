@@ -608,3 +608,13 @@ Branch 4d is untouched.
 Validation: all 2,016 root tests pass with zero failures/skips, including private
 corpus, checksum and existing allocation checks. Formatting verification, code-map
 validation and diff checks pass. The reference checkout remains clean.
+
+## Item and armor detection rule tags (2026-10-04)
+
+Detection scripts read RuleItem and RuleArmor initial tags through canonical rule
+pointers. Typed tag owners retain separate indexes, missing slots and null
+receivers return zero, and tag-free rules do not inherit another rule's values.
+The existing pinned ScriptValuesBase oracle supplies positive/negative slot
+values; new fresh/cache VM and before/after reload fixtures cover both families.
+Reference: RuleItem.cpp::ScriptRegister and Armor.cpp::ScriptRegister (OnlyGet
+script values), Engine/Script.cpp::ScriptValuesBase::getBase.
