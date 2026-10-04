@@ -725,3 +725,22 @@ order, and immutable membership sets avoid contact-time category scans.
 All 16 focused item tests pass with fresh/cache base/craft execution, null
 receivers and reloads. Combat/damage readers remain precisely guarded.
 The three item slices are ready for batch audit; the 4c gate remains open.
+
+## Item detection metadata cycle audit (2026-10-04)
+
+The audit confirmed an obsolete guard test still expected getPower to be
+unsupported. It now exercises the still-unavailable isSingleTarget damage reader,
+retaining both fresh/cache before-mutation assertions. No additional runtime
+defect was found. Raw action/scalar reads, handling flags, null defaults and
+generation-scoped item identity match RuleItem.cpp/ScriptBind.h. Category lookup
+matches Mod.cpp's once-per-key replacement pass, including cycles, backward links
+and UTF-8 ordering; precomputed immutable membership avoids per-contact scans.
+
+All 2,103 root tests pass with zero failures/skips, including private corpus,
+fixture checksums and allocation gates. Compiler/cache revision is 46. Generated
+source, native executable and trace remain useful; the obsolete object was
+removed. The reference checkout remains clean. Initial/monthly caller composition,
+remaining detection providers/forecasts and composed acceptance still keep the
+4c headless gate open. Branch 4d is untouched.
+
+Formatting verification, code-map validation and diff checks pass.
