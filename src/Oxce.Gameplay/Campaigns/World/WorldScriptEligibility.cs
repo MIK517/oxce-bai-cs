@@ -29,6 +29,34 @@ internal static class WorldScriptEligibility
             All(rule.BaseCountries, state.BaseCountries) && All(rule.PactCountries, state.PactCountries);
     }
 
+    /// <summary>Preflight over possible earlier-phase research and monotonically increasing counters.</summary>
+    public static bool MayMatch(RuntimeScriptCriteria rule, WorldScriptContext state,
+        IReadOnlySet<string> changedResearch, IReadOnlyDictionary<string, long> maximumRuns,
+        IReadOnlyDictionary<string, long> maximumMarkers)
+    {
+        // Every other trigger reads state that scheduling phases cannot change.
+        var stable = rule with
+        {
+            Research = rule.Research.Where(trigger => !changedResearch.Contains(trigger.Rule.Id)).ToArray(),
+            MissionVariable = string.Empty,
+            MissionMarker = string.Empty,
+        };
+        if (!Matches(stable, state)) return false;
+        // Debug research always reports true, including topics earlier arcs can disable.
+        if (state.DebugResearch && rule.Research.Any(trigger => !trigger.Expected)) return false;
+        var runs = state.MissionRuns.GetValueOrDefault(rule.MissionVariable);
+        var marker = state.NextIds.TryGetValue(rule.MissionMarker, out var next) ? Math.Max(1, next - 1) : 0;
+        return CounterRangeMatches(rule, rule.MissionVariable, runs,
+                   maximumRuns.GetValueOrDefault(rule.MissionVariable, runs)) &&
+               CounterRangeMatches(rule, rule.MissionMarker, marker,
+                   maximumMarkers.GetValueOrDefault(rule.MissionMarker, marker));
+    }
+
+    private static bool CounterRangeMatches(RuntimeScriptCriteria rule, string name, long minimum, long maximum) =>
+        name.Length == 0 || ((rule.CounterMinimum <= 0 || maximum >= rule.CounterMinimum) &&
+            (rule.CounterMaximum == -1 || minimum <= rule.CounterMaximum) &&
+            (rule.CounterMinimum <= 0 || rule.CounterMaximum == -1 || rule.CounterMinimum <= rule.CounterMaximum));
+
     private static bool CounterMatches(RuntimeScriptCriteria rule, string name, int value) =>
         name.Length == 0 || ((rule.CounterMinimum <= 0 || value >= rule.CounterMinimum) &&
             (rule.CounterMaximum == -1 || value <= rule.CounterMaximum));
