@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 94 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 95 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 132 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 133 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 86 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 94 files.
+`src/Oxce.Gameplay` - 95 files.
 
 ### `Oxce.Gameplay`
 
@@ -356,6 +356,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignTrainingCompleted` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
 - `CampaignState` (class) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
 - `CampaignState` (class) [CampaignPriceScripts.cs](../src/Oxce.Gameplay/Campaigns/CampaignPriceScripts.cs)
+- `CampaignState` (class) [CampaignProductionForecast.cs](../src/Oxce.Gameplay/Campaigns/CampaignProductionForecast.cs)
 - `CampaignState` (class) [CampaignProjectCapacity.cs](../src/Oxce.Gameplay/Campaigns/CampaignProjectCapacity.cs)
 - `ICampaignQuery` (interface) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
 - `CampaignStoreItem` (record) [CampaignQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignQueries.cs)
@@ -1011,14 +1012,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 132 files.
+`tests/Oxce.CompatibilityTests` - 133 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>130 test classes</summary>
+<details><summary>131 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1089,6 +1090,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicMissionStrategyTests` ([StrategicMissionStrategyTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionStrategyTests.cs))
 - `StrategicObjectiveBaseSpawnTests` ([StrategicObjectiveBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicObjectiveBaseSpawnTests.cs))
 - `StrategicOperationBaseSpawnTests` ([StrategicOperationBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicOperationBaseSpawnTests.cs))
+- `StrategicProductionCounterForecastTests` ([StrategicProductionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionCounterForecastTests.cs))
 - `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs))
 - `StrategicReadinessRegressionTests` ([StrategicReadinessRegressionTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessRegressionTests.cs))
 - `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))
@@ -1407,7 +1409,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-objective-base-spawn](../fixtures/manifests/strategic-objective-base-spawn.json) | cpp-reference | `savegames/strategic-objective-base-spawn.expected.json` | `StrategicObjectiveBaseSpawnTests` ([StrategicObjectiveBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicObjectiveBaseSpawnTests.cs)) |
 | [strategic-operation-base-spawn](../fixtures/manifests/strategic-operation-base-spawn.json) | cpp-reference | `savegames/strategic-operation-base-spawn.expected.json` | `StrategicOperationBaseSpawnTests` ([StrategicOperationBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicOperationBaseSpawnTests.cs)) |
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
-| [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
+| [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicProductionCounterForecastTests` ([StrategicProductionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionCounterForecastTests.cs))<br>`StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs)) |
 | [strategic-retaliation-cleanup](../fixtures/manifests/strategic-retaliation-cleanup.json) | cpp-reference | `savegames/strategic-retaliation-cleanup.expected.json` | `StrategicWorldRetaliationCleanupTests` ([StrategicWorldRetaliationCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRetaliationCleanupTests.cs)) |
 | [strategic-retaliation-spawn](../fixtures/manifests/strategic-retaliation-spawn.json) | cpp-reference | `savegames/strategic-retaliation-spawn.expected.json` | `StrategicRetaliationGenerationTests` ([StrategicRetaliationGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationGenerationTests.cs))<br>`StrategicRetaliationSpawnTests` ([StrategicRetaliationSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationSpawnTests.cs)) |
 | [strategic-retaliation-target](../fixtures/manifests/strategic-retaliation-target.json) | cpp-reference | `savegames/strategic-retaliation-target.expected.json` | `StrategicRetaliationSpawnTests` ([StrategicRetaliationSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationSpawnTests.cs)) |

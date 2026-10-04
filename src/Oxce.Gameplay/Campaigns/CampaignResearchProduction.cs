@@ -51,11 +51,12 @@ public sealed record CampaignResearchProduction(
     IReadOnlyList<CampaignResearchChoice> ResearchChoices, IReadOnlyList<CampaignResearchProject> Research,
     IReadOnlyList<CampaignProductionChoice> ProductionChoices, IReadOnlyList<CampaignProductionProject> Productions);
 
-public sealed partial class CampaignState : ICampaignResearchProductionQuery, ICampaignResearchPreflight, ICampaignArcResearch
+public sealed partial class CampaignState : ICampaignResearchProductionQuery, ICampaignResearchPreflight, ICampaignArcResearch, ICampaignProductionPreflight
 {
     private void RegisterResearchProduction(CampaignCapabilityRegistry registry)
     {
         registry.Operation<ICampaignResearchPreflight>(this);
+        registry.Operation<ICampaignProductionPreflight>(this);
         registry.Operation<ICampaignArcResearch>(this);
         registry.Operation<ICampaignCustomCounters>(this);
         registry.Command<ConfigureResearchProject>(ConfigureResearch);
