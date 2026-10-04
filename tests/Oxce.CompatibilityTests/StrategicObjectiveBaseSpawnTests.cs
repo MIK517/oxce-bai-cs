@@ -388,12 +388,14 @@ public sealed class StrategicObjectiveBaseSpawnTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewFinalWaveBaseReservesHuntingMissionsAndStartsDelayedWaves(bool cache)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void NewFinalWaveBaseReservesHuntingMissionsAndStartsDelayedWaves(bool cache, bool regional)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
-        var content = LoadWorld(cache, hunting: true);
+        var content = LoadWorld(cache, hunting: true, regional: regional);
         var initial = Initial(content).WithNextId("ALIEN_MISSIONS", int.MaxValue);
         initial = initial.WithCraft("SHIP", craft => craft with
         {
@@ -511,7 +513,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
 
     private static RuntimeContent LoadWorld(bool cache, string kind = "EXPLICIT", int chance = 0,
         bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1, bool landing = false,
-        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90)
+        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false)
     {
         var table = kind switch
         {
@@ -532,7 +534,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 areas: [[0, 30, -20, 20]]
                 missionZones:
                   - [[10, 10, 8, 8]]
-                  - [[8, 8, 2, 2, 110], [12, 12, -2, -2, 110]]
+                  - {{{(regional ? "[[7, 9, 1, 3, 110]]" : "[[8, 8, 2, 2, 110], [12, 12, -2, -2, 110]]")}}}
             globe:
               textures:
                 - {id: 110, deployments: {{{table}}}}

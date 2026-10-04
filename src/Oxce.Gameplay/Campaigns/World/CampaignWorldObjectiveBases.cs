@@ -55,7 +55,7 @@ internal sealed partial class CampaignWorld
                 var deployment = rules.AlienDeployments[candidate].Value;
                 if (deployment.HuntMissionMaxFrequency < 0)
                     return "Base objective hunting timer cannot be negative.";
-                if (!landing && NewObjectiveBaseHuntingReason(rules.AlienDeployments.GetExternalId(candidate), deployment, position, highest, ref work, ref canHunt) is { } huntingReason)
+                if (!landing && NewObjectiveBaseHuntingReason(rules.AlienDeployments.GetExternalId(candidate), deployment, area, position, highest, ref work, ref canHunt) is { } huntingReason)
                     return huntingReason;
                 var marker = deployment.MarkerName;
                 if (string.IsNullOrWhiteSpace(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
@@ -161,7 +161,7 @@ internal sealed partial class CampaignWorld
         catch (KeyNotFoundException error) { throw new InvalidDataException("Base objective references an unavailable deployment.", error); }
     }
 
-    private string? NewObjectiveBaseHuntingReason(string deploymentId, RuntimeAlienDeploymentRule deployment, SpawnArea area,
+    private string? NewObjectiveBaseHuntingReason(string deploymentId, RuntimeAlienDeploymentRule deployment, MissionArea sourceArea, SpawnArea area,
         CampaignTimeTrigger highest, ref long work, ref bool canGenerate)
     {
         if (highest < CampaignTimeTrigger.TenMinutes || deployment.BaseDetectionRange <= 0) return null;
@@ -170,6 +170,7 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var range = WorldGeometry.Nautical(deployment.BaseDetectionRange);
         var possibleGeneration = false;
+        IReadOnlyList<(string Id, WorldPosition Position)>? sourceRegions = null;
         foreach (var owner in campaign.BaseStates)
         {
             work += owner.Crafts.Count + (highest >= CampaignTimeTrigger.OneHour ? (long)owner.Transfers.Count : 0);
@@ -218,11 +219,16 @@ internal sealed partial class CampaignWorld
                 if (!rules.AlienMissions.TryGet(choice.Key, out var handle))
                     return "Alien base hunting references an undefined mission.";
                 var mission = rules.AlienMissions[handle].Value;
-                if (area.Radius != 0 || mission.Waves.Count == 0 || mission.Waves[0].SpawnTimer / 30 / 2 <= 1)
+                if (mission.Waves.Count == 0 || mission.Waves[0].SpawnTimer / 30 / 2 <= 1)
                     return "New base objective hunting requires creation-tick mission forecasts.";
-                var source = new AlienBaseSnapshot(0, deploymentId, "", area.Center.Longitude, area.Center.Latitude);
-                if (HuntingMissionReason(source, deployment, mission, highest, ref checks, newborn: true) is { } reason)
-                    return reason;
+                sourceRegions ??= WorldGenerationRegions.Candidates(sourceArea,
+                    campaign.RegionStates.Select(region => (rules.Regions[region.Rule].Id, rules.Regions[region.Rule].Value)).ToArray(), ref checks);
+                foreach (var (region, position) in sourceRegions)
+                {
+                    var source = new AlienBaseSnapshot(0, deploymentId, "", position.Longitude, position.Latitude);
+                    if (HuntingMissionReason(source, deployment, mission, highest, ref checks, newborn: true, sourceRegion: region) is { } reason)
+                        return reason;
+                }
                 possibleGeneration = true;
             }
             return null;

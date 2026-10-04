@@ -121,7 +121,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? HuntingMissionReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
-        RuntimeAlienMissionRule mission, CampaignTimeTrigger highest, ref long work, bool newborn = false)
+        RuntimeAlienMissionRule mission, CampaignTimeTrigger highest, ref long work, bool newborn = false, string? sourceRegion = null)
     {
         if (!Enum.IsDefined(mission.Objective) || !Enum.IsDefined(mission.OperationType) || mission.Waves.Count == 0)
             return "Alien base hunting requires a valid mission and first wave.";
@@ -145,7 +145,7 @@ internal sealed partial class CampaignWorld
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         if (!newborn && _alienBases.Count(other => other.Id == source.Id && MarkerName(other.DeploymentId) == MarkerName(source.DeploymentId)) != 1)
             return "Alien base hunting source identity is ambiguous.";
-        if (LocateGenerationRegion(source.Position) is not { } regionName)
+        if ((sourceRegion ?? LocateGenerationRegion(source.Position)) is not { } regionName)
             return "Alien base hunting cannot locate its source region.";
         var regions = campaign.Content.RuntimeRules.Regions;
         var region = regions[regions.GetRequired(regionName)].Value;
