@@ -21,6 +21,13 @@ internal sealed partial class CampaignWorld
     {
         var key = (ruleId, fromCraft);
         if (_detectionScripts.TryGetValue(key, out var cached)) return cached;
+        var built = BuildDetectionScript(ruleId, fromCraft);
+        _detectionScripts.Add(key, built);
+        return built;
+    }
+
+    private DetectionScript BuildDetectionScript(string ruleId, bool fromCraft)
+    {
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
@@ -29,8 +36,7 @@ internal sealed partial class CampaignWorld
         var plan = campaign.Content.EventPlans.FirstOrDefault(candidate => candidate.ParserName == parser)?.Plan;
         if (artifact is null && (plan is null || plan.Count == 0))
         {
-            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, []);
-            _detectionScripts.Add(key, identity);
+            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, false);
             return identity;
         }
         if (!_detectionDefaults.TryGetValue(fromCraft, out var fallback))
@@ -45,17 +51,28 @@ internal sealed partial class CampaignWorld
             ? "Detection script exceeds the supported event execution limit." : null;
         var builder = new ScriptHostBindingsBuilder();
         HashSet<int> providers = [];
+        long stepBound = 0;
+        var radarQueries = 0;
+        var shieldStats = false;
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
             .Append(program).Concat(plan?.After.Select(item => item.Program) ?? []))
         {
+            stepBound += candidate.Instructions.Count;
+            foreach (var instruction in candidate.Instructions)
+                if ((CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall)
+                {
+                    var bindingId = instruction.Operands[0].Scalar;
+                    var bindingName = candidate.Bindings.First(binding => binding.Id.Value == bindingId).Name;
+                    if (bindingName is "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance") radarQueries++;
+                    if (bindingName is "Ufo.getShieldMax" or "Ufo.getShieldPercentage") shieldStats = true;
+                }
             reason ??= WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported);
             foreach (var binding in candidate.Bindings)
                 if (DetectionBindingSupported(binding.Name) && providers.Add(binding.Id.Value))
                     builder.Add(binding.Id, (_, arguments) => InvokeDetectionBinding(binding.Name, arguments));
             _detectionFrame.Prepare(candidate);
         }
-        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray());
-        _detectionScripts.Add(key, result);
+        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, radarQueries, shieldStats);
         return result;
     }
 
@@ -65,6 +82,12 @@ internal sealed partial class CampaignWorld
         var script = GetDetectionScript(ufo.RuleId, craft is not null);
         if (script.Program is not { } program) return (caller.Type, caller.Chance);
         if (script.Unavailable is not null) throw new InvalidOperationException("Detection script was not preflighted.");
+        if (script.ShieldStats)
+        {
+            var rules = campaign.Content.RuntimeRules;
+            var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+            _detectionShieldCapacity = checked(rule.Stats.ShieldCapacity + rule.RaceBonus(FindMission(ufo.MissionId)!.Race).ShieldCapacity);
+        }
         var inputIndex = 0;
         foreach (var inputName in script.InputNames)
         {
@@ -104,6 +127,40 @@ internal sealed partial class CampaignWorld
         finally { Array.Clear(_detectionInputs); Array.Clear(_detectionOutputs); }
     }
 
+    private string? ReserveDetectionScriptWork(string ruleId, CampaignTimeTrigger highest,
+        ref long work, ref int craftSources, ref int weaponSlots)
+    {
+        var fromBase = GetDetectionScript(ruleId, false);
+        var fromCraft = GetDetectionScript(ruleId, true);
+        work += fromBase.StepBound * campaign.BaseStates.Count;
+        if (fromCraft.StepBound != 0)
+        {
+            if (craftSources < 0)
+            {
+                craftSources = 0;
+                foreach (var owner in campaign.BaseStates)
+                {
+                    foreach (var craft in owner.Crafts)
+                    {
+                        craftSources++;
+                        weaponSlots = Math.Max(weaponSlots, craft.Logistics?.Weapons.Count ?? 0);
+                    }
+                    if (highest < CampaignTimeTrigger.OneHour) continue;
+                    foreach (var transfer in owner.Transfers)
+                        if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming)
+                        {
+                            craftSources++;
+                            weaponSlots = Math.Max(weaponSlots, incoming.Logistics?.Weapons.Count ?? 0);
+                        }
+                }
+                // Fresh research/production craft have no auto-patrol order and cannot
+                // join this detection pass. Existing/arriving orders can relaunch.
+            }
+            work += (fromCraft.StepBound + (long)fromCraft.RadarQueries * weaponSlots) * craftSources;
+        }
+        return work > MaximumAlienBaseChecks ? "Detection script work exceeds the supported half-hour limit." : null;
+    }
+
     private sealed record DetectionScript(ScriptProgram? Program, ScriptEventPlan? Plan, string? Unavailable,
-        ScriptHostBindings Providers, string[] InputNames);
+        ScriptHostBindings Providers, string[] InputNames, long StepBound, int RadarQueries, bool ShieldStats);
 }

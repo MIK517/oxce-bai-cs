@@ -418,3 +418,22 @@ findings were fixed separately; all twelve requested slices and four audits are
 complete. Useful native captures remain available; the obsolete counter-probe
 object file was removed. The reference remains clean at the pinned commit.
 The revised 4c headless acceptance gate remains open; 4d is untouched.
+
+### Detection VM checkpoint (2026-10-04)
+
+The next three-slice cycle pins exact detection caller inputs/roll order, enables
+bounded compiled scalar UFO programs and global before/after events, and supplies
+read-only UFO, craft and campaign/clock bindings. Native getter traces, fresh/cache
+execution, null receivers, race-adjusted shields, installed radar and transition
+reloads cover the live call sites. Precise loop/divisor/provider checks stop before
+an unsafe script can mutate the tick.
+
+The batch audit reproduced and fixed cached-lookup closure allocations and missing
+aggregate contact/event work limits. Existing 8/32/128-UFO measurements now remain
+at 368 bytes per additional boundary UFO for both one and eight bases, below the
+unchanged 448-byte bound. Excessive programs across contacts/events stop with
+unchanged snapshots. Full root validation passes all 1,942 tests with no failures
+or skips, including checksums and private corpus cases. The headless gate remains
+open: script-value and remaining detection providers/loop forecasts, actual
+initial/monthly caller composition, wider generated-object forecasts and final
+composed classification are still required. Branch 4d remains untouched.

@@ -385,3 +385,11 @@ before and after save reloads, including race bonuses, installed radar and curre
 tick time. Reusable input-name arrays, binding tables and a stable clock receiver
 avoid rebuilding providers or boxing the clock per contact. Percentage-of-damage
 and remaining bindings retain explicit capability refusals.
+
+Batch audit: reproduced and fixed an allocation regression from cached-lookup
+closures, and an aggregate execution-work gap. Program construction is separate
+from allocation-free lookup. A shared half-hour budget includes saved/newborn
+contacts, before/main/after programs, possible craft arrivals and installed-radar
+query scans. Shield capacity is prepared once per script call. Fresh/cache
+oversized contact/event regressions now stop with unchanged snapshots; existing
+8/32/128-UFO allocation limits remain unchanged.
