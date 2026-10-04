@@ -40,6 +40,13 @@ public sealed partial class CampaignState
             throw new InvalidDataException("Monthly world score history is inconsistent.");
         var xcom = _regions.Select(region => region.ActivityXcom[index]).ToArray();
         var alien = _regions.Select(region => region.ActivityAlien[index]).ToArray();
+        if (isNewMonth)
+            foreach (var owner in _bases)
+                foreach (var personal in owner.Soldiers.Select(soldier => soldier.Personal)
+                             .Concat(owner.Transfers.Where(transfer => !transfer.Delivered && transfer.Soldier is not null)
+                                 .Select(transfer => transfer.Soldier!.Personal)).OfType<SoldierPersonalState>())
+                    if (!_content.RuntimeRules.Armors.TryGet(personal.Armor, out _))
+                        throw new InvalidDataException("Monthly world accounting requires a known soldier armor rule.");
         var countryFunding = isNewMonth
             ? checked((int)_countries.Sum(country => (long)country.Funding[^1])) : 0;
         var baseMaintenance = isNewMonth

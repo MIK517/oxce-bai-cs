@@ -1330,3 +1330,9 @@ Branch 4c registered monthly hook: the handler now runs after calendar month adv
 
 
 Branch 4c startup endurance: the 72-hour world scenario now also starts from month -1 through EnterCampaignWorld, rather than injecting its mission. Arc research enables mission scheduling; the mission counter enables a future event. Stepped, batched and transition-reloaded runs agree for fresh/cache content across craft dispatch/patrol/recall, servicing/fuel return, 36 UFO detections/landings and finite cleanup. The future event remains scheduled with 1,440 minutes after 72 hours, generated history and run counters persist, and repeated entry remains a no-op. The existing populated allocation checks still pass.
+
+
+Newborn/monthly/startup batch audit: root verification reproduced a legacy-save month-boundary regression caused by reading incomplete soldier armor for maintenance before the retained month guard. Registered monthly preflight now follows that guard, preserving the earlier stopping boundary. Explicit initial/monthly accounting validates consumed armor rules and reports a precise restriction before mutation; initial accounting validation precedes maintenance preparation. The new empty-armor entry regression passes without weakening legacy save coverage.
+
+
+Newborn/monthly/startup cycle closes: root dotnet test passes 2,130 tests without failures or skips, including the unchanged legacy-save month-boundary regression, new explicit-entry armor guard, checksums/private corpus and allocation cases. Formatting, code-map and diff checks pass. The newborn monthly composition guard is removed; future event payloads, combat/deployment and integrated monthly campaign progression remain guarded. Remaining detection providers/forecasts and final full closure audit keep branch 4c open; branch 4d is untouched.

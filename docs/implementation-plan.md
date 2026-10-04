@@ -843,3 +843,6 @@ Pinned GeoscapeState::determineAlienMissions arc/mission/event prefix and the in
 
 
 Branch 4c scheduling/entry cycle closes with registered monthly world composition and once-only public EnterCampaignWorld after first-base placement. Caller eligibility is preflighted across arc research, mission counters and event history before any RNG/mutation; score/funds remain fixed. Initial accounting and legacy world links are guarded, and entry expires stale logistics quotes. Batch audit fixed prospective operation-base identity collisions and removed a nonreference nonmonthly mode. Root verification passes 2,123 tests. Newly created bases with monthly upgrades/evolution, remaining detection providers/forecasts and final composed acceptance keep 4c open; branch 4d remains untouched.
+
+
+Newborn/monthly/startup cycle closes: root dotnet test passes 2,130 tests without failures or skips, including the unchanged legacy-save month-boundary regression, new explicit-entry armor guard, checksums/private corpus and allocation cases. Formatting, code-map and diff checks pass. The newborn monthly composition guard is removed; future event payloads, combat/deployment and integrated monthly campaign progression remain guarded. Remaining detection providers/forecasts and final full closure audit keep branch 4c open; branch 4d is untouched.
