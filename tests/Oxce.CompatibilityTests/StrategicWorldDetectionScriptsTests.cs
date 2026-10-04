@@ -255,5 +255,31 @@ public sealed class StrategicWorldDetectionScriptsTests
         AssertTimeBlocked(campaign, "Detection script exceeds the supported instruction limit.");
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void SkippedOuterLoopDoesNotChargeAnUnreachableOversizedInnerLoop(int limit)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: $$"""
+            ufos:
+              - type: UFO_SKIPPED_LOOP
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    loop var outer {{limit}};
+                      loop var inner 2147483647;
+                        add detection_chance 1;
+                      end;
+                    end;
+                    return DETECTION_RADAR 100;
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_SKIPPED_LOOP", 2200);
+
+        AdvanceUnblocked(campaign, 1);
+
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+    }
+
     private static CampaignTime HalfHour => new(1, 1, 1, 1999, 1, 29, 55);
 }

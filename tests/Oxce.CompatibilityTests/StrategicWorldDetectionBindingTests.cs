@@ -285,13 +285,25 @@ public sealed class StrategicWorldDetectionBindingTests
         var rows = TestFixtures.Rows(oracle.RootElement, "stats");
         var keys = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["getFuelMax"] = "fuelMax", ["getDamageMax"] = "damageMax", ["getSpeedMax"] = "speedMax",
-            ["getAccel"] = "accel", ["getRadarRange"] = "radarRange", ["getRadarChance"] = "radarChance",
-            ["getSightRange"] = "sightRange", ["getHitBonus"] = "hitBonus", ["getAvoidBonus"] = "avoidBonus",
-            ["getAvoidBonus2"] = "avoidBonus2", ["getPowerBonus"] = "powerBonus", ["getArmor"] = "armor",
-            ["getShieldCapacity"] = "shieldCapacity", ["getShieldRecharge"] = "shieldRecharge",
-            ["getShieldRechargeInGeoscape"] = "shieldRechargeInGeoscape", ["getShieldBleedThrough"] = "shieldBleedThrough",
-            ["getMaxUnits"] = "soldiers", ["getMaxVehiclesAndLargeSoldiers"] = "vehicles", ["getMaxItems"] = "maxItems",
+            ["getFuelMax"] = "fuelMax",
+            ["getDamageMax"] = "damageMax",
+            ["getSpeedMax"] = "speedMax",
+            ["getAccel"] = "accel",
+            ["getRadarRange"] = "radarRange",
+            ["getRadarChance"] = "radarChance",
+            ["getSightRange"] = "sightRange",
+            ["getHitBonus"] = "hitBonus",
+            ["getAvoidBonus"] = "avoidBonus",
+            ["getAvoidBonus2"] = "avoidBonus2",
+            ["getPowerBonus"] = "powerBonus",
+            ["getArmor"] = "armor",
+            ["getShieldCapacity"] = "shieldCapacity",
+            ["getShieldRecharge"] = "shieldRecharge",
+            ["getShieldRechargeInGeoscape"] = "shieldRechargeInGeoscape",
+            ["getShieldBleedThrough"] = "shieldBleedThrough",
+            ["getMaxUnits"] = "soldiers",
+            ["getMaxVehiclesAndLargeSoldiers"] = "vehicles",
+            ["getMaxItems"] = "maxItems",
         };
         Assert.Equal(19, rows[0].EnumerateObject().Count());
         var ruleFields = string.Join("\n", keys.Select(pair => $"    {pair.Value}: {rows[0].GetProperty(pair.Key).GetInt32()}"));

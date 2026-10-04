@@ -14,10 +14,10 @@ internal static class WorldDetectionScriptSafety
             if (!bindingSupported(binding)) return $"Detection script requires unsupported binding {binding.Name}.";
         if (program.Instructions.Count > ScriptExecutionOptions.Default.MaximumSteps)
             return "Detection script exceeds the supported instruction limit.";
-        var loops = new Dictionary<int, (int End, long Factor)>();
+        var loops = new Dictionary<int, (int End, long Iterations)>();
         for (var index = 2; index < program.Instructions.Count - 2; index++)
             if (TryLiteralLoop(program, index, out var end, out var limit))
-                loops.Add(index, (end, Math.Max(0L, limit) + 1));
+                loops.Add(index, (end, Math.Max(0L, limit)));
         for (var index = 0; index < program.Instructions.Count; index++)
         {
             var instruction = program.Instructions[index];
@@ -45,10 +45,12 @@ internal static class WorldDetectionScriptSafety
                 return "Detection script requires a positive wave-period forecast.";
             if (!Enum.IsDefined(operation)) return "Detection script contains an unsupported operation.";
         }
-        foreach (var (start, loop) in loops)
+        // Apply outer loops first explicitly. A skipped outer body must zero every
+        // nested header before considering that nested loop's potentially huge limit.
+        foreach (var (start, loop) in loops.OrderBy(static pair => pair.Key))
             for (var index = start; index < loop.End; index++)
             {
-                var bound = visits[index] * loop.Factor;
+                var bound = visits[index] * (index == start ? loop.Iterations + 1 : loop.Iterations);
                 if (bound > ScriptExecutionOptions.Default.MaximumSteps)
                     return "Detection script exceeds the supported instruction limit.";
                 visits[index] = (int)bound;
