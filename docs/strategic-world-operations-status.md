@@ -695,3 +695,25 @@ Compiler/cache revision is 42. Tactical visibility calculations remain outside
 this read-only world caller.
 Reference: Armor.cpp constructor/load/vision getters/ScriptRegister and Armor.h
 getVisibilityThroughSmoke/getVisibilityThroughFire.
+
+## Soldier and armor statistics cycle audit (2026-10-04)
+
+Three slices add all 36 RuleSoldier minimum/maximum/cap stat getters, all twelve
+RuleArmor stat getters and eleven immutable armor vision/light metadata getters.
+Verbatim UnitStats wrappers and Armor getter captures pin namespaces, signed
+widths, defaults and null behavior. Fresh/cache live scripts and transition reloads
+cover every field. Compiler/cache revision is 42.
+
+The batch audit found no additional confirmed defect. Providers read immutable
+data without contact-loop allocation or tactical mutation. The 4c headless gate
+remains open: effective craft instance statistics, remaining detection providers
+and dynamic forecasts, actual initial/monthly caller composition, wider generated
+object/newborn forecasts and final composed acceptance/classification remain.
+Combat/deployment and due event payloads retain their later-branch boundaries.
+Branch 4d is untouched.
+
+Validation: all 2,032 root tests pass with zero failures/skips, including private
+corpus, checksum and existing allocation checks. Formatting verification,
+code-map validation and diff checks pass. The reference remains clean at the
+pinned commit. This timed run completes seven three-slice cycles and seven batch
+audits, with confirmed issues repaired in their owning slices or audit commits.
