@@ -36,6 +36,12 @@ internal sealed class WorldDetectionReferenceForecast
         queued[0] = true;
         long work = 0;
         var bindings = program.Bindings.ToDictionary(static binding => binding.Id.Value);
+        var needsNames = program.Instructions.Any(instruction =>
+            (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall &&
+            bindings[instruction.Operands[0].Scalar].Name is "RuleMod.getRuleItem" or "RuleMod.getRuleInventory" &&
+            instruction.Operands[3].Kind == ScriptOperandKind.Register);
+        var names = needsNames ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work) : null;
+        if (needsNames && names is null) return null;
         while (queue.TryDequeue(out var index))
         {
             queued[index] = false;
@@ -67,14 +73,21 @@ internal sealed class WorldDetectionReferenceForecast
                         values = Read(operands[2], incoming);
                     else if (binding.Name is "RuleMod.getRuleItem" or "RuleMod.getRuleInventory")
                     {
-                        if (OnlyNull(source) || binding.Name == "RuleMod.getRuleItem" && operands[3] == ScriptOperand.TextValue("STR_NONE"))
-                            values = [null];
-                        else if (operands[3].Kind == ScriptOperandKind.Text)
+                        var possibleNames = operands[3].Kind == ScriptOperandKind.Text
+                            ? new HashSet<string>(StringComparer.Ordinal) { operands[3].Text! } : names?.At(index, operands[3]);
+                        if (OnlyNull(source)) values = [null];
+                        else if (possibleNames is not null)
                         {
-                            object? found = binding.Name == "RuleMod.getRuleItem"
-                                ? rules.Items.TryGet(operands[3].Text!, out var item) ? rules.Items[item].Value : null
-                                : rules.Inventories.TryGet(operands[3].Text!, out var inventory) ? rules.Inventories[inventory].Value : null;
-                            values = new(ReferenceEqualityComparer.Instance) { found };
+                            work += possibleNames.Sum(static name => 1L + name.Length);
+                            if (work > maximumWork) return null;
+                            values = new(ReferenceEqualityComparer.Instance);
+                            foreach (var name in possibleNames)
+                            {
+                                object? found = binding.Name == "RuleMod.getRuleItem"
+                                    ? name != "STR_NONE" && rules.Items.TryGet(name, out var item) ? rules.Items[item].Value : null
+                                    : rules.Inventories.TryGet(name, out var inventory) ? rules.Inventories[inventory].Value : null;
+                                values.Add(found);
+                            }
                             if (source is null || source.Contains(null)) values.Add(null);
                         }
                     }
