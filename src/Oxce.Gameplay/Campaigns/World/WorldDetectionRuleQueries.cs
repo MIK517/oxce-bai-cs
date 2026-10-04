@@ -15,11 +15,12 @@ internal static class WorldDetectionRuleQueries
         "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or
-        "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits";
+        "RuleCountry.getFundingCap" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits";
 
     internal static int Value(string name, object? receiver, RuntimeRuleCatalog rules) => receiver switch
     {
         null => 0,
+        RuntimeCountryRule country => country.FundingCap,
         RuntimeArmorRule armor => CampaignWorld.DetectionArmorValue(name, armor),
         RuntimeSoldierRule soldier => CampaignWorld.DetectionSoldierStat(name, soldier),
         RuntimeCraftRule craft => CampaignWorld.DetectionCraftRuleValue(name, craft),
@@ -52,6 +53,7 @@ internal static class WorldDetectionRuleQueries
         4 => rules.Ufos.Count,
         5 => rules.Inventories.Count,
         6 => rules.Research.Count,
+        7 => rules.Countries.Count,
         _ => 1,
     };
 
@@ -63,6 +65,7 @@ internal static class WorldDetectionRuleQueries
         4 => rules.Ufos.Rules.Select(static rule => (object?)rule.Value),
         5 => rules.Inventories.Rules.Select(static rule => (object?)rule.Value),
         6 => rules.Research.Rules.Select(static rule => (object?)rule.Id),
+        7 => rules.Countries.Rules.Select(static rule => (object?)rule.Value),
         _ => new object?[] { rules },
     };
 
@@ -71,5 +74,6 @@ internal static class WorldDetectionRuleQueries
         name.StartsWith("RuleCraft.", StringComparison.Ordinal) ? 3 :
         name.StartsWith("RuleUfo.", StringComparison.Ordinal) ? 4 :
         name.StartsWith("RuleInventory.", StringComparison.Ordinal) ? 5 :
-        name.StartsWith("RuleResearch.", StringComparison.Ordinal) ? 6 : 0;
+        name.StartsWith("RuleResearch.", StringComparison.Ordinal) ? 6 :
+        name.StartsWith("RuleCountry.", StringComparison.Ordinal) ? 7 : 0;
 }
