@@ -21,9 +21,20 @@ public sealed partial class CampaignState
         var consumesCraft = false;
         var rules = _content.RuntimeRules;
         foreach (var owner in _bases)
+        {
+            long released = 0;
             foreach (var production in owner.Productions)
             {
                 var rule = rules.Manufacture[production.Rule].Value;
+                long assignedMaximum = production.Assigned;
+                if (production.IsFallback)
+                {
+                    work += owner.Facilities.Count;
+                    assignedMaximum += Math.Min((long)owner.Engineers + released, Math.Max(0, AvailableWorkshops(owner)));
+                }
+                // Earlier projects may finish/stop and release their staff. This is
+                // an upper bound; fallback decisions still execute only in the handler.
+                released += assignedMaximum;
                 work += 1L + rule.RequiredMaterials.Count + rule.ProducedMaterials.Count;
                 if (work > 1_000_000) throw new InvalidDataException("Craft production ID forecasts exceed the supported work limit.");
                 consumesCraft |= rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Craft is { } craft &&
@@ -33,20 +44,23 @@ public sealed partial class CampaignState
                     if (material.Quantity > 0 && material.Craft is { } craft && rules.Crafts.GetExternalId(craft) == name)
                         quantity += material.Quantity;
                 if (quantity == 0) continue;
-                if (production.IsFallback)
-                    throw new InvalidDataException("Shared world marker production requires fallback staffing forecasts.");
                 if (rule.Time <= 0) continue; // Produced returns Amount before and after.
                 var done = production.Spent / rule.Time;
                 var after = ((long)production.Spent + production.Assigned) / rule.Time;
+                var afterMaximum = ((long)production.Spent + assignedMaximum) / rule.Time;
                 var requested = (production.Infinite ? after : Math.Min(after, production.Amount)) - done;
-                if (requested <= 0) continue;
+                var requestedMaximum = (production.Infinite ? afterMaximum : Math.Min(afterMaximum, production.Amount)) - done;
+                if (requestedMaximum <= 0) continue;
+                if ((long)production.Spent + assignedMaximum > int.MaxValue)
+                    throw new InvalidDataException("Fallback production progress forecasts exceed the supported range.");
                 // The first unit is already paid. Further units may stop for materials,
                 // funds or capacity; never credit their uncertain IDs as collision headroom.
-                certain += quantity;
-                possible += quantity * requested;
-                if (possible > 100_000)
+                if (requested > 0) certain += quantity;
+                if (quantity > 100_000 || requestedMaximum > (100_000 - possible) / quantity)
                     throw new InvalidDataException("Craft production ID forecasts exceed the supported population limit.");
+                possible += quantity * requestedMaximum;
             }
+        }
         if (possible == 0) return before;
         if (consumesCraft)
             throw new InvalidDataException("Shared world marker production requires craft-consumption forecasts.");
@@ -60,6 +74,7 @@ public sealed partial class CampaignState
             foreach (var transfer in owner.Transfers)
                 if (!transfer.Delivered && transfer.Craft is { } craft && craft.RuleId == name) floor = Math.Max(floor, (long)craft.Id + 1);
         }
-        return (Math.Max(before.Minimum, floor) + certain, Math.Max(before.Maximum, floor) + possible);
+        return (certain == 0 ? before.Minimum : Math.Max(before.Minimum, floor) + certain,
+            Math.Max(before.Maximum, floor) + possible);
     }
 }

@@ -948,3 +948,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   arithmetic-limit regressions cover both overflow dimensions and exact thresholds.
   Newborn source identity, generated mission limits, first-match region ordering,
   no-object execution and creation-tick timer fallthrough were audited together.
+
+- Batch 4 slice 1: shared world marker forecasts now include fallback staffing,
+  with bounds for free engineers and possible releases from earlier projects.
+  Optional completions retain the original counter as the lower bound rather than
+  assuming a craft is born. Progress/population and facility scans are bounded.
+  Reference: Production::step fallback staffing. Fresh/cache direct/landing births,
+  fallback completion and reload verify the removed blanket staffing guard.
