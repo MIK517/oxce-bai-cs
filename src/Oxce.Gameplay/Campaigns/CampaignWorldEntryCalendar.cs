@@ -27,6 +27,7 @@ public sealed partial class CampaignState : ICampaignInitialWorldCalendar
 
     void ICampaignInitialWorldCalendar.Begin(InitialWorldEntry entry)
     {
+        _logisticsQuote = null;
         MonthsPassed = 0;
         DaysPassed = entry.Days;
     }

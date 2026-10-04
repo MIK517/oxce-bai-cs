@@ -5,11 +5,11 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>Ordered determineAlienMissions caller. Integrated campaign month progression remains guarded.</summary>
 internal interface ICampaignWorldScheduling
 {
-    CampaignCommandResult Schedule(bool isNewMonth);
+    CampaignCommandResult Schedule();
 }
 
 /// <summary>Subsystem acceptance seam after month advancement; does not advance the calendar.</summary>
-internal sealed record ScheduleWorldScripts(bool IsNewMonth = true) : ICampaignCommand;
+internal sealed record ScheduleWorldScripts : ICampaignCommand;
 
 /// <summary>Enters the strategic world after first-base placement, like GeoscapeState::init.</summary>
 public sealed record EnterCampaignWorld : ICampaignCommand;
@@ -20,7 +20,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
     {
         registry.Operation<ICampaignWorldScheduling>(this);
         registry.Command<EnterCampaignWorld>(_ => EnterWorld());
-        registry.Command<ScheduleWorldScripts>(command => ((ICampaignWorldScheduling)this).Schedule(command.IsNewMonth));
+        registry.Command<ScheduleWorldScripts>(_ => ((ICampaignWorldScheduling)this).Schedule());
     }
 
     private CampaignCommandResult EnterWorld()
@@ -38,31 +38,32 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
         // Legacy month -1 UFOs bypass load validation. Entering month zero must not
         // turn an accepted legacy snapshot into a corrupt mission/trajectory graph.
         var rules = campaign.Content.RuntimeRules;
+        var missionIds = _missions.Select(mission => mission.Id).ToHashSet();
         foreach (var ufo in _ufos)
-            if (!_missions.Any(mission => mission.Id == ufo.MissionId) ||
+            if (!missionIds.Contains(ufo.MissionId) ||
                 !rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectory) ||
                 (uint)ufo.TrajectoryPoint >= (uint)rules.UfoTrajectories[trajectory].Value.Waypoints.Count)
                 return Blocked("Initial world entry requires a valid UFO mission and trajectory.");
         var context = campaign.WorldScriptContext(inputs.Score, inputs.Funds, _strategy.MissionRuns) with { Month = 0 };
-        if (WorldSchedulingReason(context, true, out var arcs) is { } reason) return Blocked(reason);
+        if (WorldSchedulingReason(context, out var arcs) is { } reason) return Blocked(reason);
         calendar.Begin(entry);
-        var result = RunWorldScheduling(context, true, arcs);
+        var result = RunWorldScheduling(context, arcs);
         // Reference charges full maintenance except HQ personnel AFTER scheduling.
         calendar.Finish(entry);
         return result;
     }
 
-    CampaignCommandResult ICampaignWorldScheduling.Schedule(bool isNewMonth)
+    CampaignCommandResult ICampaignWorldScheduling.Schedule()
     {
         WorldSchedulingInputs inputs;
-        try { inputs = campaign.WorldSchedulingInputs(isNewMonth); }
+        try { inputs = campaign.WorldSchedulingInputs(isNewMonth: true); }
         catch (Exception error) when (error is OverflowException or InvalidDataException) { return Blocked(error.Message); }
         var context = campaign.WorldScriptContext(inputs.Score, inputs.Funds, _strategy.MissionRuns);
-        if (WorldSchedulingReason(context, isNewMonth, out var arcs) is { } reason) return Blocked(reason);
-        return RunWorldScheduling(context, isNewMonth, arcs);
+        if (WorldSchedulingReason(context, out var arcs) is { } reason) return Blocked(reason);
+        return RunWorldScheduling(context, arcs);
     }
 
-    private string? WorldSchedulingReason(WorldScriptContext context, bool isNewMonth,
+    private string? WorldSchedulingReason(WorldScriptContext context,
         out RuntimeRule<RuntimeArcScriptRule>[] arcs)
     {
         var rules = campaign.Content.RuntimeRules;
@@ -82,7 +83,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
             WorldScriptEligibility.MayMatch(entry.Value.Criteria, context, changed, runs, markers)).ToArray();
         if (events.Length > 4096) return "Event scripts exceed the supported work limit.";
         if (EventScriptReason(events, context.Month) is { } eventReason) return eventReason;
-        if (isNewMonth && context.Month > 0)
+        if (context.Month > 0)
         {
             foreach (var id in births)
             {
@@ -90,12 +91,13 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
                 if (deployment.AlienBaseUpgrades.Count != 0 || deployment.AlienRaceEvolution.Count != 0)
                     return "Composed monthly scheduling requires preflight of a newly created alien base upgrade or evolution.";
             }
-            if (AlienBaseMonthlyReason(context.Month) is { } baseReason) return baseReason;
+            if (AlienBaseMonthlyReason(context.Month, markers,
+                    missions.Count(entry => entry.Value.Criteria.ExecutionOdds > 0)) is { } baseReason) return baseReason;
         }
         return null;
     }
 
-    private CampaignCommandResult RunWorldScheduling(WorldScriptContext context, bool isNewMonth,
+    private CampaignCommandResult RunWorldScheduling(WorldScriptContext context,
         RuntimeRule<RuntimeArcScriptRule>[] arcs)
     {
         var notifications = RunArcScriptCommands(arcs, campaign.ArcResearch).Events;
@@ -109,7 +111,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
         var events = campaign.Content.RuntimeRules.EventScripts.Rules.Where(entry =>
             WorldScriptEligibility.Matches(entry.Value.Criteria, afterMissions)).ToArray();
         RunEventScriptCommands(events, context.Month);
-        if (isNewMonth && context.Month > 0) RunAlienBaseMonthly(context.Month);
+        if (context.Month > 0) RunAlienBaseMonthly(context.Month);
         return new(notifications);
     }
 }
