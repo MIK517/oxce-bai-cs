@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 146 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 147 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 86 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -1024,14 +1024,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 146 files.
+`tests/Oxce.CompatibilityTests` - 147 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>144 test classes</summary>
+<details><summary>145 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1082,6 +1082,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeRuleLinkingFixtureTests` ([RuntimeRuleLinkingFixtureTests.cs](../tests/Oxce.CompatibilityTests/RuntimeRuleLinkingFixtureTests.cs))
 - `ScriptApiCatalogFixtureTests` ([ScriptApiCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptApiCatalogFixtureTests.cs))
 - `ScriptCoreFixtureTests` ([ScriptCoreFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptCoreFixtureTests.cs))
+- `ScriptDeclarationFixtureTests` ([ScriptDeclarationFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptDeclarationFixtureTests.cs))
 - `ScriptEventFixtureTests` ([ScriptEventFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptEventFixtureTests.cs))
 - `SpriteFontFixtureTests` ([SpriteFontFixtureTests.cs](../tests/Oxce.CompatibilityTests/SpriteFontFixtureTests.cs))
 - `StartingPersonnelFixtureTests` ([StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs))
@@ -1406,6 +1407,7 @@ A test is listed when it names the manifest id or its expected file.
 | [runtime-rule-linking](../fixtures/manifests/runtime-rule-linking.json) | cpp-reference | `mods/runtime-rule-linking.expected.json` | `RuntimeRuleLinkingBenchmarks (benchmark)` ([RuntimeRuleLinkingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RuntimeRuleLinkingBenchmarks.cs))<br>`CompiledResourceDependencyTests` ([CompiledResourceDependencyTests.cs](../tests/Oxce.CompatibilityTests/CompiledResourceDependencyTests.cs))<br>`RuntimeRuleLinkingFixtureTests` ([RuntimeRuleLinkingFixtureTests.cs](../tests/Oxce.CompatibilityTests/RuntimeRuleLinkingFixtureTests.cs))<br>`StartingPersonnelFixtureTests` ([StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [script-api-catalog](../fixtures/manifests/script-api-catalog.json) | cpp-reference | `scripting/script-api-catalog.expected.json` | `ScriptApiCatalogFixtureTests` ([ScriptApiCatalogFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptApiCatalogFixtureTests.cs)) |
 | [script-core](../fixtures/manifests/script-core.json) | cpp-reference | `scripting/script-core.expected.json` | `ScriptCoreFixtureTests` ([ScriptCoreFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptCoreFixtureTests.cs))<br>`StrategicWorldDetectionScriptsTests` ([StrategicWorldDetectionScriptsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionScriptsTests.cs)) |
+| [script-declaration](../fixtures/manifests/script-declaration.json) | cpp-reference | `scripting/script-declaration.expected.json` | `ScriptDeclarationFixtureTests` ([ScriptDeclarationFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptDeclarationFixtureTests.cs)) |
 | [script-events](../fixtures/manifests/script-events.json) | cpp-reference | `scripting/script-events.expected.json` | `ScriptEventFixtureTests` ([ScriptEventFixtureTests.cs](../tests/Oxce.CompatibilityTests/ScriptEventFixtureTests.cs)) |
 | [sprite-font](../fixtures/manifests/sprite-font.json) | cpp-reference | `rendering/sprite-font.expected.json` | `SpriteFontFixtureTests` ([SpriteFontFixtureTests.cs](../tests/Oxce.CompatibilityTests/SpriteFontFixtureTests.cs)) |
 | [strategic-adhoc-scripts](../fixtures/manifests/strategic-adhoc-scripts.json) | cpp-reference | `savegames/strategic-adhoc-scripts.expected.json` | `StrategicAdhocScriptTests` ([StrategicAdhocScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicAdhocScriptTests.cs)) |

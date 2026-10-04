@@ -585,6 +585,24 @@ public sealed class StrategicWorldDetectionItemRulesTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void TypedDeclarationCopiesFeedDetectionQueriesAcrossReload(bool fromCache, bool fromCraft)
+    {
+        RunItemScript("var ptr Ufo contact ufo; var ptr RuleMod mod rules; " +
+            "var ptre RandomState state null; var ptr RandomState readonlyState state; " +
+            "var RuleItem.Tag tag null; var RuleItem.Tag copyTag tag; " +
+            "var text original \"ITEM_READ\"; var text itemId original; " +
+            "var ptr RuleItem item; var ptr RuleDamageType damage; var int power 39; var int value; " +
+            "mod.getRuleItem item itemId; item.getDamageType damage; damage.getDamageToHealth value power; " +
+            "if eq contact null; return DETECTION_NONE 0; end; " +
+            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "damageAlter: {ToHealth: 0.5}", fromCache, fromCraft);
+    }
+
     private static void RunItemScript(string code, string fields, bool fromCache, bool fromCraft, string extra = "", string additionalItems = "")
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
