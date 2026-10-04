@@ -231,8 +231,11 @@ public sealed class StrategicRetaliationSpawnTests
                 waves: [{ufo: RETAL_LAND_SHIP, count: 1, trajectory: RETAL_LAND_ORIGIN, timer: 60, objective: true, objectiveOnTheLandingSite: true}]
             """);
         var initial = Initial(content, "RETAL_LAND");
-        initial = initial with { Bases = [initial.Bases[0] with { Facilities = [] }],
-            World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "RETAL_LAND_REGION", MissionSiteZoneArea = 99 }] } };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with { Facilities = [] }],
+            World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "RETAL_LAND_REGION", MissionSiteZoneArea = 99 }] },
+        };
         var expected = new SplitMix64RandomSource(17);
         expected.NextInclusive(0, 99); // fake-water preference
         WorldPosition origin = default;

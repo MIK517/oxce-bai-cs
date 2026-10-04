@@ -59,8 +59,18 @@ public sealed class StrategicRetaliationGenerationTests
                     };
                     if (hunting) initial = initial.WithCraft("SHIP", craft => craft with
                     {
-                        Logistics = craft.Logistics! with { Status = "STR_OUT", Fuel = 100, Damage = 0, Shield = 0,
-                            Longitude = 0.2, Latitude = 0.1, Speed = 0, SpeedRadian = 0, Destination = null },
+                        Logistics = craft.Logistics! with
+                        {
+                            Status = "STR_OUT",
+                            Fuel = 100,
+                            Damage = 0,
+                            Shield = 0,
+                            Longitude = 0.2,
+                            Latitude = 0.1,
+                            Speed = 0,
+                            SpeedRadian = 0,
+                            Destination = null,
+                        },
                     });
                     var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
                     if (targeted)
@@ -81,9 +91,17 @@ public sealed class StrategicRetaliationGenerationTests
                         Assert.Equal(objective == 6, mission.Interrupted);
                         Assert.Equal(objective == 6 ? (0, 1) : (2, 0), (mission.NextWave, mission.NextUfoCounter));
                         campaign = Reload(content, campaign, 17, "generated-retaliation-hunt.sav");
-                        var due = campaign.Capture() with { Time = new(1, 1, 1, 1999, 0, 29, 55),
-                            Bases = campaign.Capture().Bases.Select(owner => owner with { Crafts = owner.Crafts.Select(craft => craft with
-                            { Logistics = craft.Logistics is { } state ? state with { LowFuel = true } : null }).ToArray() }).ToArray() };
+                        var due = campaign.Capture() with
+                        {
+                            Time = new(1, 1, 1, 1999, 0, 29, 55),
+                            Bases = campaign.Capture().Bases.Select(owner => owner with
+                            {
+                                Crafts = owner.Crafts.Select(craft => craft with
+                                {
+                                    Logistics = craft.Logistics is { } state ? state with { LowFuel = true } : null,
+                                }).ToArray(),
+                            }).ToArray(),
+                        };
                         campaign = CampaignState.Restore(due, content, new SplitMix64RandomSource(17));
                         AdvanceUnblocked(campaign, 1);
                     }
@@ -91,4 +109,69 @@ public sealed class StrategicRetaliationGenerationTests
                     Reload(content, campaign, 17, "generated-retaliation-cleanup.sav");
                 }
     }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingRetaliationCannotAcquireADiscoveredBaseAfterPreflight(bool cache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+            crafts:
+              - type: SHIP
+                sightRange: 0
+            alienDeployments:
+              - type: RETAL_DISCOVERY_BASE
+                alienBase: true
+                markerName: STR_ALIEN_BASE
+                baseDetectionRange: 100
+                baseDetectionChance: 100
+                huntMissionMaxFrequency: 10
+                huntMissionWeights: {0: {RETAL_DISCOVERY_HUNT: 1}}
+            alienMissions:
+              - type: RETAL_DISCOVERY_SCANNER
+                objective: 4
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 3000}]
+              - type: RETAL_DISCOVERY_HUNT
+                objective: 4
+                waves: [{ufo: UNDEFINED, count: 1, trajectory: TRAJ_PATROL, timer: 0}]
+            """);
+        var initial = CreateSnapshot(content, "Retaliation discovery ordering") with
+        {
+            RandomState = 0,
+            Time = new(1, 1, 1, 1999, 0, 9, 55),
+            World = new()
+            {
+                AlienBases = [new(7, "RETAL_DISCOVERY_BASE", "RACE_A", 0.2, 0.1)],
+                Missions = [new(4, "RETAL_DISCOVERY_SCANNER", "REGION", "RACE_A", 1, 0, 3000, 1, -1)],
+                Ufos = [new(9, "UFO_SCOUT", 4, "TRAJ_PATROL", 2, 0.2, 0.1, UfoStatus.Flying, WorldAltitudes.High)
+                { Shield = 0, MissionWaveNumber = 0, Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) }],
+            },
+        };
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 100,
+                Damage = 0,
+                Shield = 0,
+                Longitude = 0.2,
+                Latitude = 0.1,
+                Speed = 0,
+                SpeedRadian = 0,
+                Destination = null,
+            },
+        });
+        Assert.False(initial.Bases[0].RetaliationTarget);
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new TestFixtures.CountingMinimumRandomSource()),
+            "Immediate hunting retaliation requires base-discovery forecasts.");
+        var distant = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { Longitude = 1.4, Latitude = 0.4 }] } };
+        var campaign = CampaignState.Restore(distant, content, new TestFixtures.CountingMinimumRandomSource());
+        AdvanceUnblocked(campaign, 1);
+        Assert.False(campaign.Capture().Bases[0].RetaliationTarget);
+        var hunt = Assert.Single(campaign.Capture().World.Missions, mission => mission.RuleId == "RETAL_DISCOVERY_HUNT");
+        Assert.Equal(1, hunt.NextWave);
+        Assert.False(hunt.Interrupted);
+        Reload(content, campaign, 17, "retaliation-discovery-out-of-range.sav");
+    }
+
 }

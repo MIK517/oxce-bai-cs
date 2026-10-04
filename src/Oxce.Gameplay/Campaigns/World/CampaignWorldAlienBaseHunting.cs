@@ -29,7 +29,7 @@ internal sealed partial class CampaignWorld
                             WorldGeometry.Nautical(deployment.BaseDetectionRange) ||
                          WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), alienBase.Position) <
                             WorldGeometry.Nautical(deployment.BaseDetectionRange)) &&
-                        HuntingChoiceReason(alienBase, deployment, ref work, ref canGenerate) is { } launchReason) return launchReason;
+                        HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } launchReason) return launchReason;
                     continue;
                 }
                 if (state.LowFuel || state.MissionComplete) continue;
@@ -40,7 +40,7 @@ internal sealed partial class CampaignWorld
                 var projected = AdvanceCraftFuel(owner, craft, state);
                 if (!WorldAlienBaseHunting.Eligible(projected, rule.Undetectable, maximum,
                         alienBase.Position, deployment.BaseDetectionRange) || deployment.BaseDetectionChance <= 0) continue;
-                if (HuntingChoiceReason(alienBase, deployment, ref work, ref canGenerate) is { } reason) return reason;
+                if (HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } reason) return reason;
             }
             if (highest >= CampaignTimeTrigger.OneHour)
             {
@@ -54,14 +54,14 @@ internal sealed partial class CampaignWorld
                     if (!rule.Undetectable && rule.AutoPatrol &&
                         WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), alienBase.Position) <
                             WorldGeometry.Nautical(deployment.BaseDetectionRange) &&
-                        HuntingChoiceReason(alienBase, deployment, ref work, ref canGenerate) is { } arrivalReason) return arrivalReason;
+                        HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } arrivalReason) return arrivalReason;
                 }
             }
         }
         return null;
     }
 
-    private string? HuntingChoiceReason(AlienBaseSnapshot alienBase, RuntimeAlienDeploymentRule deployment, ref long work, ref bool canGenerate)
+    private string? HuntingChoiceReason(AlienBaseSnapshot alienBase, RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest, ref long work, ref bool canGenerate)
     {
         if (deployment.BaseDetectionChance <= 0) return null;
         try
@@ -76,7 +76,7 @@ internal sealed partial class CampaignWorld
                 if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle))
                     return "Alien base hunting references an undefined mission.";
                 if (HuntingMissionReason(alienBase, deployment,
-                        campaign.Content.RuntimeRules.AlienMissions[handle].Value, ref work) is { } reason) return reason;
+                        campaign.Content.RuntimeRules.AlienMissions[handle].Value, highest, ref work) is { } reason) return reason;
                 canGenerate = true;
             }
         }
@@ -121,7 +121,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? HuntingMissionReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
-        RuntimeAlienMissionRule mission, ref long work)
+        RuntimeAlienMissionRule mission, CampaignTimeTrigger highest, ref long work)
     {
         if (!Enum.IsDefined(mission.Objective) || !Enum.IsDefined(mission.OperationType) || mission.Waves.Count == 0)
             return "Alien base hunting requires a valid mission and first wave.";
@@ -155,12 +155,40 @@ internal sealed partial class CampaignWorld
             region = regions[remap].Value;
             regionName = regions.GetExternalId(remap);
         }
+        if (steps / 2 <= 1 && mission.Objective == RuntimeMissionObjective.Retaliation && !mission.SkipScoutingPhase &&
+            HuntingRetaliationDiscoveryReason(region, highest, ref work) is { } discoveryReason) return discoveryReason;
         if (steps / 2 <= 1 && mission.Objective is (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
             ImmediateNoObjectReason(source, deployment, mission, ref work, HuntGenerationReason, regionName) is { } retaliationReason)
             return retaliationReason;
         return mission.Objective == RuntimeMissionObjective.Site &&
             (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count)
             ? "Alien base hunting site mission has an invalid spawn zone." : null;
+    }
+
+    private string? HuntingRetaliationDiscoveryReason(RuntimeRegionRule region, CampaignTimeTrigger highest, ref long work)
+    {
+        // DetectXCOMBase precedes baseHunting in the ten-minute fallthrough. A
+        // previously undiscovered base may therefore become an assault target
+        // after this preflight, even for an otherwise no-object wave.
+        foreach (var owner in campaign.BaseStates)
+        {
+            work += region.Areas.Count + 1L;
+            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (owner.RetaliationTarget || !WorldGeometry.InsideRegion(region, new(owner.Longitude, owner.Latitude))) continue;
+            foreach (var saved in _ufos)
+            {
+                work += _sites.Count + (long)_missions.Count + _alienBases.Count + 1;
+                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                var scanner = UfoAfterTimedTransitions(saved, highest);
+                if (!UfoCanScanBases(scanner, out var range) ||
+                    WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), scanner.Position) >= WorldGeometry.Nautical(range)) continue;
+                work += owner.Facilities.Count;
+                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (!TryBaseDetectionChance(owner, highest, out var chance)) return "Base detection inputs are outside the supported range.";
+                if (chance > 0) return "Immediate hunting retaliation requires base-discovery forecasts.";
+            }
+        }
+        return null;
     }
 
     private void GenerateHuntingMission(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment, string missionName)
