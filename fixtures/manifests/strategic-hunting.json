@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-hunting",
-  "description": "Pinned hunter target attraction and selection. Controlled craft capacities and distances; original-target retention, saved-order strict comparisons, radar boundary and ignored/undetectable exclusions.",
+  "description": "Pinned hunter target attraction and selection. Controlled craft capacities and distances; original-target retention, saved-order strict comparisons, radar boundary and ignored/undetectable exclusions. Half-hour maintenance and shared fuel stock preserve craft list order before hunter selection.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 12810,
-      "sha256": "7b6b5fc8764d872b979d36ba81f72a128144fe90eab9fc97aa2785e78f9958b0"
+      "size": 14020,
+      "sha256": "bdf5f72698dde7eeae93e08a75e82f1c55a0f86ee1a0723a6ce97992c4344b2b"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
