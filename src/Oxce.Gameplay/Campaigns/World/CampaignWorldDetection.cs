@@ -86,7 +86,7 @@ internal sealed partial class CampaignWorld
                     ufo.Status == UfoStatus.Landed ? 2 : 1);
                 if (reason is not null) return reason;
                 if (ReserveDetectionScriptWork(ufo.RuleId, highest, ref detectionWork, ref detectionCraftSources,
-                        ref detectionWeaponSlots, ufo.ScriptValues.Count) is { } scriptWorkReason) return scriptWorkReason;
+                        ref detectionWeaponSlots, ufo.ScriptValues.Count, mission.Race, ufo.Damage) is { } scriptWorkReason) return scriptWorkReason;
                 if (!ufo.Detected && !rule.NoAlert && !_ignoredUfoContacts.Contains(ufo.Id))
                 {
                     if (ufo.Id == 0 && !PlannedHuntMarker(ufo)) possibleMarkerIds++;
@@ -149,7 +149,7 @@ internal sealed partial class CampaignWorld
                 var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1);
                 if (reason is not null) return reason;
                 if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
-                        ref detectionWeaponSlots) is { } scriptWorkReason) return scriptWorkReason;
+                        ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
                 if (!certainLeader && leaderOrigins is not null && percentage < 100)
                 {
                     activityWork += ordinaryOrigins.Count;

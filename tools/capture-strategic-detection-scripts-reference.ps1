@@ -27,6 +27,7 @@ $methods = @(
 $template = $template.Replace('// METHODS', ($methods -join [Environment]::NewLine))
 $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamagePercentage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getShield()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getShieldPercentage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'bool Ufo::getDetected()'),
@@ -38,6 +39,8 @@ $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getHuntBehavior()')
 )
 $template = $template.Replace('// UFO_METHODS', ($ufoMethods -join [Environment]::NewLine))
+$template = $template.Replace('// DAMAGE_WRAPPER', (Read-Method 'src/Savegame/Ufo.cpp' 'void getDamageMaxScript('))
+$template = $template.Replace('// MOD_EMPTY', (Read-Method 'src/Mod/Mod.h' 'static bool isEmptyRuleName('))
 $tagMethods = @(
     (Read-Method 'src/Engine/Script.cpp' 'void ScriptValuesBase::setBase('),
     (Read-Method 'src/Engine/Script.cpp' 'int ScriptValuesBase::getBase(')

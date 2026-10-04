@@ -6,6 +6,8 @@
 #include <map>
 #include <string>
 #include <stdexcept>
+#include <cmath>
+#include <climits>
 namespace RNG {
 std::vector<int> calls;
 bool succeeds = false;
@@ -27,10 +29,12 @@ bool isResearched(const RuleResearch*,bool considerDebugMode) const;
 // RESEARCH_WRAPPER
 struct Mod {
 std::map<std::string,RuleResearch*> _research;
-static bool isEmptyRuleName(const std::string& id) { return id.empty() || id == std::string(1,'\\0'); }
+static const std::string STR_NULL;
+// MOD_EMPTY
 template<typename T> T* getRule(const std::string&,const std::string&,const std::map<std::string,T*>&,bool) const;
 RuleResearch* getResearch(const std::string&,bool error=false) const;
 };
+const std::string Mod::STR_NULL={ '\0' };
 // MOD_METHODS
 // RESEARCH_LOOKUP
 class ScriptValuesBase {
@@ -45,8 +49,10 @@ struct Ufo {
 int visibility=0;
 int _damage=14,_shield=3,_huntMode=2,_huntBehavior=1;
 bool _detected=true,_hyperDetected=false,_isHunterKiller=true,_isHunting=false,_isEscorting=true;
-struct { int shieldCapacity=10; } _stats;
+struct Stats { int shieldCapacity=10,damageMax=50; } _stats;
+const Stats& getCraftStats() const { return _stats; }
 int getDamage() const;
+int getDamagePercentage() const;
 int getShield() const;
 int getShieldPercentage() const;
 bool getDetected() const;
@@ -118,6 +124,7 @@ double getDistance(const Ufo*) const { return distance; }
 UfoDetection detect(const Ufo*,const SavedGame*,bool) const;
 };
 // UFO_METHODS
+// DAMAGE_WRAPPER
 // METHODS
 }
 void array(const std::vector<int>& values) {
@@ -161,5 +168,20 @@ int found=-1;isResearchedScript(&save,found,lookedUp);
 array({i&1,(i&2)?1:0,(i&4)?0:1,found});
 }
 const RuleResearch* missing=&topic;getRuleResearch(&mod,missing,"MISSING");
-std::cout<<"],\"missingResearch\":"<<(missing?1:0)<<"}\n";
+std::cout<<"],\"missingResearch\":"<<(missing?1:0)<<",\"emptyResearch\":[";
+mod._research["0"]=&topic;
+bool firstEmpty=true;
+for(const std::string& id: {std::string(),std::string(1,'\0'),std::string("0")}) {
+if(!firstEmpty)std::cout<<',';firstEmpty=false;
+getRuleResearch(&mod,missing,id);std::cout<<(missing?1:0);
+}
+std::cout<<"],\"damage\":[";
+bool firstDamage=true;
+for(auto row: std::vector<std::pair<int,int>>{{0,50},{14,50},{99,67},{INT_MAX,100},{14,-33}}) {
+if(!firstDamage)std::cout<<',';firstDamage=false;
+ufo._damage=row.first;ufo._stats.damageMax=row.second;
+int maximum=0;getDamageMaxScript(&ufo,maximum);
+array({row.first,maximum,ufo.getDamagePercentage()});
+}
+std::cout<<"]}\n";
 }

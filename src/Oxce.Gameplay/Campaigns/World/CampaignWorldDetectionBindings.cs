@@ -9,13 +9,14 @@ internal sealed partial class CampaignWorld
 {
     private readonly DetectionTimeReference _detectionTime = new();
     private int _detectionShieldCapacity;
+    private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
         DetectionBindingNameSupported(binding.Name) || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
-        "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
+        "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
         "Craft.getDamage" or "Craft.getShield" or "Craft.getRuleCraft" or
@@ -97,6 +98,8 @@ internal sealed partial class CampaignWorld
             case "Ufo.getAltitude": return WorldAltitudes.Index(ufo.Altitude);
             case "Ufo.getStatus": return (int)ufo.Status;
             case "Ufo.getDamage": return ufo.Damage;
+            case "Ufo.getDamageMax": return _detectionDamageMaximum;
+            case "Ufo.getDamagePercentage": return (int)Math.Floor((double)ufo.Damage / _detectionDamageMaximum * 100);
             case "Ufo.getDetected": return ufo.Detected ? 1 : 0;
             case "Ufo.getHyperDetected": return ufo.HyperDetected ? 1 : 0;
             case "Ufo.getShield": return ufo.Shield;
