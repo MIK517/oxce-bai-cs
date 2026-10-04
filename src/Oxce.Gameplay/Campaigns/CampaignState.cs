@@ -336,6 +336,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     private void RegisterCalendar(CampaignCapabilityRegistry registry)
     {
+        registry.Operation<ICampaignInitialWorldCalendar>(this);
         registry.Command<AdvanceCampaignTime>(Advance);
         registry.Command<PlaceStartingBase>(Place);
         registry.Preflight(CampaignPreflightOrder.Restrictions, "restrictions", (_, _) =>

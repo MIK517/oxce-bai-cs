@@ -11,12 +11,45 @@ internal interface ICampaignWorldScheduling
 /// <summary>Subsystem acceptance seam after month advancement; does not advance the calendar.</summary>
 internal sealed record ScheduleWorldScripts(bool IsNewMonth = true) : ICampaignCommand;
 
+/// <summary>Enters the strategic world after first-base placement, like GeoscapeState::init.</summary>
+public sealed record EnterCampaignWorld : ICampaignCommand;
+
 internal sealed partial class CampaignWorld : ICampaignWorldScheduling
 {
     private void RegisterWorldScheduling(CampaignCapabilityRegistry registry)
     {
         registry.Operation<ICampaignWorldScheduling>(this);
+        registry.Command<EnterCampaignWorld>(_ => EnterWorld());
         registry.Command<ScheduleWorldScripts>(command => ((ICampaignWorldScheduling)this).Schedule(command.IsNewMonth));
+    }
+
+    private CampaignCommandResult EnterWorld()
+    {
+        var calendar = campaign.InitialWorldCalendar;
+        if (!calendar.IsPending) return new([]);
+        InitialWorldEntry entry;
+        WorldSchedulingInputs inputs;
+        try
+        {
+            entry = calendar.Prepare();
+            inputs = campaign.WorldSchedulingInputs(isNewMonth: true, schedulingMonth: 0);
+        }
+        catch (Exception error) when (error is OverflowException or InvalidDataException) { return Blocked(error.Message); }
+        // Legacy month -1 UFOs bypass load validation. Entering month zero must not
+        // turn an accepted legacy snapshot into a corrupt mission/trajectory graph.
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var ufo in _ufos)
+            if (!_missions.Any(mission => mission.Id == ufo.MissionId) ||
+                !rules.UfoTrajectories.TryGet(ufo.TrajectoryId, out var trajectory) ||
+                (uint)ufo.TrajectoryPoint >= (uint)rules.UfoTrajectories[trajectory].Value.Waypoints.Count)
+                return Blocked("Initial world entry requires a valid UFO mission and trajectory.");
+        var context = campaign.WorldScriptContext(inputs.Score, inputs.Funds, _strategy.MissionRuns) with { Month = 0 };
+        if (WorldSchedulingReason(context, true, out var arcs) is { } reason) return Blocked(reason);
+        calendar.Begin(entry);
+        var result = RunWorldScheduling(context, true, arcs);
+        // Reference charges full maintenance except HQ personnel AFTER scheduling.
+        calendar.Finish(entry);
+        return result;
     }
 
     CampaignCommandResult ICampaignWorldScheduling.Schedule(bool isNewMonth)
