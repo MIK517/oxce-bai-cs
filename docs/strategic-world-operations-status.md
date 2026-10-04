@@ -457,3 +457,15 @@ Pinned script-core counted-loop/control fixtures run at the live detection call
 site; zero/negative bounds, nesting and oversized inputs have focused coverage.
 Input-dependent/list loops retain explicit bounded-forecast capability refusals.
 Reference: Engine/Script.cpp::parseLoop/parseBreak/parseContinue.
+
+## UFO damage detection providers (2026-10-04)
+
+Ufo.getDamageMax and getDamagePercentage use mission-race damage stats and the
+reference double division followed by floor. Native rows cover fractional
+rounding, large representable values and signed maxima. Numeric forecasts stop
+before zero denominators, undefined conversions or race-adjusted overflow can
+mutate a tick. Null receivers retain zero defaults; fresh/cache cases reload
+before and after detection. The probe now inserts Mod.h::isEmptyRuleName verbatim,
+correcting an escaped-character stub and distinguishing empty/NUL names from
+the valid research name "0". Reference: Ufo.cpp::getDamageMaxScript/
+getDamagePercentage, Mod.h::isEmptyRuleName.

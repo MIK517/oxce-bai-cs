@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch)",
+      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch); Ufo.cpp (getDamagePercentage/getDamageMaxScript), Mod.h (isEmptyRuleName)",
       "probe": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
       "capture": "tools/capture-strategic-detection-scripts-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; caller methods inserted verbatim, recording Worker stub"
@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
-      "size": 6454,
-      "sha256": "9d488351949598898d2bd614c62f93ff5a66197bc7bbbce2b2bc7398ac1e9991"
+      "size": 7234,
+      "sha256": "7c33dca0bda67585049cbf8cb17267e137817ba92440c276aa5ee952a6ef31d7"
     },
     {
       "path": "tools/capture-strategic-detection-scripts-reference.ps1",
-      "size": 4722,
-      "sha256": "975887c2f63ead193b26ae72b3f211b6e60abb7caa55a355c9df6b26c8fd6a36"
+      "size": 5021,
+      "sha256": "ccc5ede87ccd7388c9b83657fc483048a4563499fcf8714dce7bf87835d50c23"
     },
     {
       "path": "fixtures/public/savegames/strategic-detection-scripts.rul",

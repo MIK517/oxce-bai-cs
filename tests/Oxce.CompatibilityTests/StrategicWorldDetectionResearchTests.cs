@@ -31,6 +31,8 @@ public sealed class StrategicWorldDetectionResearchTests
             Reload(content, campaign, 105, "research-detection.sav");
         }
         Assert.Equal(0, oracle.RootElement.GetProperty("missingResearch").GetInt32());
+        Assert.Equal([0, 0, 1], oracle.RootElement.GetProperty("emptyResearch").EnumerateArray()
+            .Select(item => item.GetInt32()).ToArray());
     }
 
     [Theory]
@@ -66,6 +68,8 @@ public sealed class StrategicWorldDetectionResearchTests
                 lookup: R_LOOKUP
               - name: R_LOOKUP
                 cost: 0
+              - name: '0'
+                cost: 3
             ufos:
               - type: UFO_RESEARCH
                 speedMax: 2200
@@ -87,6 +91,12 @@ public sealed class StrategicWorldDetectionResearchTests
                     if eq other null; return DETECTION_NONE 0; end;
                     rules.getRuleResearch other "MISSING";
                     if neq other null; return DETECTION_NONE 0; end;
+                    rules.getRuleResearch other "";
+                    if neq other null; return DETECTION_NONE 0; end;
+                    rules.getRuleResearch other "0";
+                    if eq other null; return DETECTION_NONE 0; end;
+                    other.getCost value;
+                    if neq value 3; return DETECTION_NONE 0; end;
                     absent.getRuleResearch other "R_DETECT";
                     if neq other null; return DETECTION_NONE 0; end;
                     geoscape_game.isResearched value research;
