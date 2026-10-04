@@ -8,6 +8,9 @@ namespace Oxce.Mods.Rulesets.Runtime;
 
 public sealed record RuntimeIdentityRule(string Id);
 
+/// <summary>Immutable inventory metadata for read-only rule scripts.</summary>
+public sealed record RuntimeInventoryRule(string Id, int Type, int Hand);
+
 /// <summary>Read-only Unit metadata used by script rule lookups.</summary>
 public sealed record RuntimeUnitRule(string Type)
 {

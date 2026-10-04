@@ -48,6 +48,25 @@ $unitGetters = @(
     ((Read-Method 'src/Mod/Unit.h' 'const RuleItem* getCivilianRecoveryItemType()').Replace('const RuleItem* getCivilianRecoveryItemType()', 'const RuleItem* Unit::getCivilianRecoveryItemType()'))
 )
 $template = $template.Replace('// UNIT_LINKS', $unitLinks + [Environment]::NewLine + ($unitGetters -join [Environment]::NewLine))
+$inventoryMethods = @(
+    (Read-Method 'src/Mod/RuleInventory.cpp' 'RuleInventory::RuleInventory('),
+    (Read-Method 'src/Mod/RuleInventory.cpp' 'const std::string& RuleInventory::getId()'),
+    (Read-Method 'src/Mod/RuleInventory.cpp' 'InventoryType RuleInventory::getType()'),
+    (Read-Method 'src/Mod/RuleInventory.cpp' 'bool RuleInventory::isRightHand()'),
+    (Read-Method 'src/Mod/RuleInventory.cpp' 'bool RuleInventory::isLeftHand()'),
+    (Read-Method 'src/Mod/RuleInventory.cpp' 'void getIdScript('),
+    (Read-Method 'src/Mod/RuleInventory.cpp' 'void getTypeScript(')
+)
+$template = $template.Replace('// INVENTORY_METHODS', ($inventoryMethods -join [Environment]::NewLine))
+$inventoryLookup = @(
+    (Read-Method 'src/Mod/Mod.cpp' 'RuleInventory *Mod::getInventory('),
+    (Read-Method 'src/Mod/Mod.cpp' 'void getInventoryScript(')
+)
+foreach ($getter in @('getInventoryRightHand', 'getInventoryLeftHand', 'getInventoryBackpack', 'getInventoryBelt', 'getInventoryGround')) {
+    $method = Read-Method 'src/Mod/Mod.h' ("RuleInventory *" + $getter + '()')
+    $inventoryLookup += $method.Replace(("RuleInventory *" + $getter + '()'), ("RuleInventory *Mod::" + $getter + '()'))
+}
+$template = $template.Replace('// INVENTORY_LOOKUP', ($inventoryLookup -join [Environment]::NewLine))
 $unitLookup = @(
     (Read-Method 'src/Mod/Mod.cpp' 'Unit *Mod::getUnit('),
     (Read-Method 'src/Mod/Mod.cpp' 'void getUnitScript(')

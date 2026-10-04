@@ -361,6 +361,8 @@ public static class RuntimeRuleLinker
                         soldierHandles.ContainsKey(rule.Value.Strings["civilianRecoveryType"]) ? null
                         : OptionalRequired(itemHandles, rule.Value.Strings["civilianRecoveryType"], "units", rule, "civilianRecoveryType"),
                 }),
+            BuildFamily<InventoryRuleFamily, InventoryRule, RuntimeInventoryRule>(generation,
+                content.PersonnelTactical.Inventories, rule => new(rule.Id, rule.Value.Type, rule.Value.Hand)),
             BuildFamily<SoldierBonusRuleFamily, SoldierBonusRule, RuntimeSoldierBonusRule>(generation,
                 content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)),
             BuildFamily<SoldierTransformationRuleFamily, SoldierTransformationRule, RuntimeSoldierTransformationRule>(generation,
