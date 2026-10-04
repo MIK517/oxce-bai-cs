@@ -49,7 +49,7 @@ internal static class WorldDetectionDamageQueries
         if (powers is null) return "Detection damage query forecast exceeds the supported work limit.";
         for (var index = 0; index < program.Instructions.Count; index++)
         {
-            if (visits[index] == 0 || !references.Reachable(index)) continue;
+            if (visits[index] == 0 || !references.Reachable(index) || !powers.Reachable(index)) continue;
             var instruction = program.Instructions[index];
             if ((CoreScriptOperation)instruction.Operation.Value != CoreScriptOperation.HostCall) continue;
             var binding = program.Bindings.First(binding => binding.Id.Value == instruction.Operands[0].Scalar);
