@@ -24,6 +24,8 @@ internal sealed partial class CampaignWorld
         "RuleCraft.Stats.getRadarRange" or "RuleCraft.Stats.getRadarChance" or
         "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
+        "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list" or
+        "Country.getPact" or "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
         "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
         "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
@@ -81,6 +83,24 @@ internal sealed partial class CampaignWorld
                     ? name == "RuleResearch.getCost" ? rules.Research[rules.Research.GetRequired(topic)].Value.Cost
                         : rules.Research[rules.Research.GetRequired(topic)].Value.Points : 0);
                 break;
+            case "GeoscapeGame.getCountries.init":
+                args[1] = ScriptRuntimeValue.FromScalar(0);
+                args[2] = ScriptRuntimeValue.FromScalar(receiver is null ? 0 : campaign.CountryStates.Count);
+                break;
+            case "GeoscapeGame.getCountries.list":
+                if (receiver is null)
+                {
+                    args[1] = ScriptRuntimeValue.FromScalar(0);
+                    args[2] = ScriptRuntimeValue.FromScalar(0);
+                    args[3] = ScriptRuntimeValue.FromReference(null);
+                }
+                else
+                {
+                    var index = args[1].Scalar;
+                    args[3] = ScriptRuntimeValue.FromReference((uint)index < (uint)campaign.CountryStates.Count ? campaign.CountryStates[index] : null);
+                    args[1] = ScriptRuntimeValue.FromScalar(unchecked(index + 1));
+                }
+                break;
             case "GeoscapeGame.getTime":
                 _detectionTime.Time = campaign.Time;
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : _detectionTime);
@@ -89,6 +109,14 @@ internal sealed partial class CampaignWorld
                 args[1] = ScriptRuntimeValue.FromScalar(receiver is null ? 0 :
                     ufo is not null ? DetectionUfoValue(name, ufo) :
                     craft is not null ? DetectionCraftValue(name, craft) :
+                    receiver is CampaignState.CountryState country ? name switch
+                    {
+                        "Country.getPact" => country.Pact ? 1 : 0,
+                        "Country.getCurrentFunding" => country.Funding[^1],
+                        "Country.getCurrentActivityXcom" => country.ActivityXcom[^1],
+                        "Country.getCurrentActivityAlien" => country.ActivityAlien[^1],
+                        _ => throw new InvalidOperationException("Detection country provider was not preflighted."),
+                    } :
                     receiver is RuntimeCraftRule rule ? DetectionCraftRuleValue(name, rule) :
                     receiver is RuntimeUfoRule ufoRule ? DetectionUfoStat(ufoRule.Stats, DetectionUfoStatIndex(name)) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :

@@ -25,11 +25,30 @@ struct RuleSkill {};
 struct RuleResearch {};
 bool researchLess(const RuleResearch* a, const RuleResearch* b) { return std::less<const RuleResearch*>{}(a,b); }
 // RESEARCH_FIND
+struct Country {
+std::vector<int> _funding={10,2000},_activityAlien={1,7},_activityXcom={2,9};
+bool _pact=false;
+int getCurrentFunding() const;
+int getCurrentActivityAlien() const;
+int getCurrentActivityXcom() const;
+bool getPact() const;
+};
+// COUNTRY_METHODS
 struct SavedGame {
+std::vector<Country*> _countries;
 bool _debug=false;
 std::vector<const RuleResearch*> _discovered;
 bool isResearched(const RuleResearch*,bool considerDebugMode) const;
 };
+enum RetEnum { RetContinue };
+struct ScriptArgSeparator {};
+template<auto X> struct BindMemberInvoke {
+template<typename T> static auto& f(T* t) { return t->*X; }
+};
+template<typename T,auto Func,auto... X> struct BindListInitImpl;
+template<typename T,auto Func,auto... X> struct BindListLoopImpl;
+// COUNTRY_FILTER
+// COUNTRY_LIST
 // RESEARCH_METHOD
 // RESEARCH_WRAPPER
 struct Mod {
@@ -247,5 +266,20 @@ getSoldierScript(source,gotSoldier,name);getSkillScript(source,gotSkill,name);
 array({(i&2)?0:1,(i&1)?0:1,gotItem?1:0,gotArmor?1:0,gotSoldier?1:0,gotSkill?1:0});
 }
 const RuleItem* none=&item;getItemScript(&mod,none,"STR_NONE");
-std::cout<<"],\"noneItem\":"<<(none?1:0)<<"}\n";
+std::cout<<"],\"noneItem\":"<<(none?1:0)<<",\"countryList\":[";
+Country countryA,countryB;countryB._pact=true;countryB._funding={3000};countryB._activityAlien={11};countryB._activityXcom={13};
+save._countries={&countryB,&countryA};
+using CountryInit=BindListInitImpl<decltype(&filterCountryConstScript),&filterCountryConstScript,&SavedGame::_countries>;
+using CountryLoop=BindListLoopImpl<decltype(&filterCountryConstScript),&filterCountryConstScript,&SavedGame::_countries>;
+int curr=-1,limit=-1;const Country* country=nullptr;
+CountryInit::func(&save,{},curr,limit);
+for(int i=0;i<3;++i) {
+if(i)std::cout<<',';
+CountryLoop::func(&save,{},curr,limit,{},country);
+array({curr,limit,country?country->getCurrentFunding():0,country?country->getCurrentActivityAlien():0,
+country?country->getCurrentActivityXcom():0,country?(int)country->getPact():0});
+}
+CountryInit::func(nullptr,{},curr,limit);CountryLoop::func(nullptr,{},curr,limit,{},country);
+std::cout<<',';array({curr,limit,country?1:0});
+std::cout<<"]}\n";
 }
