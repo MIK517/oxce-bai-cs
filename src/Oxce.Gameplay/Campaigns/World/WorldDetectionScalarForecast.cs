@@ -72,6 +72,26 @@ internal sealed class WorldDetectionScalarForecast
                     }
                     if (range.Min > range.Max) range = (int.MinValue, int.MaxValue);
                 }
+                if (WorldDetectionDamageQueries.IsClassification(binding.Name) ||
+                    WorldDetectionDamageQueries.Supports(binding.Name) && binding.Name != "RuleDamageType.getRandomDamage")
+                {
+                    var candidates = references.At(index, operands[1]);
+                    work += candidates?.Count ?? 2L * rules.Items.Count;
+                    if (work > maximumWork) return null;
+                    range = candidates is null ? (0, 0) : (int.MaxValue, int.MinValue);
+                    var profiles = candidates is null
+                        ? rules.Items.Rules.SelectMany(static item => new object?[] { item.Value.Damage, item.Value.MeleeDamage })
+                        : candidates;
+                    var power = binding.Name == "RuleDamageType.getArmorEffectiveness"
+                        ? (0, 0) : operands.Count > 3 ? Read(operands[3], incoming) : (0, 0);
+                    foreach (var candidate in profiles)
+                    {
+                        var value = candidate is RuntimeItemDamageRule profile
+                            ? WorldDetectionDamageQueries.OutputRange(binding.Name, profile, power) : (Min: 0, Max: 0);
+                        range = (Math.Min(range.Min, value.Min), Math.Max(range.Max, value.Max));
+                    }
+                    if (range.Min > range.Max) range = WorldDetectionScalarRanges.Full;
+                }
                 if (binding.Name == "RuleDamageType.getRandomDamage" &&
                     (WorldDetectionReferenceForecast.OnlyNull(references.At(index, operands[1])) ||
                      WorldDetectionReferenceForecast.OnlyNull(references.At(index, operands[4]))))

@@ -551,6 +551,52 @@ public sealed class StrategicWorldDetectionItemRulesTests
          "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",
          "getDamageToTile", "getDamageToTime", "getDamageToWound"];
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NativeDamageOutputsComposeWithDivisorsAndFurtherConversions(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "conversionRows"))
+        {
+            var type = row[0].GetInt32();
+            var fields = type == 20 ? CustomDamageFields : type == -1 ? "" : $"damageType: {type}";
+            var code = "var ptr RuleItem item; var ptr RuleItem half; var ptr RuleDamageType damage; " +
+                "var ptr RuleDamageType followup; var int value; var int quotient; var int converted; " +
+                "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
+                "rules.getRuleItem half \"HALF_DAMAGE\"; half.getDamageType followup; ";
+            for (var index = 0; index < DamageReaders.Length; index++)
+            {
+                var expected = row[2][index].GetInt32();
+                code += $"damage.{DamageReaders[index]} value {row[1].GetInt32()}; " +
+                    $"followup.getDamageToHealth converted value; " +
+                    $"if neq converted {(int)(0.5f * expected)}; return DETECTION_NONE 0; end; ";
+                if (expected != 0)
+                    code += $"set quotient {expected}; div quotient value; if neq quotient 1; return DETECTION_NONE 0; end; ";
+            }
+            code += "return DETECTION_RADAR 100;";
+            RunItemScript(code, fields, fromCache, fromCraft,
+                additionalItems: "- type: HALF_DAMAGE\n  damageAlter: {ToHealth: 0.5}");
+        }
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
+        {
+            var type = row[0].GetInt32();
+            var code = "var ptr RuleItem item; var ptr RuleDamageType damage; var int value; var int quotient; " +
+                "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; ";
+            foreach (var (reader, index) in new[] { ("getRandomType", 2), ("getResistType", 3), ("isDirect", 4),
+                         ("isAreaOfEffect", 5), ("getArmorIgnore", 6), ("getArmorEffectiveness", 7) })
+            {
+                var expected = row[index].GetInt32();
+                code += $"damage.{reader} value; add value 1; set quotient {expected + 1}; div quotient value; " +
+                    "if neq quotient 1; return DETECTION_NONE 0; end; ";
+            }
+            code += "return DETECTION_RADAR 100;";
+            RunItemScript(code, type == -1 ? "" : $"damageType: {type}", fromCache, fromCraft);
+        }
+    }
+
     private const string CustomDamageFields = """
         damageAlter:
           ToArmorPre: -0.125

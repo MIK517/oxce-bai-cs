@@ -14,6 +14,36 @@ internal static class WorldDetectionDamageQueries
         "RuleDamageType.getDamageToMorale" or "RuleDamageType.getDamageToStun" or
         "RuleDamageType.getDamageToTile" or "RuleDamageType.getDamageToTime" or "RuleDamageType.getDamageToWound";
 
+    internal static bool IsClassification(string name) => name is
+        "RuleDamageType.getRandomType" or "RuleDamageType.getResistType" or "RuleDamageType.getArmorIgnore" or
+        "RuleDamageType.isDirect" or "RuleDamageType.isAreaOfEffect";
+
+    internal static int Classification(string name, RuntimeItemDamageRule rule) => name switch
+    {
+        "RuleDamageType.getRandomType" => rule.RandomType,
+        "RuleDamageType.getResistType" => rule.ResistType,
+        "RuleDamageType.getArmorIgnore" => rule.ArmorIgnore,
+        "RuleDamageType.isDirect" => rule.FixedRadius == 0 ? 1 : 0,
+        "RuleDamageType.isAreaOfEffect" => rule.FixedRadius != 0 ? 1 : 0,
+        _ => throw new InvalidOperationException("Unknown damage classification query."),
+    };
+
+    // Float multiplication is monotone for a fixed finite multiplier. Check both endpoints
+    // before casting; invalid native float-to-int conversions remain guarded by preflight.
+    internal static (int Min, int Max) OutputRange(string name, RuntimeItemDamageRule rule, (int Min, int Max) power)
+    {
+        if (IsClassification(name))
+        {
+            var value = Classification(name, rule);
+            return (value, value);
+        }
+        var left = Result(name, rule, power.Min);
+        var right = Result(name, rule, power.Max);
+        return InIntegerRange(left) && InIntegerRange(right)
+            ? (Math.Min((int)left, (int)right), Math.Max((int)left, (int)right))
+            : WorldDetectionScalarRanges.Full;
+    }
+
     internal static float Result(string name, RuntimeItemDamageRule rule, int power) => name switch
     {
         "RuleDamageType.getArmorEffectiveness" => MathF.Round(rule.ArmorEffectiveness * 100f, MidpointRounding.AwayFromZero),
