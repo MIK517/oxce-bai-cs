@@ -70,34 +70,6 @@ internal static class WorldDetectionScriptSafety
         return null;
     }
 
-    public static HashSet<int> GuaranteedNullReferences(ScriptProgram program)
-    {
-        // Each VM invocation clears locals. Only locals whose every possible write
-        // keeps null can bypass a required-rule lookup; aliases and host outputs
-        // deliberately fail this whole-program invariant.
-        var result = program.Registers.Where(static register =>
-            register.Type.IsReference && !register.IsInput && !register.IsOutput)
-            .Select(static register => register.Offset).ToHashSet();
-        foreach (var instruction in program.Instructions)
-        {
-            var operation = (CoreScriptOperation)instruction.Operation.Value;
-            var operands = instruction.Operands;
-            if (operation == CoreScriptOperation.Set &&
-                operands[1] != ScriptOperand.IntegerValue(0)) result.Remove(operands[0].Scalar);
-            if (operation == CoreScriptOperation.Swap)
-            {
-                result.Remove(operands[0].Scalar);
-                result.Remove(operands[1].Scalar);
-            }
-            if (operation != CoreScriptOperation.HostCall) continue;
-            var binding = program.Bindings.First(candidate => candidate.Id.Value == operands[0].Scalar);
-            for (var index = 0; index < binding.Parameters.Count; index++)
-                if (binding.Parameters[index].Type.IsRegister && operands[index + 1].Kind == ScriptOperandKind.Register)
-                    result.Remove(operands[index + 1].Scalar);
-        }
-        return result;
-    }
-
     private static int? GuaranteedModReceiver(ScriptProgram program)
     {
         var input = program.Registers.FirstOrDefault(static register => register.IsInput && register.Name == "rules");

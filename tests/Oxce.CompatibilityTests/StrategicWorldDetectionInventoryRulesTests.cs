@@ -260,6 +260,79 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
         AssertTimeBlocked(campaign, "Detection inventory movement requires missing cost LEFT -> GROUND.");
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NullCheckedMovementDestinationAndAliasAreForecastAtTheCall(bool fromCache, bool fromCraft)
+    {
+        RunInventoryScript("var ptr RuleInventory source; var ptr RuleInventory target; var ptr RuleInventory alias; var int cost; " +
+            "rules.getRuleInventory source \"RIGHT\"; " +
+            "if eq already_tracked 0; rules.getRuleInventory target \"LEFT\"; else; rules.getRuleInventory target \"MISSING\"; end; " +
+            "if neq target null; set alias target; source.getMoveToCost cost alias; " +
+            "if neq cost -7; return DETECTION_NONE 0; end; end; return DETECTION_RADAR 100;",
+            fromCache, fromCraft, MovementRules);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NullModAliasesBypassMissingConventionalInventoryOnlyOnNullPath(bool fromCache)
+    {
+        RunInventoryScript("var ptr RuleMod absent null; var ptr RuleMod alias; var ptr RuleInventory target; " +
+            "set alias absent; alias.getRuleInventoryGround target; if neq target null; return DETECTION_NONE 0; end; " +
+            "return DETECTION_RADAR 100;", fromCache, false, MissingInventoryRules);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoopCarriedNullDestinationsCannotEscapeMovementForecast(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MovementRules + """
+
+            ufos:
+              - type: UFO_SCOUT
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleInventory source; var ptr RuleInventory target; var int cost; rules.getRuleInventory source "RIGHT"; rules.getRuleInventory target "LEFT"; loop var i 2; source.getMoveToCost cost target; rules.getRuleInventory target "MISSING"; end; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
+        AssertTimeBlocked(campaign, "Detection inventory movement requires a nonnull destination forecast.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExplicitNullModBranchDoesNotRequireMissingConventionalInventory(bool fromCache)
+    {
+        RunInventoryScript("var ptr RuleMod absent null; var ptr RuleMod actual rules; var ptr RuleInventory target; " +
+            "if eq already_tracked 0; set actual absent; end; if eq actual null; " +
+            "actual.getRuleInventoryGround target; if neq target null; return DETECTION_NONE 0; end; end; " +
+            "return DETECTION_RADAR 100;", fromCache, false, MissingInventoryRules);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReferenceForecastBudgetRejectsBeforeStateExpansion(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MovementRules);
+        var parser = Oxce.Scripting.Compilation.ScriptParserDefinition.FromCatalog("detectUfoFromBase");
+        var program = Oxce.Scripting.Compilation.ScriptCompiler.Compile(
+            "var ptr RuleInventory source; var ptr RuleInventory target; var int cost; " +
+            "rules.getRuleInventory source \"RIGHT\"; rules.getRuleInventory target \"LEFT\"; " +
+            "source.getMoveToCost cost target; return;", parser).Program!;
+        var visits = Enumerable.Repeat(1, program.Instructions.Count).ToArray();
+        Assert.NotNull(Oxce.Gameplay.Campaigns.World.WorldDetectionReferenceForecast.Build(
+            program, content.RuntimeRules, visits, 1000));
+        Assert.Null(Oxce.Gameplay.Campaigns.World.WorldDetectionReferenceForecast.Build(
+            program, content.RuntimeRules, visits, 8));
+        Assert.Equal("Detection inventory cost forecast exceeds the supported work limit.",
+            Oxce.Gameplay.Campaigns.World.WorldDetectionInventoryCosts.UnavailableReason(
+                program, content.RuntimeRules, visits, 8));
+    }
+
     private const string MovementRules = """
         invs:
           - id: RIGHT

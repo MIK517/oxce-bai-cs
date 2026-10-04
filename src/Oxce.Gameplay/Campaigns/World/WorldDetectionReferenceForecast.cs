@@ -104,8 +104,8 @@ internal sealed class WorldDetectionReferenceForecast
             if (operation == CoreScriptOperation.Jump) Join(operands[0].Scalar);
             else
             {
-                Join(index + 1);
-                if (operation == CoreScriptOperation.BranchCondition) Join(operands[^1].Scalar);
+                Join(index + 1, operation == CoreScriptOperation.BranchCondition ? true : null);
+                if (operation == CoreScriptOperation.BranchCondition) Join(operands[^1].Scalar, false);
             }
             if (work > maximumWork) return null;
 
@@ -115,21 +115,37 @@ internal sealed class WorldDetectionReferenceForecast
                     state[target.Scalar] = value;
             }
 
-            void Join(int target)
+            void Join(int target, bool? branch = null)
             {
                 if (target >= states.Length) return;
                 work += Size(state);
                 if (work > maximumWork) return;
+                var outgoing = state;
+                if (branch is { } matches && operands.Count == 5 &&
+                    (ScriptConditionKind)operands[1].Scalar is ScriptConditionKind.Equal or ScriptConditionKind.NotEqual)
+                {
+                    var equal = (ScriptConditionKind)operands[1].Scalar == ScriptConditionKind.Equal ? matches : !matches;
+                    var tested = operands[2] == ScriptOperand.IntegerValue(0) ? operands[3] :
+                        operands[3] == ScriptOperand.IntegerValue(0) ? operands[2] : ScriptOperand.IntegerValue(0);
+                    if (tested.Kind == ScriptOperandKind.Register && state.TryGetValue(tested.Scalar, out var possible) && possible is not null)
+                    {
+                        work += possible.Count;
+                        if (work > maximumWork) return;
+                        var filtered = new HashSet<object?>(possible.Where(value => (value is null) == equal), ReferenceEqualityComparer.Instance);
+                        if (filtered.Count == 0) return;
+                        outgoing = new(state) { [tested.Scalar] = filtered };
+                    }
+                }
                 bool changed;
                 if (states[target] is not { } existing)
                 {
-                    states[target] = new(state);
+                    states[target] = new(outgoing);
                     changed = true;
                 }
                 else
                 {
                     changed = false;
-                    foreach (var (register, value) in state)
+                    foreach (var (register, value) in outgoing)
                     {
                         var current = existing[register];
                         if (current is null) continue;
