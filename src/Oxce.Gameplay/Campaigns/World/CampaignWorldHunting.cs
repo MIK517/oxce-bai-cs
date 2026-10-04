@@ -10,6 +10,7 @@ internal sealed partial class CampaignWorld
     private int _possibleHuntMarkerIds;
     private long _huntingForecastWork;
     private Dictionary<(string TypeId, int Id), CraftLogisticsState>? _huntingCraftForecast;
+    private Dictionary<int, List<CampaignState.CraftState>>? _huntingCraftSources;
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
     private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
 
@@ -29,6 +30,7 @@ internal sealed partial class CampaignWorld
         _possibleHuntMarkerIds = 0;
         _huntingForecastWork = 0;
         _huntingCraftForecast = null;
+        _huntingCraftSources = null;
         var due = WorldHunting.RetargetDue(highest, speed, campaign.Content.RuntimeRules.Campaign.HunterKillerFastRetarget);
         long work = 0;
         foreach (var saved in _ufos)
@@ -41,11 +43,6 @@ internal sealed partial class CampaignWorld
                 {
                     work += owner.Crafts.Count + (long)owner.Transfers.Count;
                     if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    if (highest >= CampaignTimeTrigger.OneHour && owner.Transfers.Any(transfer =>
-                            !transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { Logistics: { } state } incoming &&
-                            (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
-                                campaign.Content.RuntimeRules.Crafts[campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value.AutoPatrol)))
-                        return "UFO retargeting requires arriving craft forecasts.";
                 }
                 if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } craftReason)
                     return craftReason;
@@ -85,7 +82,7 @@ internal sealed partial class CampaignWorld
         var crafts = new List<WorldHuntCraft>();
         foreach (var owner in campaign.BaseStates)
         {
-            foreach (var craft in owner.Crafts)
+            foreach (var craft in forecastFuel ? _huntingCraftSources![owner.Id] : owner.Crafts)
             {
                 if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 if (craft.Logistics is not { } state) continue;
@@ -176,7 +173,11 @@ internal sealed partial class CampaignWorld
     private UfoSnapshot ProjectFlightTarget(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
         if (ufo.Hunting && ufo.Destination is { Kind: WorldTargetKind.Craft } craft)
+        {
+            if (_huntingCraftForecast?.GetValueOrDefault((craft.TypeId, craft.Id)) is { } state)
+                return ufo with { Destination = craft with { Longitude = state.Longitude, Latitude = state.Latitude } };
             return Resolve(craft) is { } resolved ? ufo with { Destination = resolved } : ufo;
+        }
         if (!ufo.Escorting || ufo.Destination is not { Kind: WorldTargetKind.Ufo } reference || TargetUfo(reference) is not { } target)
             return ufo;
         if (target.Hunting || target.Escorting) return ufo; // The movement preflight rejects chains before recursion.
