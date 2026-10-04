@@ -75,6 +75,7 @@ public sealed class StrategicWorldDetectionRuleQueriesTests
                 "items: [{type: HALF_DAMAGE, damageAlter: {ToHealth: 0.5}}]");
         }
     }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -120,5 +121,4 @@ public sealed class StrategicWorldDetectionRuleQueriesTests
             Reload(content, campaign, 218, "country-cap-after.sav");
         }
     }
-
 }

@@ -75,6 +75,7 @@ public sealed class StrategicWorldDetectionReferenceLinksTests
                 neededItem: LINK_ITEM
             """);
     }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -103,5 +104,4 @@ public sealed class StrategicWorldDetectionReferenceLinksTests
             "return DETECTION_RADAR 100;", fromCache, fromCraft,
             "items: [{type: NULL_LINK_QUERY, damageAlter: {ToHealth: 1}}]");
     }
-
 }
