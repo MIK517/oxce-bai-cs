@@ -8,6 +8,25 @@ namespace Oxce.UnitTests.Scripting;
 public sealed class ScriptCompilerAndVmTests
 {
     [Theory]
+    [InlineData("var int value \"wrong\";")]
+    [InlineData("var int value null;")]
+    [InlineData("var text value 7;")]
+    [InlineData("var text value null;")]
+    [InlineData("var ptr RuleItem value 7;")]
+    [InlineData("var ptr RuleItem value \"wrong\";")]
+    [InlineData("var ptr RuleItem value ufo;")]
+    [InlineData("var ptre Ufo value ufo;")]
+    [InlineData("var RuleItem.Tag value 7;")]
+    public void DeclarationRejectsIncompatibleInitializerBeforeProducingProgram(string declaration)
+    {
+        var definition = ScriptParserDefinition.FromCatalog("detectUfoFromBase");
+        var compiled = ScriptCompiler.Compile(declaration + " return 1 100;", definition);
+        Assert.False(compiled.Succeeded);
+        Assert.Null(compiled.Program);
+        Assert.Contains(compiled.Diagnostics, diagnostic => diagnostic.Code == ScriptDiagnosticCodes.InvalidDeclaration);
+    }
+
+    [Theory]
     [InlineData("var text value; if eq value \"\"; return 1; end; return 0;")]
     [InlineData("var text value \"assigned\"; clear value; if eq value \"\"; return 1; end; return 0;")]
     public void TextInitializationAndClearUseEmptyTextRatherThanScalarZero(string source)

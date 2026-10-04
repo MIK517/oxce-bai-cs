@@ -64,3 +64,5 @@ The commands discover the conventional reference checkout, accept `-ReferenceRoo
 and refuse a revision other than the pinned commit. Captures write under ignored
 `artifacts/` directories by default. Updating committed expected output requires an
 explicit `-OutputPath`; review semantic changes before changing a fixture.
+
+Typed variable initializers now match the 23 native script-declaration cases, including null pointer/tag alternatives, typed copies and editable-to-readonly pointer flow. Incompatible scalar/text/reference/tag types and readonly-to-editable initializers fail with a structured declaration diagnostic before a program is emitted. Evidence uses the pinned full Script.cpp parser and actual ScriptBind default registrations; exact diagnostic wording remains partial. Compiler/cache revision 50 invalidates previously accepted malformed programs.

@@ -231,12 +231,30 @@ public sealed class ScriptCompiler
             Emit(CoreScriptOperation.Set, statement.Span, [ScriptOperand.Register(offset), ScriptOperand.TextValue("")]);
             return;
         }
-        Emit(
-            statement.Arguments.Count == typeTokenCount + 1 ? CoreScriptOperation.Clear : CoreScriptOperation.Set,
-            statement.Span,
-            statement.Arguments.Count == typeTokenCount + 1
-                ? [ScriptOperand.Register(offset)]
-                : [ScriptOperand.Register(offset), ReadValue(statement.Arguments[typeTokenCount + 1])]);
+        if (statement.Arguments.Count == typeTokenCount + 1)
+        {
+            Emit(CoreScriptOperation.Clear, statement.Span, [ScriptOperand.Register(offset)]);
+            return;
+        }
+
+        var initializerToken = statement.Arguments[typeTokenCount + 1];
+        var initializer = ReadTypedValue(initializerToken);
+        if (HasErrors)
+        {
+            return;
+        }
+        // Native parseVariableImpl resolves BindSet, whose null alternative also covers ScriptTag.
+        var compatible = initializer.Type.Id == ScriptPrimitiveTypes.Null
+            ? type.IsReference || definition!.Name.EndsWith(".Tag", StringComparison.Ordinal)
+            : type.Id == initializer.Type.Id && type.IsReference == initializer.Type.IsReference &&
+                (!type.IsEditableReference || initializer.Type.IsEditableReference);
+        if (!compatible)
+        {
+            Error(ScriptDiagnosticCodes.InvalidDeclaration,
+                $"Initializer for variable '{name}' is incompatible with its declared type.", initializerToken.Span);
+            return;
+        }
+        Emit(CoreScriptOperation.Set, statement.Span, [ScriptOperand.Register(offset), initializer.Operand]);
     }
 
     private bool TryDeclarationType(
