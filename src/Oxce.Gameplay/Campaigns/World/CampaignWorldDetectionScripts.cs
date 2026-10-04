@@ -68,11 +68,16 @@ internal sealed partial class CampaignWorld
             reason ??= WorldDetectionDamageQueries.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
             reason ??= WorldDetectionInventoryCosts.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
             stepBound += visits.Sum(static count => (long)count);
-            var nullReferences = candidate.Bindings.Any(binding => DetectionInventoryRole(binding.Name) is { } role &&
-                !rules.Inventories.TryGet(role, out _)) ? WorldDetectionScriptSafety.GuaranteedNullReferences(candidate) : null;
+            var needsRoleForecast = candidate.Bindings.Any(binding => DetectionInventoryRole(binding.Name) is { } role &&
+                !rules.Inventories.TryGet(role, out _));
+            var roleReferences = needsRoleForecast
+                ? WorldDetectionReferenceForecast.Build(candidate, rules, visits, MaximumAlienBaseChecks) : null;
+            if (needsRoleForecast && roleReferences is null)
+                reason ??= "Detection inventory lookup forecast exceeds the supported work limit.";
             for (var instructionIndex = 0; instructionIndex < candidate.Instructions.Count; instructionIndex++)
             {
-                if (visits[instructionIndex] == 0) continue;
+                if (visits[instructionIndex] == 0 ||
+                    roleReferences is not null && !roleReferences.Reachable(instructionIndex)) continue;
                 var instruction = candidate.Instructions[instructionIndex];
                 if ((CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall)
                 {
@@ -82,8 +87,7 @@ internal sealed partial class CampaignWorld
                     if (DetectionInventoryRole(bindingName) is { } inventoryRole &&
                         !rules.Inventories.TryGet(inventoryRole, out _) &&
                         instruction.Operands[1] != ScriptOperand.IntegerValue(0) &&
-                        !(instruction.Operands[1].Kind == ScriptOperandKind.Register &&
-                          nullReferences!.Contains(instruction.Operands[1].Scalar)))
+                        !WorldDetectionReferenceForecast.OnlyNull(roleReferences?.At(instructionIndex, instruction.Operands[1])))
                         reason ??= $"Detection script requires missing inventory {inventoryRole}.";
                     if (bindingName.StartsWith("Ufo.Stats.", StringComparison.Ordinal) &&
                         DetectionUfoStatIndex(bindingName) is >= 0 and var field) ufoStats.Add(field);

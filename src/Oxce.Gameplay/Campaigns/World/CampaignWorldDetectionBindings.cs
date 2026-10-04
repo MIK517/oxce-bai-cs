@@ -50,15 +50,7 @@ internal sealed partial class CampaignWorld
         "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
         "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
-    private static string? DetectionInventoryRole(string name) => name switch
-    {
-        "RuleMod.getRuleInventoryRightHand" => "STR_RIGHT_HAND",
-        "RuleMod.getRuleInventoryLeftHand" => "STR_LEFT_HAND",
-        "RuleMod.getRuleInventoryBackpack" => "STR_BACK_PACK",
-        "RuleMod.getRuleInventoryBelt" => "STR_BELT",
-        "RuleMod.getRuleInventoryGround" => "STR_GROUND",
-        _ => null,
-    };
+    private static string? DetectionInventoryRole(string name) => WorldDetectionReferenceForecast.InventoryRole(name);
 
     private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
     {

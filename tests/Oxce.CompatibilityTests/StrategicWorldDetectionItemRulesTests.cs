@@ -288,6 +288,20 @@ public sealed class StrategicWorldDetectionItemRulesTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DamageForecastUsesProfileAtTheCallRatherThanEarlierAssignments(bool fromCache, bool fromCraft)
+    {
+        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+            "rules.getRuleItem item \"ITEM_UNSAFE\"; item.getDamageType damage; " +
+            "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; damage.getDamageToHealth value 39; " +
+            "if neq value 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "damageAlter: {ToHealth: 0.5}", fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void NullModLookupDoesNotConsumeUnsafeDamageProfiles(bool fromCache)
