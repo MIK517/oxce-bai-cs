@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionBindingNameSupported(binding.Name) || DetectionCraftRuleStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        DetectionBindingNameSupported(binding.Name) || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftRuleStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -149,6 +149,7 @@ internal sealed partial class CampaignWorld
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
                     receiver is RuntimeItemRule itemRule ? name == "RuleItem.getWeight" ? itemRule.Weight : itemRule.BattleType :
                     receiver is RuntimeArmorRule armorRule ? armorRule.Size :
+                    receiver is RuntimeSoldierRule soldierRule ? DetectionSoldierStat(name, soldierRule) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch
                     {

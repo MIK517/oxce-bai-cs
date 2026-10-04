@@ -48,6 +48,8 @@ $ruleMetadata = @(
     (Read-Method 'src/Mod/RuleItem.cpp' 'void getBattleTypeScript(')
 )
 $template = $template.Replace('// RULE_METADATA', ($ruleMetadata -join [Environment]::NewLine))
+$template = $template.Replace('// UNIT_STAT_GET', ('template<typename T, UnitStats T::*Stat, Ptr StatMax>' + [Environment]::NewLine + (Read-Method 'src/Mod/Unit.h' 'static void getMaxStatScript(')))
+$template = $template.Replace('// UNIT_STAT_BIND', ('template<auto Stat, typename TBind>' + [Environment]::NewLine + (Read-Method 'src/Mod/Unit.h' 'static void addGetStatsScript(')))
 $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamagePercentage()'),

@@ -663,3 +663,14 @@ actual initial/monthly caller composition and final composed acceptance remain
 Validation: all 2,024 root tests pass with zero failures/skips, including private
 corpus, checksum and existing allocation checks. Formatting verification, code-map
 validation and diff checks pass. The reference remains clean at the pinned commit.
+
+## Complete soldier rule statistic detection reads (2026-10-04)
+
+Detection providers expose all twelve UnitStats fields under StatsMin, StatsMax
+and StatsCap (36 getters). Immutable rule dictionaries preserve signed 16-bit
+values widened to script integers, including both extrema and mana. Native
+getMaxStatScript/addGetStatsScript captures pin names, prefixes and null zeroes;
+fresh/cache live scripts and transition reloads cover every getter. No personnel
+or tactical statistic mutation is enabled.
+Reference: Unit.h::getMaxStatScript/addGetStatsScript and
+RuleSoldier.cpp::ScriptRegister.

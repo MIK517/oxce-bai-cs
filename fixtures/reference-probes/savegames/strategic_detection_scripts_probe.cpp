@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <climits>
+#include <cstdint>
 namespace RNG {
 std::vector<int> calls;
 bool succeeds = false;
@@ -37,6 +38,18 @@ struct RuleSkill { std::string _type="SKILL_METADATA"; const std::string& getTyp
 struct RuleCraft { std::string _type="CRAFT_METADATA"; const std::string& getType() const { return _type; } };
 // RULE_METADATA
 struct RuleResearch {};
+struct UnitStats {
+using Type=int16_t;using Ptr=Type UnitStats::*;
+Type tu=0,stamina=0,health=0,bravery=0,reactions=0,firing=0,throwing=0,strength=0,psiStrength=0,psiSkill=0,melee=0,mana=0;
+// UNIT_STAT_GET
+// UNIT_STAT_BIND
+};
+struct UnitStatsOwner { UnitStats stats; };
+struct UnitStatsBinding {
+using Type=UnitStatsOwner;
+UnitStatsOwner* owner;std::map<std::string,int> values;
+template<auto Func> void add(const std::string& name) { int value=99;Func(owner,value);values[name]=value; }
+};
 bool researchLess(const RuleResearch* a, const RuleResearch* b) { return std::less<const RuleResearch*>{}(a,b); }
 // RESEARCH_FIND
 struct RuleCountry {
@@ -364,5 +377,22 @@ getTypeScript((const RuleCraft*)nullptr,typeText);std::cout<<'\"'<<typeText.valu
 int battleType=99;getBattleTypeScript(&item,battleType);
 std::cout<<"],\"ruleScalars\":";array({item.getWeight(),battleType,armor.getSize()});
 getBattleTypeScript(nullptr,battleType);std::cout<<",\"nullBattleType\":"<<battleType;
-std::cout<<"}\n";
+std::cout<<",\"unitStats\":[";
+const char* prefixes[]={"StatsMin.","StatsMax.","StatsCap.","Stats."};
+for(int group=0;group<4;++group) {
+if(group)std::cout<<',';
+UnitStatsOwner owner;
+owner.stats={ (int16_t)(-100+group),(int16_t)(200+group), (int16_t)(50+group),
+(int16_t)(32767-group),(int16_t)(-32768+group),(int16_t)(7+group),(int16_t)(8+group),
+(int16_t)(9+group),(int16_t)(10+group),(int16_t)(11+group),(int16_t)(12+group),(int16_t)(-7+group) };
+UnitStatsBinding binding{&owner};
+UnitStats::addGetStatsScript<&UnitStatsOwner::stats>(binding,prefixes[group]);
+std::cout<<'{';bool first=true;
+for(const auto& [name,value]: binding.values) {if(!first)std::cout<<',';first=false;std::cout<<'\"'<<name<<"\":"<<value;}
+std::cout<<'}';
+}
+UnitStatsBinding nullStats{nullptr};UnitStats::addGetStatsScript<&UnitStatsOwner::stats>(nullStats,"");
+std::cout<<"],\"unitStatsNull\":{";bool firstNull=true;
+for(const auto& [name,value]: nullStats.values) {if(!firstNull)std::cout<<',';firstNull=false;std::cout<<'\"'<<name<<"\":"<<value;}
+std::cout<<"}}\n";
 }
