@@ -1,3 +1,4 @@
+using Oxce.Scripting.Api;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Runtime;
@@ -123,8 +124,9 @@ public sealed class StrategicWorldDetectionNumericTests
         var actual = new List<object>();
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases"))
         {
-            var compiled = ScriptCompiler.Compile(row.GetProperty("source").GetString()!, new("Probe", ["result"]));
-            Assert.Equal(row.GetProperty("compiled").GetBoolean(), compiled.Succeeded);
+            var compiled = ScriptCompiler.Compile(row.GetProperty("source").GetString()!, new("Probe", ["result"], ReferenceScriptApiCatalog.Instance));
+            Assert.True(row.GetProperty("compiled").GetBoolean() == compiled.Succeeded,
+                $"{row.GetProperty("name").GetString()}: {string.Join("; ", compiled.Diagnostics.Select(static diagnostic => diagnostic.Message))}");
             var executed = ScriptVm.Execute(compiled.Program!, new Dictionary<string, int>
             {
                 ["result"] = row.GetProperty("seed").GetInt32(),

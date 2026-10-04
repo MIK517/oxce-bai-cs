@@ -74,6 +74,9 @@ int main()
 
     const ProbeCase cases[] =
     {
+        { "text-equal-branch", "var text name \"SAFE\"; var text copy name; if eq name copy; set result 39; else; set result -7; end; return result;", 0 },
+        { "text-not-equal-branch", "var text name \"UNSAFE\"; if neq name \"SAFE\"; set result -7; else; set result 39; end; return result;", 0 },
+        { "text-combined-branches", "var text name \"SAFE\"; if and eq name \"SAFE\" neq name \"UNSAFE\"; set result 39; else; set result -7; end; if or eq name \"UNSAFE\" eq name \"\"; set result 0; end; return result;", 0 },
         { "add", "set result 30; add result 9; return result;", 0 },
         { "subtract", "set result 48; sub result 9; return result;", 0 },
         { "multiply", "set result -13; mul result -3; return result;", 0 },

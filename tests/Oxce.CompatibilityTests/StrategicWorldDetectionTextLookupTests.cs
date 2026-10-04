@@ -178,6 +178,46 @@ public sealed class StrategicWorldDetectionTextLookupTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void TextEqualityBranchesNarrowPossibleLookupNames(bool fromCache, bool fromCraft)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-numeric");
+        foreach (var condition in new[] { "eq name \"SAFE\"", "neq name \"UNSAFE\"", "and eq name \"SAFE\" neq name \"UNSAFE\"" })
+            AssertDetectionReadScript("var text name; var text copy; var ptr RuleItem item; var ptr RuleDamageType damage; " +
+                "var int value; if eq already_tracked 0; set name \"SAFE\"; else; set name \"UNSAFE\"; end; " +
+                $"if {condition}; set copy name; rules.getRuleItem item copy; item.getDamageType damage; " +
+                "damage.getDamageToHealth value 39; if neq value 19; return DETECTION_NONE 0; end; end; return DETECTION_RADAR 100;",
+                fromCache, fromCraft, Items);
+        AssertDetectionReadScript("var text name \"SAFE\"; if eq name \"UNSAFE\"; div detection_chance 0; end; " +
+            "if or eq name \"UNSAFE\" eq name \"\"; div detection_chance 0; else; " +
+            "return DETECTION_RADAR 100; end; return;", fromCache, fromCraft);
+    }
+
+    [Fact]
+    public void TextConditionsRemoveImpossibleNumericInstructionsFromReferenceForecast()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"]);
+        var program = ScriptCompiler.Compile("var text name \"SAFE\"; if eq name \"UNSAFE\"; div detection_chance 0; end; " +
+            "if or eq name \"UNSAFE\" eq name \"\"; div detection_chance 0; end; return;",
+            ScriptParserDefinition.FromCatalog("detectUfoFromBase")).Program!;
+        var visits = Enumerable.Repeat(1, program.Instructions.Count).ToArray();
+        var names = WorldDetectionTextForecast.Build(program, visits, 10000, out _, content.RuntimeRules)!;
+        var references = WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 10000)!;
+        var textRegister = program.Registers.Single(static register => register.Name == "name");
+        var description = string.Join("\n", program.Instructions.Select((instruction, index) =>
+            $"{index}: {(CoreScriptOperation)instruction.Operation.Value} {string.Join(",", instruction.Operands)} text={string.Join("|", names.At(index, ScriptOperand.Register(textRegister.Offset)) ?? [])}"));
+        foreach (var (instruction, index) in program.Instructions.Select((instruction, index) => (instruction, index)))
+            if ((CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.Divide)
+            {
+                Assert.False(names.Reachable(index), description);
+                Assert.False(references.Reachable(index));
+            }
+    }
+
     private const string Items = """
         items:
           - type: SAFE

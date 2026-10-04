@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/scripting/strategic_detection_numeric_probe.cpp",
-      "size": 7341,
-      "sha256": "595d00ea212048e9f4468d638ee2fcc7f73108d67cefee3790c0bb77a8f94f64"
+      "size": 7871,
+      "sha256": "1e8ebd1e9bdf1e8887937f1f2a34699bd7787282b3caf5c6d90f6f118e9d9e80"
     },
     {
       "path": "tools/capture-strategic-detection-numeric-reference.ps1",
