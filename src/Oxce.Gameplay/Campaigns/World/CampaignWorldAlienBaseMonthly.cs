@@ -59,7 +59,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         return new([]);
     }
 
-    private string? AlienBaseMonthlyReason(int month)
+    private string? AlienBaseMonthlyReason(int month,
+        IReadOnlyDictionary<string, long>? prospectiveMarkers = null, int additionalMissions = 0)
     {
         if (_alienBases.Count > 100_000 || _sites.Count > 100_000) return BaseMonthlyWorkReason;
         var identities = new Dictionary<(string Marker, int Id), int>();
@@ -74,6 +75,13 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         }
         work += craftReferences;
         foreach (var site in _sites) identities.TryAdd((MarkerName(site.DeploymentId), site.Id), -1);
+        if (prospectiveMarkers is not null)
+            foreach (var pair in prospectiveMarkers)
+                for (long id = campaign.PeekNextId(pair.Key); id <= pair.Value; id++)
+                {
+                    if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+                    if (!identities.TryAdd((pair.Key, checked((int)id)), -2)) return BaseUpgradeIdentityReason;
+                }
         for (var index = 0; index < _alienBases.Count; index++)
         {
             var current = _alienBases[index];
@@ -102,7 +110,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
             if (candidates.Any(id => campaign.Content.RuntimeRules.AlienDeployments[
                     campaign.Content.RuntimeRules.AlienDeployments.GetRequired(id)].Value.MarkerName != source.MarkerName))
             {
-                work += _missions.Count + (long)_ufos.Count + craftReferences;
+                work += _missions.Count + (long)additionalMissions + _ufos.Count + craftReferences;
                 if (work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
             }
             foreach (var id in candidates)

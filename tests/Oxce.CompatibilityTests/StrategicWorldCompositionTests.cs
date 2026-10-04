@@ -57,7 +57,10 @@ public sealed class StrategicWorldCompositionTests
             if (name == "missing-event") Assert.False(content.RuntimeRules.Events.TryGet("E", out _));
             var snapshot = CreateSnapshot(content, "Composed world scripts") with
             {
-                MonthsPassed = 1, RandomState = 17, Funds = [1000], ResearchScores = [0],
+                MonthsPassed = 1,
+                RandomState = 17,
+                Funds = [1000],
+                ResearchScores = [0],
                 CompletedResearch = name == "disable" ? ["OLD"] : [],
             };
             var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
@@ -89,19 +92,23 @@ public sealed class StrategicWorldCompositionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FinalBasePhaseIsPreflightedBeforeResearchOrEventsAndHonorsNewMonth(bool fromCache)
+    public void FinalBasePhaseIsPreflightedBeforeResearchOrEventsAndSkippedAtMonthZero(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load(
             ["strategic-world.rul", "strategic-world-composition.rul"], fromCache,
             "events: [{name: E, timer: 60}]\nalienDeployments: [{type: BAD_MONTHLY, markerName: BAD_MONTHLY, alienBase: true, alienBaseUpgrades: {99: {BAD_MONTHLY: 1}}}]");
         var snapshot = CreateSnapshot(content, "Final base phase preflight") with { MonthsPassed = 1, RandomState = 17 };
-        snapshot = snapshot with { World = snapshot.World with
-        { AlienBases = [new AlienBaseSnapshot(1, "BAD_MONTHLY", "RACE_A", 0.2, 0.1)] } };
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            { AlienBases = [new AlienBaseSnapshot(1, "BAD_MONTHLY", "RACE_A", 0.2, 0.1)] }
+        };
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
         Assert.Contains("timeline", Assert.IsType<CampaignActionBlocked>(
             Assert.Single(campaign.Execute(new ScheduleWorldScripts()).Events)).Reason);
         Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
-        Assert.Equal(2, campaign.Execute(new ScheduleWorldScripts(false)).Events.Count);
+        campaign = CampaignState.Restore(snapshot with { MonthsPassed = 0 }, content, new SplitMix64RandomSource(17));
+        Assert.Equal(2, campaign.Execute(new ScheduleWorldScripts()).Events.Count);
         Assert.Equal(2, campaign.Capture().World.Missions.Count);
         Assert.Single(campaign.Capture().World.Events);
     }
@@ -177,6 +184,59 @@ public sealed class StrategicWorldCompositionTests
         Assert.Contains("UFO", Assert.IsType<CampaignActionBlocked>(
             Assert.Single(campaign.Execute(new EnterCampaignWorld()).Events)).Reason);
         Assert.Equivalent(legacy, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void NewMissionBaseCannotCollideWithAnExistingMonthlyUpgrade()
+    {
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-world-composition.rul"], extraRules: """
+            events: [{name: E, timer: 60}]
+            alienDeployments:
+              - {type: COMPOSE_SOURCE, alienBase: true, markerName: COMPOSE_SOURCE, alienBaseUpgrades: {0: {COMPOSE_TARGET: 1}}}
+              - {type: COMPOSE_TARGET, alienBase: true, markerName: COMPOSE_TARGET}
+            alienMissions:
+              - type: COMPOSE_BIRTH
+                operationType: 2
+                operationBaseType: COMPOSE_TARGET
+                operationSpawnZone: 4
+                raceWeights: {0: {RACE_A: 1}}
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 60}]
+            missionScripts:
+              - type: COMPOSE_BIRTH_SCRIPT
+                startDelay: 60
+                missionWeights: {0: {COMPOSE_BIRTH: 1}}
+                raceWeights: {0: {RACE_A: 1}}
+                regionWeights: {0: {REGION: 1}}
+            """);
+        var snapshot = CreateSnapshot(content, "Composed base identity collision") with { MonthsPassed = 1, RandomState = 17 };
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            { AlienBases = [new AlienBaseSnapshot(1, "COMPOSE_SOURCE", "RACE_A", 0.2, 0.1)] }
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        Assert.Contains("identity", Assert.IsType<CampaignActionBlocked>(
+            Assert.Single(campaign.Execute(new ScheduleWorldScripts()).Events)).Reason);
+        Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
+    }
+
+    [Fact]
+    public void InitialEntryExpiresLogisticsQuoteAfterSuccessfulPreflight()
+    {
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-world-composition.rul"],
+            extraRules: "events: [{name: E, timer: 60}]");
+        var snapshot = CreateSnapshot(content, "Initial quote expiry") with { MonthsPassed = -1, RandomState = 17 };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(snapshot.Bases[0].Id, LogisticsOperation.Sell)).Events)).Quote;
+        var supply = quote.Rows.Single(row => row.RuleId == "SUPPLY");
+        campaign.Execute(new EnterCampaignWorld());
+        var after = campaign.Capture();
+        Assert.Contains("expired", Assert.IsType<CampaignActionBlocked>(Assert.Single(campaign.Execute(
+            new SubmitLogisticsOrder(quote.Id, [new(supply.Id, 1)])).Events)).Reason);
+        Assert.Equivalent(after, campaign.Capture(), strict: true);
     }
 
 }
