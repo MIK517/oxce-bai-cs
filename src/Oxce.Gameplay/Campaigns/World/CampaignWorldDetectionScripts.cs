@@ -67,6 +67,7 @@ internal sealed partial class CampaignWorld
             stepBound += visits.Sum(static count => (long)count);
             for (var instructionIndex = 0; instructionIndex < candidate.Instructions.Count; instructionIndex++)
             {
+                if (visits[instructionIndex] == 0) continue;
                 var instruction = candidate.Instructions[instructionIndex];
                 if ((CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall)
                 {

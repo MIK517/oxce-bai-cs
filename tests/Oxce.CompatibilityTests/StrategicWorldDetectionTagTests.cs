@@ -154,12 +154,15 @@ public sealed class StrategicWorldDetectionTagTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void UfoTagReadsShareTheHalfHourWorkLimit(bool fromCache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void UfoTagReadsShareTheHalfHourWorkLimit(bool fromCache, bool loop)
     {
         var tags = string.Join(", ", Enumerable.Range(0, 2048).Select(index => $"DETECT_{index}: int"));
-        var code = string.Concat(Enumerable.Repeat("ufo.getTag detection_chance Tag.DETECT_2047; ", 512)) + "return;";
+        var code = loop ? "loop var i 512; ufo.getTag detection_chance Tag.DETECT_2047; end; return;"
+            : string.Concat(Enumerable.Repeat("ufo.getTag detection_chance Tag.DETECT_2047; ", 512)) + "return;";
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
             extended:
               tags:

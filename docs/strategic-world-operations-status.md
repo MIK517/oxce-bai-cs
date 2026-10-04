@@ -483,3 +483,18 @@ VM tests read every field, null defaults and transition reloads; queried overflo
 retains a precise unchanged-state refusal. Stats remain data, not combat execution.
 Reference: RuleCraft.h::addGetStatsScript/operator+=, RuleUfo.cpp::ScriptRegister,
 Ufo.cpp::setMissionInfo/ScriptRegister.
+
+## Detection loops and complete UFO statistics cycle audit (2026-10-04)
+
+Three slices add compiler-owned literal loop forecasts, exact UFO damage percentage
+providers and all nineteen raw/race-adjusted UFO stat getters. Native captures,
+fresh/cache VM execution, null defaults and transition reloads cover the change.
+The cache/compiler revision is 36. No combat behavior is enabled by stat projection.
+
+The batch audit reproduced skipped-loop overblocking: a zero/negative outer loop
+was charged for an unreachable oversized inner loop. Forecasts now apply outer
+loops first in explicit instruction order and count final header checks separately
+from body visits. Unreachable host calls do not reserve numeric inputs. Active
+nested tag reads retain aggregate work limits. All 1,985 root tests pass without
+failures/skips, including private corpus, checksums and unchanged allocation bounds.
+The 4c headless gate remains open; branch 4d is untouched.
