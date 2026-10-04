@@ -28,10 +28,13 @@ internal static class WorldGenerationRegions
                 Add(latitudes, boundary.LatitudeMinimum, bottom, top);
                 Add(latitudes, boundary.LatitudeMaximum, bottom, top);
             }
+        var xCount = 2L * longitudes.Count - 1;
+        var yCount = 2L * latitudes.Count - 1;
+        if (!FitsWork(xCount, yCount, scans, 1_000_000 - work))
+            throw new InvalidDataException("New base hunting region forecasts exceed the supported work limit.");
+        work += xCount * yCount * scans;
         var xs = Samples(longitudes);
         var ys = Samples(latitudes);
-        work += (long)xs.Count * ys.Count * scans;
-        if (work > 1_000_000) throw new InvalidDataException("New base hunting region forecasts exceed the supported work limit.");
         var hits = new Dictionary<string, WorldPosition>(StringComparer.Ordinal);
         foreach (var x in xs)
             foreach (var y in ys)
@@ -49,6 +52,11 @@ internal static class WorldGenerationRegions
             }
         return regions.Where(region => hits.ContainsKey(region.Id)).Select(region => (region.Id, hits[region.Id])).ToArray();
     }
+
+    // Division keeps hostile partition sizes from overflowing before the guard.
+    internal static bool FitsWork(long xCount, long yCount, long scans, long remaining) =>
+        xCount > 0 && yCount > 0 && scans > 0 && remaining >= 0 &&
+        xCount <= remaining / scans / yCount;
 
     private static void Add(SortedSet<double> values, double value, double minimum, double maximum)
     {

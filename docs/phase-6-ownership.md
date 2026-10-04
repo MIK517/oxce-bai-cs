@@ -942,3 +942,9 @@ and five audits, while the revised 4c headless completion gate remains open.
   Supply UFO waves explicitly require a live newborn-source forecast; a synthetic
   preflight source must not be mistaken for a missing base and suppress the wave.
   Pinned chain/hunting fixtures and fresh/cache transition reloads verify counters.
+
+- Batch 3 audit: confirmed hostile partition dimensions could overflow the work
+  product. Division-based capacity checks now run before allocating sample arrays;
+  arithmetic-limit regressions cover both overflow dimensions and exact thresholds.
+  Newborn source identity, generated mission limits, first-match region ordering,
+  no-object execution and creation-tick timer fallthrough were audited together.
