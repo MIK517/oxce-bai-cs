@@ -290,6 +290,29 @@ public sealed class StrategicWorldDetectionItemRulesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void NullModLookupDoesNotConsumeUnsafeDamageProfiles(bool fromCache)
+    {
+        RunItemScript("var ptr RuleMod absent null; var ptr RuleItem item; var ptr RuleDamageType damage; " +
+            "var int value; absent.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
+            "damage.getDamageToHealth value detection_chance; if neq value 0; return DETECTION_NONE 0; end; " +
+            "return DETECTION_RADAR 100;", "damageAlter: {ToHealth: 1e100}", fromCache, false);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SentinelItemLookupRemainsNullEvenWhenItsRuleExists(bool fromCache)
+    {
+        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+            "rules.getRuleItem item \"STR_NONE\"; item.getDamageType damage; " +
+            "damage.getDamageToHealth value detection_chance; if neq value 0; return DETECTION_NONE 0; end; " +
+            "return DETECTION_RADAR 100;", "", fromCache, false,
+            additionalItems: "- type: STR_NONE\n  damageAlter: {ToHealth: 1e100}");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void DamageForecastWorkBudgetStopsBeforeCandidateExpansion(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache);

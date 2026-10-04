@@ -168,10 +168,16 @@ internal static class WorldDetectionDamageQueries
                         HashSet<object?>? values = null;
                         if (binding.Name == "set" && binding.Parameters.Count == 2)
                             values = Candidates(operands[2], references);
-                        else if (binding.Name == "RuleMod.getRuleItem" && operands[3].Kind == ScriptOperandKind.Text)
+                        else if (binding.Name == "RuleMod.getRuleItem")
                         {
-                            values = new(ReferenceEqualityComparer.Instance) { null };
-                            if (rules.Items.TryGet(operands[3].Text!, out var item)) values.Add(rules.Items[item].Value);
+                            var mod = Candidates(operands[1], references);
+                            if (mod is { Count: 1 } && mod.Contains(null) || operands[3] == ScriptOperand.TextValue("STR_NONE"))
+                                values = new(ReferenceEqualityComparer.Instance) { null };
+                            else if (operands[3].Kind == ScriptOperandKind.Text)
+                            {
+                                values = new(ReferenceEqualityComparer.Instance) { null };
+                                if (rules.Items.TryGet(operands[3].Text!, out var item)) values.Add(rules.Items[item].Value);
+                            }
                         }
                         else if (binding.Name is "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" &&
                             Candidates(operands[1], references) is { } items)
