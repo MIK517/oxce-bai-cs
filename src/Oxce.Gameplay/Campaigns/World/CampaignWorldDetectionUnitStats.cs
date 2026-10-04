@@ -5,7 +5,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>Read-only UnitStats fields registered on RuleSoldier and Armor.</summary>
 internal sealed partial class CampaignWorld
 {
-    private static (int Group, string? Key) DetectionUnitRuleStat(string name) => name switch
+    internal static (int Group, string? Key) DetectionUnitRuleStat(string name) => name switch
     {
         "RuleSoldier.StatsMin.getTimeUnits" => (1, "tu"),
         "RuleSoldier.StatsMin.getStamina" => (1, "stamina"),
@@ -58,7 +58,7 @@ internal sealed partial class CampaignWorld
         _ => (0, null),
     };
 
-    private static int DetectionSoldierStat(string name, RuntimeSoldierRule rule)
+    internal static int DetectionSoldierStat(string name, RuntimeSoldierRule rule)
     {
         var (group, key) = DetectionUnitRuleStat(name);
         var values = group switch
@@ -71,7 +71,7 @@ internal sealed partial class CampaignWorld
         return values.GetValueOrDefault(key!);
     }
 
-    private static int DetectionArmorValue(string name, RuntimeArmorRule rule)
+    internal static int DetectionArmorValue(string name, RuntimeArmorRule rule)
     {
         if (DetectionUnitRuleStat(name) is (4, { } key)) return rule.Stats.GetValueOrDefault(key);
         return name switch

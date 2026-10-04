@@ -8,7 +8,7 @@ internal sealed partial class CampaignWorld
     private RuntimeUfoStats _detectionUfoStats = RuntimeUfoStats.Empty;
     private RuntimeUfoStats _detectionUfoBonus = RuntimeUfoStats.Empty;
 
-    private static int DetectionUfoStatIndex(string name) => name switch
+    internal static int DetectionUfoStatIndex(string name) => name switch
     {
         "Ufo.Stats.getFuelMax" or "RuleUfo.getFuelMax" => 0,
         "Ufo.Stats.getDamageMax" or "RuleUfo.getDamageMax" => 1,
@@ -32,7 +32,7 @@ internal sealed partial class CampaignWorld
         _ => -1,
     };
 
-    private static int DetectionUfoStat(RuntimeUfoStats stats, int field) => field switch
+    internal static int DetectionUfoStat(RuntimeUfoStats stats, int field) => field switch
     {
         0 => stats.FuelMaximum,
         1 => stats.DamageMaximum,
