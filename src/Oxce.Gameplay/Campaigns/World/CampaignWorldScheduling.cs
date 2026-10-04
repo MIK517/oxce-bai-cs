@@ -77,7 +77,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
             WorldScriptEligibility.MayMatch(entry.Value.Criteria, context, changed, runs, markers) &&
             (entry.Value.MaximumRuns == -1 || entry.Value.MaximumRuns > _strategy.MissionsRun(entry.Value.VariableName))).ToArray();
         if (missions.Length > 4096) return "Mission scripts exceed the supported work limit.";
-        var births = new HashSet<string>(StringComparer.Ordinal);
+        var births = new HashSet<MonthlyBaseBirthChoice>();
         if (MissionScriptReason(missions, context.Month, runs, markers, births) is { } missionReason) return missionReason;
         var events = rules.EventScripts.Rules.Where(entry =>
             WorldScriptEligibility.MayMatch(entry.Value.Criteria, context, changed, runs, markers)).ToArray();
@@ -85,14 +85,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
         if (EventScriptReason(events, context.Month) is { } eventReason) return eventReason;
         if (context.Month > 0)
         {
-            foreach (var id in births)
-            {
-                var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(id)].Value;
-                if (deployment.AlienBaseUpgrades.Count != 0 || deployment.AlienRaceEvolution.Count != 0)
-                    return "Composed monthly scheduling requires preflight of a newly created alien base upgrade or evolution.";
-            }
             if (AlienBaseMonthlyReason(context.Month, markers,
-                    missions.Count(entry => entry.Value.Criteria.ExecutionOdds > 0)) is { } baseReason) return baseReason;
+                    missions.Count(entry => entry.Value.Criteria.ExecutionOdds > 0), births) is { } baseReason) return baseReason;
         }
         return null;
     }

@@ -11,6 +11,9 @@ internal interface ICampaignWorldAlienBaseMonthly
 /// <summary>Isolated subsystem seam; campaign month rollover remains guarded.</summary>
 internal sealed record AdvanceMonthlyWorldAlienBases(bool IsNewMonth = true) : ICampaignCommand;
 
+/// <summary>One possible operation-base deployment/race before monthly upgrades.</summary>
+internal readonly record struct MonthlyBaseBirthChoice(string DeploymentId, string Race);
+
 internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
 {
     private const string BaseEvolutionLoopReason = "Alien race evolution reaches the reference 100-transition limit.";
@@ -60,7 +63,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
     }
 
     private string? AlienBaseMonthlyReason(int month,
-        IReadOnlyDictionary<string, long>? prospectiveMarkers = null, int additionalMissions = 0)
+        IReadOnlyDictionary<string, long>? prospectiveMarkers = null, int additionalMissions = 0,
+        IReadOnlyCollection<MonthlyBaseBirthChoice>? prospectiveBases = null)
     {
         if (_alienBases.Count > 100_000 || _sites.Count > 100_000) return BaseMonthlyWorkReason;
         var identities = new Dictionary<(string Marker, int Id), int>();
@@ -75,18 +79,41 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         }
         work += craftReferences;
         foreach (var site in _sites) identities.TryAdd((MarkerName(site.DeploymentId), site.Id), -1);
-        if (prospectiveMarkers is not null)
-            foreach (var pair in prospectiveMarkers)
-                for (long id = campaign.PeekNextId(pair.Key); id <= pair.Value; id++)
+        var newbornOwners = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (prospectiveBases is not null && prospectiveMarkers is not null)
+            foreach (var birth in prospectiveBases)
+            {
+                if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
+                var marker = MarkerName(birth.DeploymentId);
+                if (newbornOwners.ContainsKey(marker)) continue;
+                var owner = -2 - newbornOwners.Count;
+                newbornOwners.Add(marker, owner);
+                for (long id = campaign.PeekNextId(marker); id <= prospectiveMarkers.GetValueOrDefault(marker); id++)
                 {
                     if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
-                    if (!identities.TryAdd((pair.Key, checked((int)id)), -2)) return BaseUpgradeIdentityReason;
+                    if (!identities.TryAdd((marker, checked((int)id)), owner)) return BaseUpgradeIdentityReason;
                 }
+            }
         for (var index = 0; index < _alienBases.Count; index++)
+            if (Check(_alienBases[index], index) is { } reason) return reason;
+        if (prospectiveBases is not null && prospectiveMarkers is not null)
+            foreach (var birth in prospectiveBases)
+            {
+                var marker = MarkerName(birth.DeploymentId);
+                for (long id = campaign.PeekNextId(marker); id <= prospectiveMarkers.GetValueOrDefault(marker); id++)
+                {
+                    var current = new AlienBaseSnapshot(checked((int)id), birth.DeploymentId, birth.Race, 0, 0)
+                    { StartMonth = month };
+                    if (Check(current, newbornOwners[marker]) is { } reason) return reason;
+                }
+            }
+        return null;
+
+        string? Check(AlienBaseSnapshot current, int owner)
         {
-            var current = _alienBases[index];
+            if (++work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
             var source = AlienBaseRule(current);
-            if (!ReserveIdentity(source.MarkerName, current.Id, index)) return BaseUpgradeIdentityReason;
+            if (!ReserveIdentity(source.MarkerName, current.Id, owner)) return BaseUpgradeIdentityReason;
             work += source.AlienBaseUpgrades.Count;
             if (work > MaximumAlienBaseChecks) return BaseMonthlyWorkReason;
             IReadOnlyDictionary<string, ulong>? weights;
@@ -117,14 +144,14 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
             {
                 var destination = campaign.Content.RuntimeRules.AlienDeployments[
                     campaign.Content.RuntimeRules.AlienDeployments.GetRequired(id)].Value;
-                if (!ReserveIdentity(destination.MarkerName, current.Id, index)) return BaseUpgradeIdentityReason;
+                if (!ReserveIdentity(destination.MarkerName, current.Id, owner)) return BaseUpgradeIdentityReason;
                 if (id != current.DeploymentId && destination.HuntMissionMaxFrequency < 0)
                     return "Alien base upgrade hunting timer cannot be negative.";
                 var projected = id == current.DeploymentId ? current : UpgradeBase(current, source, id, destination, month);
                 if (EvolvedRace(destination, projected.Race, month, ref work, out _) is { } reason) return reason;
             }
+            return null;
         }
-        return null;
 
         bool ReserveIdentity(string marker, int id, int owner)
         {
