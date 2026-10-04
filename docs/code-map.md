@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 101 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 102 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 101 files.
+`src/Oxce.Gameplay` - 102 files.
 
 ### `Oxce.Gameplay`
 
@@ -391,6 +391,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignResearchProduction` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
 - `CampaignState` (class) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
 - `CampaignState` (class) [CampaignSales.cs](../src/Oxce.Gameplay/Campaigns/CampaignSales.cs)
+- `CampaignState` (class) [CampaignScriptValues.cs](../src/Oxce.Gameplay/Campaigns/CampaignScriptValues.cs)
 - `CampaignState` (class) [CampaignServicing.cs](../src/Oxce.Gameplay/Campaigns/CampaignServicing.cs)
 - `FacilityServiceMessage` (record) [CampaignServicing.cs](../src/Oxce.Gameplay/Campaigns/CampaignServicing.cs)
 - `CampaignState` (class) [CampaignState.cs](../src/Oxce.Gameplay/Campaigns/CampaignState.cs)
