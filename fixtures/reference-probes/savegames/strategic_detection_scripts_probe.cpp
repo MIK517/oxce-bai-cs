@@ -17,6 +17,11 @@ int XcomDistance(double value) { return (int)value; }
 namespace OpenXcom {
 using Exception = std::runtime_error;
 enum UfoDetection { DETECTION_NONE=0, DETECTION_RADAR=1, DETECTION_HYPERWAVE=3 };
+struct RuleItem {};
+struct Armor { static const std::string NONE; };
+const std::string Armor::NONE="STR_NONE";
+struct RuleSoldier {};
+struct RuleSkill {};
 struct RuleResearch {};
 bool researchLess(const RuleResearch* a, const RuleResearch* b) { return std::less<const RuleResearch*>{}(a,b); }
 // RESEARCH_FIND
@@ -29,14 +34,23 @@ bool isResearched(const RuleResearch*,bool considerDebugMode) const;
 // RESEARCH_WRAPPER
 struct Mod {
 std::map<std::string,RuleResearch*> _research;
+std::map<std::string,RuleItem*> _items;
+std::map<std::string,Armor*> _armors;
+std::map<std::string,RuleSoldier*> _soldiers;
+std::map<std::string,RuleSkill*> _skills;
 static const std::string STR_NULL;
 // MOD_EMPTY
 template<typename T> T* getRule(const std::string&,const std::string&,const std::map<std::string,T*>&,bool) const;
 RuleResearch* getResearch(const std::string&,bool error=false) const;
+RuleItem* getItem(const std::string&,bool error=false) const;
+Armor* getArmor(const std::string&,bool error=false) const;
+RuleSoldier* getSoldier(const std::string&,bool error=false) const;
+RuleSkill* getSkill(const std::string&,bool error=false) const;
 };
 const std::string Mod::STR_NULL={ '\0' };
 // MOD_METHODS
 // RESEARCH_LOOKUP
+// RULE_LOOKUPS
 class ScriptValuesBase {
 std::vector<int> values;
 public:
@@ -219,5 +233,19 @@ if(!firstStat)std::cout<<',';firstStat=false;std::cout<<'\"'<<name<<"\":"<<value
 }
 std::cout<<'}';
 }
-std::cout<<"]}\n";
+std::cout<<"],\"ruleLookup\":[";
+RuleItem item;Armor armor;RuleSoldier soldier;RuleSkill skill;
+mod._items["KNOWN"]=&item;mod._items["STR_NONE"]=&item;
+mod._armors["KNOWN"]=&armor;mod._soldiers["KNOWN"]=&soldier;mod._skills["KNOWN"]=&skill;
+for(int i=0;i<4;++i) {
+if(i)std::cout<<',';
+const auto name=(i&1)?"MISSING":"KNOWN";
+const auto source=(i&2)?nullptr:&mod;
+const RuleItem* gotItem=nullptr;const Armor* gotArmor=nullptr;const RuleSoldier* gotSoldier=nullptr;const RuleSkill* gotSkill=nullptr;
+getItemScript(source,gotItem,name);getArmorScript(source,gotArmor,name);
+getSoldierScript(source,gotSoldier,name);getSkillScript(source,gotSkill,name);
+array({(i&2)?0:1,(i&1)?0:1,gotItem?1:0,gotArmor?1:0,gotSoldier?1:0,gotSkill?1:0});
+}
+const RuleItem* none=&item;getItemScript(&mod,none,"STR_NONE");
+std::cout<<"],\"noneItem\":"<<(none?1:0)<<"}\n";
 }

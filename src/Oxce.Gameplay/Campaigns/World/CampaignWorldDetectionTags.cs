@@ -14,7 +14,7 @@ internal sealed partial class CampaignWorld
     private bool DetectionTagSupported(ScriptBindingDeclaration binding)
     {
         if (binding.Name is not ("Ufo.getTag" or "Craft.getTag" or "RuleUfo.getTag" or
-            "RuleCraft.getTag" or "RuleMod.getTag" or "GeoscapeGame.getTag")) return false;
+            "RuleCraft.getTag" or "RuleResearch.getTag" or "RuleMod.getTag" or "GeoscapeGame.getTag")) return false;
         var owner = binding.Parameters[2].Type.Id.Value;
         for (var index = 0; index < campaign.Content.Tags.Types.Count; index++)
         {
@@ -26,6 +26,7 @@ internal sealed partial class CampaignWorld
                 "Craft.getTag" => type.Name is "Craft" or "RuleCraft",
                 "RuleUfo.getTag" => type.Name == "RuleUfo",
                 "RuleCraft.getTag" => type.Name == "RuleCraft",
+                "RuleResearch.getTag" => type.Name == "RuleResearch",
                 "RuleMod.getTag" => type.Name == "RuleMod",
                 "GeoscapeGame.getTag" => type.Name == "GeoscapeGame",
                 _ => false,
@@ -59,6 +60,8 @@ internal sealed partial class CampaignWorld
                 value = state.ScriptValue(tag.Qualified);
             else if (receiver is RuntimeRuleCatalog)
                 value = _detectionModTags.GetValueOrDefault(tag.Qualified);
+            else if (receiver is string researchId && tag.Owner == "RuleResearch")
+                value = DetectionRuleTag(researchId, tag.Qualified);
             else if (receiver is RuntimeUfoRule or RuntimeCraftRule)
                 value = DetectionRuleTag(receiver, tag.Qualified);
         }
@@ -97,6 +100,8 @@ internal sealed partial class CampaignWorld
                 owner = rules.Ufos[ufo].Value;
             if (initial.OwnerSection == "crafts" && rules.Crafts.TryGet(initial.OwnerId, out var craft))
                 owner = rules.Crafts[craft].Value;
+            if (initial.OwnerSection == "research" && rules.Research.TryGet(initial.OwnerId, out var research))
+                owner = rules.Research.GetExternalId(research);
             if (owner is null) continue;
             if (!_detectionRuleTags.TryGetValue(owner, out var values))
                 _detectionRuleTags.Add(owner, values = new(StringComparer.Ordinal));
