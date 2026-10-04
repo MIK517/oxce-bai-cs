@@ -403,3 +403,15 @@ save-neutral snapshots, restored live state and the save adapter, including
 transfers and tag removal during source-preserving rewrites. Craft restoration
 validates tag ownership, duplicates and value types transactionally. Fresh/cache
 tests execute saved tag branches before/after reload and reject malformed state.
+
+## Rule and global detection tags (2026-10-04)
+
+Read-only detection providers now resolve the typed rule-tag overloads on UFO and
+craft receivers as well as direct RuleUfo/RuleCraft receivers, RuleMod globals and
+saved GeoscapeGame tags. Immutable content initial values supply rule/global slots;
+instance slots remain separate even when their indexes coincide. RuleList values,
+null receivers and absent slots preserve scalar semantics. Lookup tables are
+prepared in preflight and keyed by exact rule identity. Fresh/cache scripts read
+every owner through the actual VM and retain transition reload coverage.
+Reference: ScriptBind.h::addScriptValue/BindPropCustomGet, Ufo/Craft/RuleUfo/
+RuleCraft/SavedGame/Mod ScriptRegister and ScriptValuesBase::getBase.

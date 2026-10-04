@@ -11,7 +11,7 @@ internal sealed partial class CampaignWorld
     private int _detectionShieldCapacity;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionBindingNameSupported(binding.Name) || DetectionEntityTagSupported(binding);
+        DetectionBindingNameSupported(binding.Name) || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -29,7 +29,7 @@ internal sealed partial class CampaignWorld
     private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
     {
         var name = binding.Name;
-        if (name is "Ufo.getTag" or "Craft.getTag") return InvokeDetectionEntityTag(binding, args);
+        if (name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokeDetectionTag(binding, args);
         var receiver = args[0].Reference;
         var ufo = receiver as UfoSnapshot;
         var craft = receiver as CampaignState.CraftState;
