@@ -20,6 +20,14 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
     {
         registry.Operation<ICampaignWorldScheduling>(this);
         registry.Command<EnterCampaignWorld>(_ => EnterWorld());
+        registry.Timed(CampaignTimeTrigger.OneMonth, CampaignTimeOrder.MonthWorldScheduling,
+            "monthly world scheduling", effects =>
+            {
+                var result = ((ICampaignWorldScheduling)this).Schedule();
+                if (result.Events.OfType<CampaignActionBlocked>().FirstOrDefault() is { } blocked)
+                    throw new InvalidOperationException("Monthly world preflight failed after calendar advancement: " + blocked.Reason);
+                foreach (var notification in result.Events) effects.Notify(notification);
+            });
         registry.Command<ScheduleWorldScripts>(_ => ((ICampaignWorldScheduling)this).Schedule());
     }
 
@@ -61,6 +69,19 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
         var context = campaign.WorldScriptContext(inputs.Score, inputs.Funds, _strategy.MissionRuns);
         if (WorldSchedulingReason(context, out var arcs) is { } reason) return Blocked(reason);
         return RunWorldScheduling(context, arcs);
+    }
+
+    private string? MonthlyWorldSchedulingReason(CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.OneMonth) return null;
+        try
+        {
+            var month = checked(campaign.MonthsPassed + 1);
+            var inputs = campaign.WorldSchedulingInputs(isNewMonth: true, schedulingMonth: month);
+            var context = campaign.WorldScriptContext(inputs.Score, inputs.Funds, _strategy.MissionRuns) with { Month = month };
+            return WorldSchedulingReason(context, out _);
+        }
+        catch (Exception error) when (error is OverflowException or InvalidDataException) { return error.Message; }
     }
 
     private string? WorldSchedulingReason(WorldScriptContext context,

@@ -239,4 +239,35 @@ public sealed class StrategicWorldCompositionTests
         Assert.Equivalent(after, campaign.Capture(), strict: true);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IsolatedMonthlyHandlerAdvancesMonthThenSchedulesBeforePurchaseReset(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-composition");
+        var row = TestFixtures.Rows(oracle.RootElement, "rows")
+            .Single(entry => entry.GetProperty("case").GetString() == "calendar-month");
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-world-composition.rul"], fromCache,
+            "events: [{name: E, timer: 60}]");
+        var snapshot = CreateSnapshot(content, "Isolated monthly caller") with
+        { RandomState = 17, MonthlyPurchaseLog = new Dictionary<string, int> { ["SUPPLY"] = 3 }, ResearchScores = [0] };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        Assert.Equal(["months passed", "monthly world scheduling", "purchase limits"],
+            campaign.Handlers.HandlerNames(CampaignTimeTrigger.OneMonth));
+        // Acceptance seam applies the registered subsystem handler, not campaign time.
+        // The ordinary dispatcher still stops before this month tick.
+        var effects = new CampaignState.TimeEffects(campaign);
+        campaign.Handlers.Apply(CampaignTimeTrigger.OneMonth, effects);
+        var after = campaign.Capture();
+        Assert.Equal(row.GetProperty("month").GetInt32(), after.MonthsPassed);
+        Assert.Equal(row.GetProperty("days").GetInt32(), after.DaysPassed);
+        Assert.Equal(row.GetProperty("runs").GetInt32(), after.World.Strategy.MissionRuns.Single(pair => pair.Key == "RUN").Value);
+        Assert.Single(after.World.Events);
+        Assert.Empty(after.MonthlyPurchaseLog);
+        Assert.Equal(["R2", "R3"], effects.Events!.Cast<CampaignArcUnlocked>().Select(entry => entry.ArticleId));
+        Assert.Equal(snapshot.Time, after.Time);
+        Reload(content, campaign, 17, "isolated-monthly-handler.sav");
+    }
+
 }

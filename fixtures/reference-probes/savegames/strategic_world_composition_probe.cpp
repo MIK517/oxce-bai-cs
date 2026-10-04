@@ -103,6 +103,9 @@ struct Game {SavedGame* save;Mod* mod;auto* getSavedGame(){return save;}auto* ge
 namespace Ufopaedia {void openArticle(Game*,const std::string& id){trace.push_back("article:"+id);}}
 struct GeoscapeState {
 Game* _game;void determineAlienMissions(bool isNewMonth=true,const RuleEvent* eventRules=nullptr);
+void monthTick(){
+// MONTH_TICK_CALLER
+}
 void initWorld(){
 // INITIAL_CALLER
 }
@@ -115,7 +118,7 @@ trace.push_back("mission:"+rule->type);return true;}
 // SCHEDULING_CALLER
 int main(){
 std::cout<<"{\"rows\":[";
-for(int scenario=0;scenario<5;scenario++){
+for(int scenario=0;scenario<6;scenario++){
 if(scenario)std::cout<<',';
 trace.clear();SavedGame save;Mod mod;Game game{&save,&mod};GeoscapeState geo{&game};
 RuleResearch first{"R1"},lookup{"R2"},second{"R3"},disabled{"OLD"};first.lookup=&lookup;
@@ -129,12 +132,12 @@ RuleEvent event{"E"};mod.eventRules={{"E",&event}};
 RuleEventScript event1,event2;event1.type="E1";event1.research={{"R3",true}};event1.variable="RUN";event1.minimum=2;event1.sequential={"E"};
 event2.type="E2";event2.minimumScore=50;event2.sequential={"E"};
 mod.events={"E1","E2"};mod.eventScripts={{"E1",&event1},{"E2",&event2}};
-const char* name=scenario==0?"month":scenario==1?"zero-odds":scenario==2?"disable":scenario==3?"missing-event":"initial";
+const char* name=scenario==0?"month":scenario==1?"zero-odds":scenario==2?"disable":scenario==3?"missing-event":scenario==4?"initial":"calendar-month";
 if(scenario==1)arc1.odds=arc2.odds=0;
 if(scenario==2){save.research.insert("OLD");first.disables={"OLD"};mission1.research={{"OLD",false}};}
 if(scenario==3){mod.eventRules.clear();}
-save.month=scenario==4?-1:1;
-bool failed=false;try{if(scenario==4){geo.initWorld();geo.initWorld();}else geo.determineAlienMissions();}catch(const Exception&){failed=true;}
+save.month=scenario==4?-1:scenario==5?0:1;
+bool failed=false;try{if(scenario==4){geo.initWorld();geo.initWorld();}else if(scenario==5)geo.monthTick();else geo.determineAlienMissions();}catch(const Exception&){failed=true;}
 std::cout<<"{\"case\":\""<<name<<"\",\"trace\":[";
 for(size_t i=0;i<trace.size();i++){if(i)std::cout<<',';std::cout<<'\"'<<trace[i]<<'\"';}
 std::cout<<"],\"failed\":"<<(failed?"true":"false")<<",\"runs\":"<<save.strategy.runs["RUN"]

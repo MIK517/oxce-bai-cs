@@ -42,6 +42,7 @@ internal static class CampaignTimeOrder
 
     // time1Month: SavedGame::addMonth runs first.
     public const int MonthCalendar = 100;
+    public const int MonthWorldScheduling = 105;
     public const int MonthPurchaseLimits = 110;
 
     // time1Day: GeoscapeState::time1Day base loop (construction, research, soldier recovery and training).

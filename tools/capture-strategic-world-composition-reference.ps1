@@ -38,6 +38,10 @@ $initial = Read-Method 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::ini
 $initial = $initial.Substring($initial.IndexOf('if (_game->getSavedGame()->getMonthsPassed() == -1 &&', [StringComparison]::Ordinal)).Trim()
 $initial = $initial.Substring(0, $initial.LastIndexOf('}')).Trim()
 $template = $template.Replace('// INITIAL_CALLER', $initial)
+$monthly = Read-Method 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time1Month()'
+$monthly = $monthly.Substring($monthly.IndexOf('{') + 1)
+$monthly = $monthly.Substring(0, $monthly.IndexOf('// Handle Psi-Training', [StringComparison]::Ordinal))
+$template = $template.Replace('// MONTH_TICK_CALLER', $monthly)
 $work = Join-Path $repository 'artifacts/reference-strategic-world-composition'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_world_composition_probe.cpp'
