@@ -19,7 +19,7 @@ internal sealed class WorldDetectionTextForecast
         operand.Kind == ScriptOperandKind.Register && state is not null && state.TryGetValue(operand.Scalar, out var value)
             ? value : null;
 
-    internal static WorldDetectionTextForecast? Build(ScriptProgram program, int[] visits, long maximumWork, out long work, RuntimeRuleCatalog? rules = null)
+    internal static WorldDetectionTextForecast? Build(ScriptProgram program, int[] visits, long maximumWork, out long work, RuntimeRuleCatalog? rules = null, WorldDetectionReferenceForecast? references = null)
     {
         work = 0;
         var states = new Dictionary<int, HashSet<string>?>?[program.Instructions.Count];
@@ -38,7 +38,7 @@ internal sealed class WorldDetectionTextForecast
         {
             queued[index] = false;
             if (++usedWork > maximumWork) break;
-            if (visits[index] == 0) continue;
+            if (visits[index] == 0 || references is not null && !references.Reachable(index)) continue;
             var incoming = states[index]!;
             usedWork += Size(incoming);
             if (usedWork > maximumWork) break;
@@ -60,10 +60,11 @@ internal sealed class WorldDetectionTextForecast
                     ? Read(operands[2], incoming) : null;
                 if (rules is not null && WorldDetectionTextQueries.Supports(binding.Name))
                 {
-                    usedWork += WorldDetectionTextQueries.CandidateCount(binding.Name, rules) + 1;
+                    var candidates = references?.At(index, operands[1]);
+                    usedWork += candidates?.Count ?? WorldDetectionTextQueries.CandidateCount(binding.Name, rules) + 1;
                     if (usedWork > maximumWork) break;
-                    values = new(StringComparer.Ordinal) { "" };
-                    foreach (var candidate in WorldDetectionTextQueries.Candidates(binding.Name, rules))
+                    values = candidates is null ? new(StringComparer.Ordinal) { "" } : new(StringComparer.Ordinal);
+                    foreach (var candidate in candidates ?? WorldDetectionTextQueries.Candidates(binding.Name, rules))
                     {
                         var text = WorldDetectionTextQueries.Value(candidate);
                         usedWork += 1L + text.Length;
@@ -100,7 +101,7 @@ internal sealed class WorldDetectionTextForecast
 
             void Join(int target, bool? branch = null)
             {
-                if (target >= states.Length) return;
+                if (target >= states.Length || references is not null && !references.Reachable(target)) return;
                 usedWork += Size(state);
                 if (usedWork > maximumWork) return;
                 var outgoing = state;
@@ -204,6 +205,33 @@ internal sealed class WorldDetectionTextForecast
         }
         work = usedWork;
         return usedWork > maximumWork ? null : new(states);
+    }
+
+    internal bool Equivalent(WorldDetectionTextForecast other, ref long work, long maximumWork)
+    {
+        for (var index = 0; index < _states.Length; index++)
+        {
+            if (++work > maximumWork) return false;
+            var left = _states[index];
+            var right = other._states[index];
+            if (left is null || right is null)
+            {
+                if (left != right) return false;
+                continue;
+            }
+            work += Size(left) + Size(right);
+            if (work > maximumWork || left.Count != right.Count) return false;
+            foreach (var (register, values) in left)
+            {
+                if (!right.TryGetValue(register, out var otherValues)) return false;
+                if (values is null || otherValues is null)
+                {
+                    if (values != otherValues) return false;
+                }
+                else if (!values.SetEquals(otherValues)) return false;
+            }
+        }
+        return true;
     }
 
     private static long Size(Dictionary<int, HashSet<string>?> state) =>
