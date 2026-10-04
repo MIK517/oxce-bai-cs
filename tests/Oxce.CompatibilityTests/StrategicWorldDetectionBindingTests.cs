@@ -534,11 +534,11 @@ public sealed class StrategicWorldDetectionBindingTests
                   detectUfoFromBase: |
                     var ptr RuleItem item;
                     rules.getRuleItem item "SUPPLY";
-                    item.getPower detection_chance;
+                    item.isSingleTarget detection_chance;
                     return;
             """);
         var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_ITEM_PROVIDER_GUARD", 2200);
-        AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleItem.getPower.");
+        AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleItem.isSingleTarget.");
     }
 
     [Theory]

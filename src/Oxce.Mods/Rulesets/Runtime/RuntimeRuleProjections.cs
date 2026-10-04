@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
-using Oxce.Mods.Resources;
 using System.Collections.ObjectModel;
+using Oxce.Mods.Resources;
 using Oxce.Mods.Rulesets.CampaignStart;
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.EquipmentProduction;
