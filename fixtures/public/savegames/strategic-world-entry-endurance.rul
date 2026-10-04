@@ -1,0 +1,29 @@
+# Composes pinned arc/mission/event scheduling with the existing 72-hour world scenario.
+research:
+  - {name: ENTRY_UNLOCK, cost: 1, points: 100}
+arcScripts:
+  - type: ENTRY_ARC
+    firstMonth: 0
+    lastMonth: 0
+    sequentialArcs: [ENTRY_UNLOCK]
+missionScripts:
+  - type: ENTRY_MISSION
+    firstMonth: 0
+    lastMonth: 0
+    researchTriggers: {ENTRY_UNLOCK: true}
+    varName: ENTRY_RUN
+    maxRuns: 1
+    startDelay: 30
+    missionWeights: {0: {MISSION_ENDURANCE: 1}}
+    raceWeights: {0: {RACE_A: 1}}
+    regionWeights: {0: {REGION: 1}}
+events:
+  - {name: ENTRY_FUTURE, timer: 5760, points: 1}
+eventScripts:
+  - type: ENTRY_EVENT
+    firstMonth: 0
+    lastMonth: 0
+    researchTriggers: {ENTRY_UNLOCK: true}
+    missionVarName: ENTRY_RUN
+    counterMin: 1
+    oneTimeSequentialEvents: [ENTRY_FUTURE]
