@@ -12,6 +12,59 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ArmorRuleStatsUseNativeSignedValuesAndNullDefaults(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var native = TestFixtures.Rows(oracle.RootElement, "unitStats")[3];
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["getTimeUnits"] = "tu",
+            ["getStamina"] = "stamina",
+            ["getHealth"] = "health",
+            ["getBravery"] = "bravery",
+            ["getReactions"] = "reactions",
+            ["getFiring"] = "firing",
+            ["getThrowing"] = "throwing",
+            ["getStrength"] = "strength",
+            ["getPsiStrength"] = "psiStrength",
+            ["getPsiSkill"] = "psiSkill",
+            ["getMelee"] = "melee",
+            ["getManaPool"] = "mana",
+        };
+        Assert.Equal(12, native.EnumerateObject().Count());
+        var fields = string.Join(", ", keys.Select(pair => $"{pair.Value}: {native.GetProperty("Stats." + pair.Key).GetInt32()}"));
+        var code = "var ptr RuleArmor rule; var ptr RuleArmor absent null; var int value; rules.getRuleArmor rule \"ARMOR_STAT_READS\"; ";
+        foreach (var pair in keys)
+        {
+            var method = "Stats." + pair.Key;
+            code += $"rule.{method} value; if neq value {native.GetProperty(method).GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += $"absent.{method} value; if neq value {oracle.RootElement.GetProperty("unitStatsNull").GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
+        }
+        code += "return DETECTION_RADAR 100;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            armors:
+              - type: ARMOR_STAT_READS
+                corpseBattle: [CORPSE]
+                corpseGeo: CORPSE
+                loftempsSet: [0]
+                stats: { {{fields}} }
+            ufos:
+              - type: UFO_ARMOR_STAT_READS
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: '{{code}}'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_ARMOR_STAT_READS", 2200);
+        campaign = Reload(content, campaign, 201, "armor-stats-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 201, "armor-stats-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void SoldierRuleStatsPreserveNativePrefixesAndSignedWidths(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

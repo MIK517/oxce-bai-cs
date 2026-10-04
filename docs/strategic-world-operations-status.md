@@ -674,3 +674,12 @@ fresh/cache live scripts and transition reloads cover every getter. No personnel
 or tactical statistic mutation is enabled.
 Reference: Unit.h::getMaxStatScript/addGetStatsScript and
 RuleSoldier.cpp::ScriptRegister.
+
+## Complete armor statistic detection reads (2026-10-04)
+
+All twelve Armor UnitStats getters execute under RuleArmor.Stats, preserving
+signed 16-bit stat values and mana. Canonical armor projections already own these
+immutable fields. The pinned UnitStats wrapper captures the exact Stats prefix
+and null defaults; fresh/cache detection and before/after reload tests cover every
+getter. No per-contact allocation or tactical stat mutation is introduced.
+Reference: Unit.h::getMaxStatScript/addGetStatsScript and Armor.cpp::ScriptRegister.

@@ -43,6 +43,18 @@ internal sealed partial class CampaignWorld
         "RuleSoldier.StatsCap.getPsiSkill" => (3, "psiSkill"),
         "RuleSoldier.StatsCap.getMelee" => (3, "melee"),
         "RuleSoldier.StatsCap.getManaPool" => (3, "mana"),
+        "RuleArmor.Stats.getTimeUnits" => (4, "tu"),
+        "RuleArmor.Stats.getStamina" => (4, "stamina"),
+        "RuleArmor.Stats.getHealth" => (4, "health"),
+        "RuleArmor.Stats.getBravery" => (4, "bravery"),
+        "RuleArmor.Stats.getReactions" => (4, "reactions"),
+        "RuleArmor.Stats.getFiring" => (4, "firing"),
+        "RuleArmor.Stats.getThrowing" => (4, "throwing"),
+        "RuleArmor.Stats.getStrength" => (4, "strength"),
+        "RuleArmor.Stats.getPsiStrength" => (4, "psiStrength"),
+        "RuleArmor.Stats.getPsiSkill" => (4, "psiSkill"),
+        "RuleArmor.Stats.getMelee" => (4, "melee"),
+        "RuleArmor.Stats.getManaPool" => (4, "mana"),
         _ => (0, null),
     };
 
