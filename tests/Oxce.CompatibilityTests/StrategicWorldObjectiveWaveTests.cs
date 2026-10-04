@@ -61,8 +61,6 @@ public sealed class StrategicWorldObjectiveWaveTests
             var campaign = Restore(content, mission);
             if (objective == 6)
                 AssertTimeBlocked(campaign, "Retaliation assault arrival requires base-defense simulation.");
-            else if (objective == 4 && deployment != 0 && marker != 0)
-                AssertTimeBlocked(campaign, "Retaliation direct-site waves require deployment forecasts.");
             else if (objective == 1)
                 AssertTimeBlocked(campaign, "Immediate mission waves exceed the supported work limit.");
             else if (deployment != 0 && marker == 0 && objective == 3 && flag != 0)
@@ -73,7 +71,7 @@ public sealed class StrategicWorldObjectiveWaveTests
                 Assert.Empty(campaign.Capture().World.Missions);
                 Assert.Empty(campaign.Capture().World.Ufos);
                 var sites = campaign.Capture().World.MissionSites;
-                if (row[4].GetInt32() != 0 && !(objective == 5 && deployment == 0))
+                if (row[4].GetInt32() != 0 && objective != 4 && !(objective == 5 && deployment == 0))
                 {
                     Assert.Equal(2, sites.Count);
                     Assert.All(sites, site =>

@@ -38,10 +38,7 @@ internal sealed partial class CampaignWorld
         }
         if (rule.Objective == RuntimeMissionObjective.InstantRetaliation && mission.LiveUfos == 0 &&
             MissionExpiryReason(mission, rule, ref work) is { } expiryReason) return expiryReason;
-        var wave = rule.Waves[mission.NextWave];
-        return wave.Ufo is null && wave.Deployment is { } deployment &&
-            rules.AlienDeployments[deployment].Value.MarkerName.Length != 0
-            ? "Retaliation direct-site waves require deployment forecasts." : null;
+        return null;
     }
     private bool HasRetaliationTarget(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule) =>
         rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation &&
