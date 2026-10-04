@@ -54,6 +54,80 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
         RunInventoryScript(code, fromCache, fromCraft);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ConventionalInventoryAccessorsMatchNativeAndNullReceivers(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var ids = TestFixtures.Rows(oracle.RootElement, "inventoryConventional");
+        var methods = new[] { "RightHand", "LeftHand", "Backpack", "Belt", "Ground" };
+        Assert.Equal(methods.Length, ids.Length);
+        var code = "var ptr RuleInventory inventory; var ptr RuleInventory generic; var ptr RuleMod absent null; var text id; ";
+        for (var index = 0; index < methods.Length; index++)
+        {
+            var id = ids[index].GetString();
+            code += $"rules.getRuleInventory{methods[index]} inventory; inventory.getId id; if neq id \"{id}\"; return DETECTION_NONE 0; end; ";
+            code += $"rules.getRuleInventory generic \"{id}\"; if neq inventory generic; return DETECTION_NONE 0; end; ";
+            code += $"absent.getRuleInventory{methods[index]} inventory; if neq inventory null; return DETECTION_NONE 0; end; ";
+        }
+        code += "return DETECTION_RADAR 100;";
+        RunInventoryScript(code, fromCache, fromCraft);
+
+        // The member binding returns null before consulting a missing role.
+        code = "var ptr RuleInventory inventory; var ptr RuleMod absent; ";
+        foreach (var method in methods)
+            code += $"absent.getRuleInventory{method} inventory; if neq inventory null; return DETECTION_NONE 0; end; ";
+        code += "return DETECTION_RADAR 100;";
+        RunInventoryScript(code, fromCache, fromCraft, MissingInventoryRules);
+    }
+
+    [Theory]
+    [InlineData("RightHand", "STR_RIGHT_HAND")]
+    [InlineData("LeftHand", "STR_LEFT_HAND")]
+    [InlineData("Backpack", "STR_BACK_PACK")]
+    [InlineData("Belt", "STR_BELT")]
+    [InlineData("Ground", "STR_GROUND")]
+    public void MissingConventionalInventoryStopsRuleAndGlobalScriptsBeforeMutation(string method, string id)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        Assert.True(oracle.RootElement.GetProperty("missingInventoryThrows").GetBoolean());
+        foreach (var fromCache in new[] { false, true })
+            foreach (var global in new[] { false, true })
+            {
+                var code = $"var ptr RuleInventory inventory; rules.getRuleInventory{method} inventory; return DETECTION_RADAR 100;";
+                var script = global ? $$"""
+                    extended:
+                      scripts:
+                        detectUfoFromBase:
+                          - new: inventory-read
+                            offset: -1
+                            code: '{{code}}'
+                    """ : $$"""
+                    ufos:
+                      - type: UFO_SCOUT
+                        scripts:
+                          detectUfoFromBase: '{{code}}'
+                    """;
+                var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MissingInventoryRules + "\n" + script);
+                var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
+                AssertTimeBlocked(campaign, $"Detection script requires missing inventory {id}.");
+                campaign = Reload(content, campaign, 214, "missing-inventory-before.sav");
+                AssertTimeBlocked(campaign, $"Detection script requires missing inventory {id}.");
+            }
+    }
+
+    private const string MissingInventoryRules = """
+        invs:
+          - delete: STR_RIGHT_HAND
+          - delete: STR_LEFT_HAND
+          - delete: STR_BACK_PACK
+          - delete: STR_BELT
+          - delete: STR_GROUND
+        """;
+
     private static void RunInventoryScript(string code, bool fromCache, bool fromCraft, string? inventoryRules = null)
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";

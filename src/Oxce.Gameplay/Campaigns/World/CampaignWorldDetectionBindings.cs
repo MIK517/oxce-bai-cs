@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionBindingNameSupported(binding.Name) || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -36,6 +36,16 @@ internal sealed partial class CampaignWorld
         "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
         "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
         "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
+
+    private static string? DetectionInventoryRole(string name) => name switch
+    {
+        "RuleMod.getRuleInventoryRightHand" => "STR_RIGHT_HAND",
+        "RuleMod.getRuleInventoryLeftHand" => "STR_LEFT_HAND",
+        "RuleMod.getRuleInventoryBackpack" => "STR_BACK_PACK",
+        "RuleMod.getRuleInventoryBelt" => "STR_BELT",
+        "RuleMod.getRuleInventoryGround" => "STR_GROUND",
+        _ => null,
+    };
 
     private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
     {
@@ -87,6 +97,14 @@ internal sealed partial class CampaignWorld
             case "RuleMod.getSmokeReduction":
                 if (receiver is not RuntimeRuleCatalog) throw new InvalidOperationException("Smoke receiver was not preflighted.");
                 args[1] = ScriptRuntimeValue.FromScalar(unchecked(args[1].Scalar * rules.Campaign.MaximumViewDistance) / 60);
+                break;
+            case "RuleMod.getRuleInventoryRightHand":
+            case "RuleMod.getRuleInventoryLeftHand":
+            case "RuleMod.getRuleInventoryBackpack":
+            case "RuleMod.getRuleInventoryBelt":
+            case "RuleMod.getRuleInventoryGround":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null :
+                    rules.Inventories[rules.Inventories.GetRequired(DetectionInventoryRole(name)!)].Value);
                 break;
             case "RuleMod.getRuleInventory":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Inventories, args[2].Text));

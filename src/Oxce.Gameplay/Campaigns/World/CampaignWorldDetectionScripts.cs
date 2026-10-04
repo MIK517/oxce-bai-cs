@@ -66,6 +66,8 @@ internal sealed partial class CampaignWorld
             reason ??= candidateReason;
             if (candidateReason is not null) continue;
             stepBound += visits.Sum(static count => (long)count);
+            var nullReferences = candidate.Bindings.Any(binding => DetectionInventoryRole(binding.Name) is { } role &&
+                !rules.Inventories.TryGet(role, out _)) ? WorldDetectionScriptSafety.GuaranteedNullReferences(candidate) : null;
             for (var instructionIndex = 0; instructionIndex < candidate.Instructions.Count; instructionIndex++)
             {
                 if (visits[instructionIndex] == 0) continue;
@@ -75,6 +77,12 @@ internal sealed partial class CampaignWorld
                     var bindingId = instruction.Operands[0].Scalar;
                     var declaration = candidate.Bindings.First(binding => binding.Id.Value == bindingId);
                     var bindingName = declaration.Name;
+                    if (DetectionInventoryRole(bindingName) is { } inventoryRole &&
+                        !rules.Inventories.TryGet(inventoryRole, out _) &&
+                        instruction.Operands[1] != ScriptOperand.IntegerValue(0) &&
+                        !(instruction.Operands[1].Kind == ScriptOperandKind.Register &&
+                          nullReferences!.Contains(instruction.Operands[1].Scalar)))
+                        reason ??= $"Detection script requires missing inventory {inventoryRole}.";
                     if (bindingName.StartsWith("Ufo.Stats.", StringComparison.Ordinal) &&
                         DetectionUfoStatIndex(bindingName) is >= 0 and var field) ufoStats.Add(field);
                     if (bindingName == "Ufo.getTag" && campaign.Content.Tags.Types.Any(type =>
