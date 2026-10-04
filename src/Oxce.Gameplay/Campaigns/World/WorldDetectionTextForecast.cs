@@ -53,10 +53,15 @@ internal sealed class WorldDetectionTextForecast
             else if (operation == CoreScriptOperation.HostCall)
             {
                 var binding = bindings[operands[0].Scalar];
-                for (var parameter = 0; parameter < binding.Parameters.Count; parameter++)
-                    if (binding.Parameters[parameter].Writable)
-                        Write(operands[parameter + 1], binding.Name == "set" && binding.Parameters.Count == 2
+                var runtimeOperand = 0;
+                foreach (var parameter in binding.Parameters)
+                {
+                    if (parameter.Type.Id == ScriptPrimitiveTypes.Separator) continue;
+                    var destination = operands[++runtimeOperand];
+                    if (parameter.Writable)
+                        Write(destination, binding.Name == "set" && binding.Parameters.Count == 2
                             ? Read(operands[2], incoming) : null);
+                }
             }
             else if (operation is not (CoreScriptOperation.Exit or CoreScriptOperation.Return or
                 CoreScriptOperation.Jump or CoreScriptOperation.BranchCondition)) Write(operands[0], null);

@@ -97,6 +97,35 @@ public sealed class StrategicWorldDetectionTextLookupTests
         AssertTimeBlocked(campaign, "Detection damage query exceeds the supported integer range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ForecastsMapListSeparatorParametersToRuntimeOperandSlots(bool fromCache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache);
+        var compiled = ScriptCompiler.Compile("var text name \"SUPPLY\"; var ptr RuleItem item; var int value; " +
+            "rules.getRuleItem item name; loop var country geoscape_game.getCountries.list; " +
+            "country.getPact value; end; rules.getRuleItem item name; return;",
+            ScriptParserDefinition.FromCatalog("detectUfoFromBase"));
+        Assert.True(compiled.Succeeded);
+        var program = compiled.Program!;
+        Assert.Null(WorldDetectionScriptSafety.UnavailableReason(program, _ => true, out var visits, 2));
+        var text = WorldDetectionTextForecast.Build(program, visits, 20000, out _)!;
+        var references = WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 20000)!;
+        var scalars = WorldDetectionScalarForecast.Build(program, content.RuntimeRules, references, visits, 20000)!;
+        var calls = program.Instructions.Select((instruction, index) => (instruction, index))
+            .Where(pair => (CoreScriptOperation)pair.instruction.Operation.Value == CoreScriptOperation.HostCall).ToArray();
+        var lookup = calls.Last(pair => program.Bindings.Single(binding => binding.Id.Value == pair.instruction.Operands[0].Scalar)
+            .Name == "RuleMod.getRuleItem");
+        Assert.Equal("SUPPLY", Assert.Single(text.At(lookup.index, lookup.instruction.Operands[3])!));
+        Assert.Same(content.RuntimeRules.Items[content.RuntimeRules.Items.GetRequired("SUPPLY")].Value,
+            Assert.Single(references.At(lookup.index + 1, lookup.instruction.Operands[2])!));
+        var pact = calls.Single(pair => program.Bindings.Single(binding => binding.Id.Value == pair.instruction.Operands[0].Scalar)
+            .Name == "Country.getPact");
+        Assert.Equal((0, 1), scalars.At(pact.index + 1, pact.instruction.Operands[2]));
+    }
+
     [Fact]
     public void TextNamesReserveWorkBeforeReferenceCandidateExpansion()
     {

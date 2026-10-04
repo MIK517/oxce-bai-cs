@@ -1,5 +1,6 @@
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Scripting.Compilation;
+using Oxce.Scripting.Types;
 
 namespace Oxce.Gameplay.Campaigns.World;
 
@@ -64,9 +65,12 @@ internal sealed class WorldDetectionReferenceForecast
             else if (operation == CoreScriptOperation.HostCall)
             {
                 var binding = bindings[operands[0].Scalar];
-                for (var parameter = 0; parameter < binding.Parameters.Count; parameter++)
+                var runtimeOperand = 0;
+                foreach (var parameter in binding.Parameters)
                 {
-                    if (!binding.Parameters[parameter].Writable || !binding.Parameters[parameter].Type.IsReference) continue;
+                    if (parameter.Type.Id == ScriptPrimitiveTypes.Separator) continue;
+                    var destination = operands[++runtimeOperand];
+                    if (!parameter.Writable || !parameter.Type.IsReference) continue;
                     HashSet<object?>? values = null;
                     var source = Read(operands[1], incoming);
                     if (binding.Name == "set" && binding.Parameters.Count == 2)
@@ -117,7 +121,7 @@ internal sealed class WorldDetectionReferenceForecast
                         values = new(ReferenceEqualityComparer.Instance);
                         foreach (var candidate in source) values.Add(LinkedValue(rules, binding.Name, candidate));
                     }
-                    Write(operands[parameter + 1], values);
+                    Write(destination, values);
                 }
             }
             if (operation is CoreScriptOperation.Exit or CoreScriptOperation.Return) continue;
