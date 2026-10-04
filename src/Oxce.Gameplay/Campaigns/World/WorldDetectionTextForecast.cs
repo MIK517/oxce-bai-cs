@@ -1,3 +1,4 @@
+using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Types;
 
@@ -16,7 +17,7 @@ internal sealed class WorldDetectionTextForecast
         operand.Kind == ScriptOperandKind.Register && state is not null && state.TryGetValue(operand.Scalar, out var value)
             ? value : null;
 
-    internal static WorldDetectionTextForecast? Build(ScriptProgram program, int[] visits, long maximumWork, out long work)
+    internal static WorldDetectionTextForecast? Build(ScriptProgram program, int[] visits, long maximumWork, out long work, RuntimeRuleCatalog? rules = null)
     {
         work = 0;
         var states = new Dictionary<int, HashSet<string>?>?[program.Instructions.Count];
@@ -53,14 +54,29 @@ internal sealed class WorldDetectionTextForecast
             else if (operation == CoreScriptOperation.HostCall)
             {
                 var binding = bindings[operands[0].Scalar];
+                HashSet<string>? values = binding.Name == "set" && binding.Parameters.Count == 2
+                    ? Read(operands[2], incoming) : null;
+                if (rules is not null && WorldDetectionTextQueries.Supports(binding.Name))
+                {
+                    usedWork += WorldDetectionTextQueries.CandidateCount(binding.Name, rules) + 1;
+                    if (usedWork > maximumWork) break;
+                    values = new(StringComparer.Ordinal) { "" };
+                    foreach (var candidate in WorldDetectionTextQueries.Candidates(binding.Name, rules))
+                    {
+                        var text = WorldDetectionTextQueries.Value(candidate);
+                        usedWork += 1L + text.Length;
+                        if (usedWork > maximumWork) break;
+                        values.Add(text);
+                    }
+                    if (usedWork > maximumWork) break;
+                }
                 var runtimeOperand = 0;
                 foreach (var parameter in binding.Parameters)
                 {
                     if (parameter.Type.Id == ScriptPrimitiveTypes.Separator) continue;
                     var destination = operands[++runtimeOperand];
                     if (parameter.Writable)
-                        Write(destination, binding.Name == "set" && binding.Parameters.Count == 2
-                            ? Read(operands[2], incoming) : null);
+                        Write(destination, values);
                 }
             }
             else if (operation is not (CoreScriptOperation.Exit or CoreScriptOperation.Return or
