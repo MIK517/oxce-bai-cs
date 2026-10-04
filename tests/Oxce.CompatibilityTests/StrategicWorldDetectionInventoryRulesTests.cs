@@ -34,6 +34,26 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
             other.RuntimeRules.Inventories.GetRequired("STR_NONE")));
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void InventoryTypeAndHandReadersMatchNativeBindings(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var code = "var ptr RuleInventory inventory; var ptr RuleInventory absent null; var int type; var int right; var int left; ";
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "inventoryMetadata"))
+        {
+            code += $"rules.getRuleInventory inventory \"{row.GetProperty("id").GetString()}\"; ";
+            code += $"inventory.getType type; if neq type {row.GetProperty("type").GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += $"inventory.isRightHand right; if neq right {(row.GetProperty("right").GetBoolean() ? 1 : 0)}; return DETECTION_NONE 0; end; ";
+            code += $"inventory.isLeftHand left; if neq left {(row.GetProperty("left").GetBoolean() ? 1 : 0)}; return DETECTION_NONE 0; end; ";
+        }
+        code += "absent.getType type; absent.isRightHand right; absent.isLeftHand left; if neq type 0; return DETECTION_NONE 0; end; if neq right 0; return DETECTION_NONE 0; end; if neq left 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+        RunInventoryScript(code, fromCache, fromCraft);
+    }
+
     private static void RunInventoryScript(string code, bool fromCache, bool fromCraft, string? inventoryRules = null)
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
