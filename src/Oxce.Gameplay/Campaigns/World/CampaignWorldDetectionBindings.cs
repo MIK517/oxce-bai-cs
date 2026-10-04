@@ -63,6 +63,13 @@ internal sealed partial class CampaignWorld
         var name = binding.Name;
         if (name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokeDetectionTag(binding, args);
         var receiver = args[0].Reference;
+        if (name == "RuleDamageType.getRandomDamage")
+        {
+            if (args[0].Reference is not null && args[3].Reference is not null)
+                throw new InvalidOperationException("Detection random damage was not preflighted.");
+            args[1] = ScriptRuntimeValue.FromScalar(0);
+            return ScriptBindingResult.Success;
+        }
         if (WorldDetectionDamageQueries.Supports(name))
         {
             var value = receiver is RuntimeItemDamageRule queryRule

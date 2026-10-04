@@ -40,6 +40,7 @@ $methods = @(
  (Read-Method 'src/Mod/RuleItem.cpp' 'void getRandomTypeScript('),
  (Read-Method 'src/Mod/RuleItem.cpp' 'void getArmorEffectivenessScript('),
  (Read-Method 'src/Mod/RuleItem.cpp' 'void getArmorIgnoreScript('),
+ (Read-Method 'src/Mod/RuleItem.cpp' 'void getRandomDamageScript('),
  ('template<float RuleDamageType::* Ptr>' + [Environment]::NewLine + (Read-Method 'src/Mod/RuleItem.cpp' 'void getDamageToScript('))
 )
 $template = $template.Replace('// METHODS', ($methods -join [Environment]::NewLine))

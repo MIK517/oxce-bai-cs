@@ -3,9 +3,11 @@
 #include <vector>
 namespace OpenXcom {
 enum RetEnum {RetContinue};
+namespace RNG {struct RandomState{int calls=0;int generate(int,int){++calls;return 0;}};}
 // TYPES
 RuleDamageType();
 bool isDirect()const;
+template<typename Func>int getRandomDamage(int,Func*)const{throw "unexpected consumed random damage";}
 };
 struct Mod {
  std::vector<RuleDamageType*> _damageTypes;
@@ -80,5 +82,9 @@ int main(){
  std::cout<<"],\"pointerSet\":["<<(copy==item.getDamageType());
  BindSet<const RuleDamageType*>::func(copy,nullptr);std::cout<<','<<(copy==nullptr);
  const RuleItem* itemCopy=nullptr;BindSet<const RuleItem*>::func(itemCopy,&item);
- std::cout<<','<<(itemCopy==&item)<<"]}\n";
+ std::cout<<','<<(itemCopy==&item)<<"],\"nullRandomDamage\":[";
+ int value=99;RNG::RandomState random;
+ getRandomDamageScript(&custom,value,2147483647,nullptr);std::cout<<value<<',';
+ getRandomDamageScript(nullptr,value,-2147483647-1,&random);std::cout<<value<<',';
+ getRandomDamageScript(nullptr,value,0,nullptr);std::cout<<value<<"],\"unusedRandomCalls\":"<<random.calls<<"}\n";
 }
