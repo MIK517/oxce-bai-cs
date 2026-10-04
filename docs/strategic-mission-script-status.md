@@ -724,3 +724,18 @@ and branch 4d is untouched.
   cleanup; daily generation cleans them during its existing fallthrough. Targeted
   immediate births and deployment payloads remain guarded in these callers.
   Pinned generation/hunting/spawn evidence, fresh/cache transitions and reloads pass.
+
+- Batch 5 audit reproduced a ten-minute discovery/hunting ordering failure:
+  DetectXCOMBase marked a base before a generated normal retaliation's immediate
+  think, invalidating no-object preflight after earlier mutations. Bounded checks
+  now stop before a reachable positive-chance discovery could change that outcome.
+  Fresh/cache unchanged-state regressions fail before the fix; out-of-range scanners
+  remain executable. The audit also accounts for repeated assault classification
+  work and avoids allocating candidate lists for boolean classification.
+
+Final five-cycle validation: all 1,886 root tests pass without failures or skips,
+including oracle checksums and private-corpus cases. Formatting verification,
+regenerated code-map checks and git diff --check pass. Useful generated probes
+remain available; the obsolete retaliation-spawn object file was removed. The
+pinned C++ checkout remains clean. This completes the requested fifteen slices
+and five audits, while the revised 4c headless completion gate remains open.

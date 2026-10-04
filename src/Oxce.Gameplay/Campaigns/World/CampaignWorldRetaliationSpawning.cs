@@ -18,8 +18,8 @@ internal sealed partial class CampaignWorld
         if (rule.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)) return null;
         var rules = campaign.Content.RuntimeRules;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
-        // Classification is also used by score/spawn forecasts and the executor.
-        work += 8L * campaign.BaseStates.Count * (region.Areas.Count + 1L);
+        // Reserve repeated classification in counter, geometry, score and executor forecasts.
+        work += 32L * campaign.BaseStates.Count * (region.Areas.Count + 1L);
         if (work > MaximumAlienBaseChecks) return "Retaliation target selection exceeds the supported work limit.";
         if (HasRetaliationTarget(mission, rule))
         {
@@ -40,9 +40,16 @@ internal sealed partial class CampaignWorld
             MissionExpiryReason(mission, rule, ref work) is { } expiryReason) return expiryReason;
         return null;
     }
-    private bool HasRetaliationTarget(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule) =>
-        rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation &&
-        RetaliationCandidates(mission, rule).Count != 0;
+    private bool HasRetaliationTarget(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    {
+        if (rule.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)) return false;
+        var rules = campaign.Content.RuntimeRules;
+        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        foreach (var owner in campaign.BaseStates)
+            if ((rule.Objective != RuntimeMissionObjective.Retaliation || rule.SkipScoutingPhase || owner.RetaliationTarget) &&
+                WorldGeometry.InsideRegion(region, new(owner.Longitude, owner.Latitude))) return true;
+        return false;
+    }
 
     private RuntimeMissionWave SpawnWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {

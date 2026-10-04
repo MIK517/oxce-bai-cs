@@ -351,3 +351,35 @@ Formatting verification, regenerated code-map validation and git diff --check
 pass. Useful captured probes remain available; obsolete probe objects were
 removed. The pinned reference checkout is clean. Branch 4c remains incomplete,
 and branch 4d is untouched.
+
+### Infiltration and retaliation checkpoint (2026-10-04)
+
+Five further cycles deliver fifteen slices with five batch audits. Infiltration now
+preserves country eligibility, regional and country-border searches, option defaults,
+country shuffle order, pending pacts, base creation, countdowns and bounded endless
+restarts. Retaliation now preserves ordered target selection, no-target scouting and
+instant interruption, default assault constructors, override ships, linked/regional
+origins, ground-origin land searches, direct deployment-site fallthrough and safe
+generated no-object missions in mapped regions. All transitions use registered
+capabilities and existing score, identity, persistence and movement forecasts.
+
+Three confirmed audit findings were reproduced and fixed separately: aggregate
+suppressed-country search work, legacy UFO wave inference across endless restarts,
+and base discovery changing an immediate hunting mission's target after preflight.
+The last regression covers both fresh/cache unchanged-state refusal and an executable
+out-of-range scanner. A separate batch corrected initializer formatting.
+
+The headless gate remains open. Remaining 4c work includes wider generated object
+forecasts, newborn-base hunting and shared craft-production identities, legacy-wave
+forecasts at endless restarts, actual detection VM providers, initial/monthly world
+caller composition and final composed acceptance. Targeted instant/base-defense
+arrival stays in branch 5. Signed monthly pacts, event payload execution and integrated
+month progression stay in branch 6. Pending pact and site/event scheduling do not
+claim those deferred effects. Branch 4d is untouched.
+
+Final five-cycle validation: all 1,886 root tests pass without failures or skips,
+including oracle checksums and private-corpus cases. Formatting verification,
+regenerated code-map checks and git diff --check pass. Useful generated probes
+remain available; the obsolete retaliation-spawn object file was removed. The
+pinned C++ checkout remains clean. This completes the requested fifteen slices
+and five audits, while the revised 4c headless completion gate remains open.
