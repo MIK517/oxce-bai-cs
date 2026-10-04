@@ -20,7 +20,7 @@ struct Item { std::string getType() const { return "SUPPLY"; } int getClipSize()
 using RuleItem=Item;
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
 void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty) { count+=qty; } };
-struct Base { Storage storage; Storage* getStorageItems() { return &storage; } };
+struct Base : Target { Storage storage; Storage* getStorageItems() { return &storage; } };
 struct CraftWeapon { bool rearming=false; bool isRearming() const { return rearming; }
 struct Rule { Item* getClipItem() const { return nullptr; } } rule;
 const Rule* getRules() const { return &rule; } int rearm(int,int) { return 0; }
@@ -31,13 +31,18 @@ struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelI
 bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; }
 const Item* getRefuelItem() const { return fuelItem; } int getRefuelRate() const { return refuelRate; }
 int getRepairRate() const { return 10; }
+bool patrolWithoutFuel() const { return false; }
 bool canAutoPatrol() const { return autoPatrol; } } rule;
 const Rule* _rules = &rule;
 struct Stats { int speedMax = 2000, damageMax = 100, fuelMax=100; } _stats;
-Base base; Base* _base=&base; int _fuel=0, _excessFuel=0, _takeoff=0, speed=0;
+Base base; Base* _base=&base; int _fuel=0, _excessFuel=0, _takeoff=0, speed=0; int& _speed=speed;
 std::string _status="STR_REFUELLING"; bool autoPatrol=true;
 std::vector<CraftWeapon*> _weapons;
 void setFuel(int); std::string refuel(); void setDestination(Target*); void repair(); const RuleItem* rearm();
+int getFuelConsumption(int,int) const; void consumeFuel(int); void returnToBase();
+int getFuel() const { return _fuel; } int getFuelLimit() const { return 0; }
+int getSpeed() const { return speed; } void setLowFuel(bool value) { _lowFuel=value; }
+Target* getDestination() const { return _dest; } double getDistance(Target*) const { return 0; }
 void setDamage(int value) { _damage=std::max(0,value); }
 void setSpeed(int value) { speed=value; }
 std::string getStatus() const { return _status; } void setStatus(const std::string& value) { _status=value; }
@@ -90,6 +95,15 @@ struct ServiceGame { SavedGame save; SavedGame* getSavedGame() { return &save; }
 void autoPatrol(Craft* xcraft, ServiceGame* _game) {
 // AUTO_PATROL
 }
+struct LowFuelState { LowFuelState(Craft*,void*) {} };
+struct FuelCaller {
+struct Mod { int getEscortRange() const { return 30; } } mod;
+struct Game { Mod* mod; Mod* getMod() { return mod; } } game{&mod}; Game* _game=&game;
+void popup(LowFuelState* state) { delete state; }
+void fuel(Craft* xcraft) {
+// FUEL_CALLER
+}
+};
 void spawnEscort(Ufo* ufo,SavedGame& game,bool requested) {
 struct { bool escort; } wave{requested};
 // SPAWN_ESCORT
@@ -131,6 +145,22 @@ Craft* target=select(&hunter,active);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << ',' << (low?"true":"false") << ','
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"escortFuelRows\":[";
+serviceFirst=true;
+for(bool relaunch:{false,true}) for(bool leaderFirst:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft leader,escort; ServiceGame game; FuelCaller caller; Ufo hunter;
+leader.id=2; escort.id=1; leader.distance=escort.distance=Nautical(100);
+escort._stats.speedMax=6000; escort._fuel=50; escort._status="STR_OUT"; escort.speed=6000; escort._dest=&leader;
+leader._status=relaunch?"STR_REFUELLING":"STR_OUT"; leader._fuel=relaunch?60:0;
+if(relaunch) { leader.refuel(); autoPatrol(&leader,&game); }
+std::vector<Craft*> ordered=leaderFirst?std::vector<Craft*>{&leader,&escort}:std::vector<Craft*>{&escort,&leader};
+for(Craft* craft:ordered) caller.fuel(craft);
+Craft* target=select(&hunter,ordered);
+std::cout << '[' << (relaunch?"true":"false") << ',' << (leaderFirst?"true":"false") << ','
+<< escort._fuel << ',' << (escort._lowFuel?"true":"false") << ',' << leader._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "],\"hourlyMaintenanceRows\":[";
