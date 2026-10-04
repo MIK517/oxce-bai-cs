@@ -38,10 +38,6 @@ internal sealed partial class CampaignWorld
                 {
                     work += owner.Crafts.Count + (long)owner.Transfers.Count;
                     if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    if (highest >= CampaignTimeTrigger.ThirtyMinutes && owner.Crafts.Any(craft =>
-                            craft.Logistics is { Status: not "STR_OUT", IsAutoPatrolling: true } &&
-                            campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol))
-                        return "UFO retargeting requires same-tick craft relaunch forecasts.";
                     if (highest >= CampaignTimeTrigger.OneHour && owner.Transfers.Any(transfer =>
                             !transfer.Delivered && transfer.Hours <= 1 && transfer.Craft?.Logistics?.Status == "STR_OUT"))
                         return "UFO retargeting requires arriving craft forecasts.";
@@ -85,6 +81,8 @@ internal sealed partial class CampaignWorld
                 if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 if (craft.Logistics is not { } state) continue;
                 var craftRule = rules.Crafts[craft.Rule].Value;
+                if (forecastFuel && ForecastHuntingCraftState(owner, craft, highest, out state) is { } serviceReason)
+                    return serviceReason;
                 var original = projected.Hunting && projected.Destination is { } destination &&
                     destination.TypeId == rules.Crafts.GetExternalId(craft.Rule) && destination.Id == craft.Id;
                 var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, craftRule, rules);

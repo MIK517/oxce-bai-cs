@@ -21,6 +21,24 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
     return $source.Substring($start, $end - $start)
 }
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_hunting_probe.cpp'))
+$refuelMethods = ''
+foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::refuel()', 'void Craft::setDestination(Target *dest)')) {
+    $refuelMethods += (Read-ReferenceMethod 'src/Savegame/Craft.cpp' $signature) + [Environment]::NewLine
+}
+$template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
+$halfHour = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time30Minutes()'
+$autoStart = $halfHour.IndexOf('if (xcraft->getStatus() == "STR_READY" && xcraft->getRules()->canAutoPatrol())', [StringComparison]::Ordinal)
+if ($autoStart -lt 0) { throw 'Missing auto-patrol fragment.' }
+$autoOpen = $halfHour.IndexOf('{', $autoStart)
+$autoDepth = 1
+$autoEnd = $autoOpen + 1
+while ($autoDepth -gt 0 -and $autoEnd -lt $halfHour.Length) {
+    if ($halfHour[$autoEnd] -eq '{') { $autoDepth++ }
+    if ($halfHour[$autoEnd] -eq '}') { $autoDepth-- }
+    $autoEnd++
+}
+if ($autoDepth -ne 0) { throw 'Unbalanced auto-patrol fragment.' }
+$template = $template.Replace('// AUTO_PATROL', $halfHour.Substring($autoStart, $autoEnd - $autoStart))
 $template = $template.Replace('// IGNORED_METHOD', (Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'bool Craft::isIgnoredByHK() const'))
 $template = $template.Replace('// ATTRACTION', (Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'int Craft::getHunterKillerAttraction(int huntMode) const'))
 $constructor = Read-ReferenceMethod 'src/Savegame/Ufo.cpp' 'Ufo::Ufo(const RuleUfo *rules, int uniqueId, int hunterKillerPercentage, int huntMode, int huntBehavior)'

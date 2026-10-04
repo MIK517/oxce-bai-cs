@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <string>
 namespace OpenXcom {
 using Exception = std::runtime_error;
 struct RNG { static inline int roll=0, calls=0;
@@ -14,12 +15,28 @@ double Nautical(double x) { return x / 60.0 * 3.14159265358979323846 / 180.0; }
 struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = default;
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
-struct Waypoint : Target {};
+struct Waypoint : Target { int id=0; int getId() const { return id; } void setId(int value) { id=value; } };
+struct Item { std::string getType() const { return "SUPPLY"; } };
+struct Storage { int count=0; int getItem(const Item*) const { return count; }
+void removeItem(const Item*) { --count; } void addItem(const Item*,int qty) { count+=qty; } };
+struct Base { Storage storage; Storage* getStorageItems() { return &storage; } };
+struct CraftWeapon { bool rearming=false; bool isRearming() const { return rearming; } };
 struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
-struct Craft : Target {
-struct Rule { bool landing = false, hidden = false; bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; } } rule;
+struct Craft : MovingTarget {
+struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelItem=nullptr; int refuelRate=40;
+bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; }
+const Item* getRefuelItem() const { return fuelItem; } int getRefuelRate() const { return refuelRate; }
+bool canAutoPatrol() const { return autoPatrol; } } rule;
 const Rule* _rules = &rule;
-struct Stats { int speedMax = 2000, damageMax = 100; } _stats;
+struct Stats { int speedMax = 2000, damageMax = 100, fuelMax=100; } _stats;
+Base base; Base* _base=&base; int _fuel=0, _excessFuel=0, _takeoff=0, speed=0;
+std::string _status="STR_REFUELLING"; bool autoPatrol=true;
+std::vector<CraftWeapon*> _weapons;
+void setFuel(int); std::string refuel(); void setDestination(Target*);
+void setSpeed(int value) { speed=value; }
+std::string getStatus() const { return _status; } void setStatus(const std::string& value) { _status=value; }
+bool getIsAutoPatrolling() const { return autoPatrol; }
+double getLongitudeAuto() const { return 0.8; } double getLatitudeAuto() const { return 0.3; }
 int _damage = 0, units = 0, id = 0; bool ignored = false, _lowFuel = false, _missionComplete = false;
 int getMaxUnitsClamped() const { return units; }
 bool isIgnoredByHK() const;
@@ -28,6 +45,7 @@ bool getMissionComplete() const { return _missionComplete; }
 const Rule* getRules() const { return _rules; }
 int getHunterKillerAttraction(int huntMode) const;
 };
+// REFUEL_METHODS
 // IGNORED_METHOD
 // ATTRACTION
 struct Mission { int id=4; int getId() const { return id; } };
@@ -58,7 +76,14 @@ bool insideRadarRange(Target* target) const;
 };
 // RADAR
 // RETARGET_METHODS
-struct SavedGame { std::vector<Ufo*> ufos; std::vector<Ufo*>* getUfos() { return &ufos; } };
+struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
+std::vector<Ufo*>* getUfos() { return &ufos; }
+std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
+int getId(const std::string&) { return 8+(int)waypoints.size(); } };
+struct ServiceGame { SavedGame save; SavedGame* getSavedGame() { return &save; } };
+void autoPatrol(Craft* xcraft, ServiceGame* _game) {
+// AUTO_PATROL
+}
 void spawnEscort(Ufo* ufo,SavedGame& game,bool requested) {
 struct { bool escort; } wave{requested};
 // SPAWN_ESCORT
@@ -83,7 +108,26 @@ return newTarget;
 }
 int main() {
 using namespace OpenXcom;
-std::cout << "{\"attractionRows\":[";
+std::cout << "{\"maintenanceRows\":[";
+bool serviceFirst=true;
+for(bool itemFuel:{false,true}) for(int fuel:{0,60,100}) for(int stock:{0,1}) for(bool low:{false,true}) for(bool rearming:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; CraftWeapon weapon; ServiceGame game; Ufo hunter;
+craft.id=1; craft.distance=Nautical(100); craft.rule.fuelItem=itemFuel?&item:nullptr;
+craft._fuel=fuel; craft.base.storage.count=stock; craft._lowFuel=low;
+weapon.rearming=rearming; craft._weapons={&weapon};
+const auto missing=craft.refuel();
+if(missing.empty()) autoPatrol(&craft,&game);
+std::vector<Craft*> active;
+if(craft._status=="STR_OUT" && craft._damage<craft._stats.damageMax) active.push_back(&craft);
+craft.ignored=craft.isIgnoredByHK();
+Craft* target=select(&hunter,active);
+std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << ',' << (low?"true":"false") << ','
+<< (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
+<< (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"attractionRows\":[";
 bool first = true;
 for (int mode : {0,1}) for (bool landing : {false,true}) for (int capacity : {0,2,8}) for (int speed : {2000,6000}) for (int damage : {0,50}) {
 if (!first) std::cout << ','; first = false;
