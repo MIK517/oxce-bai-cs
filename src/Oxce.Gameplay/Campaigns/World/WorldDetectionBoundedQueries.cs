@@ -1,6 +1,6 @@
 namespace Oxce.Gameplay.Campaigns.World;
 
-/// <summary>Result domains guaranteed by native boolean getters and validated campaign clocks, including null zero.</summary>
+/// <summary>Result domains guaranteed by native getters, validated clocks and proven null receivers.</summary>
 internal static class WorldDetectionBoundedQueries
 {
     internal static (int Min, int Max)? Range(string name) => name switch
@@ -14,4 +14,14 @@ internal static class WorldDetectionBoundedQueries
         "Time.getSecondsPastMidnight" => (0, 86399),
         _ => null,
     };
+
+    internal static bool NullReturnsZero(string name) => Range(name) is not null || name is
+        "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or "Ufo.getDamageMax" or
+        "Ufo.getDamagePercentage" or "Ufo.getShield" or "Ufo.getShieldMax" or "Ufo.getShieldPercentage" or
+        "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Craft.getDamage" or "Craft.getDamageMax" or
+        "Craft.getDamagePercentage" or "Craft.getShield" or "Craft.getShieldMax" or "Craft.getShieldPercentage" or
+        "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
+        "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or "Time.getYear" ||
+        name.StartsWith("Ufo.", StringComparison.Ordinal) && CampaignWorld.DetectionUfoStatIndex(name) >= 0 ||
+        name.StartsWith("Craft.", StringComparison.Ordinal) && CampaignWorld.DetectionCraftStatKey(name) is not null;
 }
