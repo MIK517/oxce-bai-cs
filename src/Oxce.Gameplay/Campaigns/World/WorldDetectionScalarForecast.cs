@@ -72,6 +72,24 @@ internal sealed class WorldDetectionScalarForecast
                     }
                     if (range.Min > range.Max) range = (int.MinValue, int.MaxValue);
                 }
+                if (WorldDetectionRuleQueries.Supports(binding.Name))
+                {
+                    var candidates = references.At(index, operands[1]);
+                    work += candidates?.Count ?? WorldDetectionRuleQueries.CandidateCount(binding.Name, rules);
+                    if (work > maximumWork) return null;
+                    range = candidates is null ? (0, 0) : (int.MaxValue, int.MinValue);
+                    foreach (var candidate in candidates ?? WorldDetectionRuleQueries.Candidates(binding.Name, rules))
+                    {
+                        if (candidate is string id)
+                        {
+                            work += id.Length;
+                            if (work > maximumWork) return null;
+                        }
+                        var value = WorldDetectionRuleQueries.Value(binding.Name, candidate, rules);
+                        range = (Math.Min(range.Min, value), Math.Max(range.Max, value));
+                    }
+                    if (range.Min > range.Max) range = WorldDetectionScalarRanges.Full;
+                }
                 if (binding.Name == "RuleInventory.getMoveToCost")
                 {
                     var sources = references.At(index, operands[1]);

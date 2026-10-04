@@ -433,11 +433,11 @@ public sealed class StrategicWorldDetectionBindingTests
         };
         Assert.Equal(12, native.EnumerateObject().Count());
         var fields = string.Join(", ", keys.Select(pair => $"{pair.Value}: {native.GetProperty("Stats." + pair.Key).GetInt32()}"));
-        var code = "var ptr RuleArmor rule; var ptr RuleArmor absent null; var int value; rules.getRuleArmor rule \"ARMOR_STAT_READS\"; ";
+        var code = "var ptr RuleArmor rule; var ptr RuleArmor absent null; var int quotient; var int value; rules.getRuleArmor rule \"ARMOR_STAT_READS\"; ";
         foreach (var pair in keys)
         {
             var method = "Stats." + pair.Key;
-            code += $"rule.{method} value; if neq value {native.GetProperty(method).GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += $"rule.{method} value; set quotient {native.GetProperty(method).GetInt32()}; div quotient value; if neq quotient 1; return DETECTION_NONE 0; end; if neq value {native.GetProperty(method).GetInt32()}; return DETECTION_NONE 0; end; ";
             code += $"absent.{method} value; if neq value {oracle.RootElement.GetProperty("unitStatsNull").GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
         }
         code += "return DETECTION_RADAR 100;";
@@ -487,7 +487,7 @@ public sealed class StrategicWorldDetectionBindingTests
         var prefixes = new[] { "StatsMin.", "StatsMax.", "StatsCap." };
         var yamlNames = new[] { "minStats", "maxStats", "statCaps" };
         var fields = "";
-        var code = "var ptr RuleSoldier rule; var ptr RuleSoldier absent null; var int value; rules.getRuleSoldier rule \"SOLDIER_STAT_READS\"; ";
+        var code = "var ptr RuleSoldier rule; var ptr RuleSoldier absent null; var int quotient; var int value; rules.getRuleSoldier rule \"SOLDIER_STAT_READS\"; ";
         for (var group = 0; group < 3; group++)
         {
             Assert.Equal(12, rows[group].EnumerateObject().Count());
@@ -496,7 +496,7 @@ public sealed class StrategicWorldDetectionBindingTests
             foreach (var pair in keys)
             {
                 var method = prefixes[group] + pair.Key;
-                code += $"rule.{method} value; if neq value {rows[group].GetProperty(method).GetInt32()}; return DETECTION_NONE 0; end; ";
+                code += $"rule.{method} value; set quotient {rows[group].GetProperty(method).GetInt32()}; div quotient value; if neq quotient 1; return DETECTION_NONE 0; end; if neq value {rows[group].GetProperty(method).GetInt32()}; return DETECTION_NONE 0; end; ";
                 code += $"absent.{method} value; if neq value {oracle.RootElement.GetProperty("unitStatsNull").GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
             }
         }

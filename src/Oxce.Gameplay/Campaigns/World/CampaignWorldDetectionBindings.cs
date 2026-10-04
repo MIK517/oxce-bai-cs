@@ -77,6 +77,11 @@ internal sealed partial class CampaignWorld
             args[1] = ScriptRuntimeValue.FromScalar((int)value);
             return ScriptBindingResult.Success;
         }
+        if (WorldDetectionRuleQueries.Supports(name))
+        {
+            args[1] = ScriptRuntimeValue.FromScalar(WorldDetectionRuleQueries.Value(name, receiver, campaign.Content.RuntimeRules));
+            return ScriptBindingResult.Success;
+        }
         var ufo = receiver as UfoSnapshot;
         var craft = receiver as CampaignState.CraftState;
         var rules = campaign.Content.RuntimeRules;
@@ -187,12 +192,6 @@ internal sealed partial class CampaignWorld
                 args[1] = ScriptRuntimeValue.FromScalar(receiver is not null && args[2].Reference is string research &&
                     campaign.HasCompletedResearch(research) ? 1 : 0);
                 break;
-            case "RuleResearch.getCost":
-            case "RuleResearch.getPoints":
-                args[1] = ScriptRuntimeValue.FromScalar(receiver is string topic
-                    ? name == "RuleResearch.getCost" ? rules.Research[rules.Research.GetRequired(topic)].Value.Cost
-                        : rules.Research[rules.Research.GetRequired(topic)].Value.Points : 0);
-                break;
             case "Country.getRuleCountry":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is CampaignState.CountryState owner ? rules.Countries[owner.Rule].Value : null);
                 break;
@@ -230,31 +229,11 @@ internal sealed partial class CampaignWorld
                         "Country.getCurrentActivityAlien" => country.ActivityAlien[^1],
                         _ => throw new InvalidOperationException("Detection country provider was not preflighted."),
                     } :
-                    receiver is RuntimeCraftRule rule ? DetectionCraftRuleValue(name, rule) :
-                    receiver is RuntimeUfoRule ufoRule ? name switch
-                    {
-                        "RuleUfo.getRadius" => ufoRule.Radius,
-                        "RuleUfo.getWeaponRange" => ufoRule.WeaponRange,
-                        "RuleUfo.getWeaponPower" => ufoRule.WeaponPower,
-                        "RuleUfo.getWeaponReload" => ufoRule.WeaponReload,
-                        _ => DetectionUfoStat(ufoRule.Stats, DetectionUfoStatIndex(name)),
-                    } :
-                    receiver is RuntimeInventoryRule inventoryRule ? name switch
-                    {
-                        "RuleInventory.getType" => inventoryRule.Type,
-                        "RuleInventory.isRightHand" => inventoryRule.Hand == 2 ? 1 : 0,
-                        "RuleInventory.isLeftHand" => inventoryRule.Hand == 1 ? 1 : 0,
-                        _ => throw new InvalidOperationException("Detection inventory provider was not preflighted."),
-                    } :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
                     receiver is RuntimeItemRule itemRule ? WorldDetectionItemQueries.Value(name, itemRule) :
-                    receiver is RuntimeArmorRule armorRule ? DetectionArmorValue(name, armorRule) :
-                    receiver is RuntimeSoldierRule soldierRule ? DetectionSoldierStat(name, soldierRule) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch
                     {
-                        "RuleMod.getMaxViewDistance" => rules.Campaign.MaximumViewDistance,
-                        "RuleMod.getMaxDarknessToSeeUnits" => rules.Campaign.MaximumDarknessToSeeUnits,
                         "GeoscapeGame.difficultyLevel" => (int)campaign.Difficulty,
                         "GeoscapeGame.getDaysPassed" => campaign.DaysPassed,
                         "GeoscapeGame.getMonthsPassed" => campaign.MonthsPassed,
@@ -343,7 +322,7 @@ internal sealed partial class CampaignWorld
         return value;
     }
 
-    private static int DetectionCraftRuleValue(string name, RuntimeCraftRule rule) =>
+    internal static int DetectionCraftRuleValue(string name, RuntimeCraftRule rule) =>
         DetectionCraftStatKey(name) is { } key ? rule.DefaultStats.GetValueOrDefault(key) : name switch
         {
             "RuleCraft.getPilotsMax" => rule.Pilots,
@@ -353,7 +332,7 @@ internal sealed partial class CampaignWorld
             _ => throw new InvalidOperationException("Detection craft rule provider was not preflighted."),
         };
 
-    private static string? DetectionCraftStatKey(string name) => name switch
+    internal static string? DetectionCraftStatKey(string name) => name switch
     {
         "RuleCraft.Stats.getFuelMax" or "Craft.Stats.getFuelMax" => "fuelMax",
         "RuleCraft.Stats.getDamageMax" or "Craft.Stats.getDamageMax" => "damageMax",
