@@ -20,6 +20,8 @@ internal static class WorldDetectionScalarRanges
             CoreScriptOperation.Modulo => Modulo(a, b),
             CoreScriptOperation.MultiplyDivide => Divide(Product(a, b), c),
             CoreScriptOperation.OffsetModulo => OffsetModulo(a, b, c, d ?? Full),
+            CoreScriptOperation.WaveRectangle or CoreScriptOperation.WaveSaw or CoreScriptOperation.WaveTriangle or
+                CoreScriptOperation.WaveSine or CoreScriptOperation.WaveCosine => WorldDetectionWaveRanges.Apply(operation, a, b, c, d ?? Full),
             CoreScriptOperation.Limit => Maximum(Minimum(a, c), b),
             CoreScriptOperation.LimitUpper => Minimum(a, b),
             CoreScriptOperation.LimitLower => Maximum(a, b),

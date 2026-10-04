@@ -73,6 +73,49 @@ public sealed class StrategicWorldDetectionNumericTests
             "damage.getDamageToHealth value power; if neq value power; return DETECTION_NONE 0; end; " +
             "return DETECTION_RADAR 100;", fromCache, fromCraft, "items: [{type: BIT_POWER, damageAlter: {ToHealth: 1}}]");
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NativeWaveResultsFeedSubsequentDamageQueries(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
+            row.GetProperty("name").GetString()!.Contains("wave", StringComparison.Ordinal)))
+        {
+            var code = "var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+                $"var int result {row.GetProperty("seed").GetInt32()}; " +
+                row.GetProperty("source").GetString()!.Replace("return result;", "", StringComparison.Ordinal) +
+                "rules.getRuleItem item \"WAVE_POWER\"; item.getDamageType damage; damage.getDamageToHealth value result; " +
+                $"if neq value {row.GetProperty("result").GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+            AssertDetectionReadScript(code, fromCache, fromCraft, "items: [{type: WAVE_POWER, damageAlter: {ToHealth: 1}}]");
+        }
+    }
+
+    [Fact]
+    public void WaveIntervalsContainEverySmallIntegerPhaseAndNegativeCap()
+    {
+        foreach (var operation in new[] { CoreScriptOperation.WaveRectangle, CoreScriptOperation.WaveSaw, CoreScriptOperation.WaveTriangle })
+            foreach (var size in new[] { (-5, -1), (-2, 4), (1, 7) })
+                foreach (var cap in new[] { (-5, -1), (-2, 4), (1, 7) })
+                {
+                    var bounds = WorldDetectionWaveRanges.Apply(operation, (-12, 12), (2, 7), size, cap);
+                    for (var value = -12; value <= 12; value++)
+                        for (var period = 2; period <= 7; period++)
+                            for (var width = size.Item1; width <= size.Item2; width++)
+                                for (var height = cap.Item1; height <= cap.Item2; height++)
+                                {
+                                    var phase = (value % period + period) % period;
+                                    var result = phase > width ? 0 : operation == CoreScriptOperation.WaveRectangle ? height :
+                                        Math.Min(operation == CoreScriptOperation.WaveTriangle && phase > width / 2 ? width - phase : phase, height);
+                                    Assert.InRange(result, bounds.Min, bounds.Max);
+                                }
+                }
+        Assert.Equal(WorldDetectionScalarRanges.Full,
+            WorldDetectionWaveRanges.Apply(CoreScriptOperation.WaveSine, (-10, 10), (1, 4), (int.MinValue, int.MinValue), (0, 0)));
+    }
+
     [Fact]
     public void NativeArithmeticAndCalculatedOperandCasesExecuteInTheCoreVm()
     {
