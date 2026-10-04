@@ -12,6 +12,27 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void UnsupportedItemProvidersRemainGuardedBeforeMutation(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            ufos:
+              - type: UFO_ITEM_PROVIDER_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    var ptr RuleItem item;
+                    rules.getRuleItem item "SUPPLY";
+                    item.getPower detection_chance;
+                    return;
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_ITEM_PROVIDER_GUARD", 2200);
+        AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleItem.getPower.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void RuleMetadataReadsPreserveTextAndScalarDefaultsAcrossReload(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

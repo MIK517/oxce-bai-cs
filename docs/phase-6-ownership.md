@@ -1063,3 +1063,24 @@ Branch 4d is untouched.
 Validation: all 2,016 root tests pass with zero failures/skips, including private
 corpus, checksum and existing allocation checks. Formatting verification, code-map
 validation and diff checks pass. The reference checkout remains clean.
+
+## Linked rule tags and text metadata cycle audit (2026-10-04)
+
+Three slices add item/armor rule tags, soldier/skill rule tags, and type-name text
+with simple item/armor scalar metadata. Canonical immutable rule objects preserve
+tag owner identity; native ScriptValuesBase and exact getTypeScript/getter captures
+pin signed values and null defaults. Actual fresh/cache VM execution and transition
+reloads cover every newly owned provider. Compiler/cache revision is 41.
+
+The batch audit found no additional confirmed defect. An added guard regression
+proves unsupported RuleItem providers still stop before mutation even though
+other reads on that receiver are available. The soldier type-name binding remains
+guarded because the pinned wrapper declares a RuleSkill receiver. Unavailable
+providers are explicit; combat, deployment and event payload boundaries remain
+unchanged. Effective craft instance statistics, wider VM providers/forecasts,
+actual initial/monthly caller composition and final composed acceptance remain
+4c work. Branch 4d is untouched.
+
+Validation: all 2,024 root tests pass with zero failures/skips, including private
+corpus, checksum and existing allocation checks. Formatting verification, code-map
+validation and diff checks pass. The reference remains clean at the pinned commit.
