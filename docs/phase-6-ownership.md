@@ -1306,3 +1306,6 @@ remaining detection providers/forecasts and composed acceptance still keep the
 4c headless gate open. Branch 4d is untouched.
 
 Formatting verification, code-map validation and diff checks pass.
+
+
+Branch 4c scheduling composition: pinned caller-order and initial-entry evidence in strategic-world-composition; dependent eligibility forecast now owns research grants/disables and variable/marker increases. Composed execution and initial entry remain pending; branch 4d and integrated month progression remain deferred.

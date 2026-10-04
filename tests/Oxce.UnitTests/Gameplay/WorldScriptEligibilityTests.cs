@@ -70,4 +70,45 @@ public sealed class WorldScriptEligibilityTests
         Assert.False(WorldScriptEligibility.Matches(bounded, Context with { Score = 31 }));
         Assert.False(WorldScriptEligibility.Matches(bounded, Context with { Funds = 6000000001L }));
     }
+    [Fact]
+    public void EarlierResearchGrantsAndDisablesArePossibleButStableTriggersStillExclude()
+    {
+        var changed = new HashSet<string>(StringComparer.Ordinal) { "GRANTED", "DISABLED" };
+        var criteria = Criteria with { Research = [new(new("GRANTED", null), true), new(new("DISABLED", null), false)] };
+        var state = Context with { Research = new HashSet<string>(StringComparer.Ordinal) { "DISABLED" } };
+        Assert.False(WorldScriptEligibility.Matches(criteria, state));
+        Assert.True(WorldScriptEligibility.MayMatch(criteria, state, changed,
+            new Dictionary<string, long>(), new Dictionary<string, long>()));
+        Assert.False(WorldScriptEligibility.MayMatch(criteria with
+        { Research = [.. criteria.Research, new(new("STABLE", null), true)] }, state, changed,
+            new Dictionary<string, long>(), new Dictionary<string, long>()));
+        Assert.False(WorldScriptEligibility.MayMatch(criteria, state with { DebugResearch = true }, changed,
+            new Dictionary<string, long>(), new Dictionary<string, long>()));
+    }
+
+    [Theory]
+    [InlineData(2, 2, true)]
+    [InlineData(4, -1, false)]
+    [InlineData(0, 0, true)]
+    [InlineData(3, 2, false)]
+    [InlineData(0, -2, false)]
+    public void CounterForecastIntersectsInclusiveBoundsAndPreservesSentinels(int minimum, int maximum, bool possible)
+    {
+        var criteria = Criteria with { MissionVariable = "RUN", CounterMinimum = minimum, CounterMaximum = maximum };
+        Assert.Equal(possible, WorldScriptEligibility.MayMatch(criteria, Context, new HashSet<string>(),
+            new Dictionary<string, long> { ["RUN"] = 3 }, new Dictionary<string, long>()));
+    }
+
+    [Fact]
+    public void MarkerForecastRetainsMissingKeyAndReferenceFloor()
+    {
+        var criteria = Criteria with { MissionMarker = "ALIEN_MISSIONS", CounterMinimum = 2, CounterMaximum = 2 };
+        Assert.False(WorldScriptEligibility.Matches(criteria, Context));
+        Assert.True(WorldScriptEligibility.MayMatch(criteria, Context, new HashSet<string>(),
+            new Dictionary<string, long>(), new Dictionary<string, long> { ["ALIEN_MISSIONS"] = 2 }));
+        var present = Context with { NextIds = new Dictionary<string, int> { ["ALIEN_MISSIONS"] = 1 } };
+        Assert.False(WorldScriptEligibility.MayMatch(criteria with { CounterMinimum = 0, CounterMaximum = 0 },
+            present, new HashSet<string>(), new Dictionary<string, long>(), new Dictionary<string, long>()));
+    }
+
 }

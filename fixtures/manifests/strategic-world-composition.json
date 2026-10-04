@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-world-composition",
+  "description": "Extracted arc, mission and event eligibility/ordering plus once-only Geoscape entry. Controlled research grants (+100 points and disables), mission creation (counter and marker only), event storage, country funding (zero), maintenance (16 with 7 personnel) and RNG; alien-base monthly effects are excluded and covered separately.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::determineAlienMissions through the event phase; GeoscapeState::init once-only scheduling and maintenance block; SavedGame::wasEventGenerated; RuleEventScript::generate; WeightedOptions::choose/set/getNames",
+      "capture": "tools/capture-strategic-world-composition-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_world_composition_probe.cpp",
+      "size": 9475,
+      "sha256": "77dbba956d01243b108f2f53bc2545c3fe6467a6763860dd179af89e5382a945"
+    },
+    {
+      "path": "tools/capture-strategic-world-composition-reference.ps1",
+      "size": 3822,
+      "sha256": "15b77a380581f0a706bb7b7450c92f72165ecd1cfe36356accabb92f90f5aac9"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-world-composition.expected.json"
+}

@@ -835,3 +835,8 @@ next two slices. Combat and deployment remain branch 5.
   checks pass. Confirmed sidecar, marker-identity and geometry-work findings are
   fixed with regressions; the reference checkout remains clean and the obsolete
   probe object was removed. Broader 4c acceptance remains open; 4d is untouched.
+
+
+### Branch 4c: composed scheduling evidence and eligibility forecast
+
+Pinned GeoscapeState::determineAlienMissions arc/mission/event prefix and the initial GeoscapeState::init block in strategic-world-composition. The fixture isolates caller order and dependent eligibility; research, mission creation and event storage are controlled collaborators, not new payload/objective oracles. Pure preflight eligibility now represents research grants/disables and increasing variable/marker intervals without changing state or consuming RNG. Month rollover, event effects and branch 4d remain guarded. The composed caller and initial entry are the next slices.
