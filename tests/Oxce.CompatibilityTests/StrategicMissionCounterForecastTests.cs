@@ -65,5 +65,9 @@ public sealed class StrategicMissionCounterForecastTests
         Assert.Equal(UfoStatus.Landed, after.World.Ufos[0].Status);
         Assert.Empty(after.World.MissionSites);
         Reload(content, campaign, 17, "legacy-counter-arrival.sav");
+        // The half-hour pass can reveal a hidden contact before its ordinary landing.
+        // The saved counter alone would classify this as a site and miss the reservation.
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_LANDING_SITE", int.MaxValue),
+            content, new SplitMix64RandomSource(17)), "UFO landing marker IDs are exhausted or collide with a saved UFO.");
     }
 }

@@ -884,3 +884,11 @@ and five audits, while the revised 4c headless completion gate remains open.
   The earlier overflow reproduction now reaches the precise exhausted-site guard;
   valid fresh/cache cases convert, reload and release live counts without changing
   the persisted -1 wave number. Reference: think restart and arrival fallback.
+
+- Four-cycle continuation, batch 1 slice 3: landing-marker reservations now use
+  the same post-think mission counter projection as site conversion and pursuit.
+  Detected endless legacy conversions no longer reserve phantom landing markers;
+  ordinary legacy landings reserve IDs even when half-hour detection reveals them.
+  Fresh/cache capacity failures leave the tick unchanged; successful conversions
+  and ordinary arrivals retain save/reload coverage. Reference: GeoscapeState
+  half-hour detection before five-second arrivals and AlienMission arrival fallback.
