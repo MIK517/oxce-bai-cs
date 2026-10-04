@@ -72,6 +72,18 @@ internal sealed class WorldDetectionScalarForecast
                     }
                     if (range.Min > range.Max) range = (int.MinValue, int.MaxValue);
                 }
+                if (binding.Name == "RuleInventory.getMoveToCost")
+                {
+                    var sources = references.At(index, operands[1]);
+                    var targets = references.At(index, operands[3]);
+                    if (operands[1] == operands[3] || WorldDetectionReferenceForecast.OnlyNull(sources)) range = (0, 0);
+                    else
+                    {
+                        work += (long)(sources?.Count ?? rules.Inventories.Count) * (targets?.Count ?? rules.Inventories.Count);
+                        if (work > maximumWork) return null;
+                        range = WorldDetectionInventoryCosts.OutputRange(rules, sources, targets);
+                    }
+                }
                 if (WorldDetectionDamageQueries.IsClassification(binding.Name) ||
                     WorldDetectionDamageQueries.Supports(binding.Name) && binding.Name != "RuleDamageType.getRandomDamage")
                 {
