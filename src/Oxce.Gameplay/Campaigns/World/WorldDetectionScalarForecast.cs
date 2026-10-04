@@ -22,6 +22,7 @@ internal sealed class WorldDetectionScalarForecast
         var states = new Dictionary<int, (int Min, int Max)>?[program.Instructions.Count];
         if (states.Length == 0) return new(states);
         states[0] = program.Registers.Where(static register => !register.Type.IsReference)
+            .DistinctBy(static register => register.Offset)
             .ToDictionary(static register => register.Offset,
                 static register => register.IsInput || register.IsOutput ? (int.MinValue, int.MaxValue) : (0, 0));
         var bindings = program.Bindings.ToDictionary(static binding => binding.Id.Value);

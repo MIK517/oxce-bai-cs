@@ -226,6 +226,11 @@ public sealed class ScriptCompiler
             return;
         }
         _registers.Add(new ScriptRegisterDefinition(name, type, offset, IsOutput: false));
+        if (statement.Arguments.Count == typeTokenCount + 1 && type.Id == ScriptPrimitiveTypes.Text && !type.IsReference)
+        {
+            Emit(CoreScriptOperation.Set, statement.Span, [ScriptOperand.Register(offset), ScriptOperand.TextValue("")]);
+            return;
+        }
         Emit(
             statement.Arguments.Count == typeTokenCount + 1 ? CoreScriptOperation.Clear : CoreScriptOperation.Set,
             statement.Span,
@@ -615,6 +620,13 @@ public sealed class ScriptCompiler
             return;
         }
         var arguments = typedArguments.Select(static argument => argument.Operand).ToArray();
+        if (operation == CoreScriptOperation.Clear && typedArguments.Length == 1 &&
+            typedArguments[0].Type.Id == ScriptPrimitiveTypes.Text && !typedArguments[0].Type.IsReference &&
+            typedArguments[0].Type.IsWritable && arguments[0].Kind == ScriptOperandKind.Register)
+        {
+            Emit(CoreScriptOperation.Set, statement.Span, [arguments[0], ScriptOperand.TextValue("")]);
+            return;
+        }
         var coreCompatible = arguments.Length == expected &&
             (expected == 0 || arguments[0].Kind == ScriptOperandKind.Register) &&
             (operation != CoreScriptOperation.Swap || arguments[1].Kind == ScriptOperandKind.Register) &&

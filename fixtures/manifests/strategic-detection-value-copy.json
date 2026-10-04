@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "strategic-detection-value-copy",
-  "description": "Native BindSet template text/scalar copies and RuleSoldier getTypeScript wrapper. The latter receives RuleSkill in the pinned API; retain this native registration, not an invented RuleSoldier getter. Controlled ScriptText/RuleSkill identity replaces content loading.",
+  "description": "Native BindSet template text/scalar copies and RuleSoldier getTypeScript wrapper. The latter receives RuleSkill in the pinned API; retain this native registration, not an invented RuleSoldier getter. Controlled ScriptText/RuleSkill identity replaces content loading. Script.cpp Func_clear_text verifies the declaration/explicit-clear empty value.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "ScriptBind.h::BindSet; RuleSoldier.cpp::getTypeScript/ScriptRegister; script-api-catalog verifies ptr RuleSkill receiver",
+      "sources": "ScriptBind.h::BindSet; RuleSoldier.cpp::getTypeScript/ScriptRegister; script-api-catalog verifies ptr RuleSkill receiver; Script.cpp::parseVariableImpl/Func_clear_text",
       "capture": "tools/capture-strategic-detection-value-copy-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; bodies inserted verbatim"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_value_copy_probe.cpp",
-      "size": 867,
-      "sha256": "1a415ccde96da8c123ac46b50b1d992e9ee7c9a29ec2ada9e69f04ef4e0dd019"
+      "size": 1050,
+      "sha256": "c36f048ae2e8c2076dbd67bd00eb29e6de3a9e47c2387d538e1b3d1a9d2daad4"
     },
     {
       "path": "tools/capture-strategic-detection-value-copy-reference.ps1",
-      "size": 2816,
-      "sha256": "3ad0f302772697a6adb7402e4234d88c4a50c68c3f9e071995237a2171f561c9"
+      "size": 2889,
+      "sha256": "fa41dd63689f99069c80d00c9b0f86689a67a92a34c3c4f848862a4a3014a323"
     }
   ],
   "normalization": [

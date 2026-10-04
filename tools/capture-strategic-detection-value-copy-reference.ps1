@@ -22,7 +22,8 @@ function Read-Method([string]$RelativePath, [string]$Signature) {
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_detection_value_copy_probe.cpp'))
 $methods = @(
  ('template<typename T>' + [Environment]::NewLine + (Read-Method 'src/Engine/ScriptBind.h' 'struct BindSet') + ';'),
- (Read-Method 'src/Mod/RuleSoldier.cpp' 'void getTypeScript(')
+ (Read-Method 'src/Mod/RuleSoldier.cpp' 'void getTypeScript('),
+ ((Read-Method 'src/Engine/Script.cpp' 'struct Func_clear_text') + ';')
 )
 $template = $template.Replace('// METHODS', ($methods -join [Environment]::NewLine))
 $work = Join-Path $repository 'artifacts/reference-strategic-detection-value-copy'
