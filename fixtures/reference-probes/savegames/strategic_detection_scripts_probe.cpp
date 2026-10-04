@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+#include <map>
+#include <string>
+#include <stdexcept>
 namespace RNG {
 std::vector<int> calls;
 bool succeeds = false;
@@ -10,8 +13,26 @@ bool percent(int chance) { calls.push_back(chance); return chance >= 100 || (cha
 }
 int XcomDistance(double value) { return (int)value; }
 namespace OpenXcom {
+using Exception = std::runtime_error;
 enum UfoDetection { DETECTION_NONE=0, DETECTION_RADAR=1, DETECTION_HYPERWAVE=3 };
-struct SavedGame {};
+struct RuleResearch {};
+bool researchLess(const RuleResearch* a, const RuleResearch* b) { return std::less<const RuleResearch*>{}(a,b); }
+// RESEARCH_FIND
+struct SavedGame {
+bool _debug=false;
+std::vector<const RuleResearch*> _discovered;
+bool isResearched(const RuleResearch*,bool considerDebugMode) const;
+};
+// RESEARCH_METHOD
+// RESEARCH_WRAPPER
+struct Mod {
+std::map<std::string,RuleResearch*> _research;
+static bool isEmptyRuleName(const std::string& id) { return id.empty() || id == std::string(1,'\\0'); }
+template<typename T> T* getRule(const std::string&,const std::string&,const std::map<std::string,T*>&,bool) const;
+RuleResearch* getResearch(const std::string&,bool error=false) const;
+};
+// MOD_METHODS
+// RESEARCH_LOOKUP
 class ScriptValuesBase {
 std::vector<int> values;
 public:
@@ -129,5 +150,16 @@ std::cout<<",\"initial\":";array(ModScript::initial);std::cout<<",\"calls\":";ar
 std::cout<<"],\"bindings\":["; array({ufo.getDamage(),ufo.getShield(),ufo.getShieldPercentage(),(int)ufo.getDetected(),(int)ufo.getHyperDetected(),(int)ufo.isHunterKiller(),(int)ufo.isHunting(),(int)ufo.isEscorting(),ufo.getHuntMode(),ufo.getHuntBehavior()}); std::cout<<"],\"tagValues\":[";
 ScriptValuesBase tags; tags.setBase(0,99); tags.setBase(2,-7);
 for (int index : {0,1,2,3,400}) { if(index) std::cout<<','; array({index,tags.getBase(index)}); }
-std::cout<<"]}\n";
+std::cout<<"],\"research\":[";
+RuleResearch topic; Mod mod; mod._research["TOPIC"]=&topic;
+for(int i=0;i<8;++i) {
+if(i)std::cout<<',';
+save._debug=(i&2)!=0; save._discovered=(i&1)?std::vector<const RuleResearch*>{&topic}:std::vector<const RuleResearch*>{};
+const RuleResearch* lookedUp=nullptr;
+getRuleResearch((i&4)?nullptr:&mod,lookedUp,"TOPIC");
+int found=-1;isResearchedScript(&save,found,lookedUp);
+array({i&1,(i&2)?1:0,(i&4)?0:1,found});
+}
+const RuleResearch* missing=&topic;getRuleResearch(&mod,missing,"MISSING");
+std::cout<<"],\"missingResearch\":"<<(missing?1:0)<<"}\n";
 }

@@ -23,7 +23,8 @@ internal sealed partial class CampaignWorld
         "RuleCraft.Stats.getRadarRange" or "RuleCraft.Stats.getRadarChance" or
         "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
-        "GeoscapeGame.getTime" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
+        "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
+        "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
         "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
     private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
@@ -42,6 +43,23 @@ internal sealed partial class CampaignWorld
                 break;
             case "Craft.getRuleCraft":
                 args[1] = ScriptRuntimeValue.FromReference(craft is null ? null : rules.Crafts[craft.Rule].Value);
+                break;
+            case "RuleMod.getRuleResearch":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionResearchRule(args[2].Text));
+                break;
+            case "RuleResearch.getLookup":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is string researchId
+                    ? DetectionResearchRule(rules.Research[rules.Research.GetRequired(researchId)].Value.Lookup) : null);
+                break;
+            case "GeoscapeGame.isResearched":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is not null && args[2].Reference is string research &&
+                    campaign.HasCompletedResearch(research) ? 1 : 0);
+                break;
+            case "RuleResearch.getCost":
+            case "RuleResearch.getPoints":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is string topic
+                    ? name == "RuleResearch.getCost" ? rules.Research[rules.Research.GetRequired(topic)].Value.Cost
+                        : rules.Research[rules.Research.GetRequired(topic)].Value.Points : 0);
                 break;
             case "GeoscapeGame.getTime":
                 _detectionTime.Time = campaign.Time;
@@ -63,6 +81,13 @@ internal sealed partial class CampaignWorld
                 break;
         }
         return ScriptBindingResult.Success;
+    }
+
+    private string? DetectionResearchRule(string? id)
+    {
+        var rules = campaign.Content.RuntimeRules.Research;
+        return id is not null && id.Length != 0 && id != "\0" && rules.TryGet(id, out var handle)
+            ? rules.GetExternalId(handle) : null;
     }
 
     private int DetectionUfoValue(string name, UfoSnapshot ufo)
