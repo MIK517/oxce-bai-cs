@@ -48,6 +48,27 @@ $unitGetters = @(
     ((Read-Method 'src/Mod/Unit.h' 'const RuleItem* getCivilianRecoveryItemType()').Replace('const RuleItem* getCivilianRecoveryItemType()', 'const RuleItem* Unit::getCivilianRecoveryItemType()'))
 )
 $template = $template.Replace('// UNIT_LINKS', $unitLinks + [Environment]::NewLine + ($unitGetters -join [Environment]::NewLine))
+$itemReaders = @(
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracyAimed()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracyAuto()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracySnap()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracyMelee()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracyUse()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracyMind()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracyPanic()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getAccuracyThrow()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getPower()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getMeleePower()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getArmor()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getWaypoints()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'bool RuleItem::isTwoHanded()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'bool RuleItem::isBlockingBothHands()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'bool RuleItem::isWaterOnly()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'const std::vector<std::string> &RuleItem::getCategories()'),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'void RuleItem::updateCategories('),
+    (Read-Method 'src/Mod/RuleItem.cpp' 'void hasCategoryScript(')
+)
+$template = $template.Replace('// ITEM_READERS', ($itemReaders -join [Environment]::NewLine))
 $inventoryMethods = @(
     (Read-Method 'src/Mod/RuleInventory.cpp' 'RuleInventory::RuleInventory('),
     (Read-Method 'src/Mod/RuleInventory.cpp' 'const std::string& RuleInventory::getId()'),

@@ -234,6 +234,12 @@ public sealed record RuntimeCraftWeaponRule(int AmmoMaximum, int RearmRate, stri
     public double BonusStorageSpace { get; init; }
 }
 
+/// <summary>Raw rule action accuracy before tactical bonuses and random rolls.</summary>
+public sealed record RuntimeItemAccuracy(int Aimed, int Auto, int Snap, int Melee, int Use, int Mind, int Panic, int Throw)
+{
+    public static RuntimeItemAccuracy Default { get; } = new(0, 0, 0, 0, 0, 0, 20, 100);
+}
+
 public sealed record RuntimeItemRule(
     string Name,
     int ListOrder,
@@ -249,6 +255,7 @@ public sealed record RuntimeItemRule(
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
     public string Type { get; init; } = "";
+    public RuntimeItemAccuracy Accuracy { get; init; } = RuntimeItemAccuracy.Default;
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public bool IsAlien { get; init; }
     public int VehicleFixedAmmoSlot { get; init; }

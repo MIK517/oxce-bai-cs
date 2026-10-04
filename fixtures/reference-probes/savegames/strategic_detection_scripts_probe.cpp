@@ -26,9 +26,22 @@ const ScriptText ScriptText::empty;
 struct RuleItem {
 std::string _type="ITEM_METADATA"; int _weight=-7; BattleType _battleType=(BattleType)3;
 const std::string& getType() const { return _type; }
+struct Action { int accuracy=0; };
+Action _confAimed,_confAuto,_confSnap,_confMelee;
+int _accuracyUse=0,_accuracyMind=0,_accuracyPanic=20,_accuracyThrow=100;
+int _power=0,_meleePower=0,_armor=20,_waypoints=0;
+bool _twoHanded=false,_blockBothHands=false,_underwaterOnly=false;
+std::vector<std::string> _categories;
+int getAccuracyAimed() const;int getAccuracyAuto() const;int getAccuracySnap() const;int getAccuracyMelee() const;
+int getAccuracyUse() const;int getAccuracyMind() const;int getAccuracyPanic() const;int getAccuracyThrow() const;
+int getPower() const;int getMeleePower() const;int getArmor() const;int getWaypoints() const;
+bool isTwoHanded() const;bool isBlockingBothHands() const;bool isWaterOnly() const;
+const std::vector<std::string>& getCategories() const;
+void updateCategories(std::map<std::string,std::string>*);
 int getWeight() const;
 BattleType getBattleType() const;
 };
+// ITEM_READERS
 struct Armor {
 static const std::string NONE; std::string _type="ARMOR_METADATA"; int _size=2;
 const std::string& getType() const { return _type; }
@@ -545,6 +558,40 @@ std::map<std::string,int> fields={
 std::cout<<'{';bool firstVision=true;
 for(const auto& [name,value]:fields) {if(!firstVision)std::cout<<',';firstVision=false;std::cout<<'\"'<<name<<"\":"<<value;}
 std::cout<<'}';
+}
+std::cout<<"],\"itemReaders\":[";
+RuleItem itemReader;
+for(int stage=0;stage<2;++stage) {
+if(stage) {
+std::cout<<',';
+itemReader._confAimed.accuracy=-7;itemReader._confAuto.accuracy=INT_MAX;itemReader._confSnap.accuracy=83;itemReader._confMelee.accuracy=41;
+itemReader._accuracyUse=27;itemReader._accuracyMind=-11;itemReader._accuracyPanic=INT_MIN;itemReader._accuracyThrow=120;
+itemReader._power=-9;itemReader._meleePower=INT_MAX;itemReader._armor=0;itemReader._waypoints=-1;
+itemReader._twoHanded=true;itemReader._blockBothHands=true;itemReader._underwaterOnly=true;
+}
+std::map<std::string,int> fields={
+{"getAccuracyAimed",itemReader.getAccuracyAimed()},{"getAccuracyAuto",itemReader.getAccuracyAuto()},
+{"getAccuracySnap",itemReader.getAccuracySnap()},{"getAccuracyMelee",itemReader.getAccuracyMelee()},
+{"getAccuracyUse",itemReader.getAccuracyUse()},{"getAccuracyMind",itemReader.getAccuracyMind()},
+{"getAccuracyPanic",itemReader.getAccuracyPanic()},{"getAccuracyThrow",itemReader.getAccuracyThrow()},
+{"getPower",itemReader.getPower()},{"getMeleePower",itemReader.getMeleePower()},
+{"getArmorValue",itemReader.getArmor()},{"getWaypoints",itemReader.getWaypoints()},
+{"isTwoHanded",itemReader.isTwoHanded()},{"isBlockingBothHands",itemReader.isBlockingBothHands()},{"isWaterOnly",itemReader.isWaterOnly()}};
+std::cout<<'{';bool firstItem=true;
+for(const auto& [name,value]:fields){if(!firstItem)std::cout<<',';firstItem=false;std::cout<<'\"'<<name<<"\":"<<value;}
+std::cout<<'}';
+}
+std::cout<<"],\"itemCategoryReplacement\":[";
+for(int stage=0;stage<2;++stage){
+if(stage)std::cout<<',';
+itemReader._categories={"A","B","C","FREE","A"};
+std::map<std::string,std::string> replacements=stage==0?
+std::map<std::string,std::string>{{"A","B"},{"B","C"},{"C","A"}}:
+std::map<std::string,std::string>{{"C","B"},{"B","A"}};
+itemReader.updateCategories(&replacements);
+std::cout<<'[';bool firstCategory=true;
+for(const char* cat: {"A","B","C","FREE","MISSING","free"}){if(!firstCategory)std::cout<<',';firstCategory=false;int result=-1;hasCategoryScript(&itemReader,result,cat);std::cout<<"[\""<<cat<<"\","<<result<<"]";}
+int result=-1;hasCategoryScript(nullptr,result,"A");std::cout<<",[\"NULL\","<<result<<"]]";
 }
 std::cout<<"]}\n";
 }
