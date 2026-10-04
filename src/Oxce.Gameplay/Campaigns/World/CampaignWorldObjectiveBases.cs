@@ -66,7 +66,7 @@ internal sealed partial class CampaignWorld
         {
             // Hourly production precedes both final-wave and landing births.
             // Its craft allocator can advance this shared counter past our range.
-            if (highest >= CampaignTimeTrigger.OneHour)
+            if (landing && highest >= CampaignTimeTrigger.OneHour)
                 foreach (var owner in campaign.BaseStates)
                     foreach (var production in owner.Productions)
                     {
@@ -103,6 +103,8 @@ internal sealed partial class CampaignWorld
                 return "Landing base creation shares decreased marker counters with same-tick world births.";
             var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest,
                 landing ? _siteConversionCounterForecast : null);
+            if (!landing)
+                range = campaign.ProductionPreflight.CraftCounter(marker, highest, range);
             var end = range.Maximum + count;
             if (range.Minimum <= 0 || end > int.MaxValue ||
                 _alienBases.Any(existing => MarkerName(existing.DeploymentId) == marker && existing.Id >= range.Minimum && existing.Id < end) ||
