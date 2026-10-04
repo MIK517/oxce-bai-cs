@@ -21,10 +21,6 @@ internal sealed partial class CampaignWorld
     {
         if (rule.EndlessInfiltration)
         {
-            work += _ufos.Count;
-            if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
-            if (rule.Waves.Count > 1 && _ufos.Any(ufo => ufo.MissionId == mission.Id && ufo.MissionWaveNumber == -1))
-                return "Endless infiltration completion requires legacy UFO wave forecasts.";
             var timer = rule.Waves[0].SpawnTimer;
             if (timer > int.MaxValue || (timer / 30 / 2 + timer / 30) * 30 > int.MaxValue)
                 return "Endless infiltration restart timer exceeds the supported range.";
