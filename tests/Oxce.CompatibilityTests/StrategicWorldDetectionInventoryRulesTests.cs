@@ -10,6 +10,35 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionInventoryRulesTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void InventoryCostsProjectSignedValuesAndReplacementAcrossCache(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
+        var rows = TestFixtures.Rows(oracle.RootElement, "costs");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            invs:
+              - id: RIGHT
+                refNode:
+                  costs: {REMOVED: 12}
+                costs: {LEFT: -7, GROUND: 2147483647, RIGHT: 99}
+              - id: LEFT
+                costs: {RIGHT: -2147483648}
+              - id: GROUND
+            """);
+        var rules = content.RuntimeRules.Inventories;
+        var right = rules[rules.GetRequired("RIGHT")].Value;
+        var left = rules[rules.GetRequired("LEFT")].Value;
+        Assert.Equal(rows[1][0].GetInt32(), right.Costs["LEFT"]);
+        Assert.Equal(rows[2][0].GetInt32(), right.Costs["GROUND"]);
+        Assert.Equal(rows[3][0].GetInt32(), left.Costs["RIGHT"]);
+        Assert.Equal(99, right.Costs["RIGHT"]);
+        Assert.False(right.Costs.ContainsKey("REMOVED"));
+        Assert.Empty(rules[rules.GetRequired("GROUND")].Value.Costs);
+        Assert.Throws<NotSupportedException>(() => ((IDictionary<string, int>)right.Costs).Add("NEW", 1));
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
