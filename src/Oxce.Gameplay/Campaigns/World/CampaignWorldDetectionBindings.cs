@@ -23,7 +23,8 @@ internal sealed partial class CampaignWorld
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
-        "Craft.getDamage" or "Craft.getShield" or "Craft.getRuleCraft" or
+        "Craft.getDamage" or "Craft.getDamageMax" or "Craft.getDamagePercentage" or
+        "Craft.getShield" or "Craft.getShieldMax" or "Craft.getShieldPercentage" or "Craft.getRuleCraft" or
         "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance" or
         "RuleCraft.Stats.getRadarRange" or "RuleCraft.Stats.getRadarChance" or
         "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
@@ -213,6 +214,19 @@ internal sealed partial class CampaignWorld
     {
         if (name == "Craft.getDamage") return craft.Logistics?.Damage ?? 0;
         if (name == "Craft.getShield") return craft.Logistics?.Shield ?? 0;
+        var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+        if (name is "Craft.getDamageMax" or "Craft.getDamagePercentage")
+        {
+            var maximum = checked((int)DetectionCraftStat(rule, craft.Logistics, "damageMax"));
+            return name == "Craft.getDamageMax" ? maximum :
+                (int)Math.Floor((double)(craft.Logistics?.Damage ?? 0) / maximum * 100);
+        }
+        if (name is "Craft.getShieldMax" or "Craft.getShieldPercentage")
+        {
+            var maximum = checked((int)DetectionCraftStat(rule, craft.Logistics, "shieldCapacity"));
+            return name == "Craft.getShieldMax" ? maximum : maximum == 0 ? 0 :
+                unchecked((craft.Logistics?.Shield ?? 0) * 100) / maximum;
+        }
         var key = DetectionCraftStatKey(name)
             ?? throw new InvalidOperationException("Detection craft provider was not preflighted.");
         return checked((int)DetectionCraftStat(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,

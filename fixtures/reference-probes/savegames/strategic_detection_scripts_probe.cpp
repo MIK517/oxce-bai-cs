@@ -222,10 +222,14 @@ UfoDetection detect(const Ufo*,const SavedGame*,bool) const;
 };
 struct Craft {
 double distance=0;
-struct { int radarRange=0,radarChance=0; } _stats;
+RuleCraftStats _stats;
+int _damage=0,_shield=0;
+int getDamage() const;int getDamagePercentage() const;int getDamageMax() const;
+int getShield() const;int getShieldPercentage() const;int getShieldCapacity() const;
 double getDistance(const Ufo*) const { return distance; }
 UfoDetection detect(const Ufo*,const SavedGame*,bool) const;
 };
+// CRAFT_METHODS
 // UFO_METHODS
 // DAMAGE_WRAPPER
 // METHODS
@@ -240,7 +244,7 @@ using namespace OpenXcom;
 SavedGame save; Ufo ufo; ufo.visibility=-30;
 Facility ordinary{{100,40,false}}, far{{80,70,false}}, hyper{{150,50,true}}, farHyper{{90,90,true}}, unfinished{{999,100,true},1};
 Base base; base.distance=100; base._facilities={&ordinary,&far,&hyper,&farHyper,&unfinished};
-Craft craft; craft.distance=100; craft._stats={100,75};
+Craft craft; craft.distance=100; craft._stats.radarRange=100; craft._stats.radarChance=75;
 std::cout<<"{\"base\":[";
 for(int i=0;i<4;++i) {
 if(i) std::cout<<',';
@@ -256,6 +260,13 @@ craft.distance=i==0||i==3?100:99; RNG::calls.clear();RNG::succeeds=false;ModScri
 int result=craft.detect(&ufo,&save,i==2);
 std::cout<<"{\"tracked\":"<<(i==2?"true":"false")<<",\"override\":"<<(i==3?"true":"false")<<",\"inputs\":";array(ModScript::inputs);
 std::cout<<",\"initial\":";array(ModScript::initial);std::cout<<",\"calls\":";array(RNG::calls);std::cout<<",\"result\":"<<result<<'}';
+}
+std::cout<<"],\"craftConditions\":[";
+bool firstCraftCondition=true;
+for(auto row: std::vector<std::vector<int>>{{7,50,3,10},{29,100,2,7},{14,67,0,0},{0,50,97,100}}) {
+if(!firstCraftCondition)std::cout<<',';firstCraftCondition=false;
+craft._damage=row[0];craft._stats.damageMax=row[1];craft._shield=row[2];craft._stats.shieldCapacity=row[3];
+array({craft.getDamage(),craft.getDamageMax(),craft.getDamagePercentage(),craft.getShield(),craft.getShieldCapacity(),craft.getShieldPercentage()});
 }
 std::cout<<"],\"bindings\":["; array({ufo.getDamage(),ufo.getShield(),ufo.getShieldPercentage(),(int)ufo.getDetected(),(int)ufo.getHyperDetected(),(int)ufo.isHunterKiller(),(int)ufo.isHunting(),(int)ufo.isEscorting(),ufo.getHuntMode(),ufo.getHuntBehavior()}); std::cout<<"],\"tagValues\":[";
 ScriptValuesBase tags; tags.setBase(0,99); tags.setBase(2,-7);
