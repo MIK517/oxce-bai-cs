@@ -11,6 +11,10 @@ public sealed class StrategicGenerationRegionForecastTests
     [Fact]
     public void RectanglePartitionPreservesOrderedContainmentAndRejectsHoles()
     {
+        Assert.False(WorldGenerationRegions.FitsWork(3_400_001, 3_400_001, 850_001, 1_000_000));
+        Assert.False(WorldGenerationRegions.FitsWork(long.MaxValue, long.MaxValue, long.MaxValue, long.MaxValue));
+        Assert.True(WorldGenerationRegions.FitsWork(10, 10, 10, 1000));
+        Assert.False(WorldGenerationRegions.FitsWork(10, 10, 10, 999));
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var template = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
