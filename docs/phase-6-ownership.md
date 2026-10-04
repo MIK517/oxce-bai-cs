@@ -928,3 +928,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   with existing-base generation. Reference: GeoscapeState::baseHunting immediate
   think after final-wave births; pinned hunting-generation and objective fixtures.
   Fresh/cache cases verify exhausted IDs, start timers, links and reload.
+
+- Batch 3 slice 2: newborn hunting forecasts cover regional rectangles by
+  partitioning at all saved-region boundaries, preserving locateRegion order and
+  hemisphere endpoint rules. Every possible region must be covered; holes and
+  excessive partition work fail intentionally. All reachable remapped regions
+  are checked without RNG. Fresh/cache regional births start delayed missions
+  and reload through the same lifecycle path as point births.
