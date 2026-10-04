@@ -386,6 +386,26 @@ public sealed class StrategicWorldDetectionItemRulesTests
             "", fromCache, fromCraft, $"skills: [{{type: {types[0].GetString()}}}]");
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void RandomDamageNullStateAndProfilePreserveNativeShortCircuit(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        var rows = TestFixtures.Rows(oracle.RootElement, "nullRandomDamage");
+        Assert.Equal(0, oracle.RootElement.GetProperty("unusedRandomCalls").GetInt32());
+        var code = "var ptr RuleItem item; var ptr RuleDamageType damage; var ptr RuleDamageType absent null; " +
+            "var ptre RandomState random null; var ptre RandomState copy; var int value; " +
+            "set copy random; rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
+            $"damage.getRandomDamage value 2147483647 copy; if neq value {rows[0].GetInt32()}; return DETECTION_NONE 0; end; " +
+            $"absent.getRandomDamage value -2147483648 random; if neq value {rows[1].GetInt32()}; return DETECTION_NONE 0; end; " +
+            $"absent.getRandomDamage value detection_chance copy; if neq value {rows[2].GetInt32()}; return DETECTION_NONE 0; end; " +
+            "return DETECTION_RADAR 100;";
+        RunItemScript(code, "damageAlter: {ToHealth: 1e100}", fromCache, fromCraft);
+    }
+
     private static readonly string[] DamageReaders =
         ["getDamageToArmorPre", "getDamageToArmor", "getDamageToEnergy", "getDamageToHealth",
          "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",

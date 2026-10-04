@@ -7,7 +7,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal static class WorldDetectionDamageQueries
 {
     internal static bool Supports(string name) => name is
-        "RuleDamageType.getArmorEffectiveness" or
+        "RuleDamageType.getRandomDamage" or "RuleDamageType.getArmorEffectiveness" or
         "RuleDamageType.getDamageToArmorPre" or "RuleDamageType.getDamageToArmor" or
         "RuleDamageType.getDamageToEnergy" or "RuleDamageType.getDamageToHealth" or
         "RuleDamageType.getDamageToItem" or "RuleDamageType.getDamageToMana" or
@@ -57,6 +57,11 @@ internal static class WorldDetectionDamageQueries
             var receiver = instruction.Operands[1];
             var candidates = references.At(index, receiver);
             if (candidates is { Count: 1 } && candidates.Contains(null)) continue;
+            if (binding.Name == "RuleDamageType.getRandomDamage")
+            {
+                if (WorldDetectionReferenceForecast.OnlyNull(references.At(index, instruction.Operands[4]))) continue;
+                return "Detection random damage requires a null profile or null state forecast.";
+            }
             var armor = binding.Name == "RuleDamageType.getArmorEffectiveness";
             var power = armor ? (0, 0) : ScalarRange(instruction.Operands[3], powers);
             work += candidates?.Count ?? 2L * rules.Items.Count;
