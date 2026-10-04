@@ -474,17 +474,21 @@ internal sealed partial class CampaignWorld
     // Pure transition shared by time10Minutes and arrival preflight. Fuel return precedes
     // time5Seconds even when its notification pauses subsequent ticks.
     private CraftLogisticsState AdvanceCraftFuel(CampaignState.BaseState owner, CampaignState.CraftState craft,
-        CraftLogisticsState state)
+        CraftLogisticsState state, IReadOnlyDictionary<(string TypeId, int Id), CraftLogisticsState>? projectedCrafts = null)
     {
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var speedMaximum))
             throw new InvalidOperationException("Craft speed changed after world preflight.");
         var escortSpeed = 0;
-        if (state.Destination is { Kind: WorldTargetKind.Craft } escort && TargetCraft(escort)?.Logistics is { } leader &&
-            WorldGeometry.Distance(new(state.Longitude, state.Latitude), new(leader.Longitude, leader.Latitude)) <
-                WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
-            escortSpeed = leader.Speed;
+        if (state.Destination is { Kind: WorldTargetKind.Craft } escort)
+        {
+            var leader = projectedCrafts is null ? TargetCraft(escort)?.Logistics :
+                projectedCrafts.GetValueOrDefault((escort.TypeId, escort.Id));
+            if (leader is not null && WorldGeometry.Distance(new(state.Longitude, state.Latitude),
+                    new(leader.Longitude, leader.Latitude)) < WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
+                escortSpeed = leader.Speed;
+        }
         var consumption = state.Destination is null && rule.PatrolWithoutFuel ? 0 :
             WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, escortSpeed);
         if (consumption != 0) state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };

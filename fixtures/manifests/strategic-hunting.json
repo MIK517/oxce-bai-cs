@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 15442,
-      "sha256": "8cec4ad261e2f4edf242ea927b56a76aaf56dd6204ec4ae37b1b95f75fc19ed0"
+      "size": 17237,
+      "sha256": "61d2cda14d7958deef673c88dc4589889487f89d677f81fb125c0c40218edd02"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 7073,
-      "sha256": "638ab8469896506fa2c90e1f39ca623752efe41daae92e68d8d24fcdf4083d33"
+      "size": 7720,
+      "sha256": "f1353ad5de1fbf776058977a19ec32ca3812cfec14450e419181bce6e48b98d5"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",

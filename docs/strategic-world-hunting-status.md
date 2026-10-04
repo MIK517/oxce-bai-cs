@@ -249,3 +249,5 @@ Hourly item stocks and production ammunition reuse also remain explicit guards.
 Craft-reference fuel scans are reserved against the shared work bound. Negative
 fuel capacity and overflowing service rates refuse the tick intentionally.
 Combat, deployment, event payloads and campaign month progression remain deferred.
+
+Branch 4c composed escort fuel: hunter preflight now builds one pure ordered craft projection, applies all maintenance/relaunches, then fuel use in saved base/craft order. The shared AdvanceCraftFuel transition accepts projected leader states, so a relaunch or an earlier low-fuel return supplies the speed consumed by later escorts. This removes the audit-added relaunch-leader guard. Four new native strategic-hunting rows insert getFuelConsumption/consumeFuel/returnToBase and the exact time10Minutes escort/fuel-return caller; all older traces remain unchanged. Eighty-eight focused hunting/craft-operation tests pass, including fresh/cache canonical order comparisons, notification fallthrough and reload. Incoming craft and hourly stock/ammunition effects remain precise subsequent work; 4d and combat/event/month boundaries are unchanged.

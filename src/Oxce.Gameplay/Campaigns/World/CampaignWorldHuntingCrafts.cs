@@ -4,6 +4,42 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
+    private string? ForecastHuntingCrafts(CampaignTimeTrigger highest, ref long work)
+    {
+        _huntingCraftForecast = [];
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var owner in campaign.BaseStates)
+        {
+            Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
+            work += owner.Crafts.Count + (long)owner.Items.Count;
+            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (highest >= CampaignTimeTrigger.ThirtyMinutes) stocks = new(owner.Items);
+            foreach (var craft in owner.Crafts)
+            {
+                if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
+                if (ForecastHuntingCraftState(owner, craft, highest, stocks, out var state) is { } reason) return reason;
+                _huntingCraftForecast.Add((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
+            }
+        }
+        if (highest < CampaignTimeTrigger.TenMinutes) return null;
+        // Every relaunch precedes fuel use. Fuel itself runs in saved craft order;
+        // an earlier leader's return can change its speed before a later escort burns fuel.
+        foreach (var owner in campaign.BaseStates)
+            foreach (var craft in owner.Crafts)
+            {
+                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                var key = (rules.Crafts.GetExternalId(craft.Rule), craft.Id);
+                var state = _huntingCraftForecast[key];
+                if (state.Status != "STR_OUT") continue;
+                if (!owner.IsPlaced || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
+                    return "Airborne craft coordinates require a placed base and normalized positions.";
+                if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out _))
+                    return SpeedRangeReason;
+                _huntingCraftForecast[key] = AdvanceCraftFuel(owner, craft, state, _huntingCraftForecast);
+            }
+        return null;
+    }
+
     /// <summary>Pure craft state at the native retarget caller, before five-second movement.</summary>
     private string? ForecastHuntingCraftState(CampaignState.BaseState owner, CampaignState.CraftState craft,
         CampaignTimeTrigger highest, Dictionary<RuleHandle<ItemRuleFamily>, int>? fuelStocks, out CraftLogisticsState state)

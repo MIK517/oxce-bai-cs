@@ -22,7 +22,7 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
 }
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_hunting_probe.cpp'))
 $refuelMethods = ''
-foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::refuel()', 'void Craft::setDestination(Target *dest)', 'void Craft::repair()', 'const RuleItem* Craft::rearm()')) {
+foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::refuel()', 'void Craft::setDestination(Target *dest)', 'void Craft::repair()', 'const RuleItem* Craft::rearm()', 'int Craft::getFuelConsumption(int speed, int escortSpeed) const', 'void Craft::consumeFuel(int escortSpeed)', 'void Craft::returnToBase()')) {
     $refuelMethods += (Read-ReferenceMethod 'src/Savegame/Craft.cpp' $signature) + [Environment]::NewLine
 }
 $template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
@@ -39,6 +39,11 @@ while ($autoDepth -gt 0 -and $autoEnd -lt $halfHour.Length) {
 }
 if ($autoDepth -ne 0) { throw 'Unbalanced auto-patrol fragment.' }
 $template = $template.Replace('// AUTO_PATROL', $halfHour.Substring($autoStart, $autoEnd - $autoStart))
+$tenMinutes = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time10Minutes()'
+$fuelStart = $tenMinutes.IndexOf('int escortSpeed = 0;', [StringComparison]::Ordinal)
+$fuelEnd = $tenMinutes.IndexOf('if (xcraft->getDestination() == 0', $fuelStart, [StringComparison]::Ordinal)
+if ($fuelStart -lt 0 -or $fuelEnd -le $fuelStart) { throw 'Missing ordered craft fuel fragment.' }
+$template = $template.Replace('// FUEL_CALLER', $tenMinutes.Substring($fuelStart, $fuelEnd - $fuelStart))
 $template = $template.Replace('// IGNORED_METHOD', (Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'bool Craft::isIgnoredByHK() const'))
 $template = $template.Replace('// ATTRACTION', (Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'int Craft::getHunterKillerAttraction(int huntMode) const'))
 $constructor = Read-ReferenceMethod 'src/Savegame/Ufo.cpp' 'Ufo::Ufo(const RuleUfo *rules, int uniqueId, int hunterKillerPercentage, int huntMode, int huntBehavior)'

@@ -637,7 +637,7 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Fact]
-    public void RelaunchingLeaderSpeedCannotBypassEscortFuelForecast()
+    public void RelaunchingLeaderSpeedFeedsEscortFuelBeforeHunting()
     {
         var content = Load(overlay: "crafts: [{type: RELAUNCH_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
@@ -673,8 +673,106 @@ public sealed class StrategicWorldHuntingTests
             Longitude = 0.45, Latitude = 0.21, Crafts = [.. initial.Bases[0].Crafts, leader],
         }]
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO retargeting requires same-tick craft escort fuel forecasts.");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        var after = campaign.Capture();
+        var escort = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+        Assert.Equal(20, escort.Fuel);
+        Assert.False(escort.LowFuel);
+        Assert.True(after.World.Ufos[0].Hunting);
+        Assert.Equal("SHIP", after.World.Ufos[0].Destination!.TypeId);
+        Reload(content, campaign, 81, "relaunched-leader-escort.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EarlierLeaderFuelReturnChangesLaterEscortConsumption(bool leaderFirst)
+    {
+        var content = Load(overlay: "crafts: [{type: FUEL_RETURN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 9, 55) };
+        var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        var leader = template with
+        {
+            RuleId = "FUEL_RETURN_LEADER", Id = 2,
+            Logistics = template.Logistics! with { Fuel = 0, Speed = 0, Weapons = [] },
+        };
+        var escort = template with { Logistics = template.Logistics! with
+        {
+            Fuel = 50, Speed = 6000, Weapons = [],
+            Destination = new(WorldTargetKind.Craft, "FUEL_RETURN_LEADER", 2, 0.45, 0.21),
+        } };
+        initial = initial with { Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21, Soldiers = [],
+            Crafts = leaderFirst ? [leader, escort] : [escort, leader],
+        }] };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        var after = campaign.Capture();
+        var state = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+        Assert.Equal(leaderFirst ? 20 : 0, state.Fuel);
+        // At the base, the return arrival clears low-fuel after the hunt caller.
+        Assert.Equal(leaderFirst, after.World.Ufos[0].Hunting);
+        Reload(content, campaign, 81, "ordered-escort-fuel.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ComposedEscortFuelAndHuntingMatchNativeOrder(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts:\n  - {type: HUNT_FUEL_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100, allowLanding: false}\n  - {type: HUNT_FUEL_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, allowLanding: false}\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "escortFuelRows"))
+        {
+            var relaunch = row[0].GetBoolean();
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, relaunch ? 29 : 9, 55) };
+            var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+            var leader = template with
+            {
+                RuleId = "HUNT_FUEL_LEADER", Id = 2,
+                Logistics = template.Logistics! with
+                {
+                    Status = relaunch ? "STR_REFUELLING" : "STR_OUT", Fuel = relaunch ? 60 : 0,
+                    IsAutoPatrolling = relaunch, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                },
+            };
+            var escort = template with
+            {
+                RuleId = "HUNT_FUEL_ESCORT",
+                Logistics = template.Logistics! with
+                {
+                    Fuel = 50, Speed = 6000, Weapons = [],
+                    Destination = new(WorldTargetKind.Craft, "HUNT_FUEL_LEADER", 2, 0.45, 0.21),
+                },
+            };
+            initial = initial with { Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21, Soldiers = [],
+                Crafts = row[1].GetBoolean() ? [leader, escort] : [escort, leader],
+            }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ordered-fuel-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var state = after.Bases[0].Crafts.Single(craft => craft.RuleId == "HUNT_FUEL_ESCORT").Logistics!;
+            var leaderState = after.Bases[0].Crafts.Single(craft => craft.RuleId == "HUNT_FUEL_LEADER").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                state.Fuel, leaderState.Fuel,
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            { row[2].GetInt32(), row[4].GetInt32(), row[5].GetInt32() });
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Assert.Equal(row[3].GetBoolean(), result.Events.OfType<CraftLowFuel>().Any(message => message.CraftTypeId == "HUNT_FUEL_ESCORT"));
+            Reload(content, campaign, 81, "ordered-fuel-after.sav");
+        }
     }
 
     [Theory]
