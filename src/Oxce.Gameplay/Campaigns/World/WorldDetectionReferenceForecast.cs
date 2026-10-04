@@ -104,6 +104,8 @@ internal sealed class WorldDetectionReferenceForecast
                             if (source is null || source.Contains(null)) values.Add(null);
                         }
                     }
+                    else if (binding.Name is "Ufo.getRules" or "Ufo.getRuleUfo" or "Craft.getRuleCraft" or "GeoscapeGame.getTime" && OnlyNull(source))
+                        values = [null];
                     else if (binding.Name == "Country.getRuleCountry")
                     {
                         if (OnlyNull(source)) values = [null];

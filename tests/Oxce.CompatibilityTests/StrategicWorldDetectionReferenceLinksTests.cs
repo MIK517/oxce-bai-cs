@@ -75,4 +75,33 @@ public sealed class StrategicWorldDetectionReferenceLinksTests
                 neededItem: LINK_ITEM
             """);
     }
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NullEntityRuleAndClockLinksStayNullThroughQueryComposition(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "nullMemberOutputs"))
+        {
+            Assert.Equal(2, row.GetArrayLength());
+            Assert.All(row.EnumerateArray(), static value => Assert.Equal(0, value.GetInt32()));
+        }
+        AssertDetectionReadScript("var ptr Ufo absentUfo null; var ptr Craft absentCraft null; var ptr GeoscapeGame absentGame null; " +
+            "var ptr RuleUfo ufoRule; var ptr RuleCraft craftRule; var ptr Time time; var ptr RuleItem item; " +
+            "var ptr RuleDamageType damage; var int power; var int value; rules.getRuleItem item \"NULL_LINK_QUERY\"; " +
+            "item.getDamageType damage; absentUfo.getRules ufoRule; ufoRule.getWeaponPower power; " +
+            "damage.getDamageToHealth value power; if neq value 0; return DETECTION_NONE 0; end; " +
+            "if neq ufoRule null; div detection_chance 0; end; absentUfo.getRuleUfo ufoRule; " +
+            "if neq ufoRule null; div detection_chance 0; end; " +
+            (fromCraft ? "absentCraft.getRuleCraft craftRule; " +
+            "craftRule.Stats.getSpeedMax power; damage.getDamageToHealth value power; " +
+            "if neq value 0; return DETECTION_NONE 0; end; if neq craftRule null; div detection_chance 0; end; " : "") +
+            "absentGame.getTime time; time.getHour power; damage.getDamageToHealth value power; " +
+            "if neq value 0; return DETECTION_NONE 0; end; if neq time null; div detection_chance 0; end; " +
+            "return DETECTION_RADAR 100;", fromCache, fromCraft,
+            "items: [{type: NULL_LINK_QUERY, damageAlter: {ToHealth: 1}}]");
+    }
+
 }
