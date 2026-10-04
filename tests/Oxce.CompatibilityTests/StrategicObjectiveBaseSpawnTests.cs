@@ -446,15 +446,19 @@ public sealed class StrategicObjectiveBaseSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, false)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, false)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, false)]
-    [InlineData(true, true, true)]
-    public void SharedCraftProductionMarkersReserveThePostProductionBaseId(bool cache, bool landing, bool fallback)
+    [InlineData(false, false, false, false)]
+    [InlineData(false, false, true, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, false, false)]
+    [InlineData(false, true, true, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, true, true, true)]
+    [InlineData(true, true, true, true)]
+    public void SharedCraftProductionMarkersReserveThePostProductionBaseId(bool cache, bool landing, bool fallback, bool arrivingEngineers)
     {
         var content = LoadWorld(cache, marker: "SHIP", landing: landing, zone: landing ? 0 : 1);
         var initial = landing ? LandingInitial(content) : Initial(content);
@@ -466,7 +470,8 @@ public sealed class StrategicObjectiveBaseSpawnTests
             Bases = [owner with
             {
                 Facilities = [.. owner.Facilities, new("BASE_MARKER_WORKSHOP", 5, 5, 0, 0, false, false, false)],
-                Engineers = fallback ? 1 : owner.Engineers,
+                Engineers = arrivingEngineers ? 0 : fallback ? 1 : owner.Engineers,
+                Transfers = arrivingEngineers ? [new(700, 1, CampaignTransferKind.Engineer, "", 1)] : owner.Transfers,
                 Productions = [new("BASE_MARKER_CRAFT", fallback ? 0 : 1, 0, 1, false, false, fallback, new Dictionary<string, int>())],
             }],
             World = initial.World with { AlienBases = [new(nextCraft + 1, "COLLISION_BASE", "RACE_A", 0.2, 0.1)] },

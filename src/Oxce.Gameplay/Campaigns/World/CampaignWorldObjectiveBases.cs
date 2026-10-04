@@ -72,7 +72,7 @@ internal sealed partial class CampaignWorld
             var count = reservations.GetValueOrDefault(marker) + 1;
             reservations[marker] = count;
             work += _alienBases.Count + (long)_sites.Count;
-            foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            // ProductionCounterWorkReason already charges craft/transfer identity scans.
             if (landing)
                 work += (_siteBirthIdChanges?.Count ?? 0) + 2L * (_siteConversionCounterForecast?.Count ?? 0);
             // Counter forecasts include daily research; charge its scans too.

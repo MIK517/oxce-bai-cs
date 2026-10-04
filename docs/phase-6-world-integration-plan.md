@@ -383,3 +383,38 @@ regenerated code-map checks and git diff --check pass. Useful generated probes
 remain available; the obsolete retaliation-spawn object file was removed. The
 pinned C++ checkout remains clean. This completes the requested fifteen slices
 and five audits, while the revised 4c headless completion gate remains open.
+
+### Legacy arrivals, shared production IDs and newborn hunting checkpoint (2026-10-04)
+
+Four further cycles deliver twelve slices with four batch audits. Legacy UFO
+arrivals now infer waves from bounded post-think mission counters, including
+endless infiltration restarts; site conversion, pursuit and landing reservations
+use that projection without changing saved wave identity or consuming RNG.
+Production-owned bounds coordinate final-wave bases, landing bases, direct sites
+and UFO conversions sharing craft counters. They include fallback staffing,
+craft-material consumption, hourly engineer arrivals and daily workshop completion.
+Newborn objective/infiltration bases can start delayed and immediate no-object
+hunting missions with combined mission IDs, ordered rectangular-region coverage,
+mapped regions, bounded work and transition reloads.
+
+Three confirmed audit issues were fixed in separate commits: malformed finite-chain
+error behavior, partition arithmetic/resource limits, and missing same-tick staffing
+inputs. The second audit found no confirmed behavior defect. Fresh/cache tests cover
+unchanged-state refusal, actual births, links, cleanup and persistence. Added craft
+identity scans are charged on both hourly and intervening ticks.
+
+The revised headless gate remains open. Remaining 4c work includes actual detection
+VM providers, initial/monthly caller composition, wider generated-object and newborn
+source forecasts, and final composed acceptance/performance classification. Newborn
+immediate supply UFOs still require a live source forecast, and uncertain/decreased
+shared marker counters retain precise checks. Combat/deployment stay in branch 5;
+event effects, signed monthly pacts and integrated month progression stay in branch 6.
+Branch 4d is untouched.
+
+Final four-cycle validation: all 1,916 root tests pass with zero failures/skips,
+including checksums and private-corpus tests. Formatting verification,
+regenerated code-map validation and git diff --check pass. Three confirmed audit
+findings were fixed separately; all twelve requested slices and four audits are
+complete. Useful native captures remain available; the obsolete counter-probe
+object file was removed. The reference remains clean at the pinned commit.
+The revised 4c headless acceptance gate remains open; 4d is untouched.
