@@ -122,12 +122,13 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
     private string? MissionScriptReason(
         RuntimeRule<RuntimeMissionScriptRule>[] available, int month,
         Dictionary<string, long>? maximumRuns = null, Dictionary<string, long>? maximumMarkers = null,
-        HashSet<string>? createdDeployments = null)
+        HashSet<MonthlyBaseBirthChoice>? prospectiveBases = null)
     {
         string? missionFailureReason = null;
         var labels = new HashSet<int>();
         var runs = new Dictionary<string, int>(StringComparer.Ordinal);
         var possible = 0;
+        RuntimeMissionScriptRule? activeScript = null;
         var executableCount = available.Count(entry => entry.Value.Criteria.ExecutionOdds > 0);
         long work = 0;
         var hasSiteScripts = available.Any(entry => entry.Value.SiteType);
@@ -143,6 +144,7 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         foreach (var entry in available)
         {
             var script = entry.Value;
+            activeScript = script;
             creationChoices.Clear();
             var creditedRegions = new HashSet<string>(StringComparer.Ordinal);
             if (script.Label > 0 && !labels.Add(script.Label))
@@ -335,6 +337,19 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
             return region.MissionRegionId.Length == 0 || region.MissionRegion is not null;
         }
 
+        IEnumerable<string> ScriptBirthRaces(RuntimeAlienMissionRule rule)
+        {
+            if (activeScript!.Races.Count == 0)
+            {
+                var weights = WorldAlienMissionGeneration.WeightsAt(rule.RaceWeights, unchecked((ulong)month), race: true);
+                work += weights.Count;
+                return weights.Where(choice => choice.Value != 0).Select(choice => choice.Key);
+            }
+            var choices = WorldScriptSelection.Available(activeScript.Races, month);
+            work += choices.Count;
+            return choices.Where(choice => choice.Weight != 0).Select(choice => choice.Rule.Id);
+        }
+
         bool ValidMission(RuleHandle<AlienMissionRuleFamily> handle, bool useMissionRace, string? regionId = null)
         {
             var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
@@ -364,8 +379,25 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                 if (RequiresOperationBaseCreation(rule, regionId))
                 {
                     creationChoices.Add((handle, regionId));
-                    if (rule.OperationBaseType is { } deployment)
-                        createdDeployments?.Add(campaign.Content.RuntimeRules.AlienDeployments[deployment].Id);
+                    if (prospectiveBases is not null && rule.OperationBaseType is { } deployment)
+                    {
+                        var deploymentId = campaign.Content.RuntimeRules.AlienDeployments[deployment].Id;
+                        var races = ScriptBirthRaces(rule);
+                        if (work > MaximumMissionScriptChecks)
+                        {
+                            missionFailureReason = MissionScriptWorkReason;
+                            return false;
+                        }
+                        foreach (var race in races)
+                        {
+                            if (++work > MaximumMissionScriptChecks)
+                            {
+                                missionFailureReason = MissionScriptWorkReason;
+                                return false;
+                            }
+                            prospectiveBases.Add(new(deploymentId, race));
+                        }
+                    }
                 }
             }
             if (useMissionRace)

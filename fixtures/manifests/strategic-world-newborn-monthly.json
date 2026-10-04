@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-world-newborn-monthly",
+  "description": "Extracted monthly upgrade/evolution block for a controlled newborn base with startMonth equal to month 3; mission birth itself is controlled and covered by the operation-base capture. Reference loop errors occur after changes; port preflight must reject before any changes.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "GeoscapeState::determineAlienMissions final monthly block; attemptAlienRaceEvolution; AlienDeployment::generateAlienBaseUpgrade; AlienBase::setDeployment; WeightedOptions::choose",
+      "capture": "tools/capture-strategic-world-newborn-monthly-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_world_newborn_monthly_probe.cpp",
+      "size": 5697,
+      "sha256": "50e033ec30799584537384c9f0a7211a1e13fc8cdaa5a6a2d6b1863e14ba2b38"
+    },
+    {
+      "path": "tools/capture-strategic-world-newborn-monthly-reference.ps1",
+      "size": 3687,
+      "sha256": "f7cb15e3f49538c8e524b2e01f851c9aa35ccb10892c4c43a430c21d6af4cb75"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world-newborn-monthly.rul",
+      "size": 1209,
+      "sha256": "35faf73b97963d5e6b65785aa01223fb4491018f3fb71b8ecb3b34adc41efe79"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-world-newborn-monthly.expected.json"
+}
