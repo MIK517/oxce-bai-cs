@@ -36,7 +36,7 @@ internal sealed partial class CampaignWorld
         var plan = campaign.Content.EventPlans.FirstOrDefault(candidate => candidate.ParserName == parser)?.Plan;
         if (artifact is null && (plan is null || plan.Count == 0))
         {
-            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false);
+            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false, []);
             return identity;
         }
         if (!_detectionDefaults.TryGetValue(fromCraft, out var fallback))
@@ -57,6 +57,7 @@ internal sealed partial class CampaignWorld
         var shieldStats = false;
         var damageStats = false;
         var damagePercentage = false;
+        HashSet<int> ufoStats = [];
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
             .Append(program).Concat(plan?.After.Select(item => item.Program) ?? []))
         {
@@ -72,6 +73,8 @@ internal sealed partial class CampaignWorld
                     var bindingId = instruction.Operands[0].Scalar;
                     var declaration = candidate.Bindings.First(binding => binding.Id.Value == bindingId);
                     var bindingName = declaration.Name;
+                    if (bindingName.StartsWith("Ufo.Stats.", StringComparison.Ordinal) &&
+                        DetectionUfoStatIndex(bindingName) is >= 0 and var field) ufoStats.Add(field);
                     if (bindingName == "Ufo.getTag" && campaign.Content.Tags.Types.Any(type =>
                         type.Id.Value == declaration.Parameters[2].Type.Id.Value && type.Name == "Ufo")) ufoTagQueries += visits[instructionIndex];
                     if (bindingName is "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance") radarQueries += visits[instructionIndex];
@@ -88,7 +91,7 @@ internal sealed partial class CampaignWorld
                 }
             _detectionFrame.Prepare(candidate);
         }
-        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, radarQueries, ufoTagQueries, shieldStats, damageStats, damagePercentage);
+        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, radarQueries, ufoTagQueries, shieldStats, damageStats, damagePercentage, ufoStats.Order().ToArray());
         return result;
     }
 
@@ -98,6 +101,13 @@ internal sealed partial class CampaignWorld
         var script = GetDetectionScript(ufo.RuleId, craft is not null);
         if (script.Program is not { } program) return (caller.Type, caller.Chance);
         if (script.Unavailable is not null) throw new InvalidOperationException("Detection script was not preflighted.");
+        if (script.UfoStats.Length != 0)
+        {
+            var rules = campaign.Content.RuntimeRules;
+            var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+            _detectionUfoStats = rule.Stats;
+            _detectionUfoBonus = rule.RaceBonus(FindMission(ufo.MissionId)!.Race);
+        }
         if (script.DamageStats)
         {
             var rules = campaign.Content.RuntimeRules;
@@ -154,6 +164,18 @@ internal sealed partial class CampaignWorld
     {
         var fromBase = GetDetectionScript(ruleId, false);
         var fromCraft = GetDetectionScript(ruleId, true);
+        if (fromBase.UfoStats.Length != 0 || fromCraft.UfoStats.Length != 0)
+        {
+            var rules = campaign.Content.RuntimeRules;
+            var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
+            var bonus = rule.RaceBonus(race ?? "");
+            foreach (var field in fromBase.UfoStats)
+                if ((long)DetectionUfoStat(rule.Stats, field) + DetectionUfoStat(bonus, field) is < int.MinValue or > int.MaxValue)
+                    return "Detection UFO statistics exceed the supported range.";
+            foreach (var field in fromCraft.UfoStats)
+                if ((long)DetectionUfoStat(rule.Stats, field) + DetectionUfoStat(bonus, field) is < int.MinValue or > int.MaxValue)
+                    return "Detection UFO statistics exceed the supported range.";
+        }
         if (fromBase.DamageStats || fromCraft.DamageStats)
         {
             var rules = campaign.Content.RuntimeRules;
@@ -198,5 +220,5 @@ internal sealed partial class CampaignWorld
     }
 
     private sealed record DetectionScript(ScriptProgram? Program, ScriptEventPlan? Plan, string? Unavailable,
-        ScriptHostBindings Providers, string[] InputNames, long StepBound, int RadarQueries, int UfoTagQueries, bool ShieldStats, bool DamageStats, bool DamagePercentage);
+        ScriptHostBindings Providers, string[] InputNames, long StepBound, int RadarQueries, int UfoTagQueries, bool ShieldStats, bool DamageStats, bool DamagePercentage, int[] UfoStats);
 }

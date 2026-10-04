@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionBindingNameSupported(binding.Name) || DetectionTagSupported(binding);
+        DetectionBindingNameSupported(binding.Name) || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -71,6 +71,7 @@ internal sealed partial class CampaignWorld
                     ufo is not null ? DetectionUfoValue(name, ufo) :
                     craft is not null ? DetectionCraftValue(name, craft) :
                     receiver is RuntimeCraftRule rule ? DetectionCraftRuleValue(name, rule) :
+                    receiver is RuntimeUfoRule ufoRule ? DetectionUfoStat(ufoRule.Stats, DetectionUfoStatIndex(name)) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch
                     {
@@ -93,6 +94,8 @@ internal sealed partial class CampaignWorld
 
     private int DetectionUfoValue(string name, UfoSnapshot ufo)
     {
+        var field = DetectionUfoStatIndex(name);
+        if (field >= 0) return unchecked(DetectionUfoStat(_detectionUfoStats, field) + DetectionUfoStat(_detectionUfoBonus, field));
         switch (name)
         {
             case "Ufo.getAltitude": return WorldAltitudes.Index(ufo.Altitude);

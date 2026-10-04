@@ -45,6 +45,8 @@ $tagMethods = @(
     (Read-Method 'src/Engine/Script.cpp' 'void ScriptValuesBase::setBase('),
     (Read-Method 'src/Engine/Script.cpp' 'int ScriptValuesBase::getBase(')
 )
+$template = $template.Replace('// STATS_ADD', (Read-Method 'src/Mod/RuleCraft.h' 'RuleCraftStats& operator+=('))
+$template = $template.Replace('// STATS_BIND', ('template<auto Stat, typename TBind>' + [Environment]::NewLine + (Read-Method 'src/Mod/RuleCraft.h' 'static void addGetStatsScript(')))
 $template = $template.Replace('// TAG_METHODS', ($tagMethods -join [Environment]::NewLine))
 $template = $template.Replace('// RESEARCH_FIND', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool haveReserchVector(const std::vector<const RuleResearch*> &vec, const RuleResearch *res)'))
 $template = $template.Replace('// RESEARCH_METHOD', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool SavedGame::isResearched(const RuleResearch *research, bool considerDebugMode) const'))

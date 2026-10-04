@@ -489,7 +489,19 @@ public static class RuntimeRuleLinker
             source.Craft.Get("shieldCapacity"),
             source.Craft.Get("shieldRecharge"),
             source.Craft.Get("shieldRechargeInGeoscape"),
-            source.MissionCustomDeployment);
+            source.MissionCustomDeployment)
+        {
+            FuelMaximum = source.Craft.Get("fuelMax"),
+            HitBonus = source.Craft.Get("hitBonus"),
+            AvoidBonus = source.Craft.Get("avoidBonus"),
+            AvoidBonus2 = source.Craft.Get("avoidBonus2"),
+            PowerBonus = source.Craft.Get("powerBonus"),
+            Armor = source.Craft.Get("armor"),
+            ShieldBleedThrough = source.Craft.Get("shieldBleedThrough"),
+            MaximumUnits = source.Craft.Get("soldiers"),
+            MaximumVehicles = source.Craft.Get("vehicles"),
+            MaximumItems = source.Craft.Get("maxItems"),
+        };
 
         RuntimeAlienMissionRule BuildAlienMission(string id, AlienMissionRule source)
         {
