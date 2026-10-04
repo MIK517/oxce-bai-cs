@@ -618,3 +618,13 @@ The existing pinned ScriptValuesBase oracle supplies positive/negative slot
 values; new fresh/cache VM and before/after reload fixtures cover both families.
 Reference: RuleItem.cpp::ScriptRegister and Armor.cpp::ScriptRegister (OnlyGet
 script values), Engine/Script.cpp::ScriptValuesBase::getBase.
+
+## Soldier and skill detection rule tags (2026-10-04)
+
+Detection scripts read RuleSoldier and RuleSkill initial tags through canonical
+rule pointers, including the skill identity projection. Read-only providers keep
+typed owners and tag-free rule identity separate; absent slots/null pointers
+return zero. Shared pinned ScriptValuesBase slot traces and fresh/cache VM/reload
+fixtures cover signed values and rule switching. Setters remain unavailable.
+Reference: RuleSoldier.cpp::ScriptRegister (OnlyGet), RuleSkill.cpp::ScriptRegister
+and Engine/Script.cpp::ScriptValuesBase::getBase.
