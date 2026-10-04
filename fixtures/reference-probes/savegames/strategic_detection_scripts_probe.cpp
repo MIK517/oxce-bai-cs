@@ -31,7 +31,16 @@ struct Armor {
 static const std::string NONE; std::string _type="ARMOR_METADATA"; int _size=2;
 const std::string& getType() const { return _type; }
 int getSize() const;
+int _visibilityAtDark=0,_visibilityAtDay=0,_camouflageAtDark=0,_camouflageAtDay=0;
+int _antiCamouflageAtDark=0,_antiCamouflageAtDay=0,_visibilityThroughSmoke=0,_visibilityThroughFire=100;
+int _personalLightFriend=15,_personalLightHostile=0,_personalLightNeutral=0;
+int getVisibilityAtDark() const;int getVisibilityAtDay() const;
+int getCamouflageAtDark() const;int getCamouflageAtDay() const;
+int getAntiCamouflageAtDark() const;int getAntiCamouflageAtDay() const;
+int getVisibilityThroughSmoke() const;int getVisibilityThroughFire() const;
+int getPersonalLightFriend() const;int getPersonalLightHostile() const;int getPersonalLightNeutral() const;
 };
+// ARMOR_VISION
 const std::string Armor::NONE="STR_NONE";
 struct RuleSoldier {};
 struct RuleSkill { std::string _type="SKILL_METADATA"; const std::string& getType() const { return _type; } };
@@ -394,5 +403,25 @@ std::cout<<'}';
 UnitStatsBinding nullStats{nullptr};UnitStats::addGetStatsScript<&UnitStatsOwner::stats>(nullStats,"");
 std::cout<<"],\"unitStatsNull\":{";bool firstNull=true;
 for(const auto& [name,value]: nullStats.values) {if(!firstNull)std::cout<<',';firstNull=false;std::cout<<'\"'<<name<<"\":"<<value;}
-std::cout<<"}}\n";
+std::cout<<"},\"armorVision\":[";
+Armor vision;
+for(int stage=0;stage<2;++stage) {
+if(stage) {
+std::cout<<',';
+vision._visibilityAtDark=-7;vision._visibilityAtDay=0;vision._camouflageAtDark=31;vision._camouflageAtDay=INT_MAX;
+vision._antiCamouflageAtDark=INT_MIN;vision._antiCamouflageAtDay=14;vision._visibilityThroughSmoke=56;vision._visibilityThroughFire=-11;
+vision._personalLightFriend=8;vision._personalLightHostile=9;vision._personalLightNeutral=10;
+}
+std::map<std::string,int> fields={
+{"getVisibilityAtDark",vision.getVisibilityAtDark()},{"getVisibilityAtDay",vision.getVisibilityAtDay()},
+{"getCamouflageAtDark",vision.getCamouflageAtDark()},{"getCamouflageAtDay",vision.getCamouflageAtDay()},
+{"getAntiCamouflageAtDark",vision.getAntiCamouflageAtDark()},{"getAntiCamouflageAtDay",vision.getAntiCamouflageAtDay()},
+{"getHeatVision",vision.getVisibilityThroughSmoke()},{"getVisibilityThroughFire",vision.getVisibilityThroughFire()},
+{"getPersonalLight",vision.getPersonalLightFriend()},{"getPersonalLightHostile",vision.getPersonalLightHostile()},
+{"getPersonalLightNeutral",vision.getPersonalLightNeutral()}};
+std::cout<<'{';bool firstVision=true;
+for(const auto& [name,value]:fields) {if(!firstVision)std::cout<<',';firstVision=false;std::cout<<'\"'<<name<<"\":"<<value;}
+std::cout<<'}';
+}
+std::cout<<"]}\n";
 }

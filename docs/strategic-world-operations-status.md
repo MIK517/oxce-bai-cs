@@ -683,3 +683,15 @@ immutable fields. The pinned UnitStats wrapper captures the exact Stats prefix
 and null defaults; fresh/cache detection and before/after reload tests cover every
 getter. No per-contact allocation or tactical stat mutation is introduced.
 Reference: Unit.h::getMaxStatScript/addGetStatsScript and Armor.cpp::ScriptRegister.
+
+## Immutable armor vision detection metadata (2026-10-04)
+
+Detection scripts read eleven armor visibility, camouflage, heat vision and
+personal-light fields. Immutable projections preserve external heatVision and
+personalLight keys, signed integer values and the reference defaults (friendly
+light 15, fire visibility 100, remaining fields zero). Exact native methods and
+fresh/cache live/reload fixtures cover defaults, overrides and null zeroes.
+Compiler/cache revision is 42. Tactical visibility calculations remain outside
+this read-only world caller.
+Reference: Armor.cpp constructor/load/vision getters/ScriptRegister and Armor.h
+getVisibilityThroughSmoke/getVisibilityThroughFire.

@@ -255,8 +255,26 @@ public sealed record RuntimeArmorRule(
     RuleHandle<ItemRuleFamily>? StoreItem)
 {
     public string Type { get; init; } = "";
+    public RuntimeArmorVision Vision { get; init; } = RuntimeArmorVision.Default;
     public int Group { get; init; }
     public IReadOnlyDictionary<string, short> Stats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+}
+
+/// <summary>Immutable Armor vision and light metadata, before tactical calculations.</summary>
+public sealed record RuntimeArmorVision(
+    int VisibilityAtDark,
+    int VisibilityAtDay,
+    int CamouflageAtDark,
+    int CamouflageAtDay,
+    int AntiCamouflageAtDark,
+    int AntiCamouflageAtDay,
+    int HeatVision,
+    int VisibilityThroughFire,
+    int PersonalLight,
+    int PersonalLightHostile,
+    int PersonalLightNeutral)
+{
+    public static RuntimeArmorVision Default { get; } = new(0, 0, 0, 0, 0, 0, 0, 100, 15, 0, 0);
 }
 
 public sealed record RuntimeSoldierRule(

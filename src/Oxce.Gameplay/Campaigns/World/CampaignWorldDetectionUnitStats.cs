@@ -70,4 +70,26 @@ internal sealed partial class CampaignWorld
         };
         return values.GetValueOrDefault(key!);
     }
+
+    private static int DetectionArmorValue(string name, RuntimeArmorRule rule)
+    {
+        if (DetectionUnitRuleStat(name) is (4, { } key)) return rule.Stats.GetValueOrDefault(key);
+        return name switch
+        {
+            "RuleArmor.getSize" => rule.Size,
+            "RuleArmor.getVisibilityAtDark" => rule.Vision.VisibilityAtDark,
+            "RuleArmor.getVisibilityAtDay" => rule.Vision.VisibilityAtDay,
+            "RuleArmor.getCamouflageAtDark" => rule.Vision.CamouflageAtDark,
+            "RuleArmor.getCamouflageAtDay" => rule.Vision.CamouflageAtDay,
+            "RuleArmor.getAntiCamouflageAtDark" => rule.Vision.AntiCamouflageAtDark,
+            "RuleArmor.getAntiCamouflageAtDay" => rule.Vision.AntiCamouflageAtDay,
+            "RuleArmor.getHeatVision" => rule.Vision.HeatVision,
+            "RuleArmor.getVisibilityThroughFire" => rule.Vision.VisibilityThroughFire,
+            "RuleArmor.getPersonalLight" => rule.Vision.PersonalLight,
+            "RuleArmor.getPersonalLightHostile" => rule.Vision.PersonalLightHostile,
+            "RuleArmor.getPersonalLightNeutral" => rule.Vision.PersonalLightNeutral,
+            _ => throw new InvalidOperationException("Detection armor provider was not preflighted."),
+        };
+    }
+
 }
