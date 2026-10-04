@@ -3,7 +3,7 @@ using Oxce.Scripting.Compilation;
 
 namespace Oxce.Gameplay.Campaigns.World;
 
-/// <summary>Bounded scalar intervals at each call, including immutable RuleItem power readers.</summary>
+/// <summary>Bounded scalar intervals at each call, including immutable RuleItem power readers and bounded scalar arithmetic.</summary>
 internal sealed class WorldDetectionScalarForecast
 {
     private readonly Dictionary<int, (int Min, int Max)>?[] _states;
@@ -79,7 +79,9 @@ internal sealed class WorldDetectionScalarForecast
             }
             else if (operation is not (CoreScriptOperation.Exit or CoreScriptOperation.Return or
                 CoreScriptOperation.Jump or CoreScriptOperation.BranchCondition))
-                Write(operands[0], (int.MinValue, int.MaxValue));
+                Write(operands[0], WorldDetectionScalarRanges.Apply(operation, Read(operands[0], incoming),
+                    operands.Count > 1 ? Read(operands[1], incoming) : WorldDetectionScalarRanges.Full,
+                    operands.Count > 2 ? Read(operands[2], incoming) : WorldDetectionScalarRanges.Full));
             if (operation is CoreScriptOperation.Exit or CoreScriptOperation.Return) continue;
             if (operation == CoreScriptOperation.Jump) Join(operands[0].Scalar);
             else
@@ -114,6 +116,11 @@ internal sealed class WorldDetectionScalarForecast
                         var current = existing[register];
                         var merged = (Math.Min(current.Min, value.Min), Math.Max(current.Max, value.Max));
                         if (merged == current) continue;
+                        // Loop values grow independently of the hidden iteration count. Widen back edges
+                        // before another transfer so arithmetic cycles reach a bounded fixed point.
+                        if (target <= index)
+                            merged = (merged.Item1 < current.Min ? int.MinValue : current.Min,
+                                merged.Item2 > current.Max ? int.MaxValue : current.Max);
                         existing[register] = merged;
                         changed = true;
                     }

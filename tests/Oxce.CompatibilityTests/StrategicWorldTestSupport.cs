@@ -11,6 +11,32 @@ namespace Oxce.CompatibilityTests;
 /// <summary>Shared setup and assertions for the strategic-world compatibility tests.</summary>
 internal static class StrategicWorldTestSupport
 {
+    /// <summary>Executes one native-backed read script in either detection caller across cache and reload.</summary>
+    public static void AssertDetectionReadScript(string code, bool fromCache, bool fromCraft, string extraRules = "")
+    {
+        var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            {{extraRules}}
+            ufos:
+              - type: UFO_READ_SCRIPT
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  {{parser}}: '{{code}}'
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_READ_SCRIPT", 2200).Capture();
+        if (fromCraft)
+            snapshot = snapshot.WithCraft("SHIP", craft => craft with
+            {
+                Logistics = craft.Logistics! with { Status = "STR_OUT", Speed = 0, Destination = null },
+            });
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(217));
+        campaign = Reload(content, campaign, 217, "read-script-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 217, "read-script-after.sav");
+    }
+
     /// <summary>A veteran logistics campaign with base Alpha placed at (0.2, 0.1) and month zero.</summary>
     public static CampaignSnapshot CreateSnapshot(RuntimeContent content, string name)
     {
