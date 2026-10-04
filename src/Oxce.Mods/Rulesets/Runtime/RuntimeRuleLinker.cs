@@ -476,7 +476,13 @@ public static class RuntimeRuleLinker
                 source.CrashedMarker.Index,
                 stats,
                 new ReadOnlyDictionary<string, RuntimeUfoStats>(bonuses),
-                ScriptsFor(scriptBuild.ByOwner, "ufos", id));
+                ScriptsFor(scriptBuild.ByOwner, "ufos", id))
+            {
+                Radius = source.EffectiveRadius,
+                WeaponRange = source.Integers["range"],
+                WeaponPower = source.Integers["power"],
+                WeaponReload = source.Integers["reload"],
+            };
         }
 
         static RuntimeUfoStats UfoStats(UfoStats source) => new(

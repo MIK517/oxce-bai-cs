@@ -19,6 +19,7 @@ internal sealed partial class CampaignWorld
         "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
+        "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "Craft.getDamage" or "Craft.getShield" or "Craft.getRuleCraft" or
         "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance" or
         "RuleCraft.Stats.getRadarRange" or "RuleCraft.Stats.getRadarChance" or
@@ -121,7 +122,14 @@ internal sealed partial class CampaignWorld
                         _ => throw new InvalidOperationException("Detection country provider was not preflighted."),
                     } :
                     receiver is RuntimeCraftRule rule ? DetectionCraftRuleValue(name, rule) :
-                    receiver is RuntimeUfoRule ufoRule ? DetectionUfoStat(ufoRule.Stats, DetectionUfoStatIndex(name)) :
+                    receiver is RuntimeUfoRule ufoRule ? name switch
+                    {
+                        "RuleUfo.getRadius" => ufoRule.Radius,
+                        "RuleUfo.getWeaponRange" => ufoRule.WeaponRange,
+                        "RuleUfo.getWeaponPower" => ufoRule.WeaponPower,
+                        "RuleUfo.getWeaponReload" => ufoRule.WeaponReload,
+                        _ => DetectionUfoStat(ufoRule.Stats, DetectionUfoStatIndex(name)),
+                    } :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch

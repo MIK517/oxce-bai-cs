@@ -82,6 +82,11 @@ public sealed record RuntimeUfoRule(
     IReadOnlyDictionary<string, RuntimeUfoStats> RaceBonuses,
     RuleHandleList<RuntimeScriptFamily> Scripts)
 {
+    public int Radius { get; init; }
+    public int WeaponRange { get; init; }
+    public int WeaponPower { get; init; }
+    public int WeaponReload { get; init; }
+
     /// <summary>RuleUfo::getRaceBonus: the unnamed bonus is the fallback.</summary>
     public RuntimeUfoStats RaceBonus(string race) =>
         RaceBonuses.TryGetValue(race, out var bonus) ? bonus : RaceBonuses.GetValueOrDefault("", RuntimeUfoStats.Empty);

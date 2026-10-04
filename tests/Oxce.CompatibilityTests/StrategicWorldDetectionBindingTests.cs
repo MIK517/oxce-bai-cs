@@ -12,6 +12,55 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void UfoRuleGettersMatchNativeDefaultsAndReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var sizes = new[] { "STR_VERY_SMALL", "STR_SMALL", "STR_MEDIUM_UC", "STR_LARGE", "STR_VERY_LARGE", "UNKNOWN" };
+        var weapons = oracle.RootElement.GetProperty("ufoWeapons").EnumerateArray().Select(value => value.GetInt32()).ToArray();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "ufoRules"))
+        {
+            var values = row.EnumerateArray().Select(value => value.GetInt32()).ToArray();
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                ufos:
+                  - type: UFO_RULE_READS
+                    size: {{sizes[values[0]]}}
+                    radius: {{values[1]}}
+                    speedMax: 2200
+                    damageMax: 50
+                    range: {{weapons[0]}}
+                    power: {{weapons[1]}}
+                    reload: {{weapons[2]}}
+                    scripts:
+                      detectUfoFromBase: |
+                        var ptr RuleUfo rule;
+                        var ptr RuleUfo absent null;
+                        var int value;
+                        absent.getRadius value;
+                        if neq value 0; return DETECTION_NONE 0; end;
+                        absent.getWeaponPower value;
+                        if neq value 0; return DETECTION_NONE 0; end;
+                        ufo.getRuleUfo rule;
+                        rule.getRadius value;
+                        if neq value {{values[2]}}; return DETECTION_NONE 0; end;
+                        rule.getWeaponRange value;
+                        if neq value {{weapons[0]}}; return DETECTION_NONE 0; end;
+                        rule.getWeaponPower value;
+                        if neq value {{weapons[1]}}; return DETECTION_NONE 0; end;
+                        rule.getWeaponReload value;
+                        if neq value {{weapons[2]}}; return DETECTION_NONE 0; end;
+                        return DETECTION_RADAR 100;
+                """);
+            var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_RULE_READS", 2200);
+            campaign = Reload(content, campaign, 194, "ufo-rule-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 194, "ufo-rule-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void UfoReadBindingsMatchReferenceAndReload(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

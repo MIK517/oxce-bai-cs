@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch); Ufo.cpp (getDamagePercentage/getDamageMaxScript), Mod.h (isEmptyRuleName); RuleCraft.h (operator+=, addGetStatsScript), RuleUfo/Ufo ScriptRegister; Mod.cpp (getItem/getArmor/getSoldier/getSkill and script wrappers), RuleResearch.h (getNeededItem); ScriptBind.h (BindListInitImpl/BindListLoopImpl), SavedGame.cpp (filterCountryConstScript), Country.cpp/h (pact and current histories); Country.cpp (getRules/ScriptRegister), RuleCountry.cpp (getFundingCap/ScriptRegister)",
+      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch); Ufo.cpp (getDamagePercentage/getDamageMaxScript), Mod.h (isEmptyRuleName); RuleCraft.h (operator+=, addGetStatsScript), RuleUfo/Ufo ScriptRegister; Mod.cpp (getItem/getArmor/getSoldier/getSkill and script wrappers), RuleResearch.h (getNeededItem); ScriptBind.h (BindListInitImpl/BindListLoopImpl), SavedGame.cpp (filterCountryConstScript), Country.cpp/h (pact and current histories); Country.cpp (getRules/ScriptRegister), RuleCountry.cpp (getFundingCap/ScriptRegister); RuleUfo.cpp (getRadius/getWeaponRange/getWeaponPower/getWeaponReload)",
       "probe": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
       "capture": "tools/capture-strategic-detection-scripts-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; caller methods inserted verbatim, recording Worker stub"
@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
-      "size": 12510,
-      "sha256": "aa4d76712052964900385d3fa493591ede6421527038fc59bca5125f4b76e119"
+      "size": 13286,
+      "sha256": "170821018a53df838f6a0b1879e5aba96b5bccdd7f9c84389abbb6781b20e556"
     },
     {
       "path": "tools/capture-strategic-detection-scripts-reference.ps1",
-      "size": 7527,
-      "sha256": "eeac2b131e6b1cbbde6fa36884286de95a4ae3c17b679f68325193cbe6b629d4"
+      "size": 7938,
+      "sha256": "28a69511a95d4eab819cb00c77814bf97559f5ec4783a393462d19170061d8d7"
     },
     {
       "path": "fixtures/public/savegames/strategic-detection-scripts.rul",
