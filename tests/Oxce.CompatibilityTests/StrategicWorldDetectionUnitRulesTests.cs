@@ -14,6 +14,61 @@ public sealed class StrategicWorldDetectionUnitRulesTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void SmokeReductionMatchesNativeSignedArithmetic(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "smokeReduction");
+        foreach (var group in rows.GroupBy(row => row[0].GetInt32()))
+        {
+            var code = "var int smoke; ";
+            foreach (var row in group)
+                code += $"set smoke {row[1].GetInt32()}; rules.getSmokeReduction smoke; if neq smoke {row[2].GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += "return DETECTION_RADAR 100;";
+            var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                maxViewDistance: {{group.Key}}
+                ufos:
+                  - type: UFO_SMOKE_READ
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      {{parser}}: '{{code}}'
+                """);
+            var snapshot = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SMOKE_READ", 2200).Capture();
+            if (fromCraft)
+                snapshot = snapshot.WithCraft("SHIP", craft => craft with
+                {
+                    Logistics = craft.Logistics! with { Status = "STR_OUT", Speed = 0, Destination = null },
+                });
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(213));
+            AdvanceUnblocked(campaign, 1);
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 213, "smoke-reduction-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData("var ptr RuleMod absent null; absent.getSmokeReduction detection_chance; return;")]
+    [InlineData("var ptr RuleMod absent; absent.getSmokeReduction detection_chance; return;")]
+    public void UnsafeSmokeReceiverStopsBeforeTickMutation(string code)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, $$"""
+            ufos:
+              - type: UFO_UNSAFE_SMOKE
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: '{{code}}'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_UNSAFE_SMOKE", 2200);
+        AssertTimeBlocked(campaign, "Detection smoke reduction requires a guaranteed Mod receiver.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void LinkedUnitMetadataMatchesNativeNullableAndRecoverySemantics(bool fromCache, bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

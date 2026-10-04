@@ -142,6 +142,7 @@ RuleSoldier* getSoldier(const std::string&,bool error=false) const;
 RuleSkill* getSkill(const std::string&,bool error=false) const;
 };
 const std::string Mod::STR_NULL={ '\0' };
+// MOD_SMOKE
 // MOD_SETTINGS
 // MOD_METHODS
 // RESEARCH_LOOKUP
@@ -443,7 +444,14 @@ std::cout<<",\"craftStats\":{";bool firstCraftStat=true;
 for(const auto& [name,value]: craftStats.values) {
 if(!firstCraftStat)std::cout<<',';firstCraftStat=false;std::cout<<'\"'<<name<<"\":"<<value;
 }
-std::cout<<"},\"modSettings\":[";
+std::cout<<"},\"smokeReduction\":[";
+bool firstSmoke=true;
+for(int view:{20,31,-7,0,INT_MAX})for(int density:{0,15,-15,INT_MAX,INT_MIN}){
+if(!firstSmoke)std::cout<<',';firstSmoke=false;
+mod._maxViewDistance=view;int smoke=density;getSmokeReduction(&mod,smoke);array({view,density,smoke});
+}
+mod._maxViewDistance=20;
+std::cout<<"],\"modSettings\":[";
 array({mod.getMaxViewDistance(),mod.getMaxDarknessToSeeUnits()});
 for(int value: {-7,0,31,INT_MAX}) {
 mod._maxViewDistance=value;mod._maxDarknessToSeeUnits=value;

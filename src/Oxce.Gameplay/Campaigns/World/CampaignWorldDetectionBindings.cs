@@ -32,7 +32,7 @@ internal sealed partial class CampaignWorld
         "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list" or
         "Country.getRuleCountry" or "RuleCountry.getFundingCap" or "Country.getPact" or "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
-        "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits" or
+        "RuleMod.getSmokeReduction" or "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits" or
         "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
         "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
         "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
@@ -80,6 +80,10 @@ internal sealed partial class CampaignWorld
                 break;
             case "RuleUnit.getCivilianRecoveryItemType":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeUnitRule { CivilianRecoveryItem: { } recovery } ? rules.Items[recovery].Value : null);
+                break;
+            case "RuleMod.getSmokeReduction":
+                if (receiver is not RuntimeRuleCatalog) throw new InvalidOperationException("Smoke receiver was not preflighted.");
+                args[1] = ScriptRuntimeValue.FromScalar(unchecked(args[1].Scalar * rules.Campaign.MaximumViewDistance) / 60);
                 break;
             case "RuleMod.getRuleUnit":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Units, args[2].Text));
