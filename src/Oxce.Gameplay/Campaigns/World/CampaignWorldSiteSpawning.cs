@@ -119,11 +119,14 @@ internal sealed partial class CampaignWorld
                     }
                 if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
             }
-            var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest);
+            if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } productionWork)
+                return productionWork;
+            var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest, includeProduction: true);
             var end = range.Maximum + count;
             if (range.Minimum <= 0 || end > int.MaxValue ||
                 _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= range.Minimum && site.Id < end) ||
-                _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= range.Minimum && alienBase.Id < end))
+                _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= range.Minimum && alienBase.Id < end) ||
+                CraftIdCollision(marker, range.Minimum, end))
                 return "Mission site marker IDs are exhausted or collide with a saved target.";
         }
         return null;

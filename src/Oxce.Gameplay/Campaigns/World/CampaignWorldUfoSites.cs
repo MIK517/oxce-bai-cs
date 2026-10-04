@@ -131,11 +131,21 @@ internal sealed partial class CampaignWorld
             if (_siteBirthIdChanges?.Any(change => change.Name == marker) == true &&
                 _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
                 return "UFO site conversion shares decreased marker counters with same-tick direct sites.";
-            var (first, maximum) = campaign.CustomCounters.BeforeWorldCreation(marker, highest, _siteConversionCounterForecast);
+            if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } productionWork)
+                return productionWork;
+            if (_siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+            {
+                if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } decreaseWork)
+                    return decreaseWork;
+                if (campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1)
+                    return "UFO site conversion shares decreased marker counters with same-tick craft production.";
+            }
+            var (first, maximum) = campaign.CustomCounters.BeforeWorldCreation(marker, highest, _siteConversionCounterForecast, includeProduction: true);
             var end = maximum + count;
             if (first <= 0 || end > int.MaxValue ||
                 _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= first && site.Id < end) ||
-                _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= first && alienBase.Id < end))
+                _alienBases.Any(alienBase => MarkerName(alienBase.DeploymentId) == marker && alienBase.Id >= first && alienBase.Id < end) ||
+                CraftIdCollision(marker, first, end))
                 return "Mission site marker IDs are exhausted or collide with a saved target.";
         }
         return null;

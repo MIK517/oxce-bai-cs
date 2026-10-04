@@ -962,3 +962,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   remains an upper bound. Reference: Production::startItem required-craft removal
   before later craft allocation. Fresh/cache production order and reload prove the
   actual counter stays inside the mutation-free bounds.
+
+- Batch 4 slice 3: direct mission sites and UFO conversions now forecast shared
+  craft counters after hourly production. Existing craft/transfer identity
+  collisions and decreased counters that could reuse newborn IDs stop before
+  mutation. A shared bounded scan accounts for fallback facilities across base
+  and site forecasts. Pinned site/production fixtures and fresh/cache combined
+  births verify correct IDs, preflight refusal and transition reloads.
