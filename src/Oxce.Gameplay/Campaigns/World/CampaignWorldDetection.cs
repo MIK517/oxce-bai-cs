@@ -124,7 +124,7 @@ internal sealed partial class CampaignWorld
             foreach (var step in DueWaveSteps(mission, missionRule))
             {
                 if (!CanSpawnOrdinaryUfoWave(step, missionRule)) continue;
-                var wave = missionRule.Waves[step.NextWave];
+                var wave = SpawnWave(step, missionRule);
                 var trajectory = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
                 var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
                 if (!TryOrdinarySpawnPositions(step, missionRule, trajectory, region, out var positions))

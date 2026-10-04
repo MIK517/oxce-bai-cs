@@ -60,7 +60,7 @@ public sealed class StrategicWorldObjectiveWaveTests
                 "REGION", "RACE_A", 0, 0, 0, 0, -1);
             var campaign = Restore(content, mission);
             if (objective == 6)
-                AssertTimeBlocked(campaign, "Retaliation assault spawning requires world forecasts.");
+                AssertTimeBlocked(campaign, "Retaliation assault arrival requires base-defense simulation.");
             else if (objective == 4 && deployment != 0 && marker != 0)
                 AssertTimeBlocked(campaign, "Retaliation direct-site waves require deployment forecasts.");
             else if (objective == 1)
@@ -147,7 +147,7 @@ public sealed class StrategicWorldObjectiveWaveTests
             if (row[3].GetInt32() != 0)
                 AssertTimeBlocked(campaign, "A mission tried to use zone -1, but the region only defines 7 zones.");
             else if (objective == 6)
-                AssertTimeBlocked(campaign, "Retaliation assault spawning requires world forecasts.");
+                AssertTimeBlocked(campaign, "Retaliation assault arrival requires base-defense simulation.");
             else
             {
                 AdvanceOne(campaign);
@@ -183,7 +183,7 @@ public sealed class StrategicWorldObjectiveWaveTests
             if (row[3].GetInt32() != 0)
                 AssertTimeBlocked(campaign, "A mission tried to use zone -1, but the region only defines 7 zones.");
             else if (objective == 6)
-                AssertTimeBlocked(campaign, "Retaliation assault spawning requires world forecasts.");
+                AssertTimeBlocked(campaign, "Retaliation assault arrival requires base-defense simulation.");
             else
             {
                 AdvanceOne(campaign);
