@@ -66,6 +66,7 @@ internal sealed partial class CampaignWorld
             reason ??= candidateReason;
             if (candidateReason is not null) continue;
             reason ??= WorldDetectionDamageQueries.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
+            reason ??= WorldDetectionInventoryCosts.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
             stepBound += visits.Sum(static count => (long)count);
             var nullReferences = candidate.Bindings.Any(binding => DetectionInventoryRole(binding.Name) is { } role &&
                 !rules.Inventories.TryGet(role, out _)) ? WorldDetectionScriptSafety.GuaranteedNullReferences(candidate) : null;
