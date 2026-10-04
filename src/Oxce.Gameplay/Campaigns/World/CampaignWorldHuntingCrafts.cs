@@ -12,9 +12,27 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Crafts[craft.Rule].Value;
         if (highest < CampaignTimeTrigger.ThirtyMinutes || state.Status == "STR_OUT") return null;
-        if (highest >= CampaignTimeTrigger.OneHour && state.IsAutoPatrolling && rule.AutoPatrol)
-            return "UFO retargeting requires same-tick craft relaunch forecasts.";
+        if (highest >= CampaignTimeTrigger.OneHour)
+        {
+            if (state.Status == "STR_REPAIRS")
+            {
+                if (rule.RepairRate < 0 || (long)state.Damage - rule.RepairRate < int.MinValue)
+                    return "Craft service rate exceeds the supported range.";
+                state = CraftServicing.Repair(state, rule);
+            }
+            else if (state.Status == "STR_REARMING" && !state.Weapons.Any(weapon => weapon is { Rearming: true }))
+                state = state with { Status = "STR_REFUELLING" };
+        }
         if (state.Status != "STR_REFUELLING") return null;
+        if (highest >= CampaignTimeTrigger.OneHour)
+        {
+            if (rule.RefuelItem is not null)
+                return "UFO retargeting requires hourly refuelling stock forecasts.";
+            if (owner.Productions.Count != 0 && state.Weapons.Any(weapon => weapon is { Disabled: false } &&
+                    rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value is { Clip.Length: > 0 } weaponRule &&
+                    weapon.Ammo < weaponRule.AmmoMaximum))
+                return "UFO retargeting requires same-tick craft ammunition reuse forecasts.";
+        }
         if (rule.RefuelRate < 0 || (long)state.Fuel + rule.RefuelRate > int.MaxValue ||
             !CraftLogistics.TryEffectiveServiceCapacities(rule, state.Weapons, rules, out var capacities) ||
             capacities.FuelMaximum < 0 ||

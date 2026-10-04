@@ -22,7 +22,7 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
 }
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_hunting_probe.cpp'))
 $refuelMethods = ''
-foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::refuel()', 'void Craft::setDestination(Target *dest)')) {
+foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::refuel()', 'void Craft::setDestination(Target *dest)', 'void Craft::repair()', 'const RuleItem* Craft::rearm()')) {
     $refuelMethods += (Read-ReferenceMethod 'src/Savegame/Craft.cpp' $signature) + [Environment]::NewLine
 }
 $template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
