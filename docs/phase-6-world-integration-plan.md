@@ -578,3 +578,21 @@ without orders and later transfers no longer block unsupported craft scripts.
 Existing and newborn UFOs share the same before-tick checks. Fresh/cache fixtures
 cover grounded/airborne, servicing, arriving/delayed and newborn transitions.
 The three slices are ready for their batch audit; the 4c gate remains open.
+
+## Effective craft detection cycle audit (2026-10-04)
+
+The batch audit corrected a newborn test's overlapping geometry by using the
+existing fixed spawn trajectory. It also reproduced a resource-ordering issue:
+consumed craft fields were scanned before reserving their contact/host work.
+Preflight now reserves that budget first; a fresh/cache 32-craft regression proves
+the limit blocks before field scans, state or RNG mutation.
+
+All 2,046 root tests pass with zero failures/skips, including private corpus,
+fixture checksums and existing allocation bounds. Effective craft stats,
+condition getters and caller-specific forecasts are covered across reloads.
+Initial/monthly caller composition, remaining VM providers/forecasts and final
+composed acceptance remain open. Branch 4d is untouched.
+
+Formatting verification, code-map validation and diff checks also pass. The native
+reference remains clean at the pinned revision. Useful capture outputs are
+retained; the obsolete task-owned object file was removed.
