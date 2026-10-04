@@ -60,6 +60,7 @@ public static class RuntimeRuleLinker
         var itemHandles = Handles<ItemRuleFamily, ItemRule>(generation, content.Items.Items);
         var soldierHandles = Handles<SoldierRuleFamily, SoldierRule>(generation, content.PersonnelTactical.Soldiers);
         var armorHandles = Handles<ArmorRuleFamily, ArmorRule>(generation, content.PersonnelTactical.Armors);
+        var unitHandles = Handles<UnitRuleFamily, UnitRule>(generation, content.PersonnelTactical.Units);
         var skillHandles = Handles<SkillRuleFamily, SkillRule>(generation, content.PersonnelTactical.Skills);
         var researchHandles = Handles<ResearchRuleFamily, ResearchRule>(generation, content.EquipmentProduction.Research);
         var manufactureHandles = Handles<ManufactureRuleFamily, ManufactureRule>(generation, content.EquipmentProduction.Manufacture);
@@ -349,7 +350,17 @@ public static class RuntimeRuleLinker
             soldiers,
             armors,
             BuildFamily<UnitRuleFamily, UnitRule, RuntimeUnitRule>(generation,
-                content.PersonnelTactical.Units, rule => new(rule.Id)),
+                content.PersonnelTactical.Units, rule => new(rule.Id)
+                {
+                    SpawnUnit = OptionalRequired(unitHandles, rule.Value.Strings["spawnUnit"], "units", rule, "spawnUnit"),
+                    LiveAlien = rule.Value.Strings["liveAlien"] == "\0"
+                        ? OptionalItem(itemHandles, rule.Id)
+                        : rule.Value.Strings["liveAlien"] is "" or "STR_NONE" ? null
+                        : OptionalRequired(itemHandles, rule.Value.Strings["liveAlien"], "units", rule, "liveAlien"),
+                    CivilianRecoveryItem = rule.Value.Strings["civilianRecoveryType"] is "" or "\0" or "STR_NONE" or "STR_ENGINEER" or "STR_SCIENTIST" ||
+                        soldierHandles.ContainsKey(rule.Value.Strings["civilianRecoveryType"]) ? null
+                        : OptionalRequired(itemHandles, rule.Value.Strings["civilianRecoveryType"], "units", rule, "civilianRecoveryType"),
+                }),
             BuildFamily<SoldierBonusRuleFamily, SoldierBonusRule, RuntimeSoldierBonusRule>(generation,
                 content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)),
             BuildFamily<SoldierTransformationRuleFamily, SoldierTransformationRule, RuntimeSoldierTransformationRule>(generation,

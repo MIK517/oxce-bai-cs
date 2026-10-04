@@ -9,6 +9,8 @@
 #include <cmath>
 #include <climits>
 #include <cstdint>
+#include <cassert>
+#include <type_traits>
 namespace RNG {
 std::vector<int> calls;
 bool succeeds = false;
@@ -45,8 +47,20 @@ const std::string Armor::NONE="STR_NONE";
 struct RuleSoldier {};
 struct RuleSkill { std::string _type="SKILL_METADATA"; const std::string& getType() const { return _type; } };
 struct RuleCraft { std::string _type="CRAFT_METADATA"; const std::string& getType() const { return _type; } };
+struct Mod;
 struct Unit {
 std::string _type="UNIT_METADATA";const std::string& getType() const { return _type; }
+std::string _armorName="KNOWN_ARMOR",_spawnUnitName,_liveAlienName={ '\0' },_civilianRecoveryTypeName;
+const Armor* _armor=nullptr;const Unit* _spawnUnit=nullptr;const RuleItem* _liveAlien=nullptr;
+const RuleSoldier* _civilianRecoverySoldierType=nullptr;const RuleItem* _civilianRecoveryItemType=nullptr;
+std::vector<const RuleItem*> _builtInWeapons;std::vector<std::string> _builtInWeaponsNames;
+void afterLoad(const Mod*);
+const Unit* getSpawnUnit() const;
+const RuleItem* getLiveAlienGeoscape() const;
+const RuleItem* getCivilianRecoveryItemType() const;
+bool isRecoverableAsEngineer() const { return _civilianRecoveryTypeName=="STR_ENGINEER"; }
+bool isRecoverableAsScientist() const { return _civilianRecoveryTypeName=="STR_SCIENTIST"; }
+bool isRecoverableAsCivilian() const { return !_civilianRecoveryTypeName.empty()||_civilianRecoverySoldierType||_civilianRecoveryItemType; }
 };
 // UNIT_METADATA
 // RULE_METADATA
@@ -109,6 +123,15 @@ std::map<std::string,Armor*> _armors;
 std::map<std::string,RuleSoldier*> _soldiers;
 std::map<std::string,RuleSkill*> _skills;
 static const std::string STR_NULL;
+template<typename T> void linkRule(const T*& rule,std::string& name) const {
+if constexpr(std::is_same_v<T,Unit>)rule=getUnit(name,true);
+if constexpr(std::is_same_v<T,Armor>)rule=getArmor(name,true);
+if constexpr(std::is_same_v<T,RuleItem>)rule=getItem(name,true);
+name.clear();
+}
+void linkRule(std::vector<const RuleItem*>& rules,std::vector<std::string>& names) const {
+for(auto& name:names){const RuleItem* item=nullptr;linkRule(item,name);rules.push_back(item);}names.clear();
+}
 // MOD_EMPTY
 template<typename T> T* getRule(const std::string&,const std::string&,const std::map<std::string,T*>&,bool) const;
 Unit* getUnit(const std::string&,bool error=false) const;
@@ -122,6 +145,7 @@ const std::string Mod::STR_NULL={ '\0' };
 // MOD_SETTINGS
 // MOD_METHODS
 // RESEARCH_LOOKUP
+// UNIT_LINKS
 // UNIT_LOOKUP
 // RULE_LOOKUPS
 class ScriptValuesBase {
@@ -336,6 +360,31 @@ const std::string name=i==0||i==3?"UNIT_METADATA":i==1?"MISSING":i==2?"STR_NONE"
 const Unit* got=&unitRule;getUnitScript(i==3?nullptr:&mod,got,name);
 ScriptText txt;getTypeScript(got,txt);
 std::cout<<"{\"source\":"<<(i==3?"false":"true")<<",\"name\":\""<<(i==5?"NUL":name)<<"\",\"found\":"<<(got?"true":"false")<<",\"type\":\""<<txt.value<<"\"}";
+}
+std::cout<<"],\"unitLinks\":[";
+RuleItem unitItem,liveItem,literalNullItem,recoveryItem;RuleSoldier recoverySoldier;Armor unitArmor;
+mod._items["UNIT_METADATA"]=&unitItem;unitItem._type="UNIT_METADATA";
+mod._items["LIVE_ITEM"]=&liveItem;liveItem._type="LIVE_ITEM";
+mod._items["STR_NULL"]=&literalNullItem;literalNullItem._type="STR_NULL";
+mod._items["RECOVERY"]=&recoveryItem;recoveryItem._type="RECOVERY";
+mod._items["COLLISION"]=&recoveryItem;mod._soldiers["COLLISION"]=&recoverySoldier;
+mod._armors["KNOWN_ARMOR"]=&unitArmor;
+std::vector<std::vector<std::string>> linkCases={
+{"default","UNIT_METADATA",std::string(1,'\0'),"",""},
+{"null","UNIT_METADATA",std::string(1,'\0'),std::string(1,'\0'),""},
+{"empty","UNIT_METADATA","","",""},
+{"none","UNIT_METADATA","STR_NONE","",""},
+{"explicit","UNIT_METADATA","LIVE_ITEM","RECOVERY","UNIT_METADATA"},
+{"literal","UNIT_METADATA","STR_NULL","STR_NULL",""},
+{"engineer","UNIT_METADATA","","STR_ENGINEER",""},
+{"scientist","UNIT_METADATA","","STR_SCIENTIST",""},
+{"soldier","UNIT_METADATA","","COLLISION",""},
+{"missing-default","UNIT_NO_ITEM",std::string(1,'\0'),"",""}
+};
+for(size_t i=0;i<linkCases.size();++i){
+if(i)std::cout<<',';auto& row=linkCases[i];Unit linked;linked._type=row[1];linked._liveAlienName=row[2];linked._civilianRecoveryTypeName=row[3];linked._spawnUnitName=row[4];linked.afterLoad(&mod);
+auto* live=linked.getLiveAlienGeoscape();auto* recovery=linked.getCivilianRecoveryItemType();auto* spawn=linked.getSpawnUnit();
+std::cout<<"{\"case\":\""<<row[0]<<"\",\"type\":\""<<linked.getType()<<"\",\"live\":\""<<(live?live->getType():"")<<"\",\"recovery\":\""<<(recovery?recovery->getType():"")<<"\",\"spawn\":\""<<(spawn?spawn->getType():"")<<"\"}";
 }
 std::cout<<"],\"ruleLookup\":[";
 RuleItem item;Armor armor;RuleSoldier soldier;RuleSkill skill;

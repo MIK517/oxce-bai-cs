@@ -9,7 +9,12 @@ namespace Oxce.Mods.Rulesets.Runtime;
 public sealed record RuntimeIdentityRule(string Id);
 
 /// <summary>Read-only Unit metadata used by script rule lookups.</summary>
-public sealed record RuntimeUnitRule(string Type);
+public sealed record RuntimeUnitRule(string Type)
+{
+    public RuleHandle<UnitRuleFamily>? SpawnUnit { get; init; }
+    public RuleHandle<ItemRuleFamily>? LiveAlien { get; init; }
+    public RuleHandle<ItemRuleFamily>? CivilianRecoveryItem { get; init; }
+}
 
 public sealed record RuntimeResearchRule(
     string Lookup,

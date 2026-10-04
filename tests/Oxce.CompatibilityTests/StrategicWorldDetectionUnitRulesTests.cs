@@ -14,6 +14,77 @@ public sealed class StrategicWorldDetectionUnitRulesTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void LinkedUnitMetadataMatchesNativeNullableAndRecoverySemantics(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "unitLinks"))
+        {
+            var scenario = row.GetProperty("case").GetString()!;
+            var id = row.GetProperty("type").GetString()!;
+            var fields = scenario switch
+            {
+                "default" or "missing-default" => "",
+                "null" => "liveAlien: null\n    civilianRecoveryType: null",
+                "empty" => "liveAlien: \"\"",
+                "none" => "liveAlien: STR_NONE",
+                "explicit" => "liveAlien: LIVE_ITEM\n    civilianRecoveryType: RECOVERY\n    spawnUnit: UNIT_METADATA",
+                "literal" => "liveAlien: STR_NULL\n    civilianRecoveryType: STR_NULL",
+                "engineer" => "liveAlien: \"\"\n    civilianRecoveryType: STR_ENGINEER",
+                "scientist" => "liveAlien: \"\"\n    civilianRecoveryType: STR_SCIENTIST",
+                "soldier" => "liveAlien: \"\"\n    civilianRecoveryType: COLLISION",
+                _ => throw new InvalidOperationException("Unknown native Unit linkage case."),
+            };
+            var code = $"var ptr RuleUnit unit; var ptr RuleUnit absent null; var ptr RuleUnit spawned; var ptr RuleItem item; var text name; rules.getRuleUnit unit \"{id}\"; ";
+            code += $"unit.getSpawnUnit spawned; spawned.getType name; if neq name \"{row.GetProperty("spawn").GetString()}\"; return DETECTION_NONE 0; end; ";
+            code += $"unit.getLiveAlienGeoscape item; item.getType name; if neq name \"{row.GetProperty("live").GetString()}\"; return DETECTION_NONE 0; end; ";
+            code += $"unit.getCivilianRecoveryItemType item; item.getType name; if neq name \"{row.GetProperty("recovery").GetString()}\"; return DETECTION_NONE 0; end; ";
+            code += "absent.getSpawnUnit spawned; if neq spawned null; return DETECTION_NONE 0; end; absent.getLiveAlienGeoscape item; if neq item null; return DETECTION_NONE 0; end; absent.getCivilianRecoveryItemType item; if neq item null; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+            var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                items:
+                  - type: UNIT_METADATA
+                    battleType: 0
+                  - type: LIVE_ITEM
+                    battleType: 0
+                  - type: STR_NULL
+                    battleType: 0
+                  - type: RECOVERY
+                    battleType: 0
+                  - type: COLLISION
+                    battleType: 0
+                soldiers:
+                  - type: COLLISION
+                    armor: ARMOR
+                units:
+                  - type: {{id}}
+                    armor: ARMOR
+                    {{fields}}
+                ufos:
+                  - type: UFO_UNIT_LINKS
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      {{parser}}: '{{code}}'
+                """);
+            var snapshot = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_UNIT_LINKS", 2200).Capture();
+            if (fromCraft)
+                snapshot = snapshot.WithCraft("SHIP", craft => craft with
+                {
+                    Logistics = craft.Logistics! with { Status = "STR_OUT", Speed = 0, Destination = null },
+                });
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(212));
+            campaign = Reload(content, campaign, 212, "unit-links-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 212, "unit-links-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void UnitLookupAndTypeTextMatchNativeBindings(bool fromCache, bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

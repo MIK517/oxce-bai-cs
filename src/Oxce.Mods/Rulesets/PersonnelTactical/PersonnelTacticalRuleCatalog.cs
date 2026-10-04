@@ -162,9 +162,10 @@ public sealed class PersonnelTacticalRuleCatalog
                 foreach (var set in rule.Value.BuiltInWeaponSets)
                     foreach (var id in set) RequireItem(rule, "builtInWeaponSets", id);
                 var liveAlien = rule.Value.Strings["liveAlien"];
-                if (liveAlien != "STR_NULL") RequireOptionalItem(rule, "liveAlien", liveAlien);
+                if (liveAlien.Length != 0 && liveAlien is not "\0" and not "STR_NONE" &&
+                    !items.Items.TryGet(liveAlien, out _)) Missing(rule, "liveAlien", liveAlien);
                 var recovery = rule.Value.Strings["civilianRecoveryType"];
-                if (recovery.Length != 0 && recovery is not "STR_NULL" and not "STR_ENGINEER" and not "STR_SCIENTIST" &&
+                if (recovery.Length != 0 && recovery is not "\0" and not "STR_NONE" and not "STR_ENGINEER" and not "STR_SCIENTIST" &&
                     !Soldiers.TryGet(recovery, out _) && !items.Items.TryGet(recovery, out _))
                     Missing(rule, "civilianRecoveryType", recovery);
             }
