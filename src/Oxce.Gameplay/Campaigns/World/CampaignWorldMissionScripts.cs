@@ -39,6 +39,11 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
         if (available.Length > 4096) return Blocked("Mission scripts exceed the supported work limit.");
         if (MissionScriptReason(available, month) is { } reason) return Blocked(reason);
 
+        return RunMissionScriptCommands(available, month);
+    }
+
+    private CampaignCommandResult RunMissionScriptCommands(RuntimeRule<RuntimeMissionScriptRule>[] available, int month)
+    {
         // GeoscapeState gathers the available list once, then evaluates labels and odds in order.
         var conditions = new Dictionary<int, bool>();
         foreach (var entry in available)
@@ -115,7 +120,9 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
     }
 
     private string? MissionScriptReason(
-        RuntimeRule<RuntimeMissionScriptRule>[] available, int month)
+        RuntimeRule<RuntimeMissionScriptRule>[] available, int month,
+        Dictionary<string, long>? maximumRuns = null, Dictionary<string, long>? maximumMarkers = null,
+        HashSet<string>? createdDeployments = null)
     {
         string? missionFailureReason = null;
         var labels = new HashSet<int>();
@@ -284,12 +291,19 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     return "Mission script run counter is exhausted.";
             }
         }
+        if (maximumRuns is not null)
+            foreach (var pair in runs)
+                maximumRuns[pair.Key] = (long)_strategy.MissionsRun(pair.Key) + pair.Value;
+        if (maximumMarkers is not null && baseMarkers is not null)
+            foreach (var pair in baseMarkers)
+                maximumMarkers[pair.Key] = (long)campaign.PeekNextId(pair.Key) + pair.Value - 1;
         if (possible == 0) return null;
         var next = campaign.PeekNextId("ALIEN_MISSIONS");
         if ((long)_missions.Count + possible > 100_000 || next <= 0 ||
             (long)next + possible > int.MaxValue ||
             _missions.Any(mission => mission.Id >= next && mission.Id < (long)next + possible))
             return "Alien mission IDs or population exceed the supported limit.";
+        if (maximumMarkers is not null) maximumMarkers["ALIEN_MISSIONS"] = (long)next + possible - 1;
         return null;
 
         string? StrategyMissionReason(string region, WorldWeightedOptions options, RuntimeMissionScriptRule script,
@@ -347,7 +361,12 @@ internal sealed partial class CampaignWorld : ICampaignWorldMissionScripts
                     return false;
                 }
                 if (MissionOperationReason(rule, regionId) is not null) return false;
-                if (RequiresOperationBaseCreation(rule, regionId)) creationChoices.Add((handle, regionId));
+                if (RequiresOperationBaseCreation(rule, regionId))
+                {
+                    creationChoices.Add((handle, regionId));
+                    if (rule.OperationBaseType is { } deployment)
+                        createdDeployments?.Add(campaign.Content.RuntimeRules.AlienDeployments[deployment].Id);
+                }
             }
             if (useMissionRace)
             {

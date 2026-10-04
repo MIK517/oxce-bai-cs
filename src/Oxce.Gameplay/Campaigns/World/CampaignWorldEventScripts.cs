@@ -28,10 +28,15 @@ internal sealed partial class CampaignWorld : ICampaignWorldEventScripts
         if (eligible.Length > 4096) return Blocked("Event scripts exceed the supported work limit.");
         // Preflight every possible choice before the first execution-odds roll or mutation.
         if (EventScriptReason(eligible, state.Month) is { } reason) return Blocked(reason);
+        return RunEventScriptCommands(eligible, state.Month);
+    }
+
+    private CampaignCommandResult RunEventScriptCommands(RuntimeRule<RuntimeEventScriptRule>[] eligible, int month)
+    {
         var relevant = eligible.Where(entry => Percent(entry.Value.Criteria.ExecutionOdds)).ToArray();
         foreach (var entry in relevant)
         {
-            var selected = WorldEventScriptSelection.Select(entry.Value, state.Month, _generatedEvents, campaign.Random);
+            var selected = WorldEventScriptSelection.Select(entry.Value, month, _generatedEvents, campaign.Random);
             foreach (var choice in selected) ((ICampaignEventScheduling)this).Schedule(choice.Id);
         }
         ValidateEventHistory();

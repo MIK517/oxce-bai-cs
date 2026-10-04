@@ -744,3 +744,4 @@ remaining detection providers/forecasts and composed acceptance still keep the
 4c headless gate open. Branch 4d is untouched.
 
 Formatting verification, code-map validation and diff checks pass.
+\n\nBranch 4c composed scheduling: registered ScheduleWorldScripts runs arcs, missions, events and the final alien-base monthly phase in reference order, using score/funds computed once. Whole-call preflight forecasts dependent research and variable/marker changes before RNG or mutation; tests cover fresh/cache/reload, shared run limits, fixed score, disabling research, missing event storage and final-base failure. Newly created bases with upgrades/evolution still have a specific composition guard pending their forecast; existing isolated base processing remains supported. Integrated month progression remains branch 6 guarded. Initial entry is the next slice.\n

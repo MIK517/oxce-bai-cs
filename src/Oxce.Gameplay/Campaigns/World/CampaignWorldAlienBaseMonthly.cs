@@ -29,6 +29,11 @@ internal sealed partial class CampaignWorld : ICampaignWorldAlienBaseMonthly
         var month = campaign.MonthsPassed;
         if (!isNewMonth || month <= 0) return new([]);
         if (AlienBaseMonthlyReason(month) is { } reason) return Blocked(reason);
+        return RunAlienBaseMonthly(month);
+    }
+
+    private CampaignCommandResult RunAlienBaseMonthly(int month)
+    {
         var rules = campaign.Content.RuntimeRules;
         // The reference upgrades ALL bases before running evolution on any base.
         for (var index = 0; index < _alienBases.Count; index++)

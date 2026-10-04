@@ -32,6 +32,12 @@ internal sealed partial class CampaignWorld : ICampaignWorldArcScripts
         var research = campaign.ArcResearch;
         if (ArcScriptReason(eligible, research) is { } reason) return Blocked(reason);
 
+        return RunArcScriptCommands(eligible, research);
+    }
+
+    private CampaignCommandResult RunArcScriptCommands(
+        RuntimeRule<RuntimeArcScriptRule>[] eligible, ICampaignArcResearch research)
+    {
         // GeoscapeState collects all successful odds before granting any research.
         var relevant = eligible.Where(entry => Percent(entry.Value.Criteria.ExecutionOdds)).ToArray();
         var events = new List<ICampaignEvent>();
@@ -62,7 +68,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldArcScripts
     }
 
     private static string? ArcScriptReason(
-        IReadOnlyList<RuntimeRule<RuntimeArcScriptRule>> eligible, ICampaignArcResearch research)
+        IReadOnlyList<RuntimeRule<RuntimeArcScriptRule>> eligible, ICampaignArcResearch research,
+        HashSet<string>? changedResearch = null)
     {
         var priorGrants = new HashSet<string>(StringComparer.Ordinal);
         var priorDisables = new HashSet<string>(StringComparer.Ordinal);
@@ -132,6 +139,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldArcScripts
                         priorDisables.UnionWith(research.PossibleDisables(automatic));
             }
         }
+        changedResearch?.UnionWith(priorGrants);
+        changedResearch?.UnionWith(priorDisables);
         return grantSlots.Count != 0 && !research.ScoreCapacityFits(grantSlots)
             ? "Arc research score exceeds the supported range." : null;
     }
