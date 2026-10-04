@@ -498,3 +498,15 @@ from body visits. Unreachable host calls do not reserve numeric inputs. Active
 nested tag reads retain aggregate work limits. All 1,985 root tests pass without
 failures/skips, including private corpus, checksums and unchanged allocation bounds.
 The 4c headless gate remains open; branch 4d is untouched.
+
+## Rule lookup and linked research detection reads (2026-10-04)
+
+Detection scripts resolve item, armor, soldier and skill pointers through the
+reference Mod wrappers. Canonical immutable rule objects preserve pointer identity;
+missing/empty/NUL names and null mod receivers return null, and item STR_NONE stays
+null even if that name exists in the item table. Research providers expose typed
+rule tags and linked needed items: needItem=false retains a null pointer, explicit
+items and same-name fallback preserve identity, and legacy missing items stay null.
+Native Mod getter/wrapper captures and fresh/cache VM/reload tests cover the slice.
+Reference: Mod.cpp::getItem/getArmor/getSoldier/getSkill and script wrappers,
+RuleResearch.cpp::afterLoad/ScriptRegister, RuleResearch.h::getNeededItem.

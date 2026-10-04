@@ -25,7 +25,8 @@ internal sealed partial class CampaignWorld
         "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
-        "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
+        "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
+        "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
         "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
     private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
@@ -47,6 +48,24 @@ internal sealed partial class CampaignWorld
                 break;
             case "RuleMod.getRuleResearch":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionResearchRule(args[2].Text));
+                break;
+            case "RuleMod.getRuleItem":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null || args[2].Text == "STR_NONE"
+                    ? null : DetectionRule(rules.Items, args[2].Text));
+                break;
+            case "RuleMod.getRuleArmor":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Armors, args[2].Text));
+                break;
+            case "RuleMod.getRuleSoldier":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Soldiers, args[2].Text));
+                break;
+            case "RuleMod.getRuleSkill":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Skills, args[2].Text));
+                break;
+            case "RuleResearch.getNeededItem":
+                var researchRule = receiver is string neededTopic ? rules.Research[rules.Research.GetRequired(neededTopic)].Value : null;
+                args[1] = ScriptRuntimeValue.FromReference(researchRule is { NeedItem: true } && researchRule.NeededItem != "STR_NONE"
+                    ? DetectionRule(rules.Items, researchRule.NeededItem) : null);
                 break;
             case "RuleResearch.getLookup":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is string researchId
@@ -91,6 +110,10 @@ internal sealed partial class CampaignWorld
         return id is not null && id.Length != 0 && id != "\0" && rules.TryGet(id, out var handle)
             ? rules.GetExternalId(handle) : null;
     }
+
+    private static TProjection? DetectionRule<TFamily, TProjection>(
+        RuntimeRuleFamily<TFamily, TProjection> rules, string? id) where TProjection : class =>
+        id is not null && id.Length != 0 && id != "\0" && rules.TryGet(id, out var handle) ? rules[handle].Value : null;
 
     private int DetectionUfoValue(string name, UfoSnapshot ufo)
     {

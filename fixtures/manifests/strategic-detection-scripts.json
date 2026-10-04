@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch); Ufo.cpp (getDamagePercentage/getDamageMaxScript), Mod.h (isEmptyRuleName); RuleCraft.h (operator+=, addGetStatsScript), RuleUfo/Ufo ScriptRegister",
+      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch); Ufo.cpp (getDamagePercentage/getDamageMaxScript), Mod.h (isEmptyRuleName); RuleCraft.h (operator+=, addGetStatsScript), RuleUfo/Ufo ScriptRegister; Mod.cpp (getItem/getArmor/getSoldier/getSkill and script wrappers), RuleResearch.h (getNeededItem)",
       "probe": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
       "capture": "tools/capture-strategic-detection-scripts-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; caller methods inserted verbatim, recording Worker stub"
@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
-      "size": 9069,
-      "sha256": "ae819bc59415f4269d761360cfc1af72630a8f16d2ab55a5a869943024aa4140"
+      "size": 10490,
+      "sha256": "5821b8e4ead36f029688f2a702cb2b2628900e26349ed46128ce74cf339c08e0"
     },
     {
       "path": "tools/capture-strategic-detection-scripts-reference.ps1",
-      "size": 5318,
-      "sha256": "22dbd795763f5fd131ad3ee988220ffad2baec8491d44121ee469565883df96d"
+      "size": 5934,
+      "sha256": "b41627da062a4f704ffb8d2681757232743465841a73298e01ddf4dd510bf6db"
     },
     {
       "path": "fixtures/public/savegames/strategic-detection-scripts.rul",

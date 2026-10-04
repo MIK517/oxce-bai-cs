@@ -52,6 +52,17 @@ $template = $template.Replace('// RESEARCH_FIND', (Read-Method 'src/Savegame/Sav
 $template = $template.Replace('// RESEARCH_METHOD', (Read-Method 'src/Savegame/SavedGame.cpp' 'bool SavedGame::isResearched(const RuleResearch *research, bool considerDebugMode) const'))
 $template = $template.Replace('// RESEARCH_WRAPPER', (Read-Method 'src/Savegame/SavedGame.cpp' 'void isResearchedScript('))
 $template = $template.Replace('// MOD_METHODS', ('template<typename T>' + [Environment]::NewLine + (Read-Method 'src/Mod/Mod.cpp' 'T *Mod::getRule(') + [Environment]::NewLine + (Read-Method 'src/Mod/Mod.cpp' 'RuleResearch *Mod::getResearch(const std::string &id, bool error) const')))
+$lookupMethods = @(
+    (Read-Method 'src/Mod/Mod.cpp' 'RuleItem *Mod::getItem('),
+    (Read-Method 'src/Mod/Mod.cpp' 'Armor *Mod::getArmor('),
+    (Read-Method 'src/Mod/Mod.cpp' 'RuleSoldier *Mod::getSoldier('),
+    (Read-Method 'src/Mod/Mod.cpp' 'RuleSkill *Mod::getSkill('),
+    (Read-Method 'src/Mod/Mod.cpp' 'void getItemScript('),
+    (Read-Method 'src/Mod/Mod.cpp' 'void getArmorScript('),
+    (Read-Method 'src/Mod/Mod.cpp' 'void getSoldierScript('),
+    (Read-Method 'src/Mod/Mod.cpp' 'void getSkillScript(')
+)
+$template = $template.Replace('// RULE_LOOKUPS', ($lookupMethods -join [Environment]::NewLine))
 $template = $template.Replace('// RESEARCH_LOOKUP', (Read-Method 'src/Mod/Mod.cpp' 'void getRuleResearch('))
 $work = Join-Path $repository 'artifacts/reference-strategic-detection-scripts'
 [IO.Directory]::CreateDirectory($work) | Out-Null

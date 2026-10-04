@@ -59,6 +59,123 @@ public sealed class StrategicWorldDetectionResearchTests
         Reload(content, campaign, 106, "daily-research-detection.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReadOnlyRuleLookupMatchesNativeNullAndMissingCases(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "ruleLookup"))
+        {
+            var source = row[0].GetInt32() != 0 ? "rules" : "absent";
+            var known = row[1].GetInt32() != 0;
+            var calls = new[]
+            {
+                ("getRuleItem", "RuleItem", "SUPPLY", 2),
+                ("getRuleArmor", "RuleArmor", "ARMOR", 3),
+                ("getRuleSoldier", "RuleSoldier", "RECRUIT", 4),
+                ("getRuleSkill", "RuleSkill", "SKILL_LOOKUP", 5),
+            };
+            var code = "var ptr RuleMod absent null; " + string.Concat(calls.Select((call, index) =>
+                $"var ptr {call.Item2} value{index}; var ptr {call.Item2} other{index}; "));
+            for (var index = 0; index < calls.Length; index++)
+            {
+                var (method, type, id, column) = calls[index];
+                code += $"{source}.{method} value{index} \"{(known ? id : "MISSING")}\"; ";
+                code += $"if {(row[column].GetInt32() != 0 ? "eq" : "neq")} value{index} null; return DETECTION_NONE 0; end; ";
+                code += $"{source}.{method} other{index} \"{(known ? id : "MISSING")}\"; ";
+                code += $"if neq value{index} other{index}; return DETECTION_NONE 0; end; ";
+            }
+            code += "rules.getRuleItem value0 \"STR_NONE\"; if neq value0 null; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                skills:
+                  - type: SKILL_LOOKUP
+                items:
+                  - type: STR_NONE
+                ufos:
+                  - type: UFO_RULE_LOOKUP
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      detectUfoFromBase: '{{code}}'
+                """);
+            var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_RULE_LOOKUP", 2200);
+
+            AdvanceUnblocked(campaign, 1);
+
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 115, "rule-lookup-detection.sav");
+        }
+        Assert.Equal(0, oracle.RootElement.GetProperty("noneItem").GetInt32());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResearchTagsAndNeededItemPointersPreserveLinkedIdentity(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            extended:
+              tags:
+                RuleResearch: {DETECT_RESEARCH: int}
+            research:
+              - name: R_ITEM_TRUE
+                cost: 1
+                needItem: true
+                neededItem: SUPPLY
+                tags: {DETECT_RESEARCH: 14}
+              - name: R_ITEM_FALSE
+                cost: 1
+                needItem: false
+                neededItem: SUPPLY
+              - name: SUPPLY
+                cost: 1
+                needItem: true
+              - name: R_ITEM_MISSING
+                cost: 1
+                needItem: true
+            ufos:
+              - type: UFO_RESEARCH_ITEM
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    var ptr RuleResearch topic;
+                    var ptr RuleResearch absent null;
+                    var ptr RuleItem item;
+                    var ptr RuleItem wanted;
+                    var int value;
+                    rules.getRuleItem wanted "SUPPLY";
+                    rules.getRuleResearch topic "R_ITEM_TRUE";
+                    topic.getNeededItem item;
+                    if neq item wanted; return DETECTION_NONE 0; end;
+                    topic.getTag value Tag.DETECT_RESEARCH;
+                    if neq value 14; return DETECTION_NONE 0; end;
+                    absent.getTag value Tag.DETECT_RESEARCH;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    rules.getRuleResearch topic "R_ITEM_FALSE";
+                    topic.getNeededItem item;
+                    if neq item null; return DETECTION_NONE 0; end;
+                    topic.getTag value Tag.DETECT_RESEARCH;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    rules.getRuleResearch topic "SUPPLY";
+                    topic.getNeededItem item;
+                    if neq item wanted; return DETECTION_NONE 0; end;
+                    rules.getRuleResearch topic "R_ITEM_MISSING";
+                    topic.getNeededItem item;
+                    if neq item null; return DETECTION_NONE 0; end;
+                    absent.getNeededItem item;
+                    if neq item null; return DETECTION_NONE 0; end;
+                    return DETECTION_RADAR 100;
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_RESEARCH_ITEM", 2200);
+
+        AdvanceUnblocked(campaign, 1);
+
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 116, "research-item-detection.sav");
+    }
+
     private static RuntimeContent Load(bool fromCache) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
             research:
