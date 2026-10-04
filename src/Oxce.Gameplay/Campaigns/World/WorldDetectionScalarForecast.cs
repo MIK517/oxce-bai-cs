@@ -27,7 +27,8 @@ internal sealed class WorldDetectionScalarForecast
         states[0] = program.Registers.Where(static register => !register.Type.IsReference)
             .DistinctBy(static register => register.Offset)
             .ToDictionary(static register => register.Offset,
-                static register => register.IsInput || register.IsOutput ? (int.MinValue, int.MaxValue) : (0, 0));
+                register => register.IsInput ? WorldDetectionBoundedQueries.CallerRange(program.ParserName, register.Name)
+                    : register.IsOutput ? (int.MinValue, int.MaxValue) : (0, 0));
         var bindings = program.Bindings.ToDictionary(static binding => binding.Id.Value);
         var queue = new Queue<int>();
         var queued = new bool[states.Length];

@@ -117,4 +117,44 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
             Assert.Null(WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 1));
         }
     }
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void CallerAndValidatedUfoDomainsComposeWithNativeDamageConversions(bool fromCache, bool fromCraft)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+        AssertDetectionReadScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int power; var int value; " +
+            "rules.getRuleItem item \"CALLER_RANGE_QUERY\"; item.getDamageType damage; " +
+            "damage.getDamageToHealth value distance; if neq value distance; return DETECTION_NONE 0; end; " +
+            "damage.getDamageToHealth value already_tracked; if neq value already_tracked; return DETECTION_NONE 0; end; " +
+            "ufo.getAltitude power; damage.getDamageToHealth value power; if neq value power; return DETECTION_NONE 0; end; " +
+            "ufo.getStatus power; damage.getDamageToHealth value power; if neq value power; return DETECTION_NONE 0; end; " +
+            "return DETECTION_RADAR 100;", fromCache, fromCraft,
+            "items: [{type: CALLER_RANGE_QUERY, damageAlter: {ToHealth: 1}}]");
+    }
+
+    [Fact]
+    public void CallerDomainsCoverGlobeEndpointsAndDoNotConstrainMutableInputsOrOutputs()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "distances")) Assert.InRange(row[3].GetInt32(), 0, 10800);
+        foreach (var longitude in new[] { 0.0, 0.2, Math.PI, 2 * Math.PI - 0.001 })
+            foreach (var latitude in new[] { -Math.PI / 2, 0.0, Math.PI / 2 })
+                Assert.InRange(WorldGeometry.XcomDistance(WorldGeometry.Distance(new WorldPosition(0.0, 0.0), longitude, latitude)), 0, 10800);
+        Assert.Equal((0, 10800), WorldDetectionBoundedQueries.CallerRange("detectUfoFromBase", "distance"));
+        Assert.Equal((0, 1), WorldDetectionBoundedQueries.CallerRange("detectUfoFromCraft", "already_tracked"));
+        Assert.Equal(WorldDetectionScalarRanges.Full, WorldDetectionBoundedQueries.CallerRange("detectUfoFromBase", "radar_total_strength"));
+        Assert.Equal(WorldDetectionScalarRanges.Full, WorldDetectionBoundedQueries.CallerRange("Probe", "distance"));
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"]);
+        var program = ScriptCompiler.Compile("return;", new ScriptParserDefinition("detectUfoFromBase", ["distance"])).Program!;
+        var references = WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, [1], 1000)!;
+        var scalars = WorldDetectionScalarForecast.Build(program, content.RuntimeRules, references, [1], 1000)!;
+        Assert.Equal(WorldDetectionScalarRanges.Full, scalars.At(0, ScriptOperand.Register(program.Registers[0].Offset)));
+        Assert.Equal((0, WorldAltitudes.All.Count - 1), WorldDetectionBoundedQueries.Range("Ufo.getAltitude"));
+        foreach (var status in Enum.GetValues<UfoStatus>()) Assert.InRange((int)status, 0, WorldDetectionBoundedQueries.Range("Ufo.getStatus")!.Value.Max);
+    }
+
 }

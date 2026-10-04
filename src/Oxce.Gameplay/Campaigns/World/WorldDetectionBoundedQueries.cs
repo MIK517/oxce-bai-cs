@@ -7,6 +7,8 @@ internal static class WorldDetectionBoundedQueries
     {
         "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
             "Country.getPact" or "RuleItem.hasCategory" or "GeoscapeGame.isResearched" => (0, 1),
+        "Ufo.getAltitude" => (0, WorldAltitudes.All.Count - 1),
+        "Ufo.getStatus" => (0, (int)UfoStatus.IgnoreMe),
         "Time.getDay" => (0, 31),
         "Time.getMonth" => (0, 12),
         "Time.getHour" => (0, 23),
@@ -14,6 +16,15 @@ internal static class WorldDetectionBoundedQueries
         "Time.getSecondsPastMidnight" => (0, 86399),
         _ => null,
     };
+
+    internal static (int Min, int Max) CallerRange(string parser, string name) =>
+        parser is "detectUfoFromBase" or "detectUfoFromCraft" ? name switch
+        {
+            "already_tracked" => (0, 1),
+            // Actual callers convert acos globe distance (0..pi radians) to nautical miles.
+            "distance" => (0, 10800),
+            _ => WorldDetectionScalarRanges.Full,
+        } : WorldDetectionScalarRanges.Full;
 
     internal static bool NullReturnsZero(string name) => Range(name) is not null || name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or "Ufo.getDamageMax" or
