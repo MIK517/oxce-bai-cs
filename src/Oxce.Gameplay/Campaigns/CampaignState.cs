@@ -486,8 +486,11 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         { PreservationKey = facility.PreservationKey }).ToArray();
         var crafts = source.Crafts.Select(craft => new CraftState(
             rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft"))
-        { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules),
-            ScriptValues = RestoreScriptValues(content, "Craft", craft.ScriptValues) }).ToArray();
+        {
+            PreservationKey = craft.PreservationKey,
+            Logistics = RestoreCraftLogistics(craft.Logistics, rules),
+            ScriptValues = RestoreScriptValues(content, "Craft", craft.ScriptValues)
+        }).ToArray();
         var soldiers = source.Soldiers.Select(soldier => new SoldierState(
             rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier"))
         { PreservationKey = soldier.PreservationKey, Personal = RestorePersonal(soldier.Personal, rules) }).ToArray();
