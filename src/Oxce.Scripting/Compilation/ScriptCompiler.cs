@@ -273,6 +273,13 @@ public sealed class ScriptCompiler
             type = default;
             return false;
         }
+        // Native assignment overloads accept primitive, Position and tag values, not pointers to them.
+        if (typeTokenCount == 2 && (definition!.Id.Value < ScriptPrimitiveTypes.FirstCustomTypeValue ||
+            definition.Name == "Position" || definition.Name.EndsWith(".Tag", StringComparison.Ordinal)))
+        {
+            type = default;
+            return false;
+        }
         var modifiers = ScriptTypeModifier.Register | ScriptTypeModifier.Writable;
         if (typeTokenCount == 2)
         {

@@ -85,6 +85,12 @@ struct RandomState
     static constexpr const char* ScriptName = "RandomState";
     static void ScriptRegister(OpenXcom::ScriptParserBase* parser) { OpenXcom::Bind<RandomState> bind(parser); }
 };
+// Tile::ScriptRegister uses the same native raw value registration and BindValue template.
+struct Position
+{
+    int x = 0, y = 0, z = 0;
+    bool operator==(const Position&) const = default;
+};
 struct ProbeCase { const char* name; const char* source; };
 
 int main()
@@ -104,6 +110,13 @@ int main()
         { "editable-copy", "var ptre RandomState original null; var ptre RandomState value original; return 1 100;" },
         { "tag-null", "var RuleItem.Tag value null; return 1 100;" },
         { "tag-copy", "var RuleItem.Tag original null; var RuleItem.Tag value original; return 1 100;" },
+        { "pointer-to-position-null", "var ptr Position value null; return 1 100;" },
+        { "pointer-to-scalar-default", "var ptr int value; return 1 100;" },
+        { "pointer-to-text-default", "var ptr text value; return 1 100;" },
+        { "pointer-to-tag-default", "var ptr RuleItem.Tag value; return 1 100;" },
+        { "pointer-to-scalar-null", "var ptr int value null; return 1 100;" },
+        { "pointer-to-text-null", "var ptr text value null; return 1 100;" },
+        { "pointer-to-tag-null", "var ptr RuleItem.Tag value null; return 1 100;" },
         { "scalar-from-text", "var int value \"wrong\"; return 1 100;" },
         { "scalar-from-pointer", "var int value ufo; return 1 100;" },
         { "scalar-from-null", "var int value null; return 1 100;" },
@@ -128,6 +141,8 @@ int main()
             helper::ArgName<const RuleMod*>{ "rules" });
         parser.registerPointerType<RuleItem>();
         parser.registerPointerType<RandomState>();
+        parser.registerRawValueType<Position>("Position");
+        BindValue<Position> positionBinding(&parser, "Position");
         Parser::Container script;
         script.loadContainer(item.name, item.source, parser);
         const bool compiled = static_cast<bool>(script);

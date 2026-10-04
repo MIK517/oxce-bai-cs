@@ -15,6 +15,25 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class ContentSnapshotTests
 {
+    [Theory]
+    [InlineData("var int value ufo;")]
+    [InlineData("var ptr int value null;")]
+    [InlineData("var ptr text value null;")]
+    [InlineData("var ptr RuleItem.Tag value null;")]
+    public void InvalidDetectionDeclarationsCannotPublishCompiledContent(string declaration)
+    {
+        using var fixture = new TemporaryModFixture($$"""
+            ufos:
+              - type: BAD_DECLARATION
+                scripts:
+                  detectUfoFromBase: '{{declaration}} return 1 100;'
+            """);
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+        Assert.False(snapshot.Capabilities.Has(ContentLoadStage.ScriptsCompiled));
+        Assert.False(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked));
+        Assert.Contains(snapshot.Diagnostics, diagnostic => diagnostic.Code == ScriptDiagnosticCodes.InvalidDeclaration);
+    }
+
     [Fact]
     public void EmptyGraphCompilesReferenceDefaultsAndReachesScriptsCompiled()
     {
