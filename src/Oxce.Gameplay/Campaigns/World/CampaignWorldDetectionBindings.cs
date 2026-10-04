@@ -19,6 +19,8 @@ internal sealed partial class CampaignWorld
         "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
+        "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
+        "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "Craft.getDamage" or "Craft.getShield" or "Craft.getRuleCraft" or
         "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance" or
@@ -43,6 +45,19 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         switch (name)
         {
+            case "RuleCraft.getType":
+            case "RuleItem.getType":
+            case "RuleArmor.getType":
+            case "RuleSkill.getType":
+                args[1] = ScriptRuntimeValue.FromText(receiver switch
+                {
+                    RuntimeCraftRule typeCraft => typeCraft.Type,
+                    RuntimeItemRule typeItem => typeItem.Type,
+                    RuntimeArmorRule typeArmor => typeArmor.Type,
+                    RuntimeIdentityRule typeSkill => typeSkill.Id,
+                    _ => "",
+                });
+                break;
             case "Ufo.getRules":
             case "Ufo.getRuleUfo":
                 args[1] = ScriptRuntimeValue.FromReference(ufo is null ? null : rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value);
@@ -132,6 +147,8 @@ internal sealed partial class CampaignWorld
                         _ => DetectionUfoStat(ufoRule.Stats, DetectionUfoStatIndex(name)),
                     } :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
+                    receiver is RuntimeItemRule itemRule ? name == "RuleItem.getWeight" ? itemRule.Weight : itemRule.BattleType :
+                    receiver is RuntimeArmorRule armorRule ? armorRule.Size :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch
                     {
