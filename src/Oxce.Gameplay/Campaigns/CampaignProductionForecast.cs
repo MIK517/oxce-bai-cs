@@ -62,8 +62,6 @@ public sealed partial class CampaignState
             }
         }
         if (possible == 0) return before;
-        if (consumesCraft)
-            throw new InvalidDataException("Shared world marker production requires craft-consumption forecasts.");
         long floor = 1;
         foreach (var owner in _bases)
         {
@@ -74,7 +72,10 @@ public sealed partial class CampaignState
             foreach (var transfer in owner.Transfers)
                 if (!transfer.Delivered && transfer.Craft is { } craft && craft.RuleId == name) floor = Math.Max(floor, (long)craft.Id + 1);
         }
-        return (certain == 0 ? before.Minimum : Math.Max(before.Minimum, floor) + certain,
-            Math.Max(before.Maximum, floor) + possible);
+        // Consumption can remove the saved highest craft before the allocator
+        // scans it. The persisted counter remains a floor even in that outcome.
+        var minimum = certain == 0 ? before.Minimum :
+            (consumesCraft ? before.Minimum : Math.Max(before.Minimum, floor)) + certain;
+        return (minimum, Math.Max(before.Maximum, floor) + possible);
     }
 }
