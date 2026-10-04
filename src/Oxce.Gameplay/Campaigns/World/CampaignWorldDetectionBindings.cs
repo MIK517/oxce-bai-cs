@@ -12,12 +12,13 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionPointerSet(binding) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        DetectionValueSet(binding) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
-    private static bool DetectionPointerSet(ScriptBindingDeclaration binding) =>
+    private static bool DetectionValueSet(ScriptBindingDeclaration binding) =>
         binding.Name == "set" && binding.Parameters.Count == 2 &&
-        binding.Parameters[0].Type.IsRegister && binding.Parameters[0].Type.IsReference &&
-        binding.Parameters[1].Type.IsReference && !binding.Parameters[1].Type.IsRegister &&
+        binding.Parameters[0].Writable && binding.Parameters[0].Type.IsRegister &&
+        binding.Parameters[0].Type.IsReference == binding.Parameters[1].Type.IsReference &&
+        !binding.Parameters[1].Type.IsRegister &&
         binding.Parameters[0].Type.Id == binding.Parameters[1].Type.Id;
 
     private static bool DetectionBindingNameSupported(string name) => name is
@@ -25,7 +26,7 @@ internal sealed partial class CampaignWorld
         "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
-        "RuleInventory.getMoveToCost" or "RuleInventory.getId" or "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
+        "RuleInventory.getMoveToCost" or "RuleInventory.getId" or "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or "RuleSoldier.getType" or
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getAccuracyAimed" or "RuleItem.getAccuracyAuto" or "RuleItem.getAccuracySnap" or "RuleItem.getAccuracyMelee" or
         "RuleItem.getAccuracyUse" or "RuleItem.getAccuracyMind" or "RuleItem.getAccuracyPanic" or "RuleItem.getAccuracyThrow" or
@@ -54,7 +55,7 @@ internal sealed partial class CampaignWorld
 
     private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
     {
-        if (DetectionPointerSet(binding))
+        if (DetectionValueSet(binding))
         {
             args[0] = args[1];
             return ScriptBindingResult.Success;
@@ -116,6 +117,7 @@ internal sealed partial class CampaignWorld
             case "RuleItem.getType":
             case "RuleArmor.getType":
             case "RuleSkill.getType":
+            case "RuleSoldier.getType":
                 args[1] = ScriptRuntimeValue.FromText(receiver switch
                 {
                     RuntimeUnitRule typeUnit => typeUnit.Type,

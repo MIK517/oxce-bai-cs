@@ -347,6 +347,45 @@ public sealed class StrategicWorldDetectionItemRulesTests
           damageAlter: {ToHealth: 1e100, ArmorEffectiveness: 1e100}
         """;
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void TextAndTypedTagCopiesMatchNativeBindSet(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
+        var texts = TestFixtures.Rows(oracle.RootElement, "text");
+        var tag = oracle.RootElement.GetProperty("tagCopy").GetInt32();
+        var code = $"var text original \"{texts[0].GetString()}\"; var text copy; " +
+            "var ptr RuleItem item; var RuleItem.Tag selected; var RuleItem.Tag alias; var int value; " +
+            $"set copy original; if neq copy \"{texts[0].GetString()}\"; return DETECTION_NONE 0; end; " +
+            $"set copy \"{texts[1].GetString()}\"; if neq copy \"{texts[1].GetString()}\"; return DETECTION_NONE 0; end; " +
+            "set selected Tag.COPY; set alias selected; rules.getRuleItem item \"ITEM_READ\"; item.getTag value alias; " +
+            $"if neq value {tag}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+        RunItemScript(code, $"tags: {{COPY: {tag}}}", fromCache, fromCraft, """
+            extended:
+              tags:
+                RuleItem: {COPY: int}
+            """);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SoldierTypeBindingRetainsNativeSkillReceiver(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
+        var types = TestFixtures.Rows(oracle.RootElement, "soldierType");
+        RunItemScript("var ptr RuleSkill skill; var ptr RuleSkill absent null; var text id; " +
+            $"rules.getRuleSkill skill \"{types[0].GetString()}\"; RuleSoldier.getType skill id; " +
+            $"if neq id \"{types[0].GetString()}\"; return DETECTION_NONE 0; end; " +
+            $"RuleSoldier.getType absent id; if neq id \"{types[1].GetString()}\"; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "", fromCache, fromCraft, $"skills: [{{type: {types[0].GetString()}}}]");
+    }
+
     private static readonly string[] DamageReaders =
         ["getDamageToArmorPre", "getDamageToArmor", "getDamageToEnergy", "getDamageToHealth",
          "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",
