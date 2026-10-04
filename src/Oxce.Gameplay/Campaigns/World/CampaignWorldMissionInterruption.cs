@@ -29,6 +29,8 @@ internal sealed partial class CampaignWorld
                 var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
                 if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
                     mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
+                if (rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration &&
+                    rule.Waves.All(wave => wave.SpawnTimer == 0)) return WaveWorkReason;
                 AlienMissionSnapshot projected = mission;
                 foreach (var step in DueWaveSteps(mission, rule))
                 {
@@ -48,7 +50,7 @@ internal sealed partial class CampaignWorld
                 (_missionCounterForecast ??= []).Add(saved.Id, projected);
             }
         }
-        catch (InvalidDataException error) { return error.Message; }
+        catch (InvalidDataException error) when (error.Message != WaveWorkReason) { return error.Message; }
         catch (OverflowException) { return "Mission counter forecasts exceed the supported range."; }
         return null;
     }

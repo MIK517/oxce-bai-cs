@@ -760,3 +760,9 @@ and five audits, while the revised 4c headless completion gate remains open.
   Fresh/cache capacity failures leave the tick unchanged; successful conversions
   and ordinary arrivals retain save/reload coverage. Reference: GeoscapeState
   half-hour detection before five-second arrivals and AlienMission arrival fallback.
+
+- Batch 1 audit: root validation reproduced an error-contract regression in the
+  early counter forecast. Excessive finite wave chains retain their intentional
+  InvalidDataException; endless all-zero cycles retain their explicit unavailable
+  reason. Both stop before mutation/RNG. The unchanged existing malformed-input
+  regression verifies this separately from the new legacy arrival coverage.
