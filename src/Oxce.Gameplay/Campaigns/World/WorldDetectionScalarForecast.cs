@@ -9,6 +9,8 @@ internal sealed class WorldDetectionScalarForecast
     private readonly Dictionary<int, (int Min, int Max)>?[] _states;
     private WorldDetectionScalarForecast(Dictionary<int, (int Min, int Max)>?[] states) => _states = states;
 
+    internal bool Reachable(int index) => _states[index] is not null;
+
     internal (int Min, int Max) At(int index, ScriptOperand operand) => Read(operand, _states[index]);
 
     private static (int Min, int Max) Read(ScriptOperand operand, Dictionary<int, (int Min, int Max)>? state) =>
@@ -86,8 +88,8 @@ internal sealed class WorldDetectionScalarForecast
             if (operation == CoreScriptOperation.Jump) Join(operands[0].Scalar);
             else
             {
-                Join(index + 1);
-                if (operation == CoreScriptOperation.BranchCondition) Join(operands[^1].Scalar);
+                Join(index + 1, operation == CoreScriptOperation.BranchCondition ? true : null);
+                if (operation == CoreScriptOperation.BranchCondition) Join(operands[^1].Scalar, false);
             }
             if (work > maximumWork) return null;
 
@@ -97,21 +99,44 @@ internal sealed class WorldDetectionScalarForecast
                     state[destination.Scalar] = value;
             }
 
-            void Join(int target)
+            void Join(int target, bool? branch = null)
             {
                 if (target >= states.Length || !references.Reachable(target)) return;
                 work += state.Count;
                 if (work > maximumWork) return;
+                var outgoing = state;
+                if (branch is { } matches &&
+                    (operands.Count == 5 || ((ScriptConditionKind)operands[0].Scalar == ScriptConditionKind.All) == matches))
+                {
+                    work += state.Count;
+                    if (work > maximumWork) return;
+                    outgoing = new(state);
+                    for (var clause = 1; clause < operands.Count - 1; clause += 3)
+                    {
+                        var leftOperand = operands[clause + 1];
+                        var rightOperand = operands[clause + 2];
+                        if (leftOperand.Kind is not (ScriptOperandKind.Scalar or ScriptOperandKind.Register) ||
+                            rightOperand.Kind is not (ScriptOperandKind.Scalar or ScriptOperandKind.Register)) continue;
+                        var left = Read(leftOperand, outgoing);
+                        var right = Read(rightOperand, outgoing);
+                        if (!WorldDetectionScalarConditions.Refine((ScriptConditionKind)operands[clause].Scalar,
+                            matches, ref left, ref right)) return;
+                        if (leftOperand.Kind == ScriptOperandKind.Register && outgoing.ContainsKey(leftOperand.Scalar))
+                            outgoing[leftOperand.Scalar] = left;
+                        if (rightOperand.Kind == ScriptOperandKind.Register && outgoing.ContainsKey(rightOperand.Scalar))
+                            outgoing[rightOperand.Scalar] = right;
+                    }
+                }
                 bool changed;
                 if (states[target] is not { } existing)
                 {
-                    states[target] = new(state);
+                    states[target] = new(outgoing);
                     changed = true;
                 }
                 else
                 {
                     changed = false;
-                    foreach (var (register, value) in state)
+                    foreach (var (register, value) in outgoing)
                     {
                         var current = existing[register];
                         var merged = (Math.Min(current.Min, value.Min), Math.Max(current.Max, value.Max));

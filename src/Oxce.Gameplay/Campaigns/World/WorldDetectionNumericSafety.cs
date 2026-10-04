@@ -26,7 +26,7 @@ internal static class WorldDetectionNumericSafety
         if (values is null) return "Detection numeric safety forecast exceeds the supported work limit.";
         for (var index = 0; index < program.Instructions.Count; index++)
         {
-            if (visits[index] == 0 || !references.Reachable(index)) continue;
+            if (visits[index] == 0 || !references.Reachable(index) || !values.Reachable(index)) continue;
             var instruction = program.Instructions[index];
             var operation = (CoreScriptOperation)instruction.Operation.Value;
             var operand = ConsumedOperand(operation);

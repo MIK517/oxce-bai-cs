@@ -47,7 +47,8 @@ public sealed class StrategicWorldDetectionNumericTests
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
-            !row.GetProperty("name").GetString()!.StartsWith("variable-", StringComparison.Ordinal)))
+            !row.GetProperty("name").GetString()!.StartsWith("variable-", StringComparison.Ordinal) &&
+            !row.GetProperty("name").GetString()!.StartsWith("condition-", StringComparison.Ordinal)))
         {
             var name = row.GetProperty("name").GetString();
             var half = name is "absolute-minimum" or "singleton-wrap" or "bounded-loop";
@@ -113,6 +114,48 @@ public sealed class StrategicWorldDetectionNumericTests
         var visits = Enumerable.Repeat(1, program.Instructions.Count).ToArray();
         Assert.Equal("Detection numeric safety forecast exceeds the supported work limit.",
             WorldDetectionNumericSafety.UnavailableReason(program, content.RuntimeRules, visits, 1));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ScalarConditionEdgesProveSafeDivisorsAndPowerBounds(bool fromCache, bool fromCraft)
+    {
+        AssertDetectionReadScript("var int divisor distance; if gt divisor 0; div detection_chance divisor; end; " +
+            "if lt divisor 0; div detection_chance divisor; end; return DETECTION_RADAR 100;", fromCache, fromCraft);
+        AssertDetectionReadScript("var int divisor distance; if eq divisor 3; div detection_chance divisor; end; " +
+            "return DETECTION_RADAR 100;", fromCache, fromCraft);
+        AssertDetectionReadScript("var int divisor 0; if neq divisor 0; div detection_chance divisor; end; " +
+            "return DETECTION_RADAR 100;", fromCache, fromCraft);
+        AssertDetectionReadScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int power already_tracked; " +
+            "var int value -7; rules.getRuleItem item \"CONDITION_POWER\"; item.getDamageType damage; " +
+            "if and ge power 0 le power 39; damage.getDamageToHealth value power; " +
+            "if neq value power; return DETECTION_NONE 0; end; end; return DETECTION_RADAR 100;",
+            fromCache, fromCraft, "items: [{type: CONDITION_POWER, damageAlter: {ToHealth: 1}}]");
+    }
+
+    [Theory]
+    [InlineData(ScriptConditionKind.LessThan, true, int.MinValue, int.MaxValue, 0, 0, int.MinValue, -1)]
+    [InlineData(ScriptConditionKind.GreaterThan, true, int.MinValue, int.MaxValue, 0, 0, 1, int.MaxValue)]
+    [InlineData(ScriptConditionKind.Equal, true, int.MinValue, int.MaxValue, 3, 3, 3, 3)]
+    [InlineData(ScriptConditionKind.NotEqual, true, 0, 5, 0, 0, 1, 5)]
+    public void ComparisonIntervalsPreserveNativeSignedBoundaries(ScriptConditionKind condition, bool matches,
+        int minLeft, int maxLeft, int minRight, int maxRight, int expectedMin, int expectedMax)
+    {
+        var left = (minLeft, maxLeft);
+        var right = (minRight, maxRight);
+        Assert.True(WorldDetectionScalarConditions.Refine(condition, matches, ref left, ref right));
+        Assert.Equal((expectedMin, expectedMax), left);
+    }
+
+    [Fact]
+    public void ImpossibleExtremeComparisonsProduceNoSuccessor()
+    {
+        var left = (int.MaxValue, int.MaxValue);
+        var right = (int.MinValue, int.MinValue);
+        Assert.False(WorldDetectionScalarConditions.Refine(ScriptConditionKind.LessThan, true, ref left, ref right));
     }
 
     [Theory]
