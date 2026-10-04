@@ -202,13 +202,13 @@ internal sealed partial class CampaignWorld
 
     private static int DetectionCraftRuleValue(string name, RuntimeCraftRule rule) =>
         DetectionCraftRuleStatKey(name) is { } key ? rule.DefaultStats.GetValueOrDefault(key) : name switch
-    {
-        "RuleCraft.getPilotsMax" => rule.Pilots,
-        "RuleCraft.getSoldiersMax" => rule.SoldierCapacity,
-        "RuleCraft.getVehiclesMax" => rule.VehicleCapacity,
-        "RuleCraft.getWeaponsMax" => rule.WeaponSlots,
-        _ => throw new InvalidOperationException("Detection craft rule provider was not preflighted."),
-    };
+        {
+            "RuleCraft.getPilotsMax" => rule.Pilots,
+            "RuleCraft.getSoldiersMax" => rule.SoldierCapacity,
+            "RuleCraft.getVehiclesMax" => rule.VehicleCapacity,
+            "RuleCraft.getWeaponsMax" => rule.WeaponSlots,
+            _ => throw new InvalidOperationException("Detection craft rule provider was not preflighted."),
+        };
 
     private static string? DetectionCraftRuleStatKey(string name) => name switch
     {

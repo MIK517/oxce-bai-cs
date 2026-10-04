@@ -481,3 +481,23 @@ country-loop work is shared across detection callers and explicit unsafe iterato
 calls stop before mutation. All 2,002 root tests pass with zero failures/skips,
 including private corpus and checksum tests. Formatting, code-map validation and
 diff checks pass. The 4c headless gate remains open; branch 4d is untouched.
+
+## Rule and mod detection scalar cycle audit (2026-10-04)
+
+Three slices complete UFO rule radius/weapon getters, immutable mod view/darkness
+constants, and all nineteen raw craft-rule stat getters. Native traces pin field
+names and defaults; fresh/cache live execution and reloads cover each provider.
+The radius slice reproduced and corrected the unknown-size fallback from two to
+the reference zero. Compiler/cache revision is 40.
+
+The batch audit removed an unintended craft-stat field from the facility
+projection, avoiding a public API and allocation outside its owner. The existing
+unsupported-provider regression now checks still-guarded smoke reduction; newly
+supported view-distance reads have dedicated positive coverage. Effective craft
+instance statistics beyond radar, additional VM providers/forecasts, actual
+initial/monthly caller composition and final composed acceptance remain open.
+Branch 4d is untouched.
+
+Validation: all 2,016 root tests pass with zero failures/skips, including private
+corpus, checksum and existing allocation checks. Formatting verification, code-map
+validation and diff checks pass. The reference checkout remains clean.
