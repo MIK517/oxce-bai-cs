@@ -60,7 +60,10 @@ public sealed class StrategicWorldDetectionConsumedFieldsTests
                 RuleId = "CRAFT_UNUSED_FIELDS",
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_OUT", Speed = 0, Destination = null, Damage = 0,
+                    Status = "STR_OUT",
+                    Speed = 0,
+                    Destination = null,
+                    Damage = 0,
                     Weapons = [new CraftWeaponSnapshot("UNUSED_ARMOR_BONUS", 1)],
                 },
             });

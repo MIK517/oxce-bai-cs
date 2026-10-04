@@ -117,6 +117,7 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
             Assert.Null(WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 1));
         }
     }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -156,5 +157,4 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
         Assert.Equal((0, WorldAltitudes.All.Count - 1), WorldDetectionBoundedQueries.Range("Ufo.getAltitude"));
         foreach (var status in Enum.GetValues<UfoStatus>()) Assert.InRange((int)status, 0, WorldDetectionBoundedQueries.Range("Ufo.getStatus")!.Value.Max);
     }
-
 }
