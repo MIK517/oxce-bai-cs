@@ -985,3 +985,17 @@ findings were fixed separately; all twelve requested slices and four audits are
 complete. Useful native captures remain available; the obsolete counter-probe
 object file was removed. The reference remains clean at the pinned commit.
 The revised 4c headless acceptance gate remains open; 4d is untouched.
+
+## Detection VM cycle (2026-10-04)
+
+- Slice 1 pins exact Base::detect/Craft::detect workers and roll order with a
+  verbatim-method oracle and immutable scalar caller projections.
+- Slice 2 executes bounded scalar detection programs and global before/after
+  events at the live half-hour call sites, with precise failure-safety checks.
+- Slice 3 supplies read-only UFO, craft and campaign/time providers with native
+  getter evidence, fresh/cache execution and transition reloads.
+- Batch audit confirmed a closure allocation regression and missing aggregate
+  script-work bounds. Both are repaired separately; existing performance limits
+  are retained. Damage percentage, script values, remaining providers and loop
+  forecasts still require subsequent slices. The headless gate stays open;
+  branch 4d remains untouched.

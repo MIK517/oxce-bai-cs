@@ -18,6 +18,9 @@ internal sealed partial class CampaignWorld
     private string? UfoHalfHourReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
         var halfHour = highest >= CampaignTimeTrigger.ThirtyMinutes;
+        long detectionWork = 0;
+        var detectionCraftSources = -1;
+        var detectionWeaponSlots = 0;
         var hasUfoWork = false;
         foreach (var ufo in _ufos)
         {
@@ -82,6 +85,8 @@ internal sealed partial class CampaignWorld
                 var reason = CheckHalfHourUfo(ufo.RuleId, ufo.Position, regionTotals, countryTotals,
                     ufo.Status == UfoStatus.Landed ? 2 : 1);
                 if (reason is not null) return reason;
+                if (ReserveDetectionScriptWork(ufo.RuleId, highest, ref detectionWork, ref detectionCraftSources,
+                        ref detectionWeaponSlots) is { } scriptWorkReason) return scriptWorkReason;
                 if (!ufo.Detected && !rule.NoAlert && !_ignoredUfoContacts.Contains(ufo.Id))
                 {
                     if (ufo.Id == 0 && !PlannedHuntMarker(ufo)) possibleMarkerIds++;
@@ -143,6 +148,8 @@ internal sealed partial class CampaignWorld
                 var grounded = trajectory.Altitude(0) == 0;
                 var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1);
                 if (reason is not null) return reason;
+                if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
+                        ref detectionWeaponSlots) is { } scriptWorkReason) return scriptWorkReason;
                 if (!certainLeader && leaderOrigins is not null && percentage < 100)
                 {
                     activityWork += ordinaryOrigins.Count;

@@ -7,6 +7,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private readonly DetectionTimeReference _detectionTime = new();
+    private int _detectionShieldCapacity;
 
     private static bool DetectionBindingSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -77,7 +78,7 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         if (name == "Ufo.getVisibility") return WorldAltitudes.Visibility(rule.DefaultVisibility, ufo.Altitude);
-        var capacity = checked(rule.Stats.ShieldCapacity + rule.RaceBonus(FindMission(ufo.MissionId)!.Race).ShieldCapacity);
+        var capacity = _detectionShieldCapacity;
         return name switch
         {
             "Ufo.getShieldMax" => capacity,

@@ -187,7 +187,10 @@ public sealed class StrategicWorldDetectionBindingTests
             {
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_OUT", Damage = 7, Speed = 0, Destination = null,
+                    Status = "STR_OUT",
+                    Damage = 7,
+                    Speed = 0,
+                    Destination = null,
                     Weapons = [new CraftWeaponSnapshot("RADAR_BOOST", 1)],
                 },
             });

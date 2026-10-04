@@ -36,7 +36,11 @@ public sealed class StrategicWorldDetectionScriptsTests
             {
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_OUT", Longitude = 0.2, Latitude = 0.1, Speed = 0, Destination = null,
+                    Status = "STR_OUT",
+                    Longitude = 0.2,
+                    Latitude = 0.1,
+                    Speed = 0,
+                    Destination = null,
                 },
             });
         var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(91));
@@ -106,6 +110,69 @@ public sealed class StrategicWorldDetectionScriptsTests
 
         Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
         Assert.Contains(result.Events, item => item is UfoContactDetected { Hyperwave: true });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CombinedContactScriptWorkBlocksBeforeMutation(bool fromCache)
+    {
+        var code = string.Concat(Enumerable.Repeat("add detection_chance 0; ", 5000)) + "return;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            ufos:
+              - type: UFO_SCRIPT_WORK
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: "{{code}}"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_SCRIPT_WORK", 2200).Capture();
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [snapshot.World.Missions[0] with { LiveUfos = 205 }],
+                Ufos = Enumerable.Range(1, 205).Select(id => snapshot.World.Ufos[0] with
+                {
+                    UniqueId = id,
+                    Id = id,
+                }).ToArray(),
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(96));
+
+        AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GlobalEventProgramsShareContactWorkLimit(bool fromCache)
+    {
+        var code = string.Concat(Enumerable.Repeat("add detection_chance 0; ", 4000)) + "return;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            extended:
+              scripts:
+                detectUfoFromBase:
+                  - new: before-work
+                    offset: -1
+                    code: "{{code}}"
+                  - new: after-work
+                    offset: 1
+                    code: "{{code}}"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_SCOUT", 2200).Capture();
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                Missions = [snapshot.World.Missions[0] with { LiveUfos = 128 }],
+                Ufos = Enumerable.Range(1, 128).Select(id => snapshot.World.Ufos[0] with { UniqueId = id, Id = id }).ToArray(),
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(97));
+
+        AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
     }
 
     private static CampaignTime HalfHour => new(1, 1, 1, 1999, 1, 29, 55);
