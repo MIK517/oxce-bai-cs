@@ -121,6 +121,87 @@ public sealed class StrategicRetaliationSpawnTests
             "A non-retaliation mission cannot expire while a base links it as retaliation.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SafeAssaultSpawningMatchesReferenceSourceTargetAndConstructor(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows").Where(row =>
+            row[0].GetInt32() == 4 && row[1].GetInt32() == 0 && row[4].GetInt32() == 0 &&
+            row[6].GetInt32() == 0 && row[8].GetInt32() == 1))
+        {
+            var skip = row[2].GetInt32() != 0;
+            var mask = row[3].GetInt32();
+            var linked = row[5].GetInt32() != 0;
+            var replace = row[7].GetInt32() != 0;
+            var content = Load(cache, $$$"""
+                regions:
+                  - type: RETAL_REGION
+                    areas: [[0, 57.29577951308232, -28, 28]]
+                    missionZones: [[[114.59155902616465, 114.59155902616465, 5.729577951308233, 5.729577951308233]]]
+                ufos:
+                  - type: RETAL_SHIP
+                    speedMax: 100
+                    damageMax: 50
+                    noAlert: true
+                    missionScore: 0
+                    hunterKillerPercentage: 100
+                  - type: RETAL_OVERRIDE
+                    speedMax: 200
+                    damageMax: 50
+                    noAlert: true
+                    missionScore: 0
+                    hunterKillerPercentage: 100
+                ufoTrajectories:
+                  - id: RETAL_ORIGIN
+                    waypoints: [[0, 3, 100], [0, 2, 100]]
+                alienMissions:
+                  - type: RETAL_ASSAULT
+                    objective: 4
+                    operationType: 1
+                    skipScoutingPhase: {{{skip.ToString().ToLowerInvariant()}}}
+                    spawnUfo: {{{(replace ? "RETAL_OVERRIDE" : "")}}}
+                    waves: [{ufo: RETAL_SHIP, count: 1, trajectory: RETAL_ORIGIN, timer: 60, hunterKillerPercentage: 100, huntMode: 1, huntBehavior: 1, escort: true, objective: true}]
+                """);
+            var initial = Initial(content, "RETAL_ASSAULT");
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with { RetaliationTarget = (mask & 1) != 0, Facilities = [] },
+                    initial.Bases[0] with { Id = 2, Name = "Beta", Longitude = 0.4, RetaliationTarget = (mask & 2) != 0, Crafts = [], Soldiers = [], Facilities = [] }],
+                World = initial.World with
+                {
+                    Missions = [initial.World.Missions[0] with { RegionId = "RETAL_REGION", MissionSiteZoneArea = 99,
+                        AlienBase = linked ? new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 7, 2.4, 0.1) : null }],
+                    AlienBases = linked ? [new(7, "ALIEN_BASE_DEPLOY", "RACE_A", 2.4, 0.1)] : [],
+                },
+            };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(campaign, 1);
+            var ufo = Assert.Single(campaign.Capture().World.Ufos);
+            Assert.Equal(replace ? "RETAL_OVERRIDE" : "RETAL_SHIP", ufo.RuleId);
+            Assert.Equal(RuntimeUfoTrajectoryRule.RetaliationAssaultRun, ufo.TrajectoryId);
+            Assert.False(ufo.HunterKiller);
+            Assert.False(ufo.Escorting);
+            Assert.Equal((0, 0), (ufo.HuntMode, ufo.HuntBehavior));
+            Assert.Equal(row[17].GetInt32(), ufo.Speed);
+            var origin = new WorldPosition(row[13].GetDouble(), row[14].GetDouble());
+            var target = new WorldPosition(row[15].GetDouble(), row[16].GetDouble());
+            Assert.Equal(target, ufo.Destination!.Position);
+            var moved = WorldGeometry.Move(origin, target, WorldGeometry.RadianSpeed(ufo.Speed));
+            Assert.Equal(moved.Longitude, ufo.Longitude, 12);
+            Assert.Equal(moved.Latitude, ufo.Latitude, 12);
+            var expected = new SplitMix64RandomSource(17);
+            if (!linked) { expected.NextInclusive(0, 0); expected.NextUnit(); expected.NextUnit(); }
+            // The following half-hour detection pass rolls even for each zero-chance base.
+            expected.NextInclusive(0, 99); expected.NextInclusive(0, 99);
+            Assert.Equal(expected.State, campaign.Capture().RandomState);
+            Reload(content, campaign, 17, "retaliation-assault.sav");
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO_UNIQUE", int.MaxValue), content, new SplitMix64RandomSource(17)),
+                "UFO unique IDs are exhausted or collide with a saved UFO.");
+        }
+    }
+
     private static CampaignSnapshot Initial(RuntimeContent content, string rule)
     {
         var initial = CreateSnapshot(content, "Retaliation spawning");

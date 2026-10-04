@@ -822,3 +822,10 @@ next two slices. Combat and deployment remain branch 5.
   followups. Live UFOs keep the interrupted mission until safe cleanup. Fresh/cache
   reloads preserve counters/RNG and dangling non-retaliation links stop atomically.
   The pinned complete spawn block establishes the no-target interruption boundary.
+
+- Five-cycle batch 4, slice 3: targeted normal retaliation now creates airborne
+  assault ships through the existing score, ID and movement forecasts. The pinned
+  AlienMission::spawnUfo block supplies default-constructor, override, ordered target
+  and linked/regional origin evidence. Fresh/cache live traces and reloads preserve
+  assault identity and omit hunter/escort rolls. Instant base-defense arrival,
+  ground starts and regional ground origins retain explicit capability boundaries.
