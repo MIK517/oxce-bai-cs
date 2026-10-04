@@ -14,6 +14,68 @@ public sealed class StrategicWorldDetectionTagTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void SoldierAndSkillRuleTagsRetainDistinctIdentityAndReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "tagValues");
+        var soldierValue = rows[2][1].GetInt32();
+        var skillValue = rows[3][1].GetInt32();
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            extended:
+              tags:
+                RuleSoldier: {DETECT_SOLDIER: int, DETECT_SOLDIER_ABSENT: int}
+                RuleSkill: {DETECT_SKILL: int}
+            soldiers:
+              - type: SOLDIER_DETECT_TAG
+                armor: ARMOR
+                tags: {DETECT_SOLDIER: {{soldierValue}}}
+              - type: SOLDIER_DETECT_EMPTY
+                armor: ARMOR
+            skills:
+              - type: SKILL_DETECT_TAG
+                tags: {DETECT_SKILL: {{skillValue}}}
+              - type: SKILL_DETECT_EMPTY
+            ufos:
+              - type: UFO_SOLDIER_SKILL_TAGS
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    var ptr RuleSoldier soldier;
+                    var ptr RuleSoldier absentSoldier null;
+                    var ptr RuleSkill skill;
+                    var ptr RuleSkill absentSkill null;
+                    var int value;
+                    rules.getRuleSoldier soldier "SOLDIER_DETECT_TAG";
+                    soldier.getTag value Tag.DETECT_SOLDIER;
+                    if neq value {{soldierValue}}; return DETECTION_NONE 0; end;
+                    soldier.getTag value Tag.DETECT_SOLDIER_ABSENT;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    absentSoldier.getTag value Tag.DETECT_SOLDIER;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    rules.getRuleSoldier soldier "SOLDIER_DETECT_EMPTY";
+                    soldier.getTag value Tag.DETECT_SOLDIER;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    rules.getRuleSkill skill "SKILL_DETECT_TAG";
+                    skill.getTag value Tag.DETECT_SKILL;
+                    if neq value {{skillValue}}; return DETECTION_NONE 0; end;
+                    absentSkill.getTag value Tag.DETECT_SKILL;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    rules.getRuleSkill skill "SKILL_DETECT_EMPTY";
+                    skill.getTag value Tag.DETECT_SKILL;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    return DETECTION_RADAR 100;
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_SOLDIER_SKILL_TAGS", 2200);
+        campaign = Reload(content, campaign, 198, "soldier-skill-tags-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 198, "soldier-skill-tags-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ItemAndArmorRuleTagsRetainTypedOwnersAndReload(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

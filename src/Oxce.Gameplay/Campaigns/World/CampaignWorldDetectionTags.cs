@@ -14,7 +14,7 @@ internal sealed partial class CampaignWorld
     private bool DetectionTagSupported(ScriptBindingDeclaration binding)
     {
         if (binding.Name is not ("Ufo.getTag" or "Craft.getTag" or "RuleUfo.getTag" or
-            "RuleItem.getTag" or "RuleArmor.getTag" or "Country.getTag" or "RuleCountry.getTag" or "RuleCraft.getTag" or "RuleResearch.getTag" or "RuleMod.getTag" or "GeoscapeGame.getTag")) return false;
+            "RuleItem.getTag" or "RuleArmor.getTag" or "RuleSoldier.getTag" or "RuleSkill.getTag" or "Country.getTag" or "RuleCountry.getTag" or "RuleCraft.getTag" or "RuleResearch.getTag" or "RuleMod.getTag" or "GeoscapeGame.getTag")) return false;
         var owner = binding.Parameters[2].Type.Id.Value;
         for (var index = 0; index < campaign.Content.Tags.Types.Count; index++)
         {
@@ -24,6 +24,8 @@ internal sealed partial class CampaignWorld
             {
                 "Ufo.getTag" => type.Name is "Ufo" or "RuleUfo",
                 "Craft.getTag" => type.Name is "Craft" or "RuleCraft",
+                "RuleSoldier.getTag" => type.Name == "RuleSoldier",
+                "RuleSkill.getTag" => type.Name == "RuleSkill",
                 "RuleItem.getTag" => type.Name == "RuleItem",
                 "RuleArmor.getTag" => type.Name == "RuleArmor",
                 "RuleUfo.getTag" => type.Name == "RuleUfo",
@@ -68,7 +70,7 @@ internal sealed partial class CampaignWorld
                 value = _detectionModTags.GetValueOrDefault(tag.Qualified);
             else if (receiver is string researchId && tag.Owner == "RuleResearch")
                 value = DetectionRuleTag(researchId, tag.Qualified);
-            else if (receiver is RuntimeUfoRule or RuntimeCraftRule or RuntimeCountryRule or RuntimeItemRule or RuntimeArmorRule)
+            else if (receiver is RuntimeUfoRule or RuntimeCraftRule or RuntimeCountryRule or RuntimeItemRule or RuntimeArmorRule or RuntimeSoldierRule or RuntimeIdentityRule)
                 value = DetectionRuleTag(receiver, tag.Qualified);
         }
         args[1] = ScriptRuntimeValue.FromScalar(value);
@@ -112,6 +114,10 @@ internal sealed partial class CampaignWorld
                 owner = rules.Items[item].Value;
             if (initial.OwnerSection == "armors" && rules.Armors.TryGet(initial.OwnerId, out var armor))
                 owner = rules.Armors[armor].Value;
+            if (initial.OwnerSection == "soldiers" && rules.Soldiers.TryGet(initial.OwnerId, out var soldier))
+                owner = rules.Soldiers[soldier].Value;
+            if (initial.OwnerSection == "skills" && rules.Skills.TryGet(initial.OwnerId, out var skill))
+                owner = rules.Skills[skill].Value;
             if (initial.OwnerSection == "countries" && rules.Countries.TryGet(initial.OwnerId, out var country))
                 owner = rules.Countries[country].Value;
             if (owner is null) continue;
