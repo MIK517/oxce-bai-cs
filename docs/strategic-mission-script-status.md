@@ -803,3 +803,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   excessive partition work fail intentionally. All reachable remapped regions
   are checked without RNG. Fresh/cache regional births start delayed missions
   and reload through the same lifecycle path as point births.
+
+- Batch 3 slice 3: newborn-base hunting can execute bounded immediate no-object
+  chains, reusing the generated mission operation and mapped-region checks.
+  Object births and objective consequences retain their existing precise limits.
+  Supply UFO waves explicitly require a live newborn-source forecast; a synthetic
+  preflight source must not be mistaken for a missing base and suppress the wave.
+  Pinned chain/hunting fixtures and fresh/cache transition reloads verify counters.
