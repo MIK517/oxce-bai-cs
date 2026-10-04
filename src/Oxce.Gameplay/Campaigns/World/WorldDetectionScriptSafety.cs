@@ -14,8 +14,6 @@ internal static class WorldDetectionScriptSafety
             if (!bindingSupported(binding)) return $"Detection script requires unsupported binding {binding.Name}.";
         if (program.Instructions.Count > ScriptExecutionOptions.Default.MaximumSteps)
             return "Detection script exceeds the supported instruction limit.";
-        var modReceiver = program.Bindings.Any(static binding => binding.Name == "RuleMod.getSmokeReduction")
-            ? GuaranteedModReceiver(program) : null;
         var loops = new Dictionary<int, (int End, long Iterations)>();
         for (var index = 1; index < program.Instructions.Count - 1; index++)
             if (TryLiteralLoop(program, index, out var end, out var limit) ||
@@ -26,10 +24,6 @@ internal static class WorldDetectionScriptSafety
             var instruction = program.Instructions[index];
             var operation = (CoreScriptOperation)instruction.Operation.Value;
             var operands = instruction.Operands;
-            if (operation == CoreScriptOperation.HostCall &&
-                program.Bindings.First(binding => binding.Id.Value == operands[0].Scalar).Name == "RuleMod.getSmokeReduction" &&
-                (operands[1].Kind != ScriptOperandKind.Register || operands[1].Scalar != modReceiver))
-                return "Detection smoke reduction requires a guaranteed Mod receiver.";
             if (operation == CoreScriptOperation.HostCall && CountryLoopCall(program, index) &&
                 !loops.Keys.Any(start => index == start - 1 || index == start + 1))
                 return "Detection country enumeration requires a compiler-owned loop.";
@@ -55,29 +49,6 @@ internal static class WorldDetectionScriptSafety
         if (visits.Sum(static count => (long)count) > ScriptExecutionOptions.Default.MaximumSteps)
             return "Detection script exceeds the supported instruction limit.";
         return null;
-    }
-
-    private static int? GuaranteedModReceiver(ScriptProgram program)
-    {
-        var input = program.Registers.FirstOrDefault(static register => register.IsInput && register.Name == "rules");
-        if (input is null) return null;
-        var receiver = ScriptOperand.Register(input.Offset);
-        // This native static wrapper dereferences its Mod. Accept the actual caller
-        // input only when the program cannot overwrite it; nullable aliases need
-        // a wider data-flow proof before they can execute.
-        foreach (var instruction in program.Instructions)
-        {
-            var operation = (CoreScriptOperation)instruction.Operation.Value;
-            var operands = instruction.Operands;
-            if (operation is CoreScriptOperation.Set or CoreScriptOperation.Clear or CoreScriptOperation.Swap &&
-                operands[0] == receiver) return null;
-            if (operation == CoreScriptOperation.Swap && operands[1] == receiver) return null;
-            if (operation != CoreScriptOperation.HostCall) continue;
-            var binding = program.Bindings.First(candidate => candidate.Id.Value == operands[0].Scalar);
-            for (var index = 0; index < binding.Parameters.Count; index++)
-                if (binding.Parameters[index].Type.IsRegister && operands[index + 1] == receiver) return null;
-        }
-        return input.Offset;
     }
 
     private static bool CountryLoopCall(ScriptProgram program, int index)

@@ -24,7 +24,17 @@ public sealed class ScriptDeclarationFixtureTests
             var detectionChance = 0;
             if (compiled.Succeeded)
             {
-                var executed = ScriptVm.Execute(compiled.Program!);
+                var providers = new ScriptHostBindingsBuilder();
+                foreach (var binding in compiled.Program!.Bindings)
+                {
+                    Assert.Equal("set", binding.Name);
+                    providers.Add(binding.Id, static (_, arguments) =>
+                    {
+                        arguments[0] = arguments[1];
+                        return ScriptBindingResult.Success;
+                    });
+                }
+                var executed = ScriptVm.Execute(compiled.Program!, hostBindings: providers.Build());
                 Assert.Equal(ScriptExecutionStatus.Completed, executed.Status);
                 detectionType = executed.Outputs["detection_type"];
                 detectionChance = executed.Outputs["detection_chance"];
