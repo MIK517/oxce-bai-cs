@@ -629,3 +629,22 @@ nullable aliases remain guarded pending data-flow proofs. The receiver proof is
 computed once per program. Existing unsupported-provider tests now exercise
 still-unavailable resource-offset bindings. All 131 focused detection tests pass.
 The three slices are ready for batch audit. The 4c gate remains open; 4d is untouched.
+
+## Unit lookup/linkage and smoke cycle audit (2026-10-04)
+
+The batch audit found no additional confirmed runtime defect. New malformed-name
+tests verify that literal STR_NULL and other explicit Unit relationships must
+resolve, while default/null NUL names and explicit empty names remain distinct.
+Linked Unit readers, null pointers, soldier-first recovery and foreign-generation
+handles are covered by fresh/cache VM tests and reloads. Smoke arithmetic matches
+the native trace; nullable Mod aliases retain an explicit forecast boundary.
+
+All 2,065 root tests pass with zero failures/skips, including private corpus,
+checksums and existing allocation gates. Compiler/cache revision is 44. Initial
+and monthly caller composition, remaining detection bindings/data-flow forecasts,
+generated-object forecasts and final composed acceptance remain open. Branch 4d
+is untouched.
+
+Formatting verification, code-map validation and diff checks pass. The reference
+checkout remains clean at the pinned revision. The useful native probe executable,
+generated source and JSON trace are retained; its obsolete object was removed.
