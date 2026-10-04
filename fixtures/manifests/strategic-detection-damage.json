@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-detection-damage",
+  "description": "Pinned native damage defaults, Mod built-in damage table, RuleItem damage-pointer identity and classification script helpers. Controlled item copies replace YAML loading; predefined selection and overrides have separate typed/runtime tests.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "RuleDamageType constructor/isDirect; Mod built-in damage table; RuleItem getDamageType/getMeleeType and classification/armor script helpers",
+      "capture": "tools/capture-strategic-detection-damage-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_detection_damage_probe.cpp",
+      "size": 1567,
+      "sha256": "fa8fa923058c70c081374bb9d7c35c153ec0def91c424b9d633e68d2797cb748"
+    },
+    {
+      "path": "tools/capture-strategic-detection-damage-reference.ps1",
+      "size": 4080,
+      "sha256": "19f8c29261f4e7d03c2b71eefae0b5f79b1b9e966d60730ccfb1f80bc2679a4c"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-detection-damage.expected.json"
+}

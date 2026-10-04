@@ -88,6 +88,41 @@ public sealed class StrategicWorldDetectionItemRulesTests
         }
     }
 
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DamageClassificationAndPointerIdentityMatchNative(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "rows"))
+        {
+            var predefined = row[0].GetInt32();
+            var fields = predefined == -1 ? "" : $"damageType: {predefined}";
+            var code = "var ptr RuleItem item; var ptr RuleItem other; var ptr RuleItem absent null; " +
+                "var ptr RuleDamageType damage; var ptr RuleDamageType same; var ptr RuleDamageType melee; " +
+                "var ptr RuleDamageType different; var ptr RuleDamageType missing; var int value; " +
+                "rules.getRuleItem item \"ITEM_READ\"; rules.getRuleItem other \"ITEM_OTHER\"; " +
+                "item.getDamageType damage; item.getDamageType same; item.getMeleeDamageType melee; " +
+                "other.getDamageType different; absent.getDamageType missing; " +
+                "if neq damage same; return DETECTION_NONE 0; end; " +
+                "if eq damage melee; return DETECTION_NONE 0; end; " +
+                "if eq damage different; return DETECTION_NONE 0; end; " +
+                "if neq missing null; return DETECTION_NONE 0; end; ";
+            foreach (var (reader, index) in new[] { ("getRandomType", 2), ("getResistType", 3), ("isDirect", 4),
+                         ("isAreaOfEffect", 5), ("getArmorIgnore", 6) })
+            {
+                code += $"damage.{reader} value; if neq value {row[index].GetInt32()}; return DETECTION_NONE 0; end; " +
+                    $"missing.{reader} value; if neq value 0; return DETECTION_NONE 0; end; ";
+            }
+            code += $"item.isSingleTarget value; if neq value {row[8].GetInt32()}; return DETECTION_NONE 0; end; " +
+                "absent.isSingleTarget value; if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+            RunItemScript(code, fields, fromCache, fromCraft);
+        }
+    }
+
     private static void RunItemReaderFixture(string prefix, bool fromCache, bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
@@ -113,6 +148,7 @@ public sealed class StrategicWorldDetectionItemRulesTests
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
             {{extra}}
             items:
+              - type: ITEM_OTHER
               - type: ITEM_READ
                 {{fields.ReplaceLineEndings("\n    ")}}
             ufos:

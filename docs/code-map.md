@@ -19,7 +19,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
 | [Oxce.Gameplay](#oxcegameplay) | 106 | Core, Mods, Scripting |
-| [Oxce.Mods](#oxcemods) | 91 | Core, Formats, Scripting |
+| [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
@@ -488,7 +488,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Mods
 
-`src/Oxce.Mods` - 91 files.
+`src/Oxce.Mods` - 92 files.
 
 ### `Oxce.Mods`
 
@@ -757,6 +757,8 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeEventRule` (record) [RuntimeEventRule.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeEventRule.cs) - Scheduling inputs from RuleEvent.
 - `RuntimeGlobeTexture` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs) - Reference: `Mod/Texture.cpp`.
 - `RuntimeGlobe` (record) [RuntimeGlobe.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeGlobe.cs)
+- `RuntimeItemDamageRule` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs) - Float fields owned by each RuleItem damage copy; script queries do not apply tactical damage.
+- `RuntimeDamageConversions` (record) [RuntimeItemDamageRules.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeItemDamageRules.cs)
 - `RuntimePresentationContent` (class) [RuntimePresentationContent.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimePresentationContent.cs)
 - `RuntimeRuleCompatibilityEntry` (record) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
 - `RuntimeRuleCompatibilitySidecar` (class) [RuntimeRuleCatalog.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleCatalog.cs)
@@ -1414,6 +1416,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-alien-base-hunt-timer](../fixtures/manifests/strategic-alien-base-hunt-timer.json) | cpp-reference | `savegames/strategic-alien-base-hunt-timer.expected.json` | `StrategicWorldAlienBaseHuntingTests` ([StrategicWorldAlienBaseHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseHuntingTests.cs)) |
 | [strategic-alien-base-monthly](../fixtures/manifests/strategic-alien-base-monthly.json) | cpp-reference | `savegames/strategic-alien-base-monthly.expected.json` | `StrategicWorldAlienBaseMonthlyTests` ([StrategicWorldAlienBaseMonthlyTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseMonthlyTests.cs)) |
 | [strategic-crashed-ufo](../fixtures/manifests/strategic-crashed-ufo.json) | cpp-reference | `savegames/strategic-crashed-ufo.expected.json` | `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs)) |
+| [strategic-detection-damage](../fixtures/manifests/strategic-detection-damage.json) | cpp-reference | `savegames/strategic-detection-damage.expected.json` | `StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs)) |
 | [strategic-detection-scripts](../fixtures/manifests/strategic-detection-scripts.json) | cpp-reference | `savegames/strategic-detection-scripts.expected.json` | `StrategicWorldDetectionBindingTests` ([StrategicWorldDetectionBindingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBindingTests.cs))<br>`StrategicWorldDetectionCountryTests` ([StrategicWorldDetectionCountryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionCountryTests.cs))<br>`StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))<br>`StrategicWorldDetectionItemRulesTests` ([StrategicWorldDetectionItemRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionItemRulesTests.cs))<br>`StrategicWorldDetectionResearchTests` ([StrategicWorldDetectionResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionResearchTests.cs))<br>`StrategicWorldDetectionScriptInputsTests` ([StrategicWorldDetectionScriptInputsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionScriptInputsTests.cs))<br>`StrategicWorldDetectionTagTests` ([StrategicWorldDetectionTagTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionTagTests.cs))<br>`StrategicWorldDetectionUnitRulesTests` ([StrategicWorldDetectionUnitRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionUnitRulesTests.cs)) |
 | [strategic-event-scripts](../fixtures/manifests/strategic-event-scripts.json) | cpp-reference | `savegames/strategic-event-scripts.expected.json` | `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs)) |
 | [strategic-event](../fixtures/manifests/strategic-event.json) | cpp-reference | `savegames/strategic-event.expected.json` | `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))<br>`StrategicWorldSiteExpiryTests` ([StrategicWorldSiteExpiryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteExpiryTests.cs)) |
