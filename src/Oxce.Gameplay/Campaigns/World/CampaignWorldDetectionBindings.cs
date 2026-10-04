@@ -97,14 +97,8 @@ internal sealed partial class CampaignWorld
             case "RuleDamageType.getArmorIgnore":
             case "RuleDamageType.isDirect":
             case "RuleDamageType.isAreaOfEffect":
-                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemDamageRule damageRule ? name switch
-                {
-                    "RuleDamageType.getRandomType" => damageRule.RandomType,
-                    "RuleDamageType.getResistType" => damageRule.ResistType,
-                    "RuleDamageType.getArmorIgnore" => damageRule.ArmorIgnore,
-                    "RuleDamageType.isDirect" => damageRule.FixedRadius == 0 ? 1 : 0,
-                    _ => damageRule.FixedRadius != 0 ? 1 : 0,
-                } : 0);
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemDamageRule damageRule
+                    ? WorldDetectionDamageQueries.Classification(name, damageRule) : 0);
                 break;
             case "RuleItem.hasCategory":
                 args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemRule categoryItem &&
