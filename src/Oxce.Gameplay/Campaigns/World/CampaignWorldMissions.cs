@@ -99,8 +99,6 @@ internal sealed partial class CampaignWorld
                         return "New UFO escort selection exceeds the supported work limit.";
                 }
                 if (NewEscortSpawnReason(step, rule) is { } escortReason) return escortReason;
-                if (SpawnWave(step, rule).Ufo is not null &&
-                    DetectionScriptsReason(SpawnWave(step, rule).UfoType) is { } scriptReason) return scriptReason;
                 if (CanSpawnOrdinaryUfoWave(step, rule))
                 {
                     var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[SpawnWave(step, rule).Trajectory!.Value].Value;
@@ -367,8 +365,7 @@ internal sealed partial class CampaignWorld
              trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5))
             return false;
         // The half-hour UFO handler scores and detects this ship after spawning.
-        if (DetectionScriptsReason(wave.UfoType) is not null ||
-            !WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
+        if (!WorldUfoShields.IsValid(-1, stats.ShieldCapacity, stats.ShieldRechargeInGeoscape) || speed < 0)
             return false;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var positions) ||

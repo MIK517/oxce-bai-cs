@@ -12,6 +12,92 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void NewbornUfoIgnoresUnavailableCraftScriptWhenAllCraftAreGrounded(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            ufos:
+              - type: UFO_NEWBORN_CALLER_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: "return DETECTION_RADAR 100;"
+                  detectUfoFromCraft: "rules.getSmokeReduction detection_chance; return;"
+            alienMissions:
+              - type: MISSION_NEWBORN_CALLER_GUARD
+                objective: 0
+                waves:
+                  - {ufo: UFO_NEWBORN_CALLER_GUARD, count: 1, trajectory: TRAJ_AIRBORNE, timer: 9000}
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour).Capture();
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [],
+                Missions = [new AlienMissionSnapshot(4, "MISSION_NEWBORN_CALLER_GUARD", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(209));
+        AdvanceUnblocked(campaign, 1);
+        var born = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.Equal("UFO_NEWBORN_CALLER_GUARD", born.RuleId);
+        Assert.True(born.Detected);
+        Reload(content, campaign, 209, "newborn-craft-caller-guard.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnavailableCraftDetectionBindingOnlyBlocksPossibleCallers(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            ufos:
+              - type: UFO_CRAFT_CALLER_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: "return DETECTION_RADAR 100;"
+                  detectUfoFromCraft: "rules.getSmokeReduction detection_chance; return;"
+            """);
+        foreach (var source in new[] { "ground", "out", "relaunch", "incoming", "delayed" })
+        {
+            var snapshot = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 59, 55),
+                "UFO_CRAFT_CALLER_GUARD", 2200).Capture();
+            var ship = Assert.Single(snapshot.Bases[0].Crafts, craft => craft.RuleId == "SHIP");
+            var active = ship with
+            {
+                Logistics = ship.Logistics! with
+                {
+                    Status = source == "out" ? "STR_OUT" : "STR_REFUELLING", Fuel = 0, Speed = 0,
+                    Destination = null, IsAutoPatrolling = source != "out",
+                    AutoPatrolLongitude = 0.3, AutoPatrolLatitude = 0.1,
+                },
+            };
+            if (source is "out" or "relaunch")
+                snapshot = snapshot.WithCraft("SHIP", _ => active);
+            if (source is "incoming" or "delayed")
+                snapshot = snapshot with
+                {
+                    Bases = [snapshot.Bases[0] with
+                    {
+                        Transfers = [new TransferSnapshot(77, source == "incoming" ? 1 : 2,
+                            CampaignTransferKind.Craft, "SHIP", 1, Craft: active with { Id = 4 })],
+                    }],
+                };
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(207));
+            if (source is "out" or "relaunch" or "incoming")
+                AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleMod.getSmokeReduction.");
+            else
+            {
+                AdvanceUnblocked(campaign, 1);
+                Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void CraftConditionsMatchNativeGettersWithWeaponBonuses(bool fromCache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

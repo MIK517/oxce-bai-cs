@@ -250,13 +250,12 @@ internal sealed partial class CampaignWorld
         return true;
     }
 
-    /// <summary>The detection-script gate and activity range for one half-hour UFO.</summary>
+    /// <summary>The activity range for one half-hour UFO.</summary>
     private string? CheckHalfHourUfo(string ruleId, WorldPosition position,
         ActivityRange[] regionTotals, ActivityRange[] countryTotals, int scoreMultiplier = 1)
     {
         var rules = campaign.Content.RuntimeRules;
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
-        if (DetectionScriptsReason(ruleId) is { } scriptReason) return scriptReason;
         var score = (long)ufoRule.MissionScore * scoreMultiplier;
         if (score is < int.MinValue or > int.MaxValue)
             return "UFO alien activity exceeds the supported range.";
@@ -370,7 +369,6 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
         var score = (long)rule.MissionScore * multiplier;
-        if (DetectionScriptsReason(ruleId) is { } scriptReason) return scriptReason;
         if (score is < int.MinValue or > int.MaxValue) return "UFO alien activity exceeds the supported range.";
         return CheckPossibleActivity(positions, (int)score, regions, countries);
     }

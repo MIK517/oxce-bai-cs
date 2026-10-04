@@ -14,8 +14,8 @@ internal sealed partial class CampaignWorld
     private readonly ScriptRuntimeValue[] _detectionInputs = new ScriptRuntimeValue[9];
     private readonly ScriptRuntimeValue[] _detectionOutputs = new ScriptRuntimeValue[2];
 
-    private string? DetectionScriptsReason(string ruleId) =>
-        GetDetectionScript(ruleId, false).Unavailable ?? GetDetectionScript(ruleId, true).Unavailable;
+    private static readonly DetectionScript IdentityDetectionScript =
+        new(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false, [], [], false);
 
     private DetectionScript GetDetectionScript(string ruleId, bool fromCraft)
     {
@@ -36,8 +36,7 @@ internal sealed partial class CampaignWorld
         var plan = campaign.Content.EventPlans.FirstOrDefault(candidate => candidate.ParserName == parser)?.Plan;
         if (artifact is null && (plan is null || plan.Count == 0))
         {
-            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false, [], [], false);
-            return identity;
+            return IdentityDetectionScript;
         }
         if (!_detectionDefaults.TryGetValue(fromCraft, out var fallback))
         {
@@ -176,8 +175,10 @@ internal sealed partial class CampaignWorld
     private string? ReserveDetectionScriptWork(string ruleId, CampaignTimeTrigger highest,
         ref long work, ref int craftSources, ref int weaponSlots, int ufoTagCount = 0, string? race = null, int damage = 0)
     {
-        var fromBase = GetDetectionScript(ruleId, false);
-        var fromCraft = GetDetectionScript(ruleId, true);
+        if (craftSources < 0) ForecastDetectionCraftSources(highest, out craftSources, out weaponSlots);
+        var fromBase = campaign.BaseStates.Count == 0 ? IdentityDetectionScript : GetDetectionScript(ruleId, false);
+        var fromCraft = craftSources == 0 ? IdentityDetectionScript : GetDetectionScript(ruleId, true);
+        if ((fromBase.Unavailable ?? fromCraft.Unavailable) is { } unavailable) return unavailable;
         if (fromBase.UfoStats.Length != 0 || fromCraft.UfoStats.Length != 0)
         {
             var rules = campaign.Content.RuntimeRules;
@@ -207,27 +208,6 @@ internal sealed partial class CampaignWorld
         work += (fromBase.StepBound + (long)fromBase.UfoTagQueries * ufoTagCount) * campaign.BaseStates.Count;
         if (fromCraft.StepBound != 0)
         {
-            if (craftSources < 0)
-            {
-                craftSources = 0;
-                foreach (var owner in campaign.BaseStates)
-                {
-                    foreach (var craft in owner.Crafts)
-                    {
-                        craftSources++;
-                        weaponSlots = Math.Max(weaponSlots, craft.Logistics?.Weapons.Count ?? 0);
-                    }
-                    if (highest < CampaignTimeTrigger.OneHour) continue;
-                    foreach (var transfer in owner.Transfers)
-                        if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming)
-                        {
-                            craftSources++;
-                            weaponSlots = Math.Max(weaponSlots, incoming.Logistics?.Weapons.Count ?? 0);
-                        }
-                }
-                // Fresh research/production craft have no auto-patrol order and cannot
-                // join this detection pass. Existing/arriving orders can relaunch.
-            }
             if (fromCraft.CraftStats.Length != 0)
                 foreach (var owner in campaign.BaseStates)
                 {
@@ -244,6 +224,32 @@ internal sealed partial class CampaignWorld
             work += (fromCraft.StepBound + (long)fromCraft.CraftStatQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
         }
         return work > MaximumAlienBaseChecks ? "Detection script work exceeds the supported half-hour limit." : null;
+    }
+
+    private void ForecastDetectionCraftSources(CampaignTimeTrigger highest, out int craftSources, out int weaponSlots)
+    {
+        craftSources = 0;
+        weaponSlots = 0;
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var owner in campaign.BaseStates)
+        {
+            foreach (var craft in owner.Crafts)
+                if (PossibleDetectionCraft(rules.Crafts[craft.Rule].Value, craft.Logistics))
+                {
+                    craftSources++;
+                    weaponSlots = Math.Max(weaponSlots, craft.Logistics?.Weapons.Count ?? 0);
+                }
+            if (highest < CampaignTimeTrigger.OneHour) continue;
+            foreach (var transfer in owner.Transfers)
+                if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming &&
+                    PossibleDetectionCraft(rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value, incoming.Logistics))
+                {
+                    craftSources++;
+                    weaponSlots = Math.Max(weaponSlots, incoming.Logistics?.Weapons.Count ?? 0);
+                }
+        }
+        // Fresh research/production craft have no auto-patrol order. Existing
+        // orders can relaunch after servicing or delivery of item-based fuel.
     }
 
     private string? DetectionCraftStatsReason(DetectionScript script, RuntimeCraftRule rule, CraftLogisticsState? state)
