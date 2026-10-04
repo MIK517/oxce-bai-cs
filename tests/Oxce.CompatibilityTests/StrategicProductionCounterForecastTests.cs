@@ -42,4 +42,40 @@ public sealed class StrategicProductionCounterForecastTests
             Reload(content, campaign, 17, "production-id-forecast.sav");
         }
     }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FallbackStaffingBoundsRetainTheNoCompletionAlternative(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-research-production");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+            facilities:
+              - {type: FORECAST_WORKSHOP, mapName: LOGISTICS, size: 1, workshops: 10}
+            manufacture:
+              - name: FORECAST_FALLBACK
+                category: STR_CRAFT
+                time: 2
+                producedItems: {SHIP: 1}
+            """);
+        var initial = CreateSnapshot(content, "Fallback craft counter") with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var owner = initial.Bases[0];
+        var next = owner.Crafts.Where(craft => craft.RuleId == "SHIP").Max(craft => craft.Id) + 1;
+        initial = initial with
+        {
+            Bases = [owner with
+            {
+                Engineers = 2,
+                Facilities = [.. owner.Facilities, new("FORECAST_WORKSHOP", 5, 5, 0, 0, false, false, false)],
+                Productions = [new("FORECAST_FALLBACK", 0, 0, 1, false, false, true, new Dictionary<string, int>())],
+            }],
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        Assert.Equal((1L, next + 1L), campaign.ProductionPreflight.CraftCounter("SHIP", CampaignTimeTrigger.OneHour, (1, 1)));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AdvanceUnblocked(campaign, 1);
+        Assert.Contains(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "SHIP" && craft.Id == next);
+        Reload(content, campaign, 17, "fallback-produced-craft.sav");
+    }
+
 }

@@ -446,11 +446,15 @@ public sealed class StrategicObjectiveBaseSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void SharedCraftProductionMarkersReserveThePostProductionBaseId(bool cache, bool landing)
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public void SharedCraftProductionMarkersReserveThePostProductionBaseId(bool cache, bool landing, bool fallback)
     {
         var content = LoadWorld(cache, marker: "SHIP", landing: landing, zone: landing ? 0 : 1);
         var initial = landing ? LandingInitial(content) : Initial(content);
@@ -462,7 +466,8 @@ public sealed class StrategicObjectiveBaseSpawnTests
             Bases = [owner with
             {
                 Facilities = [.. owner.Facilities, new("BASE_MARKER_WORKSHOP", 5, 5, 0, 0, false, false, false)],
-                Productions = [new("BASE_MARKER_CRAFT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+                Engineers = fallback ? 1 : owner.Engineers,
+                Productions = [new("BASE_MARKER_CRAFT", fallback ? 0 : 1, 0, 1, false, false, fallback, new Dictionary<string, int>())],
             }],
             World = initial.World with { AlienBases = [new(nextCraft + 1, "COLLISION_BASE", "RACE_A", 0.2, 0.1)] },
         };
