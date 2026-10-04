@@ -22,6 +22,11 @@
       "path": "tools/capture-strategic-world-composition-reference.ps1",
       "size": 3822,
       "sha256": "15b77a380581f0a706bb7b7450c92f72165ecd1cfe36356accabb92f90f5aac9"
+    },
+    {
+      "path": "fixtures/public/savegames/strategic-world-composition.rul",
+      "size": 1043,
+      "sha256": "89a190d6001e1cc6b0abf85b240178727e95f46dfc8548bb68311ad809d827ab"
     }
   ],
   "normalization": [
