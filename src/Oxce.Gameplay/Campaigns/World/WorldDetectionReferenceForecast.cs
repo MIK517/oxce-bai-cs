@@ -41,13 +41,16 @@ internal sealed class WorldDetectionReferenceForecast
             (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall &&
             NamedLookup(bindings[instruction.Operands[0].Scalar].Name) &&
             instruction.Operands[3].Kind == ScriptOperandKind.Register);
-        var names = needsNames ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work, rules) : null;
-        if (needsNames && names is null) return null;
+        var needsTextConditions = program.Registers.Any(static register => register.Type.Id == ScriptPrimitiveTypes.Text) &&
+            program.Instructions.Any(static instruction => (CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.BranchCondition);
+        var needsText = needsNames || needsTextConditions;
+        var names = needsText ? WorldDetectionTextForecast.Build(program, visits, maximumWork, out work, rules) : null;
+        if (needsText && names is null) return null;
         while (queue.TryDequeue(out var index))
         {
             queued[index] = false;
             if (++work > maximumWork) return null;
-            if (visits[index] == 0) continue;
+            if (visits[index] == 0 || names is not null && !names.Reachable(index)) continue;
             var incoming = states[index]!;
             work += Size(incoming);
             if (work > maximumWork) return null;
@@ -153,7 +156,7 @@ internal sealed class WorldDetectionReferenceForecast
 
             void Join(int target, bool? branch = null)
             {
-                if (target >= states.Length) return;
+                if (target >= states.Length || names is not null && !names.Reachable(target)) return;
                 work += Size(state);
                 if (work > maximumWork) return;
                 var outgoing = state;

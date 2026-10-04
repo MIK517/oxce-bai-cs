@@ -10,6 +10,8 @@ internal sealed class WorldDetectionTextForecast
     private readonly Dictionary<int, HashSet<string>?>?[] _states;
     private WorldDetectionTextForecast(Dictionary<int, HashSet<string>?>?[] states) => _states = states;
 
+    internal bool Reachable(int index) => _states[index] is not null;
+
     internal HashSet<string>? At(int index, ScriptOperand operand) => Read(operand, _states[index]);
 
     private static HashSet<string>? Read(ScriptOperand operand, Dictionary<int, HashSet<string>?>? state) =>
@@ -85,8 +87,8 @@ internal sealed class WorldDetectionTextForecast
             if (operation == CoreScriptOperation.Jump) Join(operands[0].Scalar);
             else
             {
-                Join(index + 1);
-                if (operation == CoreScriptOperation.BranchCondition) Join(operands[^1].Scalar);
+                Join(index + 1, operation == CoreScriptOperation.BranchCondition ? true : null);
+                if (operation == CoreScriptOperation.BranchCondition) Join(operands[^1].Scalar, false);
             }
             if (usedWork > maximumWork) break;
 
@@ -96,20 +98,85 @@ internal sealed class WorldDetectionTextForecast
                     state[destination.Scalar] = value;
             }
 
-            void Join(int target)
+            void Join(int target, bool? branch = null)
             {
                 if (target >= states.Length) return;
                 usedWork += Size(state);
                 if (usedWork > maximumWork) return;
+                var outgoing = state;
+                if (branch is { } selected)
+                {
+                    var all = (ScriptConditionKind)operands[0].Scalar == ScriptConditionKind.All;
+                    var canBeTrue = all;
+                    var canBeFalse = !all;
+                    for (var clause = 1; clause < operands.Count - 1; clause += 3)
+                    {
+                        var condition = (ScriptConditionKind)operands[clause].Scalar;
+                        var left = Read(operands[clause + 1], state);
+                        var right = Read(operands[clause + 2], state);
+                        var clauseTrue = true;
+                        var clauseFalse = true;
+                        if (left is not null && right is not null && condition is ScriptConditionKind.Equal or ScriptConditionKind.NotEqual)
+                        {
+                            usedWork += TextSize(left) + TextSize(right);
+                            if (usedWork > maximumWork) return;
+                            if (!left.Any(static value => value.Contains('\0')) && !right.Any(static value => value.Contains('\0')))
+                            {
+                                var equal = left.Overlaps(right);
+                                var different = left.Count > 1 || right.Count > 1 || !equal;
+                                clauseTrue = condition == ScriptConditionKind.Equal ? equal : different;
+                                clauseFalse = condition == ScriptConditionKind.Equal ? different : equal;
+                            }
+                        }
+                        canBeTrue = all ? canBeTrue && clauseTrue : canBeTrue || clauseTrue;
+                        canBeFalse = all ? canBeFalse || clauseFalse : canBeFalse && clauseFalse;
+                    }
+                    if (selected ? !canBeTrue : !canBeFalse) return;
+                }
+                if (branch is { } matches &&
+                    (operands.Count == 5 || ((ScriptConditionKind)operands[0].Scalar == ScriptConditionKind.All) == matches))
+                {
+                    usedWork += Size(state);
+                    if (usedWork > maximumWork) return;
+                    outgoing = new(state);
+                    for (var clause = 1; clause < operands.Count - 1; clause += 3)
+                    {
+                        var condition = (ScriptConditionKind)operands[clause].Scalar;
+                        if (condition is not (ScriptConditionKind.Equal or ScriptConditionKind.NotEqual)) continue;
+                        var leftOperand = operands[clause + 1];
+                        var rightOperand = operands[clause + 2];
+                        var left = Read(leftOperand, outgoing);
+                        var right = Read(rightOperand, outgoing);
+                        if (left is null || right is null) continue;
+                        usedWork += TextSize(left) + TextSize(right);
+                        if (usedWork > maximumWork) return;
+                        // Native strcmp observes NUL prefixes. Keep those domains conservative.
+                        if (left.Any(static value => value.Contains('\0')) || right.Any(static value => value.Contains('\0'))) continue;
+                        var equal = (condition == ScriptConditionKind.Equal) == matches;
+                        var filteredLeft = new HashSet<string>(left.Where(value => equal ? right.Contains(value) :
+                            right.Count > 1 || !right.Contains(value)), StringComparer.Ordinal);
+                        var filteredRight = new HashSet<string>(right.Where(value => equal ? left.Contains(value) :
+                            left.Count > 1 || !left.Contains(value)), StringComparer.Ordinal);
+                        if (filteredLeft.Count == 0 || filteredRight.Count == 0) return;
+                        WriteOutgoing(leftOperand, filteredLeft);
+                        WriteOutgoing(rightOperand, filteredRight);
+                    }
+                }
+
+                void WriteOutgoing(ScriptOperand operand, HashSet<string> values)
+                {
+                    if (operand.Kind == ScriptOperandKind.Register && outgoing.ContainsKey(operand.Scalar))
+                        outgoing[operand.Scalar] = values;
+                }
                 var changed = false;
                 if (states[target] is not { } existing)
                 {
-                    states[target] = new(state);
+                    states[target] = new(outgoing);
                     changed = true;
                 }
                 else
                 {
-                    foreach (var (register, value) in state)
+                    foreach (var (register, value) in outgoing)
                     {
                         var current = existing[register];
                         if (current is null) continue;
