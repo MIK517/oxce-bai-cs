@@ -29,6 +29,7 @@ public sealed class RuntimeRuleCatalog
         RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> soldiers,
         RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> armors,
         RuntimeRuleFamily<UnitRuleFamily, RuntimeUnitRule> units,
+        RuntimeRuleFamily<InventoryRuleFamily, RuntimeInventoryRule> inventories,
         RuntimeRuleFamily<SoldierBonusRuleFamily, RuntimeSoldierBonusRule> soldierBonuses,
         RuntimeRuleFamily<SoldierTransformationRuleFamily, RuntimeSoldierTransformationRule> soldierTransformations,
         RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> commendations,
@@ -58,6 +59,7 @@ public sealed class RuntimeRuleCatalog
         Soldiers = soldiers;
         Armors = armors;
         Units = units;
+        Inventories = inventories;
         SoldierBonuses = soldierBonuses;
         SoldierTransformations = soldierTransformations;
         Commendations = commendations;
@@ -88,6 +90,7 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<SoldierRuleFamily, RuntimeSoldierRule> Soldiers { get; }
     public RuntimeRuleFamily<ArmorRuleFamily, RuntimeArmorRule> Armors { get; }
     public RuntimeRuleFamily<UnitRuleFamily, RuntimeUnitRule> Units { get; }
+    public RuntimeRuleFamily<InventoryRuleFamily, RuntimeInventoryRule> Inventories { get; }
     public RuntimeRuleFamily<SoldierBonusRuleFamily, RuntimeSoldierBonusRule> SoldierBonuses { get; }
     public RuntimeRuleFamily<SoldierTransformationRuleFamily, RuntimeSoldierTransformationRule> SoldierTransformations { get; }
     public RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> Commendations { get; }

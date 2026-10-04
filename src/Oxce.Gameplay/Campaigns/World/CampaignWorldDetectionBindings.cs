@@ -19,7 +19,7 @@ internal sealed partial class CampaignWorld
         "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
-        "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
+        "RuleInventory.getId" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
@@ -47,6 +47,9 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         switch (name)
         {
+            case "RuleInventory.getId":
+                args[1] = ScriptRuntimeValue.FromText(receiver is RuntimeInventoryRule inventoryId ? inventoryId.Id : "");
+                break;
             case "RuleUnit.getType":
             case "RuleCraft.getType":
             case "RuleItem.getType":
@@ -84,6 +87,9 @@ internal sealed partial class CampaignWorld
             case "RuleMod.getSmokeReduction":
                 if (receiver is not RuntimeRuleCatalog) throw new InvalidOperationException("Smoke receiver was not preflighted.");
                 args[1] = ScriptRuntimeValue.FromScalar(unchecked(args[1].Scalar * rules.Campaign.MaximumViewDistance) / 60);
+                break;
+            case "RuleMod.getRuleInventory":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Inventories, args[2].Text));
                 break;
             case "RuleMod.getRuleUnit":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Units, args[2].Text));

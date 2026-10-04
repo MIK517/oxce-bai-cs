@@ -47,6 +47,15 @@ const std::string Armor::NONE="STR_NONE";
 struct RuleSoldier {};
 struct RuleSkill { std::string _type="SKILL_METADATA"; const std::string& getType() const { return _type; } };
 struct RuleCraft { std::string _type="CRAFT_METADATA"; const std::string& getType() const { return _type; } };
+enum InventoryType { INV_SLOT=0,INV_HAND=1,INV_GROUND=2 };
+struct RuleInventory {
+std::string _id;int _x,_y,_listOrder,_hand;InventoryType _type;
+RuleInventory(const std::string&,int);
+const std::string& getId() const;
+InventoryType getType() const;
+bool isRightHand() const;bool isLeftHand() const;
+};
+// INVENTORY_METHODS
 struct Mod;
 struct Unit {
 std::string _type="UNIT_METADATA";const std::string& getType() const { return _type; }
@@ -116,6 +125,7 @@ struct Mod {
 int _maxViewDistance=20,_maxDarknessToSeeUnits=9;
 int getMaxViewDistance() const;
 int getMaxDarknessToSeeUnits() const;
+std::map<std::string,RuleInventory*> _invs;
 std::map<std::string,Unit*> _units;
 std::map<std::string,RuleResearch*> _research;
 std::map<std::string,RuleItem*> _items;
@@ -134,6 +144,12 @@ for(auto& name:names){const RuleItem* item=nullptr;linkRule(item,name);rules.pus
 }
 // MOD_EMPTY
 template<typename T> T* getRule(const std::string&,const std::string&,const std::map<std::string,T*>&,bool) const;
+RuleInventory* getInventory(const std::string&,bool error=false) const;
+RuleInventory* getInventoryRightHand() const;
+RuleInventory* getInventoryLeftHand() const;
+RuleInventory* getInventoryBackpack() const;
+RuleInventory* getInventoryBelt() const;
+RuleInventory* getInventoryGround() const;
 Unit* getUnit(const std::string&,bool error=false) const;
 RuleResearch* getResearch(const std::string&,bool error=false) const;
 RuleItem* getItem(const std::string&,bool error=false) const;
@@ -146,6 +162,7 @@ const std::string Mod::STR_NULL={ '\0' };
 // MOD_SETTINGS
 // MOD_METHODS
 // RESEARCH_LOOKUP
+// INVENTORY_LOOKUP
 // UNIT_LINKS
 // UNIT_LOOKUP
 // RULE_LOOKUPS
@@ -352,7 +369,28 @@ if(!firstStat)std::cout<<',';firstStat=false;std::cout<<'\"'<<name<<"\":"<<value
 }
 std::cout<<'}';
 }
-std::cout<<"],\"unitLookup\":[";
+std::cout<<"],\"inventoryMetadata\":[";
+std::vector<RuleInventory*> inventoryRules;
+for(const char* id: {"STR_RIGHT_HAND","STR_LEFT_HAND","STR_BACK_PACK","STR_BELT","STR_GROUND","STR_NONE"}){
+auto* inv=new RuleInventory(id,10);inv->_hand=inv->_id=="STR_RIGHT_HAND"?2:inv->_id=="STR_LEFT_HAND"?1:0;
+inv->_type=inv->_id=="STR_GROUND"?INV_GROUND:inv->_hand?INV_HAND:INV_SLOT;
+inventoryRules.push_back(inv);mod._invs[id]=inv;
+}
+for(size_t i=0;i<inventoryRules.size();++i){if(i)std::cout<<',';auto* inv=inventoryRules[i];
+ScriptText id;getIdScript(inv,id);int type=-1;getTypeScript(inv,type);
+std::cout<<"{\"id\":\""<<id.value<<"\",\"type\":"<<type<<",\"right\":"<<(inv->isRightHand()?"true":"false")<<",\"left\":"<<(inv->isLeftHand()?"true":"false")<<"}";
+}
+std::cout<<"],\"inventoryLookup\":[";
+for(int i=0;i<5;++i){if(i)std::cout<<',';const char* name=i==0||i==2?"STR_RIGHT_HAND":i==1?"MISSING":i==3?"STR_NONE":"";
+const RuleInventory* inv=inventoryRules[0];getInventoryScript(i==2?nullptr:&mod,inv,name);ScriptText text;getIdScript(inv,text);
+std::cout<<"{\"source\":"<<(i==2?"false":"true")<<",\"name\":\""<<name<<"\",\"id\":\""<<text.value<<"\"}";
+}
+std::cout<<"],\"inventoryConventional\":[";
+for(auto* inv: {mod.getInventoryRightHand(),mod.getInventoryLeftHand(),mod.getInventoryBackpack(),mod.getInventoryBelt(),mod.getInventoryGround()})
+{if(inv!=inventoryRules[0])std::cout<<',';std::cout<<'\"'<<inv->getId()<<'\"';}
+mod._invs.erase("STR_GROUND");bool missingInventoryThrows=false;try{(void)mod.getInventoryGround();}catch(const Exception&){missingInventoryThrows=true;}
+std::cout<<"],\"missingInventoryThrows\":"<<(missingInventoryThrows?"true":"false");
+std::cout<<",\"unitLookup\":[";
 Unit unitRule, noneUnit;noneUnit._type="STR_NONE";mod._units["UNIT_METADATA"]=&unitRule;
 mod._units["STR_NONE"]=&noneUnit;
 for(int i=0;i<6;++i) {

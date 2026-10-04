@@ -201,6 +201,7 @@ public readonly struct ItemRuleFamily;
 public readonly struct SoldierRuleFamily;
 public readonly struct ArmorRuleFamily;
 public readonly struct UnitRuleFamily;
+public readonly struct InventoryRuleFamily;
 public readonly struct SoldierBonusRuleFamily;
 public readonly struct SoldierTransformationRuleFamily;
 public readonly struct CommendationRuleFamily;

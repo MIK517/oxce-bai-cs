@@ -648,3 +648,12 @@ is untouched.
 Formatting verification, code-map validation and diff checks pass. The reference
 checkout remains clean at the pinned revision. The useful native probe executable,
 generated source and JSON trace are retained; its obsolete object was removed.
+
+## Inventory rule lookup in detection scripts (2026-10-04)
+
+RuleInventory.cpp::getId and Mod.cpp::getInventory/getInventoryScript now back
+an immutable, generation-scoped runtime Inventory family. The pinned native
+capture covers missing/empty IDs, null Mod and the literal STR_NONE ID; fresh/cache
+base/craft VM tests cover lookup identity and save/reload around detection.
+Inventory movement remains guarded. Compiler/cache revision is 45.
+The 4c gate remains open; 4d is untouched.
