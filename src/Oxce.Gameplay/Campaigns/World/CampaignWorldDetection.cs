@@ -23,7 +23,7 @@ internal sealed partial class CampaignWorld
         {
             if (ArrivesAtSite(ufo, highest) || halfHour && ufo.Status is UfoStatus.Flying or UfoStatus.Landed ||
                 ufo.Status == UfoStatus.Landed && ufo.SecondsRemaining == 5 ||
-                ufo.Detected && ufo.LandId == 0 && ArrivesOnGround(ufo))
+                ufo.Detected && ufo.LandId == 0 && ArrivesOnGround(ufo, highest))
             {
                 hasUfoWork = true;
                 break;
@@ -63,7 +63,7 @@ internal sealed partial class CampaignWorld
                 // This UFO misses the half-hour detection pass, but can land in the
                 // later five-second flight pass using its existing detected flag.
                 if (lifted.Status == UfoStatus.Flying && lifted.Detected && lifted.LandId == 0 &&
-                    ArrivesOnGround(lifted) && LandingAllowed(lifted.Destination!.Position,
+                    ArrivesOnGround(lifted, highest) && LandingAllowed(lifted.Destination!.Position,
                         campaign.Content.RuntimeRules.Ufos[
                             campaign.Content.RuntimeRules.Ufos.GetRequired(lifted.RuleId)].Value))
                     possibleLandingIds++;
@@ -90,7 +90,7 @@ internal sealed partial class CampaignWorld
             }
             // Half-hour detection precedes landing in this tick. Even a noAlert UFO
             // can become detected here and receive a landing marker on arrival.
-            if (ufo.LandId == 0 && (ufo.Detected || halfHour) && ArrivesOnGround(ufo) &&
+            if (ufo.LandId == 0 && (ufo.Detected || halfHour) && ArrivesOnGround(ufo, highest) &&
                 LandingAllowed(ufo.Destination!.Position, rule))
                 possibleLandingIds++;
         }

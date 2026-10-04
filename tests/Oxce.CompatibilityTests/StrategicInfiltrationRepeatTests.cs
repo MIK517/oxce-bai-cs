@@ -154,7 +154,8 @@ public sealed class StrategicInfiltrationRepeatTests
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
-        initial = initial.WithNextId("INF_BASE", 1);
+        initial = initial.WithNextId("INF_BASE", 1).WithNextId("STR_LANDING_SITE", int.MaxValue);
+        initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { Detected = true }] } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         var after = campaign.Capture();

@@ -405,7 +405,7 @@ internal sealed partial class CampaignWorld
         (!WorldGeometry.InsideFakeUnderwaterTexture(campaign.Content.RuntimeRules.Campaign.Globe, position) ||
             rule.FakeWaterLandingChance > 0);
 
-    private bool ArrivesOnGround(UfoSnapshot ufo)
+    private bool ArrivesOnGround(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
         if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying ||
             WorldGeometry.Distance(ufo.Position, ufo.Destination!.Position) > WorldGeometry.RadianSpeed(ufo.Speed))
@@ -413,9 +413,10 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
         var next = ufo.TrajectoryPoint + 1;
-        if (IsSiteConversion(ufo, FindMission(ufo.MissionId)!, trajectory)) return false;
+        var mission = ForecastMission(ufo.MissionId, highest);
+        if (IsSiteConversion(ufo, mission, trajectory)) return false;
         return next < trajectory.Waypoints.Count && trajectory.Altitude(next) == 0 &&
-            !FindMission(ufo.MissionId)!.Interrupted;
+            !mission.Interrupted;
     }
 
     private AlienMissionSnapshot? FindMission(int id)
