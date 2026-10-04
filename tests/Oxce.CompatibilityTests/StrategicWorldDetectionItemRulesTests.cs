@@ -17,6 +17,14 @@ public sealed class StrategicWorldDetectionItemRulesTests
     public void ItemAccuracyReadersMatchNativeDefaultsAndSignedValues(bool fromCache, bool fromCraft) =>
         RunItemReaderFixture("getAccuracy", fromCache, fromCraft);
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ItemRawPowerArmorAndWaypointsMatchNative(bool fromCache, bool fromCraft) =>
+        RunItemReaderFixture("get", fromCache, fromCraft);
+
     private static void RunItemReaderFixture(string prefix, bool fromCache, bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

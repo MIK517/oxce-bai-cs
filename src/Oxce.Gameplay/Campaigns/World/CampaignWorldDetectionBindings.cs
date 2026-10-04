@@ -23,6 +23,7 @@ internal sealed partial class CampaignWorld
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getAccuracyAimed" or "RuleItem.getAccuracyAuto" or "RuleItem.getAccuracySnap" or "RuleItem.getAccuracyMelee" or
         "RuleItem.getAccuracyUse" or "RuleItem.getAccuracyMind" or "RuleItem.getAccuracyPanic" or "RuleItem.getAccuracyThrow" or
+        "RuleItem.getPower" or "RuleItem.getMeleePower" or "RuleItem.getArmorValue" or "RuleItem.getWaypoints" or
         "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "Craft.getDamage" or "Craft.getDamageMax" or "Craft.getDamagePercentage" or
@@ -220,6 +221,10 @@ internal sealed partial class CampaignWorld
 
     private static int DetectionItemValue(string name, RuntimeItemRule rule) => name switch
     {
+        "RuleItem.getPower" => rule.Power,
+        "RuleItem.getMeleePower" => rule.MeleePower,
+        "RuleItem.getArmorValue" => rule.ArmorValue,
+        "RuleItem.getWaypoints" => rule.Waypoints,
         "RuleItem.getWeight" => rule.Weight,
         "RuleItem.getBattleType" => rule.BattleType,
         "RuleItem.getAccuracyAimed" => rule.Accuracy.Aimed,

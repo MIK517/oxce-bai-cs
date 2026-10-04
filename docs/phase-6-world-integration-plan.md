@@ -705,3 +705,11 @@ of loaded action accuracy and psi/throw scalar fields. The native trace pins
 defaults, negative values and signed extremes; all four fresh/cache base/craft
 VM tests pass with null readers and transition reloads. No tactical calculation
 is enabled. Compiler/cache revision is 46; the 4c gate remains open.
+
+## Raw item power, armor and waypoint readers (2026-10-04)
+
+RuleItem::getPower/getMeleePower/getArmor/getWaypoints now return immutable
+runtime values without tactical modifiers. Native default/signed-extreme
+fixtures, null pointers and fresh/cache base/craft reload tests pass (eight
+focused cases). Damage-type execution and combat remain guarded.
+The 4c gate remains open.
