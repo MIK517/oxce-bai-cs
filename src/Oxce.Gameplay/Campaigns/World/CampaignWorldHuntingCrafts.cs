@@ -7,25 +7,44 @@ internal sealed partial class CampaignWorld
     private string? ForecastHuntingCrafts(CampaignTimeTrigger highest, ref long work)
     {
         _huntingCraftForecast = [];
+        _huntingCraftSources = [];
         var rules = campaign.Content.RuntimeRules;
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
-            work += owner.Crafts.Count + (long)owner.Items.Count;
+            work += owner.Crafts.Count + (long)owner.Items.Count + owner.Transfers.Count;
             if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
             if (highest >= CampaignTimeTrigger.ThirtyMinutes) stocks = new(owner.Items);
+            var sources = new List<CampaignState.CraftState>(owner.Crafts);
+            _huntingCraftSources.Add(owner.Id, sources);
             foreach (var craft in owner.Crafts)
             {
                 if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
                 if (ForecastHuntingCraftState(owner, craft, highest, stocks, out var state) is { } reason) return reason;
                 _huntingCraftForecast.Add((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
             }
+            if (highest < CampaignTimeTrigger.OneHour) continue;
+            foreach (var transfer in owner.Transfers)
+            {
+                if (transfer.Delivered || transfer.Hours > 1 || transfer.Craft is not { Logistics: { } logistics } incoming) continue;
+                var handle = rules.Crafts.GetRequired(incoming.RuleId);
+                var rule = rules.Crafts[handle].Value;
+                if (!CraftLogistics.TryEffectiveServiceCapacities(rule, logistics.Weapons, rules, out var capacities) ||
+                    capacities.FuelMaximum < 0) return "Craft service capacity exceeds the supported range.";
+                var craft = new CampaignState.CraftState(handle, incoming.Id)
+                {
+                    Logistics = CraftLogistics.Arrive(logistics, rule, rules, owner.Longitude, owner.Latitude),
+                };
+                if (ForecastHuntingCraftState(owner, craft, highest, stocks, out var state, arriving: true) is { } reason) return reason;
+                _huntingCraftForecast.Add((incoming.RuleId, incoming.Id), state);
+                sources.Add(craft);
+            }
         }
         if (highest < CampaignTimeTrigger.TenMinutes) return null;
         // Every relaunch precedes fuel use. Fuel itself runs in saved craft order;
         // an earlier leader's return can change its speed before a later escort burns fuel.
         foreach (var owner in campaign.BaseStates)
-            foreach (var craft in owner.Crafts)
+            foreach (var craft in _huntingCraftSources[owner.Id])
             {
                 if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 var key = (rules.Crafts.GetExternalId(craft.Rule), craft.Id);
@@ -40,15 +59,23 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
+    private CampaignState.CraftState? ForecastHuntingTarget(WorldTargetReference target)
+    {
+        if (_huntingCraftForecast?.GetValueOrDefault((target.TypeId, target.Id)) is not { } state)
+            return TargetCraft(target);
+        return new(campaign.Content.RuntimeRules.Crafts.GetRequired(target.TypeId), target.Id) { Logistics = state };
+    }
+
     /// <summary>Pure craft state at the native retarget caller, before five-second movement.</summary>
     private string? ForecastHuntingCraftState(CampaignState.BaseState owner, CampaignState.CraftState craft,
-        CampaignTimeTrigger highest, Dictionary<RuleHandle<ItemRuleFamily>, int>? fuelStocks, out CraftLogisticsState state)
+        CampaignTimeTrigger highest, Dictionary<RuleHandle<ItemRuleFamily>, int>? fuelStocks, out CraftLogisticsState state,
+        bool arriving = false)
     {
         state = craft.Logistics!;
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Crafts[craft.Rule].Value;
         if (highest < CampaignTimeTrigger.ThirtyMinutes || state.Status == "STR_OUT") return null;
-        if (highest >= CampaignTimeTrigger.OneHour)
+        if (highest >= CampaignTimeTrigger.OneHour && !arriving)
         {
             if (state.Status == "STR_REPAIRS")
             {

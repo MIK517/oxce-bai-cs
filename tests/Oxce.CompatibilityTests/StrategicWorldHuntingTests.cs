@@ -604,7 +604,7 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GroundedIncomingAutoPatrolIsGuardedBeforeHunting(bool cache)
+    public void GroundedIncomingAutoPatrolRelaunchesBeforeHunting(bool cache)
     {
         var content = Load(cache, "crafts: [{type: INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
@@ -632,8 +632,81 @@ public sealed class StrategicWorldHuntingTests
             Transfers = [new(1, 1, CampaignTransferKind.Craft, "INCOMING_HUNT", 1, Craft: incoming)],
         }]
         };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "INCOMING_HUNT").Logistics!;
+        Assert.Equal("STR_OUT", craft.Status);
+        Assert.Equal(80, craft.Fuel);
+        Assert.Equal(59, craft.Takeoff);
+        Assert.True(after.World.Ufos[0].Hunting);
+        Assert.Equal("INCOMING_HUNT", after.World.Ufos[0].Destination!.TypeId);
+        Reload(content, campaign, 81, "incoming-hunt.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IncomingCraftCheckupAndRelaunchMatchNative(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: NATIVE_INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"))
+        {
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+            var incoming = template with
+            {
+                RuleId = "NATIVE_INCOMING_HUNT", Id = 2,
+                Logistics = template.Logistics! with
+                {
+                    Status = row[1].GetString()!, Fuel = row[2].GetInt32(), Damage = row[3].GetInt32(),
+                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                    Longitude = 0.9, Latitude = 0.3, Weapons = [],
+                },
+            };
+            initial = initial with { Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21, Crafts = [], Soldiers = [],
+                Transfers = [new(1, row[0].GetInt32(), CampaignTransferKind.Craft, "NATIVE_INCOMING_HUNT", 1, Craft: incoming)],
+            }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "native-incoming-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var delivered = after.Bases[0].Transfers.Count == 0;
+            var craft = delivered ? Assert.Single(after.Bases[0].Crafts).Logistics! : Assert.Single(after.Bases[0].Transfers).Craft!.Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                delivered, craft.Status, craft.Fuel, craft.Damage, craft.Longitude, craft.Latitude,
+                craft.Takeoff + (delivered && craft.Status == "STR_OUT" ? 1 : 0),
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(4).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "native-incoming-after.sav");
+        }
+    }
+
+    [Fact]
+    public void HunterCombatWithIncomingCraftIsGuardedBeforeDelivery()
+    {
+        var content = Load(overlay: "crafts: [{type: CLOSE_INCOMING_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var incoming = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP") with
+        {
+            RuleId = "CLOSE_INCOMING_HUNT", Id = 2,
+            Logistics = new(60, 0, "STR_REFUELLING", [], new Dictionary<string, int>(), [])
+            { IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 },
+        };
+        initial = initial with { Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.4, Latitude = 0.2, Crafts = [], Soldiers = [],
+            Transfers = [new(1, 1, CampaignTransferKind.Craft, "CLOSE_INCOMING_HUNT", 1, Craft: incoming)],
+        }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO retargeting requires arriving craft forecasts.");
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
     [Fact]

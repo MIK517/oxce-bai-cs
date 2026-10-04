@@ -141,7 +141,7 @@ internal sealed partial class CampaignWorld
                     if (escorted.Hunting || escorted.Escorting)
                         return "UFO escort chains require additional movement forecasts.";
                 }
-                if (ufo.Hunting && TargetCraft(destination) is { Logistics: { } targetState } targetCraft &&
+                if (ufo.Hunting && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
                     targetState.Damage < CraftLogistics.EffectiveDamageMaximum(targetState,
                         campaign.Content.RuntimeRules.Crafts[targetCraft.Rule].Value, campaign.Content.RuntimeRules) &&
                     WorldGeometry.Distance(ufo.Position, destination.Position) <= WorldGeometry.RadianSpeed(ufo.Speed))
