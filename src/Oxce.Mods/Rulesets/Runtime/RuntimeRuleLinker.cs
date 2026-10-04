@@ -248,6 +248,10 @@ public static class RuntimeRuleLinker
                 ScriptsFor(scriptBuild.ByOwner, "items", rule.Id))
             {
                 Type = rule.Id,
+                Power = rule.Value.Values.GetInteger("power"),
+                MeleePower = rule.Value.Values.GetInteger("meleePower"),
+                ArmorValue = rule.Value.Values.GetInteger("armor"),
+                Waypoints = rule.Value.Values.GetInteger("waypoints"),
                 Accuracy = new(rule.Value.Actions["Aimed"].Accuracy, rule.Value.Actions["Auto"].Accuracy,
                     rule.Value.Actions["Snap"].Accuracy, rule.Value.Actions["Melee"].Accuracy,
                     rule.Value.Values.GetInteger("accuracyUse"), rule.Value.Values.GetInteger("accuracyMindControl"),

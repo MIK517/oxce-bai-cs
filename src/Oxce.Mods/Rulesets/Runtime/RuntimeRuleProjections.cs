@@ -256,6 +256,10 @@ public sealed record RuntimeItemRule(
 {
     public string Type { get; init; } = "";
     public RuntimeItemAccuracy Accuracy { get; init; } = RuntimeItemAccuracy.Default;
+    public int Power { get; init; }
+    public int MeleePower { get; init; }
+    public int ArmorValue { get; init; } = 20;
+    public int Waypoints { get; init; }
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public bool IsAlien { get; init; }
     public int VehicleFixedAmmoSlot { get; init; }
