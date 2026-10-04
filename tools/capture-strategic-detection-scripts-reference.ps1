@@ -38,6 +38,15 @@ $modSettings = @(
 )
 $template = $template.Replace('// MOD_SETTINGS', ($modSettings -join [Environment]::NewLine).Replace('int getMaxViewDistance()', 'int Mod::getMaxViewDistance()').Replace('int getMaxDarknessToSeeUnits()', 'int Mod::getMaxDarknessToSeeUnits()'))
 $template = $template.Replace('// UNIT_METADATA', (Read-Method 'src/Mod/Unit.cpp' 'void getTypeScript(const Unit*'))
+$unitLinks = Read-Method 'src/Mod/Unit.cpp' 'void Unit::afterLoad('
+# Capture the linkage portion verbatim; subsequent soft diagnostic logging is excluded.
+$unitLinks = $unitLinks.Substring(0, $unitLinks.IndexOf('mod->checkForSoftError', [StringComparison]::Ordinal)) + '}'
+$unitGetters = @(
+    (Read-Method 'src/Mod/Unit.cpp' 'const Unit *Unit::getSpawnUnit()'),
+    ((Read-Method 'src/Mod/Unit.h' 'const RuleItem* getLiveAlienGeoscape()').Replace('const RuleItem* getLiveAlienGeoscape()', 'const RuleItem* Unit::getLiveAlienGeoscape()')),
+    ((Read-Method 'src/Mod/Unit.h' 'const RuleItem* getCivilianRecoveryItemType()').Replace('const RuleItem* getCivilianRecoveryItemType()', 'const RuleItem* Unit::getCivilianRecoveryItemType()'))
+)
+$template = $template.Replace('// UNIT_LINKS', $unitLinks + [Environment]::NewLine + ($unitGetters -join [Environment]::NewLine))
 $unitLookup = @(
     (Read-Method 'src/Mod/Mod.cpp' 'Unit *Mod::getUnit('),
     (Read-Method 'src/Mod/Mod.cpp' 'void getUnitScript(')

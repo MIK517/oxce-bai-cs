@@ -1168,3 +1168,14 @@ missing/empty names and null Mod receivers return null, with empty text for null
 Unit receivers. Four fresh/cache base/craft VM tests cover reloads and foreign
 generation rejection. Compiler/cache revision is 43. Linked Unit metadata is the
 next slice; 4c remains open and 4d is untouched.
+
+## Linked Unit metadata (2026-10-04)
+
+Unit spawn, live-alien and civilian-recovery readers now use linked runtime
+handles. A verbatim Unit.cpp::afterLoad linkage capture pins default live-item
+lookup, explicit null/empty names, engineer/scientist exclusions and soldier-first
+recovery precedence; exact getters feed fresh/cache base/craft VM and reload tests.
+Unit nullable names now retain the reference NUL sentinel, so a literal STR_NULL
+item remains a real named relationship. Missing explicit links fail during content
+loading; default live items remain optional. Compiler/cache revision is 44.
+All eight focused Unit detection tests pass. The 4c gate remains open.
