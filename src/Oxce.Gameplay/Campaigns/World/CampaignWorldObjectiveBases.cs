@@ -67,16 +67,8 @@ internal sealed partial class CampaignWorld
         if (canHunt) _objectiveBaseHuntingMissions++;
         foreach (var marker in markers)
         {
-            // Charge the production-owned projection for each shared marker.
-            if (highest >= CampaignTimeTrigger.OneHour)
-                foreach (var owner in campaign.BaseStates)
-                    foreach (var production in owner.Productions)
-                    {
-                        var manufacture = rules.Manufacture[production.Rule].Value;
-                        work += 1L + manufacture.ProducedMaterials.Count + manufacture.RequiredMaterials.Count;
-                        if (work > MaximumAlienBaseChecks)
-                            return "Base objective creation exceeds the supported work limit.";
-                    }
+            if (ProductionCounterWorkReason(highest, ref work, "Base objective creation exceeds the supported work limit.") is { } productionWork)
+                return productionWork;
             var count = reservations.GetValueOrDefault(marker) + 1;
             reservations[marker] = count;
             work += _alienBases.Count + (long)_sites.Count;
@@ -106,17 +98,8 @@ internal sealed partial class CampaignWorld
             {
                 // A later decrease may reuse the ID of a craft born this hour.
                 // The snapshot craft list cannot detect that future collision.
-                work += 1L;
-                foreach (var owner in campaign.BaseStates)
-                {
-                    work += owner.Crafts.Count + (long)owner.Transfers.Count;
-                    foreach (var production in owner.Productions)
-                    {
-                        var manufacture = rules.Manufacture[production.Rule].Value;
-                        work += 1L + manufacture.ProducedMaterials.Count + manufacture.RequiredMaterials.Count;
-                    }
-                }
-                if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+                if (ProductionCounterWorkReason(highest, ref work, "Base objective creation exceeds the supported work limit.") is { } decreaseWork)
+                    return decreaseWork;
                 if (campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1)
                     return "Landing base creation shares decreased marker counters with same-tick craft production.";
             }
@@ -124,10 +107,7 @@ internal sealed partial class CampaignWorld
             if (range.Minimum <= 0 || end > int.MaxValue ||
                 _alienBases.Any(existing => MarkerName(existing.DeploymentId) == marker && existing.Id >= range.Minimum && existing.Id < end) ||
                 _sites.Any(existing => MarkerName(existing.DeploymentId) == marker && existing.Id >= range.Minimum && existing.Id < end) ||
-                campaign.BaseStates.Any(owner => owner.Crafts.Any(craft => rules.Crafts.GetExternalId(craft.Rule) == marker &&
-                    craft.Id >= range.Minimum && craft.Id < end) ||
-                    owner.Transfers.Any(transfer => !transfer.Delivered && transfer.Craft is { } craft &&
-                        craft.RuleId == marker && craft.Id >= range.Minimum && craft.Id < end)))
+                CraftIdCollision(marker, range.Minimum, end))
                 return "Base objective IDs are exhausted or collide.";
             if (!landing) (_siteBirthIdChanges ??= []).Add(new(marker, true));
         }
