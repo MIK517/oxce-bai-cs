@@ -969,3 +969,19 @@ and five audits, while the revised 4c headless completion gate remains open.
   mutation. A shared bounded scan accounts for fallback facilities across base
   and site forecasts. Pinned site/production fixtures and fresh/cache combined
   births verify correct IDs, preflight refusal and transition reloads.
+
+- Batch 4 audit reproduced missing fallback upper bounds for engineers arriving
+  before production and workshops completed by the preceding daily handler.
+  Fresh/cache regressions fail before the fix; forecasts now include both, and
+  combined final-wave/landing collisions stop before transfers or production
+  mutate the tick. Successful arrivals retain reload coverage. The audit also
+  charges added craft identity scans between hourly ticks and repeated hourly
+  transfer/floor scans to the world work budget.
+
+Final four-cycle validation: all 1,916 root tests pass with zero failures/skips,
+including checksums and private-corpus tests. Formatting verification,
+regenerated code-map validation and git diff --check pass. Three confirmed audit
+findings were fixed separately; all twelve requested slices and four audits are
+complete. Useful native captures remain available; the obsolete counter-probe
+object file was removed. The reference remains clean at the pinned commit.
+The revised 4c headless acceptance gate remains open; 4d is untouched.

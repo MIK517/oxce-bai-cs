@@ -23,6 +23,11 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
         {
             long released = 0;
+            long engineers = owner.Engineers;
+            work += owner.Transfers.Count;
+            foreach (var transfer in owner.Transfers)
+                if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Kind == CampaignTransferKind.Engineer)
+                    engineers += transfer.Quantity;
             foreach (var production in owner.Productions)
             {
                 var rule = rules.Manufacture[production.Rule].Value;
@@ -30,7 +35,11 @@ public sealed partial class CampaignState
                 if (production.IsFallback)
                 {
                     work += owner.Facilities.Count;
-                    assignedMaximum += Math.Min((long)owner.Engineers + released, Math.Max(0, AvailableWorkshops(owner)));
+                    long workshops = 0;
+                    foreach (var facility in owner.Facilities)
+                        if (facility.BuildTime == 0 || highest >= CampaignTimeTrigger.OneDay && facility.BuildTime == 1)
+                            workshops += Math.Max(0, rules.Facilities[facility.Rule].Value.Workshops);
+                    assignedMaximum += Math.Min(engineers + released, workshops);
                 }
                 // Earlier projects may finish/stop and release their staff. This is
                 // an upper bound; fallback decisions still execute only in the handler.

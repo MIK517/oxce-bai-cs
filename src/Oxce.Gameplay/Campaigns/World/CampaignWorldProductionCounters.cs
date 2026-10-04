@@ -4,11 +4,15 @@ internal sealed partial class CampaignWorld
 {
     private string? ProductionCounterWorkReason(CampaignTimeTrigger highest, ref long work, string boundary)
     {
-        if (highest < CampaignTimeTrigger.OneHour) return null;
+        var hourly = highest >= CampaignTimeTrigger.OneHour;
         var rules = campaign.Content.RuntimeRules;
         foreach (var owner in campaign.BaseStates)
         {
-            work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            // Always account for identity collision scans, even between hourly ticks.
+            // Hourly projections additionally scan arrivals and allocator floors.
+            work += owner.Crafts.Count * (hourly ? 2L : 1L) + owner.Transfers.Count * (hourly ? 3L : 1L);
+            if (work > MaximumAlienBaseChecks) return boundary;
+            if (!hourly) continue;
             foreach (var production in owner.Productions)
             {
                 var manufacture = rules.Manufacture[production.Rule].Value;
