@@ -20,6 +20,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
     {
         registry.Operation<ICampaignWorldScheduling>(this);
         registry.Command<EnterCampaignWorld>(_ => EnterWorld());
+        registry.Preflight(CampaignPreflightOrder.MonthlyWorldScheduling, "monthly world scheduling",
+            (_, highest) => MonthlyWorldSchedulingReason(highest));
         registry.Timed(CampaignTimeTrigger.OneMonth, CampaignTimeOrder.MonthWorldScheduling,
             "monthly world scheduling", effects =>
             {
@@ -39,8 +41,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldScheduling
         WorldSchedulingInputs inputs;
         try
         {
-            entry = calendar.Prepare();
             inputs = campaign.WorldSchedulingInputs(isNewMonth: true, schedulingMonth: 0);
+            entry = calendar.Prepare();
         }
         catch (Exception error) when (error is OverflowException or InvalidDataException) { return Blocked(error.Message); }
         // Legacy month -1 UFOs bypass load validation. Entering month zero must not

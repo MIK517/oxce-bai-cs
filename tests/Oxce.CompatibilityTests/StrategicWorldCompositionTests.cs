@@ -270,4 +270,23 @@ public sealed class StrategicWorldCompositionTests
         Reload(content, campaign, 17, "isolated-monthly-handler.sav");
     }
 
+    [Fact]
+    public void IncompleteLegacyArmorBlocksExplicitEntryBeforeAnyAccountingOrScheduling()
+    {
+        var content = StrategicReadinessTestContent.Load(
+            ["strategic-world.rul", "strategic-world-composition.rul"],
+            extraRules: "events: [{name: E, timer: 60}]");
+        var snapshot = CreateSnapshot(content, "Legacy initial armor") with { MonthsPassed = -1, RandomState = 17 };
+        var owner = snapshot.Bases[0];
+        snapshot = snapshot with
+        {
+            Bases = [owner with
+            { Soldiers = [.. owner.Soldiers.Select(soldier => soldier with { Personal = soldier.Personal! with { Armor = string.Empty } })] }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        Assert.Contains("armor", Assert.IsType<CampaignActionBlocked>(
+            Assert.Single(campaign.Execute(new EnterCampaignWorld()).Events)).Reason);
+        Assert.Equivalent(snapshot, campaign.Capture(), strict: true);
+    }
+
 }
