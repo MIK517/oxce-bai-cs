@@ -455,6 +455,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _siteBirthIdChanges = null;
         _objectiveBaseBirths = 0;
         _objectiveBasesBeforeHunting = 0;
+        _objectiveBaseHuntingMissions = 0;
         _objectiveBaseScores = null;
         _siteBirthExpiryIncreases = null;
         _siteBirthExpiryDecreases = null;

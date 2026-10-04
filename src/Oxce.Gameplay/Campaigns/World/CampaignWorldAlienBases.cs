@@ -22,12 +22,12 @@ internal sealed partial class CampaignWorld
 
     private string? AlienBaseActivityReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
-        if (_alienBases.Count == 0 || highest < CampaignTimeTrigger.TenMinutes) return null;
+        if (_alienBases.Count == 0 && _objectiveBaseHuntingMissions == 0 || highest < CampaignTimeTrigger.TenMinutes) return null;
         var daily = highest >= CampaignTimeTrigger.OneDay;
         var work = daily ? _alienBases.Count * (1L + campaign.RegionStates.Count + campaign.CountryStates.Count) : 0;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         var undiscovered = 0;
-        var possibleMissions = 0;
+        var possibleMissions = _objectiveBaseHuntingMissions;
         foreach (var alienBase in _alienBases)
         {
             if (daily && BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch)) continue;

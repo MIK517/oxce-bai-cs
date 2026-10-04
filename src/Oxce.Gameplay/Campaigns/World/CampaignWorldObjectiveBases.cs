@@ -7,6 +7,7 @@ internal sealed partial class CampaignWorld
 {
     private int _objectiveBaseBirths;
     private int _objectiveBasesBeforeHunting;
+    private int _objectiveBaseHuntingMissions;
     private List<(IReadOnlyList<SpawnArea> Positions, int Points)>? _objectiveBaseScores;
 
     private static bool CompletesBaseObjective(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
@@ -40,6 +41,7 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         var positions = new List<SpawnArea>();
+        var canHunt = false;
         foreach (var area in areas)
         {
             work += 100L * (1 + (rule.SiteTypeId.Length != 0 ? 1 :
@@ -53,7 +55,7 @@ internal sealed partial class CampaignWorld
                 var deployment = rules.AlienDeployments[candidate].Value;
                 if (deployment.HuntMissionMaxFrequency < 0)
                     return "Base objective hunting timer cannot be negative.";
-                if (!landing && NewObjectiveBaseHuntingReason(deployment, position, highest, ref work) is { } huntingReason)
+                if (!landing && NewObjectiveBaseHuntingReason(rules.AlienDeployments.GetExternalId(candidate), deployment, position, highest, ref work, ref canHunt) is { } huntingReason)
                     return huntingReason;
                 var marker = deployment.MarkerName;
                 if (string.IsNullOrWhiteSpace(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
@@ -62,6 +64,7 @@ internal sealed partial class CampaignWorld
                 markers.Add(marker);
             }
         }
+        if (canHunt) _objectiveBaseHuntingMissions++;
         foreach (var marker in markers)
         {
             // Charge the production-owned projection for each shared marker.
@@ -158,14 +161,15 @@ internal sealed partial class CampaignWorld
         catch (KeyNotFoundException error) { throw new InvalidDataException("Base objective references an unavailable deployment.", error); }
     }
 
-    private string? NewObjectiveBaseHuntingReason(RuntimeAlienDeploymentRule deployment, SpawnArea area,
-        CampaignTimeTrigger highest, ref long work)
+    private string? NewObjectiveBaseHuntingReason(string deploymentId, RuntimeAlienDeploymentRule deployment, SpawnArea area,
+        CampaignTimeTrigger highest, ref long work, ref bool canGenerate)
     {
         if (highest < CampaignTimeTrigger.TenMinutes || deployment.BaseDetectionRange <= 0) return null;
         if (deployment.HuntMissionMaxFrequency > int.MaxValue - 10)
             return "New base objective hunting timer exceeds the supported range.";
         var rules = campaign.Content.RuntimeRules;
         var range = WorldGeometry.Nautical(deployment.BaseDetectionRange);
+        var possibleGeneration = false;
         foreach (var owner in campaign.BaseStates)
         {
             work += owner.Crafts.Count + (highest >= CampaignTimeTrigger.OneHour ? (long)owner.Transfers.Count : 0);
@@ -196,6 +200,7 @@ internal sealed partial class CampaignWorld
                     ChoiceReason(ref work) is { } reason) return reason;
             }
         }
+        canGenerate |= possibleGeneration;
         return null;
 
         bool Near(WorldPosition position) => WorldGeometry.Distance(position, area.Center) - area.Radius < range;
@@ -207,8 +212,20 @@ internal sealed partial class CampaignWorld
             checks += 2L * choices.Count;
             if (checks > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
             _ = WorldAlienMissionGeneration.Total(choices);
-            return choices.Any(choice => choice.Value != 0 && choice.Key.Length != 0)
-                ? "New base objective hunting requires creation-tick mission forecasts." : null;
+            foreach (var choice in choices)
+            {
+                if (choice.Value == 0 || choice.Key.Length == 0) continue;
+                if (!rules.AlienMissions.TryGet(choice.Key, out var handle))
+                    return "Alien base hunting references an undefined mission.";
+                var mission = rules.AlienMissions[handle].Value;
+                if (area.Radius != 0 || mission.Waves.Count == 0 || mission.Waves[0].SpawnTimer / 30 / 2 <= 1)
+                    return "New base objective hunting requires creation-tick mission forecasts.";
+                var source = new AlienBaseSnapshot(0, deploymentId, "", area.Center.Longitude, area.Center.Latitude);
+                if (HuntingMissionReason(source, deployment, mission, highest, ref checks, newborn: true) is { } reason)
+                    return reason;
+                possibleGeneration = true;
+            }
+            return null;
         }
     }
 

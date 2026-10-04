@@ -390,8 +390,9 @@ public sealed class StrategicObjectiveBaseSpawnTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NewFinalWaveBaseStopsBeforeUnreservedHuntingGeneration(bool cache)
+    public void NewFinalWaveBaseReservesHuntingMissionsAndStartsDelayedWaves(bool cache)
     {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         var content = LoadWorld(cache, hunting: true);
         var initial = Initial(content).WithNextId("ALIEN_MISSIONS", int.MaxValue);
         initial = initial.WithCraft("SHIP", craft => craft with
@@ -411,7 +412,16 @@ public sealed class StrategicObjectiveBaseSpawnTests
             },
         });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "New base objective hunting requires creation-tick mission forecasts.");
+            "Alien mission IDs or population exceed the supported limit.");
+        var hunting = CampaignState.Restore(initial.WithNextId("ALIEN_MISSIONS", 5), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(hunting, 1);
+        var hunt = Assert.Single(hunting.Capture().World.Missions);
+        Assert.Equal("MISSION_SCOUT", hunt.RuleId);
+        Assert.Equal(5, hunt.Id);
+        Assert.NotNull(hunt.AlienBase);
+        Assert.InRange(hunt.SpawnCountdown, 4470, 13470);
+        Assert.Equal(0, Assert.Single(hunting.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+        Reload(content, hunting, 17, "new-base-hunt-start.sav");
         // No available craft still permits birth and the reference's timer fallthrough.
         var peaceful = Initial(content);
         var campaign = CampaignState.Restore(peaceful, content, new SplitMix64RandomSource(17));

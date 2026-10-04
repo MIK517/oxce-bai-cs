@@ -787,3 +787,12 @@ and five audits, while the revised 4c headless completion gate remains open.
   craft's ID remain precisely guarded; scans are charged to bounded creation work.
   Fresh/cache final-wave and landing cases verify capacity refusal, consecutive
   identities, reload and no duplicate births.
+
+- Batch 2 audit: production progress, shared allocator floors, handler ordering,
+  resource-dependent bounds, collision refusal and persistence were reviewed
+  together; no confirmed behavioral defect was found.
+- Batch 3 slice 1: fixed-position newborn bases can start delayed hunting missions
+  in the creation tick. Their possible mission births share capacity/ID checks
+  with existing-base generation. Reference: GeoscapeState::baseHunting immediate
+  think after final-wave births; pinned hunting-generation and objective fixtures.
+  Fresh/cache cases verify exhausted IDs, start timers, links and reload.
