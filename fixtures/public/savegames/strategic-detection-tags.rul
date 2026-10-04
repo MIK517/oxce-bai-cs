@@ -1,0 +1,29 @@
+# Instance detection tags are saved under each entity's tags mapping.
+extended:
+  tags:
+    Ufo:
+      DETECT_UFO: int
+      DETECT_UFO_MISSING: int
+    Craft:
+      DETECT_CRAFT: int
+ufos:
+  - type: UFO_SCRIPT_TAGS
+    speedMax: 2200
+    damageMax: 50
+    scripts:
+      detectUfoFromBase: |
+        var int value;
+        ufo.getTag value Tag.DETECT_UFO;
+        if neq value -7; return DETECTION_NONE 0; end;
+        ufo.getTag value Tag.DETECT_UFO_MISSING;
+        if neq value 0; return DETECTION_NONE 0; end;
+        return DETECTION_HYPERWAVE 100;
+  - type: UFO_CRAFT_TAGS
+    speedMax: 2200
+    damageMax: 50
+    scripts:
+      detectUfoFromCraft: |
+        var int value;
+        craft.getTag value Tag.DETECT_CRAFT;
+        if eq value 37; return DETECTION_RADAR 100; end;
+        return DETECTION_NONE 0;

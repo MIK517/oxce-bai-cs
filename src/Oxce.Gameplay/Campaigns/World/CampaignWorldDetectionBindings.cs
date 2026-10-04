@@ -1,4 +1,5 @@
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Scripting.Api;
 using Oxce.Scripting.Runtime;
 
 namespace Oxce.Gameplay.Campaigns.World;
@@ -9,7 +10,10 @@ internal sealed partial class CampaignWorld
     private readonly DetectionTimeReference _detectionTime = new();
     private int _detectionShieldCapacity;
 
-    private static bool DetectionBindingSupported(string name) => name is
+    private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
+        DetectionBindingNameSupported(binding.Name) || DetectionEntityTagSupported(binding);
+
+    private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
         "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
@@ -22,8 +26,10 @@ internal sealed partial class CampaignWorld
         "GeoscapeGame.getTime" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
         "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
-    private ScriptBindingResult InvokeDetectionBinding(string name, Span<ScriptRuntimeValue> args)
+    private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
     {
+        var name = binding.Name;
+        if (name is "Ufo.getTag" or "Craft.getTag") return InvokeDetectionEntityTag(binding, args);
         var receiver = args[0].Reference;
         var ufo = receiver as UfoSnapshot;
         var craft = receiver as CampaignState.CraftState;

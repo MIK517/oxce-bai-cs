@@ -293,7 +293,7 @@ public static partial class OxceSaveAdapter
             var crafts = Sequence(map, "crafts").Select(item =>
             {
                 var craft = RequireMap(item, "craft");
-                return ReadCraft(craft, markers);
+                return ReadCraft(craft, markers, content);
             }).ToArray();
             var soldiers = Sequence(map, "soldiers").Select(item =>
             {
@@ -318,7 +318,7 @@ public static partial class OxceSaveAdapter
                 Array.AsReadOnly(soldiers), items, scientists, engineers)
             {
                 Transfers = Array.AsReadOnly(Maps(map, "transfers").Select(transfer =>
-                    ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers)).ToArray()),
+                    ReadTransfer(transfer, entityIndex.TransferIds[transfer], defaultSoldier, markers, content)).ToArray()),
                 FakeUnderwater = Boolean(map, "fakeUnderwater", false),
                 RetaliationTarget = Boolean(map, "retaliationTarget", false),
                 RetaliationMissionId = map.TryGet("retaliationMissionUniqueId", out _)
@@ -634,7 +634,8 @@ public static partial class OxceSaveAdapter
     {
         var source = MatchingSource(index.Crafts.GetValueOrDefault(EntityIdentity(value)), value.PreservationKey, $"craft:{value.RuleId}:{value.Id}");
         var identity = Overlay(source,
-            [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey))]);
+            [Pair("type", Scalar(value.RuleId)), Pair("id", Integer(value.Id)), Pair("oxcePortEntityKey", Scalar(value.PreservationKey)),
+                Pair("tags", ScriptValues(value.ScriptValues))]);
         if (value.Logistics is not { } state) return identity;
         var originalWeapons = Maps(source, "weapons").ToArray();
         var originalVehicles = Maps(source, "vehicles").Select((node, slot) => new
@@ -760,7 +761,7 @@ public static partial class OxceSaveAdapter
             p => p.Key, p => checked((short)p.Value), StringComparer.Ordinal));
     }
 
-    private static CraftSnapshot ReadCraft(YamlMappingNode map, WorldMarkerIndex markers)
+    private static CraftSnapshot ReadCraft(YamlMappingNode map, WorldMarkerIndex markers, RuntimeContent content)
     {
         var type = RequiredString(map, "type");
         var id = Integer(map, "id", 0);
@@ -769,6 +770,7 @@ public static partial class OxceSaveAdapter
         {
             PreservationKey = preservationKey,
             Logistics = ReadCraftLogistics(map, preservationKey, markers),
+            ScriptValues = ReadScriptValues(map, content, "Craft"),
         };
     }
 
@@ -849,7 +851,7 @@ public static partial class OxceSaveAdapter
     }
 
     private static TransferSnapshot ReadTransfer(
-        YamlMappingNode map, int id, string defaultSoldier, WorldMarkerIndex markers)
+        YamlMappingNode map, int id, string defaultSoldier, WorldMarkerIndex markers, RuntimeContent content)
     {
         RejectDuplicateKnownKeys(map, ["hours", "soldier", "craft", "itemId", "itemQty", "scientists", "engineers", "delivered", "oxcePortTransferId"]);
         var payloads = TransferPayloadKeys.Count(key => map.TryGet(key, out _));
@@ -865,7 +867,7 @@ public static partial class OxceSaveAdapter
         if (map.TryGet("craft", out var craftNode))
         {
             var craft = RequireMap(craftNode!, "transfer craft");
-            var value = ReadCraft(craft, markers);
+            var value = ReadCraft(craft, markers, content);
             return Preserve(new(id, hours, CampaignTransferKind.Craft, value.RuleId, 1, Craft: value, Delivered: delivered));
         }
         if (map.TryGet("itemId", out _))

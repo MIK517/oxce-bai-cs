@@ -214,7 +214,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             rules.Regions.GetRequired(region.RuleId),
             RequiredHistory(region.ActivityXcom, "region XCOM activity"),
             RequiredHistory(region.ActivityAlien, "region alien activity"))).ToArray();
-        var bases = snapshot.Bases.Select(source => RestoreBase(source, rules)).ToArray();
+        var bases = snapshot.Bases.Select(source => RestoreBase(source, content)).ToArray();
         foreach (var owner in bases) ValidateAssignments(owner, rules);
         EnsureUnique(snapshot.Countries.Select(static country => country.RuleId), "country rule IDs");
         EnsureUnique(snapshot.Regions.Select(static region => region.RuleId), "region rule IDs");
@@ -436,7 +436,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             facility.HadPreviousFacility)
         { PreservationKey = facility.PreservationKey })),
         CampaignSnapshot.ReadOnly(state.Crafts.Select(craft =>
-            new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id) { PreservationKey = craft.PreservationKey, Logistics = craft.Logistics })),
+            new CraftSnapshot(_content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id) { PreservationKey = craft.PreservationKey, Logistics = craft.Logistics, ScriptValues = craft.ScriptValues?.Capture() ?? [] })),
         CampaignSnapshot.ReadOnly(state.Soldiers.Select(soldier =>
             new SoldierSnapshot(_content.RuntimeRules.Soldiers.GetExternalId(soldier.Rule), soldier.Id) { PreservationKey = soldier.PreservationKey, Personal = soldier.Personal })),
         new ReadOnlyDictionary<string, int>(state.Items.ToDictionary(
@@ -474,8 +474,9 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         state.Scientists,
         state.Engineers);
 
-    private static BaseState RestoreBase(BaseSnapshot source, RuntimeRuleCatalog rules)
+    private static BaseState RestoreBase(BaseSnapshot source, RuntimeContent content)
     {
+        var rules = content.RuntimeRules;
         if (source.Id < 0) throw new InvalidDataException("Base IDs cannot be negative.");
         if (!double.IsFinite(source.Longitude) || !double.IsFinite(source.Latitude))
             throw new InvalidDataException("Base coordinates must be finite.");
@@ -485,7 +486,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         { PreservationKey = facility.PreservationKey }).ToArray();
         var crafts = source.Crafts.Select(craft => new CraftState(
             rules.Crafts.GetRequired(craft.RuleId), PositiveId(craft.Id, "craft"))
-        { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules) }).ToArray();
+        { PreservationKey = craft.PreservationKey, Logistics = RestoreCraftLogistics(craft.Logistics, rules),
+            ScriptValues = RestoreScriptValues(content, "Craft", craft.ScriptValues) }).ToArray();
         var soldiers = source.Soldiers.Select(soldier => new SoldierState(
             rules.Soldiers.GetRequired(soldier.RuleId), PositiveId(soldier.Id, "soldier"))
         { PreservationKey = soldier.PreservationKey, Personal = RestorePersonal(soldier.Personal, rules) }).ToArray();
@@ -512,7 +514,11 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
             result.Transfers.Add(transfer with
             {
                 Soldier = transfer.Soldier is { } soldier ? soldier with { Personal = RestorePersonal(soldier.Personal, rules) } : null,
-                Craft = transfer.Craft is { } craft ? craft with { Logistics = RestoreCraftLogistics(craft.Logistics, rules) } : null,
+                Craft = transfer.Craft is { } craft ? craft with
+                {
+                    Logistics = RestoreCraftLogistics(craft.Logistics, rules),
+                    ScriptValues = RestoreScriptValues(content, "Craft", craft.ScriptValues)?.Capture() ?? [],
+                } : null,
             });
         }
         return result;
@@ -766,6 +772,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     internal sealed record CraftState(RuleHandle<CraftRuleFamily> Rule, int Id)
     {
+        public ScriptValueState? ScriptValues { get; init; }
         public string PreservationKey { get; init; } = string.Empty;
         public CraftLogisticsState? Logistics { get; init; }
     }

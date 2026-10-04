@@ -393,3 +393,13 @@ contacts, before/main/after programs, possible craft arrivals and installed-rada
 query scans. Shield capacity is prepared once per script call. Fresh/cache
 oversized contact/event regressions now stop with unchanged snapshots; existing
 8/32/128-UFO allocation limits remain unchanged.
+
+## Persisted entity detection tags (2026-10-04)
+
+Detection scripts read typed UFO and craft instance tags, with zero defaults for
+missing slots and null receivers. The native fixture now extracts
+ScriptValuesBase::setBase/getBase as well as detection workers. Craft tags enter
+save-neutral snapshots, restored live state and the save adapter, including
+transfers and tag removal during source-preserving rewrites. Craft restoration
+validates tag ownership, duplicates and value types transactionally. Fresh/cache
+tests execute saved tag branches before/after reload and reject malformed state.

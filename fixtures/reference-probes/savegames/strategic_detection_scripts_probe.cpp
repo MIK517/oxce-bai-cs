@@ -12,6 +12,13 @@ int XcomDistance(double value) { return (int)value; }
 namespace OpenXcom {
 enum UfoDetection { DETECTION_NONE=0, DETECTION_RADAR=1, DETECTION_HYPERWAVE=3 };
 struct SavedGame {};
+class ScriptValuesBase {
+std::vector<int> values;
+public:
+void setBase(size_t t, int i);
+int getBase(size_t t) const;
+};
+// TAG_METHODS
 struct RuleUfo { template<class T> int getScript() const { return 0; } };
 struct Ufo {
 int visibility=0;
@@ -119,5 +126,8 @@ int result=craft.detect(&ufo,&save,i==2);
 std::cout<<"{\"tracked\":"<<(i==2?"true":"false")<<",\"override\":"<<(i==3?"true":"false")<<",\"inputs\":";array(ModScript::inputs);
 std::cout<<",\"initial\":";array(ModScript::initial);std::cout<<",\"calls\":";array(RNG::calls);std::cout<<",\"result\":"<<result<<'}';
 }
-std::cout<<"],\"bindings\":["; array({ufo.getDamage(),ufo.getShield(),ufo.getShieldPercentage(),(int)ufo.getDetected(),(int)ufo.getHyperDetected(),(int)ufo.isHunterKiller(),(int)ufo.isHunting(),(int)ufo.isEscorting(),ufo.getHuntMode(),ufo.getHuntBehavior()}); std::cout<<"]}\n";
+std::cout<<"],\"bindings\":["; array({ufo.getDamage(),ufo.getShield(),ufo.getShieldPercentage(),(int)ufo.getDetected(),(int)ufo.getHyperDetected(),(int)ufo.isHunterKiller(),(int)ufo.isHunting(),(int)ufo.isEscorting(),ufo.getHuntMode(),ufo.getHuntBehavior()}); std::cout<<"],\"tagValues\":[";
+ScriptValuesBase tags; tags.setBase(0,99); tags.setBase(2,-7);
+for (int index : {0,1,2,3,400}) { if(index) std::cout<<','; array({index,tags.getBase(index)}); }
+std::cout<<"]}\n";
 }
