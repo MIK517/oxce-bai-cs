@@ -37,6 +37,8 @@ internal static class CampaignStartSettingsComposer
         b.BuildTimeReductionScaling = Read(root, "buildTimeReductionScaling", b.BuildTimeReductionScaling);
         b.CustomTrainingFactor = Read(root, "customTrainingFactor", b.CustomTrainingFactor);
         b.EscortRange = Read(root, "escortRange", b.EscortRange);
+        b.MaximumViewDistance = Read(root, "maxViewDistance", b.MaximumViewDistance);
+        b.MaximumDarknessToSeeUnits = Read(root, "maxDarknessToSeeUnits", b.MaximumDarknessToSeeUnits);
         b.HunterKillerFastRetarget = Read(root, "hunterKillerFastRetarget", b.HunterKillerFastRetarget);
         b.AllowAlienBasesOnWrongTextures = Read(root, "allowAlienBasesOnWrongTextures", b.AllowAlienBasesOnWrongTextures);
         b.AllowCountriesToCancelAlienPact = Read(root, "allowCountriesToCancelAlienPact", b.AllowCountriesToCancelAlienPact);

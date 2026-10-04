@@ -565,3 +565,14 @@ to the reference zero. Fresh/cache VM execution and transition reloads cover all
 rows and null receivers. Cache/compiler revision is 38.
 Reference: RuleUfo.cpp::load/getRadius/getWeaponRange/getWeaponPower/getWeaponReload/
 ScriptRegister. This adds read access only; interception remains in branch 5.
+
+## Immutable mod detection constants (2026-10-04)
+
+Detection providers expose Mod's maximum view distance and maximum darkness to
+see units, preserving constructor defaults 20/9, ordered global overrides and
+signed values. Typed settings, immutable runtime projection and cache restoration
+retain both fields. Native inline getter captures, null receivers, malformed
+schema tests and fresh/cache live VM/reload tests cover the slice. Compiler/cache
+revision is 39. Smoke reduction remains guarded until its receiver and arithmetic
+can be proved safe before mutation.
+Reference: Mod.cpp constructor/load/ScriptRegister and Mod.h getters.

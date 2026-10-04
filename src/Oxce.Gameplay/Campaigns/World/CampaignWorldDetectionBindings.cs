@@ -28,6 +28,7 @@ internal sealed partial class CampaignWorld
         "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list" or
         "Country.getRuleCountry" or "RuleCountry.getFundingCap" or "Country.getPact" or "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
+        "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits" or
         "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
         "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
         "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
@@ -134,6 +135,8 @@ internal sealed partial class CampaignWorld
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
                     name switch
                     {
+                        "RuleMod.getMaxViewDistance" => rules.Campaign.MaximumViewDistance,
+                        "RuleMod.getMaxDarknessToSeeUnits" => rules.Campaign.MaximumDarknessToSeeUnits,
                         "GeoscapeGame.difficultyLevel" => (int)campaign.Difficulty,
                         "GeoscapeGame.getDaysPassed" => campaign.DaysPassed,
                         "GeoscapeGame.getMonthsPassed" => campaign.MonthsPassed,
