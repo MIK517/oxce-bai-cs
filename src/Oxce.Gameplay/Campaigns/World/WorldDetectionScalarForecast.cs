@@ -56,7 +56,7 @@ internal sealed class WorldDetectionScalarForecast
             {
                 var binding = bindings[operands[0].Scalar];
                 var range = (Min: int.MinValue, Max: int.MaxValue);
-                if (binding.Name is "RuleItem.getPower" or "RuleItem.getMeleePower")
+                if (WorldDetectionItemQueries.Supports(binding.Name))
                 {
                     var candidates = references.At(index, operands[1]);
                     work += candidates?.Count ?? rules.Items.Count;
@@ -67,7 +67,7 @@ internal sealed class WorldDetectionScalarForecast
                     foreach (var candidate in items)
                     {
                         var value = candidate is RuntimeItemRule item
-                            ? binding.Name == "RuleItem.getPower" ? item.Power : item.MeleePower : 0;
+                            ? WorldDetectionItemQueries.Value(binding.Name, item) : 0;
                         range = (Math.Min(range.Min, value), Math.Max(range.Max, value));
                     }
                     if (range.Min > range.Max) range = (int.MinValue, int.MaxValue);

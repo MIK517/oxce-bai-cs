@@ -556,6 +556,34 @@ public sealed class StrategicWorldDetectionItemRulesTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void NativeItemScalarReadersComposeWithDivisorsAndDamageQueries(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "itemReaders");
+        for (var stage = 0; stage < rows.Length; stage++)
+        {
+            var code = "var ptr RuleItem item; var ptr RuleItem half; var ptr RuleDamageType damage; " +
+                "var int power; var int value; var int quotient; rules.getRuleItem item \"ITEM_READ\"; " +
+                "rules.getRuleItem half \"HALF_DAMAGE\"; half.getDamageType damage; ";
+            foreach (var field in rows[stage].EnumerateObject())
+            {
+                var expected = field.Value.GetInt32();
+                code += $"item.{field.Name} power; damage.getDamageToHealth value power; " +
+                    $"if neq value {(int)(0.5f * expected)}; return DETECTION_NONE 0; end; ";
+                if (expected != 0)
+                    code += $"set quotient {expected}; div quotient power; if neq quotient 1; return DETECTION_NONE 0; end; ";
+            }
+            code += "return DETECTION_RADAR 100;";
+            RunItemScript(code, stage == 0 ? "" : CustomFields, fromCache, fromCraft,
+                additionalItems: "- type: HALF_DAMAGE\n  damageAlter: {ToHealth: 0.5}");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void NativeDamageOutputsComposeWithDivisorsAndFurtherConversions(bool fromCache, bool fromCraft)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
