@@ -716,3 +716,11 @@ and branch 4d is untouched.
   create at most the current wave's site. XCOM-base site selection honors discovered
   targets for normal retaliation, independently of the assault skip-scouting option.
   Pinned spawn/site-condition oracles, fresh/cache, ID guards and rewrites cover both.
+
+- Five-cycle batch 5, slice 3: daily and hunting-generated no-object retaliation
+  now forecast their actual one-hop mapped region. Safe normal missions finish
+  their finite chain; instant missions with no target interrupt after one wave.
+  Hunting retains completed/interrupted missions until the following half-hour
+  cleanup; daily generation cleans them during its existing fallthrough. Targeted
+  immediate births and deployment payloads remain guarded in these callers.
+  Pinned generation/hunting/spawn evidence, fresh/cache transitions and reloads pass.

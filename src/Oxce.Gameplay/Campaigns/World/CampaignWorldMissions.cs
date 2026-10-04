@@ -277,14 +277,20 @@ internal sealed partial class CampaignWorld
     }
 
     private string? ImmediateNoObjectReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
-        RuntimeAlienMissionRule rule, ref long work, string boundary)
+        RuntimeAlienMissionRule rule, ref long work, string boundary, string? regionId = null)
     {
-        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) return boundary;
-        var candidate = new AlienMissionSnapshot(-1, string.Empty, string.Empty, source.Race, 0, 0, 0, 0, -1)
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation && regionId is null) return boundary;
+        var candidate = new AlienMissionSnapshot(-1, string.Empty, regionId ?? string.Empty, source.Race, 0, 0, 0, 0, -1)
         { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
         foreach (var step in DueWaveSteps(candidate, rule))
         {
             if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
+            {
+                var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
+                work += 8L * campaign.BaseStates.Count * (region.Areas.Count + 1L);
+                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            }
             if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]) ||
                 CompletesInfiltration(step, rule, rule.Waves[step.NextWave]) || !CanAdvanceNoObjectWave(step, rule)) return boundary;
         }
@@ -298,8 +304,9 @@ internal sealed partial class CampaignWorld
         {
             if (work >= MaximumImmediateWaveSteps || !CanAdvanceNoObjectWave(mission, rule))
                 throw new InvalidOperationException("Immediate no-object mission changed after preflight.");
+            if (InstantRetaliationWithoutTarget(mission, rule)) mission = mission with { Interrupted = true };
             mission = AdvanceWaveCounters(mission, rule, spawnsUfo: false);
-            if (mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) return mission;
+            if (mission.Interrupted || mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) return mission;
         }
     }
 

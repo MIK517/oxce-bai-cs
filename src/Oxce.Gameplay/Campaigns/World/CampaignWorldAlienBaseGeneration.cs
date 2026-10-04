@@ -21,7 +21,7 @@ internal sealed partial class CampaignWorld
         // time1Day falls through to AlienMission::think in this very tick. Until
         // creation candidates join all wave/scoring/detection forecasts, reserve
         // only timers guaranteed to count down without spawning in that pass.
-        if (steps / 2 <= 1 && ImmediateNoObjectReason(alienBase, deployment, mission, ref work,
+        if (steps / 2 <= 1 && mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(alienBase, deployment, mission, ref work,
                 BaseGenerationImmediateReason) is { } immediateReason) return immediateReason;
         if (!deployment.GenMissionRaceFromAlienBase && mission.HasRaceWeights)
         {
@@ -72,6 +72,7 @@ internal sealed partial class CampaignWorld
         {
             if (!rules.Regions.TryGet(name, out var handle))
                 return "Alien base mission references an undefined region.";
+            var regionId = name;
             var region = rules.Regions[handle].Value;
             // setRegion follows exactly one missionRegion indirection.
             if (region.MissionRegionId.Length != 0)
@@ -79,7 +80,11 @@ internal sealed partial class CampaignWorld
                 if (region.MissionRegion is not { } fallback)
                     return "Alien base mission references an undefined fallback region.";
                 region = rules.Regions[fallback].Value;
+                regionId = rules.Regions.GetExternalId(fallback);
             }
+            if (steps / 2 <= 1 && mission.Objective is (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
+                ImmediateNoObjectReason(alienBase, deployment, mission, ref work, BaseGenerationImmediateReason, regionId) is { } retaliationReason)
+                return retaliationReason;
             if (mission.Objective == RuntimeMissionObjective.Site &&
                 (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count))
                 return "Alien base site mission has an invalid spawn zone.";
