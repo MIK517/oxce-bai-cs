@@ -248,6 +248,10 @@ public static class RuntimeRuleLinker
                 ScriptsFor(scriptBuild.ByOwner, "items", rule.Id))
             {
                 Type = rule.Id,
+                Accuracy = new(rule.Value.Actions["Aimed"].Accuracy, rule.Value.Actions["Auto"].Accuracy,
+                    rule.Value.Actions["Snap"].Accuracy, rule.Value.Actions["Melee"].Accuracy,
+                    rule.Value.Values.GetInteger("accuracyUse"), rule.Value.Values.GetInteger("accuracyMindControl"),
+                    rule.Value.Values.GetInteger("accuracyPanic"), rule.Value.Values.GetInteger("accuracyThrow")),
                 Purchase = new(rule.Value.Values.GetInteger("monthlyBuyLimit"), rule.Value.Values.GetString("monthlyBuyLimitMessage"),
                     rule.Value.Values.GetString("requiresBuyCountry"), rule.Value.RequiredBuyBaseFunctions, rule.Value.BuyRequirements),
                 IsAlien = rule.Value.Values.Boolean("liveAlien"),

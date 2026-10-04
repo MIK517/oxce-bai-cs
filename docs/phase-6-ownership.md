@@ -1259,3 +1259,11 @@ The 4c gate remains open; initial/monthly caller composition, remaining detectio
 providers/forecasts and composed acceptance still need work. 4d is untouched.
 
 Formatting verification, code-map validation and diff checks pass.
+
+## Item accuracy detection readers (2026-10-04)
+
+RuleItem.cpp's eight raw accuracy readers now use an immutable runtime projection
+of loaded action accuracy and psi/throw scalar fields. The native trace pins
+defaults, negative values and signed extremes; all four fresh/cache base/craft
+VM tests pass with null readers and transition reloads. No tactical calculation
+is enabled. Compiler/cache revision is 46; the 4c gate remains open.

@@ -21,6 +21,8 @@ internal sealed partial class CampaignWorld
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
         "RuleInventory.getId" or "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
+        "RuleItem.getAccuracyAimed" or "RuleItem.getAccuracyAuto" or "RuleItem.getAccuracySnap" or "RuleItem.getAccuracyMelee" or
+        "RuleItem.getAccuracyUse" or "RuleItem.getAccuracyMind" or "RuleItem.getAccuracyPanic" or "RuleItem.getAccuracyThrow" or
         "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "Craft.getDamage" or "Craft.getDamageMax" or "Craft.getDamagePercentage" or
@@ -198,7 +200,7 @@ internal sealed partial class CampaignWorld
                         _ => throw new InvalidOperationException("Detection inventory provider was not preflighted."),
                     } :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
-                    receiver is RuntimeItemRule itemRule ? name == "RuleItem.getWeight" ? itemRule.Weight : itemRule.BattleType :
+                    receiver is RuntimeItemRule itemRule ? DetectionItemValue(name, itemRule) :
                     receiver is RuntimeArmorRule armorRule ? DetectionArmorValue(name, armorRule) :
                     receiver is RuntimeSoldierRule soldierRule ? DetectionSoldierStat(name, soldierRule) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
@@ -215,6 +217,21 @@ internal sealed partial class CampaignWorld
         }
         return ScriptBindingResult.Success;
     }
+
+    private static int DetectionItemValue(string name, RuntimeItemRule rule) => name switch
+    {
+        "RuleItem.getWeight" => rule.Weight,
+        "RuleItem.getBattleType" => rule.BattleType,
+        "RuleItem.getAccuracyAimed" => rule.Accuracy.Aimed,
+        "RuleItem.getAccuracyAuto" => rule.Accuracy.Auto,
+        "RuleItem.getAccuracySnap" => rule.Accuracy.Snap,
+        "RuleItem.getAccuracyMelee" => rule.Accuracy.Melee,
+        "RuleItem.getAccuracyUse" => rule.Accuracy.Use,
+        "RuleItem.getAccuracyMind" => rule.Accuracy.Mind,
+        "RuleItem.getAccuracyPanic" => rule.Accuracy.Panic,
+        "RuleItem.getAccuracyThrow" => rule.Accuracy.Throw,
+        _ => throw new InvalidOperationException("Detection item provider was not preflighted."),
+    };
 
     private string? DetectionResearchRule(string? id)
     {
