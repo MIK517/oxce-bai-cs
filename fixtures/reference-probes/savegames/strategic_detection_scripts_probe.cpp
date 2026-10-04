@@ -45,6 +45,10 @@ const std::string Armor::NONE="STR_NONE";
 struct RuleSoldier {};
 struct RuleSkill { std::string _type="SKILL_METADATA"; const std::string& getType() const { return _type; } };
 struct RuleCraft { std::string _type="CRAFT_METADATA"; const std::string& getType() const { return _type; } };
+struct Unit {
+std::string _type="UNIT_METADATA";const std::string& getType() const { return _type; }
+};
+// UNIT_METADATA
 // RULE_METADATA
 struct RuleResearch {};
 struct UnitStats {
@@ -98,6 +102,7 @@ struct Mod {
 int _maxViewDistance=20,_maxDarknessToSeeUnits=9;
 int getMaxViewDistance() const;
 int getMaxDarknessToSeeUnits() const;
+std::map<std::string,Unit*> _units;
 std::map<std::string,RuleResearch*> _research;
 std::map<std::string,RuleItem*> _items;
 std::map<std::string,Armor*> _armors;
@@ -106,6 +111,7 @@ std::map<std::string,RuleSkill*> _skills;
 static const std::string STR_NULL;
 // MOD_EMPTY
 template<typename T> T* getRule(const std::string&,const std::string&,const std::map<std::string,T*>&,bool) const;
+Unit* getUnit(const std::string&,bool error=false) const;
 RuleResearch* getResearch(const std::string&,bool error=false) const;
 RuleItem* getItem(const std::string&,bool error=false) const;
 Armor* getArmor(const std::string&,bool error=false) const;
@@ -116,6 +122,7 @@ const std::string Mod::STR_NULL={ '\0' };
 // MOD_SETTINGS
 // MOD_METHODS
 // RESEARCH_LOOKUP
+// UNIT_LOOKUP
 // RULE_LOOKUPS
 class ScriptValuesBase {
 std::vector<int> values;
@@ -319,6 +326,16 @@ for(const auto& [name,value]: bindings.values) {
 if(!firstStat)std::cout<<',';firstStat=false;std::cout<<'\"'<<name<<"\":"<<value;
 }
 std::cout<<'}';
+}
+std::cout<<"],\"unitLookup\":[";
+Unit unitRule, noneUnit;noneUnit._type="STR_NONE";mod._units["UNIT_METADATA"]=&unitRule;
+mod._units["STR_NONE"]=&noneUnit;
+for(int i=0;i<6;++i) {
+if(i)std::cout<<',';
+const std::string name=i==0||i==3?"UNIT_METADATA":i==1?"MISSING":i==2?"STR_NONE":i==4?"":std::string(1,'\0');
+const Unit* got=&unitRule;getUnitScript(i==3?nullptr:&mod,got,name);
+ScriptText txt;getTypeScript(got,txt);
+std::cout<<"{\"source\":"<<(i==3?"false":"true")<<",\"name\":\""<<(i==5?"NUL":name)<<"\",\"found\":"<<(got?"true":"false")<<",\"type\":\""<<txt.value<<"\"}";
 }
 std::cout<<"],\"ruleLookup\":[";
 RuleItem item;Armor armor;RuleSoldier soldier;RuleSkill skill;

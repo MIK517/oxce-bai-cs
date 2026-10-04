@@ -348,6 +348,8 @@ public static class RuntimeRuleLinker
             items,
             soldiers,
             armors,
+            BuildFamily<UnitRuleFamily, UnitRule, RuntimeUnitRule>(generation,
+                content.PersonnelTactical.Units, rule => new(rule.Id)),
             BuildFamily<SoldierBonusRuleFamily, SoldierBonusRule, RuntimeSoldierBonusRule>(generation,
                 content.PersonnelTactical.Bonuses, rule => new(rule.Value.ListOrder, rule.Value.Stats.Values)),
             BuildFamily<SoldierTransformationRuleFamily, SoldierTransformationRule, RuntimeSoldierTransformationRule>(generation,
