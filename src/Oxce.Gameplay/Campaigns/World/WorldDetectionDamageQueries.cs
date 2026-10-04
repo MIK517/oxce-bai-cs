@@ -45,7 +45,7 @@ internal static class WorldDetectionDamageQueries
         long work = 0;
         var references = WorldDetectionReferenceForecast.Build(program, rules, visits, maximumWork);
         if (references is null) return "Detection damage query forecast exceeds the supported work limit.";
-        var powers = ScalarRanges(program, ref work, maximumWork);
+        var powers = WorldDetectionScalarForecast.Build(program, rules, references, visits, maximumWork);
         if (powers is null) return "Detection damage query forecast exceeds the supported work limit.";
         for (var index = 0; index < program.Instructions.Count; index++)
         {
@@ -63,7 +63,7 @@ internal static class WorldDetectionDamageQueries
                 return "Detection random damage requires a null profile or null state forecast.";
             }
             var armor = binding.Name == "RuleDamageType.getArmorEffectiveness";
-            var power = armor ? (0, 0) : ScalarRange(instruction.Operands[3], powers);
+            var power = armor ? (0, 0) : powers.At(index, instruction.Operands[3]);
             work += candidates?.Count ?? 2L * rules.Items.Count;
             if (work > maximumWork) return "Detection damage query forecast exceeds the supported work limit.";
             var profiles = candidates is null
@@ -77,57 +77,5 @@ internal static class WorldDetectionDamageQueries
                         : "Detection damage query exceeds the supported integer range.";
         }
         return null;
-    }
-
-    private static (int Min, int Max) ScalarRange(ScriptOperand operand, Dictionary<int, (int Min, int Max)> ranges) =>
-        operand.Kind == ScriptOperandKind.Scalar ? (operand.Scalar, operand.Scalar) :
-        operand.Kind == ScriptOperandKind.Register && ranges.TryGetValue(operand.Scalar, out var range)
-            ? range : (int.MinValue, int.MaxValue);
-
-    private static Dictionary<int, (int Min, int Max)>? ScalarRanges(
-        ScriptProgram program, ref long work, long maximumWork)
-    {
-        var ranges = program.Registers.Where(static register => !register.Type.IsReference)
-            .ToDictionary(static register => register.Offset,
-                static register => register.IsInput || register.IsOutput ? (int.MinValue, int.MaxValue) : (0, 0));
-        bool changed;
-        do
-        {
-            changed = false;
-            foreach (var instruction in program.Instructions)
-            {
-                if (++work > maximumWork) return null;
-                var operands = instruction.Operands;
-                var operation = (CoreScriptOperation)instruction.Operation.Value;
-                if (operation == CoreScriptOperation.Set)
-                    Merge(operands[0], ScalarRange(operands[1], ranges));
-                else if (operation == CoreScriptOperation.Clear) Merge(operands[0], (0, 0));
-                else if (operation == CoreScriptOperation.Swap)
-                {
-                    Merge(operands[0], ScalarRange(operands[1], ranges));
-                    Merge(operands[1], ScalarRange(operands[0], ranges));
-                }
-                else if (operation == CoreScriptOperation.HostCall)
-                {
-                    var binding = program.Bindings.First(binding => binding.Id.Value == operands[0].Scalar);
-                    for (var parameter = 0; parameter < binding.Parameters.Count; parameter++)
-                        if (binding.Parameters[parameter].Type.IsRegister)
-                            Merge(operands[parameter + 1], (int.MinValue, int.MaxValue));
-                }
-                else if (operation is not (CoreScriptOperation.Exit or CoreScriptOperation.Jump or
-                    CoreScriptOperation.BranchCondition or CoreScriptOperation.Return))
-                    Merge(operands[0], (int.MinValue, int.MaxValue));
-            }
-        } while (changed);
-        return ranges;
-
-        void Merge(ScriptOperand destination, (int Min, int Max) value)
-        {
-            if (destination.Kind != ScriptOperandKind.Register || !ranges.TryGetValue(destination.Scalar, out var current)) return;
-            var merged = (Math.Min(current.Item1, value.Min), Math.Max(current.Item2, value.Max));
-            if (merged == current) return;
-            ranges[destination.Scalar] = merged;
-            changed = true;
-        }
     }
 }

@@ -406,6 +406,102 @@ public sealed class StrategicWorldDetectionItemRulesTests
         RunItemScript(code, "damageAlter: {ToHealth: 1e100}", fromCache, fromCraft);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ItemPowerReadersFeedBoundedNativeDamageConversions(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        var row = TestFixtures.Rows(oracle.RootElement, "conversionRows")
+            .Single(row => row[0].GetInt32() == 20 && row[1].GetInt32() == -39);
+        var code = "var ptr RuleItem item; var ptr RuleDamageType damage; var int power; var int melee; var int value; " +
+            "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; item.getPower power; item.getMeleePower melee; ";
+        for (var index = 0; index < DamageReaders.Length; index++)
+            code += $"damage.{DamageReaders[index]} value power; if neq value {row[2][index].GetInt32()}; return DETECTION_NONE 0; end; " +
+                $"damage.{DamageReaders[index]} value melee; if neq value {row[2][index].GetInt32()}; return DETECTION_NONE 0; end; ";
+        code += "set power 2147483647; return DETECTION_RADAR 100;";
+        RunItemScript(code, CustomDamageFields + "\npower: -39\nmeleePower: -39",
+            fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void RulePowerOverwriteBoundsCallerOutputsBeforeConversion(bool fromCache, bool fromCraft)
+    {
+        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; " +
+            "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; item.getPower detection_chance; " +
+            "damage.getDamageToHealth detection_chance detection_chance; " +
+            "if neq detection_chance 19; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "power: 39\ndamageAlter: {ToHealth: 0.5}", fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoopCarriedPowerOverflowStopsBeforeTickMutation(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            items:
+              - type: SAFE_POWER
+                power: 39
+              - type: UNSAFE_POWER
+                power: 2147483647
+            ufos:
+              - type: UFO_POWER_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleItem item; var ptr RuleItem alternate; var ptr RuleDamageType damage; var int power; rules.getRuleItem item "SAFE_POWER"; rules.getRuleItem alternate "UNSAFE_POWER"; item.getDamageType damage; item.getPower power; loop var i 2; damage.getDamageToHealth detection_chance power; alternate.getPower power; end; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_POWER_GUARD", 2200);
+        AssertTimeBlocked(campaign, "Detection damage query exceeds the supported integer range.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NullRandomDamageFeedsAZeroIntervalToLaterConversions(bool fromCache, bool fromCraft)
+    {
+        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var ptre RandomState state null; " +
+            "var int power; var int value; rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
+            "damage.getRandomDamage power 2147483647 state; damage.getDamageToHealth value power; " +
+            "if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "", fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScalarForecastReservesWorkAndReadsItemPowerAtTheCall(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, "items: [{type: POWER_QUERY, power: 39}]");
+        var parser = Oxce.Scripting.Compilation.ScriptParserDefinition.FromCatalog("detectUfoFromBase");
+        var program = Oxce.Scripting.Compilation.ScriptCompiler.Compile(
+            "var ptr RuleItem item; var ptr RuleDamageType damage; var int power; var int value; " +
+            "rules.getRuleItem item \"POWER_QUERY\"; item.getDamageType damage; item.getPower power; " +
+            "damage.getDamageToHealth value power; return;", parser).Program!;
+        var visits = Enumerable.Repeat(1, program.Instructions.Count).ToArray();
+        var references = Oxce.Gameplay.Campaigns.World.WorldDetectionReferenceForecast.Build(
+            program, content.RuntimeRules, visits, 1000)!;
+        var forecast = Oxce.Gameplay.Campaigns.World.WorldDetectionScalarForecast.Build(
+            program, content.RuntimeRules, references, visits, 1000)!;
+        var query = program.Instructions.Select((instruction, index) => (instruction, index))
+            .Single(pair => pair.instruction.Operands.Count > 0 &&
+                pair.instruction.Operands[0].Kind == Oxce.Scripting.Compilation.ScriptOperandKind.Binding &&
+                program.Bindings.Any(binding => binding.Id.Value == pair.instruction.Operands[0].Scalar &&
+                    binding.Name == "RuleDamageType.getDamageToHealth"));
+        Assert.Equal((39, 39), forecast.At(query.index, query.instruction.Operands[3]));
+        Assert.Null(Oxce.Gameplay.Campaigns.World.WorldDetectionScalarForecast.Build(
+            program, content.RuntimeRules, references, visits, 8));
+    }
+
     private static readonly string[] DamageReaders =
         ["getDamageToArmorPre", "getDamageToArmor", "getDamageToEnergy", "getDamageToHealth",
          "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",
