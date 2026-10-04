@@ -41,6 +41,39 @@ public sealed class StrategicWorldDetectionNumericTests
     }
 
     [Fact]
+    public void BitwiseIntervalsContainAllSmallSignedDomainResults()
+    {
+        var domains = new[] { (-9, -2), (-3, 7), (2, 9), (-1, -1), (0, 0), (15, 15) };
+        foreach (var a in domains)
+            foreach (var b in domains)
+                foreach (var operation in new[] { CoreScriptOperation.BitAnd, CoreScriptOperation.BitOr, CoreScriptOperation.BitXor })
+                {
+                    var range = WorldDetectionScalarRanges.Apply(operation, a, b, (0, 0));
+                    for (var x = a.Item1; x <= a.Item2; x++)
+                        for (var y = b.Item1; y <= b.Item2; y++)
+                            Assert.InRange(operation == CoreScriptOperation.BitAnd ? x & y :
+                                operation == CoreScriptOperation.BitOr ? x | y : x ^ y, range.Min, range.Max);
+                }
+        Assert.Equal((0, 63), WorldDetectionScalarRanges.Apply(CoreScriptOperation.BitAnd,
+            WorldDetectionScalarRanges.Full, (63, 63), (0, 0)));
+        Assert.Equal((-536870912, 536870911), WorldDetectionScalarRanges.Apply(CoreScriptOperation.ShiftRight,
+            WorldDetectionScalarRanges.Full, (2, 2), (0, 0)));
+        Assert.Equal(WorldDetectionScalarRanges.Full, WorldDetectionScalarRanges.Apply(CoreScriptOperation.ShiftLeft,
+            (1, int.MaxValue), (1, 1), (0, 0)));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void MaskedCallerInputsProvideBoundedDamagePowers(bool fromCache, bool fromCraft) =>
+        AssertDetectionReadScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; var int power distance; " +
+            "rules.getRuleItem item \"BIT_POWER\"; item.getDamageType damage; bit_and power 63; " +
+            "damage.getDamageToHealth value power; if neq value power; return DETECTION_NONE 0; end; " +
+            "return DETECTION_RADAR 100;", fromCache, fromCraft, "items: [{type: BIT_POWER, damageAlter: {ToHealth: 1}}]");
+
+    [Fact]
     public void NativeArithmeticAndCalculatedOperandCasesExecuteInTheCoreVm()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");

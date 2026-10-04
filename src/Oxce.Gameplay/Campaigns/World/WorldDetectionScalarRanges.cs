@@ -1,3 +1,4 @@
+using System.Numerics;
 using Oxce.Scripting.Compilation;
 
 namespace Oxce.Gameplay.Campaigns.World;
@@ -25,6 +26,9 @@ internal static class WorldDetectionScalarRanges
             CoreScriptOperation.Absolute => a == (int.MinValue, int.MinValue) ? a : a.Min == int.MinValue ? Full :
                 (a.Min <= 0 && a.Max >= 0 ? 0 : Math.Min(Math.Abs(a.Min), Math.Abs(a.Max)),
                  Math.Max(Math.Abs(a.Min), Math.Abs(a.Max))),
+            CoreScriptOperation.BitNot => (~a.Max, ~a.Min),
+            CoreScriptOperation.BitAnd or CoreScriptOperation.BitOr or CoreScriptOperation.BitXor => Bitwise(operation, a, b),
+            CoreScriptOperation.ShiftLeft or CoreScriptOperation.ShiftRight => Shift(operation, a, b),
             CoreScriptOperation.BitCount => (0, 32),
             CoreScriptOperation.SquareRoot => ((int)Math.Sqrt(Math.Max(0, a.Min)), (int)Math.Sqrt(Math.Max(0, a.Max))),
             _ => Full,
@@ -90,6 +94,43 @@ internal static class WorldDetectionScalarRanges
             return (value, value);
         }
         return d.Min > 0 ? (0, d.Max - 1) : (d.Min + 1, 0);
+    }
+
+    private static (int Min, int Max) Shift(CoreScriptOperation operation, (int Min, int Max) a, (int Min, int Max) b)
+    {
+        if (b.Min != b.Max || b.Min is < 0 or > 31) return Full;
+        return operation == CoreScriptOperation.ShiftRight ? (a.Min >> b.Min, a.Max >> b.Min)
+            : Wrap((long)a.Min << b.Min, (long)a.Max << b.Min);
+    }
+
+    private static (int Min, int Max) Bitwise(CoreScriptOperation operation, (int Min, int Max) a, (int Min, int Max) b)
+    {
+        if (a.Min == a.Max && b.Min == b.Max)
+        {
+            var value = operation switch
+            {
+                CoreScriptOperation.BitAnd => a.Min & b.Min,
+                CoreScriptOperation.BitOr => a.Min | b.Min,
+                _ => a.Min ^ b.Min,
+            };
+            return (value, value);
+        }
+        if (operation == CoreScriptOperation.BitAnd)
+            return a == (-1, -1) ? b : b == (-1, -1) ? a :
+                a.Min >= 0 ? (0, b.Min >= 0 ? Math.Min(a.Max, b.Max) : a.Max) :
+                b.Min >= 0 ? (0, b.Max) : Full;
+        if (operation == CoreScriptOperation.BitOr && (a == (-1, -1) || b == (-1, -1))) return (-1, -1);
+        if (a == (0, 0)) return b;
+        if (b == (0, 0)) return a;
+        if (operation == CoreScriptOperation.BitXor)
+        {
+            if (a == (-1, -1)) return (~b.Max, ~b.Min);
+            if (b == (-1, -1)) return (~a.Max, ~a.Min);
+        }
+        if (a.Min < 0 || b.Min < 0) return Full;
+        var highest = (uint)(a.Max | b.Max);
+        var maximum = highest == 0 ? 0 : (int)((1L << (32 - BitOperations.LeadingZeroCount(highest))) - 1);
+        return (operation == CoreScriptOperation.BitOr ? Math.Max(a.Min, b.Min) : 0, maximum);
     }
 
     private static (int Min, int Max) Wrap(long min, long max) => min == max
