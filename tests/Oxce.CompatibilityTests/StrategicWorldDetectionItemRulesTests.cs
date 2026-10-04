@@ -502,6 +502,50 @@ public sealed class StrategicWorldDetectionItemRulesTests
             program, content.RuntimeRules, references, visits, 8));
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DefaultTextCopiesNativeEmptyValue(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
+        var empty = TestFixtures.Rows(oracle.RootElement, "text")[1].GetString();
+        RunItemScript("var text original; var text copy; set copy original; " +
+            $"if neq copy \"{empty}\"; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "", fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ExplicitTextClearCopiesNativeEmptyValue(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
+        var empty = oracle.RootElement.GetProperty("clearedText").GetString();
+        RunItemScript("var text original \"copied\"; var text copy; clear original; set copy original; " +
+            $"if neq copy \"{empty}\"; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "", fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ReusedBlockRegistersRemainValidForReferenceAndScalarForecasts(bool fromCache, bool fromCraft)
+    {
+        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; var int value; " +
+            "rules.getRuleItem item \"ITEM_READ\"; " +
+            "begin; var ptr RuleItem local item; var int power 39; local.getDamageType damage; " +
+            "damage.getDamageToHealth value power; if neq value 39; return DETECTION_NONE 0; end; end; " +
+            "begin; var ptr RuleItem local item; var int power 19; local.getDamageType damage; " +
+            "damage.getDamageToHealth value power; if neq value 19; return DETECTION_NONE 0; end; end; " +
+            "return DETECTION_RADAR 100;", "", fromCache, fromCraft);
+    }
+
     private static readonly string[] DamageReaders =
         ["getDamageToArmorPre", "getDamageToArmor", "getDamageToEnergy", "getDamageToHealth",
          "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",

@@ -26,6 +26,7 @@ internal sealed class WorldDetectionReferenceForecast
         var states = new Dictionary<int, HashSet<object?>?>?[program.Instructions.Count];
         if (states.Length == 0) return new(states);
         states[0] = program.Registers.Where(static register => register.Type.IsReference)
+            .DistinctBy(static register => register.Offset)
             .ToDictionary(static register => register.Offset, register => register.IsInput && register.Name == "rules"
                 ? new HashSet<object?>(ReferenceEqualityComparer.Instance) { rules }
                 : register.IsInput || register.IsOutput ? null : new HashSet<object?>(ReferenceEqualityComparer.Instance) { null });

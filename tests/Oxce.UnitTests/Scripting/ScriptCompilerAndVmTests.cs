@@ -7,6 +7,19 @@ namespace Oxce.UnitTests.Scripting;
 
 public sealed class ScriptCompilerAndVmTests
 {
+    [Theory]
+    [InlineData("var text value; if eq value \"\"; return 1; end; return 0;")]
+    [InlineData("var text value \"assigned\"; clear value; if eq value \"\"; return 1; end; return 0;")]
+    public void TextInitializationAndClearUseEmptyTextRatherThanScalarZero(string source)
+    {
+        var definition = new ScriptParserDefinition("TextDefaults", ["result"], Oxce.Scripting.Api.ReferenceScriptApiCatalog.Instance);
+        var compiled = ScriptCompiler.Compile(source, definition);
+        Assert.True(compiled.Succeeded, string.Join(Environment.NewLine, compiled.Diagnostics.Select(static diagnostic => diagnostic.Message)));
+        var result = ScriptVm.Execute(compiled.Program!);
+        Assert.Equal(ScriptExecutionStatus.Completed, result.Status);
+        Assert.Equal(1, result.Outputs["result"]);
+    }
+
     [Fact]
     public void ConditionalElseIfChainsSelectFirstMatchingBranch()
     {
