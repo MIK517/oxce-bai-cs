@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-detection-inventory-cost",
+  "description": "Exact RuleInventory::getCost and ScriptBind const member wrapper: same-slot identity, signed costs and null source. Unsafe null destination and missing costs are excluded from native execution and guarded by the port. Controlled rule maps replace YAML loading.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Mod/RuleInventory.cpp::getCost; src/Engine/ScriptBind.h::BindFuncImpl<R(T::*)(Args...) const,X>",
+      "capture": "tools/capture-strategic-detection-inventory-cost-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; bodies inserted verbatim"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_detection_inventory_cost_probe.cpp",
+      "size": 985,
+      "sha256": "b7a131ba2b69a3205e1d3dae9e5909999519b7ad7126c6a8f39146d4363972f8"
+    },
+    {
+      "path": "tools/capture-strategic-detection-inventory-cost-reference.ps1",
+      "size": 2941,
+      "sha256": "5672531f9a691c24ccbb5dd23999fd8fdd117e678b934180c5472d8cf64c78ba"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-detection-inventory-cost.expected.json"
+}
