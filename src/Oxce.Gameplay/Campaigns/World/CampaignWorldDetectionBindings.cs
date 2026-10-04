@@ -12,7 +12,7 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionValueSet(binding) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        DetectionValueSet(binding) || WorldDetectionItemQueries.Supports(binding.Name) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionValueSet(ScriptBindingDeclaration binding) =>
         binding.Name == "set" && binding.Parameters.Count == 2 &&
@@ -28,14 +28,12 @@ internal sealed partial class CampaignWorld
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
         "RuleInventory.getMoveToCost" or "RuleInventory.getId" or "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or "RuleSoldier.getType" or
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
-        "RuleItem.getAccuracyAimed" or "RuleItem.getAccuracyAuto" or "RuleItem.getAccuracySnap" or "RuleItem.getAccuracyMelee" or
-        "RuleItem.getAccuracyUse" or "RuleItem.getAccuracyMind" or "RuleItem.getAccuracyPanic" or "RuleItem.getAccuracyThrow" or
-        "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" or "RuleItem.isSingleTarget" or
+        "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" or
         "RuleDamageType.getRandomType" or "RuleDamageType.getResistType" or "RuleDamageType.getArmorIgnore" or
         "RuleDamageType.isDirect" or "RuleDamageType.isAreaOfEffect" or
-        "RuleItem.isTwoHanded" or "RuleItem.isBlockingBothHands" or "RuleItem.isWaterOnly" or "RuleItem.hasCategory" or
-        "RuleItem.getPower" or "RuleItem.getMeleePower" or "RuleItem.getArmorValue" or "RuleItem.getWaypoints" or
-        "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
+        "RuleItem.hasCategory" or
+        "RuleItem.getWaypoints" or
+        "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "Craft.getDamage" or "Craft.getDamageMax" or "Craft.getDamagePercentage" or
         "Craft.getShield" or "Craft.getShieldMax" or "Craft.getShieldPercentage" or "Craft.getRuleCraft" or
@@ -88,9 +86,6 @@ internal sealed partial class CampaignWorld
             case "RuleItem.getMeleeDamageType":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeItemRule damageItem
                     ? name == "RuleItem.getDamageType" ? damageItem.Damage : damageItem.MeleeDamage : null);
-                break;
-            case "RuleItem.isSingleTarget":
-                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemRule singleItem && singleItem.Damage.FixedRadius == 0 ? 1 : 0);
                 break;
             case "RuleDamageType.getRandomType":
             case "RuleDamageType.getResistType":
@@ -252,7 +247,7 @@ internal sealed partial class CampaignWorld
                         _ => throw new InvalidOperationException("Detection inventory provider was not preflighted."),
                     } :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
-                    receiver is RuntimeItemRule itemRule ? DetectionItemValue(name, itemRule) :
+                    receiver is RuntimeItemRule itemRule ? WorldDetectionItemQueries.Value(name, itemRule) :
                     receiver is RuntimeArmorRule armorRule ? DetectionArmorValue(name, armorRule) :
                     receiver is RuntimeSoldierRule soldierRule ? DetectionSoldierStat(name, soldierRule) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
@@ -270,27 +265,6 @@ internal sealed partial class CampaignWorld
         return ScriptBindingResult.Success;
     }
 
-    private static int DetectionItemValue(string name, RuntimeItemRule rule) => name switch
-    {
-        "RuleItem.isTwoHanded" => rule.TwoHanded ? 1 : 0,
-        "RuleItem.isBlockingBothHands" => rule.BlockingBothHands ? 1 : 0,
-        "RuleItem.isWaterOnly" => rule.WaterOnly ? 1 : 0,
-        "RuleItem.getPower" => rule.Power,
-        "RuleItem.getMeleePower" => rule.MeleePower,
-        "RuleItem.getArmorValue" => rule.ArmorValue,
-        "RuleItem.getWaypoints" => rule.Waypoints,
-        "RuleItem.getWeight" => rule.Weight,
-        "RuleItem.getBattleType" => rule.BattleType,
-        "RuleItem.getAccuracyAimed" => rule.Accuracy.Aimed,
-        "RuleItem.getAccuracyAuto" => rule.Accuracy.Auto,
-        "RuleItem.getAccuracySnap" => rule.Accuracy.Snap,
-        "RuleItem.getAccuracyMelee" => rule.Accuracy.Melee,
-        "RuleItem.getAccuracyUse" => rule.Accuracy.Use,
-        "RuleItem.getAccuracyMind" => rule.Accuracy.Mind,
-        "RuleItem.getAccuracyPanic" => rule.Accuracy.Panic,
-        "RuleItem.getAccuracyThrow" => rule.Accuracy.Throw,
-        _ => throw new InvalidOperationException("Detection item provider was not preflighted."),
-    };
 
     private string? DetectionResearchRule(string? id)
     {
