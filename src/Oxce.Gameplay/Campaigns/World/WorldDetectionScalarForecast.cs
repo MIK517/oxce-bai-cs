@@ -1,5 +1,6 @@
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Scripting.Compilation;
+using Oxce.Scripting.Types;
 
 namespace Oxce.Gameplay.Campaigns.World;
 
@@ -134,8 +135,13 @@ internal sealed class WorldDetectionScalarForecast
                     (WorldDetectionReferenceForecast.OnlyNull(references.At(index, operands[1])) ||
                      WorldDetectionReferenceForecast.OnlyNull(references.At(index, operands[4]))))
                     range = (0, 0);
-                for (var parameter = 0; parameter < binding.Parameters.Count; parameter++)
-                    if (binding.Parameters[parameter].Writable) Write(operands[parameter + 1], range);
+                var runtimeOperand = 0;
+                foreach (var parameter in binding.Parameters)
+                {
+                    if (parameter.Type.Id == ScriptPrimitiveTypes.Separator) continue;
+                    var destination = operands[++runtimeOperand];
+                    if (parameter.Writable) Write(destination, range);
+                }
             }
             else if (operation is not (CoreScriptOperation.Exit or CoreScriptOperation.Return or
                 CoreScriptOperation.Jump or CoreScriptOperation.BranchCondition))
