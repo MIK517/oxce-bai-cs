@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "RuleDamageType constructor/isDirect; Mod built-in damage table; RuleItem getDamageType/getMeleeType and classification/armor script helpers; exact getDamageToScript template",
+      "sources": "RuleDamageType constructor/isDirect; Mod built-in damage table; RuleItem getDamageType/getMeleeType and classification/armor script helpers; exact getDamageToScript template; ScriptBind.h BindSet",
       "capture": "tools/capture-strategic-detection-damage-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; method bodies inserted verbatim"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_damage_probe.cpp",
-      "size": 3996,
-      "sha256": "b5a8d382b5082eaa1e19982a1cb9ca85f8b3e737d62719a575745f3bbaa55b66"
+      "size": 4382,
+      "sha256": "977d7499ba06c7bea54d236424f40b3594df68148c6836336a181093f44c282e"
     },
     {
       "path": "tools/capture-strategic-detection-damage-reference.ps1",
-      "size": 4214,
-      "sha256": "272c8479d39edbd73660cdf07fbecaf3340a689a1b82a782fad7bdf08cfe853b"
+      "size": 4331,
+      "sha256": "5717f698333e334d01a16a8fbd6712d4b872a34bbc0b3c313cfdb0e3481f45c7"
     }
   ],
   "normalization": [
