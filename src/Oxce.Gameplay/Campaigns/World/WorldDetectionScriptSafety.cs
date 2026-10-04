@@ -40,19 +40,6 @@ internal static class WorldDetectionScriptSafety
                     (operation != CoreScriptOperation.Jump || !loops.TryGetValue(operand.Scalar, out var loop) ||
                      index >= loop.End))
                     return "Detection script requires a bounded loop forecast.";
-            var divisor = operation switch
-            {
-                CoreScriptOperation.Divide or CoreScriptOperation.Modulo => 1,
-                CoreScriptOperation.MultiplyDivide => 2,
-                CoreScriptOperation.OffsetModulo => 3,
-                _ => -1,
-            };
-            if (divisor >= 0 && (operands[divisor].Kind != ScriptOperandKind.Scalar || operands[divisor].Scalar == 0))
-                return "Detection script requires a nonzero divisor forecast.";
-            if (operation is CoreScriptOperation.WaveRectangle or CoreScriptOperation.WaveSaw or
-                CoreScriptOperation.WaveTriangle or CoreScriptOperation.WaveSine or CoreScriptOperation.WaveCosine &&
-                (operands[1].Kind != ScriptOperandKind.Scalar || operands[1].Scalar <= 0))
-                return "Detection script requires a positive wave-period forecast.";
             if (!Enum.IsDefined(operation)) return "Detection script contains an unsupported operation.";
         }
         // Apply outer loops first explicitly. A skipped outer body must zero every
