@@ -36,7 +36,7 @@ internal sealed partial class CampaignWorld
         var plan = campaign.Content.EventPlans.FirstOrDefault(candidate => candidate.ParserName == parser)?.Plan;
         if (artifact is null && (plan is null || plan.Count == 0))
         {
-            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false, []);
+            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false, false, false, [], []);
             return identity;
         }
         if (!_detectionDefaults.TryGetValue(fromCraft, out var fallback))
@@ -52,12 +52,13 @@ internal sealed partial class CampaignWorld
         var builder = new ScriptHostBindingsBuilder();
         HashSet<int> providers = [];
         long stepBound = 0;
-        var radarQueries = 0;
+        var craftStatQueries = 0;
         var ufoTagQueries = 0;
         var shieldStats = false;
         var damageStats = false;
         var damagePercentage = false;
         HashSet<int> ufoStats = [];
+        HashSet<string> craftStats = [];
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
             .Append(program).Concat(plan?.After.Select(item => item.Program) ?? []))
         {
@@ -78,7 +79,12 @@ internal sealed partial class CampaignWorld
                         DetectionUfoStatIndex(bindingName) is >= 0 and var field) ufoStats.Add(field);
                     if (bindingName == "Ufo.getTag" && campaign.Content.Tags.Types.Any(type =>
                         type.Id.Value == declaration.Parameters[2].Type.Id.Value && type.Name == "Ufo")) ufoTagQueries += visits[instructionIndex];
-                    if (bindingName is "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance") radarQueries += visits[instructionIndex];
+                    if (bindingName.StartsWith("Craft.Stats.", StringComparison.Ordinal) &&
+                        DetectionCraftStatKey(bindingName) is { } craftKey)
+                    {
+                        craftStats.Add(craftKey);
+                        craftStatQueries += visits[instructionIndex];
+                    }
                     if (bindingName is "Ufo.getDamageMax" or "Ufo.getDamagePercentage") damageStats = true;
                     if (bindingName == "Ufo.getDamagePercentage") damagePercentage = true;
                     if (bindingName is "Ufo.getShieldMax" or "Ufo.getShieldPercentage") shieldStats = true;
@@ -92,7 +98,7 @@ internal sealed partial class CampaignWorld
                 }
             _detectionFrame.Prepare(candidate);
         }
-        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, radarQueries, ufoTagQueries, shieldStats, damageStats, damagePercentage, ufoStats.Order().ToArray());
+        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, craftStatQueries, ufoTagQueries, shieldStats, damageStats, damagePercentage, ufoStats.Order().ToArray(), craftStats.Order(StringComparer.Ordinal).ToArray());
         return result;
     }
 
@@ -215,11 +221,28 @@ internal sealed partial class CampaignWorld
                 // Fresh research/production craft have no auto-patrol order and cannot
                 // join this detection pass. Existing/arriving orders can relaunch.
             }
-            work += (fromCraft.StepBound + (long)fromCraft.RadarQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
+            if (fromCraft.CraftStats.Length != 0)
+                foreach (var owner in campaign.BaseStates)
+                {
+                    foreach (var craft in owner.Crafts)
+                        foreach (var key in fromCraft.CraftStats)
+                            if (DetectionCraftStat(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+                                craft.Logistics, key) is < int.MinValue or > int.MaxValue)
+                                return "Detection craft statistics exceed the supported range.";
+                    if (highest < CampaignTimeTrigger.OneHour) continue;
+                    foreach (var transfer in owner.Transfers)
+                        if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming)
+                            foreach (var key in fromCraft.CraftStats)
+                                if (DetectionCraftStat(campaign.Content.RuntimeRules.Crafts[
+                                    campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value,
+                                    incoming.Logistics, key) is < int.MinValue or > int.MaxValue)
+                                    return "Detection craft statistics exceed the supported range.";
+                }
+            work += (fromCraft.StepBound + (long)fromCraft.CraftStatQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
         }
         return work > MaximumAlienBaseChecks ? "Detection script work exceeds the supported half-hour limit." : null;
     }
 
     private sealed record DetectionScript(ScriptProgram? Program, ScriptEventPlan? Plan, string? Unavailable,
-        ScriptHostBindings Providers, string[] InputNames, long StepBound, int RadarQueries, int UfoTagQueries, bool ShieldStats, bool DamageStats, bool DamagePercentage, int[] UfoStats);
+        ScriptHostBindings Providers, string[] InputNames, long StepBound, int CraftStatQueries, int UfoTagQueries, bool ShieldStats, bool DamageStats, bool DamagePercentage, int[] UfoStats, string[] CraftStats);
 }
