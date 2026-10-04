@@ -55,6 +55,7 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
             "damage.getDamageToHealth value power; return DETECTION_RADAR 100;", fromCache, fromCraft,
             "maxViewDistance: 2147483647\nitems: [{type: SMOKE_QUERY, damageAlter: {ToHealth: 0.5}}]");
     }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -116,5 +117,4 @@ public sealed class StrategicWorldDetectionBoundedQueriesTests
             Assert.Null(WorldDetectionReferenceForecast.Build(program, content.RuntimeRules, visits, 1));
         }
     }
-
 }
