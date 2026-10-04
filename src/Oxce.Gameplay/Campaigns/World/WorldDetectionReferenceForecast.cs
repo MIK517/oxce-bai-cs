@@ -104,6 +104,16 @@ internal sealed class WorldDetectionReferenceForecast
                             if (source is null || source.Contains(null)) values.Add(null);
                         }
                     }
+                    else if (binding.Name == "Country.getRuleCountry")
+                    {
+                        if (OnlyNull(source)) values = [null];
+                        else
+                        {
+                            work += rules.Countries.Count + 1L;
+                            if (work > maximumWork) return null;
+                            values = new(rules.Countries.Rules.Select(static rule => (object?)rule.Value), ReferenceEqualityComparer.Instance) { null };
+                        }
+                    }
                     else if (binding.Name is "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" && source is not null)
                     {
                         work += source.Count;

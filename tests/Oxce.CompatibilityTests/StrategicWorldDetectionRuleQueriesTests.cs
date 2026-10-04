@@ -1,3 +1,6 @@
+using Oxce.Core.Random;
+using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
@@ -72,4 +75,50 @@ public sealed class StrategicWorldDetectionRuleQueriesTests
                 "items: [{type: HALF_DAMAGE, damageAlter: {ToHealth: 0.5}}]");
         }
     }
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void CountryRuleFundingCapsComposeWithDamageAndNullBranches(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "countryRules"))
+        {
+            var cap = row[0].GetInt32();
+            Assert.Equal(1, row[1].GetInt32());
+            var code = "var ptr RuleCountry rule; var ptr Country absent null; var ptr RuleItem item; " +
+                "var ptr RuleDamageType damage; var int power; var int value; rules.getRuleItem item \"CAP_QUERY\"; " +
+                "item.getDamageType damage; loop var country geoscape_game.getCountries.list; country.getRuleCountry rule; " +
+                "rule.getFundingCap power; damage.getDamageToHealth value power; " +
+                $"if neq value {(int)(0.5f * cap)}; return DETECTION_NONE 0; end; end; " +
+                "absent.getRuleCountry rule; rule.getFundingCap power; damage.getDamageToHealth value power; " +
+                "if neq value 0; return DETECTION_NONE 0; end; " +
+                "if neq rule null; div detection_chance 0; end; return DETECTION_RADAR 100;";
+            var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$$"""
+                countries: [{type: CAP_COUNTRY, fundingCap: {{{cap}}}}]
+                items: [{type: CAP_QUERY, damageAlter: {ToHealth: 0.5}}]
+                ufos:
+                  - type: UFO_CAP_QUERY
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      {{{parser}}}: '{{{code}}}'
+                """);
+            Assert.Equal(cap, content.RuntimeRules.Countries[content.RuntimeRules.Countries.GetRequired("CAP_COUNTRY")].Value.FundingCap);
+            var snapshot = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_CAP_QUERY", 2200).Capture();
+            snapshot = snapshot with { Countries = [new("CAP_COUNTRY", [1000], [0], [0], false, false, false, [])] };
+            if (fromCraft) snapshot = snapshot.WithCraft("SHIP", craft => craft with
+            {
+                Logistics = craft.Logistics! with { Status = "STR_OUT", Speed = 0, Destination = null },
+            });
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(218));
+            campaign = Reload(content, campaign, 218, "country-cap-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 218, "country-cap-after.sav");
+        }
+    }
+
 }
