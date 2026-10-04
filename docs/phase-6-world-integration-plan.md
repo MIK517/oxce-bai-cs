@@ -665,3 +665,15 @@ callers. Raw type integers and ID-derived right/left hand flags retain reference
 defaults; null Inventory receivers return zero. Native metadata traces and
 fresh/cache base/craft VM tests cover every conventional slot and reloads.
 Inventory movement remains guarded. The 4c gate remains open.
+
+## Conventional inventory accessors and tick safety (2026-10-04)
+
+Mod.h's five required inventory getters now return the canonical runtime rules
+in detection scripts. Native lookup throws on a missing required role; gameplay
+preflight reports the exact missing ID before mutation, for rule and global
+scripts. Proven always-null local Mod receivers retain the reference member
+binding's null result even when roles are missing. Other nullable receiver
+flows remain conservatively guarded when a role is absent.
+All 17 focused inventory tests pass, with fresh/cache and transition reloads.
+Inventory movement remains unavailable pending safe target/cost forecasts.
+The three inventory slices are ready for batch audit; 4c remains open.
