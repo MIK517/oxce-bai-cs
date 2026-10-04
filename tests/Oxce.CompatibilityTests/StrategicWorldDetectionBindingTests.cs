@@ -12,6 +12,56 @@ public sealed class StrategicWorldDetectionBindingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void CraftStatWorkLimitIsReservedBeforeScanningConsumedFields(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            crafts:
+              - type: CRAFT_STAT_WORK
+                speedMax: 6000
+                fuelMax: 100
+                damageMax: 100
+                weapons: 4
+                armor: 2147483647
+            craftWeapons:
+              - type: STAT_WORK_BONUS
+                ammoMax: 1
+                launcher: SUPPLY
+                stats: {armor: 1}
+            ufos:
+              - type: UFO_CRAFT_STAT_WORK
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromCraft: "loop var i 5000; craft.Stats.getArmor detection_chance; end; return;"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_CRAFT_STAT_WORK", 2200).Capture()
+            .WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "CRAFT_STAT_WORK",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_OUT",
+                    Speed = 0,
+                    Destination = null,
+                    Weapons = [new CraftWeaponSnapshot("STAT_WORK_BONUS", 1), .. Enumerable.Repeat<CraftWeaponSnapshot?>(null, 3)],
+                },
+            });
+        var source = Assert.Single(snapshot.Bases[0].Crafts, craft => craft.RuleId == "CRAFT_STAT_WORK");
+        snapshot = snapshot with
+        {
+            Bases = [snapshot.Bases[0] with
+            {
+                Crafts = [.. snapshot.Bases[0].Crafts,
+                    .. Enumerable.Range(10, 31).Select(id => source with { Id = id })],
+            }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(210));
+        AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void NewbornUfoIgnoresUnavailableCraftScriptWhenAllCraftAreGrounded(bool fromCache)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
@@ -26,7 +76,7 @@ public sealed class StrategicWorldDetectionBindingTests
               - type: MISSION_NEWBORN_CALLER_GUARD
                 objective: 0
                 waves:
-                  - {ufo: UFO_NEWBORN_CALLER_GUARD, count: 1, trajectory: TRAJ_AIRBORNE, timer: 9000}
+                  - {ufo: UFO_NEWBORN_CALLER_GUARD, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
             """);
         var snapshot = CreateUfoTransitCampaign(content, HalfHour).Capture();
         snapshot = snapshot with
@@ -68,9 +118,13 @@ public sealed class StrategicWorldDetectionBindingTests
             {
                 Logistics = ship.Logistics! with
                 {
-                    Status = source == "out" ? "STR_OUT" : "STR_REFUELLING", Fuel = 0, Speed = 0,
-                    Destination = null, IsAutoPatrolling = source != "out",
-                    AutoPatrolLongitude = 0.3, AutoPatrolLatitude = 0.1,
+                    Status = source == "out" ? "STR_OUT" : "STR_REFUELLING",
+                    Fuel = 0,
+                    Speed = 0,
+                    Destination = null,
+                    IsAutoPatrolling = source != "out",
+                    AutoPatrolLongitude = 0.3,
+                    AutoPatrolLatitude = 0.1,
                 },
             };
             if (source is "out" or "relaunch")
@@ -141,7 +195,11 @@ public sealed class StrategicWorldDetectionBindingTests
                     RuleId = "CRAFT_CONDITIONS",
                     Logistics = craft.Logistics! with
                     {
-                        Status = "STR_OUT", Speed = 0, Destination = null, Damage = damage, Shield = shield,
+                        Status = "STR_OUT",
+                        Speed = 0,
+                        Destination = null,
+                        Damage = damage,
+                        Shield = shield,
                         Weapons = [new CraftWeaponSnapshot("CONDITION_BONUS", 1, Disabled: true)],
                     },
                 });
@@ -244,7 +302,9 @@ public sealed class StrategicWorldDetectionBindingTests
                 RuleId = "CRAFT_EFFECTIVE_STATS",
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_OUT", Speed = 0, Destination = null,
+                    Status = "STR_OUT",
+                    Speed = 0,
+                    Destination = null,
                     Weapons = [null, new CraftWeaponSnapshot("ALL_STAT_BONUSES", 1, Disabled: true), null],
                 },
             });
@@ -286,7 +346,9 @@ public sealed class StrategicWorldDetectionBindingTests
                 RuleId = "CRAFT_STAT_OVERFLOW",
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_OUT", Speed = 0, Destination = null,
+                    Status = "STR_OUT",
+                    Speed = 0,
+                    Destination = null,
                     Weapons = [new CraftWeaponSnapshot("ARMOR_OVERFLOW", 1)],
                 },
             });

@@ -179,6 +179,10 @@ internal sealed partial class CampaignWorld
         var fromBase = campaign.BaseStates.Count == 0 ? IdentityDetectionScript : GetDetectionScript(ruleId, false);
         var fromCraft = craftSources == 0 ? IdentityDetectionScript : GetDetectionScript(ruleId, true);
         if ((fromBase.Unavailable ?? fromCraft.Unavailable) is { } unavailable) return unavailable;
+        // Reserve contact and host-scan work before evaluating consumed fields.
+        work += (fromBase.StepBound + (long)fromBase.UfoTagQueries * ufoTagCount) * campaign.BaseStates.Count;
+        work += (fromCraft.StepBound + (long)fromCraft.CraftStatQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
+        if (work > MaximumAlienBaseChecks) return "Detection script work exceeds the supported half-hour limit.";
         if (fromBase.UfoStats.Length != 0 || fromCraft.UfoStats.Length != 0)
         {
             var rules = campaign.Content.RuntimeRules;
@@ -205,7 +209,6 @@ internal sealed partial class CampaignWorld
                     return "Detection UFO damage percentage exceeds the supported range.";
             }
         }
-        work += (fromBase.StepBound + (long)fromBase.UfoTagQueries * ufoTagCount) * campaign.BaseStates.Count;
         if (fromCraft.StepBound != 0)
         {
             if (fromCraft.CraftStats.Length != 0)
@@ -221,9 +224,8 @@ internal sealed partial class CampaignWorld
                                 campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value,
                                 incoming.Logistics) is { } reason) return reason;
                 }
-            work += (fromCraft.StepBound + (long)fromCraft.CraftStatQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
         }
-        return work > MaximumAlienBaseChecks ? "Detection script work exceeds the supported half-hour limit." : null;
+        return null;
     }
 
     private void ForecastDetectionCraftSources(CampaignTimeTrigger highest, out int craftSources, out int weaponSlots)
