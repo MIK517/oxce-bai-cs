@@ -47,7 +47,7 @@ public sealed class CampaignCapabilityRegistryTests
         var campaign = TestFixtures.CreateLogisticsCampaign(TestFixtures.LoadStrategicLogistics(), "Order");
         var table = campaign.Handlers;
 
-        Assert.Equal<string>(["months passed", "purchase limits"], table.HandlerNames(CampaignTimeTrigger.OneMonth));
+        Assert.Equal<string>(["months passed", "monthly world scheduling", "purchase limits"], table.HandlerNames(CampaignTimeTrigger.OneMonth));
         Assert.Equal<string>(["days passed", "base daily loop", "alien mission research interruption",
             "alien base activity and facility discovery"],
             table.HandlerNames(CampaignTimeTrigger.OneDay));
