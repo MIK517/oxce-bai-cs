@@ -219,8 +219,11 @@ internal sealed partial class CampaignWorld
                 if (!rules.AlienMissions.TryGet(choice.Key, out var handle))
                     return "Alien base hunting references an undefined mission.";
                 var mission = rules.AlienMissions[handle].Value;
-                if (mission.Waves.Count == 0 || mission.Waves[0].SpawnTimer / 30 / 2 <= 1)
+                if (mission.Waves.Count == 0)
                     return "New base objective hunting requires creation-tick mission forecasts.";
+                if (mission.Waves[0].SpawnTimer / 30 / 2 <= 1 && mission.Objective == RuntimeMissionObjective.Supply &&
+                    mission.Waves.Any(wave => wave.Ufo is not null))
+                    return "New base hunting supply waves require a live source forecast.";
                 sourceRegions ??= WorldGenerationRegions.Candidates(sourceArea,
                     campaign.RegionStates.Select(region => (rules.Regions[region.Rule].Id, rules.Regions[region.Rule].Value)).ToArray(), ref checks);
                 foreach (var (region, position) in sourceRegions)

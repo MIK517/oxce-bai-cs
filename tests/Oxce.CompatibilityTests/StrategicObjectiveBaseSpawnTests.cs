@@ -480,6 +480,45 @@ public sealed class StrategicObjectiveBaseSpawnTests
         Assert.Single(campaign.Capture().World.AlienBases);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewbornHuntingExecutesFiniteNoObjectChainsButKeepsSupplySourceGuard(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        var content = LoadWorld(cache, hunting: true, regional: true, huntingMission: "NEW_BASE_NO_OBJECT");
+        var initial = Initial(content).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Destination = null,
+                Speed = 0,
+                Fuel = 100,
+                Damage = 0,
+                Longitude = Degrees(8),
+                Latitude = Degrees(2),
+                LowFuel = false,
+                MissionComplete = false,
+            },
+        });
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var hunt = Assert.Single(campaign.Capture().World.Missions);
+        Assert.Equal("NEW_BASE_NO_OBJECT", hunt.RuleId);
+        Assert.Equal((1, 0, 0), (hunt.NextWave, hunt.NextUfoCounter, hunt.LiveUfos));
+        Assert.InRange(hunt.SpawnCountdown, 30, 90);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        campaign = Reload(content, campaign, 17, "new-base-immediate-hunting.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(hunt, Assert.Single(campaign.Capture().World.Missions));
+        content = LoadWorld(cache, hunting: true, regional: true, huntingMission: "NEW_BASE_SUPPLY");
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "New base hunting supply waves require a live source forecast.");
+    }
+
     private static CampaignSnapshot LandingInitial(RuntimeContent content)
     {
         var initial = Initial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 0) };
@@ -513,7 +552,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
 
     private static RuntimeContent LoadWorld(bool cache, string kind = "EXPLICIT", int chance = 0,
         bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1, bool landing = false,
-        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false)
+        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false, string huntingMission = "MISSION_SCOUT")
     {
         var table = kind switch
         {
@@ -543,7 +582,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 baseDetectionRange: {{{(hunting ? 10000 : 0)}}}
                 baseDetectionChance: 100
                 huntMissionMaxFrequency: {{{huntTimer}}}
-                huntMissionWeights: {{{(hunting ? "{0: {MISSION_SCOUT: 1}}" : "{}")}}}
+                huntMissionWeights: {{{(hunting ? "{0: {" + huntingMission + ": 1}}" : "{}")}}}
               - type: COUNTER_SITE
                 markerName: COUNTER_SITE
                 counterDespawn: OTHER_COUNTER
@@ -572,6 +611,12 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 time: 1
                 producedItems: {SHIP: 1}
             alienMissions:
+              - type: NEW_BASE_NO_OBJECT
+                objective: 0
+                waves: [{count: 3, trajectory: TRAJ_PATROL, timer: 0}, {count: 1, trajectory: TRAJ_PATROL, timer: 60}]
+              - type: NEW_BASE_SUPPLY
+                objective: 5
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_PATROL, timer: 0, objective: true}]
               - type: FINAL_BASE
                 objective: 2
                 siteType: {{{site}}}
