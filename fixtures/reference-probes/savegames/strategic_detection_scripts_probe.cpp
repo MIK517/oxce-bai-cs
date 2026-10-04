@@ -15,6 +15,19 @@ struct SavedGame {};
 struct RuleUfo { template<class T> int getScript() const { return 0; } };
 struct Ufo {
 int visibility=0;
+int _damage=14,_shield=3,_huntMode=2,_huntBehavior=1;
+bool _detected=true,_hyperDetected=false,_isHunterKiller=true,_isHunting=false,_isEscorting=true;
+struct { int shieldCapacity=10; } _stats;
+int getDamage() const;
+int getShield() const;
+int getShieldPercentage() const;
+bool getDetected() const;
+bool getHyperDetected() const;
+bool isHunterKiller() const;
+bool isHunting() const;
+bool isEscorting() const;
+int getHuntMode() const;
+int getHuntBehavior() const;
 RuleUfo rule;
 int getVisibility() const { return visibility; }
 const RuleUfo* getRules() const { return &rule; }
@@ -76,6 +89,7 @@ struct { int radarRange=0,radarChance=0; } _stats;
 double getDistance(const Ufo*) const { return distance; }
 UfoDetection detect(const Ufo*,const SavedGame*,bool) const;
 };
+// UFO_METHODS
 // METHODS
 }
 void array(const std::vector<int>& values) {
@@ -105,5 +119,5 @@ int result=craft.detect(&ufo,&save,i==2);
 std::cout<<"{\"tracked\":"<<(i==2?"true":"false")<<",\"override\":"<<(i==3?"true":"false")<<",\"inputs\":";array(ModScript::inputs);
 std::cout<<",\"initial\":";array(ModScript::initial);std::cout<<",\"calls\":";array(RNG::calls);std::cout<<",\"result\":"<<result<<'}';
 }
-std::cout<<"]}\n";
+std::cout<<"],\"bindings\":["; array({ufo.getDamage(),ufo.getShield(),ufo.getShieldPercentage(),(int)ufo.getDetected(),(int)ufo.getHyperDetected(),(int)ufo.isHunterKiller(),(int)ufo.isHunting(),(int)ufo.isEscorting(),ufo.getHuntMode(),ufo.getHuntBehavior()}); std::cout<<"]}\n";
 }

@@ -25,6 +25,19 @@ $methods = @(
     (Read-Method 'src/Savegame/Craft.cpp' 'UfoDetection Craft::detect(')
 )
 $template = $template.Replace('// METHODS', ($methods -join [Environment]::NewLine))
+$ufoMethods = @(
+    (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getShield()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getShieldPercentage()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'bool Ufo::getDetected()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'bool Ufo::getHyperDetected()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'bool Ufo::isHunterKiller()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'bool Ufo::isHunting()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'bool Ufo::isEscorting()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getHuntMode()'),
+    (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getHuntBehavior()')
+)
+$template = $template.Replace('// UFO_METHODS', ($ufoMethods -join [Environment]::NewLine))
 $work = Join-Path $repository 'artifacts/reference-strategic-detection-scripts'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_detection_scripts_probe.cpp'

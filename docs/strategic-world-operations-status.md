@@ -373,3 +373,15 @@ checks. Forward-only scalar programs with safe literal divisors are enabled;
 unproven loops, input-dependent divisors and host providers remain guarded.
 Fresh/cache cases cover scalar input branches, out-of-range detection, event
 ordering, unchanged-state refusal and save reloads.
+
+## Read-only live detection providers (2026-10-04)
+
+Detection VM providers now expose UFO altitude/status/visibility/damage, detection
+flags, race-adjusted shields, hunting/escort state and rules; craft damage/shield,
+effective radar and rule capacities; and campaign difficulty, day/month and clock.
+Providers preserve null-receiver defaults. The getter oracle extracts ten Ufo.cpp
+methods verbatim; fresh/cache tests execute them through real detection scripts
+before and after save reloads, including race bonuses, installed radar and current
+tick time. Reusable input-name arrays, binding tables and a stable clock receiver
+avoid rebuilding providers or boxing the clock per contact. Percentage-of-damage
+and remaining bindings retain explicit capability refusals.
