@@ -65,6 +65,7 @@ internal sealed partial class CampaignWorld
             var candidateReason = WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported, out var visits, campaign.CountryStates.Count);
             reason ??= candidateReason;
             if (candidateReason is not null) continue;
+            reason ??= WorldDetectionNumericSafety.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
             reason ??= WorldDetectionDamageQueries.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
             reason ??= WorldDetectionInventoryCosts.UnavailableReason(candidate, rules, visits, MaximumAlienBaseChecks);
             stepBound += visits.Sum(static count => (long)count);

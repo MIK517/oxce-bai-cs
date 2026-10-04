@@ -53,6 +53,57 @@ public sealed class StrategicWorldDetectionNumericTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void CalculatedDivisorsAndWavePeriodsMatchNative(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-numeric");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "cases").Where(row =>
+            row.GetProperty("name").GetString()!.StartsWith("variable-", StringComparison.Ordinal)))
+        {
+            var code = $"var int result {row.GetProperty("seed").GetInt32()}; " +
+                row.GetProperty("source").GetString()!.Replace("return result;", "", StringComparison.Ordinal) +
+                $"if neq result {row.GetProperty("result").GetInt32()}; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+            AssertDetectionReadScript(code, fromCache, fromCraft);
+        }
+        AssertDetectionReadScript("var int divisor distance; limit divisor 1 10; " +
+            "div detection_chance divisor; return DETECTION_RADAR 100;", fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData("var int divisor 0; div detection_chance divisor; return;", "nonzero divisor")]
+    [InlineData("var int divisor 3; if eq already_tracked 0; set divisor 0; end; div detection_chance divisor; return;", "nonzero divisor")]
+    [InlineData("var int period -1; wavegen_sin detection_chance period 100; return;", "positive wave-period")]
+    [InlineData("var int divisor 3; loop var i 2; div detection_chance divisor; set divisor 0; end; return;", "nonzero divisor")]
+    public void UncertainOrUnsafeCalculatedOperandsStopBeforeMutation(string code, string reason)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: $$"""
+            ufos:
+              - type: UFO_NUMERIC_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: '{{code}}'
+            """);
+        var campaign = CreateUfoTransitCampaign(content,
+            new Oxce.Gameplay.Campaigns.CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_NUMERIC_GUARD", 2200);
+        AssertTimeBlocked(campaign, $"Detection script requires a {reason} forecast.");
+    }
+
+    [Fact]
+    public void NumericSafetyRejectsAnExhaustedForecastBudget()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"]);
+        var program = ScriptCompiler.Compile("var int divisor 3; div detection_chance divisor; return;",
+            ScriptParserDefinition.FromCatalog("detectUfoFromBase")).Program!;
+        var visits = Enumerable.Repeat(1, program.Instructions.Count).ToArray();
+        Assert.Equal("Detection numeric safety forecast exceeds the supported work limit.",
+            WorldDetectionNumericSafety.UnavailableReason(program, content.RuntimeRules, visits, 1));
+    }
+
+    [Theory]
     [InlineData(CoreScriptOperation.Multiply, -4, -1, 2, 5, -20, -2)]
     [InlineData(CoreScriptOperation.Add, 30, 32, 7, 9, 37, 41)]
     [InlineData(CoreScriptOperation.Subtract, 30, 32, 7, 9, 21, 25)]
