@@ -25,7 +25,13 @@ struct RuleSkill {};
 struct RuleResearch {};
 bool researchLess(const RuleResearch* a, const RuleResearch* b) { return std::less<const RuleResearch*>{}(a,b); }
 // RESEARCH_FIND
+struct RuleCountry {
+int _fundingCap=123;
+int getFundingCap() const;
+};
 struct Country {
+RuleCountry* _rules=nullptr;
+const RuleCountry* getRules() const;
 std::vector<int> _funding={10,2000},_activityAlien={1,7},_activityXcom={2,9};
 bool _pact=false;
 int getCurrentFunding() const;
@@ -34,6 +40,7 @@ int getCurrentActivityXcom() const;
 bool getPact() const;
 };
 // COUNTRY_METHODS
+// COUNTRY_RULE_METHODS
 struct SavedGame {
 std::vector<Country*> _countries;
 bool _debug=false;
@@ -281,5 +288,12 @@ country?country->getCurrentActivityXcom():0,country?(int)country->getPact():0});
 }
 CountryInit::func(nullptr,{},curr,limit);CountryLoop::func(nullptr,{},curr,limit,{},country);
 std::cout<<',';array({curr,limit,country?1:0});
+std::cout<<"],\"countryRules\":[";
+RuleCountry countryRule;countryA._rules=&countryRule;
+for(int cap: {-10,0,123,INT_MAX}) {
+if(cap!=-10)std::cout<<',';
+countryRule._fundingCap=cap;
+array({countryA.getRules()->getFundingCap(),countryA.getRules()==&countryRule?1:0});
+}
 std::cout<<"]}\n";
 }

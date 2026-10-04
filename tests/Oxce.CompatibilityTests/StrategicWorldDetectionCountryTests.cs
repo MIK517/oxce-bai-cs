@@ -110,5 +110,71 @@ public sealed class StrategicWorldDetectionCountryTests
         Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CountryAndRuleTagsRetainOwnerAndFundingUnitsAcrossReload(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "countryRules"))
+        {
+            var cap = row[0].GetInt32();
+            Assert.Equal(1, row[1].GetInt32());
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+                extended:
+                  tags:
+                    Country: {DETECT_COUNTRY: int}
+                    RuleCountry: {DETECT_COUNTRY_RULE: int}
+                countries:
+                  - type: ENUM_TAGGED
+                    fundingCap: {{cap}}
+                    tags: {DETECT_COUNTRY_RULE: 7}
+                ufos:
+                  - type: UFO_COUNTRY_TAGS
+                    speedMax: 2200
+                    damageMax: 50
+                    scripts:
+                      detectUfoFromBase: |
+                        var int count;
+                        var int value;
+                        var ptr RuleCountry rule;
+                        var ptr RuleCountry absent null;
+                        var ptr Country missing null;
+                        loop var country geoscape_game.getCountries.list;
+                          country.getTag value Tag.DETECT_COUNTRY;
+                          if neq value 37; return DETECTION_NONE 0; end;
+                          country.getRuleCountry rule;
+                          rule.getTag value Tag.DETECT_COUNTRY_RULE;
+                          if neq value 7; return DETECTION_NONE 0; end;
+                          rule.getFundingCap value;
+                          if neq value {{cap}}; return DETECTION_NONE 0; end;
+                          absent.getTag value Tag.DETECT_COUNTRY_RULE;
+                          if neq value 0; return DETECTION_NONE 0; end;
+                          absent.getFundingCap value;
+                          if neq value 0; return DETECTION_NONE 0; end;
+                          missing.getTag value Tag.DETECT_COUNTRY;
+                          if neq value 0; return DETECTION_NONE 0; end;
+                          missing.getRuleCountry rule;
+                          if neq rule null; return DETECTION_NONE 0; end;
+                          add count 1;
+                        end;
+                        if eq count 1; return DETECTION_RADAR 100; end;
+                        return DETECTION_NONE 0;
+                """);
+            var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_COUNTRY_TAGS", 2200).Capture();
+            snapshot = snapshot with
+            {
+                Countries = [new("ENUM_TAGGED", [1000], [0], [0], false, false, false, [new("DETECT_COUNTRY", "int", 37)])],
+            };
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(119));
+            campaign = Reload(content, campaign, 119, "country-tags-before.sav");
+
+            AdvanceUnblocked(campaign, 1);
+
+            Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+            Reload(content, campaign, 119, "country-tags-after.sav");
+        }
+    }
+
     private static CampaignTime HalfHour => new(1, 1, 1, 1999, 1, 29, 55);
 }

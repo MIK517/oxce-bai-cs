@@ -53,6 +53,11 @@ $countryMethods = @(
     (Read-Method 'src/Savegame/Country.h' 'int getCurrentActivityAlien()'),
     (Read-Method 'src/Savegame/Country.h' 'int getCurrentActivityXcom()')
 )
+$countryRuleMethods = @(
+    (Read-Method 'src/Savegame/Country.cpp' 'const RuleCountry* Country::getRules()'),
+    (Read-Method 'src/Mod/RuleCountry.cpp' 'int RuleCountry::getFundingCap()')
+)
+$template = $template.Replace('// COUNTRY_RULE_METHODS', ($countryRuleMethods -join [Environment]::NewLine))
 $template = $template.Replace('// COUNTRY_METHODS', (Read-Method 'src/Savegame/Country.cpp' 'bool Country::getPact()'))
 foreach ($method in $countryMethods) {
     $signature = [regex]::Replace($method.Substring(0, $method.IndexOf('{')).Trim(), '\s+', ' ')
