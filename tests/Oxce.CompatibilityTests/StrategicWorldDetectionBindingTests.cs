@@ -276,5 +276,83 @@ public sealed class StrategicWorldDetectionBindingTests
         AssertTimeBlocked(campaign, "Detection UFO damage percentage exceeds the supported range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EveryUfoStatBindingMatchesRawAndRaceAdjustedNativeFields(bool fromCache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "stats");
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["getFuelMax"] = "fuelMax", ["getDamageMax"] = "damageMax", ["getSpeedMax"] = "speedMax",
+            ["getAccel"] = "accel", ["getRadarRange"] = "radarRange", ["getRadarChance"] = "radarChance",
+            ["getSightRange"] = "sightRange", ["getHitBonus"] = "hitBonus", ["getAvoidBonus"] = "avoidBonus",
+            ["getAvoidBonus2"] = "avoidBonus2", ["getPowerBonus"] = "powerBonus", ["getArmor"] = "armor",
+            ["getShieldCapacity"] = "shieldCapacity", ["getShieldRecharge"] = "shieldRecharge",
+            ["getShieldRechargeInGeoscape"] = "shieldRechargeInGeoscape", ["getShieldBleedThrough"] = "shieldBleedThrough",
+            ["getMaxUnits"] = "soldiers", ["getMaxVehiclesAndLargeSoldiers"] = "vehicles", ["getMaxItems"] = "maxItems",
+        };
+        Assert.Equal(19, rows[0].EnumerateObject().Count());
+        var ruleFields = string.Join("\n", keys.Select(pair => $"    {pair.Value}: {rows[0].GetProperty(pair.Key).GetInt32()}"));
+        var bonusFields = string.Join(", ", keys.Select(pair =>
+            $"{pair.Value}: {rows[1].GetProperty(pair.Key).GetInt32() - rows[0].GetProperty(pair.Key).GetInt32()}"));
+        var code = "var int value; var ptr RuleUfo rule; var ptr RuleUfo absent null; ufo.getRules rule; ";
+        foreach (var pair in keys)
+        {
+            code += $"rule.{pair.Key} value; if neq value {rows[0].GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += $"absent.{pair.Key} value; if neq value 0; return DETECTION_NONE 0; end; ";
+            code += $"ufo.Stats.{pair.Key} value; if neq value {rows[1].GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
+        }
+        code += "return DETECTION_RADAR 100;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            ufos:
+              - type: UFO_ALL_STATS
+            {{ruleFields}}
+                raceBonus:
+                  RACE_B: { {{bonusFields}} }
+                scripts:
+                  detectUfoFromBase: "{{code}}"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_ALL_STATS", 2300).Capture();
+        snapshot = snapshot with
+        {
+            World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { Race = "RACE_B" }] },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(113));
+        campaign = Reload(content, campaign, 113, "ufo-stats-before.sav");
+
+        AdvanceUnblocked(campaign, 1);
+
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 113, "ufo-stats-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void QueriedStatOverflowStopsBeforeMutation(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            ufos:
+              - type: UFO_STAT_OVERFLOW
+                speedMax: 2200
+                damageMax: 50
+                armor: 2147483647
+                raceBonus:
+                  RACE_B: {armor: 1}
+                scripts:
+                  detectUfoFromBase: "ufo.Stats.getArmor detection_chance; return;"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_STAT_OVERFLOW", 2200).Capture();
+        snapshot = snapshot with
+        {
+            World = snapshot.World with { Missions = [snapshot.World.Missions[0] with { Race = "RACE_B" }] },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(114));
+
+        AssertTimeBlocked(campaign, "Detection UFO statistics exceed the supported range.");
+    }
+
     private static CampaignTime HalfHour => new(1, 1, 1, 1999, 1, 29, 55);
 }

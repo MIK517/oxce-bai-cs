@@ -44,6 +44,20 @@ void setBase(size_t t, int i);
 int getBase(size_t t) const;
 };
 // TAG_METHODS
+struct RuleCraftStats {
+int fuelMax=0,damageMax=0,speedMax=0,accel=0,radarRange=0,radarChance=0,sightRange=0;
+int hitBonus=0,avoidBonus=0,avoidBonus2=0,powerBonus=0,armor=0;
+int shieldCapacity=0,shieldRecharge=0,shieldRechargeInGeoscape=0,shieldBleedThrough=0;
+int soldiers=0,vehicles=0,maxItems=0; double maxStorageSpace=0;
+// STATS_ADD
+// STATS_BIND
+};
+struct StatsOwner { RuleCraftStats stats; };
+struct StatsBinding {
+StatsOwner* owner;
+std::map<std::string,int> values;
+template<auto Root,auto Field> void addField(const std::string& name) { values[name]=((owner->*Root).*Field); }
+};
 struct RuleUfo { template<class T> int getScript() const { return 0; } };
 struct Ufo {
 int visibility=0;
@@ -182,6 +196,28 @@ if(!firstDamage)std::cout<<',';firstDamage=false;
 ufo._damage=row.first;ufo._stats.damageMax=row.second;
 int maximum=0;getDamageMaxScript(&ufo,maximum);
 array({row.first,maximum,ufo.getDamagePercentage()});
+}
+std::cout<<"],\"stats\":[";
+StatsOwner stats;
+stats.stats.fuelMax=100;stats.stats.damageMax=50;stats.stats.speedMax=2200;stats.stats.accel=5;
+stats.stats.radarRange=300;stats.stats.radarChance=20;stats.stats.sightRange=120;
+stats.stats.hitBonus=1;stats.stats.avoidBonus=2;stats.stats.avoidBonus2=3;stats.stats.powerBonus=4;stats.stats.armor=5;
+stats.stats.shieldCapacity=10;stats.stats.shieldRecharge=6;stats.stats.shieldBleedThrough=7;
+stats.stats.soldiers=8;stats.stats.vehicles=9;stats.stats.maxItems=11;
+RuleCraftStats bonus;
+bonus.fuelMax=1;bonus.damageMax=5;bonus.speedMax=100;bonus.accel=2;bonus.radarRange=25;bonus.radarChance=3;bonus.sightRange=10;
+bonus.hitBonus=-1;bonus.avoidBonus=1;bonus.avoidBonus2=2;bonus.powerBonus=3;bonus.armor=4;
+bonus.shieldCapacity=5;bonus.shieldRecharge=1;bonus.shieldBleedThrough=2;
+bonus.soldiers=3;bonus.vehicles=4;bonus.maxItems=5;
+for(int stage=0;stage<2;++stage) {
+if(stage) { std::cout<<',';stats.stats+=bonus; }
+StatsBinding bindings{&stats};
+RuleCraftStats::addGetStatsScript<&StatsOwner::stats>(bindings,"");
+std::cout<<'{';bool firstStat=true;
+for(const auto& [name,value]: bindings.values) {
+if(!firstStat)std::cout<<',';firstStat=false;std::cout<<'\"'<<name<<"\":"<<value;
+}
+std::cout<<'}';
 }
 std::cout<<"]}\n";
 }

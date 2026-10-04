@@ -469,3 +469,17 @@ before and after detection. The probe now inserts Mod.h::isEmptyRuleName verbati
 correcting an escaped-character stub and distinguishing empty/NUL names from
 the valid research name "0". Reference: Ufo.cpp::getDamageMaxScript/
 getDamagePercentage, Mod.h::isEmptyRuleName.
+
+## Complete UFO statistic detection reads (2026-10-04)
+
+Immutable runtime UFO statistics now retain all nineteen scalar fields exposed
+by RuleCraftStats::addGetStatsScript, including fuel, combat bonuses, armor,
+shield bleed-through and cargo/unit capacities. The compiler/cache revision
+advances to 36. Read-only RuleUfo getters expose raw values; Ufo.Stats getters
+add the mission race bonus without constructing per-contact stat objects.
+Consumed sums are preflighted before mutation. The native probe inserts field
+registration and operator+= verbatim and records raw/adjusted rows. Fresh/cache
+VM tests read every field, null defaults and transition reloads; queried overflow
+retains a precise unchanged-state refusal. Stats remain data, not combat execution.
+Reference: RuleCraft.h::addGetStatsScript/operator+=, RuleUfo.cpp::ScriptRegister,
+Ufo.cpp::setMissionInfo/ScriptRegister.

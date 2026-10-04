@@ -73,7 +73,7 @@ public sealed class StrategicWorldDetectionScriptsTests
     [InlineData("loop var i distance; end; return;", "Detection script requires a bounded loop forecast.")]
     [InlineData("div detection_chance distance; return;", "Detection script requires a nonzero divisor forecast.")]
     [InlineData("div detection_chance 0; return;", "Detection script requires a nonzero divisor forecast.")]
-    [InlineData("ufo.Stats.getArmor detection_chance; return;", "Detection script requires unsupported binding Ufo.Stats.getArmor.")]
+    [InlineData("loop var country geoscape_game.getCountries.list; end; return;", "Detection script requires unsupported binding GeoscapeGame.getCountries.list.")]
     public void UnsafeScriptsBlockBeforeTickMutates(string code, string reason)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: $$"""
