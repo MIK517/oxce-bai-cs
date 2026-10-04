@@ -131,7 +131,7 @@ internal sealed partial class CampaignWorld
             return "Alien base hunting initial timer exceeds the supported range.";
         // time30Minutes precedes baseHunting. Its new mission receives just the
         // explicit immediate think pass, which must only subtract thirty minutes.
-        if (steps / 2 <= 1 && ImmediateNoObjectReason(source, deployment, mission, ref work,
+        if (steps / 2 <= 1 && mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(source, deployment, mission, ref work,
                 HuntGenerationReason) is { } immediateReason) return immediateReason;
         if (!deployment.HuntMissionRaceFromAlienBase && mission.HasRaceWeights)
         {
@@ -153,7 +153,11 @@ internal sealed partial class CampaignWorld
         {
             if (region.MissionRegion is not { } remap) return "Alien base hunting references an undefined fallback region.";
             region = regions[remap].Value;
+            regionName = regions.GetExternalId(remap);
         }
+        if (steps / 2 <= 1 && mission.Objective is (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
+            ImmediateNoObjectReason(source, deployment, mission, ref work, HuntGenerationReason, regionName) is { } retaliationReason)
+            return retaliationReason;
         return mission.Objective == RuntimeMissionObjective.Site &&
             (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count)
             ? "Alien base hunting site mission has an invalid spawn zone." : null;
