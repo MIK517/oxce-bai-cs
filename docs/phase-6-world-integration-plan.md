@@ -566,3 +566,15 @@ getters and null defaults. Invalid percentage domains stop before mutation.
 Grounded craft without an auto-patrol order are excluded from numeric preflight;
 same-tick relaunches and due arrivals remain included. All 42 focused binding
 tests pass. Caller-specific script/work forecasts are the next slice.
+
+## Caller-specific detection preflight (2026-10-04)
+
+Script availability, consumed-stat validation and work accounting now use possible
+craft callers rather than every saved craft. GeoscapeState::updateActiveCrafts,
+time30Minutes and ufoDetection establish the boundary: airborne craft are joined
+by existing auto-patrol orders that earlier servicing/fuel delivery or due craft
+transfers may relaunch. Newly produced craft have no such order. Grounded craft
+without orders and later transfers no longer block unsupported craft scripts.
+Existing and newborn UFOs share the same before-tick checks. Fresh/cache fixtures
+cover grounded/airborne, servicing, arriving/delayed and newborn transitions.
+The three slices are ready for their batch audit; the 4c gate remains open.
