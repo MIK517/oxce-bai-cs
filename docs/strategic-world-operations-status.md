@@ -415,3 +415,18 @@ prepared in preflight and keyed by exact rule identity. Fresh/cache scripts read
 every owner through the actual VM and retain transition reload coverage.
 Reference: ScriptBind.h::addScriptValue/BindPropCustomGet, Ufo/Craft/RuleUfo/
 RuleCraft/SavedGame/Mod ScriptRegister and ScriptValuesBase::getBase.
+
+## Research-aware detection providers (2026-10-04)
+
+Detection scripts resolve RuleMod research pointers, read cost/points/lookup and
+query completed research through the reference isResearchedScript semantics:
+debug mode is explicitly ignored. Missing names and null mod/research receivers
+return null/zero; canonical rule identities make repeated pointer comparisons
+stable. The native probe extracts lookup helpers and the SavedGame wrapper for
+completed/debug/null combinations. Fresh/cache live scripts match those rows
+and observe research completed in the preceding daily handler, with save reloads.
+
+The same slice fixes VM null equality: host null references now compare equal to
+script null literals in either operand order, while non-null references retain
+identity semantics. A failing-before-fix VM regression covers both orders and a
+boxed zero reference, alongside the research fixture's missing-pointer branches.

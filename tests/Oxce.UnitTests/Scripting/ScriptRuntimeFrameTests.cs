@@ -219,6 +219,35 @@ public sealed class ScriptRuntimeFrameTests
         Assert.Same(replacement, outputValues[0].Reference);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void HostNullPointerEqualsScriptNullInEitherOperandOrder(bool reverse, bool nonNull)
+    {
+        var definition = ScriptParserDefinition.FromCatalog("detectUfoFromBase");
+        var condition = reverse ? "null research" : "research null";
+        var program = Compile(
+            $"var ptr RuleResearch research; rules.getRuleResearch research \"TOPIC\"; " +
+            $"if eq {condition}; return 1 2; end; return 3 4;", definition);
+        var providers = new ScriptHostBindingsBuilder();
+        providers.Add(Assert.Single(program.Bindings).Id, (_, arguments) =>
+        {
+            arguments[1] = ScriptRuntimeValue.FromReference(nonNull ? (object)0 : null);
+            return ScriptBindingResult.Success;
+        });
+        var output = new ScriptRuntimeValue[2];
+
+        var outcome = ScriptVm.ExecuteWithInputs(program, new ScriptRuntimeValue[2],
+            new ScriptRuntimeValue[program.InputCount], output, new ScriptExecutionFrame(),
+            hostBindings: providers.Build());
+
+        Assert.True(outcome.Succeeded, outcome.FailureMessage);
+        Assert.Equal(nonNull ? 3 : 1, output[0].Scalar);
+        Assert.Equal(nonNull ? 4 : 2, output[1].Scalar);
+    }
+
     [Fact]
     public void EventFrameCommitsOnlyAfterTheCompleteChainSucceeds()
     {
