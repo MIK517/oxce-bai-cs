@@ -32,6 +32,7 @@ $ufoRuleMethods = @(
     (Read-Method 'src/Mod/RuleUfo.cpp' 'int RuleUfo::getWeaponReload()')
 )
 $template = $template.Replace('// UFO_RULE_METHODS', ($ufoRuleMethods -join [Environment]::NewLine))
+$template = $template.Replace('// MOD_SMOKE', (Read-Method 'src/Mod/Mod.cpp' 'void getSmokeReduction('))
 $modSettings = @(
     (Read-Method 'src/Mod/Mod.h' 'int getMaxViewDistance()'),
     (Read-Method 'src/Mod/Mod.h' 'int getMaxDarknessToSeeUnits()')

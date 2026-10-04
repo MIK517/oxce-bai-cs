@@ -1179,3 +1179,15 @@ Unit nullable names now retain the reference NUL sentinel, so a literal STR_NULL
 item remains a real named relationship. Missing explicit links fail during content
 loading; default live items remain optional. Compiler/cache revision is 44.
 All eight focused Unit detection tests pass. The 4c gate remains open.
+
+## Mod smoke reduction in detection scripts (2026-10-04)
+
+Mod.cpp::getSmokeReduction now executes with its in-place signed integer multiply
+and divide-by-60 semantics. A verbatim native capture covers positive/negative,
+zero and extreme density/view values, including multiplication overflow.
+Fresh/cache base/craft scripts and reloads cover the reader. Because this static
+wrapper dereferences Mod, preflight permits the immutable actual Mod caller input;
+nullable aliases remain guarded pending data-flow proofs. The receiver proof is
+computed once per program. Existing unsupported-provider tests now exercise
+still-unavailable resource-offset bindings. All 131 focused detection tests pass.
+The three slices are ready for batch audit. The 4c gate remains open; 4d is untouched.

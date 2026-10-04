@@ -71,7 +71,7 @@ public sealed class StrategicWorldDetectionBindingTests
                 damageMax: 50
                 scripts:
                   detectUfoFromBase: "return DETECTION_RADAR 100;"
-                  detectUfoFromCraft: "rules.getSmokeReduction detection_chance; return;"
+                  detectUfoFromCraft: "rules.getSpriteOffsetBasebits detection_chance 0; return;"
             alienMissions:
               - type: MISSION_NEWBORN_CALLER_GUARD
                 objective: 0
@@ -107,7 +107,7 @@ public sealed class StrategicWorldDetectionBindingTests
                 damageMax: 50
                 scripts:
                   detectUfoFromBase: "return DETECTION_RADAR 100;"
-                  detectUfoFromCraft: "rules.getSmokeReduction detection_chance; return;"
+                  detectUfoFromCraft: "rules.getSpriteOffsetBasebits detection_chance 0; return;"
             """);
         foreach (var source in new[] { "ground", "out", "relaunch", "incoming", "delayed" })
         {
@@ -140,7 +140,7 @@ public sealed class StrategicWorldDetectionBindingTests
                 };
             var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(207));
             if (source is "out" or "relaunch" or "incoming")
-                AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleMod.getSmokeReduction.");
+                AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleMod.getSpriteOffsetBasebits.");
             else
             {
                 AdvanceUnblocked(campaign, 1);
