@@ -567,12 +567,18 @@ internal sealed partial class CampaignWorld
     private long SpawnOriginLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
     {
-        if (HasRetaliationTarget(mission, rule)) return 0; // Ground regional sources remain guarded.
+        var assault = HasRetaliationTarget(mission, rule);
+        if (assault)
+        {
+            if (rule.OperationType != RuntimeMissionOperationType.Space && MissionSourceBase(mission) is not null) return 0;
+            trajectory = campaign.Content.RuntimeRules.UfoTrajectories[rule.Waves[mission.NextWave].Trajectory!.Value].Value;
+            if (trajectory.Altitude(0) != 0) return 0;
+        }
         var wave = rule.Waves[mission.NextWave];
-        var selected = rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
+        var selected = !assault && rule.Objective != RuntimeMissionObjective.Supply && mission.MissionSiteZoneArea != -1 &&
             wave.Objective && trajectory.Zone(0) == rule.SpawnZone;
         if (selected && !wave.ObjectiveOnTheLandingSite) return 0;
-        if (!selected && (rule.Objective == RuntimeMissionObjective.Supply ? trajectory.Altitude(0) != 0 : trajectory.Altitude(1) != 0)) return 0;
+        if (!selected && (assault || rule.Objective == RuntimeMissionObjective.Supply ? trajectory.Altitude(0) != 0 : trajectory.Altitude(1) != 0)) return 0;
         if (rule.Objective == RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
             MissionSourceBase(mission) is not null) return 0;
         if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(0))[0].IsPoint) return 0;
@@ -643,7 +649,7 @@ internal sealed partial class CampaignWorld
                 wave.HuntBehavior == -1 ? ufoRule.HuntBehavior : wave.HuntBehavior, campaign.Random);
         var position = source is not null && (assault || missionRule.Objective == RuntimeMissionObjective.Supply)
             ? source.Position
-            : assault ? NormalizeWaypoint(WorldGeometry.RandomPoint(region, rules.UfoTrajectories[original.Trajectory!.Value].Value.Zone(0), -1, campaign.Random))
+            : assault ? RetaliationSpawnPosition(mission, original, region, ufoRule)
             : NormalizeWaypoint(missionRule.Objective == RuntimeMissionObjective.Supply
                 ? WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random)
                 : OrdinaryWaypoint(mission, trajectory, 0, region, ufoRule, wave));

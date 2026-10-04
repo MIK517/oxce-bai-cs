@@ -835,3 +835,9 @@ next two slices. Combat and deployment remain branch 5.
   including oracle checksums; source/RNG ordering and fresh/cache rewrite tests pass.
   Formatting verification identified initializer whitespace, corrected separately.
   The reference checkout remains read-only and branch 4d is untouched.
+
+- Five-cycle batch 5, slice 1: retaliation assault regional origins now use
+  the original wave altitude to choose bounded land/fake-water selection while
+  flight altitude/speed remain from the assault trajectory. Linked Earth bases
+  skip coordinate and land draws. The pinned spawn oracle's ground variants pass
+  fresh/cache alongside ID forecasts, constructor/RNG checks and save reloads.

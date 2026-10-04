@@ -34,9 +34,6 @@ internal sealed partial class CampaignWorld
                 return "Retaliation assault spawning requires the assault trajectory.";
             if (rules.UfoTrajectories[assault].Value.Waypoints.Count == 0 || rules.UfoTrajectories[assault].Value.Altitude(0) == 0)
                 return "Retaliation assault ground starts require lifecycle forecasts.";
-            if (rule.OperationType == RuntimeMissionOperationType.Space || MissionSourceBase(mission) is null)
-                if (rules.UfoTrajectories[originalPath].Value.Altitude(0) == 0)
-                    return "Retaliation assault ground origins require land forecasts.";
             return null;
         }
         if (rule.Objective == RuntimeMissionObjective.InstantRetaliation && mission.LiveUfos == 0 &&
@@ -65,6 +62,16 @@ internal sealed partial class CampaignWorld
             HuntBehavior = 0,
             Escort = false,
         };
+    }
+
+    private WorldPosition RetaliationSpawnPosition(AlienMissionSnapshot mission, RuntimeMissionWave original,
+        RuntimeRegionRule region, RuntimeUfoRule ufo)
+    {
+        var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[original.Trajectory!.Value].Value;
+        return NormalizeWaypoint(trajectory.Altitude(0) == 0
+            ? WorldGeometry.LandPoint(region, campaign.Content.RuntimeRules.Campaign.Globe,
+                trajectory.Zone(0), ufo.FakeWaterLandingChance, campaign.Random)
+            : WorldGeometry.RandomPoint(region, trajectory.Zone(0), -1, campaign.Random));
     }
 
     private bool InstantRetaliationWithoutTarget(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule) =>
