@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 namespace OpenXcom {
+enum RetEnum {RetContinue};
 // TYPES
 RuleDamageType();
 bool isDirect()const;
@@ -74,5 +75,10 @@ int main(){
   getDamageToScript<&RuleDamageType::ToHealth>(&custom,value,power);
   if(power!=2147483520)std::cout<<',';std::cout<<'['<<power<<','<<custom.ToHealth<<','<<value<<']';
  }
- std::cout<<"]}\n";
+ const RuleDamageType* copy=nullptr;
+ BindSet<const RuleDamageType*>::func(copy,item.getDamageType());
+ std::cout<<"],\"pointerSet\":["<<(copy==item.getDamageType());
+ BindSet<const RuleDamageType*>::func(copy,nullptr);std::cout<<','<<(copy==nullptr);
+ const RuleItem* itemCopy=nullptr;BindSet<const RuleItem*>::func(itemCopy,&item);
+ std::cout<<','<<(itemCopy==&item)<<"]}\n";
 }

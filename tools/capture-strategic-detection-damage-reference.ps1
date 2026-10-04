@@ -29,6 +29,7 @@ $modStart = $mod.IndexOf('_damageTypes.resize(DAMAGE_TYPES)', [StringComparison]
 $modEnd = $mod.IndexOf('_converter = new RuleConverter()', $modStart, [StringComparison]::Ordinal)
 $template = $template.Replace('// BUILTINS', $mod.Substring($modStart, $modEnd - $modStart))
 $methods = @(
+ ('template<typename T>' + [Environment]::NewLine + (Read-Method 'src/Engine/ScriptBind.h' 'struct BindSet') + ';'),
  (Read-Method 'src/Mod/RuleDamageType.cpp' 'RuleDamageType::RuleDamageType()'),
  (Read-Method 'src/Mod/RuleDamageType.cpp' 'bool RuleDamageType::isDirect()'),
  (Read-Method 'src/Mod/RuleItem.cpp' 'const RuleDamageType *RuleItem::getDamageType()'),

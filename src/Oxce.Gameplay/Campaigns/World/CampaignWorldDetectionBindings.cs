@@ -12,7 +12,13 @@ internal sealed partial class CampaignWorld
     private int _detectionDamageMaximum;
 
     private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+        DetectionPointerSet(binding) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+
+    private static bool DetectionPointerSet(ScriptBindingDeclaration binding) =>
+        binding.Name == "set" && binding.Parameters.Count == 2 &&
+        binding.Parameters[0].Type.IsRegister && binding.Parameters[0].Type.IsReference &&
+        binding.Parameters[1].Type.IsReference && !binding.Parameters[1].Type.IsRegister &&
+        binding.Parameters[0].Type.Id == binding.Parameters[1].Type.Id;
 
     private static bool DetectionBindingNameSupported(string name) => name is
         "Ufo.getAltitude" or "Ufo.getStatus" or "Ufo.getVisibility" or "Ufo.getDamage" or
@@ -56,6 +62,11 @@ internal sealed partial class CampaignWorld
 
     private ScriptBindingResult InvokeDetectionBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args)
     {
+        if (DetectionPointerSet(binding))
+        {
+            args[0] = args[1];
+            return ScriptBindingResult.Success;
+        }
         var name = binding.Name;
         if (name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokeDetectionTag(binding, args);
         var receiver = args[0].Reference;

@@ -197,6 +197,119 @@ public sealed class StrategicWorldDetectionItemRulesTests
             : "Detection damage conversion requires a bounded power forecast.");
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DamageAliasesAndBoundedScalarLocalsPreserveNativeResults(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        var row = TestFixtures.Rows(oracle.RootElement, "conversionRows")
+            .Single(row => row[0].GetInt32() == 20 && row[1].GetInt32() == -39);
+        var code = "var ptr RuleItem item; var ptr RuleItem alias; var ptr RuleDamageType damage; " +
+            "var ptr RuleDamageType copy; var int power -39; var int bounded; var int value; " +
+            "rules.getRuleItem item \"ITEM_READ\"; set alias item; alias.getDamageType damage; " +
+            "set copy damage; set damage copy; set bounded power; ";
+        for (var index = 0; index < DamageReaders.Length; index++)
+            code += $"copy.{DamageReaders[index]} value bounded; if neq value {row[2][index].GetInt32()}; return DETECTION_NONE 0; end; ";
+        code += "return DETECTION_RADAR 100;";
+        RunItemScript(code, CustomDamageFields, fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NullProfileAliasesBypassUnconsumedPowerAndUnsafeItemData(bool fromCache, bool fromCraft)
+    {
+        RunItemScript("var ptr RuleDamageType absent null; var ptr RuleDamageType copy; var int value; " +
+            "set copy absent; set absent copy; copy.getDamageToHealth value detection_chance; " +
+            "if neq value 0; return DETECTION_NONE 0; end; " +
+            "copy.getArmorEffectiveness value; if neq value 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            "damageAlter: {ToHealth: 1e100, ArmorEffectiveness: 1e100}", fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void FullRangeScalarInputsAreAllowedForSafeDamageMultipliers(bool fromCache, bool fromCraft)
+    {
+        RunItemScript("var ptr RuleItem item; var ptr RuleDamageType damage; " +
+            "rules.getRuleItem item \"ITEM_READ\"; item.getDamageType damage; " +
+            "damage.getDamageToHealth detection_chance radar_total_strength; return DETECTION_RADAR 100;",
+            "damageAlter: {ToHealth: 0.5}", fromCache, fromCraft, additionalItems: UnsafeUnrelatedItem);
+    }
+
+    [Theory]
+    [InlineData(false, "var int power 39; set power 2147483647;")]
+    [InlineData(true, "var int power 39; var int source 2147483647; swap power source;")]
+    [InlineData(false, "var int power 39; var int source; set source 2147483647; set power source;")]
+    [InlineData(true, "var int power 39; add power detection_chance;")]
+    public void ScalarReassignmentAndUnknownArithmeticCannotEscapeDamageBounds(bool fromCache, string assignments)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            items:
+              - type: ITEM_DAMAGE_GUARD
+            ufos:
+              - type: UFO_DAMAGE_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleItem item; var ptr RuleDamageType damage; {{assignments}} rules.getRuleItem item "ITEM_DAMAGE_GUARD"; item.getDamageType damage; damage.getDamageToHealth detection_chance power; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_DAMAGE_GUARD", 2200);
+        AssertTimeBlocked(campaign, assignments.Contains("add", StringComparison.Ordinal)
+            ? "Detection damage conversion requires a bounded power forecast."
+            : "Detection damage query exceeds the supported integer range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProfileReassignmentThroughAliasesIncludesEveryPossibleWrite(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            items:
+              {{UnsafeUnrelatedItem.ReplaceLineEndings("\n  ")}}
+              - type: ITEM_DAMAGE_GUARD
+            ufos:
+              - type: UFO_DAMAGE_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleItem item; var ptr RuleItem unsafe_item; var ptr RuleDamageType damage; var ptr RuleDamageType copy; rules.getRuleItem item "ITEM_DAMAGE_GUARD"; item.getDamageType damage; set copy damage; rules.getRuleItem unsafe_item "ITEM_UNSAFE"; unsafe_item.getDamageType damage; set copy damage; copy.getDamageToHealth detection_chance 39; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_DAMAGE_GUARD", 2200);
+        AssertTimeBlocked(campaign, "Detection damage query exceeds the supported integer range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DamageForecastWorkBudgetStopsBeforeCandidateExpansion(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache);
+        var parser = Oxce.Scripting.Compilation.ScriptParserDefinition.FromCatalog("detectUfoFromBase");
+        var compiled = Oxce.Scripting.Compilation.ScriptCompiler.Compile(
+            "var ptr RuleItem item; var ptr RuleDamageType damage; rules.getRuleItem item \"SUPPLY\"; " +
+            "item.getDamageType damage; damage.getDamageToHealth detection_chance 39; return;", parser).Program!;
+        var visits = Enumerable.Repeat(1, compiled.Instructions.Count).ToArray();
+        Assert.Null(Oxce.Gameplay.Campaigns.World.WorldDetectionDamageQueries.UnavailableReason(
+            compiled, content.RuntimeRules, visits, 1000));
+        Assert.Equal("Detection damage query forecast exceeds the supported work limit.",
+            Oxce.Gameplay.Campaigns.World.WorldDetectionDamageQueries.UnavailableReason(
+                compiled, content.RuntimeRules, visits, 3));
+    }
+
+    private const string UnsafeUnrelatedItem = """
+        - type: ITEM_UNSAFE
+          damageAlter: {ToHealth: 1e100, ArmorEffectiveness: 1e100}
+        """;
+
     private static readonly string[] DamageReaders =
         ["getDamageToArmorPre", "getDamageToArmor", "getDamageToEnergy", "getDamageToHealth",
          "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",
@@ -236,12 +349,13 @@ public sealed class StrategicWorldDetectionItemRulesTests
         }
     }
 
-    private static void RunItemScript(string code, string fields, bool fromCache, bool fromCraft, string extra = "")
+    private static void RunItemScript(string code, string fields, bool fromCache, bool fromCraft, string extra = "", string additionalItems = "")
     {
         var parser = fromCraft ? "detectUfoFromCraft" : "detectUfoFromBase";
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
             {{extra}}
             items:
+              {{additionalItems.ReplaceLineEndings("\n  ")}}
               - type: ITEM_OTHER
               - type: ITEM_READ
                 {{fields.ReplaceLineEndings("\n    ")}}
