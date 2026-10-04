@@ -278,7 +278,7 @@ public sealed partial class CampaignState
                             transfers.Add(new(crewTransferId, row.Hours, CampaignTransferKind.Soldier, soldier.RuleId, 1, soldier)
                             { PreservationKey = $"{Identity.Id}:transfer:{crewTransferId}" });
                         }
-                        var moved = new CraftSnapshot(row.RuleId, original.Id) { Logistics = original.Logistics, PreservationKey = original.PreservationKey };
+                        var moved = new CraftSnapshot(row.RuleId, original.Id) { Logistics = original.Logistics, PreservationKey = original.PreservationKey, ScriptValues = original.ScriptValues?.Capture() ?? [] };
                         var transferId = nextTransferId++;
                         transfers.Add(new(transferId, row.Hours, row.Kind, row.RuleId, 1, Craft: moved)
                         { PreservationKey = $"{Identity.Id}:transfer:{transferId}" });
@@ -556,6 +556,7 @@ public sealed partial class CampaignState
                                 Logistics = CraftLogistics.Arrive(craft.Logistics!, _content.RuntimeRules.Crafts[craftRule].Value,
                                     _content.RuntimeRules, state.Longitude, state.Latitude),
                                 PreservationKey = craft.PreservationKey,
+                                ScriptValues = RestoreScriptValues(_content, "Craft", craft.ScriptValues),
                             });
                             break;
                         case CampaignTransferKind.Item:

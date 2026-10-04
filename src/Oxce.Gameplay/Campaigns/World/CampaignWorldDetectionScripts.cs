@@ -68,8 +68,8 @@ internal sealed partial class CampaignWorld
                 }
             reason ??= WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported);
             foreach (var binding in candidate.Bindings)
-                if (DetectionBindingSupported(binding.Name) && providers.Add(binding.Id.Value))
-                    builder.Add(binding.Id, (_, arguments) => InvokeDetectionBinding(binding.Name, arguments));
+                if (DetectionBindingSupported(binding) && providers.Add(binding.Id.Value))
+                    builder.Add(binding.Id, (_, arguments) => InvokeDetectionBinding(binding, arguments));
             _detectionFrame.Prepare(candidate);
         }
         var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, radarQueries, shieldStats);

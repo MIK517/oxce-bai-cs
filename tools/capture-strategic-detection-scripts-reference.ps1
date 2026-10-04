@@ -38,6 +38,11 @@ $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getHuntBehavior()')
 )
 $template = $template.Replace('// UFO_METHODS', ($ufoMethods -join [Environment]::NewLine))
+$tagMethods = @(
+    (Read-Method 'src/Engine/Script.cpp' 'void ScriptValuesBase::setBase('),
+    (Read-Method 'src/Engine/Script.cpp' 'int ScriptValuesBase::getBase(')
+)
+$template = $template.Replace('// TAG_METHODS', ($tagMethods -join [Environment]::NewLine))
 $work = Join-Path $repository 'artifacts/reference-strategic-detection-scripts'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_detection_scripts_probe.cpp'

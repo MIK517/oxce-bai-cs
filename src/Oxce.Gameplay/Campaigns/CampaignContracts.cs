@@ -109,6 +109,7 @@ public sealed record FacilitySnapshot(
 
 public sealed record CraftSnapshot(string RuleId, int Id)
 {
+    public IReadOnlyList<ScriptValueEntry> ScriptValues { get; init; } = [];
     public string PreservationKey { get; init; } = string.Empty;
     public CraftLogisticsState? Logistics { get; init; }
 }

@@ -1,3 +1,4 @@
+using Oxce.Scripting.Api;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Runtime;
 
@@ -6,10 +7,10 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// <summary>Proves bounded detection programs cannot fail after the world tick starts.</summary>
 internal static class WorldDetectionScriptSafety
 {
-    public static string? UnavailableReason(ScriptProgram program, Func<string, bool> bindingSupported)
+    public static string? UnavailableReason(ScriptProgram program, Func<ScriptBindingDeclaration, bool> bindingSupported)
     {
         foreach (var binding in program.Bindings)
-            if (!bindingSupported(binding.Name)) return $"Detection script requires unsupported binding {binding.Name}.";
+            if (!bindingSupported(binding)) return $"Detection script requires unsupported binding {binding.Name}.";
         if (program.Instructions.Count > ScriptExecutionOptions.Default.MaximumSteps)
             return "Detection script exceeds the supported instruction limit.";
         for (var index = 0; index < program.Instructions.Count; index++)
