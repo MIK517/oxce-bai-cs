@@ -72,14 +72,21 @@ internal sealed partial class CampaignWorld
             stepBound += visits.Sum(static count => (long)count);
             var needsRoleForecast = candidate.Bindings.Any(binding => DetectionInventoryRole(binding.Name) is { } role &&
                 !rules.Inventories.TryGet(role, out _));
-            var roleReferences = needsRoleForecast
+            var needsFieldForecast = candidate.Bindings.Any(binding => DetectionConsumesFields(binding.Name));
+            var references = needsRoleForecast || needsFieldForecast
                 ? WorldDetectionReferenceForecast.Build(candidate, rules, visits, MaximumAlienBaseChecks) : null;
-            if (needsRoleForecast && roleReferences is null)
-                reason ??= "Detection inventory lookup forecast exceeds the supported work limit.";
+            if ((needsRoleForecast || needsFieldForecast) && references is null)
+                reason ??= needsFieldForecast ? "Detection consumed-field forecast exceeds the supported work limit." :
+                    "Detection inventory lookup forecast exceeds the supported work limit.";
+            var scalars = needsFieldForecast && references is not null
+                ? WorldDetectionScalarForecast.Build(candidate, rules, references, visits, MaximumAlienBaseChecks) : null;
+            if (needsFieldForecast && scalars is null)
+                reason ??= "Detection consumed-field forecast exceeds the supported work limit.";
             for (var instructionIndex = 0; instructionIndex < candidate.Instructions.Count; instructionIndex++)
             {
                 if (visits[instructionIndex] == 0 ||
-                    roleReferences is not null && !roleReferences.Reachable(instructionIndex)) continue;
+                    references is not null && !references.Reachable(instructionIndex) ||
+                    scalars is not null && !scalars.Reachable(instructionIndex)) continue;
                 var instruction = candidate.Instructions[instructionIndex];
                 if ((CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall)
                 {
@@ -89,8 +96,10 @@ internal sealed partial class CampaignWorld
                     if (DetectionInventoryRole(bindingName) is { } inventoryRole &&
                         !rules.Inventories.TryGet(inventoryRole, out _) &&
                         instruction.Operands[1] != ScriptOperand.IntegerValue(0) &&
-                        !WorldDetectionReferenceForecast.OnlyNull(roleReferences?.At(instructionIndex, instruction.Operands[1])))
+                        !WorldDetectionReferenceForecast.OnlyNull(references?.At(instructionIndex, instruction.Operands[1])))
                         reason ??= $"Detection script requires missing inventory {inventoryRole}.";
+                    // Native const-member wrappers return zero for null receivers before reading fields.
+                    if (WorldDetectionReferenceForecast.OnlyNull(references?.At(instructionIndex, instruction.Operands[1]))) continue;
                     if (bindingName.StartsWith("Ufo.Stats.", StringComparison.Ordinal) &&
                         DetectionUfoStatIndex(bindingName) is >= 0 and var field) ufoStats.Add(field);
                     if (bindingName == "Ufo.getTag" && campaign.Content.Tags.Types.Any(type =>
@@ -123,6 +132,11 @@ internal sealed partial class CampaignWorld
         var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, craftStatQueries, ufoTagQueries, shieldStats, damageStats, damagePercentage, ufoStats.Order().ToArray(), craftStats.Order(StringComparer.Ordinal).ToArray(), craftDamagePercentage);
         return result;
     }
+
+    private static bool DetectionConsumesFields(string name) =>
+        name.StartsWith("Ufo.Stats.", StringComparison.Ordinal) || name.StartsWith("Craft.Stats.", StringComparison.Ordinal) ||
+        name is "Ufo.getTag" or "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getShieldMax" or "Ufo.getShieldPercentage" or
+            "Craft.getDamageMax" or "Craft.getDamagePercentage" or "Craft.getShieldMax" or "Craft.getShieldPercentage";
 
     private (UfoDetectionResult Type, int Chance) RunDetectionScript(
         UfoSnapshot ufo, WorldUfoDetectionInputs caller, CampaignState.CraftState? craft = null)
