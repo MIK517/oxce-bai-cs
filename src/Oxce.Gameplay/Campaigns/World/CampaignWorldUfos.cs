@@ -468,10 +468,7 @@ internal sealed partial class CampaignWorld
 
     private static int MissionWaveIndex(
         UfoSnapshot ufo, AlienMissionSnapshot mission, RuntimeAlienMissionRule missionRule)
-    {
-        var wave = ufo.MissionWaveNumber > -1 ? ufo.MissionWaveNumber : mission.NextWave - 1;
-        return wave < 0 ? missionRule.Waves.Count - 1 : wave;
-    }
+        => WorldMissionWave.Infer(ufo.MissionWaveNumber, mission.NextWave, missionRule.Waves.Count);
 
     private void RemoveDestroyedUfos(CampaignState.TimeEffects _)
     {

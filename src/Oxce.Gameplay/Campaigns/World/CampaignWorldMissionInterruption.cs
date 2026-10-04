@@ -7,11 +7,50 @@ internal sealed partial class CampaignWorld
     // Pure daily projection, shared by world and subsequent craft preflight.
     // It is reset on each preflight and never appears in campaign persistence.
     private IReadOnlySet<string>? _dailyResearchForecast;
+    private Dictionary<int, AlienMissionSnapshot>? _missionCounterForecast;
 
     private AlienMissionSnapshot ForecastMission(int id, CampaignTimeTrigger highest)
     {
         var mission = FindMission(id) ?? throw new InvalidDataException("UFO forecast requires a mission link.");
+        if (highest >= CampaignTimeTrigger.ThirtyMinutes && _missionCounterForecast?.TryGetValue(id, out var counters) == true) return counters;
         return highest >= CampaignTimeTrigger.OneDay ? MissionAfterDailyResearch(mission, _dailyResearchForecast) : mission;
+    }
+
+    private string? PrepareMissionCounterForecasts(CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
+        var rules = campaign.Content.RuntimeRules;
+        var work = 0;
+        try
+        {
+            foreach (var saved in _missions)
+            {
+                var mission = MissionAfterDailyResearch(saved, _dailyResearchForecast);
+                var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+                if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
+                    mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
+                AlienMissionSnapshot projected = mission;
+                foreach (var step in DueWaveSteps(mission, rule))
+                {
+                    if (++work > MaximumImmediateWaveSteps) return WaveWorkReason;
+                    var counter = (ulong)step.NextUfoCounter + 1;
+                    var nextWave = step.NextWave;
+                    if (counter >= rule.Waves[nextWave].UfoCount) { counter = 0; nextWave++; }
+                    if (nextWave == rule.Waves.Count && rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration)
+                        nextWave = 0;
+                    projected = mission with
+                    {
+                        NextWave = nextWave,
+                        NextUfoCounter = checked((int)counter),
+                        Interrupted = InstantRetaliationWithoutTarget(step, rule),
+                    };
+                }
+                (_missionCounterForecast ??= []).Add(saved.Id, projected);
+            }
+        }
+        catch (InvalidDataException error) { return error.Message; }
+        catch (OverflowException) { return "Mission counter forecasts exceed the supported range."; }
+        return null;
     }
 
     private void InterruptMissionsDaily(CampaignState.TimeEffects _)

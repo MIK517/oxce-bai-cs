@@ -739,3 +739,9 @@ regenerated code-map checks and git diff --check pass. Useful generated probes
 remain available; the obsolete retaliation-spawn object file was removed. The
 pinned C++ checkout remains clean. This completes the requested fifteen slices
 and five audits, while the revised 4c headless completion gate remains open.
+
+- Four-cycle continuation, batch 1 slice 1: bounded half-hour counter forecasts
+  now precede UFO arrival preflight. Legacy wave inference observes post-think
+  counters without consuming scheduling RNG or normalizing the saved wave number.
+  Pinned AlienMission::think/ufoReachedWaypoint fragments and fresh/cache reloads
+  verify ordinary arrival when the saved counter previously implied a site conversion.
