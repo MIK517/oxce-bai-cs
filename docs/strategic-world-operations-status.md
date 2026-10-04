@@ -576,3 +576,15 @@ schema tests and fresh/cache live VM/reload tests cover the slice. Compiler/cach
 revision is 39. Smoke reduction remains guarded until its receiver and arithmetic
 can be proved safe before mutation.
 Reference: Mod.cpp constructor/load/ScriptRegister and Mod.h getters.
+
+## Complete raw craft-rule detection statistics (2026-10-04)
+
+All nineteen RuleCraft.Stats getters use immutable default statistics, preserving
+the reference Stats prefix. Installed weapon bonuses and maximum-unit limit
+overrides do not alter raw rule reads. The native addGetStatsScript capture now
+pins the craft namespace separately; fresh/cache live craft detection and reloads
+verify every field and null default while a radar weapon is installed.
+Compiler/cache revision is 40.
+Reference: RuleCraft.cpp::ScriptRegister, RuleCraft.h::RuleCraftStats/
+addGetStatsScript and RuleCraft loading. Effective instance statistics beyond
+radar remain precisely guarded until their mutation and numeric forecasts exist.
