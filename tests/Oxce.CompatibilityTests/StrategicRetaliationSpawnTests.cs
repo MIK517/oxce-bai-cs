@@ -253,6 +253,59 @@ public sealed class StrategicRetaliationSpawnTests
         Reload(content, campaign, 17, "retaliation-ground-origin.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RetaliationDeploymentFallbackFollowsSpawnAndSiteCallerOrdering(bool cache)
+    {
+        using var spawn = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
+        using var sites = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
+        foreach (var objective in new[] { 4, 6 })
+            foreach (var targetBase in new[] { false, true })
+            {
+                Assert.Contains(TestFixtures.Rows(spawn.RootElement, "rows"), row => row[0].GetInt32() == objective && row[4].GetInt32() == 1 && row[8].GetInt32() == 0);
+                Assert.Contains(TestFixtures.Rows(sites.RootElement, "siteRows"), row => row[0].GetInt32() == 1 && row[1].GetInt32() == 1 && row[2].GetInt32() == objective && row[4].GetInt32() == 1);
+                var content = Load(cache, $$$"""
+                    regions:
+                      - type: RETAL_SITE_REGION
+                        areas: [[100, 110, -10, 10]]
+                        missionZones: [[[8, 8, 2, 2, 10, RETAL_CITY]]]
+                    alienDeployments:
+                      - type: RETAL_SITE
+                        markerName: RETAL_MARKER
+                        duration: [2, 2]
+                        points: 0
+                    ufoTrajectories:
+                      - id: RETAL_SITE_ORIGIN
+                        waypoints: [[0, 3, 100], [0, 2, 100]]
+                    alienMissions:
+                      - type: RETAL_SITE_MISSION
+                        objective: {{{objective}}}
+                        waves: [{ufo: RETAL_SITE, count: 2, trajectory: RETAL_SITE_ORIGIN, timer: 0, objectiveOnXcomBase: {{{targetBase.ToString().ToLowerInvariant()}}}}]
+                    """);
+                var initial = Initial(content, "RETAL_SITE_MISSION");
+                initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "RETAL_SITE_REGION" }] } };
+                var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+                AdvanceUnblocked(campaign, 1);
+                var after = campaign.Capture();
+                Assert.Empty(after.World.Ufos);
+                Assert.Empty(after.World.Missions);
+                var count = targetBase ? 0 : objective == 6 ? 1 : 2;
+                Assert.Equal(count, after.World.MissionSites.Count);
+                Assert.All(after.World.MissionSites, site =>
+                {
+                    Assert.Equal("RETAL_SITE_MISSION", site.MissionRuleId);
+                    Assert.Equal("RETAL_CITY", site.City);
+                    Assert.Equal(new WorldPosition(Degrees(8), Degrees(2)), site.Position);
+                    Assert.Equal(5400, site.SecondsRemaining);
+                });
+                Reload(content, campaign, 17, "retaliation-direct-sites.sav");
+                if (!targetBase)
+                    AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("RETAL_MARKER", int.MaxValue), content, new SplitMix64RandomSource(17)),
+                        "Mission site marker IDs are exhausted or collide with a saved target.");
+            }
+    }
+
     private static CampaignSnapshot Initial(RuntimeContent content, string rule)
     {
         var initial = CreateSnapshot(content, "Retaliation spawning");

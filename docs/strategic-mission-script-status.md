@@ -709,3 +709,10 @@ and branch 4d is untouched.
   flight altitude/speed remain from the assault trajectory. Linked Earth bases
   skip coordinate and land draws. The pinned spawn oracle's ground variants pass
   fresh/cache alongside ID forecasts, constructor/RNG checks and save reloads.
+
+- Five-cycle batch 5, slice 2: no-target retaliation now falls through from
+  spawnUfo to marked deployment-site creation at the exact think caller position.
+  Normal missions execute finite immediate site chains; interrupted instant missions
+  create at most the current wave's site. XCOM-base site selection honors discovered
+  targets for normal retaliation, independently of the assault skip-scouting option.
+  Pinned spawn/site-condition oracles, fresh/cache, ID guards and rewrites cover both.

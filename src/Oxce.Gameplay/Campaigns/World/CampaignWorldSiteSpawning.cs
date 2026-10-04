@@ -11,7 +11,7 @@ internal sealed partial class CampaignWorld
     private bool IsDirectSiteWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         var wave = rule.Waves[mission.NextWave];
-        return rule.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
+        return !HasRetaliationTarget(mission, rule) &&
             wave.Ufo is null && !SuppressedSupplyWave(mission, rule, wave) &&
             (rule.Objective == RuntimeMissionObjective.Site && wave.Objective || wave.Deployment is { } deployment &&
              campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.MarkerName.Length != 0);
@@ -280,6 +280,11 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var rule = MissionRule(mission);
+        if (rule.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
+            return WorldRetaliation.Candidates(campaign.BaseStates, region, rule.Objective,
+                false, rule.MultiUfoRetaliation,
+                static owner => new(owner.Longitude, owner.Latitude), static owner => owner.RetaliationTarget);
         var result = new List<CampaignState.BaseState>();
         foreach (var owner in campaign.BaseStates)
             if (WorldGeometry.InsideRegion(region, new(owner.Longitude, owner.Latitude))) result.Add(owner);
