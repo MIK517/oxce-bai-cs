@@ -780,3 +780,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   reload without duplicate effects. Reference: production preceding half-hour
   AlienMission::think and the pinned base-objective fixture. Landing integration
   remains the next slice.
+
+- Batch 2 slice 3: landing-base shared IDs now project daily research, hourly
+  production and preceding site changes in actual handler order. Production no
+  longer causes a blanket landing guard. Decreases that could reuse a newborn
+  craft's ID remain precisely guarded; scans are charged to bounded creation work.
+  Fresh/cache final-wave and landing cases verify capacity refusal, consecutive
+  identities, reload and no duplicate births.

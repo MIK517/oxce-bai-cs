@@ -64,19 +64,15 @@ internal sealed partial class CampaignWorld
         }
         foreach (var marker in markers)
         {
-            // Hourly production precedes both final-wave and landing births.
-            // Its craft allocator can advance this shared counter past our range.
-            if (landing && highest >= CampaignTimeTrigger.OneHour)
+            // Charge the production-owned projection for each shared marker.
+            if (highest >= CampaignTimeTrigger.OneHour)
                 foreach (var owner in campaign.BaseStates)
                     foreach (var production in owner.Productions)
                     {
-                        var materials = rules.Manufacture[production.Rule].Value.ProducedMaterials;
-                        work += 1L + materials.Count;
+                        var manufacture = rules.Manufacture[production.Rule].Value;
+                        work += 1L + manufacture.ProducedMaterials.Count + manufacture.RequiredMaterials.Count;
                         if (work > MaximumAlienBaseChecks)
                             return "Base objective creation exceeds the supported work limit.";
-                        if (materials.Any(material => material.Quantity > 0 && material.Craft is { } craft &&
-                            rules.Crafts.GetExternalId(craft) == marker))
-                            return "Base objective markers shared with same-tick craft production require ID forecasts.";
                     }
             var count = reservations.GetValueOrDefault(marker) + 1;
             reservations[marker] = count;
@@ -102,9 +98,25 @@ internal sealed partial class CampaignWorld
                 _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
                 return "Landing base creation shares decreased marker counters with same-tick world births.";
             var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest,
-                landing ? _siteConversionCounterForecast : null);
-            if (!landing)
-                range = campaign.ProductionPreflight.CraftCounter(marker, highest, range);
+                landing ? _siteConversionCounterForecast : null, includeProduction: true);
+            if (landing && _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+            {
+                // A later decrease may reuse the ID of a craft born this hour.
+                // The snapshot craft list cannot detect that future collision.
+                work += 1L;
+                foreach (var owner in campaign.BaseStates)
+                {
+                    work += owner.Crafts.Count + (long)owner.Transfers.Count;
+                    foreach (var production in owner.Productions)
+                    {
+                        var manufacture = rules.Manufacture[production.Rule].Value;
+                        work += 1L + manufacture.ProducedMaterials.Count + manufacture.RequiredMaterials.Count;
+                    }
+                }
+                if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+                if (campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1)
+                    return "Landing base creation shares decreased marker counters with same-tick craft production.";
+            }
             var end = range.Maximum + count;
             if (range.Minimum <= 0 || end > int.MaxValue ||
                 _alienBases.Any(existing => MarkerName(existing.DeploymentId) == marker && existing.Id >= range.Minimum && existing.Id < end) ||

@@ -455,8 +455,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
             World = initial.World with { AlienBases = [new(nextCraft + 1, "COLLISION_BASE", "RACE_A", 0.2, 0.1)] },
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            landing ? "Base objective markers shared with same-tick craft production require ID forecasts." : "Base objective IDs are exhausted or collide.");
-        if (landing) return;
+            "Base objective IDs are exhausted or collide.");
         initial = initial with { World = initial.World with { AlienBases = [] } };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);

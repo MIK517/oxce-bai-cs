@@ -12,7 +12,7 @@ internal interface ICampaignCustomCounters
     string? CapacityReason(IReadOnlyList<CustomCounterChange> changes, CampaignTimeTrigger highest);
     void Apply(CustomCounterChange change);
     (long Minimum, long Maximum) BeforeWorldCreation(string name, CampaignTimeTrigger highest,
-        IReadOnlyList<CustomCounterForecast>? preceding = null);
+        IReadOnlyList<CustomCounterForecast>? preceding = null, bool includeProduction = false);
 }
 
 internal static class CustomCounterValue
@@ -27,9 +27,11 @@ public sealed partial class CampaignState : ICampaignCustomCounters
     internal ICampaignCustomCounters CustomCounters => _handlers.Operation<ICampaignCustomCounters>();
 
     (long Minimum, long Maximum) ICampaignCustomCounters.BeforeWorldCreation(string name, CampaignTimeTrigger highest,
-        IReadOnlyList<CustomCounterForecast>? preceding)
+        IReadOnlyList<CustomCounterForecast>? preceding, bool includeProduction)
     {
-        var (minimum, maximum) = CounterAfterDailyResearch(name, highest);
+        var range = CounterAfterDailyResearch(name, highest);
+        if (includeProduction) range = ProductionPreflight.CraftCounter(name, highest, range);
+        var (minimum, maximum) = range;
         if (preceding is not null)
             foreach (var forecast in preceding)
             {
