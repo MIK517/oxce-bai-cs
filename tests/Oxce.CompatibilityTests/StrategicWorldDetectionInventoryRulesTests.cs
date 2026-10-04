@@ -208,8 +208,66 @@ public sealed class StrategicWorldDetectionInventoryRulesTests
                   detectUfoFromBase: 'var ptr RuleInventory source; var ptr RuleInventory target null; var int cost; rules.getRuleInventory source "STR_RIGHT_HAND"; source.getMoveToCost cost target; return;'
             """);
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
-        AssertTimeBlocked(campaign, "Detection script requires unsupported binding RuleInventory.getMoveToCost.");
+        AssertTimeBlocked(campaign, "Detection inventory movement requires a nonnull destination forecast.");
     }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void InventoryMovementCostsMatchNativeIdentityNullAndSignedValues(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-inventory-cost");
+        var rows = TestFixtures.Rows(oracle.RootElement, "costs");
+        var pairs = new[] { ("RIGHT", "RIGHT"), ("RIGHT", "LEFT"), ("RIGHT", "GROUND"),
+            ("LEFT", "RIGHT"), ("MISSING", "RIGHT"), ("MISSING", "MISSING"), ("GROUND", "GROUND") };
+        Assert.Equal(rows.Length, pairs.Length);
+        var code = "var ptr RuleInventory source; var ptr RuleInventory target; var int cost; ";
+        for (var index = 0; index < pairs.Length; index++)
+            code += $"rules.getRuleInventory source \"{pairs[index].Item1}\"; " +
+                $"rules.getRuleInventory target \"{pairs[index].Item2}\"; source.getMoveToCost cost target; " +
+                $"if neq cost {rows[index][0].GetInt32()}; return DETECTION_NONE 0; end; ";
+        code += "return DETECTION_RADAR 100;";
+        RunInventoryScript(code, fromCache, fromCraft, MovementRules);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConditionalSameRegisterMovementAlwaysPreservesIdentity(bool fromCache)
+    {
+        RunInventoryScript("var ptr RuleInventory source; var int cost; " +
+            "if eq already_tracked 0; rules.getRuleInventory source \"RIGHT\"; " +
+            "else; rules.getRuleInventory source \"LEFT\"; end; source.getMoveToCost cost source; " +
+            "if neq cost 0; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            fromCache, false, MovementRules);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConditionalMissingMovementCostStopsBeforeTick(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, MovementRules + """
+
+            ufos:
+              - type: UFO_SCOUT
+                scripts:
+                  detectUfoFromBase: 'var ptr RuleInventory source; var ptr RuleInventory target; var int cost; rules.getRuleInventory source "LEFT"; if eq already_tracked 0; rules.getRuleInventory target "RIGHT"; else; rules.getRuleInventory target "GROUND"; end; source.getMoveToCost cost target; return;'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 2200);
+        AssertTimeBlocked(campaign, "Detection inventory movement requires missing cost LEFT -> GROUND.");
+    }
+
+    private const string MovementRules = """
+        invs:
+          - id: RIGHT
+            costs: {LEFT: -7, GROUND: 2147483647, RIGHT: 99}
+          - id: LEFT
+            costs: {RIGHT: -2147483648}
+          - id: GROUND
+        """;
 
     private static void RunInventoryScript(string code, bool fromCache, bool fromCraft, string? inventoryRules = null)
     {

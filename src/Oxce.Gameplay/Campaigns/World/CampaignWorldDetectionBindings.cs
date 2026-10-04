@@ -25,7 +25,7 @@ internal sealed partial class CampaignWorld
         "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
-        "RuleInventory.getId" or "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
+        "RuleInventory.getMoveToCost" or "RuleInventory.getId" or "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or "RuleMod.getRuleInventory" or "RuleUnit.getType" or "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or "RuleUnit.getCivilianRecoveryItemType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getAccuracyAimed" or "RuleItem.getAccuracyAuto" or "RuleItem.getAccuracySnap" or "RuleItem.getAccuracyMelee" or
         "RuleItem.getAccuracyUse" or "RuleItem.getAccuracyMind" or "RuleItem.getAccuracyPanic" or "RuleItem.getAccuracyThrow" or
@@ -109,6 +109,12 @@ internal sealed partial class CampaignWorld
             case "RuleItem.hasCategory":
                 args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeItemRule categoryItem &&
                     categoryItem.Categories.Contains(args[2].Text ?? "") ? 1 : 0);
+                break;
+            case "RuleInventory.getMoveToCost":
+                args[1] = ScriptRuntimeValue.FromScalar(receiver is RuntimeInventoryRule sourceInventory
+                    ? ReferenceEquals(sourceInventory, args[2].Reference) ? 0
+                        : args[2].Reference is RuntimeInventoryRule targetInventory ? sourceInventory.Costs[targetInventory.Id]
+                        : throw new InvalidOperationException("Detection inventory destination was not preflighted.") : 0);
                 break;
             case "RuleInventory.getId":
                 args[1] = ScriptRuntimeValue.FromText(receiver is RuntimeInventoryRule inventoryId ? inventoryId.Id : "");
