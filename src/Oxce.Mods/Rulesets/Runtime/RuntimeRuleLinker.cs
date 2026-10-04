@@ -266,7 +266,23 @@ public static class RuntimeRuleLinker
                 rule.Value.EffectiveSpaceOccupied,
                 rule.Value.Strings["storeItem"],
                 OptionalItem(itemHandles, rule.Value.Strings["storeItem"]))
-            { Type = rule.Id, Group = rule.Value.Integers["group"], Stats = rule.Value.Stats.Values });
+            {
+                Type = rule.Id,
+                Group = rule.Value.Integers["group"],
+                Stats = rule.Value.Stats.Values,
+                Vision = new(
+                    rule.Value.Integers["visibilityAtDark"],
+                    rule.Value.Integers["visibilityAtDay"],
+                    rule.Value.Integers["camouflageAtDark"],
+                    rule.Value.Integers["camouflageAtDay"],
+                    rule.Value.Integers["antiCamouflageAtDark"],
+                    rule.Value.Integers["antiCamouflageAtDay"],
+                    rule.Value.Integers["heatVision"],
+                    rule.Value.Integers["visibilityThroughFire"],
+                    rule.Value.Integers["personalLight"],
+                    rule.Value.Integers["personalLightHostile"],
+                    rule.Value.Integers["personalLightNeutral"]),
+            });
 
         cancellationToken.ThrowIfCancellationRequested();
         var soldiers = BuildFamily<SoldierRuleFamily, SoldierRule, RuntimeSoldierRule>(

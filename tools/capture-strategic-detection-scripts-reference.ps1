@@ -50,6 +50,20 @@ $ruleMetadata = @(
 $template = $template.Replace('// RULE_METADATA', ($ruleMetadata -join [Environment]::NewLine))
 $template = $template.Replace('// UNIT_STAT_GET', ('template<typename T, UnitStats T::*Stat, Ptr StatMax>' + [Environment]::NewLine + (Read-Method 'src/Mod/Unit.h' 'static void getMaxStatScript(')))
 $template = $template.Replace('// UNIT_STAT_BIND', ('template<auto Stat, typename TBind>' + [Environment]::NewLine + (Read-Method 'src/Mod/Unit.h' 'static void addGetStatsScript(')))
+$armorVision = @(
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getVisibilityAtDark()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getVisibilityAtDay()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getCamouflageAtDark()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getCamouflageAtDay()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getAntiCamouflageAtDark()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getAntiCamouflageAtDay()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getPersonalLightFriend()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getPersonalLightHostile()'),
+    (Read-Method 'src/Mod/Armor.cpp' 'int Armor::getPersonalLightNeutral()'),
+    ((Read-Method 'src/Mod/Armor.h' 'int getVisibilityThroughSmoke()').Replace('int getVisibilityThroughSmoke()', 'int Armor::getVisibilityThroughSmoke()')),
+    ((Read-Method 'src/Mod/Armor.h' 'int getVisibilityThroughFire()').Replace('int getVisibilityThroughFire()', 'int Armor::getVisibilityThroughFire()'))
+)
+$template = $template.Replace('// ARMOR_VISION', ($armorVision -join [Environment]::NewLine))
 $ufoMethods = @(
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamage()'),
     (Read-Method 'src/Savegame/Ufo.cpp' 'int Ufo::getDamagePercentage()'),

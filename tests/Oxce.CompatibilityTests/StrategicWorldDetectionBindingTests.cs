@@ -10,6 +10,59 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldDetectionBindingTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ArmorVisionMetadataMatchesNativeDefaultsAndOverrides(bool fromCache, bool overrides)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var native = TestFixtures.Rows(oracle.RootElement, "armorVision")[overrides ? 1 : 0];
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["getVisibilityAtDark"] = "visibilityAtDark",
+            ["getVisibilityAtDay"] = "visibilityAtDay",
+            ["getCamouflageAtDark"] = "camouflageAtDark",
+            ["getCamouflageAtDay"] = "camouflageAtDay",
+            ["getAntiCamouflageAtDark"] = "antiCamouflageAtDark",
+            ["getAntiCamouflageAtDay"] = "antiCamouflageAtDay",
+            ["getHeatVision"] = "heatVision",
+            ["getVisibilityThroughFire"] = "visibilityThroughFire",
+            ["getPersonalLight"] = "personalLight",
+            ["getPersonalLightHostile"] = "personalLightHostile",
+            ["getPersonalLightNeutral"] = "personalLightNeutral",
+        };
+        Assert.Equal(11, native.EnumerateObject().Count());
+        var fields = overrides ? string.Join("\n", keys.Select(pair => $"    {pair.Value}: {native.GetProperty(pair.Key).GetInt32()}")) : "";
+        var code = "var ptr RuleArmor rule; var ptr RuleArmor absent null; var int value; rules.getRuleArmor rule \"ARMOR_VISION_READS\"; ";
+        foreach (var pair in keys)
+        {
+            code += $"rule.{pair.Key} value; if neq value {native.GetProperty(pair.Key).GetInt32()}; return DETECTION_NONE 0; end; ";
+            code += $"absent.{pair.Key} value; if neq value 0; return DETECTION_NONE 0; end; ";
+        }
+        code += "return DETECTION_RADAR 100;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            armors:
+              - type: ARMOR_VISION_READS
+                corpseBattle: [CORPSE]
+                corpseGeo: CORPSE
+                loftempsSet: [0]
+            {{fields}}
+            ufos:
+              - type: UFO_ARMOR_VISION_READS
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: '{{code}}'
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_ARMOR_VISION_READS", 2200);
+        campaign = Reload(content, campaign, 202, "armor-vision-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
+        Reload(content, campaign, 202, "armor-vision-after.sav");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void ArmorRuleStatsUseNativeSignedValuesAndNullDefaults(bool fromCache)

@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch); Ufo.cpp (getDamagePercentage/getDamageMaxScript), Mod.h (isEmptyRuleName); RuleCraft.h (operator+=, addGetStatsScript), RuleUfo/Ufo ScriptRegister; Mod.cpp (getItem/getArmor/getSoldier/getSkill and script wrappers), RuleResearch.h (getNeededItem); ScriptBind.h (BindListInitImpl/BindListLoopImpl), SavedGame.cpp (filterCountryConstScript), Country.cpp/h (pact and current histories); Country.cpp (getRules/ScriptRegister), RuleCountry.cpp (getFundingCap/ScriptRegister); RuleUfo.cpp (getRadius/getWeaponRange/getWeaponPower/getWeaponReload); Mod.h (getMaxViewDistance/getMaxDarknessToSeeUnits), Mod.cpp (constructor/load); RuleCraft.cpp (ScriptRegister, raw Stats prefix); RuleItem.cpp (getWeight/getBattleType/getBattleTypeScript/getTypeScript), Armor.cpp (getSize/getTypeScript), RuleCraft.cpp/RuleSkill.cpp (getTypeScript); Unit.h (getMaxStatScript/addGetStatsScript), RuleSoldier.cpp/Armor.cpp (stat prefix registration)",
+      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser); Ufo.cpp getters (damage, shield/percentage, detected/hyperDetected, hunting/escort/mode/behavior); Engine/Script.cpp (ScriptValuesBase::setBase/getBase); SavedGame.cpp (haveReserchVector, isResearched, isResearchedScript), Mod.cpp (getRule/getResearch/getRuleResearch); Ufo.cpp (getDamagePercentage/getDamageMaxScript), Mod.h (isEmptyRuleName); RuleCraft.h (operator+=, addGetStatsScript), RuleUfo/Ufo ScriptRegister; Mod.cpp (getItem/getArmor/getSoldier/getSkill and script wrappers), RuleResearch.h (getNeededItem); ScriptBind.h (BindListInitImpl/BindListLoopImpl), SavedGame.cpp (filterCountryConstScript), Country.cpp/h (pact and current histories); Country.cpp (getRules/ScriptRegister), RuleCountry.cpp (getFundingCap/ScriptRegister); RuleUfo.cpp (getRadius/getWeaponRange/getWeaponPower/getWeaponReload); Mod.h (getMaxViewDistance/getMaxDarknessToSeeUnits), Mod.cpp (constructor/load); RuleCraft.cpp (ScriptRegister, raw Stats prefix); RuleItem.cpp (getWeight/getBattleType/getBattleTypeScript/getTypeScript), Armor.cpp (getSize/getTypeScript), RuleCraft.cpp/RuleSkill.cpp (getTypeScript); Unit.h (getMaxStatScript/addGetStatsScript), RuleSoldier.cpp/Armor.cpp (stat prefix registration); Armor.cpp/h (vision, camouflage and personal light getters, constructor/load/ScriptRegister)",
       "probe": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
       "capture": "tools/capture-strategic-detection-scripts-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; caller methods inserted verbatim, recording Worker stub"
@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
-      "size": 17309,
-      "sha256": "eb35139f5f8cd8cbc766a4dd6eaf44df14f9de7c0505e39f36ed92073bea508d"
+      "size": 19275,
+      "sha256": "ba1c6911b666a6d42c3f132b563beb5f75aa9932f133a5fdf5bd22b807bc86e1"
     },
     {
       "path": "tools/capture-strategic-detection-scripts-reference.ps1",
-      "size": 9426,
-      "sha256": "0607fea6e59996c5e3028a837583a2176b430675de75ae8cb0781872e3cf6ccb"
+      "size": 10534,
+      "sha256": "f4fc10f68c3c5abbe0e418395d8140141075b8d0541db63bfcb10a8a40ac9b23"
     },
     {
       "path": "fixtures/public/savegames/strategic-detection-scripts.rul",
