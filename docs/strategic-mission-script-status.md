@@ -823,3 +823,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   assuming a craft is born. Progress/population and facility scans are bounded.
   Reference: Production::step fallback staffing. Fresh/cache direct/landing births,
   fallback completion and reload verify the removed blanket staffing guard.
+
+- Batch 4 slice 2: craft-material consumption no longer causes a blanket shared
+  counter guard. ID ranges retain the saved counter as the guaranteed floor when
+  earlier production may remove the highest craft; the saved craft/transfer floor
+  remains an upper bound. Reference: Production::startItem required-craft removal
+  before later craft allocation. Fresh/cache production order and reload prove the
+  actual counter stays inside the mutation-free bounds.

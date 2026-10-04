@@ -78,4 +78,54 @@ public sealed class StrategicProductionCounterForecastTests
         Reload(content, campaign, 17, "fallback-produced-craft.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CraftConsumptionKeepsThePersistedCounterAsTheGuaranteedLowerBound(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-research-production");
+        TestFixtures.LoadVerifiedManifest("equipment-production-rules");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+            facilities:
+              - {type: FORECAST_WORKSHOP, mapName: LOGISTICS, size: 1, workshops: 10}
+            manufacture:
+              - name: FORECAST_CONSUME
+                time: 1
+                requiredItems: {SHIP: 1}
+                producedItems: {SUPPLY: 1}
+              - name: FORECAST_REPLACE
+                category: STR_CRAFT
+                time: 1
+                producedItems: {SHIP: 1}
+            """);
+        var initial = CreateSnapshot(content, "Consumed craft counter").WithNextId("SHIP", 1) with
+        {
+            Time = new(1, 1, 1, 1999, 1, 59, 55),
+        };
+        var owner = initial.Bases[0];
+        var floor = owner.Crafts.Where(craft => craft.RuleId == "SHIP").Max(craft => craft.Id) + 1L;
+        initial = initial with
+        {
+            Bases = [owner with
+            {
+                Facilities = [.. owner.Facilities, new("FORECAST_WORKSHOP", 5, 5, 0, 0, false, false, false)],
+                Productions =
+                [
+                    new("FORECAST_CONSUME", 2, 0, 2, false, false, false, new Dictionary<string, int>()),
+                    new("FORECAST_REPLACE", 1, 0, 1, false, false, false, new Dictionary<string, int>()),
+                ],
+            }],
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        var range = campaign.ProductionPreflight.CraftCounter("SHIP", CampaignTimeTrigger.OneHour, (1, 1));
+        Assert.Equal((2L, floor + 1), range);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.InRange((long)after.NextIds["SHIP"], range.Minimum, range.Maximum);
+        Assert.Empty(after.Bases[0].Productions);
+        Reload(content, campaign, 17, "consumed-produced-craft.sav");
+    }
+
 }
