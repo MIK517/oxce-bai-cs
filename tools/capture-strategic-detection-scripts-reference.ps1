@@ -37,6 +37,12 @@ $modSettings = @(
     (Read-Method 'src/Mod/Mod.h' 'int getMaxDarknessToSeeUnits()')
 )
 $template = $template.Replace('// MOD_SETTINGS', ($modSettings -join [Environment]::NewLine).Replace('int getMaxViewDistance()', 'int Mod::getMaxViewDistance()').Replace('int getMaxDarknessToSeeUnits()', 'int Mod::getMaxDarknessToSeeUnits()'))
+$template = $template.Replace('// UNIT_METADATA', (Read-Method 'src/Mod/Unit.cpp' 'void getTypeScript(const Unit*'))
+$unitLookup = @(
+    (Read-Method 'src/Mod/Mod.cpp' 'Unit *Mod::getUnit('),
+    (Read-Method 'src/Mod/Mod.cpp' 'void getUnitScript(')
+)
+$template = $template.Replace('// UNIT_LOOKUP', ($unitLookup -join [Environment]::NewLine))
 $ruleMetadata = @(
     (Read-Method 'src/Mod/RuleItem.cpp' 'int RuleItem::getWeight()'),
     (Read-Method 'src/Mod/RuleItem.cpp' 'BattleType RuleItem::getBattleType()'),

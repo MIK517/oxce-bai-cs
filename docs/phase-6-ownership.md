@@ -1158,3 +1158,13 @@ composed acceptance remain open. Branch 4d is untouched.
 Formatting verification, code-map validation and diff checks also pass. The native
 reference remains clean at the pinned revision. Useful capture outputs are
 retained; the obsolete task-owned object file was removed.
+
+## Unit rule lookup in detection scripts (2026-10-04)
+
+Runtime rules now project a generation-scoped Unit family with immutable identity.
+Mod.cpp::getUnit/getUnitScript and Unit.cpp::getTypeScript/ScriptRegister are pinned
+by a verbatim native lookup/type trace. STR_NONE remains an ordinary Unit ID;
+missing/empty names and null Mod receivers return null, with empty text for null
+Unit receivers. Four fresh/cache base/craft VM tests cover reloads and foreign
+generation rejection. Compiler/cache revision is 43. Linked Unit metadata is the
+next slice; 4c remains open and 4d is untouched.

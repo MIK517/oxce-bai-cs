@@ -19,7 +19,7 @@ internal sealed partial class CampaignWorld
         "Ufo.getDamageMax" or "Ufo.getDamagePercentage" or "Ufo.getDetected" or "Ufo.getHyperDetected" or "Ufo.getShield" or "Ufo.getShieldMax" or
         "Ufo.getShieldPercentage" or "Ufo.isHunterKiller" or "Ufo.isHunting" or "Ufo.isEscorting" or
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Ufo.getRules" or "Ufo.getRuleUfo" or
-        "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
+        "RuleUnit.getType" or "RuleMod.getRuleUnit" or "RuleCraft.getType" or "RuleItem.getType" or "RuleArmor.getType" or "RuleSkill.getType" or
         "RuleArmor.getVisibilityAtDark" or "RuleArmor.getVisibilityAtDay" or "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
         "RuleItem.getWeight" or "RuleItem.getBattleType" or "RuleArmor.getSize" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
@@ -47,12 +47,14 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         switch (name)
         {
+            case "RuleUnit.getType":
             case "RuleCraft.getType":
             case "RuleItem.getType":
             case "RuleArmor.getType":
             case "RuleSkill.getType":
                 args[1] = ScriptRuntimeValue.FromText(receiver switch
                 {
+                    RuntimeUnitRule typeUnit => typeUnit.Type,
                     RuntimeCraftRule typeCraft => typeCraft.Type,
                     RuntimeItemRule typeItem => typeItem.Type,
                     RuntimeArmorRule typeArmor => typeArmor.Type,
@@ -69,6 +71,9 @@ internal sealed partial class CampaignWorld
                 break;
             case "RuleMod.getRuleResearch":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionResearchRule(args[2].Text));
+                break;
+            case "RuleMod.getRuleUnit":
+                args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionRule(rules.Units, args[2].Text));
                 break;
             case "RuleMod.getRuleItem":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null || args[2].Text == "STR_NONE"
