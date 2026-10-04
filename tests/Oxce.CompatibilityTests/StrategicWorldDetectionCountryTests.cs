@@ -176,5 +176,59 @@ public sealed class StrategicWorldDetectionCountryTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CountryLoopVisitsShareWorkAcrossDetectionCallers(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            countries:
+              - type: ENUM_A
+              - type: ENUM_B
+            ufos:
+              - type: UFO_COUNTRY_WORK
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: "loop var outer 60000; loop var country geoscape_game.getCountries.list; add detection_chance 0; end; end; return;"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_COUNTRY_WORK", 2200).Capture();
+        snapshot = snapshot with
+        {
+            Countries =
+            [
+                new("ENUM_A", [1], [0], [0], false, false, false, []),
+                new("ENUM_B", [1], [0], [0], false, false, false, []),
+            ],
+            Bases = [snapshot.Bases[0], snapshot.Bases[0] with { Id = 2, Name = "Beta", Crafts = [], Soldiers = [] }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(120));
+
+        AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExplicitCountryIteratorCallsStopBeforeMutation(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, """
+            ufos:
+              - type: UFO_COUNTRY_MANUAL
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    var int current 2147483647;
+                    var int limit 2147483647;
+                    var ptr Country country;
+                    geoscape_game.getCountries.list __ current limit __ country;
+                    return;
+            """);
+        var campaign = CreateUfoTransitCampaign(content, HalfHour, "UFO_COUNTRY_MANUAL", 2200);
+
+        AssertTimeBlocked(campaign, "Detection country enumeration requires a compiler-owned loop.");
+    }
+
     private static CampaignTime HalfHour => new(1, 1, 1, 1999, 1, 29, 55);
 }

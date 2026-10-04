@@ -539,3 +539,17 @@ getFundingCap verbatim across signed/zero/large caps. Fresh/cache live list-loop
 scripts validate every owner and reload before and after execution.
 Reference: Country.cpp::getRules/ScriptRegister, RuleCountry.cpp::getFundingCap/
 ScriptRegister, ScriptValuesBase::getBase and BindPropCustomGet.
+
+## Rule lookup and country detection cycle audit (2026-10-04)
+
+Three slices complete read-only item/armor/soldier/skill lookup and linked research
+reads, ordered country iteration, and country/rule tags with funding-cap reads.
+Native captures and fresh/cache execution cover both base and craft callers.
+Packed host-call reconstruction now preserves separator-free cached arguments;
+the compiler/cache revision is 37.
+
+The batch audit found no additional confirmed defect. Added regressions prove
+country-loop work is shared across detection callers and explicit unsafe iterator
+calls stop before mutation. All 2,002 root tests pass with zero failures/skips,
+including private corpus and checksum tests. Formatting, code-map validation and
+diff checks pass. The 4c headless gate remains open; branch 4d is untouched.
