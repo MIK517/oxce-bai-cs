@@ -2,6 +2,7 @@ using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Scripting.Globals;
+using Oxce.Savegames.Oxce;
 using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
@@ -150,6 +151,115 @@ public sealed class StrategicWorldDetectionTagTests
         Assert.True(Assert.Single(campaign.Capture().World.Ufos).Detected);
         Assert.Equal(!craftOnly, Assert.Single(campaign.Capture().World.Ufos).HyperDetected);
         Reload(content, campaign, 104, "rule-global-detection-tags-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UfoTagReadsShareTheHalfHourWorkLimit(bool fromCache)
+    {
+        var tags = string.Join(", ", Enumerable.Range(0, 2048).Select(index => $"DETECT_{index}: int"));
+        var code = string.Concat(Enumerable.Repeat("ufo.getTag detection_chance Tag.DETECT_2047; ", 512)) + "return;";
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], fromCache, $$"""
+            extended:
+              tags:
+                Ufo: { {{tags}} }
+            ufos:
+              - type: UFO_TAG_WORK
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: "{{code}}"
+            """);
+        var snapshot = CreateUfoTransitCampaign(content, HalfHour, "UFO_TAG_WORK", 2200).Capture();
+        snapshot = snapshot with
+        {
+            World = snapshot.World with
+            {
+                Ufos = [snapshot.World.Ufos[0] with
+                {
+                    ScriptValues = Enumerable.Range(0, 2048).Select(index => new ScriptValueEntry($"DETECT_{index}", "int", 1)).ToArray(),
+                }],
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(107));
+
+        AssertTimeBlocked(campaign, "Detection script work exceeds the supported half-hour limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CraftTagsSurviveOrderedTransferAndHourlyArrival(bool fromCache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"], fromCache);
+        var snapshot = CreateSnapshot(content, "Craft tag transfer").WithCraft("SHIP", craft => craft with
+        {
+            ScriptValues = [new("DETECT_CRAFT", "int", 37)],
+            Logistics = craft.Logistics! with { Status = "STR_READY", Fuel = 100 },
+        });
+        var source = snapshot.Bases[0] with
+        {
+            Crafts = [snapshot.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP")],
+            Soldiers = [],
+        };
+        snapshot = snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 0, 59, 55),
+            Bases = [source, source with { Id = 2, Name = "Beta", Crafts = [], Soldiers = [], Transfers = [] }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(108));
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(source.Id, LogisticsOperation.Transfer, 2)).Events)).Quote;
+        var row = Assert.Single(quote.Rows, item => item.Kind == CampaignTransferKind.Craft);
+        Assert.IsType<LogisticsOrderCompleted>(Assert.Single(campaign.Execute(
+            new SubmitLogisticsOrder(quote.Id, [new(row.Id, 1)])).Events));
+        snapshot = campaign.Capture();
+        Assert.Equal(37, Assert.Single(Assert.Single(snapshot.Bases[1].Transfers).Craft!.ScriptValues).Value);
+        snapshot = snapshot with
+        {
+            Bases = [snapshot.Bases[0], snapshot.Bases[1] with
+            {
+                Transfers = snapshot.Bases[1].Transfers.Select(item => item with { Hours = 1 }).ToArray(),
+            }],
+        };
+        campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(108));
+        campaign = Reload(content, campaign, 108, "craft-tag-transfer.sav");
+
+        AdvanceUnblocked(campaign, 1);
+
+        Assert.Empty(campaign.Capture().Bases[1].Transfers);
+        Assert.Equal(37, Assert.Single(Assert.Single(campaign.Capture().Bases[1].Crafts).ScriptValues).Value);
+        Reload(content, campaign, 108, "craft-tag-arrival.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeletedCraftTagsDoNotResurrectDuringOpaqueFieldRewrites(bool logistics)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-detection-tags.rul"]);
+        var snapshot = CreateSnapshot(content, "Craft tag rewrite").WithCraft("SHIP", craft => craft with
+        {
+            ScriptValues = [new("DETECT_CRAFT", "int", 37)],
+            Logistics = logistics ? craft.Logistics : null,
+        });
+        var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot);
+        var line = yaml.Split('\n').Single(item => item.Contains("type: SHIP", StringComparison.Ordinal));
+        yaml = yaml.Replace(line, line + "\n" + new string(' ', line.IndexOf("type:", StringComparison.Ordinal)) +
+            "auditOpaque: retained", StringComparison.Ordinal);
+        var loaded = TestFixtures.LoadLogisticsSave(yaml, content, seed: 109, name: "craft-tag-opaque.sav");
+        snapshot = loaded.Campaign.Capture().WithCraft("SHIP", craft => craft with { ScriptValues = [] });
+
+        for (var cycle = 0; cycle < 3; cycle++)
+        {
+            yaml = OxceSaveAdapter.EmitLoadedCampaign(snapshot, loaded.Source);
+            loaded = TestFixtures.LoadLogisticsSave(yaml, content, seed: 109, name: "craft-tag-cleared.sav");
+            snapshot = loaded.Campaign.Capture();
+            Assert.Contains("auditOpaque: retained", yaml, StringComparison.Ordinal);
+            Assert.DoesNotContain("DETECT_CRAFT:", yaml, StringComparison.Ordinal);
+            Assert.Empty(snapshot.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").ScriptValues);
+        }
     }
 
     private static CampaignTime HalfHour => new(1, 1, 1, 1999, 1, 29, 55);

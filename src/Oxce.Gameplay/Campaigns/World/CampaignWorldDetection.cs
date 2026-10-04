@@ -86,7 +86,7 @@ internal sealed partial class CampaignWorld
                     ufo.Status == UfoStatus.Landed ? 2 : 1);
                 if (reason is not null) return reason;
                 if (ReserveDetectionScriptWork(ufo.RuleId, highest, ref detectionWork, ref detectionCraftSources,
-                        ref detectionWeaponSlots) is { } scriptWorkReason) return scriptWorkReason;
+                        ref detectionWeaponSlots, ufo.ScriptValues.Count) is { } scriptWorkReason) return scriptWorkReason;
                 if (!ufo.Detected && !rule.NoAlert && !_ignoredUfoContacts.Contains(ufo.Id))
                 {
                     if (ufo.Id == 0 && !PlannedHuntMarker(ufo)) possibleMarkerIds++;

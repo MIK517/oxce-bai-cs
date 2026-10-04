@@ -999,3 +999,18 @@ The revised 4c headless acceptance gate remains open; 4d is untouched.
   are retained. Damage percentage, script values, remaining providers and loop
   forecasts still require subsequent slices. The headless gate stays open;
   branch 4d remains untouched.
+
+## Detection tags and research cycle audit (2026-10-04)
+
+Three slices add craft instance tag persistence, typed rule/mod/campaign tag
+providers and research-aware detection. SavedGame::isResearchedScript explicitly
+ignores debug mode; rule lookup preserves canonical pointer identity and null
+defaults. The research fixtures exposed host-null/literal-null VM equality,
+which is fixed with failing-before-fix regressions in both operand orders.
+
+Batch audit reproduced an uncharged UFO tag-list scan; saved tag reads now share
+the half-hour execution budget. Fresh/cache regressions stop before mutation.
+Actual craft transfer orders, hourly arrivals and repeated source-preserving
+rewrites retain tags and opaque fields, while deleted tags stay deleted.
+All 1,966 root tests pass with zero failures/skips, including private corpus and
+oracle checksum tests. The 4c headless gate remains open; 4d is untouched.

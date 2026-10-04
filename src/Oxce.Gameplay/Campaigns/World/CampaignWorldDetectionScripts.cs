@@ -36,7 +36,7 @@ internal sealed partial class CampaignWorld
         var plan = campaign.Content.EventPlans.FirstOrDefault(candidate => candidate.ParserName == parser)?.Plan;
         if (artifact is null && (plan is null || plan.Count == 0))
         {
-            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, false);
+            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, [], 0, 0, 0, false);
             return identity;
         }
         if (!_detectionDefaults.TryGetValue(fromCraft, out var fallback))
@@ -53,6 +53,7 @@ internal sealed partial class CampaignWorld
         HashSet<int> providers = [];
         long stepBound = 0;
         var radarQueries = 0;
+        var ufoTagQueries = 0;
         var shieldStats = false;
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
             .Append(program).Concat(plan?.After.Select(item => item.Program) ?? []))
@@ -62,7 +63,10 @@ internal sealed partial class CampaignWorld
                 if ((CoreScriptOperation)instruction.Operation.Value == CoreScriptOperation.HostCall)
                 {
                     var bindingId = instruction.Operands[0].Scalar;
-                    var bindingName = candidate.Bindings.First(binding => binding.Id.Value == bindingId).Name;
+                    var declaration = candidate.Bindings.First(binding => binding.Id.Value == bindingId);
+                    var bindingName = declaration.Name;
+                    if (bindingName == "Ufo.getTag" && campaign.Content.Tags.Types.Any(type =>
+                        type.Id.Value == declaration.Parameters[2].Type.Id.Value && type.Name == "Ufo")) ufoTagQueries++;
                     if (bindingName is "Craft.Stats.getRadarRange" or "Craft.Stats.getRadarChance") radarQueries++;
                     if (bindingName is "Ufo.getShieldMax" or "Ufo.getShieldPercentage") shieldStats = true;
                 }
@@ -75,7 +79,7 @@ internal sealed partial class CampaignWorld
                 }
             _detectionFrame.Prepare(candidate);
         }
-        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, radarQueries, shieldStats);
+        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray(), stepBound, radarQueries, ufoTagQueries, shieldStats);
         return result;
     }
 
@@ -131,11 +135,11 @@ internal sealed partial class CampaignWorld
     }
 
     private string? ReserveDetectionScriptWork(string ruleId, CampaignTimeTrigger highest,
-        ref long work, ref int craftSources, ref int weaponSlots)
+        ref long work, ref int craftSources, ref int weaponSlots, int ufoTagCount = 0)
     {
         var fromBase = GetDetectionScript(ruleId, false);
         var fromCraft = GetDetectionScript(ruleId, true);
-        work += fromBase.StepBound * campaign.BaseStates.Count;
+        work += (fromBase.StepBound + (long)fromBase.UfoTagQueries * ufoTagCount) * campaign.BaseStates.Count;
         if (fromCraft.StepBound != 0)
         {
             if (craftSources < 0)
@@ -159,11 +163,11 @@ internal sealed partial class CampaignWorld
                 // Fresh research/production craft have no auto-patrol order and cannot
                 // join this detection pass. Existing/arriving orders can relaunch.
             }
-            work += (fromCraft.StepBound + (long)fromCraft.RadarQueries * weaponSlots) * craftSources;
+            work += (fromCraft.StepBound + (long)fromCraft.RadarQueries * weaponSlots + (long)fromCraft.UfoTagQueries * ufoTagCount) * craftSources;
         }
         return work > MaximumAlienBaseChecks ? "Detection script work exceeds the supported half-hour limit." : null;
     }
 
     private sealed record DetectionScript(ScriptProgram? Program, ScriptEventPlan? Plan, string? Unavailable,
-        ScriptHostBindings Providers, string[] InputNames, long StepBound, int RadarQueries, bool ShieldStats);
+        ScriptHostBindings Providers, string[] InputNames, long StepBound, int RadarQueries, int UfoTagQueries, bool ShieldStats);
 }
