@@ -286,12 +286,15 @@ public sealed class StrategicWorldEnduranceTests
         TestFixtures.LoadVerifiedManifest("strategic-detection-numeric");
         TestFixtures.LoadVerifiedManifest("strategic-detection-damage");
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        TestFixtures.LoadVerifiedManifest("strategic-world");
     }
 
     private const string QueryRules = """
         items:
           - type: QUERY_ITEM
             damageAlter: {ToHealth: 0.5}
+          - type: UNRELATED_UNSAFE_QUERY_ITEM
+            damageAlter: {ToHealth: 1.0e100}
         ufos:
           - type: UFO_SCOUT
             scripts:
@@ -300,12 +303,43 @@ public sealed class StrategicWorldEnduranceTests
                 var text copied name;
                 var ptr RuleItem item;
                 var ptr RuleDamageType damage;
+                var ptr RuleItem next;
+                var ptr Ufo absent null;
+                var text identity;
                 var ptr RuleResearch topic;
                 var ptr Time time;
                 var int power 39;
                 var int value;
                 rules.getRuleItem item copied;
+                item.getType identity;
+                rules.getRuleItem next identity;
+                next.getType identity;
+                rules.getRuleItem item identity;
+                if neq identity "QUERY_ITEM"; return DETECTION_NONE 0; end;
                 item.getDamageType damage;
+                if eq identity "UNRELATED_UNSAFE_QUERY_ITEM";
+                  ufo.getDamagePercentage value;
+                  div value 0;
+                end;
+                absent.getDamagePercentage value;
+                if neq value 0; return DETECTION_NONE 0; end;
+                absent.Stats.getArmor value;
+                if neq value 0; return DETECTION_NONE 0; end;
+                set power distance; div power 2;
+                damage.getDamageToHealth value distance;
+                if neq value power; return DETECTION_NONE 0; end;
+                set power already_tracked; div power 2;
+                damage.getDamageToHealth value already_tracked;
+                if neq value power; return DETECTION_NONE 0; end;
+                ufo.getAltitude power;
+                damage.getDamageToHealth value power;
+                div power 2;
+                if neq value power; return DETECTION_NONE 0; end;
+                ufo.getStatus power;
+                damage.getDamageToHealth value power;
+                div power 2;
+                if neq value power; return DETECTION_NONE 0; end;
+                set power 39;
                 damage.getDamageToHealth value power;
                 if neq value 19; return DETECTION_NONE 0; end;
                 set power value; add power 1; div power 2; bit_and power 63;
