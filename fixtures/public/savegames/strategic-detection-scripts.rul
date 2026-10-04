@@ -1,0 +1,33 @@
+# Exact caller inputs are pinned by strategic-detection-scripts.json.
+ufos:
+  - type: UFO_SCRIPT_BASE
+    speedMax: 2200
+    damageMax: 50
+    missionScore: 3
+    scripts:
+      detectUfoFromBase: |
+        set detection_type DETECTION_HYPERWAVE;
+        set detection_chance 100;
+        return detection_type detection_chance;
+  - type: UFO_SCRIPT_CRAFT
+    speedMax: 2200
+    damageMax: 50
+    scripts:
+      detectUfoFromCraft: |
+        set detection_type DETECTION_RADAR;
+        set detection_chance 100;
+        return detection_type detection_chance;
+  - type: UFO_SCRIPT_INPUTS
+    speedMax: 2200
+    damageMax: 50
+    scripts:
+      detectUfoFromBase: |
+        if eq radar_total_strength 100;
+          set detection_type DETECTION_RADAR;
+          set detection_chance radar_max_distance;
+          div detection_chance 10;
+        else;
+          set detection_type DETECTION_NONE;
+          set detection_chance 0;
+        end;
+        return detection_type detection_chance;
