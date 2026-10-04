@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 135 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 136 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 86 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -471,6 +471,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `WorldSnapshot` (record) [WorldContracts.cs](../src/Oxce.Gameplay/Campaigns/World/WorldContracts.cs) - The strategic world graph: alien missions and the targets they created, the waypoints the player placed, and the alien strategy table.
 - `UfoDetectionResult` (enum) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - Detection outcome bits.
 - `WorldRadarFacility` (record struct) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - A completed radar facility as seen by `Base::detect`.
+- `WorldUfoDetectionInputs` (record struct) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - The outputs and scalar inputs passed to the UFO detection script worker.
 - `WorldBaseFacility` (record struct) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - A completed facility as seen by `Base::getDetectionChance`.
 - `WorldDetection` (class) [WorldDetection.cs](../src/Oxce.Gameplay/Campaigns/World/WorldDetection.cs) - UFO detection arithmetic.
 - `WorldEventTiming` (class) [WorldEventTiming.cs](../src/Oxce.Gameplay/Campaigns/World/WorldEventTiming.cs) - SavedGame::spawnEvent and GeoscapeEvent::think at reference revision 4df3a5e.
@@ -1012,14 +1013,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 135 files.
+`tests/Oxce.CompatibilityTests` - 136 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>133 test classes</summary>
+<details><summary>134 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1112,6 +1113,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldCraftRadarTests` ([StrategicWorldCraftRadarTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftRadarTests.cs))
 - `StrategicWorldCraftShieldTests` ([StrategicWorldCraftShieldTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCraftShieldTests.cs))
 - `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs))
+- `StrategicWorldDetectionScriptInputsTests` ([StrategicWorldDetectionScriptInputsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionScriptInputsTests.cs))
 - `StrategicWorldEarthRectangleOriginTests` ([StrategicWorldEarthRectangleOriginTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEarthRectangleOriginTests.cs))
 - `StrategicWorldEnduranceTests` ([StrategicWorldEnduranceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEnduranceTests.cs))
 - `StrategicWorldEscortSpawnTests` ([StrategicWorldEscortSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEscortSpawnTests.cs))
@@ -1393,6 +1395,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-alien-base-hunt-timer](../fixtures/manifests/strategic-alien-base-hunt-timer.json) | cpp-reference | `savegames/strategic-alien-base-hunt-timer.expected.json` | `StrategicWorldAlienBaseHuntingTests` ([StrategicWorldAlienBaseHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseHuntingTests.cs)) |
 | [strategic-alien-base-monthly](../fixtures/manifests/strategic-alien-base-monthly.json) | cpp-reference | `savegames/strategic-alien-base-monthly.expected.json` | `StrategicWorldAlienBaseMonthlyTests` ([StrategicWorldAlienBaseMonthlyTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldAlienBaseMonthlyTests.cs)) |
 | [strategic-crashed-ufo](../fixtures/manifests/strategic-crashed-ufo.json) | cpp-reference | `savegames/strategic-crashed-ufo.expected.json` | `StrategicWorldCrashedUfoTests` ([StrategicWorldCrashedUfoTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldCrashedUfoTests.cs)) |
+| [strategic-detection-scripts](../fixtures/manifests/strategic-detection-scripts.json) | cpp-reference | `savegames/strategic-detection-scripts.expected.json` | `StrategicWorldDetectionScriptInputsTests` ([StrategicWorldDetectionScriptInputsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionScriptInputsTests.cs)) |
 | [strategic-event-scripts](../fixtures/manifests/strategic-event-scripts.json) | cpp-reference | `savegames/strategic-event-scripts.expected.json` | `StrategicEventScriptTests` ([StrategicEventScriptTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventScriptTests.cs)) |
 | [strategic-event](../fixtures/manifests/strategic-event.json) | cpp-reference | `savegames/strategic-event.expected.json` | `StrategicEventSchedulingTests` ([StrategicEventSchedulingTests.cs](../tests/Oxce.CompatibilityTests/StrategicEventSchedulingTests.cs))<br>`StrategicWorldSiteExpiryTests` ([StrategicWorldSiteExpiryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldSiteExpiryTests.cs)) |
 | [strategic-hunting](../fixtures/manifests/strategic-hunting.json) | cpp-reference | `savegames/strategic-hunting.expected.json` | `StrategicWorldEscortSpawnTests` ([StrategicWorldEscortSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldEscortSpawnTests.cs))<br>`StrategicWorldHuntingTests` ([StrategicWorldHuntingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldHuntingTests.cs)) |

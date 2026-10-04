@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "strategic-detection-scripts",
+  "description": "Exact Base::detect and Craft::detect script caller inputs, default outputs, hyperwave and final roll ordering, range boundaries and output substitution.",
+  "reference": {
+    "kind": "cpp-reference",
+    "repository": "oxce-bai",
+    "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
+    "buildOptions": {
+      "sources": "src/Savegame/Base.cpp (detect), Craft.cpp (detect), Ufo.cpp (DetectUfoFromBaseParser, DetectUfoFromCraftParser)",
+      "probe": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
+      "capture": "tools/capture-strategic-detection-scripts-reference.ps1",
+      "compiler": "MSVC x64 /std:c++20; caller methods inserted verbatim, recording Worker stub"
+    }
+  },
+  "inputs": [
+    {
+      "path": "fixtures/reference-probes/savegames/strategic_detection_scripts_probe.cpp",
+      "size": 4018,
+      "sha256": "e759d55aaa20c2888fe52cc4a06c9947495099fbe420004faa9edb97936f08da"
+    },
+    {
+      "path": "tools/capture-strategic-detection-scripts-reference.ps1",
+      "size": 2766,
+      "sha256": "0d6b5d33aaddf94a7f7e20d0b9b51f34b09fae477c3721ac2bdf37799ad3f42e"
+    }
+  ],
+  "normalization": [
+    "compact-json"
+  ],
+  "expected": "fixtures/expected/savegames/strategic-detection-scripts.expected.json"
+}

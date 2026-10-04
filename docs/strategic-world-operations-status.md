@@ -352,3 +352,12 @@ remain explicitly guarded. Branch 5 still owns interception/deployment, branch 6
 full monthly evaluation and campaign-wide event consequences, and Phase 7 owns tactical
 execution. The original combined branch 4 acceptance gates 4c closure; the revised 4b
 gate does not establish full world simulation or remove the playable month-boundary guard.
+
+## Detection script caller projections (2026-10-04)
+
+Base::detect and Craft::detect caller inputs now have an immutable allocation-free
+projection. The pinned strategic-detection-scripts probe inserts both methods
+verbatim and records the worker's initial outputs, scalar inputs, radar boundary
+and hyperwave/final-roll order. Completed facilities contribute maximum ranges
+even outside coverage; unfinished facilities are excluded by the owning caller.
+The live detection VM remains the next slice.
