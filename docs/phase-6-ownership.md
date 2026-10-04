@@ -898,3 +898,10 @@ and five audits, while the revised 4c headless completion gate remains open.
   InvalidDataException; endless all-zero cycles retain their explicit unavailable
   reason. Both stop before mutation/RNG. The unchanged existing malformed-input
   regression verifies this separately from the new legacy arrival coverage.
+
+- Batch 2 slice 1: registered production-owned counter forecasts bound prepaid
+  craft completions and resource-dependent followups before world allocations.
+  The allocator's live/transfer identity floor is preserved; fallback staffing,
+  craft consumption and excessive work/population retain precise guards.
+  Reference: Production::step/getAmountProduced and existing pinned production
+  fixture. Fresh/cache proofs check bounds, unchanged RNG/state and reload.
