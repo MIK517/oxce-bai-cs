@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "script-declaration",
-  "description": "Native parser declaration initializer overload compatibility for detection scripts. Synthetic pointer types use the actual ScriptBind default registrations, including typed tags. Valid pointer/text/scalar/tag declarations and invalid cross-type or readonly-to-editable initializers are compiled and valid cases executed. Audit cases cover pointers to primitive, tag and Position values, including absent initializers. Position storage is synthetic; native raw value registration and BindValue templates execute unchanged.",
+  "description": "Native parser declaration initializer overload compatibility for detection scripts. Synthetic pointer types use the actual ScriptBind default registrations, including typed tags. Valid pointer/text/scalar/tag declarations and invalid cross-type or readonly-to-editable initializers are compiled and valid cases executed. Audit cases cover pointers to primitive, tag and Position values, including absent initializers. Position storage is synthetic; native raw value registration and BindValue templates execute unchanged. Native explicit pointer/editable-pointer/tag null assignment and Mod null repair are captured as well.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/scripting/script_declaration_probe.cpp",
-      "size": 6305,
-      "sha256": "11f6e5ce9b0f700abd8cdbe050e3d7b987fe77bf35af7329559cc9fb71d74830"
+      "size": 6700,
+      "sha256": "88182c65d677da7dee0b9751e3bcd34df81a20c2e0a60b9ba0f2f308e3117565"
     },
     {
       "path": "tools/capture-script-declaration-reference.ps1",

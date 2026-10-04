@@ -680,18 +680,22 @@ public sealed class ScriptCompiler
         ScriptStatementSyntax statement,
         IReadOnlyList<TypedOperand> arguments)
     {
-        if (statement.Operation.Lexeme != "set" || arguments.Count != 2 ||
-            arguments[0].Operand.Kind != ScriptOperandKind.Register ||
-            !arguments[0].Type.IsWritable || arguments[0].Type.Id == ScriptPrimitiveTypes.Scalar ||
-            arguments[0].Type.Id != arguments[1].Type.Id ||
-            arguments[0].Type.IsReference != arguments[1].Type.IsReference ||
-            arguments[0].Type.IsEditableReference && !arguments[1].Type.IsEditableReference)
+        if (statement.Operation.Lexeme != "set" || arguments.Count != 2) return false;
+        var target = arguments[0].Type;
+        var source = arguments[1].Type;
+        var nullSource = source.Id == ScriptPrimitiveTypes.Null &&
+            (target.IsReference || _definition.ApiCatalog.TryGetType(target.Id, out var definition) &&
+                definition!.Name.EndsWith(".Tag", StringComparison.Ordinal));
+        if (arguments[0].Operand.Kind != ScriptOperandKind.Register || !target.IsWritable ||
+            target.Id == ScriptPrimitiveTypes.Scalar || !nullSource &&
+            (target.Id != source.Id || target.IsReference != source.IsReference ||
+                target.IsEditableReference && !source.IsEditableReference))
         {
             return false;
         }
-        var sourceModifiers = arguments[1].Type.Modifiers &
+        var sourceModifiers = (nullSource ? target.Modifiers : source.Modifiers) &
             ~(ScriptTypeModifier.Register | ScriptTypeModifier.Writable);
-        var sourceType = new ScriptTypeRef(arguments[1].Type.Id, sourceModifiers);
+        var sourceType = new ScriptTypeRef(target.Id, sourceModifiers);
         var declaration = new ScriptBindingDeclaration(
             new ScriptBindingId(3_000_000 + arguments[0].Type.Id.Value * 2 +
                 (arguments[0].Type.IsEditableReference ? 1 : 0)),

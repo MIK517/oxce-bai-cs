@@ -48,6 +48,62 @@ public sealed class StrategicWorldDetectionUnitRulesTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SmokeQueriesAcceptProvenAliasesAndRepairNullBranches(bool fromCache, bool fromCraft)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "smokeReduction"))
+        {
+            var prefix = "var ptr RuleMod original rules; var ptr RuleMod alias original; " +
+                $"var int smoke {row[1].GetInt32()}; ";
+            var query = $"alias.getSmokeReduction smoke; if neq smoke {row[2].GetInt32()}; " +
+                "return DETECTION_NONE 0; end; return DETECTION_RADAR 100;";
+            AssertDetectionReadScript(prefix + "set alias original; " + query, fromCache, fromCraft,
+                $"maxViewDistance: {row[0].GetInt32()}");
+        }
+        AssertDetectionReadScript("var ptr RuleMod alias rules; var int smoke 15; " +
+            "if eq already_tracked 0; set alias null; end; " +
+            "if eq alias null; set alias rules; end; alias.getSmokeReduction smoke; " +
+            "if neq smoke 5; return DETECTION_NONE 0; end; return DETECTION_RADAR 100;",
+            fromCache, fromCraft, "maxViewDistance: 20");
+        AssertDetectionReadScript("var ptr RuleMod alias null; var int smoke 15; " +
+            "if neq alias null; alias.getSmokeReduction smoke; end; return DETECTION_RADAR 100;",
+            fromCache, fromCraft);
+    }
+
+    [Theory]
+    [InlineData("var ptr RuleMod alias rules; if eq already_tracked 0; set alias null; end; alias.getSmokeReduction detection_chance; return;")]
+    [InlineData("var ptr RuleMod alias rules; loop var i 2; alias.getSmokeReduction detection_chance; set alias null; end; return;")]
+    public void PossibleNullAliasesStillStopBeforeMutation(string code)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: $$"""
+            ufos:
+              - type: UFO_SMOKE_ALIAS_GUARD
+                speedMax: 2200
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: '{{code}}'
+            """);
+        AssertTimeBlocked(CreateUfoTransitCampaign(content,
+            new CampaignTime(1, 1, 1, 1999, 1, 29, 55), "UFO_SMOKE_ALIAS_GUARD", 2200),
+            "Detection smoke reduction requires a guaranteed Mod receiver.");
+    }
+
+    [Fact]
+    public void ModReceiverForecastStopsAtItsWorkBudget()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"]);
+        var program = Oxce.Scripting.Compilation.ScriptCompiler.Compile("rules.getSmokeReduction detection_chance; return;",
+            Oxce.Scripting.Compilation.ScriptParserDefinition.FromCatalog("detectUfoFromBase")).Program!;
+        Assert.Equal("Detection Mod receiver forecast exceeds the supported work limit.",
+            Oxce.Gameplay.Campaigns.World.WorldDetectionModSafety.UnavailableReason(program, content.RuntimeRules,
+                Enumerable.Repeat(1, program.Instructions.Count).ToArray(), 1));
+    }
+
+    [Theory]
     [InlineData("var ptr RuleMod absent null; absent.getSmokeReduction detection_chance; return;")]
     [InlineData("var ptr RuleMod absent; absent.getSmokeReduction detection_chance; return;")]
     public void UnsafeSmokeReceiverStopsBeforeTickMutation(string code)
