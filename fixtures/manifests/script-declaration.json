@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "script-declaration",
-  "description": "Native parser declaration initializer overload compatibility for detection scripts. Synthetic pointer types use the actual ScriptBind default registrations, including typed tags. Valid pointer/text/scalar/tag declarations and invalid cross-type or readonly-to-editable initializers are compiled and valid cases executed.",
+  "description": "Native parser declaration initializer overload compatibility for detection scripts. Synthetic pointer types use the actual ScriptBind default registrations, including typed tags. Valid pointer/text/scalar/tag declarations and invalid cross-type or readonly-to-editable initializers are compiled and valid cases executed. Audit cases cover pointers to primitive, tag and Position values, including absent initializers. Position storage is synthetic; native raw value registration and BindValue templates execute unchanged.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Script.cpp::parseVariable/parseVariableImpl/parseOverloadProc; ScriptBind.h::Bind/ArgSelector/BindSet; Script.h::ArgCompatible",
+      "sources": "Script.cpp::parseVariable/parseVariableImpl/parseOverloadProc; ScriptBind.h::Bind/ArgSelector/BindSet; Script.h::ArgCompatible; Tile.cpp::ScriptRegister raw Position value and BindValue registration",
       "capture": "tools/capture-script-declaration-reference.ps1",
       "compiler": "MSVC x64 /std:c++20; full native Script.cpp and Yaml.cpp"
     }
@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/scripting/script_declaration_probe.cpp",
-      "size": 5420,
-      "sha256": "0cc4d6a28820a09ba77a59f11f590e31dd947037d8473d1163b23c4ac5f03b04"
+      "size": 6305,
+      "sha256": "11f6e5ce9b0f700abd8cdbe050e3d7b987fe77bf35af7329559cc9fb71d74830"
     },
     {
       "path": "tools/capture-script-declaration-reference.ps1",
