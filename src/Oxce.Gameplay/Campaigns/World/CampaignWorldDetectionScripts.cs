@@ -29,7 +29,7 @@ internal sealed partial class CampaignWorld
         var plan = campaign.Content.EventPlans.FirstOrDefault(candidate => candidate.ParserName == parser)?.Plan;
         if (artifact is null && (plan is null || plan.Count == 0))
         {
-            var identity = new DetectionScript(null, null, null);
+            var identity = new DetectionScript(null, null, null, ScriptHostBindings.Empty, []);
             _detectionScripts.Add(key, identity);
             return identity;
         }
@@ -43,13 +43,18 @@ internal sealed partial class CampaignWorld
         var program = artifact?.Program ?? fallback;
         var reason = plan is not null && plan.Count + 1 > ScriptLimits.DefaultMaximumEventExecutions
             ? "Detection script exceeds the supported event execution limit." : null;
+        var builder = new ScriptHostBindingsBuilder();
+        HashSet<int> providers = [];
         foreach (var candidate in (plan?.Before.Select(item => item.Program) ?? [])
             .Append(program).Concat(plan?.After.Select(item => item.Program) ?? []))
         {
-            reason ??= WorldDetectionScriptSafety.UnavailableReason(candidate, static _ => false);
+            reason ??= WorldDetectionScriptSafety.UnavailableReason(candidate, DetectionBindingSupported);
+            foreach (var binding in candidate.Bindings)
+                if (DetectionBindingSupported(binding.Name) && providers.Add(binding.Id.Value))
+                    builder.Add(binding.Id, (_, arguments) => InvokeDetectionBinding(binding.Name, arguments));
             _detectionFrame.Prepare(candidate);
         }
-        var result = new DetectionScript(program, plan, reason);
+        var result = new DetectionScript(program, plan, reason, builder.Build(), program.Registers.Where(static register => register.IsInput).Select(static register => register.Name).ToArray());
         _detectionScripts.Add(key, result);
         return result;
     }
@@ -61,10 +66,9 @@ internal sealed partial class CampaignWorld
         if (script.Program is not { } program) return (caller.Type, caller.Chance);
         if (script.Unavailable is not null) throw new InvalidOperationException("Detection script was not preflighted.");
         var inputIndex = 0;
-        foreach (var register in program.Registers)
+        foreach (var inputName in script.InputNames)
         {
-            if (!register.IsInput) continue;
-            _detectionInputs[inputIndex++] = register.Name switch
+            _detectionInputs[inputIndex++] = inputName switch
             {
                 "already_tracked" => ScriptRuntimeValue.FromScalar(caller.AlreadyTracked ? 1 : 0),
                 "distance" => ScriptRuntimeValue.FromScalar(caller.Distance),
@@ -87,12 +91,12 @@ internal sealed partial class CampaignWorld
             if (script.Plan is { } plan)
             {
                 var outcome = ScriptEventRunner.Execute(plan, program, _detectionOutputs, _detectionOutputs,
-                    _detectionFrame, inputs: inputs);
+                    _detectionFrame, hostBindings: script.Providers, inputs: inputs);
                 if (!outcome.Succeeded) throw new InvalidOperationException($"Preflighted detection event failed: {outcome.FailureMessage}");
             }
             else
             {
-                var outcome = ScriptVm.ExecuteWithInputs(program, _detectionOutputs, inputs, _detectionOutputs, _detectionFrame);
+                var outcome = ScriptVm.ExecuteWithInputs(program, _detectionOutputs, inputs, _detectionOutputs, _detectionFrame, hostBindings: script.Providers);
                 if (!outcome.Succeeded) throw new InvalidOperationException($"Preflighted detection script failed: {outcome.FailureMessage}");
             }
             return ((UfoDetectionResult)_detectionOutputs[0].Scalar, _detectionOutputs[1].Scalar);
@@ -100,5 +104,6 @@ internal sealed partial class CampaignWorld
         finally { Array.Clear(_detectionInputs); Array.Clear(_detectionOutputs); }
     }
 
-    private sealed record DetectionScript(ScriptProgram? Program, ScriptEventPlan? Plan, string? Unavailable);
+    private sealed record DetectionScript(ScriptProgram? Program, ScriptEventPlan? Plan, string? Unavailable,
+        ScriptHostBindings Providers, string[] InputNames);
 }

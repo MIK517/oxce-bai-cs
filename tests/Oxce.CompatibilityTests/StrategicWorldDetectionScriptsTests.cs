@@ -68,7 +68,7 @@ public sealed class StrategicWorldDetectionScriptsTests
     [InlineData("loop var i 10; end; return;", "Detection script requires a bounded loop forecast.")]
     [InlineData("div detection_chance distance; return;", "Detection script requires a nonzero divisor forecast.")]
     [InlineData("div detection_chance 0; return;", "Detection script requires a nonzero divisor forecast.")]
-    [InlineData("ufo.getDamage detection_chance; return;", "Detection script requires unsupported binding Ufo.getDamage.")]
+    [InlineData("ufo.getDamagePercentage detection_chance; return;", "Detection script requires unsupported binding Ufo.getDamagePercentage.")]
     public void UnsafeScriptsBlockBeforeTickMutates(string code, string reason)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules: $$"""
