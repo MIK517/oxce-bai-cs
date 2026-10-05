@@ -1031,5 +1031,15 @@ std::cout << '[' << initial << ',' << (bonus?"true":"false") << ',' << (duplicat
 bool changeFirst=true; for(auto* topic:primary) { for(auto& name:topic->increases) { if(!changeFirst) std::cout << ','; changeFirst=false; std::cout << "true"; } for(auto& name:topic->decreases) { if(!changeFirst) std::cout << ','; changeFirst=false; std::cout << "false"; } }
 std::cout << "]]";
 }
+std::cout << "],\"researchCounterSequentialBaseRows\":["; first=true;
+for(int initial:{-1,1,3,20}) for(int bases:{1,2}) {
+if(!first) std::cout << ','; first=false;
+ResearchRule topics[3]; auto* source=&topics[0]; auto* reward=&topics[1]; auto* other=&topics[2]; source->name="A_COUNTER_SOURCE"; reward->name="B_COUNTER_REWARD"; other->name="C_COUNTER_OTHER";
+source->sequential=true; source->free={reward,other}; source->increases={"COUNTER_TRACE"}; source->decreases={"COUNTER_TRACE","COUNTER_TRACE"}; reward->increases={"COUNTER_TRACE","COUNTER_TRACE"}; reward->decreases={"COUNTER_TRACE"};
+SavedGame saved; Mod mod; mod.rules={source,reward,other}; Base base; if(initial!=-1) saved._ids["COUNTER_TRACE"]=initial;
+for(int index=0;index<bases;index++) { auto* bonus=saved.selectGetOneFree(source); if(bonus) saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end()); for(auto* topic:primary) saved.applyPrimaryCounters(topic); }
+std::cout << '[' << initial << ',' << bases << ',' << saved._ids["COUNTER_TRACE"] << ']';
+}
 std::cout << "]}\n";
 }

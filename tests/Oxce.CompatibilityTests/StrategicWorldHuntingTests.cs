@@ -13,6 +13,48 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false, "single")]
+    [InlineData(true, "single")]
+    [InlineData(false, "sequential")]
+    [InlineData(true, "sequential")]
+    [InlineData(false, "identical")]
+    [InlineData(true, "identical")]
+    public void DeterministicResearchCountersSelectNativeProducedCraftIdentity(bool cache, string choice)
+    {
+        var free = choice == "single" ? "B_COUNTER_REWARD" : choice == "sequential" ? "B_COUNTER_REWARD, C_COUNTER_OTHER" : "B_COUNTER_REWARD, B_COUNTER_REWARD";
+        var content = Load(cache, $"research: [{{name: A_COUNTER_SOURCE, cost: 1, sequentialGetOneFree: {(choice == "sequential" ? "true" : "false")}, getOneFree: [{free}], increaseCounter: [COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE, COUNTER_TRACE]}}, {{name: B_COUNTER_REWARD, cost: 1, increaseCounter: [COUNTER_TRACE, COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE]}}, {{name: C_COUNTER_OTHER, cost: 1}}]\ncrafts: [{{type: COUNTER_TRACE, fuelMax: 100, refuelRate: 40}}]\nmanufacture: [{{name: TRACE_BIRTH, category: STR_CRAFT, time: 1, producedItems: {{COUNTER_TRACE: 1}}}}]\nfacilities: [{{type: TRACE_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n");
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var sequential = TestFixtures.Rows(oracle.RootElement, "researchCounterSequentialBaseRows").ToArray();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchOrderedCounterRows").Where(row => row[1].GetBoolean()))
+        {
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+            var ids = new Dictionary<string, int>(initial.NextIds);
+            if (row[0].GetInt32() != -1) ids["COUNTER_TRACE"] = row[0].GetInt32();
+            initial = initial with
+            {
+                NextIds = ids,
+                Bases = [initial.Bases[0] with
+                {
+                    Facilities = [.. initial.Bases[0].Facilities, new("TRACE_LAB_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Research = [new("A_COUNTER_SOURCE", 1, 0, 1)],
+                    Productions = [new("TRACE_BIRTH", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+                }]
+            };
+            if (row[2].GetBoolean()) initial = initial with { Bases = [initial.Bases[0], initial.Bases[0] with { Id = 1, Crafts = [], Soldiers = [], Productions = [] }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "counter-birth-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var completingBases = choice == "sequential" && row[2].GetBoolean() ? 2 : 1;
+            Assert.Equal(completingBases, result.Events.OfType<CampaignResearchCompleted>().Count());
+            var born = Assert.Single(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "COUNTER_TRACE");
+            var expected = choice == "sequential" ? sequential.Single(value => value[0].GetInt32() == row[0].GetInt32() && value[1].GetInt32() == completingBases)[2].GetInt32() : row[3].GetInt32();
+            Assert.Equal(expected, born.Id);
+            Assert.Equal(born.Id + 1, campaign.Capture().NextIds["COUNTER_TRACE"]);
+            Reload(content, campaign, 81, "counter-birth-after.sav");
+        }
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void DailyResearchCounterProjectionMatchesNativePrimaryOrdering(bool cache)
