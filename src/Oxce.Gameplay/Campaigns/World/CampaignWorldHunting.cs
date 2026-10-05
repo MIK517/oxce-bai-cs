@@ -10,6 +10,7 @@ internal sealed partial class CampaignWorld
     private Dictionary<(string TypeId, int Id), CraftLogisticsState>? _huntingCraftForecast;
     private Dictionary<int, List<CampaignState.CraftState>>? _huntingCraftSources;
     private List<WorldPosition>? _escortFlightPositions;
+    private int _escortFlightEndIndex;
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
     private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
 
@@ -30,7 +31,7 @@ internal sealed partial class CampaignWorld
         _huntingForecastWork = 0;
         _huntingCraftForecast = null;
         _huntingCraftSources = null;
-        _escortFlightPositions = null;
+        ResetEscortFlightPositions();
         var due = WorldHunting.RetargetDue(highest, speed, campaign.Content.RuntimeRules.Campaign.HunterKillerFastRetarget);
         long work = 0;
         foreach (var saved in _ufos)
@@ -204,11 +205,23 @@ internal sealed partial class CampaignWorld
         for (var index = _escortFlightPositions.Count; index <= targetIndex; index++)
         {
             var actor = ProjectFlightTarget(UfoForFlight(_ufos[index], highest), highest, buildingPrefix: true);
-            _escortFlightPositions.Add(actor.Status == UfoStatus.Flying && actor.Destination is { } destination
-                ? WorldGeometry.Move(actor.Position, destination.Position, WorldGeometry.RadianSpeed(actor.Speed))
-                : actor.Position);
+            if (index > _escortFlightEndIndex)
+            {
+                _escortFlightPositions.Add(actor.Position);
+                continue;
+            }
+            var flight = ForecastUfoStep(actor, highest);
+            _escortFlightPositions.Add(flight.Position);
+            if (actor.Status == UfoStatus.Flying && flight.Status == UfoStatus.Destroyed)
+                _escortFlightEndIndex = index;
         }
         return _escortFlightPositions[targetIndex];
+    }
+
+    private void ResetEscortFlightPositions()
+    {
+        _escortFlightPositions = null;
+        _escortFlightEndIndex = int.MaxValue;
     }
 
     private int UfoIndex(int uniqueId)

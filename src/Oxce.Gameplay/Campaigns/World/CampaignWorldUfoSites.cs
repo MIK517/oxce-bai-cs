@@ -91,7 +91,8 @@ internal sealed partial class CampaignWorld
         work += SiteDeploymentSelectionWork(wave, rule, area);
         if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
         var candidates = SiteDeploymentCandidates(wave, rule, area);
-        if (candidates.Count == 0) (_suppressedUfoSites ??= []).Add(ufo.UniqueId);
+        if (candidates.Count == 0 && (_suppressedUfoSites ??= []).Add(ufo.UniqueId))
+            ResetEscortFlightPositions(); // Suppression changes a dormant conversion into a terminal arrival.
         work += (long)candidates.Count * (1L + _sites.Count + _alienBases.Count);
         if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
         if (candidates.Count != 0 && (long)_sites.Count + _ufos.Count > 100_000)

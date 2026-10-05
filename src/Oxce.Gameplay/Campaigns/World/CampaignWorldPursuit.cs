@@ -102,9 +102,11 @@ internal sealed partial class CampaignWorld
     // happens after the UFO reaches its old destination and cannot change that arrival position.
     // Preflight neither executes scripts nor consumes RNG.
     private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfo(UfoSnapshot ufo,
+        CampaignTimeTrigger highest) => ForecastUfoStep(ProjectFlightTarget(UfoForFlight(ufo, highest), highest), highest);
+
+    private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfoStep(UfoSnapshot ufo,
         CampaignTimeTrigger highest)
     {
-        ufo = ProjectFlightTarget(UfoForFlight(ufo, highest), highest);
         if (ufo.Status == UfoStatus.Landed)
             return ufo.SecondsRemaining == 5 ? (ufo.Position, UfoStatus.Flying,
                 campaign.Content.RuntimeRules.UfoTrajectories[
