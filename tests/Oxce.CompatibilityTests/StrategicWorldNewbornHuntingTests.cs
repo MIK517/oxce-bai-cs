@@ -166,6 +166,59 @@ public sealed class StrategicWorldNewbornHuntingTests
             }
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void PositiveRadarEscortProofUsesTheLeaderOrigin(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "selectionRows"), row => row[1].GetInt32() == 7 && row[2].GetInt32() == 0);
+        foreach (var nearLeader in new[] { false, true })
+        {
+            var content = Load(cache, true, mode,
+                "crafts: [{type: ESCORT_SPATIAL, speedMax: 6000, damageMax: 100, fuelMax: 1000, patrolWithoutFuel: true}]\n", radar: 300);
+            var initial = Snapshot(content, true).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "ESCORT_SPATIAL",
+                Logistics = craft.Logistics! with
+                {
+                    Damage = 0,
+                    Fuel = 1000,
+                    Weapons = [],
+                    Longitude = nearLeader ? 1.2 : Degrees(10),
+                    Latitude = nearLeader ? 0.6 : Degrees(8)
+                }
+            });
+            initial = initial with
+            {
+                World = initial.World with
+                {
+                    Ufos = [initial.World.Ufos[0] with
+                { Longitude = 1.2, Latitude = 0.6, Speed = 0, SpeedRadian = 0 }]
+                }
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-spatial-before.sav");
+            if (nearLeader)
+            {
+                AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var born = Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER");
+            Assert.False(born.Hunting);
+            Assert.True(born.Escorting);
+            Assert.Equal(9, born.Destination!.UniqueId);
+            Assert.Equal(1.2, born.Longitude);
+            Assert.Equal(0.6, born.Latitude);
+            campaign = Reload(content, campaign, 81, "escort-spatial-after.sav");
+            AdvanceOne(campaign);
+            Reload(content, campaign, 81, "escort-spatial-following.sav");
+        }
+    }
+
     private static RuntimeContent Load(bool cache, bool escort, int mode, string extra = "", int radar = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             ufos:
@@ -306,7 +359,7 @@ public sealed class StrategicWorldNewbornHuntingTests
             World = initial.World with
             {
                 Missions = [initial.World.Missions[0] with { RuleId = "ZERO_RADAR_MISSION", NextWave = 0, SpawnCountdown = 0, LiveUfos = escort ? 1 : 0 }],
-                Ufos = escort ? initial.World.Ufos : [],
+                Ufos = escort ? [initial.World.Ufos[0] with { Longitude = 0.2, Latitude = 0.1 }] : [],
             },
         };
     }
