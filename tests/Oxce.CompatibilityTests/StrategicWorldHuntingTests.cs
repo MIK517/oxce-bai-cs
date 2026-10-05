@@ -990,6 +990,43 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void StockFreeDailyResearchAllowsFuelAndAmmunitionHunterTargets(bool cache, bool ammunition)
+    {
+        var fuelItem = ammunition ? "" : ", refuelItem: SUPPLY";
+        var content = Load(cache, $"crafts: [{{type: STOCK_FREE_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuelItem}}}]\ncraftWeapons: [{{type: STOCK_FREE_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nresearch: [{{name: STOCK_FREE_TOPIC, cost: 1, getOneFree: [STOCK_FREE_BONUS]}}, {{name: STOCK_FREE_BONUS, cost: 1}}]\nfacilities: [{{type: STOCK_FREE_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "STOCK_FREE_RESEARCH_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING", Fuel = 60,
+                Weapons = ammunition ? [new("STOCK_FREE_GUN", 0)] : [],
+                IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+            },
+        }) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with { Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21,
+            Items = new Dictionary<string, int> { ["SUPPLY"] = 1 },
+            Facilities = [.. initial.Bases[0].Facilities, new("STOCK_FREE_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("STOCK_FREE_TOPIC", 1, 0, 1)],
+        }] };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "stock-free-research-before.sav");
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Contains("STOCK_FREE_TOPIC", after.CompletedResearch);
+        Assert.Contains("STOCK_FREE_BONUS", after.CompletedResearch);
+        Assert.Equal(ammunition ? 1 : 0, after.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+        Assert.True(after.World.Ufos[0].Hunting);
+        Assert.Equal("STOCK_FREE_RESEARCH_HUNT", after.World.Ufos[0].Destination!.TypeId);
+        Reload(content, campaign, 81, "stock-free-research-after.sav");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void DailyResearchAmmunitionReuseIsGuardedWithoutItemFuel(bool cache)

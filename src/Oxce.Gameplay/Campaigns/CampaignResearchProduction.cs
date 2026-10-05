@@ -27,6 +27,7 @@ internal interface ICampaignResearchPreflight
 {
     IReadOnlySet<string> GuaranteedResearchAfterDailyProgress();
     IReadOnlySet<string> PossibleResearchAfterDailyProgress();
+    bool DailyItemsUnchanged(ref long work);
 }
 
 /// <summary>World arcs use SavedGame::addFinishedResearch, without daily project side effects.</summary>
