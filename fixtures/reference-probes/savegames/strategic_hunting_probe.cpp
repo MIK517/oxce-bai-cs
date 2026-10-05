@@ -73,6 +73,14 @@ void advance(Base*);
 int getHours() const;
 };
 // TRANSFER_METHOD
+struct BaseFacility {
+struct Rule { Item* item=nullptr; int getAmmoMax() const { return 2; } int getRearmRate() const { return 1; }
+const Item* getAmmoItem() const { return item; } } rule;
+Rule* _rules=&rule; Base* _base=nullptr; int _buildTime=0,_ammo=0; bool _ammoMissingReported=false;
+void resetAmmoMissingReported() { _ammoMissingReported=false; }
+const RuleItem* rearm();
+};
+// FACILITY_REARM
 // IGNORED_METHOD
 // ATTRACTION
 struct Mission { int id=4; int getId() const { return id; } };
@@ -161,6 +169,23 @@ Craft* target=select(&hunter,active);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << ',' << (low?"true":"false") << ','
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"facilityFuelRows\":[";
+serviceFirst=true;
+for(int stock:{0,1,2}) for(int ammo:{0,1,2}) for(int build:{0,1}) for(bool reported:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; BaseFacility facility; ServiceGame game; FuelCaller caller; Ufo hunter;
+base.storage.count=stock; facility._base=&base; facility.rule.item=&item; facility._ammo=ammo; facility._buildTime=build; facility._ammoMissingReported=reported;
+craft._base=&base; craft.rule.fuelItem=&item; craft._fuel=60; craft.id=1; craft.distance=Nautical(100);
+const auto* missing=facility.rearm();
+const auto fuelMissing=craft.refuel(); if(fuelMissing.empty()) autoPatrol(&craft,&game);
+std::vector<Craft*> active;
+if(craft._status=="STR_OUT") { caller.fuel(&craft); active.push_back(&craft); }
+Craft* target=select(&hunter,active);
+std::cout << '[' << stock << ',' << ammo << ',' << build << ',' << (reported?"true":"false") << ','
+<< facility._ammo << ',' << (facility._ammoMissingReported?"true":"false") << ',' << (missing?"true":"false") << ','
+<< base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "],\"invalidArrivalRows\":[";

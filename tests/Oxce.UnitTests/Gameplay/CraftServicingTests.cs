@@ -9,6 +9,22 @@ namespace Oxce.UnitTests.Gameplay;
 public sealed class CraftServicingTests
 {
     [Theory]
+    [InlineData(-1, 1, 1)]
+    [InlineData(0, -1, 1)]
+    [InlineData(0, 1, -1)]
+    public void FacilityServiceRejectsNegativeConsumedInputs(int ammo, int rate, int stock) =>
+        Assert.Throws<InvalidDataException>(() => FacilityServicing.Rearm(ammo, 2, rate, 0, false, true, stock));
+
+    [Fact]
+    public void FacilityServiceClampsLargeRatesBeforeAddition()
+    {
+        Assert.Equal((int.MaxValue, false, 1, false),
+            FacilityServicing.Rearm(int.MaxValue - 1, int.MaxValue, int.MaxValue, 0, false, true, int.MaxValue));
+        Assert.Equal((int.MaxValue, false, 0, false),
+            FacilityServicing.Rearm(int.MaxValue - 1, int.MaxValue, int.MaxValue, 0, false, false, 0));
+    }
+
+    [Theory]
     [InlineData(0, 10, -1, 10, false)]
     [InlineData(0, 10, 0, 0, false)]
     [InlineData(0, 10, -2, 0, false)]

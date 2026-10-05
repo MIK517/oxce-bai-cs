@@ -18,14 +18,6 @@ internal sealed partial class CampaignWorld
         if (highest >= CampaignTimeTrigger.OneDay && fuelItems.Count != 0 &&
             owner.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost))
             return "UFO retargeting requires daily research fuel-stock forecasts.";
-        foreach (var facility in owner.Facilities)
-        {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-            var rule = rules.Facilities[facility.Rule].Value;
-            if (rule.AmmoItem is { } item && fuelItems.Contains(item) && rule.RearmRate > 0 &&
-                facility.Ammo < rule.AmmoMaximum && (facility.BuildTime == 0 || highest >= CampaignTimeTrigger.OneDay && facility.BuildTime == 1))
-                return "UFO retargeting requires facility ammunition stock forecasts.";
-        }
         for (var index = 0; index < sources.Count; index++)
         {
             var craft = sources[index];
@@ -49,6 +41,18 @@ internal sealed partial class CampaignWorld
                 }
             }
             sources[index] = craft with { Logistics = state };
+        }
+        foreach (var facility in owner.Facilities)
+        {
+            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            var rule = rules.Facilities[facility.Rule].Value;
+            if (rule.RearmRate < 0 || facility.Ammo < 0) return "Facility service values cannot be negative.";
+            var result = FacilityServicing.Rearm(facility.Ammo, rule.AmmoMaximum, rule.RearmRate,
+                highest >= CampaignTimeTrigger.OneDay ? Math.Max(0, facility.BuildTime - 1) : facility.BuildTime,
+                facility.AmmoMissingReported, rule.AmmoItem is not null,
+                rule.AmmoItem is { } item ? stocks.GetValueOrDefault(item) : 0);
+            if (rule.AmmoItem is { } consumed && result.Used != 0)
+                stocks[consumed] = stocks.GetValueOrDefault(consumed) - result.Used;
         }
         // Transfers run after all hourly servicing and before half-hour refuelling.
         // ItemsArrivingState reuses delivered items after all due craft have arrived.

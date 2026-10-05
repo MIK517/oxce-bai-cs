@@ -75,27 +75,13 @@ public sealed partial class CampaignState
             {
                 var facility = owner.Facilities[index];
                 var rule = _content.RuntimeRules.Facilities[facility.Rule].Value;
-                if (rule.AmmoMaximum <= 0 || facility.BuildTime > 0) continue;
-                if (facility.Ammo >= rule.AmmoMaximum)
-                {
-                    owner.Facilities[index] = facility with { AmmoMissingReported = false };
-                    continue;
-                }
-                var used = Math.Min(checked(rule.AmmoMaximum - facility.Ammo), rule.RearmRate);
-                if (rule.AmmoItem is { } item)
-                {
-                    var available = owner.Items.GetValueOrDefault(item);
-                    if (available < used)
-                    {
-                        if (!facility.AmmoMissingReported)
-                            effects.Notify(new FacilityServiceMessage(owner.Id, facility.X, facility.Y,
-                                "STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"));
-                        facility = facility with { AmmoMissingReported = true };
-                        used = available;
-                    }
-                    ChangeServiceStock(owner, item, -used);
-                }
-                owner.Facilities[index] = facility with { Ammo = checked(facility.Ammo + used) };
+                var result = FacilityServicing.Rearm(facility.Ammo, rule.AmmoMaximum, rule.RearmRate,
+                    facility.BuildTime, facility.AmmoMissingReported, rule.AmmoItem is not null,
+                    rule.AmmoItem is { } stockItem ? owner.Items.GetValueOrDefault(stockItem) : 0);
+                if (rule.AmmoItem is { } item && result.Used != 0) ChangeServiceStock(owner, item, -result.Used);
+                if (result.Notify) effects.Notify(new FacilityServiceMessage(owner.Id, facility.X, facility.Y,
+                    "STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"));
+                owner.Facilities[index] = facility with { Ammo = result.Ammo, AmmoMissingReported = result.MissingReported };
             }
         }
     }

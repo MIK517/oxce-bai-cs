@@ -846,6 +846,49 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void FacilityAmmunitionAndCraftFuelShareNativeStockOrder(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: FACILITY_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nfacilities: [{type: SHARED_HUNT_FACILITY, mapName: LOGISTICS, ammoMax: 2, rearmRate: 1, ammoItem: SUPPLY}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "facilityFuelRows"))
+        {
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "FACILITY_FUEL_HUNT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                },
+            }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            initial = initial with { Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21,
+                Items = row[0].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[0].GetInt32() },
+                Facilities = [.. initial.Bases[0].Facilities, new("SHARED_HUNT_FACILITY", 1, 1,
+                    row[2].GetInt32(), row[1].GetInt32(), row[3].GetBoolean(), true, false)],
+            }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "facility-fuel-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var facility = after.Bases[0].Facilities.Single(facility => facility.RuleId == "SHARED_HUNT_FACILITY");
+            var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "FACILITY_FUEL_HUNT").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                facility.Ammo, facility.AmmoMissingReported, result.Events.OfType<FacilityServiceMessage>().Any(),
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY"), craft.Status, craft.Fuel,
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(4).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "facility-fuel-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void OverdueUndeliveredTransfersAreRefusedBeforeUnsafeNativeArrival(bool hunter)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -867,7 +910,6 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData("facility", "UFO retargeting requires facility ammunition stock forecasts.")]
     [InlineData("weapon", "UFO retargeting requires craft ammunition stock forecasts.")]
     [InlineData("production", "UFO retargeting requires production fuel-stock forecasts.")]
     [InlineData("craft", "UFO retargeting requires production craft-consumption forecasts.")]
