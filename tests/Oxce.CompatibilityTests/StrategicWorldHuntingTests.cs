@@ -13,6 +13,53 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void TerminalArrivalDefersLaterHunterCombatWithoutMutatingTheHunter(bool cache, bool terminalFirst)
+    {
+        var content = Load(cache);
+        var initial = HuntingSnapshot(content);
+        var hunter = initial.World.Ufos[0] with
+        {
+            HunterKiller = false,
+            Hunting = true,
+            OriginalWaypoint = new(1, 0.6),
+            Longitude = 0.45,
+            Latitude = 0.21,
+            Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21),
+        };
+        var terminal = initial.World.Ufos[0] with
+        {
+            UniqueId = 10,
+            Id = 4,
+            HunterKiller = false,
+            TrajectoryPoint = content.RuntimeRules.UfoTrajectories[content.RuntimeRules.UfoTrajectories.GetRequired(hunter.TrajectoryId)].Value.Waypoints.Count - 1,
+            Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)),
+        };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Ufos = terminalFirst ? [terminal, hunter] : [hunter, terminal],
+                Missions = [initial.World.Missions[0] with { LiveUfos = 2 }],
+            }
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "deferred-hunter-before.sav");
+        if (terminalFirst)
+        {
+            var before = campaign.Capture();
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            Assert.Equal(before.World.Ufos[1], after.World.Ufos[1]);
+            Assert.Equal(UfoStatus.Destroyed, after.World.Ufos[0].Status);
+            campaign = Reload(content, campaign, 81, "deferred-hunter-after.sav");
+        }
+        AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void LargeEscortGraphsRefuseBeforePositionForecasts(bool cache)
@@ -58,10 +105,13 @@ public sealed class StrategicWorldHuntingTests
                 Escort = false,
                 Longitude = 0.4 + index * 0.1,
                 Latitude = 0.2 + index * 0.05,
-                Escorting = group.Key.Shape != 0 || index != 0,
-                OriginalWaypoint = group.Key.Shape != 0 || index != 0 ? new(1, 0.6) : null,
-                Destination = group.Key.Shape == 0 && index == 0
-                    ? new(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0, 1, 0.6)
+                Escorting = group.Key.Shape is not (0 or 3) || index != 0,
+                OriginalWaypoint = group.Key.Shape is not (0 or 3) || index != 0 ? new(1, 0.6) : null,
+                TrajectoryPoint = group.Key.Shape == 3 && index == 0 ? content.RuntimeRules.UfoTrajectories[
+                    content.RuntimeRules.UfoTrajectories.GetRequired(initial.World.Ufos[0].TrajectoryId)].Value.Waypoints.Count - 1 : initial.World.Ufos[0].TrajectoryPoint,
+                Destination = group.Key.Shape is 0 or 3 && index == 0
+                    ? new(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0,
+                        group.Key.Shape == 3 ? 0.400001 : 1, group.Key.Shape == 3 ? 0.2 : 0.6)
                     : new(WorldTargetKind.Ufo, WorldTargetReference.UfoType,
                         3 + (group.Key.Shape == 2 ? index : index == 0 ? 2 : index - 1), 0, 0)
                     { UniqueId = 9 + (group.Key.Shape == 2 ? index : index == 0 ? 2 : index - 1) },

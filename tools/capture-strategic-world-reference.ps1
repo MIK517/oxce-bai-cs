@@ -65,6 +65,7 @@ foreach ($entry in $methods.GetEnumerator()) {
 # Arithmetic the probe reproduces inline is pinned by its exact reference statement.
 Assert-ReferenceContains 'src\Geoscape\GeoscapeState.cpp' 'for (auto* ufo : *_game->getSavedGame()->getUfos())'
 Assert-ReferenceContains 'src\Geoscape\GeoscapeState.cpp' 'ufo->think();'
+Assert-ReferenceContains 'src\Geoscape\GeoscapeState.cpp' "if (ufo->getStatus() == Ufo::DESTROYED)`n`t`t`t`t`treturn;"
 Assert-ReferenceContains 'src\Mod\UfoTrajectory.h' 'int applySpeedPercentage(size_t wp, int baseSpeed) const { return baseSpeed * _waypoints[wp].speed / 100; }'
 Assert-ReferenceContains 'src\Savegame\AlienMission.cpp' '_spawnCountdown = (spawnTimer/2 + RNG::generate(0, spawnTimer)) * 30;'
 Assert-ReferenceContains 'src\Savegame\AlienMission.cpp' '_spawnCountdown += 30 * (RNG::generate(0, 400) + 48);'

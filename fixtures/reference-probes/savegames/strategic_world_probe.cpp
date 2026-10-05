@@ -256,22 +256,28 @@ int main()
 	// Imported escort chains and rings need no recursive movement.
 	std::cout << "],\"escortMovement\":[";
 	first = true;
-	for (int shape : { 0, 1, 2 })
+	for (int shape : { 0, 1, 2, 3 })
 		for (int order : { 0, 1, 2, 3, 4, 5 })
 		{
 			Target destination; destination.setLongitude(1.0); destination.setLatitude(0.6);
+			if (shape == 3) { destination.setLongitude(0.400001); destination.setLatitude(0.2); }
 			Ufo actors[3];
 			for (int index = 0; index < 3; ++index) {
 				actors[index].setLongitude(0.4 + index * 0.1);
 				actors[index].setLatitude(0.2 + index * 0.05);
 				actors[index].setSpeed(2200);
-				actors[index].escorting = shape != 0 || index != 0;
+				actors[index].escorting = (shape != 0 && shape != 3) || index != 0;
 				actors[index]._dest = shape == 2 ? &actors[index] : index == 0 ?
-					(shape == 0 ? &destination : &actors[2]) : &actors[index - 1];
+					(shape == 0 || shape == 3 ? &destination : &actors[2]) : &actors[index - 1];
 			}
 			int permutations[6][3] = {{0,1,2},{0,2,1},{1,0,2},{1,2,0},{2,0,1},{2,1,0}};
-			for (int step = 1; step <= 3; ++step) {
-				for (int index : permutations[order]) actors[index].think();
+			for (int step = 1; step <= (shape == 3 ? 1 : 3); ++step) {
+				for (int index : permutations[order]) {
+					actors[index].think();
+					// Controlled terminal mission collaborator: the reached ordinary
+					// waypoint destroys actor zero; native time5Seconds returns.
+					if (shape == 3 && index == 0 && actors[index].reachedDestination()) break;
+				}
 				if (!first) std::cout << ','; first = false;
 				std::cout << '[' << shape << ',' << order << ',' << step;
 				for (const auto& actor : actors) std::cout << ',' << fixed12(actor.getLongitude()) << ',' << fixed12(actor.getLatitude());

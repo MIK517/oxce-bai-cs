@@ -82,6 +82,7 @@ internal sealed partial class CampaignWorld
             }
         }
         long siteLinkWork = 0;
+        var movementEnded = false;
         for (var index = 0; index < _ufos.Count; index++)
         {
             if (_ufos[index] is { Status: UfoStatus.Crashed, InBattlescape: true })
@@ -139,13 +140,14 @@ internal sealed partial class CampaignWorld
                     siteLinkWork += 2L * _ufos.Count;
                     if (siteLinkWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 }
-                if (ufo.Hunting && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
+                if (!movementEnded && ufo.Hunting && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
                     targetState.Damage < CraftLogistics.EffectiveDamageMaximum(targetState,
                         campaign.Content.RuntimeRules.Crafts[targetCraft.Rule].Value, campaign.Content.RuntimeRules) &&
                     WorldGeometry.Distance(ufo.Position, destination.Position) <= WorldGeometry.RadianSpeed(ufo.Speed))
                     return HuntCombatReason;
                 continue;
             }
+            if (!movementEnded && EndsUfoFlightPass(ufo, highest)) movementEnded = true;
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
             // MovingTarget::move snaps to this stationary waypoint when distance is
             // not greater than one step, including the reference's NaN fallback.
