@@ -1008,6 +1008,22 @@ else std::cout << "null,null";
 std::cout << ',' << ufo.status << ']';
 if(ufo._origWaypoint) delete ufo._origWaypoint; else delete ufo._dest;
 }
+std::cout << "],\"spawnEscortChainRows\":["; first=true;
+for(int flags:{0,1,2,3}) for(int sourceStatus:{0,1}) {
+if(!first) std::cout << ','; first=false;
+Ufo ufo,leader,other;
+ufo.status=sourceStatus; ufo._isHunterKiller=true; ufo.lon=0.3; ufo.lat=0.1; ufo.speed=550;
+ufo._dest=new Waypoint(); ufo._dest->lon=0.4; ufo._dest->lat=0.2;
+leader.uniqueId=9; leader.lon=0.7; leader.lat=0.3;
+leader._isHunting=flags==1; leader._isEscorting=flags>=2;
+leader._dest=flags==3?&leader:&other;
+SavedGame game; game.ufos={&leader,&other}; spawnEscort(&ufo,game,true);
+auto* followed=dynamic_cast<Ufo*>(ufo._dest);
+std::cout << '[' << flags << ',' << sourceStatus << ',' << (ufo._isEscorting?"true":"false") << ','
+<< (followed?followed->uniqueId:0) << ',' << ufo.lon << ',' << ufo.lat << ',' << ufo.speed << ','
+<< ufo._origWaypoint->lon << ',' << ufo._origWaypoint->lat << ']';
+delete ufo._origWaypoint;
+}
 std::cout << "],\"spawnEscortSequenceRows\":[";
 first=true;
 for(bool ordinaryFirst:{false,true}) for(bool retarget:{false,true}) {
