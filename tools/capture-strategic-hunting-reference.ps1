@@ -98,6 +98,8 @@ foreach ($signature in @('bool Production::haveEnoughMoneyForOneMoreUnit(', 'boo
 }
 $template = $template.Replace('// PRODUCTION_INPUT_METHODS', $productionInputMethods)
 $template = $template.Replace('// PRODUCTION_MONEY_RULE', (Read-ReferenceMethod 'src/Mod/RuleManufacture.cpp' 'bool RuleManufacture::haveEnoughMoneyForOneMoreUnit('))
+$template = $template.Replace('// PRODUCTION_SALE_PRICE', (Read-ReferenceMethod 'src/Mod/RuleItem.cpp' 'int RuleItem::getSellCostAdjusted('))
+$template = $template.Replace('// PRODUCTION_ACCOUNTING', (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::setFunds('))
 $template = $template.Replace('// PRODUCTION_COUNT', $production.Substring($progressStart, $progressEnd - $progressStart) + 'return produced; } return 0;')
 $template = $template.Replace('// WEAPON_REARM', (Read-ReferenceMethod 'src/Savegame/CraftWeapon.cpp' 'int CraftWeapon::rearm(const int available, const int clipSize)'))
 $template = $template.Replace('// FACILITY_REARM', (Read-ReferenceMethod 'src/Savegame/BaseFacility.cpp' 'const RuleItem* BaseFacility::rearm()'))

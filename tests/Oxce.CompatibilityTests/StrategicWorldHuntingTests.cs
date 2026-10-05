@@ -2658,13 +2658,14 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FundedProductionRequiresUnknownEarlierSaleAccountingBeforeHunting(bool cache)
+    public void EarlierFixedSaleFundsLaterProductionBeforeHunting(bool cache)
     {
-        var content = Load(cache, "items: [{type: SUPPLY, costSell: 10}]\ncrafts: [{type: SHARED_MONEY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}]\nmanufacture: [{name: EARLIER_SALE, time: 1, producedItems: {SUPPLY: 1}}, {name: LATER_MONEY_PRODUCT, time: 1, cost: 3, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: SHARED_MONEY_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var content = Load(cache, "sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{type: SHARED_SALE_ITEM, costSell: 10}]\ncrafts: [{type: SHARED_MONEY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}]\nmanufacture: [{name: EARLIER_SALE, time: 1, producedItems: {SHARED_SALE_ITEM: 1}}, {name: LATER_MONEY_PRODUCT, time: 1, cost: 3, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: SHARED_MONEY_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         { RuleId = "SHARED_MONEY_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
             with
         { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
+        Assert.Equal(10, content.RuntimeRules.Items[content.RuntimeRules.Items.GetRequired("SHARED_SALE_ITEM")].Value.CostSell);
         var owner = initial.Bases[0] with
         {
             Items = new Dictionary<string, int>(),
@@ -2677,8 +2678,179 @@ public sealed class StrategicWorldHuntingTests
             Productions = [new("EARLIER_SALE", 1, 0, 1, false, true, false, new Dictionary<string, int>())] },
             owner with { Id = 1 }]
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO retargeting requires shared production accounting forecasts.");
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "shared-sale-before.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(2, Assert.Single(result.Events.OfType<CampaignProductionProgress>(), progress => progress.RuleId == "LATER_MONEY_PRODUCT").Produced);
+        Assert.Equal(4, campaign.Capture().Funds[^1]);
+        Reload(content, campaign, 81, "shared-sale-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void FixedProductionSalesMatchNativeContinuationAndSharedFunds(bool cache, bool crossBase)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionSaleRows")
+            .GroupBy(row => (Cost: row[0].GetInt32(), Quantity: row[4].GetInt32(), Coefficient: row[5].GetInt32(), Delay: row[6].GetInt32())))
+        {
+            var coefficient = group.Key.Coefficient;
+            var caseContent = Load(cache, $"sellPriceCoefficient: [{coefficient}, {coefficient}, {coefficient}, {coefficient}, {coefficient}]\nitems: [{{type: SALE_OUTPUT, costSell: 7}}]\ncrafts: [{{type: SALE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SALE_PRODUCT, time: 2, cost: {group.Key.Cost}, producedItems: {{SALE_OUTPUT: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}, {{name: SALE_LATER, time: 1, cost: 3, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SALE_WORKSHOP, mapName: LOGISTICS, workshops: 8}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(caseContent).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "SALE_PRODUCT_HUNT",
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    }
+                }) with
+                { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [row[1].GetInt32()], Incomes = [0], Expenditures = [0] };
+                var owner = initial.Bases[0] with
+                {
+                    Longitude = 0.45,
+                    Latitude = 0.21,
+                    Engineers = 0,
+                    Soldiers = [],
+                    Items = new Dictionary<string, int>(),
+                    Facilities = [.. initial.Bases[0].Facilities, new("SALE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("SALE_PRODUCT", row[2].GetInt32() * 2, 1, 2, row[3].GetBoolean(), true, false, new Dictionary<string, int>()),
+                            new("SALE_LATER", 2, 0, 3, false, false, false, new Dictionary<string, int>())]
+                };
+                initial = initial with
+                {
+                    Bases = crossBase
+                        ? [owner with { Crafts = [], Productions = [owner.Productions[0]] }, owner with { Id = 1, Productions = [owner.Productions[1]] }]
+                        : [owner]
+                };
+                var campaign = Reload(caseContent, CampaignState.Restore(initial, caseContent, new SplitMix64RandomSource(81)), 81, "sale-product-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var sale = Assert.Single(result.Events.OfType<CampaignProductionProgress>(), progress => progress.RuleId == "SALE_PRODUCT");
+                var later = Assert.Single(result.Events.OfType<CampaignProductionProgress>(), progress => progress.RuleId == "SALE_LATER");
+                var after = campaign.Capture();
+                var targetBase = after.Bases[^1];
+                var state = Assert.Single(targetBase.Crafts, craft => craft.RuleId == "SALE_PRODUCT_HUNT").Logistics!;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+                {
+                        sale.Produced, Stop(sale), later.Produced, Stop(later), after.Funds[^1], after.Incomes[^1], after.Expenditures[^1],
+                        targetBase.Items.GetValueOrDefault("SUPPLY"), after.Bases.Sum(item => item.Transfers.Count), state.Status, state.Fuel,
+                        after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0
+                });
+                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(7).ToArray())), CanonicalJson.Normalize(actual));
+                Reload(caseContent, campaign, 81, "sale-product-after.sav");
+            }
+        }
+        static int Stop(CampaignProductionProgress progress) => progress.StopReason == "STR_PRODUCTION_COMPLETE" ? 1 : progress.StopReason == "STR_NOT_ENOUGH_MONEY" ? 2 : 0;
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void MixedProductionSaleValuesMatchNativePerItemAccounting(bool cache, bool hunting)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionMixedSaleRows"))
+        {
+            var content = Load(cache, $"sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{{type: MIXED_FIRST, costSell: {row[0].GetInt32()}}}, {{type: MIXED_LAST, costSell: {row[1].GetInt32()}}}]\nmanufacture: [{{name: MIXED_SALE, time: 1, producedItems: {{MIXED_FIRST: 1, MIXED_LAST: 1}}}}]\nfacilities: [{{type: MIXED_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [10], Incomes = [0], Expenditures = [0] };
+            initial = initial with
+            {
+                World = hunting ? initial.World : new(),
+                Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("MIXED_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("MIXED_SALE", 1, 0, 1, false, true, false, new Dictionary<string, int>())]
+            }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "mixed-sale-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { after.Funds[^1], after.Incomes[^1], after.Expenditures[^1] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(2).ToArray())), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "mixed-sale-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ScriptedProductionSalePriceStopsAtomicallyOnlyWhenHuntingNeedsProjection(bool cache, bool global)
+    {
+        var script = "var ptr Time moment; var int second; geoscape_game.getTime moment; moment.getSecond second; return second;";
+        var overlay = "items: [{type: SCRIPTED_SALE_ITEM, costSell: 7" + (global ? "" : $", scripts: {{sellCostItem: '{script}'}}") +
+            "}]\nmanufacture: [{name: SCRIPTED_SALE, time: 1, producedItems: {SCRIPTED_SALE_ITEM: 1}}]\nfacilities: [{type: SCRIPTED_SALE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
+            (global ? $"extended: {{scripts: {{sellCostItem: [{{new: future-sale-price, offset: 1, code: '{script}'}}]}}}}\n" : "");
+        var content = Load(cache, overlay);
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Facilities = [.. initial.Bases[0].Facilities, new("SCRIPTED_SALE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("SCRIPTED_SALE", 1, 0, 1, false, true, false, new Dictionary<string, int>())]
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "scripted-sale-before.sav");
+        AssertTimeBlocked(campaign, "UFO retargeting requires production sale-price script forecasts.");
+        var ordinary = CampaignState.Restore(initial with { World = new() }, content, new SplitMix64RandomSource(81));
+        var result = ordinary.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(0, ordinary.Capture().Funds[^1]); // The actual caller runs at 02:00:00.
+        Reload(content, ordinary, 81, "scripted-sale-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false, "funds", true)]
+    [InlineData(true, "funds", true)]
+    [InlineData(false, "income", true)]
+    [InlineData(true, "income", true)]
+    [InlineData(false, "total", true)]
+    [InlineData(true, "total", true)]
+    [InlineData(false, "mixedfunds", true)]
+    [InlineData(true, "mixedfunds", true)]
+    [InlineData(false, "mixedincome", true)]
+    [InlineData(true, "mixedincome", true)]
+    [InlineData(false, "mixedfunds", false)]
+    [InlineData(true, "mixedfunds", false)]
+    [InlineData(false, "mixedincome", false)]
+    [InlineData(true, "mixedincome", false)]
+    public void ProductionSaleAccountingOverflowStopsBeforeTickMutation(bool cache, string field, bool hunting)
+    {
+        var mixed = field.StartsWith("mixed", StringComparison.Ordinal);
+        var outputs = field == "total" ? "SALE_LIMIT_A: 2147483647, SALE_LIMIT_B: 2147483647, SALE_LIMIT_C: 2147483647" : mixed ? "SALE_LIMIT_A: 1, SALE_LIMIT_B: 1" : "SALE_LIMIT_A: 1";
+        var content = Load(cache, $"sellPriceCoefficient: [100, 100, 100, 100, 100]\nitems: [{{type: SALE_LIMIT_A, costSell: {(mixed ? 7 : int.MaxValue)}}}, {{type: SALE_LIMIT_B, costSell: {(mixed ? -7 : int.MaxValue)}}}, {{type: SALE_LIMIT_C, costSell: 2147483647}}]\nmanufacture: [{{name: SALE_LIMIT, time: 1, producedItems: {{{outputs}}}}}]\nfacilities: [{{type: SALE_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var initial = HuntingSnapshot(content) with
+        {
+            Time = new(1, 1, 1, 1999, 1, 59, 55),
+            Funds = [field.EndsWith("funds", StringComparison.Ordinal) ? long.MaxValue : 0],
+            Incomes = [field.EndsWith("income", StringComparison.Ordinal) ? long.MaxValue : 0]
+        };
+        initial = initial with
+        {
+            World = hunting ? initial.World : new(),
+            Bases = [initial.Bases[0] with
+        {
+            Facilities = [.. initial.Bases[0].Facilities, new("SALE_LIMIT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("SALE_LIMIT", 1, 0, 1, false, true, false, new Dictionary<string, int>())]
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "sale-limit-before.sav");
+        AssertTimeBlocked(campaign, "Production accounting exceeds the supported range.");
     }
 
     [Fact]
