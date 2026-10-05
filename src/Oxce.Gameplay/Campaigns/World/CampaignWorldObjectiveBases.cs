@@ -167,8 +167,16 @@ internal sealed partial class CampaignWorld
                         projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craftRule, rules) &&
                         Near(new(projected.Longitude, projected.Latitude));
                 }
-                else if (state.IsAutoPatrolling && craftRule.AutoPatrol)
-                    possible = Near(new(state.Longitude, state.Latitude)) || Near(new(owner.Longitude, owner.Latitude));
+                else if (state.IsAutoPatrolling && craftRule.AutoPatrol &&
+                    (Near(new(state.Longitude, state.Latitude)) || Near(new(owner.Longitude, owner.Latitude))))
+                {
+                    if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                        return forecastReason;
+                    var projected = _huntingCraftForecast!.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
+                    possible = projected.Status == "STR_OUT" && !projected.LowFuel && !projected.MissionComplete &&
+                        projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craftRule, rules) &&
+                        Near(new(projected.Longitude, projected.Latitude));
+                }
                 if (possible && ChoiceReason(ref work) is { } reason) return reason;
             }
             if (highest < CampaignTimeTrigger.OneHour) continue;
@@ -177,8 +185,15 @@ internal sealed partial class CampaignWorld
                 if (transfer.Delivered || transfer.Hours > 1 ||
                     transfer.Craft?.Logistics is not { IsAutoPatrolling: true }) continue;
                 var craft = rules.Crafts[rules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
-                if (!craft.Undetectable && craft.AutoPatrol && Near(new(owner.Longitude, owner.Latitude)) &&
-                    ChoiceReason(ref work) is { } reason) return reason;
+                if (!craft.Undetectable && craft.AutoPatrol && Near(new(owner.Longitude, owner.Latitude)))
+                {
+                    if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                        return forecastReason;
+                    var projected = _huntingCraftForecast!.GetValueOrDefault((transfer.Craft.RuleId, transfer.Craft.Id));
+                    if (projected is { Status: "STR_OUT", LowFuel: false, MissionComplete: false } &&
+                        projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craft, rules) &&
+                        Near(new(projected.Longitude, projected.Latitude)) && ChoiceReason(ref work) is { } reason) return reason;
+                }
             }
         }
         canGenerate |= possibleGeneration;

@@ -529,6 +529,56 @@ public sealed class StrategicObjectiveBaseSpawnTests
             "New base hunting supply waves require a live source forecast.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewBaseHuntingUsesGroundedAndIncomingServicingForecasts(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = LoadWorld(cache, hunting: true, huntingMission: "NEW_BASE_SUPPLY",
+            extra: "crafts: [{type: OBJECTIVE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        foreach (var incoming in new[] { false, true })
+            foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
+            {
+                var initial = Initial(content) with { Time = new(1, 1, 1, 1999, 1, incoming ? 59 : 29, 55) };
+                var owner = initial.Bases[0];
+                var craft = owner.Crafts.Single(craft => craft.RuleId == "SHIP") with { RuleId = "OBJECTIVE_REFUEL" };
+                craft = craft with
+                {
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = row[1].GetInt32(),
+                        Damage = 0,
+                        Weapons = [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    }
+                };
+                initial = initial with
+                {
+                    Bases = [owner with { Crafts = incoming ? [] : [craft], Soldiers = [],
+                    Transfers = incoming ? [new(1, 1, CampaignTransferKind.Craft, "OBJECTIVE_REFUEL", 1, Craft: craft)] : [] }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "objective-refuel-before.sav");
+                var launches = row[6].GetString() == "STR_OUT" && (!incoming || row[1].GetInt32() < 100);
+                if (launches)
+                {
+                    AssertTimeBlocked(campaign, "New base hunting supply waves require a live source forecast.");
+                    continue;
+                }
+                AdvanceUnblocked(campaign, 1);
+                var after = campaign.Capture();
+                Assert.Empty(after.World.Missions);
+                Assert.Equal(100, Assert.Single(after.World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+                var state = Assert.Single(after.Bases[0].Crafts).Logistics!;
+                Assert.Equal(row[5].GetInt32(), state.Fuel);
+                Assert.Equal(incoming && row[1].GetInt32() == 100 ? "STR_READY" : row[6].GetString(), state.Status);
+                Reload(content, campaign, 17, "objective-refuel-after.sav");
+            }
+    }
+
     private static CampaignSnapshot LandingInitial(RuntimeContent content)
     {
         var initial = Initial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 0) };
@@ -562,7 +612,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
 
     private static RuntimeContent LoadWorld(bool cache, string kind = "EXPLICIT", int chance = 0,
         bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1, bool landing = false,
-        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false, string huntingMission = "MISSION_SCOUT")
+        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false, string huntingMission = "MISSION_SCOUT", string extra = "")
     {
         var table = kind switch
         {
@@ -642,7 +692,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 points: 13
                 waves: [{count: 1, trajectory: OBJECTIVE_AIR, timer: 0}]
             """;
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], cache, rules);
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-objective-base.rul"], cache, rules + "\n" + extra);
     }
 
 }
