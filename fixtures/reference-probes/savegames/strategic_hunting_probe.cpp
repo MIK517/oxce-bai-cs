@@ -70,6 +70,7 @@ struct Transfer {
 int _hours=1,_itemQty=0,_scientists=0,_engineers=0; Soldier* _soldier=nullptr; Craft* _craft=nullptr;
 const Item* _itemId=nullptr; bool _delivered=false;
 void advance(Base*);
+int getHours() const;
 };
 // TRANSFER_METHOD
 // IGNORED_METHOD
@@ -161,6 +162,15 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"invalidArrivalRows\":[";
+serviceFirst=true;
+for(int hours:{0,-1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Transfer transfer; Item item; Base base;
+transfer._hours=hours; transfer._itemId=&item; transfer._itemQty=1; transfer.advance(&base);
+std::cout << '[' << hours << ',' << transfer.getHours() << ',' << (transfer._delivered?"true":"false") << ','
+<< (transfer.getHours()==0?"true":"false") << ']';
 }
 std::cout << "],\"combinedTransferRows\":[";
 serviceFirst=true;

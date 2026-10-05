@@ -487,6 +487,7 @@ public sealed partial class CampaignState
             foreach (var transfer in state.Transfers)
             {
                 if (transfer.Delivered || transfer.Hours > 1) continue;
+                if (transfer.Hours <= 0) return "Undelivered transfer arrival requires positive remaining hours.";
                 switch (transfer.Kind)
                 {
                     case CampaignTransferKind.Scientist: scientists += transfer.Quantity; break;

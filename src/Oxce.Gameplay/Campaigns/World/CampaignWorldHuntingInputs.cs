@@ -56,6 +56,7 @@ internal sealed partial class CampaignWorld
         foreach (var transfer in owner.Transfers)
         {
             if (transfer.Delivered || transfer.Hours > 1) continue;
+            if (transfer.Hours <= 0) return "Undelivered transfer arrival requires positive remaining hours.";
             if (transfer.Craft is { Logistics: { } logistics } incoming)
             {
                 var handle = rules.Crafts.GetRequired(incoming.RuleId);
