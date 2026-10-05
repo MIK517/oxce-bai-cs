@@ -125,6 +125,72 @@ public sealed class StrategicWorldNewbornHuntingTests
             {{extra}}
             """);
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    [InlineData(false, -2)]
+    [InlineData(true, -2)]
+    public void ZeroRadarProofValidatesEveryPossibleConstructorMode(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var nativeMode = mode < 0 ? -1 : mode;
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "constructorRows"), row =>
+            row[0].GetInt32() == 100 && row[1].GetInt32() == nativeMode && row[2].GetInt32() == 0 &&
+            row[3].GetInt32() == 0 && row[4].GetBoolean() && row[5].GetInt32() == (nativeMode > 1 ? 1 : nativeMode));
+        var content = Load(cache, false, mode,
+            "crafts: [{type: MODE_LIMIT_CRAFT, soldiers: 0, speedMax: 2147483647, damageMax: 100, fuelMax: 2147483647}]\n");
+        var initial = Snapshot(content, false).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "MODE_LIMIT_CRAFT",
+            Logistics = craft.Logistics! with { Weapons = [], Fuel = int.MaxValue - 1000 },
+        });
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        if (mode != 0)
+            AssertTimeBlocked(campaign, "Craft hunter attraction exceeds the supported range.");
+        else
+        {
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(0, Assert.Single(campaign.Capture().World.Ufos).HuntMode);
+            Reload(content, campaign, 81, "constructor-mode-zero.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ZeroRadarProofDoesNotReuseAValidModeForALaterImmediateWave(bool cache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, """
+            ufos: [{type: ZERO_RADAR_HUNTER, speedMax: 2200, damageMax: 50, radarRange: 0, hunterKillerPercentage: 100}]
+            crafts: [{type: MODE_LIMIT_CRAFT, soldiers: 0, speedMax: 2147483647, damageMax: 100, fuelMax: 2147483647}]
+            alienMissions:
+              - type: MODE_CHAIN
+                objective: 0
+                waves:
+                  - {ufo: ZERO_RADAR_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0, huntMode: 0}
+                  - {ufo: ZERO_RADAR_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0, huntMode: 1}
+            """);
+        var initial = Snapshot(content, false).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "MODE_LIMIT_CRAFT",
+            Logistics = craft.Logistics! with { Weapons = [], Fuel = int.MaxValue - 1000 },
+        });
+        initial = initial with
+        {
+            World = initial.World with
+            { Missions = [initial.World.Missions[0] with { RuleId = "MODE_CHAIN" }] }
+        };
+        var waves = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("MODE_CHAIN")].Value.Waves;
+        Assert.Equal(1, waves[1].HuntMode);
+        Assert.Equal(0UL, waves[1].SpawnTimer);
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Craft hunter attraction exceeds the supported range.");
+    }
+
     private static CampaignSnapshot Snapshot(RuntimeContent content, bool escort)
     {
         var initial = CreateUfoTransitCampaign(content, new(1, 1, 1, 1999, 1, 29, 55), "UFO_SCOUT", 900).Capture();
