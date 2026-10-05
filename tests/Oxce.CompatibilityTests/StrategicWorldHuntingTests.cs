@@ -13,6 +13,49 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    public void DelayedProductionBirthsDoNotEnterTheCreationTickHunterPopulation(bool cache, int delay)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "productionCraftBirthRows"), row => row[2].GetInt32() == delay && row[5].GetInt32() == (delay == 0 ? 0 : 1));
+        var content = Load(cache, $"alienMissions: [{{type: DELAYED_POPULATION_HUNTERS, objective: 0, waves: [{{ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}}]}}]\nmanufacture: [{{name: DELAYED_POPULATION_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{SHIP: 1}}}}]\nfacilities: [{{type: DELAYED_POPULATION_WORKSHOP, mapName: LOGISTICS, workshops: 1100}}]\n");
+        var initial = CreateSnapshot(content, "Delayed craft population") with
+        {
+            Time = new(1, 1, 1, 1999, 1, 59, 55),
+            World = new() { Missions = [new(4, "DELAYED_POPULATION_HUNTERS", "REGION", "RACE_A", 0, 0, 0, 0, -1)] },
+        };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Research = [], Transfers = [],
+            Facilities = [.. initial.Bases[0].Facilities, new("DELAYED_POPULATION_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("DELAYED_POPULATION_PRODUCT", 1001, 0, 1001, false, false, false, new Dictionary<string, int>())],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "delayed-population-before.sav");
+        if (delay == 0)
+        {
+            AssertTimeBlocked(campaign, "New UFO retargeting exceeds the supported work limit.");
+            return;
+        }
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Equal(initial.Bases[0].Crafts.Count, after.Bases[0].Crafts.Count);
+        Assert.Equal(1001, after.Bases[0].Transfers.Count);
+        Assert.All(after.Bases[0].Transfers, transfer => Assert.Equal(delay, transfer.Hours));
+        Assert.Equal(1001, after.World.Ufos.Count);
+        Assert.All(after.World.Ufos, ufo => Assert.False(ufo.Hunting));
+        Reload(content, campaign, 81, "delayed-population-after.sav");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void NewHunterPopulationBoundsUseNativeHourlyProgressIncludingInfiniteQueues(bool cache)

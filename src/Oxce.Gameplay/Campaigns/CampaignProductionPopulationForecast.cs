@@ -24,6 +24,9 @@ public sealed partial class CampaignState
                 var rule = _content.RuntimeRules.Manufacture[project.Rule].Value;
                 work += 1L + rule.ProducedMaterials.Count;
                 if (work > 1_000_000) return reason;
+                // Born craft with a positive transfer delay cannot enter the
+                // already-completed hourly arrival pass or this tick's retarget pass.
+                if (rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0) continue;
                 var units = ProductionProgress.Requested(rule.Time, project.Spent, assignments[index], project.Amount, project.Infinite);
                 foreach (var material in rule.ProducedMaterials)
                     if (material.Craft is not null) population += units * (long)material.Quantity;
