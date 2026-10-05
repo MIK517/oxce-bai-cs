@@ -39,10 +39,27 @@ internal sealed partial class CampaignWorld
                 return candidateReason;
             if (candidate)
             {
-                if (wave.Escort || radar is < 0 or > int.MaxValue) return null;
+                if (radar is < 0 or > int.MaxValue) return null;
                 var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
                 if (!TryOrdinarySpawnPositions(mission, missionRule, path, region, out var positions) || positions.Count == 0)
                     return null;
+                if (wave.Escort)
+                {
+                    _huntingForecastWork += _ufos.Count;
+                    if (_huntingForecastWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader)
+                        positions = [new(leader.Position, 0)];
+                    else
+                    {
+                        _huntingForecastWork += _missions.Count;
+                        if (_huntingForecastWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                        var saved = FindMission(mission.Id);
+                        // Earlier immediate waves may append an ordinary leader at
+                        // a different origin. That source needs a separate forecast.
+                        if (saved is null || saved.NextWave != mission.NextWave || saved.NextUfoCounter != mission.NextUfoCounter)
+                            return null;
+                    }
+                }
                 if (NewbornRadarSeparationReason(positions, (int)radar, ref _huntingForecastWork, out var separated) is { } separationReason)
                     return separationReason;
                 if (!separated) return null;

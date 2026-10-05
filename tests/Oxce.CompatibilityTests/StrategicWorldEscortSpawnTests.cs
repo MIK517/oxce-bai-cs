@@ -250,6 +250,10 @@ public sealed class StrategicWorldEscortSpawnTests
             World = initial.World with
             { Missions = [initial.World.Missions[0] with { RuleId = "POSITIVE_RADAR_ESCORT_MISSION" }] }
         };
+        var leader = initial.World.Ufos[0].Position;
+        initial = initial.WithCraft("SHIP", craft => craft with
+        { Logistics = craft.Logistics! with { Longitude = leader.Longitude, Latitude = leader.Latitude } });
+        initial = initial with { Bases = [initial.Bases[0] with { Longitude = leader.Longitude, Latitude = leader.Latitude }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "New UFO escorts require craft retarget forecasts.");
     }
