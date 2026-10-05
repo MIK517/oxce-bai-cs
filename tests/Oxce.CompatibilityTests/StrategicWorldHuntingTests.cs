@@ -13,6 +13,55 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false, "counter")]
+    [InlineData(true, "counter")]
+    [InlineData(false, "soldier")]
+    [InlineData(true, "soldier")]
+    [InlineData(false, "transfer")]
+    [InlineData(true, "transfer")]
+    [InlineData(false, "daily")]
+    [InlineData(true, "daily")]
+    public void SoldierProductionIdentityBoundsRefuseBeforeMutation(bool cache, string source)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var native = TestFixtures.Rows(oracle.RootElement, "productionSoldierRows").First();
+        Assert.Equal(1, native[6].GetInt32() - native[5].GetInt32());
+        var content = Load(cache, "manufacture: [{name: SOLDIER_LIMIT, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nresearch: [{name: SOLDIER_COUNTER_TOPIC, cost: 1, increaseCounter: [STR_SOLDIER]}]\nfacilities: [{type: SOLDIER_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, source == "daily" ? 23 : 1, 59, 55), World = WorldSnapshot.Empty };
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["STR_SOLDIER"] = source == "counter" ? int.MaxValue : source == "daily" ? int.MaxValue - 1 : 1 },
+            Bases = [owner with
+            {
+                Soldiers = source == "soldier" ? [owner.Soldiers[0] with { Id = int.MaxValue - 1 }] : [],
+                Transfers = source == "transfer" ? [new(1, 2, CampaignTransferKind.Soldier, "RECRUIT", 1, owner.Soldiers[0] with { Id = int.MaxValue - 1, Personal = owner.Soldiers[0].Personal! with { CraftType = "", CraftId = 0 } })] : [],
+                Research = source == "daily" ? [new("SOLDIER_COUNTER_TOPIC", 1, 0, 1)] : [],
+                Facilities = [.. owner.Facilities, new("SOLDIER_LIMIT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("SOLDIER_LIMIT", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+            }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "soldier-limit-before.sav");
+        AssertTimeBlocked(campaign, "Soldier production exhausts the soldier identity range.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SoldierProductionGenerationDefectsRefuseBeforeMutation(bool cache, bool bonus)
+    {
+        var extra = bonus ? "spawnedSoldier: {transformationBonuses: {BONUS: 2147483647}, randomTransformationBonuses: {BONUS: 1}}" : "";
+        var stats = bonus ? "" : "soldiers: [{type: BAD_PRODUCTION_SOLDIER, armor: ARMOR, minStats: {health: 50}, maxStats: {health: 30}}]\n";
+        var content = Load(cache, $"{stats}manufacture: [{{name: SOLDIER_DEFECT, time: 1, producedItems: {{SUPPLY: 0}}, spawnedPersonType: {(bonus ? "RECRUIT" : "BAD_PRODUCTION_SOLDIER")}, {extra}}}]\nfacilities: [{{type: SOLDIER_DEFECT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        if (!bonus) Assert.Equal(50, content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("BAD_PRODUCTION_SOLDIER")].Value.MinimumStats["health"]);
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+        initial = initial with { Bases = [initial.Bases[0] with { Productions = [new("SOLDIER_DEFECT", 1, 0, 1, false, false, false, new Dictionary<string, int>())], Facilities = [.. initial.Bases[0].Facilities, new("SOLDIER_DEFECT_WORKSHOP", 1, 1, 0, 0, false, false, false)] }] };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), bonus ? "A possible soldier production template bonus exceeds the counter range." : "Soldier generation has inverted stat bounds.");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void UnknownRewardsDoNotReserveLookupOnlyCounterEffects(bool cache)

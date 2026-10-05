@@ -55,7 +55,14 @@ using RuleItem=Item;
 namespace ModScript { struct SellCostItem {}; template<class Tag,class... Args> int scriptFunc2(const Item*,int adjusted,Args...) { return adjusted; } }
 struct Storage { int count=0,corpses=0; int getItem(const Item* item) const { return item->corpse?corpses:count; }
 void removeItem(const Item* item,int qty=1) { (item->corpse?corpses:count)-=qty; } void addItem(const Item* item,int qty=1) { (item->corpse?corpses:count)+=qty; } };
-struct Craft; struct Transfer; struct Soldier {};
+struct Craft; struct Transfer; struct RuleSoldier { void* getDefaultArmor() const { return nullptr; } };
+namespace YAML { struct YamlRootNodeReader { bool overlay; YamlRootNodeReader(bool value,const char*):overlay(value) {} }; }
+struct Soldier { static inline int generated=0; std::string name="Alex Example"; int nationality=0,id=0;
+Soldier()=default; Soldier(RuleSoldier*,void*,int value,int identity):nationality(value),id(identity) { ++generated; }
+std::string getName() const { return name; } void setName(const std::string& value) { name=value; }
+void genName() { name="Alex Example"; } void calcStatString(int,bool) {}
+template<class...T> void load(const YAML::YamlRootNodeReader& reader,T...) { if(reader.overlay) name="TEMPLATE NAME"; }
+};
 struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Craft*>& _crafts=crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0; int& _engineers=engineers;
 std::vector<Production*> _productions; auto& getProductions() { return _productions; }
 int freeWorkshops=0; int getAvailableWorkshops() const { return freeWorkshops; } int getUsedWorkshops() const; int getFreeWorkshops() const; void removeProduction(Production*); int getAvailableEngineers() const { return engineers; }
@@ -103,12 +110,12 @@ struct ResearchArmor { const RuleItem* _corpseGeo=nullptr; const RuleItem* getCo
 using Armor=ResearchArmor;
 // ARMOR_CORPSE
 struct ResearchUnit { const ResearchArmor* armor=nullptr; const ResearchArmor* getArmor() const { return armor; } };
-struct ResearchMod { std::vector<ResearchRule*> rules; mutable Item supply; ResearchUnit* matchedUnit=nullptr; std::string matchName="CORPSE_TOPIC"; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string& name,bool) const { return name==matchName?matchedUnit:nullptr; } };
+struct ResearchMod { std::vector<ResearchRule*> rules; mutable Item supply; ResearchUnit* matchedUnit=nullptr; std::string matchName="CORPSE_TOPIC"; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string& name,bool) const { return name==matchName?matchedUnit:nullptr; } mutable RuleSoldier soldierRule; RuleSoldier* getSoldier(const std::string&) const { return &soldierRule; } Soldier* genSoldier(SavedGame*,const RuleSoldier*,int) const; int getScriptGlobal() const { return 0; } int getStatStrings() const { return 0; } int getPsiRequirements() const { return 0; } };
 using Mod=ResearchMod;
 enum class DiscoverySourceType { FREE_AFTER };
 struct ResearchDiaryEntry { explicit ResearchDiaryEntry(const RuleResearch*) {} void setDate(int) {}
 struct { DiscoverySourceType type; const RuleResearch* research; std::string name; } source; };
-struct Options { static inline bool retainCorpses=true; };
+struct Options { static inline bool psiStrengthEval=false; static inline bool retainCorpses=true; };
 struct ResearchCaller {
 Storage storage; ResearchMod mod; const ResearchMod* _mod=&mod;
 Storage* getStorageItems() { return &storage; }
@@ -176,6 +183,8 @@ explicit Transfer(int hours=1):_hours(hours) {}
 void setItems(const Item* item,int qty=1) { _itemId=item; _itemQty=qty; }
 void setCraft(Craft* craft) { _craft=craft; }
 void setScientists(int qty) { _scientists=qty; } void setEngineers(int qty) { _engineers=qty; }
+void setSoldier(Soldier* soldier) { _soldier=soldier; } Soldier* getSoldier() const { return _soldier; }
+int getType() const { return _soldier?1:0; }
 int _hours=1,_itemQty=0,_scientists=0,_engineers=0; Soldier* _soldier=nullptr; Craft* _craft=nullptr;
 const Item* _itemId=nullptr; bool _delivered=false;
 void advance(Base*);
@@ -228,6 +237,9 @@ bool insideRadarRange(Target* target) const;
 // TARGET_DESTRUCTOR
 // RETARGET_METHODS
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
+std::vector<Base*> bases; auto* getBases() { return &bases; }
+int selectSoldierNationalityByLocation(const Mod*,const RuleSoldier*,const Target*) const { return 0; }
+bool isResearched(int) const { return false; }
 std::map<std::string,int> _ids; void increaseCustomCounter(const std::string&); void decreaseCustomCounter(const std::string&);
 void applyPrimaryCounters(const RuleResearch* myResearchRule) {
 // RESEARCH_PRIMARY_COUNTERS
@@ -255,7 +267,9 @@ bool hasUndiscoveredProtectedUnlock(const RuleResearch*) const;
 
 std::vector<Ufo*>* getUfos() { return &ufos; }
 std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
-int craftCounter=10; int getId(const std::string& type) { return type=="PRODUCED_CRAFT"?craftCounter++:8+(int)waypoints.size(); } };
+int craftCounter=10,soldierCounter=20; int getId(const std::string& type) { return type=="STR_SOLDIER"?soldierCounter++:type=="PRODUCED_CRAFT"?craftCounter++:8+(int)waypoints.size(); } };
+const int TRANSFER_SOLDIER=1;
+// PRODUCTION_SOLDIER_GENERATION
 struct ProductionCraftRule { CraftBirthRule craft; std::vector<int> times; const CraftBirthRule* getProducedCraft() const { return &craft; } const auto& getTransferTimes() const { return times; } };
 struct ProductionCraftCaller { const ProductionCraftRule* _rules; void complete(Base* b,SavedGame* g,const Mod* m) {
 // PRODUCTION_CRAFT_DELIVERY
@@ -268,6 +282,8 @@ struct ProductionCraftCaller { const ProductionCraftRule* _rules; void complete(
 struct ProductionItemRule {
 std::vector<int> times; std::map<const RuleItem*,int> produced; std::vector<std::pair<int,std::map<const RuleItem*,int>>> random; int points=0;
 int getPoints() const { return points; } std::string person=""; std::string getSpawnedPersonType() const { return person; }
+bool soldierTemplate=false; std::string personName="";
+bool getSpawnedSoldierTemplate() const { return soldierTemplate; } const std::string& getSpawnedPersonName() const { return personName; }
 const auto& getTransferTimes() const { return times; } const auto& getProducedItems() const { return produced; }
 const auto& getRandomProducedItems() const { return random; }
 };
@@ -276,6 +292,7 @@ const ProductionItemRule* _rules; bool sell=false; std::map<std::string,int> _ra
 const ProductionCraftRule* craftBirth=nullptr;
 bool getSellItems() const { return sell; }
 void deliver(Base* b,SavedGame* g) {
+ResearchMod soldierMod; const Mod* m=&soldierMod; struct Language { std::string getString(const std::string& value) const { return value; } } language; auto* lang=&language;
 if(craftBirth) ProductionCraftCaller{craftBirth}.complete(b,g,nullptr);
 else {
 // PRODUCTION_DELIVERY
@@ -389,7 +406,18 @@ std::cout << '[' << (scientist?"true":"false") << ',' << delay << ',' << assigne
 for(auto* waypoint:game.save.waypoints) delete waypoint; for(auto* transfer:base.transfers) delete transfer;
 }
 std::cout << "],";
-std::cout << "\"researchCorpseRows\":[";
+std::cout << "\"productionSoldierRows\":[";
+scoreFirst=true;
+for(int delay:{-1,0,3}) for(bool fixed:{false,true}) for(bool overlay:{false,true}) for(bool pending:{false,true}) {
+if(!scoreFirst) std::cout << ','; scoreFirst=false;
+Base base; SavedGame save; save.bases={&base}; Soldier existing; Transfer incoming(2); incoming.setSoldier(&existing); if(pending) base.transfers.push_back(&incoming);
+ProductionItemRule rule; rule.person="RECRUIT"; rule.times=delay<0?std::vector<int>{0}:std::vector<int>{0,delay}; rule.personName=fixed?"FORCED":""; rule.soldierTemplate=overlay;
+Soldier::generated=0; ProductionDeliveryCaller delivery{&rule}; delivery.deliver(&base,&save);
+auto* transfer=base.transfers.back(); auto* soldier=transfer->_soldier;
+std::cout << '[' << delay << ',' << (fixed?"true":"false") << ',' << (overlay?"true":"false") << ',' << (pending?"true":"false") << ',' << transfer->_hours << ',' << soldier->id << ',' << save.soldierCounter << ',' << soldier->nationality << ",\"" << soldier->name << "\"," << Soldier::generated << ']';
+delete soldier; delete transfer;
+}
+std::cout << "],\"researchCorpseRows\":[";
 scoreFirst=true;
 for(bool retain:{false,true}) for(bool needs:{false,true}) for(bool destroy:{false,true}) for(bool returns:{false,true}) for(bool finished:{false,true}) for(bool unitExists:{false,true}) for(bool recover:{false,true}) for(bool recoverCorpse:{false,true}) for(bool daily:{false,true}) {
 if(!scoreFirst) std::cout << ','; scoreFirst=false;
