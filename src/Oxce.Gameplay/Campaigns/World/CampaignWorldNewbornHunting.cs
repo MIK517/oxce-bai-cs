@@ -33,7 +33,7 @@ internal sealed partial class CampaignWorld
             return reason;
         var origin = new WorldPosition(0, 0);
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
-        if (radar != 0)
+        if (radar > 0)
         {
             if (ForecastNewbornCraftCandidates(includeIgnored: false, ref _huntingForecastWork, out var candidate) is { } candidateReason)
                 return candidateReason;
@@ -66,8 +66,8 @@ internal sealed partial class CampaignWorld
                 origin = positions[0].Center;
             }
         }
-        // Native candidate attraction is evaluated before the radar test. A zero
-        // range proves no target, but cannot hide malformed candidate arithmetic.
+        // Native candidate attraction is evaluated before the radar test. A
+        // nonpositive range proves no target, but cannot hide malformed arithmetic.
         // Constructor modes above one randomly select either zero or one; prove
         // both outcomes without drawing RNG or allocating a campaign identity.
         for (var candidateMode = mode > 1 ? 0 : mode; candidateMode <= (mode > 1 ? 1 : mode); candidateMode++)
