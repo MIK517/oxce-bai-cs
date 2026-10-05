@@ -27,7 +27,7 @@ std::vector<Soldier*>* getSoldiers() { return &soldiers; }
 int getScientists() const { return scientists; } void setScientists(int value) { scientists=value; }
 int getEngineers() const { return engineers; } void setEngineers(int value) { engineers=value; } };
 struct CraftWeapon { bool rearming=false; bool isRearming() const { return rearming; }
-struct Rule { Item* getClipItem() const { return nullptr; } int getAmmoMax() const { return 0; } } rule;
+struct Rule { Item* clip=nullptr; int ammoMax=0; Item* getClipItem() const { return clip; } int getAmmoMax() const { return ammoMax; } } rule;
 const Rule* getRules() const { return &rule; } int rearm(int,int) { return 0; }
 int getAmmo() const { return 0; } bool isDisabled() const { return false; }
 void setRearming(bool value) { rearming=value; } };
@@ -48,6 +48,7 @@ std::vector<CraftWeapon*> _weapons;
 void setFuel(int); std::string refuel(); void setDestination(Target*); void repair(); const RuleItem* rearm();
 int getFuelConsumption(int,int) const; void consumeFuel(int); void returnToBase();
 void checkup(); void setBase(Base*,bool move=true);
+void reuseItem(const RuleItem*);
 int getFuel() const { return _fuel; } int getFuelLimit() const { return 0; }
 int getSpeed() const { return speed; } void setLowFuel(bool value) { _lowFuel=value; }
 Target* getDestination() const { return _dest; } double getDistance(Target*) const { return 0; }
@@ -159,6 +160,44 @@ Craft* target=select(&hunter,active);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << ',' << (low?"true":"false") << ','
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"combinedTransferRows\":[";
+serviceFirst=true;
+for(bool itemFirst:{false,true}) for(bool armed:{false,true}) for(int fuel:{0,60,100}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; Transfer itemTransfer,craftTransfer; ServiceGame game; FuelCaller caller; Ufo hunter; CraftWeapon weapon;
+craft.id=2; craft.distance=Nautical(100); craft.rule.fuelItem=&item; craft._fuel=fuel;
+if(armed) { weapon.rule.clip=&item; weapon.rule.ammoMax=10; craft._weapons={&weapon}; }
+craftTransfer._craft=&craft; itemTransfer._itemId=&item; itemTransfer._itemQty=1;
+if(itemFirst) { itemTransfer.advance(&base); craftTransfer.advance(&base); }
+else { craftTransfer.advance(&base); itemTransfer.advance(&base); }
+// ItemsArrivingState is constructed only after every due Transfer::advance.
+craft.reuseItem(&item);
+if(craft._status=="STR_REFUELLING") { const auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active;
+if(craft._status=="STR_OUT") { caller.fuel(&craft); active.push_back(&craft); }
+Craft* target=select(&hunter,active);
+std::cout << '[' << (itemFirst?"true":"false") << ',' << (armed?"true":"false") << ',' << fuel << ",\"" << craft._status << "\"," << craft._fuel << ',' << base.storage.count << ',' << (weapon.rearming?"true":"false") << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"suppliedFuelRows\":[";
+serviceFirst=true;
+for(int hours:{1,2}) for(const std::string status:{"STR_REFUELLING","STR_REARMING","STR_READY"}) for(int fuel:{0,60,100}) for(int stock:{0,1}) for(bool armed:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; Transfer transfer; ServiceGame game; FuelCaller caller; Ufo hunter; CraftWeapon weapon;
+craft.id=1; craft._base=&base; base.storage.count=stock; craft.distance=Nautical(100);
+craft.rule.fuelItem=&item; craft._status=status; craft._fuel=fuel;
+if(armed) { weapon.rule.clip=&item; weapon.rule.ammoMax=10; craft._weapons={&weapon}; }
+if(status=="STR_REARMING") craft.rearm();
+transfer._hours=hours; transfer._itemId=&item; transfer._itemQty=1; transfer.advance(&base);
+if(transfer._delivered) craft.reuseItem(&item);
+if(craft._status=="STR_REFUELLING") { const auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active;
+if(craft._status=="STR_OUT") { caller.fuel(&craft); active.push_back(&craft); }
+Craft* target=select(&hunter,active);
+std::cout << '[' << hours << ",\"" << status << "\"," << fuel << ',' << stock << ',' << (armed?"true":"false") << ','
+<< (transfer._delivered?"true":"false") << ",\"" << craft._status << "\"," << craft._fuel << ',' << base.storage.count << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "],\"incomingCraftRows\":[";

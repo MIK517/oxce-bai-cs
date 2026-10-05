@@ -18,26 +18,14 @@ internal sealed partial class CampaignWorld
             var sources = new List<CampaignState.CraftState>(owner.Crafts);
             _huntingCraftSources.Add(owner.Id, sources);
             foreach (var craft in owner.Crafts)
-            {
                 if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
+            if (highest >= CampaignTimeTrigger.OneHour &&
+                ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, ref work) is { } inputReason)
+                return inputReason;
+            foreach (var craft in sources)
+            {
                 if (ForecastHuntingCraftState(owner, craft, highest, stocks, out var state) is { } reason) return reason;
                 _huntingCraftForecast.Add((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
-            }
-            if (highest < CampaignTimeTrigger.OneHour) continue;
-            foreach (var transfer in owner.Transfers)
-            {
-                if (transfer.Delivered || transfer.Hours > 1 || transfer.Craft is not { Logistics: { } logistics } incoming) continue;
-                var handle = rules.Crafts.GetRequired(incoming.RuleId);
-                var rule = rules.Crafts[handle].Value;
-                if (!CraftLogistics.TryEffectiveServiceCapacities(rule, logistics.Weapons, rules, out var capacities) ||
-                    capacities.FuelMaximum < 0) return "Craft service capacity exceeds the supported range.";
-                var craft = new CampaignState.CraftState(handle, incoming.Id)
-                {
-                    Logistics = CraftLogistics.Arrive(logistics, rule, rules, owner.Longitude, owner.Latitude),
-                };
-                if (ForecastHuntingCraftState(owner, craft, highest, stocks, out var state, arriving: true) is { } reason) return reason;
-                _huntingCraftForecast.Add((incoming.RuleId, incoming.Id), state);
-                sources.Add(craft);
             }
         }
         if (highest < CampaignTimeTrigger.TenMinutes) return null;
@@ -68,34 +56,13 @@ internal sealed partial class CampaignWorld
 
     /// <summary>Pure craft state at the native retarget caller, before five-second movement.</summary>
     private string? ForecastHuntingCraftState(CampaignState.BaseState owner, CampaignState.CraftState craft,
-        CampaignTimeTrigger highest, Dictionary<RuleHandle<ItemRuleFamily>, int>? fuelStocks, out CraftLogisticsState state,
-        bool arriving = false)
+        CampaignTimeTrigger highest, Dictionary<RuleHandle<ItemRuleFamily>, int>? fuelStocks, out CraftLogisticsState state)
     {
         state = craft.Logistics!;
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Crafts[craft.Rule].Value;
         if (highest < CampaignTimeTrigger.ThirtyMinutes || state.Status == "STR_OUT") return null;
-        if (highest >= CampaignTimeTrigger.OneHour && !arriving)
-        {
-            if (state.Status == "STR_REPAIRS")
-            {
-                if (rule.RepairRate < 0 || (long)state.Damage - rule.RepairRate < int.MinValue)
-                    return "Craft service rate exceeds the supported range.";
-                state = CraftServicing.Repair(state, rule);
-            }
-            else if (state.Status == "STR_REARMING" && !state.Weapons.Any(weapon => weapon is { Rearming: true }))
-                state = state with { Status = "STR_REFUELLING" };
-        }
         if (state.Status != "STR_REFUELLING") return null;
-        if (highest >= CampaignTimeTrigger.OneHour)
-        {
-            if (rule.RefuelItem is not null)
-                return "UFO retargeting requires hourly refuelling stock forecasts.";
-            if (owner.Productions.Count != 0 && state.Weapons.Any(weapon => weapon is { Disabled: false } &&
-                    rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value is { Clip.Length: > 0 } weaponRule &&
-                    weapon.Ammo < weaponRule.AmmoMaximum))
-                return "UFO retargeting requires same-tick craft ammunition reuse forecasts.";
-        }
         if (rule.RefuelRate < 0 || (long)state.Fuel + rule.RefuelRate > int.MaxValue ||
             !CraftLogistics.TryEffectiveServiceCapacities(rule, state.Weapons, rules, out var capacities) ||
             capacities.FuelMaximum < 0 ||

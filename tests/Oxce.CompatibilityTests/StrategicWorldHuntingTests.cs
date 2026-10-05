@@ -459,9 +459,11 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HalfHourItemRefuellingPrecedesHunterSelection(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HalfHourItemRefuellingPrecedesHunterSelection(bool cache, bool hourly)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var content = Load(cache, "crafts: [{type: ITEM_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
@@ -481,7 +483,7 @@ public sealed class StrategicWorldHuntingTests
                     Weapons = [],
                 },
             }) with
-            { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            { Time = new(1, 1, 1, 1999, 1, hourly ? 59 : 29, 55) };
             initial = initial with
             {
                 Bases = [initial.Bases[0] with
@@ -507,15 +509,17 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void SharedFuelStocksPreserveCraftOrderBeforeHunting(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SharedFuelStocksPreserveCraftOrderBeforeHunting(bool cache, bool hourly)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var content = Load(cache, "crafts: [{type: SHARED_REFUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "sharedFuelRows"))
         {
-            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 29, 55) };
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, hourly ? 59 : 29, 55) };
             var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
             CraftSnapshot Craft(int id, int fuel, bool auto) => template with
             {
@@ -707,6 +711,145 @@ public sealed class StrategicWorldHuntingTests
         }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SuppliedFuelAndAmmunitionPrecedeHalfHourHunterSelection(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: SUPPLIED_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: HUNT_TRANSFER_GUN, ammoMax: 10, launcher: SUPPLY, clip: SUPPLY}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "suppliedFuelRows"))
+        {
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "SUPPLIED_FUEL_HUNT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = row[1].GetString()!, Fuel = row[2].GetInt32(), IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                    Weapons = row[4].GetBoolean() ? [new("HUNT_TRANSFER_GUN", 0)] : [],
+                },
+            }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            initial = initial with { Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21,
+                Items = row[3].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[3].GetInt32() },
+                Transfers = [new(1, row[0].GetInt32(), CampaignTransferKind.Item, "SUPPLY", 1)],
+            }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "supplied-fuel-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SUPPLIED_FUEL_HUNT").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                after.Bases[0].Transfers.Count == 0, craft.Status, craft.Fuel,
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY"),
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "supplied-fuel-after.sav");
+        }
+    }
+
+    [Fact]
+    public void ArrivalItemReuseWorkIsBoundedWithoutUfos()
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = new() };
+        var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        initial = initial with { Bases = [initial.Bases[0] with
+        {
+            Soldiers = [],
+            Crafts = Enumerable.Range(1, 1001).Select(id => template with
+            { Id = id, Logistics = template.Logistics! with { Status = "STR_READY", Weapons = [] } }).ToArray(),
+            Transfers = Enumerable.Range(1, 1001).Select(id =>
+                new TransferSnapshot(id, 1, CampaignTransferKind.Item, "SUPPLY", 1)).ToArray(),
+        }] };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Arrival item reuse exceeds the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CombinedCraftAndItemTransfersReuseAfterAllArrivals(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: COMBINED_TRANSFER_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: HUNT_COMBINED_GUN, ammoMax: 10, launcher: SUPPLY, clip: SUPPLY}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "combinedTransferRows"))
+        {
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            var incoming = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP") with
+            {
+                RuleId = "COMBINED_TRANSFER_HUNT", Id = 2,
+                Logistics = new(row[2].GetInt32(), 0, "STR_REFUELLING",
+                    row[1].GetBoolean() ? [new("HUNT_COMBINED_GUN", 0)] : [], new Dictionary<string, int>(), [])
+                { IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 },
+            };
+            var itemTransfer = new TransferSnapshot(1, 1, CampaignTransferKind.Item, "SUPPLY", 1);
+            var craftTransfer = new TransferSnapshot(2, 1, CampaignTransferKind.Craft, "COMBINED_TRANSFER_HUNT", 1, Craft: incoming);
+            initial = initial with { Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(), Crafts = [], Soldiers = [],
+                Transfers = row[0].GetBoolean() ? [itemTransfer, craftTransfer] : [craftTransfer, itemTransfer],
+            }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "combined-transfer-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            Assert.Empty(after.Bases[0].Transfers);
+            var craft = Assert.Single(after.Bases[0].Crafts).Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                craft.Status, craft.Fuel, after.Bases[0].Items.GetValueOrDefault("SUPPLY"),
+                craft.Weapons.Any(weapon => weapon is { Rearming: true }),
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, 81, "combined-transfer-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData("facility", "UFO retargeting requires facility ammunition stock forecasts.")]
+    [InlineData("weapon", "UFO retargeting requires craft ammunition stock forecasts.")]
+    [InlineData("production", "UFO retargeting requires production fuel-stock forecasts.")]
+    [InlineData("craft", "UFO retargeting requires production craft-consumption forecasts.")]
+    public void UnforecastHourlyStockInputsStopBeforeMutation(string source, string reason)
+    {
+        var overlay = "crafts: [{type: STOCK_GUARD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\n";
+        overlay += source switch
+        {
+            "facility" => "facilities: [{type: HUNT_FUEL_DEFENSE, mapName: LOGISTICS, ammoMax: 2, rearmRate: 1, ammoItem: SUPPLY}]\n",
+            "weapon" => "craftWeapons: [{type: HUNT_FUEL_GUN, ammoMax: 10, rearmRate: 1, launcher: SUPPLY, clip: SUPPLY}]\n",
+            "production" => "manufacture: [{name: HUNT_STOCK_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\n",
+            _ => "manufacture: [{name: HUNT_STOCK_PRODUCT, time: 1, requiredItems: {STOCK_GUARD_HUNT: 1}, producedItems: {SUPPLY: 1}}]\n",
+        };
+        var content = Load(overlay: overlay);
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "STOCK_GUARD_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = source == "weapon" ? "STR_REARMING" : "STR_REFUELLING", Fuel = 60,
+                IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                Weapons = source == "weapon" ? [new("HUNT_FUEL_GUN", 0, Rearming: true)] : [],
+            },
+        }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var owner = initial.Bases[0];
+        if (source == "facility") owner = owner with { Facilities = [.. owner.Facilities, new("HUNT_FUEL_DEFENSE", 1, 1, 0, 0, false, false, false)] };
+        if (source is "production" or "craft") owner = owner with
+        {
+            Facilities = [.. owner.Facilities, new("FUEL_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("HUNT_STOCK_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+        };
+        initial = initial with { Bases = [owner] };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), reason);
     }
 
     [Fact]
