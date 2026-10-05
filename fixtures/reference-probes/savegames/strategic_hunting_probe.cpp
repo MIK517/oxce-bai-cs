@@ -11,25 +11,31 @@
 namespace OpenXcom {
 using Exception = std::runtime_error;
 struct Base; struct SavedGame; struct Item; struct ResearchMod; struct ProductionDeliveryCaller;
-using productionProgress_e=int; const int PROGRESS_COMPLETE=0,PROGRESS_NOT_COMPLETE=1,PROGRESS_NOT_ENOUGH_MONEY=2,PROGRESS_NOT_ENOUGH_MATERIALS=3,PROGRESS_NOT_ENOUGH_LIVING_SPACE=4;
+// PRODUCTION_ENUM
 const int BT_NONE=0;
 struct RNG { static inline int roll=0, calls=0, suppliedChoice=-1;
 static bool percent(int value) { ++calls; return roll < value; }
 static int generate(int,int) { ++calls; return suppliedChoice >= 0 ? suppliedChoice : calls % 2 == 0 ? 1 : 0; } };
 double Nautical(double x) { return x / 60.0 * 3.14159265358979323846 / 180.0; }
 struct Production {
-struct Rule { int time=4,cost=0; int& _cost=cost; std::map<const Item*,int> requiredItems; std::map<const void*,int> requiredCrafts;
+struct Rule { int time=4,cost=0,space=0; int& _cost=cost; std::map<const Item*,int> requiredItems; std::map<const void*,int> requiredCrafts;
+std::string getName() const { return "PRODUCT"; }
+int getRequiredSpace() const { return space; }
 int getManufactureTime() const { return time; } int getManufactureCost() const { return cost; }
 bool haveEnoughMoneyForOneMoreUnit(int64_t funds) const;
 const auto& getRequiredItems() const { return requiredItems; } const auto& getRequiredCrafts() const { return requiredCrafts; }
 std::string getSpawnedPersonType() const { return ""; }
 } rule;
 const Rule* _rules=&rule; int _timeSpent=0,_engineers=0,_amount=20; bool infinite=false;
-int completedUnits=0;
+int completedUnits=0; bool _isFallback=false;
+bool isQueuedOnly() const { return _timeSpent==0&&_engineers==0; }
+int getAssignedEngineers() const { return _engineers; } void setAssignedEngineers(int value) { _engineers=value; }
 int getAmountProduced() const; bool haveEnoughMoneyForOneMoreUnit(SavedGame*) const;
 bool haveEnoughLivingSpaceForOneMoreUnit(Base*); bool haveEnoughMaterialsForOneMoreUnit(Base*,const ResearchMod*) const;
 void startItem(Base*,SavedGame*,const ResearchMod*) const;
 int scalarStep(Base*,SavedGame*,const ResearchMod*,ProductionDeliveryCaller&);
+ProductionDeliveryCaller* delivery=nullptr; productionProgress_e step(Base*,SavedGame*,const ResearchMod*,void*);
+const Rule* getRules() const { return _rules; }
 bool getInfiniteAmount() const { return infinite; }
 int requested() {
 // PRODUCTION_COUNT
@@ -47,7 +53,9 @@ using RuleItem=Item;
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
 void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty=1) { count+=qty; } };
 struct Craft; struct Transfer; struct Soldier {};
-struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0;
+struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0; int& _engineers=engineers;
+std::vector<Production*> _productions; auto& getProductions() { return _productions; }
+int freeWorkshops=0; int getAvailableWorkshops() const { return freeWorkshops; } int getUsedWorkshops() const; int getFreeWorkshops() const; void removeProduction(Production*); int getAvailableEngineers() const { return engineers; }
 int getAvailableQuarters() const { return 100; } int getUsedQuarters() const { return 0; }
 int getCraftCountForProduction(const void*) const { return 0; }
 void removeCraft(Craft* craft,bool) { std::erase(crafts,craft); }
@@ -55,6 +63,8 @@ Storage* getStorageItems() { return &storage; } std::vector<Craft*>* getCrafts()
 std::vector<Soldier*>* getSoldiers() { return &soldiers; }
 int getScientists() const { return scientists; } void setScientists(int value) { scientists=value; }
 int getEngineers() const { return engineers; } void setEngineers(int value) { engineers=value; } };
+namespace Collections { template<class T,class P> void deleteIf(std::vector<T*>& values,int,P predicate) { for(auto it=values.begin();it!=values.end();) { if(predicate(*it)) { delete *it; it=values.erase(it); } else ++it; } } }
+// PRODUCTION_BASE_METHODS
 struct CraftWeapon { bool rearming=false; bool isRearming() const { return rearming; }
 struct Rule { Item* clip=nullptr; int ammoMax=0,rate=4; bool saving=false; int getRearmRate() const { return rate; } bool useStatisticalBulletSaving() const { return saving; } Item* getClipItem() const { return clip; } int getAmmoMax() const { return ammoMax; } } rule;
 const Rule* getRules() const { return &rule; } int _ammo=0; bool& _rearming=rearming; const Rule* _rules=&rule; int rearm(const int,const int); void setAmmo(int value) { _ammo=std::clamp(value,0,rule.ammoMax); }
@@ -227,10 +237,20 @@ void deliver(Base* b,SavedGame* g) {
 };
 // PRODUCTION_INPUT_METHODS
 int Production::scalarStep(Base* b,SavedGame* g,const Mod* m,ProductionDeliveryCaller& delivery) {
+// PRODUCTION_STAFFING
 const int done=getAmountProduced(); const int produced=requested(); int count=0;
 if(produced>0) { do { delivery.deliver(b,g); ++completedUnits;
 // PRODUCTION_CONTINUATION
 }
+productionProgress_e Production::step(Base* b,SavedGame* g,const ResearchMod* m,void*) { return static_cast<productionProgress_e>(scalarStep(b,g,m,*delivery)); }
+struct ProductionHourlyCaller {
+struct Game { SavedGame* save; Mod* mod; SavedGame* getSavedGame() { return save; } Mod* getMod() { return mod; } void* getLanguage() { return nullptr; } } game; Game* _game=&game;
+struct ProductionCompleteState { template<class...T> ProductionCompleteState(T...) {} };
+std::string tr(const std::string& name) { return name; } void popup(ProductionCompleteState* state) { delete state; }
+void advance(Base* xbase) {
+// PRODUCTION_HOURLY_CALLER
+}
+};
 struct ServiceGame { SavedGame save; SavedGame* getSavedGame() { return &save; } };
 void autoPatrol(Craft* xcraft, ServiceGame* _game) {
 // AUTO_PATROL
@@ -285,6 +305,41 @@ Craft* target=select(&hunter,active);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << ',' << (low?"true":"false") << ','
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionStaffReleaseRows\":[";
+serviceFirst=true;
+for(bool fails:{false,true}) for(int freeEngineers:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; ServiceGame game; FuelCaller fuelCaller; Ufo hunter; ResearchMod mod;
+craft.id=1; craft._base=&base; base.crafts={&craft}; base.storage.count=0; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+base.engineers=freeEngineers; base.freeWorkshops=3;
+ProductionItemRule firstRule; firstRule.produced={{&item,0}}; ProductionDeliveryCaller firstDelivery{&firstRule};
+ProductionItemRule secondRule; secondRule.produced={{&item,1}}; ProductionDeliveryCaller secondDelivery{&secondRule};
+auto* first=new Production(); first->rule.time=1; first->_engineers=2; first->_amount=fails?3:1; first->rule.cost=fails?1000:0; first->delivery=&firstDelivery;
+auto* second=new Production(); second->rule.time=1; second->_amount=4; second->_isFallback=true; second->delivery=&secondDelivery;
+base._productions={first,second}; ProductionHourlyCaller caller; caller.game={&game.save,&mod}; caller.advance(&base);
+const int spent=second->_timeSpent,assigned=second->_engineers;
+if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << (fails?"true":"false") << ',' << freeEngineers << ',' << spent << ',' << assigned << ',' << base.engineers << ',' << base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
+for(auto* project:base._productions) delete project; for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionFallbackRows\":[";
+serviceFirst=true;
+for(int engineers:{0,1,4}) for(int freeSpace:{0,1,4}) for(int space:{0,2}) for(int spent:{0,1}) for(int assigned:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; ServiceGame game; FuelCaller fuelCaller; Ufo hunter;
+craft.id=1; craft._base=&base; base.crafts={&craft}; base.storage.count=0; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+base.engineers=engineers; base.freeWorkshops=freeSpace;
+Production progress; progress.rule.time=2; progress.rule.space=space; progress._timeSpent=spent; progress._engineers=assigned; progress._amount=4; progress._isFallback=true;
+ProductionItemRule rule; rule.produced={{&item,1}}; ProductionDeliveryCaller delivery{&rule}; ResearchMod mod;
+const auto result=progress.scalarStep(&base,&game.save,&mod,delivery);
+if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << engineers << ',' << freeSpace << ',' << space << ',' << spent << ',' << assigned << ',' << progress._engineers << ',' << base.engineers << ',' << progress._timeSpent << ',' << progress.completedUnits << ',' << result << ',' << base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "],\"productionMaterialRows\":[";

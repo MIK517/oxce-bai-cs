@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded); SavedGame::addFinishedResearch/selectGetOneFree/hasUndiscoveredGetOneFree/hasUndiscoveredProtectedUnlock with controlled availability and diary collaborators; Production::step fixed item delivery fragment including zero quantities; Production::step continuation checks; Production::haveEnoughMoneyForOneMoreUnit/haveEnoughLivingSpaceForOneMoreUnit/haveEnoughMaterialsForOneMoreUnit/startItem and RuleManufacture::haveEnoughMoneyForOneMoreUnit",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded); SavedGame::addFinishedResearch/selectGetOneFree/hasUndiscoveredGetOneFree/hasUndiscoveredProtectedUnlock with controlled availability and diary collaborators; Production::step fixed item delivery fragment including zero quantities; Production::step continuation checks; Production::haveEnoughMoneyForOneMoreUnit/haveEnoughLivingSpaceForOneMoreUnit/haveEnoughMaterialsForOneMoreUnit/startItem and RuleManufacture::haveEnoughMoneyForOneMoreUnit; Production::step fallback staffing prefix with controlled Base::getFreeWorkshops/getAvailableEngineers; Base::getUsedWorkshops/getFreeWorkshops/removeProduction and GeoscapeState::time1Hour deferred removal loop; Production.h native productionProgress_e enum",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 48742,
-      "sha256": "2c319193eba5121942914e0d99912289ab57939e43e57f1575e5a16bfd9e4eb4"
+      "size": 53710,
+      "sha256": "ca2eca58848de11d4fff8a8e968db31c0c419a84816a512077395fea63816b03"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 13013,
-      "sha256": "cbb1571c5a4715560221a4d39646d11332b31e9a0ad32788a9983367d97acc2c"
+      "size": 14685,
+      "sha256": "5e46fa2595d09d9e16734b6dae02e986c025496dac5ae4fb102086bd275c3494"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",

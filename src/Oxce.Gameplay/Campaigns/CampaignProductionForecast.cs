@@ -7,7 +7,7 @@ internal interface ICampaignProductionPreflight
 {
     string? ForecastStocks(IReadOnlyDictionary<int, List<CampaignState.CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
-        int? nextResearchTransferId, bool uncertainResearch, ref long work);
+        int? nextResearchTransferId, bool uncertainResearch, CampaignTimeTrigger highest, ref long work);
     (long Minimum, long Maximum) CraftCounter(string name, CampaignTimeTrigger highest,
         (long Minimum, long Maximum) before);
 }
