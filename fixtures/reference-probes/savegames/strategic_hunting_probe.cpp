@@ -58,7 +58,7 @@ std::vector<Production*> _productions; auto& getProductions() { return _producti
 int freeWorkshops=0; int getAvailableWorkshops() const { return freeWorkshops; } int getUsedWorkshops() const; int getFreeWorkshops() const; void removeProduction(Production*); int getAvailableEngineers() const { return engineers; }
 int getAvailableQuarters() const { return 100; } int getUsedQuarters() const { return 0; }
 int getCraftCountForProduction(const RuleCraft*) const;
-void removeCraft(Craft* craft,bool) { std::erase(crafts,craft); }
+void removeCraft(Craft* craft,bool);
 Storage* getStorageItems() { return &storage; } std::vector<Craft*>* getCrafts() { return &crafts; }
 std::vector<Soldier*>* getSoldiers() { return &soldiers; }
 int getScientists() const { return scientists; } void setScientists(int value) { scientists=value; }
@@ -114,6 +114,7 @@ void refund(ResearchProject* project) { const RuleResearch* ruleResearch=project
 }
 };
 struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
+struct Cargo { std::map<const RuleItem*,int> values; const auto* getContents() const { return &values; } };
 struct Craft : MovingTarget {
 struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelItem=nullptr; int refuelRate=40;
 bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; }
@@ -131,6 +132,9 @@ void setFuel(int); std::string refuel(); void setDestination(Target*); void repa
 int getFuelConsumption(int,int) const; void consumeFuel(int); void returnToBase();
 void checkup(); void setBase(Base*,bool move=true);
 void reuseItem(const RuleItem*);
+Cargo cargo; Cargo* _items=&cargo; void unloadItems() {
+// PRODUCTION_CRAFT_UNLOAD_ITEMS
+}
 int getFuel() const { return _fuel; } int getFuelLimit() const { return 0; }
 int getSpeed() const { return speed; } void setLowFuel(bool value) { _lowFuel=value; }
 Target* getDestination() const { return _dest; } double getDistance(Target*) const { return 0; }
@@ -147,6 +151,7 @@ bool getMissionComplete() const { return _missionComplete; }
 const Rule* getRules() const { return _rules; }
 int getHunterKillerAttraction(int huntMode) const;
 };
+void Base::removeCraft(Craft* craft,bool unload) { if(unload) craft->unloadItems(); std::erase(crafts,craft); }
 // PRODUCTION_CRAFT_COUNT
 // REFUEL_METHODS
 struct Transfer {
@@ -307,6 +312,23 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionCraftUnloadRows\":[";
+serviceFirst=true;
+for(int stock:{0,1,3}) for(int input:{0,1,2}) for(int loaded:{0,1,2,INT_MAX}) {
+if(loaded==INT_MAX && (stock!=1 || input!=1)) continue;
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; ServiceGame game; FuelCaller fuelCaller; Ufo hunter; ResearchMod mod;
+craft.id=1; craft._base=&base; base.crafts={&craft}; base.storage.count=stock; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+auto* consumed=new Craft(); consumed->id=2; consumed->_base=&base; consumed->_status="STR_READY"; consumed->cargo.values={{&item,loaded}}; base.crafts.push_back(consumed);
+Production progress; progress.rule.requiredItems={{&item,input}}; progress.rule.requiredCrafts={{consumed->getRules(),1}};
+const bool enough=progress.haveEnoughMaterialsForOneMoreUnit(&base,&mod);
+if(enough) progress.startItem(&base,&game.save,&mod);
+if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << stock << ',' << input << ',' << loaded << ',' << (enough?"true":"false") << ',' << base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << base.crafts.size() << ',' << (target?target->id:0) << ']';
+if(!enough) delete consumed; for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "],\"productionCraftInputRows\":[";
 serviceFirst=true;

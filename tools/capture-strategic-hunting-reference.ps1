@@ -63,6 +63,11 @@ $delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart)
 $delivery = $delivery.Substring(0, $delivery.LastIndexOf('}')).TrimEnd()
 $template = $template.Replace('// PRODUCTION_DELIVERY', $delivery)
 $template = $template.Replace('// PRODUCTION_CRAFT_COUNT', (Read-ReferenceMethod 'src/Savegame/Base.cpp' 'int Base::getCraftCountForProduction('))
+$unload = Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'void Craft::unload()'
+$unloadStart = $unload.IndexOf('for (const auto& pair : *_items->getContents())', [StringComparison]::Ordinal)
+$unloadEnd = $unload.IndexOf('// Remove vehicles', $unloadStart, [StringComparison]::Ordinal)
+if ($unloadStart -lt 0 -or $unloadEnd -le $unloadStart) { throw 'Missing craft inventory unload fragment.' }
+$template = $template.Replace('// PRODUCTION_CRAFT_UNLOAD_ITEMS', $unload.Substring($unloadStart, $unloadEnd - $unloadStart))
 $productionHeader = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/Production.h'))
 $productionEnum = [regex]::Match($productionHeader, 'enum productionProgress_e[^;]+;').Value
 if (-not $productionEnum) { throw 'Missing production progress enum.' }

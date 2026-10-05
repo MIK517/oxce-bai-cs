@@ -9,7 +9,7 @@ and disabled-project cancellation, fixed spawned item arrivals, lookup and autom
 discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
 production without a completing unit, final prepaid zero-score item units and
 recurring paid/item-input units and fallback staffing participate in hunter forecasts. Remaining
-projections cover craft-consuming, sold, random/craft/person
+projections cover sold, random/craft/person
 production, nonzero score effects, stochastic shared ammunition, random research
 reward choices and corpse consequences.
 The progress notes below record earlier guards and their later replacements.
@@ -317,3 +317,5 @@ The paid/material/fallback production batch audit fixes two confirmed issues. A 
 Cycle validation: all 2,563 root tests pass with zero failures/skips, including reference checksums, 19 private save classifications and unchanged populated performance limits. Code-map/diff checks pass. Useful captures/executables remain; the obsolete compiled hunting object is removed at this milestone. The pinned reference checkout is unchanged.
 
 Branch 4c native craft inputs: Production::haveEnoughMaterialsForOneMoreUnit uses the required quantity only to count grounded craft, while startItem removes one first matching craft per listed type, including zero-valued entries and airborne first matches. Twenty-four native eligibility/selection traces reproduced the zero-input mismatch before the fix and now compare fresh/cache results with empty unload payloads and reloads. Execution preserves that split; counter lower bounds treat zero craft inputs as possible consumption. The hunter forecast retains a precise consumption guard for these now-correct transitions until the next slice. Existing hunting/research compatibility passes 207 tests. Reference: Production::startItem, Base::getCraftCountForProduction/removeCraft and Craft::unload. Branch 4d and later-branch boundaries are unchanged.
+
+Branch 4c craft consumption forecasts: execution and preflight share material eligibility and first-craft selection. Each projected start removes item inputs before craft unloading, adds inventory/weapons/vehicle ammunition through the existing unload operation, and removes consumed actors before refuelling/retargeting. Twenty-eight pinned item-unload/refuel rows cover missing input, payload-driven relaunch and a valid int-max inventory that requires item-first ordering. Fresh/cache cases reload both sides; unsafe unload stock/quantity arithmetic refuses atomically. The prior ordinary craft-consumption stock guard is removed for fixed zero-score item producers. Focused hunting/research/counter tests pass 223 cases. Reference: Production::startItem, Craft::unload and Base::getCraftCountForProduction. Deleted-target pursuit composition is the next slice; later branches and 4d remain unchanged.

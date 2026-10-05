@@ -2088,6 +2088,95 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ProductionCraftUnloadStockOverflowStopsBeforeConsumption(bool cache)
+    {
+        var content = Load(cache, "manufacture: [{name: UNLOAD_LIMIT, time: 1, requiredItems: {SHIP: 1}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: UNLOAD_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            { Status = "STR_READY", Weapons = [], Items = new Dictionary<string, int> { ["SUPPLY"] = 1 }, Vehicles = [], IsAutoPatrolling = false }
+        });
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Items = new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue },
+            Facilities = [.. initial.Bases[0].Facilities, new("UNLOAD_LIMIT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("UNLOAD_LIMIT", 1, 0, 2, false, false, false, new Dictionary<string, int>())]
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "unload-limit-before.sav");
+        AssertTimeBlocked(campaign, "Production craft unload stocks exceed the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionCraftUnloadFeedsNativeRefuellingAndHunterSelection(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionCraftUnloadRows").GroupBy(row => row[1].GetInt32()))
+        {
+            var content = Load(cache, $"crafts: [{{type: UNLOAD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: UNLOAD_PRODUCT, time: 1, requiredItems: {{SHIP: 1, SUPPLY: {group.Key}}}, producedItems: {{SUPPLY: 0}}}}]\nfacilities: [{{type: UNLOAD_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+                var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+                var hunterTarget = source with
+                {
+                    RuleId = "UNLOAD_HUNT",
+                    Logistics = source.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = [],
+                        Items = new Dictionary<string, int>(),
+                        Vehicles = [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    }
+                };
+                var consumed = source with
+                {
+                    Id = 2,
+                    Logistics = source.Logistics! with
+                    {
+                        Status = "STR_READY",
+                        Weapons = [],
+                        Items = row[2].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[2].GetInt32() },
+                        Vehicles = [],
+                        IsAutoPatrolling = false
+                    }
+                };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Crafts = [hunterTarget, consumed], Soldiers = [], Engineers = 0,
+                    Items = row[0].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[0].GetInt32() },
+                    Facilities = [.. initial.Bases[0].Facilities, new("UNLOAD_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("UNLOAD_PRODUCT", 1, 0, 2, false, false, false, new Dictionary<string, int>())]
+                }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "craft-unload-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                Assert.Equal(row[3].GetBoolean(), Assert.Single(result.Events.OfType<CampaignProductionProgress>()).StopReason is null);
+                var after = campaign.Capture(); var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "UNLOAD_HUNT").Logistics!;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { after.Bases[0].Items.GetValueOrDefault("SUPPLY"), craft.Status, craft.Fuel,
+                    after.Bases[0].Crafts.Count, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(4).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "craft-unload-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ProductionCraftInputSelectionMatchesNativeQuantityAndFirstCraft(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -2501,6 +2590,15 @@ public sealed class StrategicWorldHuntingTests
             Productions = [new("HUNT_STOCK_PRODUCT", 1, 0, source == "craft" ? 2 : 1, false, false, false, new Dictionary<string, int>())],
         };
         initial = initial with { Bases = [owner] };
+        if (source == "craft")
+        {
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+            Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+            Assert.DoesNotContain(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "STOCK_GUARD_HUNT");
+            Assert.False(campaign.Capture().World.Ufos[0].Hunting);
+            Reload(content, campaign, 81, "consumption-forecast-after.sav");
+            return;
+        }
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), reason);
     }
 
