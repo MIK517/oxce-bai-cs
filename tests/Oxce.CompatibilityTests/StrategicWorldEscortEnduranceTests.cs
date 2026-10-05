@@ -16,6 +16,87 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldEscortEnduranceTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EscortRingsComposeCraftPursuitPatrolFuelAndReloadsForSeventyTwoHours(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache,
+            "ufos: [{type: HUNTER, scripts: {detectUfoFromBase: 'return DETECTION_RADAR 100;'}}]");
+        var initial = Ring(content, 3);
+        var ship = CreateSnapshot(content, "Escort craft operations").Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        ship = ship with
+        {
+            RuleId = "SHIP_SLOW_REFUEL",
+            Logistics = ship.Logistics! with
+            { Fuel = 300, Status = "STR_READY", Weapons = [], Items = new Dictionary<string, int>(), Vehicles = [] }
+        };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with { Crafts = [ship] }],
+            World = initial.World with { Ufos = initial.World.Ufos.Select(ufo => ufo with { Detected = true }).ToArray() },
+        };
+        var stepped = Run(1, false);
+        Assert.Equivalent(stepped, Run(120, false), strict: true);
+        Assert.Equivalent(stepped, Run(120, true), strict: true);
+
+        CampaignSnapshot Run(int batch, bool reload)
+        {
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+            int[] commands = [0, 120, 240, 1440, 1560, 72 * 720];
+            var command = 0;
+            var ticks = 0;
+            var servicing = false;
+            var lowFuel = false;
+            var pursuing = false;
+            while (ticks < commands[^1])
+            {
+                if (ticks == commands[command])
+                {
+                    ICampaignCommand action = command switch
+                    {
+                        0 => new DispatchCraftToTarget(0, ship.RuleId, ship.Id,
+                            new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.4, 0.2) { UniqueId = 9 }),
+                        1 or 4 => new PatrolCraft(0, ship.RuleId, ship.Id),
+                        2 => new RecallCraft(0, ship.RuleId, ship.Id),
+                        _ => new DispatchCraftToWaypoint(0, ship.RuleId, ship.Id, 0.2005, 0.1),
+                    };
+                    Assert.IsType<CraftDestinationChanged>(Assert.Single(campaign.Execute(action).Events));
+                    command++;
+                }
+                var result = campaign.Execute(new AdvanceCampaignTime(Math.Min(batch, commands[command] - ticks)));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var advanced = Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount;
+                Assert.InRange(advanced, 1, batch);
+                ticks += advanced;
+                if (ticks % 120 != 0 && result.Events.Count == 1 && ticks >= commands[1]) continue;
+                var current = campaign.Capture();
+                Assert.Equal(3, current.World.Ufos.Count);
+                Assert.Equal(3, Assert.Single(current.World.Missions).LiveUfos);
+                var state = Assert.Single(current.Bases[0].Crafts).Logistics!;
+                pursuing |= ticks <= commands[1] && state.Destination is { Kind: WorldTargetKind.Ufo, UniqueId: 9 } &&
+                    WorldGeometry.Distance(new(state.Longitude, state.Latitude),
+                        new(initial.Bases[0].Longitude, initial.Bases[0].Latitude)) > 0;
+                servicing |= state.Status == "STR_REFUELLING";
+                // Native checkup clears LowFuel when the nearby patrol returns in the
+                // same tick. No recall is issued after the second patrol, so only a
+                // fuel return can cause this later servicing state.
+                lowFuel |= ticks > commands[4] && state.IsAutoPatrolling &&
+                    state.Status == "STR_REFUELLING" && state.Fuel < 300;
+                if (reload) campaign = Reload(content, campaign, 81, "escort-craft-endurance.sav");
+            }
+            Assert.True(pursuing);
+            Assert.True(servicing);
+            Assert.True(lowFuel);
+            var after = campaign.Capture();
+            Assert.Equal(initial.DaysPassed + 3, after.DaysPassed);
+            return after;
+        }
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
