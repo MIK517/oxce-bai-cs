@@ -9,6 +9,7 @@
 #include <map>
 namespace OpenXcom {
 using Exception = std::runtime_error;
+struct Base; struct SavedGame; const int BT_NONE=0;
 struct RNG { static inline int roll=0, calls=0, suppliedChoice=-1;
 static bool percent(int value) { ++calls; return roll < value; }
 static int generate(int,int) { ++calls; return suppliedChoice >= 0 ? suppliedChoice : calls % 2 == 0 ? 1 : 0; } };
@@ -26,7 +27,7 @@ struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = defau
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
 struct Waypoint : Target { int id=0; int getId() const { return id; } void setId(int value) { id=value; } };
-struct Item { int clipSize=1; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } };
+struct Item { int clipSize=1; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } int getBattleType() const { return 0; } int getSellCostAdjusted(Base*,SavedGame*) const { return 3; } };
 using RuleItem=Item;
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
 void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty=1) { count+=qty; } };
@@ -170,6 +171,7 @@ bool insideRadarRange(Target* target) const;
 // RADAR
 // RETARGET_METHODS
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
+long long funds=100; long long getFunds() const { return funds; } void setFunds(long long value) { funds=value; }
 std::vector<const RuleResearch*> _discovered; std::map<std::string,int> statuses; int _time=0,researchScore=0;
 bool isResearchRuleStatusDisabled(const std::string& id) const { auto found=statuses.find(id); return found!=statuses.end()&&found->second==2; }
 void setResearchRuleStatus(const std::string& id,int value) { statuses[id]=value; }
@@ -193,6 +195,18 @@ std::vector<Ufo*>* getUfos() { return &ufos; }
 std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
 int getId(const std::string&) { return 8+(int)waypoints.size(); } };
 // RESEARCH_DISCOVERY_METHODS
+struct ProductionItemRule {
+std::vector<int> times; std::map<const RuleItem*,int> produced; std::vector<int> random;
+const auto& getTransferTimes() const { return times; } const auto& getProducedItems() const { return produced; }
+const auto& getRandomProducedItems() const { return random; }
+};
+struct ProductionDeliveryCaller {
+const ProductionItemRule* _rules; bool sell=false; std::map<std::string,int> _randomProductionInfo;
+bool getSellItems() const { return sell; }
+void deliver(Base* b,SavedGame* g) {
+// PRODUCTION_DELIVERY
+}
+};
 struct ServiceGame { SavedGame save; SavedGame* getSavedGame() { return &save; } };
 void autoPatrol(Craft* xcraft, ServiceGame* _game) {
 // AUTO_PATROL
@@ -248,6 +262,21 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionDeliveryRows\":[";
+serviceFirst=true;
+for(bool fuel:{false,true}) for(bool armed:{false,true}) for(int delay:{0,1,2}) for(int qty:{0,1,2}) for(int stock:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; CraftWeapon weapon; ServiceGame game; FuelCaller fuelCaller; Ufo hunter;
+craft.id=1; craft._base=&base; base.crafts={&craft}; base.storage.count=stock; craft.rule.fuelItem=fuel?&item:nullptr;
+craft._fuel=60; craft.distance=Nautical(100); if(armed) { weapon.rule.clip=&item; weapon.rule.ammoMax=10; craft._weapons={&weapon}; }
+ProductionItemRule rule; rule.times={delay}; rule.produced={{&item,qty}};
+ProductionDeliveryCaller caller{&rule}; caller.deliver(&base,&game.save);
+if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << (fuel?"true":"false") << ',' << (armed?"true":"false") << ',' << delay << ',' << qty << ',' << stock << ',' << base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << (weapon.rearming?"true":"false") << ',' << base.transfers.size() << ',' << (target?target->id:0) << ']';
+for(auto* transfer:base.transfers) delete transfer; for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "],\"researchUnicodeRows\":[";
 {
