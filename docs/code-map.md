@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 125 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 126 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 125 files.
+`src/Oxce.Gameplay` - 126 files.
 
 ### `Oxce.Gameplay`
 
@@ -428,6 +428,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `LogisticsOrderCompleted` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
 - `SuppliesArrived` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
 - `ProductionProgress` (class) [ProductionProgress.cs](../src/Oxce.Gameplay/Campaigns/ProductionProgress.cs) - Production::getAmountProduced and the completion count at Production::step.
+- `ResearchItemLifecycle` (class) [ResearchItemLifecycle.cs](../src/Oxce.Gameplay/Campaigns/ResearchItemLifecycle.cs) - Needed-item return at Base::removeResearch, before corpse recovery.
 - `SoldierCommendation` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
 - `SoldierPersonalState` (record) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs)
 - `SoldierGeneration` (class) [SoldierGeneration.cs](../src/Oxce.Gameplay/Campaigns/SoldierGeneration.cs) - Initial state from Soldier::Soldier and Mod::genSoldier at reference 4df3a5e.

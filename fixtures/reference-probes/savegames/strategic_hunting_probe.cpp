@@ -28,7 +28,7 @@ struct Waypoint : Target { int id=0; int getId() const { return id; } void setId
 struct Item { int clipSize=1; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } };
 using RuleItem=Item;
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
-void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty) { count+=qty; } };
+void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty=1) { count+=qty; } };
 struct Craft; struct Soldier {};
 struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Soldier*> soldiers; int scientists=0,engineers=0;
 Storage* getStorageItems() { return &storage; } std::vector<Craft*>* getCrafts() { return &crafts; }
@@ -41,6 +41,28 @@ const Rule* getRules() const { return &rule; } int _ammo=0; bool& _rearming=rear
 int getAmmo() const { return _ammo; } bool isDisabled() const { return false; }
 void setRearming(bool value) { rearming=value; } };
 // WEAPON_REARM
+struct ResearchRule {
+bool holding=false,returns=false,destroy=false; Item* needed=nullptr; std::string spawned=""; int count=0; std::vector<std::string> list;
+bool isHoldingNeededItem() const { return holding; } bool returnItem() const { return returns; }
+bool destroyItem() const { return destroy; } Item* getNeededItem() const { return needed; }
+std::string getName() const { return "RESEARCH"; } std::string getSpawnedItem() const { return spawned; }
+int getSpawnedItemCount() const { return count; } const auto& getSpawnedItemList() const { return list; }
+};
+using RuleResearch=ResearchRule;
+struct ResearchProject { const RuleResearch* rule=nullptr; bool finished=false;
+const RuleResearch* getRules() const { return rule; } bool isFinished() const { return finished; } };
+struct ResearchCorpse : Item { bool isRecoverable() const { return true; } bool isCorpseRecoverable() const { return true; } };
+struct ResearchArmor { ResearchCorpse* getCorpseGeoscape() const { return nullptr; } };
+struct ResearchUnit { const ResearchArmor* getArmor() const { return nullptr; } };
+struct ResearchMod { ResearchUnit* getUnit(const std::string&,bool) const { return nullptr; } };
+struct Options { static inline bool retainCorpses=true; };
+struct ResearchCaller {
+Storage storage; ResearchMod mod; const ResearchMod* _mod=&mod;
+Storage* getStorageItems() { return &storage; }
+void refund(ResearchProject* project) { const RuleResearch* ruleResearch=project->getRules();
+// RESEARCH_REFUND
+}
+};
 struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
 struct Craft : MovingTarget {
 struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelItem=nullptr; int refuelRate=40;
@@ -180,6 +202,15 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"researchRefundRows\":[";
+serviceFirst=true;
+for(bool holding:{false,true}) for(bool returns:{false,true}) for(bool finished:{false,true}) for(int stock:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Item supply; ResearchRule rule; rule.holding=holding; rule.returns=returns; rule.destroy=holding&&!returns; rule.needed=&supply;
+ResearchProject project; project.rule=&rule; project.finished=finished;
+ResearchCaller caller; caller.storage.count=stock; caller.refund(&project);
+std::cout << '[' << (holding?"true":"false") << ',' << (returns?"true":"false") << ',' << (finished?"true":"false") << ',' << stock << ',' << caller.storage.count << ']';
 }
 std::cout << "],\"productionProgressRows\":[";
 serviceFirst=true;

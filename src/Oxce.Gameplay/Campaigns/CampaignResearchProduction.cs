@@ -27,7 +27,7 @@ internal interface ICampaignResearchPreflight
 {
     IReadOnlySet<string> GuaranteedResearchAfterDailyProgress();
     IReadOnlySet<string> PossibleResearchAfterDailyProgress();
-    bool DailyItemsUnchanged(ref long work);
+    bool TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast);
 }
 
 /// <summary>World arcs use SavedGame::addFinishedResearch, without daily project side effects.</summary>
@@ -1040,7 +1040,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     private void RemoveResearchProject(BaseState owner, ResearchProjectState project)
     {
         owner.Scientists = checked(owner.Scientists + project.Assigned);
-        ReturnHeldResearchItem(owner, _content.RuntimeRules.Research[project.Rule].Value);
+        var rule = _content.RuntimeRules.Research[project.Rule].Value;
+        if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(rule), rule.ReturnsItem, project.Spent >= project.Cost))
+            ReturnHeldResearchItem(owner, rule);
         owner.Research.Remove(project);
     }
 

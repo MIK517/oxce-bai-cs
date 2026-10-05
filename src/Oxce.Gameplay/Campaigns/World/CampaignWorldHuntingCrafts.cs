@@ -17,7 +17,12 @@ internal sealed partial class CampaignWorld
                 if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 researchMayComplete |= baseState.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost);
             }
-        if (researchMayComplete && campaign.ResearchPreflight.DailyItemsUnchanged(ref work)) researchMayComplete = false;
+        DailyResearchStockForecast? researchStocks = null;
+        if (researchMayComplete && campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast))
+        {
+            researchStocks = forecast;
+            researchMayComplete = false;
+        }
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
         foreach (var owner in campaign.BaseStates)
         {
@@ -25,6 +30,14 @@ internal sealed partial class CampaignWorld
             work += owner.Crafts.Count + (long)owner.Items.Count + owner.Transfers.Count;
             if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
             if (highest >= CampaignTimeTrigger.ThirtyMinutes) stocks = new(owner.Items);
+            if (researchStocks?.StockChanges.GetValueOrDefault(owner.Id) is { } changes)
+                foreach (var change in changes)
+                {
+                    var item = rules.Items.GetRequired(change.Key);
+                    var quantity = (long)stocks!.GetValueOrDefault(item) + change.Value;
+                    if (quantity is < 0 or > int.MaxValue) return "Research refunds exceed the supported stock range.";
+                    stocks![item] = (int)quantity;
+                }
             var sources = new List<CampaignState.CraftState>(owner.Crafts);
             _huntingCraftSources.Add(owner.Id, sources);
             foreach (var craft in owner.Crafts)
