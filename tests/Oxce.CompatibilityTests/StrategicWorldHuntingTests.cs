@@ -971,6 +971,66 @@ public sealed class StrategicWorldHuntingTests
         }
     }
 
+    [Fact]
+    public void ProductionCompletionCountMatchesPinnedCaller()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionProgressRows"))
+            Assert.Equal(row[4].GetInt32(), ProductionProgress.Requested(row[0].GetInt32(),
+                row[1].GetInt32(), row[2].GetInt32(), 20, row[3].GetBoolean()));
+    }
+
+    [Theory]
+    [InlineData(false, "fuel")]
+    [InlineData(true, "fuel")]
+    [InlineData(false, "craft")]
+    [InlineData(true, "craft")]
+    [InlineData(false, "ammunition")]
+    [InlineData(true, "ammunition")]
+    [InlineData(false, "overflow")]
+    [InlineData(true, "overflow")]
+    [InlineData(false, "fallback")]
+    [InlineData(true, "fallback")]
+    public void IncompleteProductionDoesNotChangeHunterTargetsOrStocks(bool cache, string source)
+    {
+        var clip = source == "ammunition" ? "clip: SUPPLY" : "clip: ''";
+        var fuel = source == "ammunition" ? "" : ", refuelItem: SUPPLY";
+        var required = source == "craft" ? "requiredItems: {UNFINISHED_HUNT: 1}, " : "";
+        var content = Load(cache, $"crafts: [{{type: UNFINISHED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: UNFINISHED_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, {clip}}}]\nmanufacture: [{{name: UNFINISHED_PRODUCT, time: 100, {required}producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: UNFINISHED_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "UNFINISHED_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING", Fuel = 60, IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                Weapons = source == "ammunition" ? [new("UNFINISHED_GUN", 0, Rearming: false)] : [],
+            },
+        }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with { Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21,
+            Items = new Dictionary<string, int> { ["SUPPLY"] = 1 },
+            Facilities = [.. initial.Bases[0].Facilities, new("UNFINISHED_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("UNFINISHED_PRODUCT", 1, source == "overflow" ? int.MaxValue : 0, 1, false, false, source == "fallback", new Dictionary<string, int>())],
+        }] };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "unfinished-production-before.sav");
+        if (source is "overflow" or "fallback")
+        {
+            AssertTimeBlocked(campaign, source == "overflow" ? "Production progress exceeds the supported range." :
+                "UFO retargeting requires production fuel-stock forecasts.");
+            return;
+        }
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Equal(1, after.Bases[0].Productions.Single().Spent);
+        Assert.Equal(source == "ammunition" ? 1 : 0, after.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+        Assert.True(after.World.Ufos[0].Hunting);
+        Assert.Equal("UNFINISHED_HUNT", after.World.Ufos[0].Destination!.TypeId);
+        Reload(content, campaign, 81, "unfinished-production-after.sav");
+    }
+
     [Theory]
     [InlineData("production", "UFO retargeting requires production fuel-stock forecasts.")]
     [InlineData("craft", "UFO retargeting requires production craft-consumption forecasts.")]

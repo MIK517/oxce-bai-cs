@@ -691,7 +691,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 var before = Produced(production);
                 var progressed = production with { Spent = checked(production.Spent + production.Assigned) };
                 var after = Produced(progressed);
-                var requested = progressed.Infinite ? after - before : Math.Min(after, progressed.Amount) - before;
+                var requested = ProductionProgress.Requested(_content.RuntimeRules.Manufacture[production.Rule].Value.Time,
+                    production.Spent, production.Assigned, production.Amount, production.Infinite);
                 var made = 0;
                 string? stop = null;
                 while (made < requested)
@@ -1010,9 +1011,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     }
 
     private int Produced(ProductionState state) =>
-        _content.RuntimeRules.Manufacture[state.Rule].Value.Time > 0
-            ? state.Spent / _content.RuntimeRules.Manufacture[state.Rule].Value.Time
-            : state.Amount;
+        ProductionProgress.Produced(_content.RuntimeRules.Manufacture[state.Rule].Value.Time, state.Spent, state.Amount);
     private static bool CanAutoSell(RuntimeManufactureRule rule) =>
         rule.SpawnedPersonType.Length == 0 && rule.RandomProducedItems.Count == 0;
     private static bool TryReassignProjectStaff(

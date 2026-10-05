@@ -12,6 +12,15 @@ struct RNG { static inline int roll=0, calls=0, suppliedChoice=-1;
 static bool percent(int value) { ++calls; return roll < value; }
 static int generate(int,int) { ++calls; return suppliedChoice >= 0 ? suppliedChoice : calls % 2 == 0 ? 1 : 0; } };
 double Nautical(double x) { return x / 60.0 * 3.14159265358979323846 / 180.0; }
+struct Production {
+struct Rule { int time=4; int getManufactureTime() const { return time; } } rule;
+const Rule* _rules=&rule; int _timeSpent=0,_engineers=0,_amount=20; bool infinite=false;
+int getAmountProduced() const; bool getInfiniteAmount() const { return infinite; }
+int requested() {
+// PRODUCTION_COUNT
+}
+};
+// PRODUCTION_AMOUNT
 struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = default;
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
@@ -171,6 +180,14 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionProgressRows\":[";
+serviceFirst=true;
+for(int time:{0,4,100}) for(int spent:{0,3,4,11}) for(int assigned:{0,1,3,8}) for(bool infinite:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Production production; production.rule.time=time; production._timeSpent=spent; production._engineers=assigned; production.infinite=infinite;
+auto count=production.requested();
+std::cout << '[' << time << ',' << spent << ',' << assigned << ',' << (infinite?"true":"false") << ',' << count << ']';
 }
 std::cout << "],\"ammunitionFuelRows\":[";
 serviceFirst=true;

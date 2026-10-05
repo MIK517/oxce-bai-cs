@@ -108,7 +108,15 @@ internal sealed partial class CampaignWorld
             }
         foreach (var production in owner.Productions)
         {
+            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
             var rule = rules.Manufacture[production.Rule].Value;
+            if ((long)production.Spent + production.Assigned > int.MaxValue)
+                return "Production progress exceeds the supported range.";
+            if (rule.Time < 0) return "Production rule contains an unsupported negative value.";
+            // Existing units were paid when started. Without a completion, non-fallback
+            // projects cannot consume or deliver stocks/craft during this hour.
+            if (!production.IsFallback && ProductionProgress.Requested(rule.Time, production.Spent,
+                production.Assigned, production.Amount, production.Infinite) == 0) continue;
             work += rule.RequiredMaterials.Count * (long)sources.Count + rule.ProducedMaterials.Count + sources.Count;
             if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
             if (rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Craft is { } type && sources.Any(craft =>
