@@ -454,6 +454,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         if (highest >= CampaignTimeTrigger.OneHour)
         {
             long work = 0;
+            var accountingCapacity = new ProductionAccountingCapacity(_funds[^1], _incomes[^1], _expenditures[^1]);
             foreach (var owner in _bases)
             {
                 foreach (var production in owner.Productions)
@@ -466,8 +467,34 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     if (production.Sell && ProductionSellUnavailable(manufacture) is { } sellReason)
                         return sellReason;
                 }
-                if (ForecastProductionAssignments(owner, highest, out _, ref work) is { } staffingReason)
+                if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffingReason)
                     return staffingReason;
+                for (var index = 0; index < owner.Productions.Count; index++)
+                {
+                    var production = owner.Productions[index];
+                    var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
+                    var units = ProductionProgress.Requested(manufacture.Time, production.Spent, assignments[index], production.Amount, production.Infinite);
+                    if (units == 0) continue;
+                    var starts = units - (!production.Infinite && ProductionProgress.Produced(manufacture.Time,
+                        production.Spent + assignments[index], production.Amount) >= production.Amount ? 1 : 0);
+                    if (!accountingCapacity.Reserve(-manufacture.Cost, -manufacture.Cost, starts))
+                        return "Production accounting exceeds the supported range.";
+                    if (!production.Sell) continue;
+                    foreach (var material in manufacture.ProducedMaterials)
+                    {
+                        if (++work > 1_000_000) return "Production accounting exceeds the supported work limit.";
+                        if (material.Item is not { } item) continue;
+                        var rule = _content.RuntimeRules.Items[item].Value;
+                        var scripted = rule.Scripts.Any(handle => _content.RuntimeRules.Scripts[handle].Value.Artifact.ParserName == "sellCostItem") ||
+                            _content.EventPlans.Any(plan => plan.ParserName == "sellCostItem");
+                        var price = StrategicLogisticsMath.AdjustedItemPrice(rule.CostSell,
+                            _content.RuntimeRules.Campaign.SellPriceCoefficients[(int)Difficulty]);
+                        var minimum = (long)(scripted ? int.MinValue : price) * material.Quantity;
+                        var maximum = (long)(scripted ? int.MaxValue : price) * material.Quantity;
+                        if (!accountingCapacity.Reserve(minimum, maximum, units))
+                            return "Production accounting exceeds the supported range.";
+                    }
+                }
             }
         }
         return null;
@@ -796,7 +823,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     private void CompleteProductionUnit(BaseState owner, ProductionState production, TimeEffects effects)
     {
         var rule = _content.RuntimeRules.Manufacture[production.Rule].Value;
-        var saleValue = 0L;
+        var saleAccounting = new AccountingState(_funds[^1], _incomes[^1], _expenditures[^1]);
         if (production.Sell)
             foreach (var material in rule.ProducedMaterials)
                 if (material.Item is { } item)
@@ -804,10 +831,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     var price = ItemPrice(material.Id, _content.RuntimeRules.Items[item].Value,
                         buying: false, out var unavailable);
                     if (unavailable is not null) throw new InvalidOperationException(unavailable);
-                    saleValue = checked(saleValue + checked((long)price * material.Quantity));
+                    // Native setFunds runs separately for every item: mixed signs
+                    // must retain both income and expenditure, even when net funds do not change.
+                    if (!TryStageAccounting(checked((long)price * material.Quantity), saleAccounting, out var next))
+                        throw new InvalidDataException("Production accounting exceeds the supported range.");
+                    saleAccounting = next;
                 }
-        if (!TryStageAccounting(saleValue, out var saleAccounting))
-            throw new InvalidDataException("Production accounting exceeds the supported range.");
         foreach (var material in rule.ProducedMaterials)
         {
             if (material.Item is { } item)

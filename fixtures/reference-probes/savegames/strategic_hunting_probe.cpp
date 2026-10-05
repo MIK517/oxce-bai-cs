@@ -49,8 +49,9 @@ std::vector<Craft*> craftFollowers; std::vector<Ufo*> ufoFollowers; const auto& 
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
 struct Waypoint : Target { int id=0; int getId() const { return id; } void setId(int value) { id=value; } };
-struct Item { int clipSize=1; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } int getBattleType() const { return 0; } int getSellCostAdjusted(Base*,SavedGame*) const { return 3; } };
+struct Item { int clipSize=1,sellCost=3; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } int getBattleType() const { return 0; } int getSellCost() const { return sellCost; } int getSellCostAdjusted(const Base*,const SavedGame*) const; };
 using RuleItem=Item;
+namespace ModScript { struct SellCostItem {}; template<class Tag,class... Args> int scriptFunc2(const Item*,int adjusted,Args...) { return adjusted; } }
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
 void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty=1) { count+=qty; } };
 struct Craft; struct Transfer; struct Soldier {};
@@ -207,7 +208,8 @@ bool insideRadarRange(Target* target) const;
 // TARGET_DESTRUCTOR
 // RETARGET_METHODS
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
-long long funds=100; long long getFunds() const { return funds; } void setFunds(long long value) { funds=value; }
+std::vector<int64_t> _funds={100},_incomes={0},_expenditures={0}; int64_t& funds=_funds.back(); int sellCoefficient=100;
+int64_t getFunds() const { return funds; } void setFunds(int64_t); int getSellPriceCoefficient() const { return sellCoefficient; }
 std::vector<const RuleResearch*> _discovered; std::map<std::string,int> statuses; int _time=0,researchScore=0;
 bool isResearchRuleStatusDisabled(const std::string& id) const { auto found=statuses.find(id); return found!=statuses.end()&&found->second==2; }
 void setResearchRuleStatus(const std::string& id,int value) { statuses[id]=value; }
@@ -230,6 +232,8 @@ bool hasUndiscoveredProtectedUnlock(const RuleResearch*) const;
 std::vector<Ufo*>* getUfos() { return &ufos; }
 std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
 int getId(const std::string&) { return 8+(int)waypoints.size(); } };
+// PRODUCTION_SALE_PRICE
+// PRODUCTION_ACCOUNTING
 // RESEARCH_DISCOVERY_METHODS
 struct ProductionItemRule {
 std::vector<int> times; std::map<const RuleItem*,int> produced; std::vector<int> random;
@@ -415,6 +419,38 @@ if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.em
 std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
 auto* target=select(&hunter,active);
 std::cout << '[' << input << ',' << output << ',' << stock << ',' << delay << ',' << units << ',' << progress.completedUnits << ',' << game.save.funds << ',' << result << ',' << base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ',' << base.transfers.size() << ']';
+for(auto* transfer:base.transfers) delete transfer; for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionMixedSaleRows\":[";
+serviceFirst=true;
+for(int firstPrice:{-7,7}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Item items[2]; items[0].sellCost=firstPrice; items[1].sellCost=-firstPrice;
+Base base; SavedGame game; ResearchMod mod; game.funds=10;
+Production progress; progress.rule.time=1; progress._engineers=1; progress._amount=1;
+ProductionItemRule rule; rule.produced={{&items[0],1},{&items[1],1}}; ProductionDeliveryCaller delivery{&rule}; delivery.sell=true;
+progress.scalarStep(&base,&game,&mod,delivery);
+std::cout << '[' << firstPrice << ',' << -firstPrice << ',' << game.funds << ',' << game._incomes.back() << ',' << game._expenditures.back() << ']';
+}
+std::cout << "],\"productionSaleRows\":[";
+serviceFirst=true;
+for(int cost:{0,3}) for(int funds:{-1,0}) for(int assignedUnits:{1,3}) for(bool infinite:{false,true}) for(int qty:{0,2}) for(int coefficient:{50,150}) for(int delay:{0,2}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; ServiceGame game; FuelCaller fuelCaller; Ufo hunter;
+craft.id=1; craft._base=&base; base.crafts={&craft}; base.storage.count=0; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100); item.sellCost=7;
+Production sale; sale.rule.time=2; sale.rule.cost=cost; sale._timeSpent=1; sale._engineers=assignedUnits*2; sale._amount=2; sale.infinite=infinite;
+ProductionItemRule saleRule; saleRule.times={delay}; saleRule.produced={{&item,qty}}; ProductionDeliveryCaller saleDelivery{&saleRule}; saleDelivery.sell=true;
+ResearchMod mod; game.save.funds=funds; game.save.sellCoefficient=coefficient;
+const auto saleResult=sale.scalarStep(&base,&game.save,&mod,saleDelivery);
+Production later; later.rule.time=1; later.rule.cost=3; later._engineers=2; later._amount=3;
+ProductionItemRule laterRule; laterRule.produced={{&item,1}}; ProductionDeliveryCaller laterDelivery{&laterRule};
+const auto laterResult=later.scalarStep(&base,&game.save,&mod,laterDelivery);
+if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << cost << ',' << funds << ',' << assignedUnits << ',' << (infinite?"true":"false") << ',' << qty << ',' << coefficient << ',' << delay << ','
+<< sale.completedUnits << ',' << saleResult << ',' << later.completedUnits << ',' << laterResult << ',' << game.save.funds << ',' << game.save._incomes.back() << ',' << game.save._expenditures.back() << ','
+<< base.storage.count << ',' << base.transfers.size() << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* transfer:base.transfers) delete transfer; for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "],\"productionMoneyRows\":[";

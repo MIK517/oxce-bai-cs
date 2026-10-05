@@ -37,7 +37,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var supported = !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
+                var supported = rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
                 {
@@ -64,7 +64,7 @@ public sealed partial class CampaignState
                 }
                 work += requested * (1L + rule.ProducedMaterials.Count + rule.RequiredMaterials.Count);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-                if (!final && rule.Cost > 0 && uncertainAccounting)
+                if ((project.Sell || !final && rule.Cost > 0) && uncertainAccounting)
                     return "UFO retargeting requires shared production accounting forecasts.";
                 if (!final && uncertainStocks && rule.RequiredMaterials.Any(material => material.Quantity > 0))
                     return "UFO retargeting requires shared production material forecasts.";
@@ -72,7 +72,11 @@ public sealed partial class CampaignState
                 for (; completed < requested;)
                 {
                     if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-                    if (ForecastProductionItemOutputs(owner.Id, rule, crafts, stocks, ref work) is { } outputReason) return outputReason;
+                    if (project.Sell)
+                    {
+                        if (ForecastProductionSale(rule, ref accounting, ref work) is { } saleReason) return saleReason;
+                    }
+                    else if (ForecastProductionItemOutputs(owner.Id, rule, crafts, stocks, ref work) is { } outputReason) return outputReason;
                     completed++;
                     if (!project.Infinite && Produced(project) + (long)completed >= project.Amount) break;
                     if (rule.Cost > 0 && accounting.Funds < rule.Cost ||
@@ -128,6 +132,7 @@ public sealed partial class CampaignState
             }
             foreach (var (owner, project, units) in planned)
             {
+                if (project.Sell) continue;
                 var rule = rules.Manufacture[project.Rule].Value;
                 if (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0) continue;
                 foreach (var material in rule.ProducedMaterials)
@@ -178,6 +183,28 @@ public sealed partial class CampaignState
                 if (prisoners.Values.Any(quantity => quantity > int.MaxValue))
                     return "Production captive populations exceed the supported range.";
             }
+        return null;
+    }
+
+    private string? ForecastProductionSale(RuntimeManufactureRule rule, ref AccountingState accounting, ref long work)
+    {
+        var rules = _content.RuntimeRules;
+        var coefficient = rules.Campaign.SellPriceCoefficients[(int)Difficulty];
+        foreach (var material in rule.ProducedMaterials)
+        {
+            if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+            if (material.Item is not { } item) continue;
+            var itemRule = rules.Items[item].Value;
+            // The price VM may read time or research changed by earlier hooks.
+            // Do not execute it against the current campaign as a future projection.
+            if (itemRule.Scripts.Any(handle => rules.Scripts[handle].Value.Artifact.ParserName == "sellCostItem") ||
+                _content.EventPlans.Any(plan => plan.ParserName == "sellCostItem"))
+                return "UFO retargeting requires production sale-price script forecasts.";
+            var price = StrategicLogisticsMath.AdjustedItemPrice(itemRule.CostSell, coefficient);
+            if (!TryStageAccounting(checked((long)price * material.Quantity), accounting, out var next))
+                return "Production accounting exceeds the supported range.";
+            accounting = next;
+        }
         return null;
     }
 
