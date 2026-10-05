@@ -60,6 +60,11 @@ struct ResearchCaller {
 Storage storage; ResearchMod mod; const ResearchMod* _mod=&mod;
 Storage* getStorageItems() { return &storage; }
 void spawn(const RuleResearch*,const ResearchMod*,Base*);
+static std::vector<const RuleResearch*> primary(const RuleResearch* research,const RuleResearch* bonus) {
+std::vector<const RuleResearch*> topicsToCheck;
+// RESEARCH_PRIMARY_TOPICS
+return topicsToCheck;
+}
 void refund(ResearchProject* project) { const RuleResearch* ruleResearch=project->getRules();
 // RESEARCH_REFUND
 }
@@ -208,6 +213,16 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"researchPrimaryRows\":[";
+serviceFirst=true;
+for(bool direct:{false,true}) for(bool bonus:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topic,freeTopic,lookup; topic.spawned=direct?"SUPPLY":""; freeTopic.spawned="SUPPLY"; lookup.spawned="SUPPLY";
+ResearchCaller caller; ResearchMod mod; Base base;
+for(auto* source:ResearchCaller::primary(&topic,bonus?&freeTopic:nullptr)) caller.spawn(source,&mod,&base);
+int count=0; for(auto* transfer:base.transfers) { transfer->advance(&base); ++count; delete transfer; }
+std::cout << '[' << (direct?"true":"false") << ',' << (bonus?"true":"false") << ',' << count << ',' << base.storage.count << ']';
 }
 std::cout << "],\"researchSpawnRows\":[";
 serviceFirst=true;

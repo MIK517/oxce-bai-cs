@@ -40,7 +40,7 @@ public sealed partial class CampaignState
                 if ((long)project.Spent + project.Assigned < project.Cost) continue;
                 var entry = rules.Research[project.Rule];
                 var rule = entry.Value;
-                if (rule.GetOneFree.Count != 0 || rule.GetOneFreeProtected.Count != 0 || rule.Lookup.Length != 0 ||
+                if (rule.GetOneFree.Count != 0 || rule.GetOneFreeProtected.Count != 0 || LookupChangesStatuses(rule) ||
                     rule.Unlocks.Count != 0 || rule.Disables.Count != 0 || rule.Reenables.Count != 0 ||
                     HoldsResearchItem(rule) && rule.DestroyItem && !rule.ReturnsItem && rules.Units.TryGet(entry.Id, out _)) return false;
             }
@@ -118,6 +118,15 @@ public sealed partial class CampaignState
             new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(arrivals.ToDictionary(
                 pair => pair.Key, pair => (IReadOnlyList<KeyValuePair<string, int>>)pair.Value.AsReadOnly())));
         return true;
+
+        bool LookupChangesStatuses(RuntimeResearchRule rule)
+        {
+            if (rule.Lookup.Length == 0 || !rules.Research.TryGet(rule.Lookup, out var handle)) return false;
+            var lookup = rules.Research[handle].Value;
+            // Daily lookups call addFinishedResearch, never primary side effects.
+            // Automatic status changes are checked at catalogue scope above.
+            return lookup.Disables.Count != 0 || lookup.Reenables.Count != 0;
+        }
 
         void Refund(int baseId, RuntimeResearchRule rule)
         {

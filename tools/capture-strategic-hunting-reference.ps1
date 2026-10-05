@@ -32,6 +32,14 @@ $researchSpawn = Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGa
 $spawnStart = $researchSpawn.IndexOf('RuleItem* spawnedItem =', [StringComparison]::Ordinal)
 $spawnEnd = $researchSpawn.IndexOf('// 3l. handle spawned events', $spawnStart, [StringComparison]::Ordinal)
 if ($spawnStart -lt 0 -or $spawnEnd -le $spawnStart) { throw 'Missing research item transfer fragment.' }
+$dailyResearch = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time1Day()'
+$primaryStart = $dailyResearch.IndexOf('topicsToCheck.push_back(research);', [StringComparison]::Ordinal)
+$primaryEnd = $dailyResearch.IndexOf('if (!topicsToCheck.empty())', $primaryStart, [StringComparison]::Ordinal)
+if ($primaryStart -lt 0 -or $primaryEnd -le $primaryStart) { throw 'Missing primary topic collection fragment.' }
+# Exclude the closing daily finished-project loop; the collaborator wraps one completion.
+$primary = $dailyResearch.Substring($primaryStart, $primaryEnd - $primaryStart).TrimEnd()
+$primary = $primary.Substring(0, $primary.LastIndexOf('}')).TrimEnd()
+$template = $template.Replace('// RESEARCH_PRIMARY_TOPICS', $primary)
 $template = $template.Replace('// RESEARCH_SPAWN', $researchSpawn.Substring($spawnStart, $spawnEnd - $spawnStart))
 $researchReturn = Read-ReferenceMethod 'src/Savegame/Base.cpp' 'void Base::removeResearch(ResearchProject * project)'
 $returnStart = $researchReturn.IndexOf('if (ruleResearch->isHoldingNeededItem())', [StringComparison]::Ordinal)
