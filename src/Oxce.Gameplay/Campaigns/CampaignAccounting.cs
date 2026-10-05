@@ -11,9 +11,14 @@ public sealed partial class CampaignState
 
     private bool TryStageAccounting(long delta, out AccountingState accounting)
     {
-        var funds = _funds[^1];
-        var income = _incomes[^1];
-        var spending = _expenditures[^1];
+        return TryStageAccounting(delta, new(_funds[^1], _incomes[^1], _expenditures[^1]), out accounting);
+    }
+
+    private static bool TryStageAccounting(long delta, AccountingState current, out AccountingState accounting)
+    {
+        var funds = current.Funds;
+        var income = current.Income;
+        var spending = current.Spending;
         try { Account(delta, ref funds, ref income, ref spending); }
         catch (OverflowException)
         {

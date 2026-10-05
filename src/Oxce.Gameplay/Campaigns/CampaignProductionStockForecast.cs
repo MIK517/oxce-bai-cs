@@ -13,6 +13,8 @@ public sealed partial class CampaignState
         List<(BaseState Owner, ProductionState Project, int Units)> planned = [];
         long transfers = 0;
         var uncertainTransfers = false;
+        var uncertainAccounting = false;
+        var accounting = new AccountingState(_funds[^1], _incomes[^1], _expenditures[^1]);
         foreach (var owner in _bases)
         {
             var sources = crafts[owner.Id];
@@ -29,11 +31,12 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.IsFallback && !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var free = !project.IsFallback && rule.Cost == 0 && rule.RequiredMaterials.All(material => material.Quantity == 0);
-                var supported = (final || free) && !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
+                var noInputs = !project.IsFallback && rule.RequiredMaterials.All(material => material.Quantity == 0);
+                var supported = (final || noInputs) && !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
                 {
+                    uncertainAccounting |= project.Sell || !final && rule.Cost > 0;
                     var itemDelay = rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0;
                     var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
                     uncertainTransfers |= rule.SpawnedPersonType.Length != 0 ||
@@ -53,9 +56,21 @@ public sealed partial class CampaignState
                 }
                 work += requested * (1L + rule.ProducedMaterials.Count);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-                planned.Add((owner, project, requested));
+                if (!final && rule.Cost > 0 && uncertainAccounting)
+                    return "UFO retargeting requires shared production accounting forecasts.";
+                var completed = 0;
+                for (; completed < requested;)
+                {
+                    if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    completed++;
+                    if (!project.Infinite && Produced(project) + (long)completed >= project.Amount) break;
+                    if (rule.Cost > 0 && accounting.Funds < rule.Cost ||
+                        !TryStageAccounting(-rule.Cost, accounting, out var nextAccounting)) break;
+                    accounting = nextAccounting;
+                }
+                planned.Add((owner, project, completed));
                 if (!project.Sell && rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0)
-                    transfers += requested * (long)rule.ProducedMaterials.Count(material => material.Item is not null);
+                    transfers += completed * (long)rule.ProducedMaterials.Count(material => material.Item is not null);
             }
         }
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, long>> incoming = [];

@@ -8,8 +8,8 @@ forecasts cover stock-free completions, held-item refunds, global obsolete
 and disabled-project cancellation, fixed spawned item arrivals, lookup and automatic
 discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
 production without a completing unit, final prepaid zero-score item units and
-recurring free/no-input item units participate in hunter forecasts. Remaining
-projections cover funded/material-consuming, sold, fallback, random/craft/person
+recurring paid/no-input item units participate in hunter forecasts. Remaining
+projections cover material-consuming, sold, fallback, random/craft/person
 production, nonzero score effects, stochastic shared ammunition, random research
 reward choices and corpse consequences.
 The progress notes below record earlier guards and their later replacements.
@@ -305,3 +305,5 @@ Branch 4c recurring free production forecasts: non-fallback zero-cost/no-input p
 The production batch audit fixes a confirmed mixed-producer identity hole: an unsupported random producer could allocate transfers omitted from the fixed-producer budget, overflowing only after tick mutation began. A precise capability guard now blocks that mixed future stream before clock/RNG/inventory changes; fresh/cache regressions reproduced the overflow before the fix and pass after it. Cross-handler cases also verify daily research consuming the final identity slot and same-hour cleanup releasing an imported highest ID. A production-funded relaunch remains atomically blocked at same-tick hunter interception. Reviewed prepaid/recurring unit counts, all-base ordering, zero quantity reuse and persistence, aggregate incoming/captive quantities, resource limits and remaining score/accounting/fallback uncertainty. Branch 4c remains open; 4d and later-branch boundaries are unchanged.
 
 Cycle validation: all 2,544 root tests pass with zero failures/skips, including native checksums, private save horizons and original populated performance gates. Code-map/diff checks and pinned-reference cleanliness pass. Useful captures/executables remain; the regenerated hunting object is removed at this milestone.
+
+Branch 4c funded production composition: non-fallback fixed item projects without consumed inputs now forecast paid continuation in saved base/project order. The current unit is prepaid; later starts use the same checked accounting operation as execution, stop on insufficient money, and avoid charging after the finite last unit. Unknown earlier sale/cost effects retain a precise shared-accounting guard. Sixty-four native Production::step continuation/startItem/money rows compare fresh/cache unit counts, funds, stop reasons, stock and hunter targets with both transition reloads. Focused hunting/research compatibility passes 193 tests. Material consumption and fallback staffing remain subsequent slices; later-branch boundaries and 4d are unchanged.
