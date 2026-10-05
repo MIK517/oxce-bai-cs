@@ -411,7 +411,16 @@ internal sealed partial class CampaignWorld
     private string? LoadedEscortNewLeaderReason(UfoSnapshot escort, ref long work)
     {
         if (!(_newLeaderHasNoCraftPursuer ??= CalculateNoCraftPursuer(ref work)))
-            return "Loaded idle escorts require same-tick newborn craft pursuit forecasts.";
+        {
+            if (_huntingCraftForecast is null && ForecastHuntingCrafts(_newbornHighestTrigger, ref work) is { } reason)
+                return reason;
+            if (ForecastNewbornCraftCandidates(includeIgnored: true, ref work, out var candidate) is { } candidateReason)
+                return candidateReason;
+            // Hidden, ignored and damaged airborne craft still move and may
+            // pursue the changed source. Only a wholly grounded forecast is safe.
+            if (candidate) return "Loaded idle escorts require same-tick newborn craft pursuit forecasts.";
+            _newLeaderHasNoCraftPursuer = true;
+        }
         if (escort.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
             !(WorldGeometry.Distance(escort.Position, destination.Position) > WorldGeometry.RadianSpeed(escort.Speed) + 1e-12))
             return "Loaded idle escorts require same-tick newborn waypoint forecasts.";
