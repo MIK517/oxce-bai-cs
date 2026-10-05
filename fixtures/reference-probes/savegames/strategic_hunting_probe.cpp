@@ -380,6 +380,23 @@ if(daily&&finished) caller.dailyCorpse(&rule,&base);
 std::cout << '[' << (retain?"true":"false") << ',' << (needs?"true":"false") << ',' << (destroy?"true":"false") << ',' << (returns?"true":"false") << ',' << (finished?"true":"false") << ',' << (unitExists?"true":"false") << ',' << (recover?"true":"false") << ',' << (recoverCorpse?"true":"false") << ',' << (daily?"true":"false") << ',' << caller.storage.count+base.storage.count << ',' << caller.storage.corpses+base.storage.corpses << ']';
 }
 Options::retainCorpses=true;
+std::cout << "],\"researchCorpseHuntingRows\":[";
+scoreFirst=true;
+for(bool retain:{false,true}) for(bool needs:{false,true}) for(bool destroy:{false,true}) for(bool returns:{false,true}) for(bool unitExists:{false,true}) for(bool recover:{false,true}) for(bool recoverCorpse:{false,true}) {
+if(!scoreFirst) std::cout << ','; scoreFirst=false;
+ResearchCaller caller; ResearchRule rule; ResearchProject project; ResearchCorpse corpse; ResearchArmor armor; ResearchUnit unit; Base base; Craft craft; ServiceGame game; Ufo hunter; FuelCaller fuelCaller;
+rule.name="CORPSE_TOPIC"; rule.needs=needs; rule.destroy=destroy; rule.returns=returns; rule.holding=needs&&(destroy||returns); rule.needed=&caller.mod.supply;
+project.rule=&rule; project.finished=true; corpse.corpse=true; corpse._recover=recover; corpse._recoverCorpse=recoverCorpse; armor._corpseGeo=&corpse; unit.armor=&armor; caller.mod.matchedUnit=unitExists?&unit:nullptr;
+Options::retainCorpses=retain; caller.refund(&project); caller.dailyCorpse(&rule,&base);
+base.storage.count+=caller.storage.count; base.storage.corpses+=caller.storage.corpses;
+craft.id=1; craft._base=&base; base.crafts={&craft}; craft.rule.fuelItem=&corpse; craft._fuel=60; craft.distance=Nautical(100);
+auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game);
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << (retain?"true":"false") << ',' << (needs?"true":"false") << ',' << (destroy?"true":"false") << ',' << (returns?"true":"false") << ',' << (unitExists?"true":"false") << ',' << (recover?"true":"false") << ',' << (recoverCorpse?"true":"false") << ',' << base.storage.count << ',' << base.storage.corpses << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+Options::retainCorpses=true;
 std::cout << "],\"maintenanceRows\":[";
 bool serviceFirst=true;
 for(bool itemFuel:{false,true}) for(int fuel:{0,60,100}) for(int stock:{0,1}) for(bool low:{false,true}) for(bool rearming:{false,true}) {
