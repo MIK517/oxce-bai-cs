@@ -12,6 +12,20 @@ namespace Oxce.UnitTests.Mods;
 public sealed class RuntimeRuleLinkerTests
 {
     [Theory]
+    [InlineData("")]
+    [InlineData(", armor: MISSING")]
+    public void MissingUnitArmorKeepsTypedValidationWithoutDuplicateRuntimeDiagnostic(string armor)
+    {
+        using var fixture = new TemporaryModFixture($"units: [{{type: CORPSE_UNIT{armor}}}]\n");
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+        Assert.False(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked));
+        Assert.Contains(snapshot.Diagnostics, diagnostic => diagnostic.Severity >= DiagnosticSeverity.Error &&
+            diagnostic.Message.Contains("armor", StringComparison.Ordinal));
+        Assert.DoesNotContain(snapshot.Diagnostics, diagnostic => diagnostic.Code == "OXCE-MOD-0030");
+        Assert.Null(snapshot.Content.RuntimeRules.Units[snapshot.Content.RuntimeRules.Units.GetRequired("CORPSE_UNIT")].Value.Armor);
+    }
+
+    [Theory]
     [InlineData("", true, true)]
     [InlineData(", recover: false", false, true)]
     [InlineData(", recoverCorpse: false", true, false)]

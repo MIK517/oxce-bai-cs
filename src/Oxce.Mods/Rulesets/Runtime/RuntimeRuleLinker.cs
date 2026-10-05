@@ -373,7 +373,8 @@ public static class RuntimeRuleLinker
             BuildFamily<UnitRuleFamily, UnitRule, RuntimeUnitRule>(generation,
                 content.PersonnelTactical.Units, rule => new(rule.Id)
                 {
-                    Armor = RequiredRule(armorHandles, rule.Value.Strings["armor"], "units", rule, "armor"),
+                    // The typed catalog already rejects missing unit armor.
+                    Armor = OptionalRuntime(armorHandles, rule.Value.Strings["armor"]),
                     SpawnUnit = OptionalRequired(unitHandles, rule.Value.Strings["spawnUnit"], "units", rule, "spawnUnit"),
                     LiveAlien = rule.Value.Strings["liveAlien"] == "\0"
                         ? OptionalItem(itemHandles, rule.Id)
