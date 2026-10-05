@@ -1352,6 +1352,53 @@ public sealed class StrategicWorldHuntingTests
         Reload(content, campaign, 81, "disabled-refund-hunt-after.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LookupDiscoveryDoesNotSpawnOrCancelPrimaryStockEffects(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchPrimaryRows").Where(row => !row[1].GetBoolean()))
+        {
+            var direct = row[0].GetBoolean();
+            var content = Load(cache, $"crafts: [{{type: LOOKUP_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: LOOKUP_SOURCE, cost: 1, lookup: LOOKUP_TOPIC, spawnedItem: {(direct ? "SUPPLY" : "")}}}, {{name: LOOKUP_TOPIC, cost: 100, spawnedItem: SUPPLY, spawnedItemCount: 100, needItem: true, returnsItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: LOOKUP_LAB, mapName: LOGISTICS, labs: 2}}]\n");
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "LOOKUP_HUNT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING",
+                    Fuel = 60,
+                    Weapons = [],
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3
+                },
+            }) with
+            { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(),
+                Facilities = [.. initial.Bases[0].Facilities, new("LOOKUP_LAB", 1, 1, 0, 0, false, false, false)],
+                Research = [new("LOOKUP_SOURCE", 1, 0, 1), new("LOOKUP_TOPIC", 1, 0, 100)],
+            }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "lookup-stocks-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            Assert.Contains("LOOKUP_TOPIC", after.CompletedResearch);
+            Assert.Equal("LOOKUP_TOPIC", Assert.Single(after.Bases[0].Research).RuleId);
+            Assert.Equal(row[2].GetInt32(), result.Events.OfType<SuppliesArrived>().Sum(arrived => arrived.TransferIds.Count));
+            Assert.Equal(0, after.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+            Assert.Equal(direct, after.World.Ufos[0].Hunting);
+            Assert.Equal(direct ? 99 : 60, after.Bases[0].Crafts.Single(craft => craft.RuleId == "LOOKUP_HUNT").Logistics!.Fuel);
+            Reload(content, campaign, 81, "lookup-stocks-after.sav");
+        }
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {
