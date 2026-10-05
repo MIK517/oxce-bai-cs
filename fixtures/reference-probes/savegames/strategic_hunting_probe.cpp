@@ -9,7 +9,7 @@
 #include <map>
 #include <cstdint>
 namespace OpenXcom {
-using Exception = std::runtime_error;
+using Exception = std::runtime_error; using RuleCraft=void;
 struct Base; struct SavedGame; struct Item; struct ResearchMod; struct ProductionDeliveryCaller;
 // PRODUCTION_ENUM
 const int BT_NONE=0;
@@ -53,11 +53,11 @@ using RuleItem=Item;
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
 void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty=1) { count+=qty; } };
 struct Craft; struct Transfer; struct Soldier {};
-struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0; int& _engineers=engineers;
+struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Craft*>& _crafts=crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0; int& _engineers=engineers;
 std::vector<Production*> _productions; auto& getProductions() { return _productions; }
 int freeWorkshops=0; int getAvailableWorkshops() const { return freeWorkshops; } int getUsedWorkshops() const; int getFreeWorkshops() const; void removeProduction(Production*); int getAvailableEngineers() const { return engineers; }
 int getAvailableQuarters() const { return 100; } int getUsedQuarters() const { return 0; }
-int getCraftCountForProduction(const void*) const { return 0; }
+int getCraftCountForProduction(const RuleCraft*) const;
 void removeCraft(Craft* craft,bool) { std::erase(crafts,craft); }
 Storage* getStorageItems() { return &storage; } std::vector<Craft*>* getCrafts() { return &crafts; }
 std::vector<Soldier*>* getSoldiers() { return &soldiers; }
@@ -147,6 +147,7 @@ bool getMissionComplete() const { return _missionComplete; }
 const Rule* getRules() const { return _rules; }
 int getHunterKillerAttraction(int huntMode) const;
 };
+// PRODUCTION_CRAFT_COUNT
 // REFUEL_METHODS
 struct Transfer {
 explicit Transfer(int hours=1):_hours(hours) {}
@@ -306,6 +307,19 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionCraftInputRows\":[";
+serviceFirst=true;
+for(int quantity:{0,1,2}) for(int grounded:{0,1,2,3}) for(bool outFirst:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Base base; SavedGame game; ResearchMod mod; Craft::Rule type; Production progress; progress.rule.requiredCrafts={{&type,quantity}};
+if(outFirst) { auto* craft=new Craft(); craft->id=1; craft->_rules=&type; craft->_status="STR_OUT"; base.crafts.push_back(craft); }
+for(int i=0;i<grounded;++i) { auto* craft=new Craft(); craft->id=2+i; craft->_rules=&type; craft->_status="STR_READY"; base.crafts.push_back(craft); }
+const bool enough=progress.haveEnoughMaterialsForOneMoreUnit(&base,&mod);
+if(enough) progress.startItem(&base,&game,&mod);
+std::cout << '[' << quantity << ',' << grounded << ',' << (outFirst?"true":"false") << ',' << (enough?"true":"false") << ",[";
+bool firstCraft=true; for(auto* craft:base.crafts) { if(!firstCraft) std::cout << ','; firstCraft=false; std::cout << craft->id; }
+std::cout << "]]"; for(auto* craft:base.crafts) delete craft;
 }
 std::cout << "],\"productionStaffReleaseRows\":[";
 serviceFirst=true;

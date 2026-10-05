@@ -88,19 +88,21 @@ public sealed class StrategicProductionCounterForecastTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void CraftConsumptionKeepsThePersistedCounterAsTheGuaranteedLowerBound(bool cache)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void CraftConsumptionKeepsThePersistedCounterAsTheGuaranteedLowerBound(bool cache, int quantity)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
         TestFixtures.LoadVerifiedManifest("equipment-production-rules");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
             facilities:
               - {type: FORECAST_WORKSHOP, mapName: LOGISTICS, size: 1, workshops: 10}
             manufacture:
               - name: FORECAST_CONSUME
                 time: 1
-                requiredItems: {SHIP: 1}
+                requiredItems: {SHIP: {{quantity}}}
                 producedItems: {SUPPLY: 1}
               - name: FORECAST_REPLACE
                 category: STR_CRAFT

@@ -729,7 +729,6 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         out IReadOnlyList<ProductionMaterialConsumption> plan, out string reason)
     {
         var result = new List<ProductionMaterialConsumption>();
-        var availableCrafts = owner.Crafts.Where(craft => craft.Logistics?.Status != "STR_OUT").ToList();
         foreach (var material in rule.RequiredMaterials)
         {
             if (material.Item is { } item)
@@ -744,25 +743,23 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 continue;
             }
             if (material.Craft is not { } craft) continue;
-            for (var count = 0; count < material.Quantity; count++)
+            // Native eligibility counts grounded craft, while startItem removes
+            // the first matching craft once, irrespective of the requested quantity.
+            if (owner.Crafts.Count(value => value.Rule == craft && value.Logistics?.Status != "STR_OUT") < material.Quantity)
             {
-                var index = availableCrafts.FindIndex(value => value.Rule == craft);
-                if (index < 0)
-                {
-                    plan = [];
-                    reason = "STR_NOT_ENOUGH_MATERIALS";
-                    return false;
-                }
-                var selected = availableCrafts[index];
-                if (selected.Logistics is null)
-                {
-                    plan = [];
-                    reason = "Required craft material has unresolved logistics state.";
-                    return false;
-                }
-                availableCrafts.RemoveAt(index);
-                result.Add(new(material.Id, 1, null, selected));
+                plan = [];
+                reason = "STR_NOT_ENOUGH_MATERIALS";
+                return false;
             }
+            var selected = owner.Crafts.FirstOrDefault(value => value.Rule == craft);
+            if (selected is null) continue;
+            if (selected.Logistics is null)
+            {
+                plan = [];
+                reason = "Required craft material has unresolved logistics state.";
+                return false;
+            }
+            result.Add(new(material.Id, 1, null, selected));
         }
         plan = result;
         reason = string.Empty;

@@ -37,7 +37,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var itemInputs = rule.RequiredMaterials.All(material => material.Quantity == 0 || material.Item is not null);
+                var itemInputs = rule.RequiredMaterials.All(material => material.Item is not null || material.Craft is { } type && material.Quantity == 0 && !sources.Any(craft => craft.Rule == type));
                 var supported = (final || itemInputs) && !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
@@ -52,8 +52,7 @@ public sealed partial class CampaignState
                     uncertainTransfers |= rule.SpawnedPersonType.Length != 0 ||
                         itemDelay && (rule.RandomProducedItems.Count != 0 || !project.Sell && rule.ProducedMaterials.Any(material => material.Item is not null)) ||
                         craftDelay && rule.ProducedMaterials.Any(material => material.Craft is not null);
-                    if (rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Craft is { } type &&
-                        sources.Any(craft => craft.Rule == type && craft.Logistics?.Status != "STR_OUT")))
+                    if (rule.RequiredMaterials.Any(material => material.Craft is { } type && sources.Any(craft => craft.Rule == type)))
                         return "UFO retargeting requires production craft-consumption forecasts.";
                     if (sources.Any(craft => rules.Crafts[craft.Rule].Value.RefuelItem is not null))
                         return "UFO retargeting requires production fuel-stock forecasts.";

@@ -51,7 +51,7 @@ public sealed partial class CampaignState
                 released += assignedMaximum;
                 work += 1L + rule.RequiredMaterials.Count + rule.ProducedMaterials.Count;
                 if (work > 1_000_000) throw new InvalidDataException("Craft production ID forecasts exceed the supported work limit.");
-                consumesCraft |= rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Craft is { } craft &&
+                consumesCraft |= rule.RequiredMaterials.Any(material => material.Craft is { } craft &&
                     rules.Crafts.GetExternalId(craft) == name);
                 long quantity = 0;
                 foreach (var material in rule.ProducedMaterials)
