@@ -28,6 +28,11 @@ foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::re
 $template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
 $template = $template.Replace('// TRANSFER_METHOD', (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'void Transfer::advance(Base *base)') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'int Transfer::getHours() const'))
+$researchReturn = Read-ReferenceMethod 'src/Savegame/Base.cpp' 'void Base::removeResearch(ResearchProject * project)'
+$returnStart = $researchReturn.IndexOf('if (ruleResearch->isHoldingNeededItem())', [StringComparison]::Ordinal)
+$returnEnd = $researchReturn.IndexOf('Collections::deleteIf', $returnStart, [StringComparison]::Ordinal)
+if ($returnStart -lt 0 -or $returnEnd -le $returnStart) { throw 'Missing held research item return fragment.' }
+$template = $template.Replace('// RESEARCH_REFUND', $researchReturn.Substring($returnStart, $returnEnd - $returnStart))
 $template = $template.Replace('// PRODUCTION_AMOUNT', (Read-ReferenceMethod 'src/Savegame/Production.cpp' 'int Production::getAmountProduced() const'))
 $production = Read-ReferenceMethod 'src/Savegame/Production.cpp' 'productionProgress_e Production::step('
 $progressStart = $production.IndexOf('int done = getAmountProduced();', [StringComparison]::Ordinal)

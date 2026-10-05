@@ -1096,7 +1096,11 @@ public sealed class StrategicWorldHuntingTests
         }]
         };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "cross-base-research-fuel.sav");
-        AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var predicted = campaign.Capture();
+        Assert.True(predicted.World.Ufos[0].Hunting);
+        Assert.Equal("RESEARCH_FUEL_HUNT", predicted.World.Ufos[0].Destination!.TypeId);
+        Reload(content, campaign, 81, "cross-base-research-fuel-after.sav");
         var control = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { HunterKiller = false }] } };
         campaign = CampaignState.Restore(control, content, new SplitMix64RandomSource(81));
         Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
@@ -1104,6 +1108,73 @@ public sealed class StrategicWorldHuntingTests
         Assert.Empty(after.Bases[0].Research);
         Assert.Equal("STR_OUT", after.Bases[0].Crafts.Single(craft => craft.RuleId == "RESEARCH_FUEL_HUNT").Logistics!.Status);
         Assert.Equal(99, after.Bases[0].Crafts.Single(craft => craft.RuleId == "RESEARCH_FUEL_HUNT").Logistics!.Fuel);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResearchCancellationRefundMatchesNativeFinishedAndHeldState(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchRefundRows")
+            .GroupBy(row => (Holding: row[0].GetBoolean(), Returns: row[1].GetBoolean())))
+        {
+            var content = Load(cache, $"research: [{{name: NATIVE_HELD_RETURN, cost: 1, needItem: {group.Key.Holding.ToString().ToLowerInvariant()}, destroyItem: {(group.Key.Holding && !group.Key.Returns).ToString().ToLowerInvariant()}, returnsItem: {group.Key.Returns.ToString().ToLowerInvariant()}, neededItem: SUPPLY}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content) with { World = new() };
+                initial = initial with { Bases = [initial.Bases[0] with
+                {
+                    Items = row[3].GetInt32() == 0 ? new Dictionary<string, int>() :
+                        new Dictionary<string, int> { ["SUPPLY"] = row[3].GetInt32() },
+                    Research = [new("NATIVE_HELD_RETURN", 0, row[2].GetBoolean() ? 1 : 0, 1)],
+                }] };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "native-held-before.sav");
+                Assert.IsType<CampaignResearchChanged>(Assert.Single(campaign.Execute(
+                    new ConfigureResearchProject(0, "NATIVE_HELD_RETURN", 0, Cancel: true)).Events));
+                var after = campaign.Capture();
+                Assert.Empty(after.Bases[0].Research);
+                Assert.Equal(row[4].GetInt32(), after.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+                Reload(content, campaign, 81, "native-held-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, int.MaxValue)]
+    [InlineData(true, int.MaxValue)]
+    public void CompletingHeldResearchRefundFeedsHalfHourHunterSelection(bool cache, int stock)
+    {
+        var content = Load(cache, "crafts: [{type: DIRECT_REFUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: DIRECT_REFUND_TOPIC, cost: 1, needItem: true, returnsItem: true, neededItem: SUPPLY}]\nfacilities: [{type: DIRECT_REFUND_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "DIRECT_REFUND_HUNT", Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+            },
+        }) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with { Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21, Items = stock == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = stock },
+            Facilities = [.. initial.Bases[0].Facilities, new("DIRECT_REFUND_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("DIRECT_REFUND_TOPIC", 1, 0, 1)],
+        }] };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "direct-refund-before.sav");
+        if (stock == int.MaxValue)
+        {
+            AssertTimeBlocked(campaign, "Research refunds exceed the supported stock range.");
+            return;
+        }
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Contains("DIRECT_REFUND_TOPIC", after.CompletedResearch);
+        Assert.Equal(0, after.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+        Assert.Equal(99, after.Bases[0].Crafts.Single(craft => craft.RuleId == "DIRECT_REFUND_HUNT").Logistics!.Fuel);
+        Assert.Equal("DIRECT_REFUND_HUNT", after.World.Ufos[0].Destination!.TypeId);
+        Reload(content, campaign, 81, "direct-refund-after.sav");
     }
 
     [Fact]

@@ -1,8 +1,94 @@
+using System.Collections.ObjectModel;
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Campaigns;
+
+internal sealed record DailyResearchStockForecast(
+    IReadOnlyDictionary<int, IReadOnlyDictionary<string, int>> StockChanges,
+    IReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>> Arrivals);
 
 public sealed partial class CampaignState
 {
-    bool ICampaignResearchPreflight.DailyItemsUnchanged(ref long work)
+    private static readonly DailyResearchStockForecast EmptyResearchStockForecast = new(
+        new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(new Dictionary<int, IReadOnlyDictionary<string, int>>()),
+        new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(new Dictionary<int, IReadOnlyList<KeyValuePair<string, int>>>()));
+
+    bool ICampaignResearchPreflight.TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast)
+    {
+        forecast = EmptyResearchStockForecast;
+        if (DailyItemsUnchanged(ref work)) return true;
+        var rules = _content.RuntimeRules;
+        // Automatic discoveries can disable a held project. Reward, lookup and
+        // protected unlock choices require a richer research-state projection.
+        work += rules.Research.Count;
+        if (work > 1_000_000 || rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.Disables.Count != 0)) return false;
+        Dictionary<int, List<ResearchProjectState>> projects = [];
+        Dictionary<int, Dictionary<string, int>> changes = [];
+        foreach (var owner in _bases)
+        {
+            work += owner.Research.Count;
+            if (work > 1_000_000) return false;
+            projects.Add(owner.Id, new(owner.Research));
+            changes.Add(owner.Id, new(StringComparer.Ordinal));
+            foreach (var project in owner.Research)
+            {
+                if ((long)project.Spent + project.Assigned < project.Cost) continue;
+                var entry = rules.Research[project.Rule];
+                var rule = entry.Value;
+                if (rule.GetOneFree.Count != 0 || rule.GetOneFreeProtected.Count != 0 || rule.Lookup.Length != 0 ||
+                    rule.Unlocks.Count != 0 || rule.Disables.Count != 0 || rule.Reenables.Count != 0 ||
+                    rule.SpawnedItem.Length != 0 || rule.SpawnedItemList.Count != 0 ||
+                    HoldsResearchItem(rule) && rule.DestroyItem && !rule.ReturnsItem && rules.Units.TryGet(entry.Id, out _)) return false;
+            }
+        }
+        foreach (var owner in _bases)
+        {
+            var local = projects[owner.Id];
+            for (var index = 0; index < local.Count; index++)
+            {
+                var project = local[index];
+                if ((long)project.Spent + project.Assigned > int.MaxValue) return false;
+                local[index] = project with { Spent = project.Spent + project.Assigned };
+            }
+            var finished = local.Where(project => project.Spent >= project.Cost).ToArray();
+            HashSet<RuleHandle<ResearchRuleFamily>> sideEffects = [];
+            foreach (var project in finished)
+            {
+                var rule = rules.Research[project.Rule].Value;
+                if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(rule), rule.ReturnsItem, true)) Refund(owner.Id, rule);
+                local.Remove(project);
+                sideEffects.Add(project.Rule);
+            }
+            work += rules.Research.Count;
+            if (work > 1_000_000) return false;
+            foreach (var entry in rules.Research.Rules)
+            {
+                if (!sideEffects.Contains(rules.Research.GetRequired(entry.Id))) continue;
+                foreach (var other in _bases)
+                {
+                    work += projects[other.Id].Count;
+                    if (work > 1_000_000) return false;
+                    var project = projects[other.Id].FirstOrDefault(project => project.Rule == rules.Research.GetRequired(entry.Id));
+                    if (project is null) continue;
+                    if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(entry.Value), entry.Value.ReturnsItem,
+                        project.Spent >= project.Cost)) Refund(other.Id, entry.Value);
+                    projects[other.Id].Remove(project);
+                }
+            }
+        }
+        forecast = new(new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(changes.ToDictionary(
+            pair => pair.Key, pair => (IReadOnlyDictionary<string, int>)new ReadOnlyDictionary<string, int>(pair.Value))),
+            EmptyResearchStockForecast.Arrivals);
+        return true;
+
+        void Refund(int baseId, RuntimeResearchRule rule)
+        {
+            if (rule.NeededItem is { } id && rules.Items.TryGet(id, out _))
+                changes[baseId][id] = changes[baseId].GetValueOrDefault(id) + 1;
+        }
+    }
+
+    private bool DailyItemsUnchanged(ref long work)
     {
         HashSet<string> sideEffects = new(StringComparer.Ordinal);
         var rules = _content.RuntimeRules;
