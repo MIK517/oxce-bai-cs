@@ -407,21 +407,22 @@ public sealed class StrategicWorldEscortSpawnTests
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"), row => row[0].GetInt32() == hours);
         foreach (var earlyLeader in new[] { false, true })
         {
-            var content = Load(cache);
+            var content = Load(cache, "crafts: [{type: TIMED_PURSUER, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
             var initial = IdleEscortSnapshot(content, earlyLeader
                 ? "MISSION_ESCORT_CHAIN_EARLY_LEADER" : "MISSION_ESCORT_CHAIN_LATE_LEADER");
             var owner = initial.Bases[0];
             var incoming = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
             incoming = incoming with
             {
+                RuleId = "TIMED_PURSUER",
                 Logistics = incoming.Logistics! with
-                { Fuel = 300, IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [] }
+                { Damage = 0, Fuel = 60, IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [] }
             };
             initial = initial with
             {
                 Time = new(1, 1, 1, 1999, 1, hourly ? 59 : 29, 55),
                 Bases = [owner with { Crafts = [], Soldiers = [],
-                    Transfers = [new(1, hours, CampaignTransferKind.Craft, "SHIP", 1, Craft: incoming)] }],
+                    Transfers = [new(1, hours, CampaignTransferKind.Craft, "TIMED_PURSUER", 1, Craft: incoming)] }],
             };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "idle-pending-before.sav");
@@ -467,6 +468,54 @@ public sealed class StrategicWorldEscortSpawnTests
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "Loaded idle escorts require same-tick newborn waypoint forecasts.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LoadedIdleEscortAllowsAutoPatrolCraftThatRemainGrounded(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: IDLE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
+        {
+            var initial = IdleEscortSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "IDLE_REFUEL",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING",
+                    Fuel = row[1].GetInt32(),
+                    Damage = 0,
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = []
+                },
+            });
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "idle-grounded-before.sav");
+            if (row[6].GetString() == "STR_OUT")
+            {
+                AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var craftState = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "IDLE_REFUEL").Logistics!;
+            Assert.Equal(row[5].GetInt32(), craftState.Fuel);
+            Assert.Equal(row[6].GetString(), craftState.Status);
+            var source = after.World.Ufos[0];
+            var leader = Assert.Single(after.World.Ufos, ufo => !ufo.HunterKiller);
+            Assert.True(source.Escorting);
+            Assert.Equal(leader.UniqueId, source.Destination!.UniqueId);
+            Assert.Equal(2200, source.Speed);
+            Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, new(10 * Math.PI / 180, 8 * Math.PI / 180),
+                WorldGeometry.RadianSpeed(2200)), source.Position);
+            campaign = Reload(content, campaign, 81, "idle-grounded-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "idle-grounded-following.sav");
+        }
     }
 
     [Theory]
