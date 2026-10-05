@@ -41,8 +41,7 @@ public sealed partial class CampaignState
                 if ((long)project.Spent + project.Assigned < project.Cost) continue;
                 var entry = rules.Research[project.Rule];
                 var rule = entry.Value;
-                if (rule.GetOneFree.Count != 0 || rule.GetOneFreeProtected.Count != 0 ||
-                    HoldsResearchItem(rule) && rule.DestroyItem && !rule.ReturnsItem && rules.Units.TryGet(entry.Id, out _)) return false;
+                if (HoldsResearchItem(rule) && rule.DestroyItem && !rule.ReturnsItem && rules.Units.TryGet(entry.Id, out _)) return false;
             }
         }
         foreach (var owner in _bases)
@@ -93,6 +92,19 @@ public sealed partial class CampaignState
                 work += local.Count;
                 if (work > 1_000_000) return false;
                 local.Remove(project);
+                work += rule.GetOneFree.Count;
+                foreach (var group in rule.GetOneFreeProtected) work += 1L + group.Topics.Count;
+                if (work > 1_000_000) return false;
+                var candidates = discovery.RewardCandidates(rule);
+                work += candidates.Count;
+                if (work > 1_000_000) return false;
+                if (candidates.Count > 1 && !rule.SequentialGetOneFree && candidates.Any(id => id != candidates[0])) return false;
+                if (candidates.Count != 0 && rules.Research.TryGet(candidates[0], out var bonus))
+                {
+                    var reward = rules.Research[bonus];
+                    if (!Discover(reward.Id, ref work) || reward.Value.Lookup.Length != 0 && !Discover(reward.Value.Lookup, ref work)) return false;
+                    sideEffects.Add(bonus);
+                }
                 var id = rules.Research.GetExternalId(project.Rule);
                 if (!Discover(id, ref work) || rule.Lookup.Length != 0 && !Discover(rule.Lookup, ref work)) return false;
                 sideEffects.Add(project.Rule);
@@ -119,6 +131,9 @@ public sealed partial class CampaignState
             foreach (var entry in rules.Research.Rules)
             {
                 if (!sideEffects.Contains(rules.Research.GetRequired(entry.Id))) continue;
+                work += entry.Value.GetOneFree.Count + (long)entry.Value.Unlocks.Count;
+                foreach (var group in entry.Value.GetOneFreeProtected) work += 1L + group.Topics.Count;
+                if (work > 1_000_000) return false;
                 if (!discovery.HasRemainingReward(entry.Value) && !discovery.HasProtectedUnlock(entry.Value))
                     foreach (var other in _bases)
                     {

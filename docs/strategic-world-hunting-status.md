@@ -4,11 +4,12 @@ Branch 4c. Pinned reference: 4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15.
 
 Current maintenance composition supports repairs, deterministic craft/facility ammunition,
 ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
-forecasts cover stock-free completions, simple held-item refunds, global obsolete
-and disabled-project cancellation, and fixed spawned item arrivals. Non-fallback
+forecasts cover stock-free completions, held-item refunds, global obsolete
+and disabled-project cancellation, fixed spawned item arrivals, lookup and automatic
+discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
 production without a completing unit does not block retargeting. Remaining stock
 forecasts cover completing/fallback production, stochastic shared ammunition and
-compound research reward/lookup/disabler/protected-unlock/corpse consequences.
+random research reward choices and corpse consequences.
 The progress notes below record earlier guards and their later replacements.
 
 The strategic-hunting capture inserts Craft::getHunterKillerAttraction,
@@ -286,3 +287,5 @@ The research-stock batch audit closes with a confirmed end-of-day guard fix: alr
 Branch 4c lookup stock composition: daily stock forecasts accept status-neutral lookup discovery while preserving its addFinishedResearch-only semantics. Lookup item payloads and matching projects remain untouched by primary side effects; lookup disablers/re-enablers and automatic disablers retain precise uncertainty guards. Four captured native primary-topic rows pin direct/free membership with lookups excluded. Fresh/cache scenarios exercise held lookup projects, direct fuel arrivals, unchanged lookup stocks and reloads before/after hunter selection. Reference: GeoscapeState::time1Day primary topic collection, SavedGame::handlePrimaryResearchSideEffects and Base::removeResearch. No RNG, identity or campaign state is changed during the forecast; later branch boundaries and 4d are unchanged.
 
 Branch 4c research discovery stock composition: execution and preflight now share the addFinishedResearch discovery transition over live or copied completion/status sets. Direct and lookup disablers, re-enablers, automatic zero-cost chains and protected-unlock cancellation eligibility now participate in ordered daily stock refunds. Forecasts account for completing facility functions, active projects and refunded needed items before automatic discovery; work stays bounded and no RNG/state is consumed. Sixteen pinned native discovery/disabled-refund rows compare fresh/cache daily results and transition reloads, including already-complete sources and already-finished held projects. Reward choices and corpse item projections remain for subsequent slices. Reference: SavedGame::addFinishedResearch/hasUndiscoveredProtectedUnlock and GeoscapeState::time1Day construction/research ordering. Branch 4c closure and later-branch guards remain open; 4d is unchanged.
+
+Branch 4c deterministic daily research rewards: stock forecasts now select sequential free topics and unambiguous eligible outcomes without consuming RNG, including duplicate candidates and prerequisite-gated protected rewards. Shared discovery runs the bonus and its lookup before the direct topic, then catalogue-ordered primary item arrivals and global obsolete-project cancellation. Seventy-two pinned selectGetOneFree/remaining-reward rows cover completed/disabled candidates, gated groups and duplicates; fresh/cache fixtures verify fuel, retained/cancelled cross-base held projects, reloads and atomic refusal of distinct random outcomes. Focused hunting/research compatibility passes 148 tests. Reference: SavedGame::selectGetOneFree/hasUndiscoveredGetOneFree and GeoscapeState::time1Day bonus-before-core ordering. Completing production, stochastic stock choices, corpse projections and final headless closure remain open 4c work; later branch boundaries and 4d are unchanged.

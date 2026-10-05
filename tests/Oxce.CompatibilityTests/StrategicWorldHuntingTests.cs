@@ -1454,6 +1454,74 @@ public sealed class StrategicWorldHuntingTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeterministicFreeResearchStocksAndCancellationMatchNative(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchRewardRows")
+            .GroupBy(row => (Sequential: row[0].GetBoolean(), Duplicate: row[1].GetBoolean())))
+        {
+            var content = Load(cache, $"crafts: [{{type: REWARD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: REWARD_SOURCE, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY, sequentialGetOneFree: {group.Key.Sequential.ToString().ToLowerInvariant()}, getOneFree: [{(group.Key.Duplicate ? "REWARD_A, REWARD_A" : "REWARD_A")}], getOneFreeProtected: {{REWARD_GATE: [REWARD_B]}}}}, {{name: REWARD_A, cost: 1, spawnedItem: SUPPLY}}, {{name: REWARD_B, cost: 1, spawnedItem: SUPPLY, spawnedItemCount: 2}}, {{name: REWARD_GATE, cost: 1}}]\nfacilities: [{{type: REWARD_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            foreach (var row in group)
+            {
+                List<string> completed = [];
+                if (row[2].GetInt32() == 1) completed.Add("REWARD_A");
+                if (row[3].GetInt32() == 1) completed.Add("REWARD_B");
+                if (row[4].GetBoolean()) completed.Add("REWARD_GATE");
+                Dictionary<string, int> statuses = new(StringComparer.Ordinal);
+                if (row[2].GetInt32() == 2) statuses.Add("REWARD_A", 2);
+                if (row[3].GetInt32() == 2) statuses.Add("REWARD_B", 2);
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "REWARD_HUNT",
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    },
+                }) with
+                { Time = new(1, 1, 1, 1999, 23, 59, 55), CompletedResearch = completed, ResearchRuleStatus = statuses };
+                var owner = initial.Bases[0] with
+                {
+                    Longitude = 0.45,
+                    Latitude = 0.21,
+                    Items = new Dictionary<string, int>(),
+                    Facilities = [.. initial.Bases[0].Facilities, new("REWARD_LAB", 1, 1, 0, 0, false, false, false)],
+                    Research = [new("REWARD_SOURCE", 1, 99, 100)],
+                };
+                initial = initial with
+                {
+                    Bases = [owner, owner with { Id = 1, Crafts = [], Soldiers = [],
+                    Research = [new("REWARD_SOURCE", 0, 0, 100)] }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "reward-stocks-before.sav");
+                if (!group.Key.Sequential && row[2].GetInt32() == 0 && row[3].GetInt32() == 0 && row[4].GetBoolean())
+                {
+                    AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
+                    continue;
+                }
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                var discoveries = Assert.Single(result.Events.OfType<CampaignResearchCompleted>()).Discoveries;
+                var bonus = row[5].GetInt32();
+                Assert.Equal(bonus != 0, after.World.Ufos[0].Hunting);
+                if (bonus != 0) Assert.Contains(bonus == 1 ? "REWARD_A" : "REWARD_B", discoveries);
+                Assert.Equal(row[6].GetInt32() - (bonus == 0 ? 0 : 1), after.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+                Assert.Equal(row[7].GetBoolean(), after.Bases[1].Research.Count != 0);
+                Assert.Equal(row[7].GetBoolean() ? 0 : 1, after.Bases[1].Items.GetValueOrDefault("SUPPLY"));
+                Assert.Equal(bonus == 0 ? 60 : 99, after.Bases[0].Crafts.Single(craft => craft.RuleId == "REWARD_HUNT").Logistics!.Fuel);
+                Reload(content, campaign, 81, "reward-stocks-after.sav");
+            }
+        }
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {

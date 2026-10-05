@@ -248,6 +248,24 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
+std::cout << "],\"researchRewardRows\":[";
+serviceFirst=true;
+for(bool sequential:{false,true}) for(bool duplicate:{false,true}) for(int aState:{0,1,2}) for(int bState:{0,1,2}) for(bool gate:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule source,a,b,prerequisite; source.name="REWARD_SOURCE"; a.name="REWARD_A"; b.name="REWARD_B"; prerequisite.name="REWARD_GATE";
+source.sequential=sequential; source.free={&a}; if(duplicate) source.free.push_back(&a);
+source.protectedFree={{&prerequisite,{&b}}}; a.spawned="SUPPLY"; b.spawned="SUPPLY"; b.count=2;
+SavedGame saved; ResearchMod mod; mod.rules={&source,&a,&b,&prerequisite}; Base base; ResearchCaller caller;
+if(aState==1) saved._discovered.push_back(&a); if(aState==2) saved.statuses[a.name]=2;
+if(bState==1) saved._discovered.push_back(&b); if(bState==2) saved.statuses[b.name]=2;
+if(gate) saved._discovered.push_back(&prerequisite);
+RNG::suppliedChoice=0; const auto* bonus=saved.selectGetOneFree(&source); RNG::suppliedChoice=-1;
+if(bonus) saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(&source,&mod,&base);
+for(auto* topic:ResearchCaller::primary(&source,bonus)) caller.spawn(topic,&mod,&base);
+int count=0; for(auto* transfer:base.transfers) { transfer->advance(&base); ++count; delete transfer; }
+std::cout << '[' << (sequential?"true":"false") << ',' << (duplicate?"true":"false") << ',' << aState << ',' << bState << ',' << (gate?"true":"false") << ','
+<< (bonus==&a?1:bonus==&b?2:0) << ',' << base.storage.count << ',' << (saved.hasUndiscoveredGetOneFree(&source,true)?"true":"false") << ']';
+}
 std::cout << "],\"researchDiscoveryRows\":[";
 serviceFirst=true;
 for(int mode:{0,1,2,3}) for(bool complete:{false,true}) for(bool finished:{false,true}) {
