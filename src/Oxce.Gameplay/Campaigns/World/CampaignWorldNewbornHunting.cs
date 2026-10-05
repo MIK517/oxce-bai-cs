@@ -38,6 +38,7 @@ internal sealed partial class CampaignWorld
             return reason;
         var origin = new WorldPosition(0, 0);
         var possibleHunt = false;
+        var initializedEscort = false;
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
         if (radar > 0)
         {
@@ -54,7 +55,10 @@ internal sealed partial class CampaignWorld
                     _huntingForecastWork += _ufos.Count;
                     if (_huntingForecastWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                     if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader)
+                    {
                         positions = [new(leader.Position, 0)];
+                        initializedEscort = true;
+                    }
                     else
                     {
                         _huntingForecastWork += _missions.Count;
@@ -70,9 +74,8 @@ internal sealed partial class CampaignWorld
                     return separationReason;
                 if (!separated)
                 {
-                    if (wave.Escort) return null;
                     if (NewbornHuntReachReason(positions, rule, mission.Race, path, (int)radar,
-                            ref _huntingForecastWork) is { } reachReason)
+                            initializedEscort, ref _huntingForecastWork) is { } reachReason)
                         return reachReason;
                     possibleHunt = true;
                 }
@@ -101,13 +104,16 @@ internal sealed partial class CampaignWorld
     }
 
     private string? NewbornHuntReachReason(IReadOnlyList<SpawnArea> positions, RuntimeUfoRule rule,
-        string race, RuntimeUfoTrajectoryRule path, int radar, ref long work)
+        string race, RuntimeUfoTrajectoryRule path, int radar, bool initializedEscort, ref long work)
     {
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(race).SpeedMaximum;
         if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
         var hypothetical = new UfoSnapshot(0, string.Empty, 0, string.Empty, 0, 0, 0,
             UfoStatus.Flying, WorldAltitudes.High)
-        { Speed = path.Speed(0, (int)maximum), Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) };
+        {
+            Speed = initializedEscort ? (int)maximum : path.Speed(0, (int)maximum),
+            Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6))
+        };
         if (!WorldHunting.TryHunt(hypothetical, WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
                 (int)maximum, rule.HuntSpeed, out var hunted)) return "UFO hunt speed exceeds the supported range.";
         var reach = WorldGeometry.RadianSpeed(hunted.Speed);

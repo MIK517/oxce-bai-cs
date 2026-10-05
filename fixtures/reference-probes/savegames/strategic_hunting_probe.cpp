@@ -977,7 +977,7 @@ std::cout << '[' << mode << ',' << variant << ',' << (selected ? selected->id : 
 }
 std::cout << "],\"retargetRows\":[";
 first = true;
-for (int percent : {0,50,100,150}) {
+for (int percent : {-1,0,50,100,150}) {
 if (!first) std::cout << ','; first = false;
 Ufo ufo; ufo.rule.huntSpeed = percent; ufo.speed = 900;
 auto* waypoint = new Waypoint(); waypoint->lon = 0.4; waypoint->lat = 0.2; ufo._dest = waypoint;

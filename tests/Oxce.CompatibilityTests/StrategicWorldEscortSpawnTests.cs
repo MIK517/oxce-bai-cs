@@ -222,7 +222,7 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Fact]
-    public void EscortSpawnStopsBeforeCraftRetargetIsNeeded()
+    public void EscortSpawnStopsBeforeCreationTimeHuntingCombat()
     {
         var content = Load(overlay: """
             ufos:
@@ -255,7 +255,7 @@ public sealed class StrategicWorldEscortSpawnTests
         { Logistics = craft.Logistics! with { Longitude = leader.Longitude, Latitude = leader.Latitude } });
         initial = initial with { Bases = [initial.Bases[0] with { Longitude = leader.Longitude, Latitude = leader.Latitude }] };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "New UFO escorts require craft retarget forecasts.");
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
     [Fact]
