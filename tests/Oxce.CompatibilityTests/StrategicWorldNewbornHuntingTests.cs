@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Oxce.Core.Random;
+using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -253,5 +255,64 @@ public sealed class StrategicWorldNewbornHuntingTests
                 Ufos = escort ? initial.World.Ufos : [],
             },
         };
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SharedFuelStockForecastControlsNewbornCandidateEligibility(bool cache, bool escort)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, escort, 0,
+            "crafts: [{type: SHARED_BIRTH, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n", radar: 300);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "sharedFuelRows"))
+        {
+            var initial = Snapshot(content, escort);
+            var owner = initial.Bases[0];
+            var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+            CraftSnapshot Craft(int id, int fuel, bool auto) => template with
+            {
+                RuleId = "SHARED_BIRTH",
+                Id = id,
+                Logistics = template.Logistics! with
+                {
+                    Status = "STR_REFUELLING",
+                    Damage = 0,
+                    Fuel = fuel,
+                    IsAutoPatrolling = auto,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = []
+                },
+            };
+            initial = initial with
+            {
+                Bases = [owner with { Crafts = [Craft(1, row[0].GetInt32(), row[2].GetBoolean()), Craft(2, 60, true)],
+                    Soldiers = [], Items = row[1].GetInt32() == 0 ? new Dictionary<string, int>() :
+                        new Dictionary<string, int> { ["SUPPLY"] = row[1].GetInt32() } }],
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "shared-birth-before.sav");
+            if (row[4].GetString() == "STR_OUT" || row[6].GetString() == "STR_OUT")
+            {
+                AssertTimeBlocked(campaign, escort ? "New UFO escorts require craft retarget forecasts." :
+                    "Alien mission wave spawning requires world simulation.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var first = after.Bases[0].Crafts[0].Logistics!;
+            var second = after.Bases[0].Crafts[1].Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+                { first.Fuel, first.Status, second.Fuel, second.Status, after.Bases[0].Items.GetValueOrDefault("SUPPLY") });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).Take(5).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Assert.False(Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER").Hunting);
+            campaign = Reload(content, campaign, 81, "shared-birth-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "shared-birth-following.sav");
+        }
     }
 }
