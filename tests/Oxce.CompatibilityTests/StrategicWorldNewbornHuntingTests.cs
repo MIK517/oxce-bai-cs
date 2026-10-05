@@ -71,17 +71,97 @@ public sealed class StrategicWorldNewbornHuntingTests
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    private static RuntimeContent RetargetContent(bool cache, int mode, bool escort = false, bool noAlert = false) =>
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void NewbornEscortsHuntFromTheirLeaderOriginAndKeepTheBackup(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = RetargetContent(cache, mode, escort: true);
+        var initial = RetargetSnapshot(content, escort: true);
+        var origin = new WorldPosition(0.7, 0.3);
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with { Crafts = [.. initial.Bases[0].Crafts.Select(craft => craft with
+                { Logistics = craft.Logistics! with { Longitude = origin.Longitude + WorldGeometry.Nautical(100), Latitude = origin.Latitude } })] }],
+            World = initial.World with { Ufos = [initial.World.Ufos[0] with { Longitude = origin.Longitude, Latitude = origin.Latitude }] },
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-hunt-before.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var born = Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "BIRTH_RETARGET");
+        Assert.True(born.Escort);
+        Assert.True(born.Hunting);
+        Assert.False(born.Escorting);
+        Assert.Equal(WorldPosition.Create(Degrees(362), Degrees(2)), born.OriginalWaypoint);
+        var selection = Assert.Single(TestFixtures.Rows(oracle.RootElement, "selectionRows"),
+            row => row[0].GetInt32() == born.HuntMode && row[1].GetInt32() == 0);
+        Assert.Equal(selection[2].GetInt32(), born.Destination!.Id);
+        var target = campaign.Capture().Bases[0].Crafts.Single(craft => craft.Id == born.Destination.Id).Logistics!;
+        var expected = WorldGeometry.Move(origin, new(target.Longitude, target.Latitude), WorldGeometry.RadianSpeed(3300));
+        Assert.Equal(expected.Longitude, born.Longitude, 12);
+        Assert.Equal(expected.Latitude, born.Latitude, 12);
+        Assert.Single(result.Events.OfType<UfoStartedHunting>());
+        campaign = Reload(content, campaign, 81, "escort-hunt-after.sav");
+        AdvanceUnblocked(campaign, 12);
+        Reload(content, campaign, 81, "escort-hunt-following.sav");
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, -1)]
+    [InlineData(true, -1)]
+    public void NewbornEscortCombatReachUsesInitializedSpeedWhenHuntSpeedDoesNotOverride(bool cache, int huntSpeed)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "retargetRows"), row => row[0].GetInt32() == huntSpeed && row[1].GetInt32() == 900);
+        var content = RetargetContent(cache, 0, escort: true, huntSpeed: huntSpeed, slowStart: true);
+        var initial = RetargetSnapshot(content, escort: true);
+        var leader = initial.World.Ufos[0];
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [owner with { Crafts = [owner.Crafts[0] with { Logistics = owner.Crafts[0].Logistics! with
+            { Longitude = leader.Longitude + WorldGeometry.RadianSpeed(1000), Latitude = leader.Latitude } }] }]
+        };
+        // This craft is beyond the trajectory's 550-speed step but inside the
+        // native initialized escort's 2200-speed step.
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        var state = initial.Bases[0].Crafts[0].Logistics!;
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with { Crafts = [initial.Bases[0].Crafts[0] with
+            { Logistics = state with { Longitude = leader.Longitude + WorldGeometry.Nautical(100) } }] }]
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(campaign, 1);
+        var born = Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "BIRTH_RETARGET");
+        Assert.True(born.Hunting);
+        Assert.Equal(2200, born.Speed);
+        Reload(content, campaign, 81, "escort-initialized-speed.sav");
+    }
+
+    private static RuntimeContent RetargetContent(bool cache, int mode, bool escort = false, bool noAlert = false,
+        int huntSpeed = 150, bool slowStart = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             crafts:
               - {type: BIRTH_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               - {type: BIRTH_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             ufos:
-              - {type: BIRTH_RETARGET, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: 150, hunterKillerPercentage: 100, huntMode: {{mode}}, noAlert: {{noAlert.ToString().ToLowerInvariant()}}}
+              - {type: BIRTH_RETARGET, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: {{huntSpeed}}, hunterKillerPercentage: 100, huntMode: {{mode}}, noAlert: {{noAlert.ToString().ToLowerInvariant()}}}
+            ufoTrajectories:
+              - id: BIRTH_RETARGET_PATH
+                waypoints: [[4, 3, {{(slowStart ? 25 : 100)}}], [3, 2, 80], [0, 3, 50]]
             alienMissions:
               - type: BIRTH_RETARGET_MISSION
                 objective: 0
-                waves: [{ufo: BIRTH_RETARGET, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, escort: {{escort.ToString().ToLowerInvariant()}}}]
+                waves: [{ufo: BIRTH_RETARGET, count: 1, trajectory: BIRTH_RETARGET_PATH, timer: 9000, escort: {{escort.ToString().ToLowerInvariant()}}}]
             """);
 
     private static CampaignSnapshot RetargetSnapshot(RuntimeContent content, bool escort = false)
@@ -188,7 +268,7 @@ public sealed class StrategicWorldNewbornHuntingTests
                 81, "pending-newborn-before.sav");
             if (hourly && hours == 1)
             {
-                if (escort) AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
+                if (escort) AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
                 else
                 {
                     AdvanceUnblocked(campaign, 1);
@@ -302,7 +382,7 @@ public sealed class StrategicWorldNewbornHuntingTests
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-spatial-before.sav");
             if (nearLeader)
             {
-                AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
+                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -395,7 +475,7 @@ public sealed class StrategicWorldNewbornHuntingTests
                 81, "grounded-birth-before.sav");
             if (escort && row[6].GetString() == "STR_OUT")
             {
-                AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
+                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -534,7 +614,7 @@ public sealed class StrategicWorldNewbornHuntingTests
             var airborne = row[4].GetString() == "STR_OUT" || row[6].GetString() == "STR_OUT";
             if (escort && airborne)
             {
-                AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
+                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
