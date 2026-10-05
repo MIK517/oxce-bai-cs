@@ -22,12 +22,21 @@ public sealed class StrategicWorldEscortSpawnTests
     [InlineData(true, "chain")]
     [InlineData(false, "cycle")]
     [InlineData(true, "cycle")]
+    [InlineData(false, "direct-far")]
+    [InlineData(true, "direct-far")]
+    [InlineData(false, "chain-far")]
+    [InlineData(true, "chain-far")]
     public void NewLeaderAttachmentChecksActualCraftPursuitDependencies(bool cache, string kind)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
             !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
-        var content = Load(cache);
+        var content = Load(cache, """
+            crafts:
+              - type: SHIP
+                radarRange: 20000
+                radarChance: 100
+            """);
         var initial = IdleEscortSnapshot(content);
         var source = initial.World.Ufos[0] with { Detected = true };
         var follower = source with
@@ -44,12 +53,13 @@ public sealed class StrategicWorldEscortSpawnTests
             { UniqueId = source.UniqueId },
         };
         if (kind == "cycle") follower = follower with { Destination = follower.Destination! with { UniqueId = 11, Id = 11 } };
+        var hasFollower = kind.StartsWith("chain", StringComparison.Ordinal) || kind == "cycle";
         initial = initial with
         {
             World = initial.World with
             {
-                Ufos = kind is "chain" or "cycle" ? [source, follower] : [source],
-                Missions = [initial.World.Missions[0] with { LiveUfos = kind is "chain" or "cycle" ? 2 : 1 }],
+                Ufos = hasFollower ? [source, follower] : [source],
+                Missions = [initial.World.Missions[0] with { LiveUfos = hasFollower ? 2 : 1 }],
             }
         };
         if (kind == "cycle") initial = initial with
@@ -61,7 +71,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 Missions = [initial.World.Missions[0] with { LiveUfos = 3 }],
             }
         };
-        var target = kind == "direct" ? source : follower;
+        var target = kind.StartsWith("direct", StringComparison.Ordinal) ? source : follower;
         initial = initial.WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -69,10 +79,10 @@ public sealed class StrategicWorldEscortSpawnTests
                 Status = "STR_OUT",
                 Fuel = 1000,
                 Damage = 0,
-                Speed = 0,
+                Speed = kind.EndsWith("-far", StringComparison.Ordinal) ? 6000 : 0,
                 Takeoff = 0,
-                Longitude = 1,
-                Latitude = 0.6,
+                Longitude = kind is "direct" or "chain" ? target.Longitude : 1,
+                Latitude = kind is "direct" or "chain" ? target.Latitude : 0.6,
                 Destination = kind == "patrol" ? null : new(WorldTargetKind.Ufo, WorldTargetReference.UfoType,
                 target.Id, target.Longitude, target.Latitude)
                 { UniqueId = target.UniqueId },
@@ -90,6 +100,17 @@ public sealed class StrategicWorldEscortSpawnTests
         var leader = Assert.Single(campaign.Capture().World.Ufos, ufo => !ufo.HunterKiller);
         Assert.Equal(leader.UniqueId, changed.Destination!.UniqueId);
         Assert.Equal(WorldGeometry.Move(source.Position, new(Degrees(10), Degrees(8)), WorldGeometry.RadianSpeed(2200)), changed.Position);
+        if (kind.EndsWith("-far", StringComparison.Ordinal))
+        {
+            var pursuing = campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+            Assert.Equal(WorldTargetKind.Ufo, pursuing.Destination!.Kind);
+            Assert.Equal(target.UniqueId, pursuing.Destination.UniqueId);
+            var movedTarget = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == target.UniqueId);
+            var expected = WorldGeometry.Move(new(1, 0.6), movedTarget.Position, WorldGeometry.RadianSpeed(6000));
+            Assert.Equal(expected.Longitude, pursuing.Longitude);
+            Assert.Equal(expected.Latitude, pursuing.Latitude);
+            Assert.Equal(movedTarget.Position, pursuing.Destination.Position);
+        }
         campaign = Reload(content, campaign, 81, "leader-dependency-after.sav");
         AdvanceUnblocked(campaign, 1);
         Reload(content, campaign, 81, "leader-dependency-following.sav");
@@ -471,8 +492,8 @@ public sealed class StrategicWorldEscortSpawnTests
                 Takeoff = 0,
                 Fuel = 300,
                 Speed = 0,
-                Longitude = 1,
-                Latitude = 0.6,
+                Longitude = pursues ? 0.4 : 1,
+                Latitude = pursues ? 0.2 : 0.6,
                 LowFuel = !hidden,
                 MissionComplete = !hidden,
                 Destination = pursues ? new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 } : null,
