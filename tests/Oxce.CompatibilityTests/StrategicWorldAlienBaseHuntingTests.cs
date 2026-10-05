@@ -264,6 +264,56 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedAutoPatrolUsesActualServicingBeforeBaseHunting(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
+            "crafts: [{type: BASE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
+        {
+            var initial = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+            initial = initial.WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "BASE_REFUEL",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING",
+                    Fuel = row[1].GetInt32(),
+                    IsAutoPatrolling = true,
+                    Weapons = [],
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3
+                }
+            });
+            // Refuelling launches at the player base, so place the hunting base there.
+            initial = initial with
+            {
+                World = initial.World with
+                {
+                    AlienBases = [initial.World.AlienBases[0] with
+                { Longitude = initial.Bases[0].Longitude, Latitude = initial.Bases[0].Latitude }]
+                }
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "base-refuel-before.sav");
+            if (row[6].GetString() == "STR_OUT")
+            {
+                AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var state = after.Bases[0].Crafts.Single(craft => craft.RuleId == "BASE_REFUEL").Logistics!;
+            Assert.Equal(row[5].GetInt32(), state.Fuel);
+            Assert.Equal(row[6].GetString(), state.Status);
+            Assert.Empty(after.World.Missions);
+            Assert.Equal(60, Assert.Single(after.World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+            Reload(content, campaign, 17, "base-refuel-after.sav");
+        }
+    }
+
     private static RuntimeContent Load(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");

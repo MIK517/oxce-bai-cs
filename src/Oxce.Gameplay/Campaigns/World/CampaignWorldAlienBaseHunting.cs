@@ -28,8 +28,16 @@ internal sealed partial class CampaignWorld
                         (WorldGeometry.Distance(new(state.Longitude, state.Latitude), alienBase.Position) <
                             WorldGeometry.Nautical(deployment.BaseDetectionRange) ||
                          WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), alienBase.Position) <
-                            WorldGeometry.Nautical(deployment.BaseDetectionRange)) &&
-                        HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } launchReason) return launchReason;
+                            WorldGeometry.Nautical(deployment.BaseDetectionRange)))
+                    {
+                        if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                            return forecastReason;
+                        var forecast = _huntingCraftForecast!.GetValueOrDefault((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
+                        if (WorldAlienBaseHunting.Eligible(forecast, rule.Undetectable,
+                                CraftLogistics.EffectiveDamageMaximum(forecast, rule, campaign.Content.RuntimeRules),
+                                alienBase.Position, deployment.BaseDetectionRange) &&
+                            HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } launchReason) return launchReason;
+                    }
                     continue;
                 }
                 if (state.LowFuel || state.MissionComplete) continue;
