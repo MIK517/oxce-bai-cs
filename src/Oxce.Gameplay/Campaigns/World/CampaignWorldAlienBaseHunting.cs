@@ -61,8 +61,16 @@ internal sealed partial class CampaignWorld
                         campaign.Content.RuntimeRules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
                     if (!rule.Undetectable && rule.AutoPatrol &&
                         WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), alienBase.Position) <
-                            WorldGeometry.Nautical(deployment.BaseDetectionRange) &&
-                        HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } arrivalReason) return arrivalReason;
+                            WorldGeometry.Nautical(deployment.BaseDetectionRange))
+                    {
+                        if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                            return forecastReason;
+                        var forecast = _huntingCraftForecast!.GetValueOrDefault((transfer.Craft.RuleId, transfer.Craft.Id));
+                        if (forecast is not null && WorldAlienBaseHunting.Eligible(forecast, rule.Undetectable,
+                                CraftLogistics.EffectiveDamageMaximum(forecast, rule, campaign.Content.RuntimeRules),
+                                alienBase.Position, deployment.BaseDetectionRange) &&
+                            HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } arrivalReason) return arrivalReason;
+                    }
                 }
             }
         }
