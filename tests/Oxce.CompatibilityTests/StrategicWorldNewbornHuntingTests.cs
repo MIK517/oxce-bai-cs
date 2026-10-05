@@ -147,21 +147,47 @@ public sealed class StrategicWorldNewbornHuntingTests
         Reload(content, campaign, 81, "escort-initialized-speed.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImmediateSameWaveEscortsCannotReuseAPreLeaderSpeedProof(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
+            row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
+        var content = RetargetContent(cache, 0, escort: true, huntSpeed: 0, slowStart: true,
+            count: 2, immediate: true, hunterPercentage: 50);
+        var initial = RetargetSnapshot(content);
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [owner with { Crafts = [owner.Crafts[0] with
+        {
+            Logistics = owner.Crafts[0].Logistics! with
+            { Longitude = Degrees(10) + WorldGeometry.RadianSpeed(1000), Latitude = Degrees(8) },
+        }] }]
+        };
+        // The first ordinary birth can provide the next birth's leader, changing
+        // its initial speed from 550 to 2200 within the same immediate wave.
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "New UFO escorts require craft retarget forecasts.");
+    }
+
     private static RuntimeContent RetargetContent(bool cache, int mode, bool escort = false, bool noAlert = false,
-        int huntSpeed = 150, bool slowStart = false) =>
+        int huntSpeed = 150, bool slowStart = false, int count = 1, bool immediate = false, int hunterPercentage = 100) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             crafts:
               - {type: BIRTH_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               - {type: BIRTH_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             ufos:
-              - {type: BIRTH_RETARGET, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: {{huntSpeed}}, hunterKillerPercentage: 100, huntMode: {{mode}}, noAlert: {{noAlert.ToString().ToLowerInvariant()}}}
+              - {type: BIRTH_RETARGET, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: {{huntSpeed}}, hunterKillerPercentage: {{hunterPercentage}}, huntMode: {{mode}}, noAlert: {{noAlert.ToString().ToLowerInvariant()}}}
             ufoTrajectories:
               - id: BIRTH_RETARGET_PATH
                 waypoints: [[4, 3, {{(slowStart ? 25 : 100)}}], [3, 2, 80], [0, 3, 50]]
             alienMissions:
               - type: BIRTH_RETARGET_MISSION
                 objective: 0
-                waves: [{ufo: BIRTH_RETARGET, count: 1, trajectory: BIRTH_RETARGET_PATH, timer: 9000, escort: {{escort.ToString().ToLowerInvariant()}}}]
+                waves: [{ufo: BIRTH_RETARGET, count: {{count}}, trajectory: BIRTH_RETARGET_PATH, timer: {{(immediate ? 0 : 9000)}}, escort: {{escort.ToString().ToLowerInvariant()}}}]
             """);
 
     private static CampaignSnapshot RetargetSnapshot(RuntimeContent content, bool escort = false)
