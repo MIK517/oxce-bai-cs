@@ -461,6 +461,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         {
             var accountingCapacity = new ProductionAccountingCapacity(_funds[^1], _incomes[^1], _expenditures[^1]);
             long possibleTransfers = 0;
+            long possibleSoldiers = 0;
             Dictionary<RuleHandle<CraftRuleFamily>, long>? possibleCrafts = null;
             var personnelBirths = false;
             foreach (var owner in _bases)
@@ -497,6 +498,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     {
                         personnelBirths = true;
                         possiblePersonnel += units;
+                        if (manufacture.SpawnedPersonType is not "STR_SCIENTIST" and not "STR_ENGINEER")
+                        {
+                            if (ProducedSoldierReason(manufacture, units, ref work) is { } soldierReason) return soldierReason;
+                            possibleSoldiers += units;
+                        }
                     }
                     if (!scoreCapacity.Reserve(manufacture.Points, manufacture.Points, units))
                         return "Research and production scores exceed the supported range.";
@@ -525,9 +531,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     return "Production personnel exceed the supported population range.";
             }
             if (personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } personnelReason) return personnelReason;
+            if (possibleSoldiers != 0 && ProductionSoldierCapacity(possibleSoldiers, possibleCrafts, highest, ref work) is { } soldierCapacityReason)
+                return soldierCapacityReason;
             if (possibleCrafts is not null)
             {
-                if (ProductionCraftCapacity(possibleCrafts, highest, ref work) is { } craftReason) return craftReason;
+                if (ProductionCraftCapacity(possibleCrafts, possibleSoldiers, highest, ref work) is { } craftReason) return craftReason;
                 if (!personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } arrivalReason)
                     return arrivalReason.Replace("personnel", "craft", StringComparison.Ordinal);
             }

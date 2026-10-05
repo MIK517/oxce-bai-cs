@@ -29,7 +29,7 @@ public sealed partial class CampaignState
     }
 
     private string? ProductionCraftCapacity(IReadOnlyDictionary<RuleHandle<CraftRuleFamily>, long> births,
-        CampaignTimeTrigger highest, ref long work)
+        long soldierBirths, CampaignTimeTrigger highest, ref long work)
     {
         IReadOnlyList<CustomCounterChange>? researchCounters = null;
         if (highest >= CampaignTimeTrigger.OneDay && ResearchPreflight.TryForecastDailyStocks(ref work, out var researchForecast))
@@ -49,7 +49,15 @@ public sealed partial class CampaignState
             var type = _content.RuntimeRules.Crafts.GetExternalId(birth.Key);
             if (ProducedCraftCounterRange(type, highest, researchCounters, ref work, out var range) is { } counterReason) return counterReason;
             var next = NextCraftId(type, range.Maximum);
-            if (birth.Value > int.MaxValue - next)
+            var quantity = birth.Value;
+            if (type == "STR_SOLDIER" && soldierBirths != 0)
+            {
+                work += _bases.Count + _bases.Sum(owner => owner.Soldiers.Count + (long)owner.Transfers.Count);
+                if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
+                next = Math.Max(next, NextSoldierId());
+                quantity += soldierBirths;
+            }
+            if (quantity > int.MaxValue - next)
                 return "Craft production exhausts the craft identity range.";
         }
         return null;
