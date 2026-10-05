@@ -249,6 +249,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         {
             if (index < 0) return Blocked("Research project was not found.");
             var project = owner.Research[index];
+            if (ResearchRecoveryReason(owner, project) is { } recoveryReason) return Blocked(recoveryReason);
             RemoveResearchProject(owner, project);
             return new([new CampaignResearchChanged(owner.Id, command.RuleId, 0, true)]);
         }
@@ -453,6 +454,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
                         return "Research progress exceeds the supported range.";
             if (ReserveDailyResearchScores(ref scoreCapacity, ref work) is { } scoreReason) return scoreReason;
+            if (PreflightResearchRecovery(ref work) is { } recoveryReason) return recoveryReason;
         }
         if (highest >= CampaignTimeTrigger.OneHour)
         {
@@ -535,7 +537,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             var rule = _content.RuntimeRules.Research[project.Rule].Value;
             owner.Scientists = checked(owner.Scientists + project.Assigned);
             owner.Research.Remove(project);
-            if (rule.ReturnsItem) ReturnHeldResearchItem(owner, rule);
+            ApplyResearchRecoveredItems(owner, rule, id, finished: true, dailyCompletion: true);
             var discoveries = CompleteResearch(owner, id, rule, sideEffects);
             effects.Notify(new CampaignResearchCompleted(owner.Id, id, discoveries));
         }
@@ -1056,18 +1058,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         rule.ProducedMaterials.FirstOrDefault(material => material.Craft is not null)?.Craft;
     private static bool HoldsResearchItem(RuntimeResearchRule rule) =>
         rule.NeedItem && (rule.DestroyItem || rule.ReturnsItem);
-    private void ReturnHeldResearchItem(BaseState owner, RuntimeResearchRule rule)
-    {
-        if (HoldsResearchItem(rule) && rule.NeededItem is { } id &&
-            _content.RuntimeRules.Items.TryGet(id, out var item)) ChangeStock(owner.Items, item, 1);
-    }
-
     private void RemoveResearchProject(BaseState owner, ResearchProjectState project)
     {
         owner.Scientists = checked(owner.Scientists + project.Assigned);
         var rule = _content.RuntimeRules.Research[project.Rule].Value;
-        if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(rule), rule.ReturnsItem, project.Spent >= project.Cost))
-            ReturnHeldResearchItem(owner, rule);
+        ApplyResearchRecoveredItems(owner, rule, _content.RuntimeRules.Research.GetExternalId(project.Rule),
+            project.Spent >= project.Cost, dailyCompletion: false);
         owner.Research.Remove(project);
     }
 

@@ -2997,6 +2997,65 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LiveResearchRecoveryMatchesNativeRemovalAndDailyCallers(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchCorpseRows")
+            .GroupBy(row => (Need: row[1].GetBoolean(), Destroy: row[2].GetBoolean(), Returns: row[3].GetBoolean(), Unit: row[5].GetBoolean(), Recover: row[6].GetBoolean(), Corpse: row[7].GetBoolean())))
+        {
+            var unit = group.Key.Unit ? "units: [{type: CORPSE_TOPIC, armor: CORPSE_ARMOR}]\n" : "";
+            var content = Load(cache, $"items: [{{type: CORPSE_OUTPUT, recover: {Bool(group.Key.Recover)}, recoverCorpse: {Bool(group.Key.Corpse)}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nresearch: [{{name: CORPSE_TOPIC, cost: 1, needItem: {Bool(group.Key.Need)}, destroyItem: {Bool(group.Key.Destroy)}, returnsItem: {Bool(group.Key.Returns)}, neededItem: SUPPLY}}]\n{unit}");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = new() };
+                initial = initial with
+                {
+                    Options = initial.Options with { RetainCorpses = row[0].GetBoolean() },
+                    Bases = [initial.Bases[0] with { Research = [new("CORPSE_TOPIC", 0, row[4].GetBoolean() ? 1 : 0, 1)], Items = new Dictionary<string, int>() }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "corpse-live-before.sav");
+                var result = row[8].GetBoolean() && row[4].GetBoolean()
+                    ? campaign.Execute(new AdvanceCampaignTime(1))
+                    : campaign.Execute(new ConfigureResearchProject(0, "CORPSE_TOPIC", 0, Cancel: true));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                Assert.Empty(after.Bases[0].Research);
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("CORPSE_OUTPUT") });
+                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(9).ToArray())), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "corpse-live-after.sav");
+            }
+        }
+        static string Bool(bool value) => value.ToString().ToLowerInvariant();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ResearchCorpseOverflowStopsBeforeDailyOrCancellationMutation(bool cache, bool cancel)
+    {
+        var content = Load(cache, "items: [{type: RECOVERY_OUTPUT}]\narmors: [{type: RECOVERY_ARMOR, corpseItem: RECOVERY_OUTPUT, loftempsSet: [0]}]\nunits: [{type: RECOVERY_TOPIC, armor: RECOVERY_ARMOR}]\nresearch: [{name: RECOVERY_TOPIC, cost: 1, needItem: true, destroyItem: true, neededItem: SUPPLY}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = new() };
+        initial = initial with
+        {
+            Options = initial.Options with { RetainCorpses = true },
+            Bases = [initial.Bases[0] with { Research = [new("RECOVERY_TOPIC", 0, 1, 1)], Items = new Dictionary<string, int> { ["RECOVERY_OUTPUT"] = int.MaxValue - (cancel ? 0 : 1) } }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "corpse-limit.sav");
+        if (!cancel) AssertTimeBlocked(campaign, "Research refunds exceed the supported stock range.");
+        else
+        {
+            var before = JsonSerializer.SerializeToUtf8Bytes(campaign.Capture());
+            var result = campaign.Execute(new ConfigureResearchProject(0, "RECOVERY_TOPIC", 0, Cancel: true));
+            Assert.Equal("Research refunds exceed the supported stock range.", Assert.Single(result.Events.OfType<CampaignActionBlocked>()).Reason);
+            Assert.Equal(CanonicalJson.Normalize(before), CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(campaign.Capture())));
+        }
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
