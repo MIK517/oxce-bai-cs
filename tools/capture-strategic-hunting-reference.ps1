@@ -28,6 +28,12 @@ foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::re
 $template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
 $template = $template.Replace('// TRANSFER_METHOD', (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'void Transfer::advance(Base *base)') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'int Transfer::getHours() const'))
+$template = $template.Replace('// PRODUCTION_AMOUNT', (Read-ReferenceMethod 'src/Savegame/Production.cpp' 'int Production::getAmountProduced() const'))
+$production = Read-ReferenceMethod 'src/Savegame/Production.cpp' 'productionProgress_e Production::step('
+$progressStart = $production.IndexOf('int done = getAmountProduced();', [StringComparison]::Ordinal)
+$progressEnd = $production.IndexOf('int count = 0;', $progressStart, [StringComparison]::Ordinal)
+if ($progressStart -lt 0 -or $progressEnd -le $progressStart) { throw 'Missing production completion-count fragment.' }
+$template = $template.Replace('// PRODUCTION_COUNT', $production.Substring($progressStart, $progressEnd - $progressStart) + 'return produced; } return 0;')
 $template = $template.Replace('// WEAPON_REARM', (Read-ReferenceMethod 'src/Savegame/CraftWeapon.cpp' 'int CraftWeapon::rearm(const int available, const int clipSize)'))
 $template = $template.Replace('// FACILITY_REARM', (Read-ReferenceMethod 'src/Savegame/BaseFacility.cpp' 'const RuleItem* BaseFacility::rearm()'))
 $halfHour = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time30Minutes()'
