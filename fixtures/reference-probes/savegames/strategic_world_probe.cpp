@@ -285,6 +285,31 @@ int main()
 			}
 		}
 
+	// A saved idle escort acquires an appended leader before ordered movement.
+	// Native retarget attachment is pinned separately by spawnEscortSequenceRows.
+	std::cout << "],\"idleEscortFollowerMovement\":[";
+	first = true;
+	for (bool reverse : { false, true })
+	{
+		Target destination; destination.setLongitude(1.0); destination.setLatitude(0.6);
+		Target leaderDestination; leaderDestination.setLongitude(Deg2Rad(2.0)); leaderDestination.setLatitude(Deg2Rad(2.0));
+		Ufo actors[3];
+		actors[0].setLongitude(0.4); actors[0].setLatitude(0.2);
+		actors[1].setLongitude(0.7); actors[1].setLatitude(0.3);
+		actors[2].setLongitude(Deg2Rad(10.0)); actors[2].setLatitude(Deg2Rad(8.0));
+		for (int index = 0; index < 3; ++index) actors[index].setSpeed(2200);
+		actors[0].escorting = actors[1].escorting = true;
+		actors[0]._dest = &actors[2]; actors[1]._dest = &actors[0]; actors[2]._dest = &leaderDestination;
+		int orders[2][3] = {{0,1,2},{1,0,2}};
+		for (int step = 1; step <= 3; ++step) {
+			for (int index : orders[reverse ? 1 : 0]) actors[index].think();
+			if (!first) std::cout << ','; first = false;
+			std::cout << '[' << (reverse ? "true" : "false") << ',' << step;
+			for (const auto& actor : actors) std::cout << ',' << fixed12(actor.getLongitude()) << ',' << fixed12(actor.getLatitude());
+			std::cout << ']';
+		}
+	}
+
 	// Region containment, including the wrapped-longitude and pole rules.
 	std::cout << "],\"regions\":[";
 	first = true;
