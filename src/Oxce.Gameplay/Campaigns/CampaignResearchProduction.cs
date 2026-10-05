@@ -452,7 +452,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                         return "Research progress exceeds the supported range.";
         }
         if (highest >= CampaignTimeTrigger.OneHour)
+        {
+            long work = 0;
             foreach (var owner in _bases)
+            {
                 foreach (var production in owner.Productions)
                 {
                     if ((long)production.Spent + production.Assigned > int.MaxValue)
@@ -463,6 +466,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     if (production.Sell && ProductionSellUnavailable(manufacture) is { } sellReason)
                         return sellReason;
                 }
+                if (ForecastProductionAssignments(owner, highest, out _, ref work) is { } staffingReason)
+                    return staffingReason;
+            }
+        }
         return null;
     }
 
@@ -627,6 +634,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     {
         foreach (var owner in _bases)
         {
+            if (owner.Productions.Count == 0) continue;
             List<ProductionState> removals = [];
             foreach (var original in owner.Productions.ToArray())
             {

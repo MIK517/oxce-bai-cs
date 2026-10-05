@@ -2088,6 +2088,26 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void FallbackProgressOverflowBlocksWithoutAnyHunter(bool cache)
+    {
+        var content = Load(cache, "manufacture: [{name: FALLBACK_OVERFLOW, time: 100, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: FALLBACK_OVERFLOW_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Engineers = 2,
+            Facilities = [.. initial.Bases[0].Facilities, new("FALLBACK_OVERFLOW_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("FALLBACK_OVERFLOW", 0, int.MaxValue - 1, 1, true, false, true, new Dictionary<string, int>())]
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "fallback-overflow-before.sav");
+        AssertTimeBlocked(campaign, "Production progress exceeds the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ProductionStaffReleaseWaitsForTheWholeNativeBasePass(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");

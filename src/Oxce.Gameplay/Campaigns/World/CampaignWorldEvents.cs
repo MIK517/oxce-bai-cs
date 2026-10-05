@@ -90,7 +90,7 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
 
         // Bound all reachable producer choices before any current-tick mutation or RNG.
         // A day's research side effects are deduplicated per topic per base. Hourly fallback
-        // production may acquire engineers returned by an earlier project in this same tick.
+        // production acquires available staff before the base's deferred removal pass.
         long maximumNew = 0;
         foreach (var owner in campaign.BaseStates)
         {
