@@ -2687,6 +2687,75 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScoredProductionMatchesNativeContinuationBeforeHunting(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionScoreRows").GroupBy(row => row[0].GetInt32()))
+        {
+            var content = Load(cache, $"crafts: [{{type: SCORE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SCORE_PRODUCT, time: 2, points: {group.Key}, requiredItems: {{SUPPLY: 2}}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SCORE_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "SCORE_HUNT",
+                    Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 }
+                }) with
+                { Time = new(1, 1, 1, 1999, 1, 59, 55), ResearchScores = [13] };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                    {
+                        Longitude = 0.45, Latitude = 0.21, Soldiers = [],
+                        Items = row[3].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[3].GetInt32() },
+                        Facilities = [.. initial.Bases[0].Facilities, new("SCORE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                        Productions = [new("SCORE_PRODUCT", row[1].GetInt32(), 1, 2, row[2].GetBoolean(), false, false, new Dictionary<string, int>())]
+                    }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "score-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var progress = Assert.Single(result.Events.OfType<CampaignProductionProgress>());
+                var after = campaign.Capture();
+                var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "SCORE_HUNT").Logistics!;
+                var stop = progress.StopReason == "STR_PRODUCTION_COMPLETE" ? 1 : progress.StopReason == "STR_NOT_ENOUGH_MATERIALS" ? 3 : 0;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { progress.Produced, after.ResearchScores[^1], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), stop, state.Status, state.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
+                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(4).ToArray())), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "score-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, -1)]
+    [InlineData(true, -1)]
+    public void CombinedDailyResearchAndProductionScoreCapacityStopsBeforeMutation(bool cache, int sign)
+    {
+        var content = Load(cache, $"research: [{{name: SCORE_TOPIC, cost: 1, points: {sign}, getOneFree: [SCORE_BONUS]}}, {{name: SCORE_BONUS, cost: 1, points: {sign}, lookup: SCORE_LOOKUP}}, {{name: SCORE_LOOKUP, cost: 1, points: {sign}}}]\nmanufacture: [{{name: SCORE_PRODUCT, time: 1, points: {sign}, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SCORE_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), ResearchScores = [sign > 0 ? int.MaxValue - 3 : int.MinValue + 3] };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Research = [new("SCORE_TOPIC", 1, 0, 1)],
+                Productions = [new("SCORE_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+                Facilities = [.. initial.Bases[0].Facilities, new("SCORE_LAB_WORKSHOP", 1, 1, 0, 0, false, false, false)]
+            }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "score-limit.sav");
+        AssertTimeBlocked(campaign, "Research and production scores exceed the supported range.");
+        // Enough room for the reward, its lookup, the primary and the hourly output.
+        initial = initial with { ResearchScores = [sign > 0 ? int.MaxValue - 4 : int.MinValue + 4] };
+        var safe = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        Assert.Empty(safe.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(sign > 0 ? int.MaxValue : int.MinValue, safe.Capture().ResearchScores[^1]);
+        Reload(content, safe, 81, "score-limit-after.sav");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]

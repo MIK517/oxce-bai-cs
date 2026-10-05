@@ -210,13 +210,13 @@ bool insideRadarRange(Target* target) const;
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
 std::vector<int64_t> _funds={100},_incomes={0},_expenditures={0}; int64_t& funds=_funds.back(); int sellCoefficient=100;
 int64_t getFunds() const { return funds; } void setFunds(int64_t); int getSellPriceCoefficient() const { return sellCoefficient; }
-std::vector<const RuleResearch*> _discovered; std::map<std::string,int> statuses; int _time=0,researchScore=0;
+std::vector<const RuleResearch*> _discovered; std::map<std::string,int> statuses; int _time=0; std::vector<int> _researchScores={0}; int& researchScore=_researchScores.back();
 bool isResearchRuleStatusDisabled(const std::string& id) const { auto found=statuses.find(id); return found!=statuses.end()&&found->second==2; }
 void setResearchRuleStatus(const std::string& id,int value) { statuses[id]=value; }
 bool isResearched(const RuleResearch* rule,bool) const { return std::find(_discovered.begin(),_discovered.end(),rule)!=_discovered.end(); }
 bool isResearched(const std::vector<const RuleResearch*>& topics,bool,bool disabled) const { return std::all_of(topics.begin(),topics.end(),[&](auto* r){ return isResearched(r,false)||(disabled&&isResearchRuleStatusDisabled(r->getName())); }); }
 void sortReserchVector(std::vector<const RuleResearch*>&) {} void removePoppedResearch(const RuleResearch*) {}
-void addResearchDiaryEntry(ResearchDiaryEntry* entry) { delete entry; } void addResearchScore(int value) { researchScore+=value; }
+void addResearchDiaryEntry(ResearchDiaryEntry* entry) { delete entry; } void addResearchScore(int);
 void removeDiscoveredResearch(const RuleResearch* rule) { std::erase(_discovered,rule); }
 void getAvailableResearchProjects(std::vector<RuleResearch*>& available,const Mod* mod,Base*) const {
 std::map<std::string,ResearchRule*> ordered; for(auto* rule:mod->rules) ordered[rule->name]=rule;
@@ -234,9 +234,11 @@ std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
 int getId(const std::string&) { return 8+(int)waypoints.size(); } };
 // PRODUCTION_SALE_PRICE
 // PRODUCTION_ACCOUNTING
+// RESEARCH_SCORE
 // RESEARCH_DISCOVERY_METHODS
 struct ProductionItemRule {
-std::vector<int> times; std::map<const RuleItem*,int> produced; std::vector<int> random;
+std::vector<int> times; std::map<const RuleItem*,int> produced; std::vector<int> random; int points=0;
+int getPoints() const { return points; }
 const auto& getTransferTimes() const { return times; } const auto& getProducedItems() const { return produced; }
 const auto& getRandomProducedItems() const { return random; }
 };
@@ -245,6 +247,7 @@ const ProductionItemRule* _rules; bool sell=false; std::map<std::string,int> _ra
 bool getSellItems() const { return sell; }
 void deliver(Base* b,SavedGame* g) {
 // PRODUCTION_DELIVERY
+// PRODUCTION_SCORE
 }
 };
 // PRODUCTION_INPUT_METHODS
@@ -300,7 +303,24 @@ return newTarget;
 }
 int main() {
 using namespace OpenXcom;
-std::cout << "{\"maintenanceRows\":[";
+std::cout << "{\"productionScoreRows\":[";
+bool scoreFirst=true;
+for(int points:{-7,0,7}) for(int assigned:{1,6}) for(bool infinite:{false,true}) for(int stock:{0,1}) {
+if(!scoreFirst) std::cout << ','; scoreFirst=false;
+Base base; ServiceGame game; ResearchMod mod; Item item; Production progress; Craft craft; Ufo hunter; FuelCaller fuelCaller;
+craft.id=1; craft._base=&base; base.crafts={&craft}; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+ProductionItemRule rule; rule.produced={{&item,1}}; rule.points=points; ProductionDeliveryCaller delivery{&rule};
+progress.rule.time=2; progress.rule.requiredItems={{&item,2}}; progress._timeSpent=1; progress._engineers=assigned; progress._amount=2; progress.infinite=infinite;
+base.storage.count=stock; game.save.researchScore=13;
+int stop=progress.scalarStep(&base,&game.save,&mod,delivery);
+auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game);
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << points << ',' << assigned << ',' << (infinite?"true":"false") << ',' << stock << ',' << progress.completedUnits << ',' << game.save.researchScore << ',' << base.storage.count << ',' << stop << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],";
+std::cout << "\"maintenanceRows\":[";
 bool serviceFirst=true;
 for(bool itemFuel:{false,true}) for(int fuel:{0,60,100}) for(int stock:{0,1}) for(bool low:{false,true}) for(bool rearming:{false,true}) {
 if(!serviceFirst) std::cout << ','; serviceFirst=false;
