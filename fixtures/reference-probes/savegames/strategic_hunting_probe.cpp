@@ -263,6 +263,24 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
+std::cout << "],\"productionFreeRows\":[";
+serviceFirst=true;
+for(bool armed:{false,true}) for(int assignedUnits:{0,1,3}) for(int amount:{1,2}) for(bool infinite:{false,true}) for(int qty:{0,2}) for(int delay:{0,1}) for(int stock:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; CraftWeapon weapon; ServiceGame game; FuelCaller fuelCaller; Ufo hunter;
+craft.id=1; craft._base=&base; base.crafts={&craft}; base.storage.count=stock; craft.rule.fuelItem=&item;
+craft._fuel=60; craft.distance=Nautical(100); if(armed) { weapon.rule.clip=&item; weapon.rule.ammoMax=10; craft._weapons={&weapon}; }
+Production progress; progress.rule.time=2; progress._timeSpent=1; progress._engineers=assignedUnits*2; progress._amount=amount; progress.infinite=infinite;
+const int requested=progress.requested();
+ProductionItemRule rule; rule.times={delay}; rule.produced={{&item,qty}};
+ProductionDeliveryCaller caller{&rule}; for(int unit=0;unit<requested;++unit) caller.deliver(&base,&game.save);
+if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << (armed?"true":"false") << ',' << assignedUnits << ',' << amount << ',' << (infinite?"true":"false") << ',' << qty << ',' << delay << ',' << stock << ','
+<< requested << ',' << base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << (weapon.rearming?"true":"false") << ',' << base.transfers.size() << ',' << (target?target->id:0) << ']';
+for(auto* transfer:base.transfers) delete transfer; for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
 std::cout << "],\"productionDeliveryRows\":[";
 serviceFirst=true;
 for(bool fuel:{false,true}) for(bool armed:{false,true}) for(int delay:{0,1,2}) for(int qty:{0,1,2}) for(int stock:{0,1}) {

@@ -10,7 +10,7 @@ public sealed partial class CampaignState
         int? nextResearchTransferId, bool uncertainResearch, ref long work)
     {
         var rules = _content.RuntimeRules;
-        List<(BaseState Owner, ProductionState Project)> planned = [];
+        List<(BaseState Owner, ProductionState Project, int Units)> planned = [];
         long transfers = 0;
         foreach (var owner in _bases)
         {
@@ -28,7 +28,8 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.IsFallback && !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var supported = final && !project.Sell && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
+                var free = !project.IsFallback && rule.Cost == 0 && rule.RequiredMaterials.All(material => material.Quantity == 0);
+                var supported = (final || free) && !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
                 {
@@ -44,9 +45,40 @@ public sealed partial class CampaignState
                         return "UFO retargeting requires same-tick craft ammunition reuse forecasts.";
                     continue;
                 }
-                planned.Add((owner, project));
+                work += requested * (1L + rule.ProducedMaterials.Count);
+                if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                planned.Add((owner, project, requested));
                 if (!project.Sell && rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0)
-                    transfers += rule.ProducedMaterials.Count(material => material.Item is not null);
+                    transfers += requested * (long)rule.ProducedMaterials.Count(material => material.Item is not null);
+            }
+        }
+        Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, long>> incoming = [];
+        if (planned.Count != 0)
+        {
+            foreach (var owner in _bases)
+            {
+                Dictionary<RuleHandle<ItemRuleFamily>, long> quantities = [];
+                foreach (var transfer in owner.Transfers)
+                {
+                    if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    if (transfer.Delivered || transfer.Hours <= 1 || transfer.Kind != CampaignTransferKind.Item) continue;
+                    var item = rules.Items.GetRequired(transfer.RuleId);
+                    quantities[item] = quantities.GetValueOrDefault(item) + transfer.Quantity;
+                }
+                incoming.Add(owner.Id, quantities);
+            }
+            foreach (var (owner, project, units) in planned)
+            {
+                var rule = rules.Manufacture[project.Rule].Value;
+                if (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0) continue;
+                foreach (var material in rule.ProducedMaterials)
+                {
+                    if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    if (material.Item is not { } item) continue;
+                    var quantity = incoming[owner.Id].GetValueOrDefault(item) + units * (long)material.Quantity;
+                    if (quantity > int.MaxValue) return "Production arrivals exceed the supported quantity range.";
+                    incoming[owner.Id][item] = quantity;
+                }
             }
         }
         if (transfers != 0)
@@ -67,29 +99,49 @@ public sealed partial class CampaignState
             }
             if (next + transfers > int.MaxValue) return "Production arrivals exhaust the transfer identity range.";
         }
-        foreach (var (owner, project) in planned)
+        foreach (var (owner, project, units) in planned)
         {
             var rule = rules.Manufacture[project.Rule].Value;
             if (project.Sell || rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0) continue;
-            foreach (var material in rule.ProducedMaterials)
-            {
-                if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-                if (material.Item is not { } item) continue;
-                var quantity = (long)stocks[owner.Id].GetValueOrDefault(item) + material.Quantity;
-                if (quantity > int.MaxValue) return "Production outputs exceed the supported stock range.";
-                stocks[owner.Id][item] = (int)quantity;
-                if (rules.Items[item].Value.BattleType != 0) continue;
-                var sources = crafts[owner.Id];
-                work += sources.Count;
-                if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-                for (var index = 0; index < sources.Count; index++)
+            for (var unit = 0; unit < units; unit++)
+                foreach (var material in rule.ProducedMaterials)
                 {
-                    var craft = sources[index];
-                    var state = CraftServicing.ReuseItem(craft.Logistics!, rules.Crafts[craft.Rule].Value, rules, item);
-                    if (!ReferenceEquals(state, craft.Logistics)) sources[index] = craft with { Logistics = state };
+                    if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    if (material.Item is not { } item) continue;
+                    var quantity = (long)stocks[owner.Id].GetValueOrDefault(item) + material.Quantity;
+                    if (quantity > int.MaxValue) return "Production outputs exceed the supported stock range.";
+                    stocks[owner.Id][item] = (int)quantity;
+                    if (rules.Items[item].Value.BattleType != 0) continue;
+                    var sources = crafts[owner.Id];
+                    work += sources.Count;
+                    if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    for (var index = 0; index < sources.Count; index++)
+                    {
+                        var craft = sources[index];
+                        var state = CraftServicing.ReuseItem(craft.Logistics!, rules.Crafts[craft.Rule].Value, rules, item);
+                        if (!ReferenceEquals(state, craft.Logistics)) sources[index] = craft with { Logistics = state };
+                    }
                 }
-            }
         }
+        if (planned.Count != 0)
+            foreach (var owner in _bases)
+            {
+                Dictionary<int, long> prisoners = [];
+                foreach (var item in stocks[owner.Id])
+                {
+                    if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    var rule = rules.Items[item.Key].Value;
+                    if (rule.IsAlien) prisoners[rule.PrisonType] = prisoners.GetValueOrDefault(rule.PrisonType) + item.Value;
+                }
+                foreach (var item in incoming[owner.Id])
+                {
+                    if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    var rule = rules.Items[item.Key].Value;
+                    if (rule.IsAlien) prisoners[rule.PrisonType] = prisoners.GetValueOrDefault(rule.PrisonType) + item.Value;
+                }
+                if (prisoners.Values.Any(quantity => quantity > int.MaxValue))
+                    return "Production captive populations exceed the supported range.";
+            }
         return null;
     }
 }
