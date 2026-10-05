@@ -629,6 +629,59 @@ public sealed class StrategicObjectiveBaseSpawnTests
         AssertTimeBlocked(campaign, "New base hunting supply waves require a live source forecast.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewZeroChanceBaseComposesWithStochasticProductionAndServicing(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "rows"), row => row[0].GetString() == "zeroChance" && row[1].GetInt32() == 60);
+        foreach (var chance in new[] { 0, 100 })
+        {
+            var content = LoadWorld(cache, hunting: true, huntingMission: "NEW_BASE_SUPPLY", huntingChance: chance, extra:
+                "crafts: [{type: ZERO_OBJECTIVE_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\n",
+                extraManufacture: "- {name: ZERO_OBJECTIVE_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]]}");
+            Assert.Equal(chance, content.RuntimeRules.AlienDeployments[content.RuntimeRules.AlienDeployments.GetRequired("HUNT_BASE")].Value.BaseDetectionChance);
+            var initial = Initial(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            initial = initial.WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "ZERO_OBJECTIVE_CRAFT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING",
+                    Fuel = 60,
+                    Damage = 0,
+                    Weapons = [],
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3
+                }
+            });
+            var owner = initial.Bases[0];
+            initial = initial with
+            {
+                Bases = [owner with
+                { Facilities = [.. owner.Facilities, new("BASE_MARKER_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("ZERO_OBJECTIVE_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())] }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "zero-objective-before.sav");
+            if (chance != 0)
+            {
+                AssertTimeBlocked(campaign, "UFO retargeting requires production fuel-stock forecasts.");
+                continue;
+            }
+            var control = CampaignState.Restore(initial with { World = WorldSnapshot.Empty }, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(control, 1);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(100, Assert.Single(after.World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+            Assert.Empty(after.World.Missions);
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(control.Capture().Bases)),
+                CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(after.Bases)));
+            Reload(content, campaign, 17, "zero-objective-after.sav");
+        }
+    }
+
     private static CampaignSnapshot LandingInitial(RuntimeContent content)
     {
         var initial = Initial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 0) };
@@ -662,7 +715,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
 
     private static RuntimeContent LoadWorld(bool cache, string kind = "EXPLICIT", int chance = 0,
         bool allow = true, bool ufo = false, bool chain = false, string marker = "OBJECTIVE_BASE", int zone = 1, bool landing = false,
-        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false, string huntingMission = "MISSION_SCOUT", string extra = "")
+        bool objectiveFlag = false, bool landingFlag = true, bool hunting = false, int huntTimer = 90, bool regional = false, string huntingMission = "MISSION_SCOUT", string extra = "", int huntingChance = 100, string extraManufacture = "")
     {
         var table = kind switch
         {
@@ -690,7 +743,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
             alienDeployments:
               - type: {{{explicitType}}}
                 baseDetectionRange: {{{(hunting ? 10000 : 0)}}}
-                baseDetectionChance: 100
+                baseDetectionChance: {{{huntingChance}}}
                 huntMissionMaxFrequency: {{{huntTimer}}}
                 huntMissionWeights: {{{(hunting ? "{0: {" + huntingMission + ": 1}}" : "{}")}}}
               - type: COUNTER_SITE
@@ -720,6 +773,7 @@ public sealed class StrategicObjectiveBaseSpawnTests
                 category: STR_CRAFT
                 time: 1
                 producedItems: {SHIP: 1}
+              {{{extraManufacture}}}
             alienMissions:
               - type: NEW_BASE_NO_OBJECT
                 objective: 0

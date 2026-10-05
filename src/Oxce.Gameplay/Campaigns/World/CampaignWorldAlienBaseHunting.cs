@@ -13,6 +13,7 @@ internal sealed partial class CampaignWorld
         if (alienBase.MinutesSinceLastHuntMissionGeneration > int.MaxValue - 10)
             return "Alien base hunting timer exceeds the supported range.";
         if (alienBase.MinutesSinceLastHuntMissionGeneration + 10 < deployment.HuntMissionMaxFrequency) return null;
+        if (deployment.BaseDetectionChance <= 0) return null;
         foreach (var owner in campaign.BaseStates)
         {
             work += owner.Crafts.Count;

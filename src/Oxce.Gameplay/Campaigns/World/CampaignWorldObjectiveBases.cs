@@ -147,6 +147,7 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.TenMinutes || deployment.BaseDetectionRange <= 0) return null;
         if (deployment.HuntMissionMaxFrequency > int.MaxValue - 10)
             return "New base objective hunting timer exceeds the supported range.";
+        if (deployment.BaseDetectionChance <= 0) return null;
         var rules = campaign.Content.RuntimeRules;
         var range = WorldGeometry.Nautical(deployment.BaseDetectionRange);
         var possibleGeneration = false;
