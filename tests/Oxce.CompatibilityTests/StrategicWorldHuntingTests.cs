@@ -2086,6 +2086,62 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ManyCraftInputsRetainNativeRemovalAndFollowerNotificationOrder(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var expected = TestFixtures.Rows(oracle.RootElement, "productionCraftOrderRows").Single();
+        var types = Enumerable.Range(0, 18).Select(index => $"ORDER_INPUT_{index:D2}").ToArray();
+        var overlay = "crafts: [" + string.Join(",", types.Select(type => $"{{type: {type}, speedMax: 2000, damageMax: 100, fuelMax: 300}}")) +
+            ",{type: ORDER_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 300}]\nmanufacture: [{name: ORDER_CONSUME, time: 1, requiredItems: {" +
+            string.Join(",", types.Select(type => $"{type}: 0")) + "}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: ORDER_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n";
+        var content = Load(cache, overlay);
+        var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        var crafts = types.Select((type, index) => source with
+        {
+            RuleId = type,
+            Id = index + 1,
+            Logistics = source.Logistics! with
+            { Status = "STR_READY", Weapons = [], Items = new Dictionary<string, int>(), Vehicles = [], IsAutoPatrolling = false }
+        }).ToList();
+        crafts.AddRange(types.Select((type, index) => source with
+        {
+            RuleId = "ORDER_FOLLOWER",
+            Id = 100 + index,
+            Logistics = source.Logistics! with
+            {
+                Fuel = 300,
+                Speed = 1000,
+                Longitude = 0.5,
+                Latitude = 0.21,
+                Weapons = [],
+                Items = new Dictionary<string, int>(),
+                Vehicles = [],
+                IsAutoPatrolling = false,
+                Destination = new(WorldTargetKind.Craft, type, index + 1, source.Logistics!.Longitude, source.Logistics.Latitude)
+            }
+        }));
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21, Crafts = crafts, Soldiers = [], Engineers = 0,
+            Facilities = [.. initial.Bases[0].Facilities, new("ORDER_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("ORDER_CONSUME", 1, 0, 2, false, false, false, new Dictionary<string, int>())]
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ordered-input-before.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var actual = JsonSerializer.SerializeToUtf8Bytes(result.Events.OfType<CraftTargetLost>().Select(item => item.Target.Id).ToArray());
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+        Assert.All(campaign.Capture().Bases[0].Crafts, craft => Assert.Equal("ORDER_FOLLOWER", craft.RuleId));
+        Reload(content, campaign, 81, "ordered-input-after.sav");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
@@ -2154,6 +2210,47 @@ public sealed class StrategicWorldHuntingTests
             }
             Reload(content, campaign, 81, "deleted-leader-after.sav");
         }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void InvalidGroundedFollowerBaseStopsBeforePaidProductionOutput(bool cache, bool arriving)
+    {
+        var content = Load(cache, "crafts: [{type: UNPLACED_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 100}]\nmanufacture: [{name: UNPLACED_DELETE, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: UNPLACED_DELETE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        var leader = source with { Logistics = source.Logistics! with { Status = "STR_READY", Weapons = [], Items = new Dictionary<string, int>(), Vehicles = [], IsAutoPatrolling = false } };
+        var follower = source with
+        {
+            RuleId = "UNPLACED_FOLLOWER",
+            Id = 2,
+            Logistics = source.Logistics! with
+            {
+                Status = "STR_READY",
+                Fuel = 100,
+                Speed = 0,
+                Weapons = [],
+                Items = new Dictionary<string, int>(),
+                Vehicles = [],
+                IsAutoPatrolling = false,
+                Destination = new(WorldTargetKind.Craft, "SHIP", 1, source.Logistics!.Longitude, source.Logistics.Latitude)
+            }
+        };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Name = "", Crafts = arriving ? [leader] : [leader, follower],
+            Transfers = arriving ? [new(17, 1, CampaignTransferKind.Craft, "UNPLACED_FOLLOWER", 1, Craft: follower)] : [], Soldiers = [], Engineers = 0, Items = new Dictionary<string, int>(),
+            Facilities = [.. initial.Bases[0].Facilities, new("UNPLACED_DELETE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("UNPLACED_DELETE", 1, 0, 2, false, false, false, new Dictionary<string, int>())]
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "unplaced-follower-before.sav");
+        AssertTimeBlocked(campaign, "Craft target removal requires placed follower bases.");
     }
 
     [Theory]

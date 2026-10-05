@@ -64,7 +64,7 @@ public sealed class CampaignCapabilityRegistryTests
             table.HandlerNames(CampaignTimeTrigger.FiveSeconds));
         Assert.Equal<string>(
             ["restrictions", "world simulation", "craft movement", "month boundary", "monthly world scheduling", "craft servicing",
-                "research and production", "transfers"],
+                "research and production", "craft target removal", "transfers"],
             table.PreflightNames);
         var commandTypes = typeof(ICampaignCommand).Assembly.GetTypes()
             .Where(static type => type is { IsClass: true, IsAbstract: false } && typeof(ICampaignCommand).IsAssignableFrom(type))

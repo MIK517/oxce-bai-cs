@@ -128,8 +128,9 @@ public static class WorldGeometry
     {
         ArgumentNullException.ThrowIfNull(areas);
         if (ignoreTechnicalRegion && areas.Count == 0) return true;
-        foreach (var area in areas)
+        for (var index = 0; index < areas.Count; index++)
         {
+            var area = areas[index];
             var insideLongitude = area.LongitudeMinimum <= area.LongitudeMaximum
                 ? longitude >= area.LongitudeMinimum && longitude < area.LongitudeMaximum
                 : (longitude >= area.LongitudeMinimum && longitude < 2 * Math.PI) ||

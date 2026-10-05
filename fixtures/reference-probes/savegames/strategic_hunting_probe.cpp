@@ -59,7 +59,7 @@ std::vector<Production*> _productions; auto& getProductions() { return _producti
 int freeWorkshops=0; int getAvailableWorkshops() const { return freeWorkshops; } int getUsedWorkshops() const; int getFreeWorkshops() const; void removeProduction(Production*); int getAvailableEngineers() const { return engineers; }
 int getAvailableQuarters() const { return 100; } int getUsedQuarters() const { return 0; }
 int getCraftCountForProduction(const RuleCraft*) const;
-void removeCraft(Craft* craft,bool);
+std::vector<int> consumedOrder; void removeCraft(Craft* craft,bool);
 Storage* getStorageItems() { return &storage; } std::vector<Craft*>* getCrafts() { return &crafts; }
 std::vector<Soldier*>* getSoldiers() { return &soldiers; }
 int getScientists() const { return scientists; } void setScientists(int value) { scientists=value; }
@@ -152,7 +152,7 @@ bool getMissionComplete() const { return _missionComplete; }
 const Rule* getRules() const { return _rules; }
 int getHunterKillerAttraction(int huntMode) const;
 };
-void Base::removeCraft(Craft* craft,bool unload) { if(unload) craft->unloadItems(); std::erase(crafts,craft); }
+void Base::removeCraft(Craft* craft,bool unload) { consumedOrder.push_back(craft->id); if(unload) craft->unloadItems(); std::erase(crafts,craft); }
 // PRODUCTION_CRAFT_COUNT
 // REFUEL_METHODS
 struct Transfer {
@@ -314,6 +314,13 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionCraftOrderRows\":[";
+{
+Base base; SavedGame game; ResearchMod mod; Production progress; Craft::Rule types[18];
+for(int i=0;i<18;++i) { auto* craft=new Craft(); craft->id=i+1; craft->_rules=&types[i]; craft->_status="STR_READY"; base.crafts.push_back(craft); progress.rule.requiredCrafts[&types[i]]=0; }
+progress.startItem(&base,&game,&mod);
+std::cout << '['; bool first=true; for(int id:base.consumedOrder) { if(!first) std::cout << ','; first=false; std::cout << id; } std::cout << ']';
 }
 std::cout << "],\"deletedCraftFollowerRows\":[";
 serviceFirst=true;
