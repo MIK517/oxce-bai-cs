@@ -11,7 +11,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private bool? _newHunterHasNoTarget;
-    private bool? _newLeaderHasNoCraftPursuer;
     private CampaignTimeTrigger _newbornHighestTrigger;
 
     private void RegisterMissionOperations(CampaignCapabilityRegistry registry)
@@ -410,41 +409,11 @@ internal sealed partial class CampaignWorld
 
     private string? LoadedEscortNewLeaderReason(UfoSnapshot escort, ref long work)
     {
-        if (!(_newLeaderHasNoCraftPursuer ??= CalculateNoCraftPursuer(ref work)))
-        {
-            if (_huntingCraftForecast is null && ForecastHuntingCrafts(_newbornHighestTrigger, ref work) is { } reason)
-                return reason;
-            if (ForecastNewbornCraftCandidates(includeIgnored: true, ref work, out var candidate) is { } candidateReason)
-                return candidateReason;
-            // Hidden, ignored and damaged airborne craft still move and may
-            // pursue the changed source. Only a wholly grounded forecast is safe.
-            if (candidate) return "Loaded idle escorts require same-tick newborn craft pursuit forecasts.";
-            _newLeaderHasNoCraftPursuer = true;
-        }
+        if (NewLeaderCraftPursuitReason(escort, ref work) is { } pursuitReason) return pursuitReason;
         if (escort.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
             !(WorldGeometry.Distance(escort.Position, destination.Position) > WorldGeometry.RadianSpeed(escort.Speed) + 1e-12))
             return "Loaded idle escorts require same-tick newborn waypoint forecasts.";
         return null;
-    }
-
-    private bool CalculateNoCraftPursuer(ref long work)
-    {
-        foreach (var owner in campaign.BaseStates)
-        {
-            work += owner.Crafts.Count + (long)owner.Transfers.Count;
-            if (work > MaximumAlienBaseChecks) return false;
-            foreach (var craft in owner.Crafts)
-                if (craft.Logistics is { } state &&
-                    (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
-                        campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
-            foreach (var transfer in owner.Transfers)
-                if (_newbornHighestTrigger >= CampaignTimeTrigger.OneHour && transfer.Hours <= 1 &&
-                    !transfer.Delivered && transfer.Craft?.Logistics is { } state &&
-                    (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
-                        campaign.Content.RuntimeRules.Crafts[
-                            campaign.Content.RuntimeRules.Crafts.GetRequired(transfer.Craft.RuleId)].Value.AutoPatrol)) return false;
-        }
-        return true;
     }
 
     private AlienBaseSnapshot? MissionSourceBase(AlienMissionSnapshot mission)

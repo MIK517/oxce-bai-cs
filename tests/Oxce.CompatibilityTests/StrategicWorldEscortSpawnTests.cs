@@ -13,6 +13,88 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldEscortSpawnTests
 {
+    [Theory]
+    [InlineData(false, "patrol")]
+    [InlineData(true, "patrol")]
+    [InlineData(false, "direct")]
+    [InlineData(true, "direct")]
+    [InlineData(false, "chain")]
+    [InlineData(true, "chain")]
+    [InlineData(false, "cycle")]
+    [InlineData(true, "cycle")]
+    public void NewLeaderAttachmentChecksActualCraftPursuitDependencies(bool cache, string kind)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
+            !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
+        var content = Load(cache);
+        var initial = IdleEscortSnapshot(content);
+        var source = initial.World.Ufos[0] with { Detected = true };
+        var follower = source with
+        {
+            UniqueId = 10,
+            Id = 10,
+            Longitude = 0.7,
+            Latitude = 0.3,
+            Escorting = true,
+            Speed = 2200,
+            OriginalWaypoint = new(1, 0.6),
+            Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, source.Id,
+                source.Longitude, source.Latitude)
+            { UniqueId = source.UniqueId },
+        };
+        if (kind == "cycle") follower = follower with { Destination = follower.Destination! with { UniqueId = 11, Id = 11 } };
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Ufos = kind is "chain" or "cycle" ? [source, follower] : [source],
+                Missions = [initial.World.Missions[0] with { LiveUfos = kind is "chain" or "cycle" ? 2 : 1 }],
+            }
+        };
+        if (kind == "cycle") initial = initial with
+        {
+            World = initial.World with
+            {
+                Ufos = [.. initial.World.Ufos, follower with { UniqueId = 11, Id = 11,
+                Destination = follower.Destination! with { UniqueId = 10, Id = 10 } }],
+                Missions = [initial.World.Missions[0] with { LiveUfos = 3 }],
+            }
+        };
+        var target = kind == "direct" ? source : follower;
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 1000,
+                Damage = 0,
+                Speed = 0,
+                Takeoff = 0,
+                Longitude = 1,
+                Latitude = 0.6,
+                Destination = kind == "patrol" ? null : new(WorldTargetKind.Ufo, WorldTargetReference.UfoType,
+                target.Id, target.Longitude, target.Latitude)
+                { UniqueId = target.UniqueId },
+            }
+        });
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "leader-dependency-before.sav");
+        if (kind is "direct" or "chain")
+        {
+            AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+            return;
+        }
+        AdvanceUnblocked(campaign, 1);
+        var changed = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == source.UniqueId);
+        Assert.True(changed.Escorting);
+        var leader = Assert.Single(campaign.Capture().World.Ufos, ufo => !ufo.HunterKiller);
+        Assert.Equal(leader.UniqueId, changed.Destination!.UniqueId);
+        Assert.Equal(WorldGeometry.Move(source.Position, new(Degrees(10), Degrees(8)), WorldGeometry.RadianSpeed(2200)), changed.Position);
+        campaign = Reload(content, campaign, 81, "leader-dependency-after.sav");
+        AdvanceUnblocked(campaign, 1);
+        Reload(content, campaign, 81, "leader-dependency-following.sav");
+    }
+
     [Fact]
     public void ImportedLeaderFlagsDoNotChangeNativeSpawnEscortSelection()
     {
@@ -374,9 +456,11 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void LoadedIdleEscortRequiresCraftPursuitForecastEvenForIgnoredOrHiddenCraft(bool hidden)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void LoadedIdleEscortDistinguishesIndependentAndPursuingIgnoredOrHiddenCraft(bool hidden, bool pursues)
     {
         var content = Load(overlay: hidden ? "crafts:\n  - type: SHIP\n    undetectable: true\n" : null);
         var initial = IdleEscortSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -391,11 +475,19 @@ public sealed class StrategicWorldEscortSpawnTests
                 Latitude = 0.6,
                 LowFuel = !hidden,
                 MissionComplete = !hidden,
-                Destination = null,
+                Destination = pursues ? new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 } : null,
             },
         });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        if (pursues) AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+        else
+        {
+            AdvanceUnblocked(campaign, 1);
+            Assert.True(campaign.Capture().World.Ufos[0].Escorting);
+            campaign = Reload(content, campaign, 81, "independent-hidden-craft.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "independent-hidden-craft-following.sav");
+        }
     }
 
     [Theory]
@@ -430,15 +522,20 @@ public sealed class StrategicWorldEscortSpawnTests
             };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "idle-pending-before.sav");
-            if (hourly && hours == 1)
-            {
-                AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
-                continue;
-            }
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
-            Assert.Empty(after.Bases[0].Crafts);
-            Assert.Equal(hours - (hourly ? 1 : 0), Assert.Single(after.Bases[0].Transfers).Hours);
+            if (hourly && hours == 1)
+            {
+                Assert.Empty(after.Bases[0].Transfers);
+                var arrived = Assert.Single(after.Bases[0].Crafts).Logistics!;
+                Assert.Equal("STR_OUT", arrived.Status);
+                Assert.Equal(WorldTargetKind.Waypoint, arrived.Destination!.Kind);
+            }
+            else
+            {
+                Assert.Empty(after.Bases[0].Crafts);
+                Assert.Equal(hours - (hourly ? 1 : 0), Assert.Single(after.Bases[0].Transfers).Hours);
+            }
             var leader = Assert.Single(after.World.Ufos, ufo => !ufo.HunterKiller);
             var source = after.World.Ufos[0];
             Assert.Equal(9, source.UniqueId);
@@ -499,15 +596,10 @@ public sealed class StrategicWorldEscortSpawnTests
             });
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "idle-grounded-before.sav");
-            if (row[6].GetString() == "STR_OUT")
-            {
-                AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
-                continue;
-            }
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
             var craftState = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "IDLE_REFUEL").Logistics!;
-            Assert.Equal(row[5].GetInt32(), craftState.Fuel);
+            Assert.Equal(row[5].GetInt32(), craftState.Fuel + (craftState.Status == "STR_OUT" ? 60 : 0));
             Assert.Equal(row[6].GetString(), craftState.Status);
             var source = after.World.Ufos[0];
             var leader = Assert.Single(after.World.Ufos, ufo => !ufo.HunterKiller);
