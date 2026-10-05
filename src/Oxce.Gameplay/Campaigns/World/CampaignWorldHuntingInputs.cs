@@ -6,7 +6,8 @@ internal sealed partial class CampaignWorld
 {
     private string? ForecastHuntingHourlyInputs(CampaignState.BaseState owner,
         List<CampaignState.CraftState> sources, Dictionary<RuleHandle<ItemRuleFamily>, int> stocks,
-        CampaignTimeTrigger highest, bool researchMayComplete, ref long work)
+        CampaignTimeTrigger highest, bool researchMayComplete,
+        IReadOnlyList<KeyValuePair<string, int>>? researchArrivals, ref long work)
     {
         var rules = campaign.Content.RuntimeRules;
         var fuelItems = new HashSet<RuleHandle<ItemRuleFamily>>();
@@ -102,6 +103,16 @@ internal sealed partial class CampaignWorld
                 reusableItems.Add(item);
             }
         }
+        if (researchArrivals is not null)
+            foreach (var arrival in researchArrivals)
+            {
+                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                var item = rules.Items.GetRequired(arrival.Key);
+                var quantity = (long)stocks.GetValueOrDefault(item) + arrival.Value;
+                if (quantity > int.MaxValue) return "Research arrivals exceed the supported stock range.";
+                stocks[item] = (int)quantity;
+                if (rules.Items[item].Value.BattleType == 0) reusableItems.Add(item);
+            }
         work += reusableItems.Count * (long)sources.Count;
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
         foreach (var item in reusableItems)

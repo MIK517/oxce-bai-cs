@@ -28,6 +28,11 @@ foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::re
 $template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
 $template = $template.Replace('// TRANSFER_METHOD', (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'void Transfer::advance(Base *base)') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'int Transfer::getHours() const'))
+$researchSpawn = Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::handlePrimaryResearchSideEffects('
+$spawnStart = $researchSpawn.IndexOf('RuleItem* spawnedItem =', [StringComparison]::Ordinal)
+$spawnEnd = $researchSpawn.IndexOf('// 3l. handle spawned events', $spawnStart, [StringComparison]::Ordinal)
+if ($spawnStart -lt 0 -or $spawnEnd -le $spawnStart) { throw 'Missing research item transfer fragment.' }
+$template = $template.Replace('// RESEARCH_SPAWN', $researchSpawn.Substring($spawnStart, $spawnEnd - $spawnStart))
 $researchReturn = Read-ReferenceMethod 'src/Savegame/Base.cpp' 'void Base::removeResearch(ResearchProject * project)'
 $returnStart = $researchReturn.IndexOf('if (ruleResearch->isHoldingNeededItem())', [StringComparison]::Ordinal)
 $returnEnd = $researchReturn.IndexOf('Collections::deleteIf', $returnStart, [StringComparison]::Ordinal)

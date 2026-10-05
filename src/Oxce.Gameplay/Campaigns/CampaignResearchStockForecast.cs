@@ -5,7 +5,10 @@ namespace Oxce.Gameplay.Campaigns;
 
 internal sealed record DailyResearchStockForecast(
     IReadOnlyDictionary<int, IReadOnlyDictionary<string, int>> StockChanges,
-    IReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>> Arrivals);
+    IReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>> Arrivals)
+{
+    public string? UnavailableReason { get; init; }
+}
 
 public sealed partial class CampaignState
 {
@@ -24,12 +27,14 @@ public sealed partial class CampaignState
         if (work > 1_000_000 || rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.Disables.Count != 0)) return false;
         Dictionary<int, List<ResearchProjectState>> projects = [];
         Dictionary<int, Dictionary<string, int>> changes = [];
+        Dictionary<int, List<KeyValuePair<string, int>>> arrivals = [];
         foreach (var owner in _bases)
         {
             work += owner.Research.Count;
             if (work > 1_000_000) return false;
             projects.Add(owner.Id, new(owner.Research));
             changes.Add(owner.Id, new(StringComparer.Ordinal));
+            arrivals.Add(owner.Id, []);
             foreach (var project in owner.Research)
             {
                 if ((long)project.Spent + project.Assigned < project.Cost) continue;
@@ -37,13 +42,14 @@ public sealed partial class CampaignState
                 var rule = entry.Value;
                 if (rule.GetOneFree.Count != 0 || rule.GetOneFreeProtected.Count != 0 || rule.Lookup.Length != 0 ||
                     rule.Unlocks.Count != 0 || rule.Disables.Count != 0 || rule.Reenables.Count != 0 ||
-                    rule.SpawnedItem.Length != 0 || rule.SpawnedItemList.Count != 0 ||
                     HoldsResearchItem(rule) && rule.DestroyItem && !rule.ReturnsItem && rules.Units.TryGet(entry.Id, out _)) return false;
             }
         }
         foreach (var owner in _bases)
         {
             var local = projects[owner.Id];
+            work += local.Count * 4L;
+            if (work > 1_000_000) return false;
             for (var index = 0; index < local.Count; index++)
             {
                 var project = local[index];
@@ -56,9 +62,9 @@ public sealed partial class CampaignState
             {
                 var rule = rules.Research[project.Rule].Value;
                 if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(rule), rule.ReturnsItem, true)) Refund(owner.Id, rule);
-                local.Remove(project);
                 sideEffects.Add(project.Rule);
             }
+            local.RemoveAll(project => project.Spent >= project.Cost);
             work += rules.Research.Count;
             if (work > 1_000_000) return false;
             foreach (var entry in rules.Research.Rules)
@@ -66,7 +72,7 @@ public sealed partial class CampaignState
                 if (!sideEffects.Contains(rules.Research.GetRequired(entry.Id))) continue;
                 foreach (var other in _bases)
                 {
-                    work += projects[other.Id].Count;
+                    work += projects[other.Id].Count * 2L;
                     if (work > 1_000_000) return false;
                     var project = projects[other.Id].FirstOrDefault(project => project.Rule == rules.Research.GetRequired(entry.Id));
                     if (project is null) continue;
@@ -74,11 +80,29 @@ public sealed partial class CampaignState
                         project.Spent >= project.Cost)) Refund(other.Id, entry.Value);
                     projects[other.Id].Remove(project);
                 }
+                work += entry.Value.SpawnedItemList.Count + 1L;
+                if (work > 1_000_000) return false;
+                if (entry.Value.SpawnedItem.Length != 0 && rules.Items.TryGet(entry.Value.SpawnedItem, out _))
+                    arrivals[owner.Id].Add(new(entry.Value.SpawnedItem, Math.Max(1, entry.Value.SpawnedItemCount)));
+                foreach (var id in entry.Value.SpawnedItemList)
+                    if (rules.Items.TryGet(id, out _)) arrivals[owner.Id].Add(new(id, 1));
+            }
+        }
+        var arrivalCount = arrivals.Values.Sum(items => (long)items.Count);
+        if (arrivalCount != 0)
+        {
+            work += _bases.Sum(owner => (long)owner.Transfers.Count);
+            if (work > 1_000_000) return false;
+            if ((long)NextTransferId() + arrivalCount > int.MaxValue)
+            {
+                forecast = EmptyResearchStockForecast with { UnavailableReason = "Research arrivals exhaust the transfer identity range." };
+                return false;
             }
         }
         forecast = new(new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(changes.ToDictionary(
             pair => pair.Key, pair => (IReadOnlyDictionary<string, int>)new ReadOnlyDictionary<string, int>(pair.Value))),
-            EmptyResearchStockForecast.Arrivals);
+            new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(arrivals.ToDictionary(
+                pair => pair.Key, pair => (IReadOnlyList<KeyValuePair<string, int>>)pair.Value.AsReadOnly())));
         return true;
 
         void Refund(int baseId, RuntimeResearchRule rule)
