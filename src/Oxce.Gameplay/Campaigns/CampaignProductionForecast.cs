@@ -46,8 +46,8 @@ public sealed partial class CampaignState
                             workshops += Math.Max(0, rules.Facilities[facility.Rule].Value.Workshops);
                     assignedMaximum += Math.Min(engineers + released, workshops);
                 }
-                // Earlier projects may finish/stop and release their staff. This is
-                // an upper bound; fallback decisions still execute only in the handler.
+                // Conservatively bound all assigned staff; the native caller defers
+                // their release until every project in this base has stepped.
                 released += assignedMaximum;
                 work += 1L + rule.RequiredMaterials.Count + rule.ProducedMaterials.Count;
                 if (work > 1_000_000) throw new InvalidDataException("Craft production ID forecasts exceed the supported work limit.");

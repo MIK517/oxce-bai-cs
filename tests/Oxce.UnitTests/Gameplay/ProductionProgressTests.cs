@@ -22,4 +22,10 @@ public sealed class ProductionProgressTests
     [InlineData(true, 3)]
     public void FiniteProductionCapsItsCompletionCount(bool infinite, int expected) =>
         Assert.Equal(expected, ProductionProgress.Requested(4, 0, 12, 1, infinite));
+    [Theory]
+    [InlineData(-1, 0, 0)]
+    [InlineData(0, -1, 0)]
+    [InlineData(0, 0, -1)]
+    public void NegativeFallbackValuesAreRejected(int spent, int assigned, int space) =>
+        Assert.Throws<InvalidDataException>(() => ProductionProgress.FallbackAdditional(spent, assigned, space, 1, 1));
 }

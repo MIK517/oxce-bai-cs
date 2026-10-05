@@ -17,40 +17,18 @@ public sealed partial class CampaignState
         var accounting = new AccountingState(_funds[^1], _incomes[^1], _expenditures[^1]);
         foreach (var owner in _bases)
         {
+            if (owner.Productions.Count == 0) continue;
+            if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffingReason)
+                return staffingReason;
             var sources = crafts[owner.Id];
             var uncertainStocks = false;
-            work += owner.Facilities.Count + (long)owner.Transfers.Count + owner.Productions.Count;
-            if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-            var workshops = owner.Facilities.Where(facility => facility.BuildTime == 0 ||
-                highest >= CampaignTimeTrigger.OneDay && facility.BuildTime == 1)
-                .Sum(facility => (long)rules.Facilities[facility.Rule].Value.Workshops);
-            var used = UsedWorkshopSpace(owner, rules);
-            long engineers = owner.Engineers;
-            foreach (var transfer in owner.Transfers)
-                if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Kind == CampaignTransferKind.Engineer)
-                    engineers += transfer.Quantity;
-            if (workshops > int.MaxValue || engineers > int.MaxValue)
-                return "Fallback production capacity exceeds the supported range.";
+            var projectIndex = 0;
             foreach (var original in owner.Productions)
             {
                 if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-                var project = original;
+                var assigned = assignments[projectIndex++];
+                var project = original.Assigned == assigned ? original : original with { Assigned = assigned };
                 var rule = rules.Manufacture[project.Rule].Value;
-                if (project.IsFallback)
-                {
-                    var additional = ProductionProgress.FallbackAdditional(project.Spent, project.Assigned,
-                        rule.Space, engineers, workshops - used);
-                    if ((long)project.Assigned + additional > int.MaxValue)
-                        return "Fallback production staffing exceeds the supported range.";
-                    if (additional > 0)
-                    {
-                        if (project.Spent == 0 && project.Assigned == 0) used += rule.Space;
-                        used += additional;
-                        engineers -= additional;
-                        project = project with { Assigned = project.Assigned + (int)additional };
-                    }
-                }
-                if ((long)project.Spent + project.Assigned > int.MaxValue) return "Production progress exceeds the supported range.";
                 if (ProductionRuleInvalid(rule) is { } invalid) return invalid;
                 var requested = ProductionProgress.Requested(rule.Time, project.Spent, project.Assigned, project.Amount, project.Infinite);
                 if (requested == 0) continue;
