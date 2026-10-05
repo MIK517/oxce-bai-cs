@@ -455,6 +455,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                         return "Research progress exceeds the supported range.";
             if (ReserveDailyResearchScores(ref scoreCapacity, ref work) is { } scoreReason) return scoreReason;
             if (PreflightResearchRecovery(ref work) is { } recoveryReason) return recoveryReason;
+            if (PreflightDailyResearchCounters(ref work) is { } counterReason) return counterReason;
         }
         if (highest >= CampaignTimeTrigger.OneHour)
         {
