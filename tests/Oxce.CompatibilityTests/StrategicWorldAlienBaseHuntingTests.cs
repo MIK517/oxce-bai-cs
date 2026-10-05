@@ -147,8 +147,10 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         Reload(content, campaign, 17, "hunting-72-hours.sav");
     }
 
-    [Fact]
-    public void HuntingCraftChecksAreBoundedBeforeMutation()
+    [Theory]
+    [InlineData("HUNT_TIMER")]
+    [InlineData("HUNT_ZERO_CHANCE")]
+    public void HuntingCraftChecksAreBoundedBeforeMutation(string deployment)
     {
         var content = Load(false);
         var snapshot = Snapshot(content, "grounded");
@@ -161,7 +163,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             World = snapshot.World with
             {
                 AlienBases = Enumerable.Range(1, 1001).Select(id => new AlienBaseSnapshot(id,
-                "HUNT_TIMER", "RACE_A", 0.2, 0.1)
+                deployment, "RACE_A", 0.2, 0.1)
                 { MinutesSinceLastHuntMissionGeneration = 50 }).ToArray()
             },
         };
@@ -373,15 +375,17 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HiddenRelaunchLeaderSpeedCannotBypassBaseHuntingPreflight(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HiddenRelaunchLeaderSpeedCannotBypassBaseHuntingPreflight(bool cache, bool consumed)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
-            "crafts: [{type: BASE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: BASE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n");
-        var initial = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+            "crafts: [{type: BASE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: BASE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n" + (consumed ? "manufacture: [{name: CONSUME_BASE_ESCORT, time: 1, requiredItems: {BASE_ESCORT: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: CONSUME_ESCORT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" : ""));
+        var initial = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, consumed ? 59 : 29, 55) };
         var owner = initial.Bases[0];
         var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
         var leader = template with
@@ -411,8 +415,24 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             }
         };
         initial = initial with { Bases = [owner with { Crafts = [leader, escort], Soldiers = [] }] };
+        if (consumed) initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            { Facilities = [.. owner.Facilities, new("CONSUME_ESCORT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("CONSUME_BASE_ESCORT", 1, 0, 2, false, false, false, new Dictionary<string, int>())] }]
+        };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "base-escort-before.sav");
-        AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+        if (!consumed) AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+        else
+        {
+            using var deleted = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+            Assert.NotEmpty(TestFixtures.Rows(deleted.RootElement, "deletedCraftFollowerRows"));
+            AdvanceUnblocked(campaign, 1);
+            Assert.DoesNotContain(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "BASE_ESCORT");
+            Assert.Empty(campaign.Capture().World.Missions);
+            Assert.Equal(60, Assert.Single(campaign.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+            Reload(content, campaign, 17, "base-consumed-escort-after.sav");
+        }
     }
 
     [Theory]

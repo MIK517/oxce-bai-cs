@@ -147,7 +147,8 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.TenMinutes || deployment.BaseDetectionRange <= 0) return null;
         if (deployment.HuntMissionMaxFrequency > int.MaxValue - 10)
             return "New base objective hunting timer exceeds the supported range.";
-        if (deployment.BaseDetectionChance <= 0) return null;
+        if (deployment.BaseDetectionChance <= 0)
+            return BaseHuntingPopulationReason(highest, ref work, "Base objective creation exceeds the supported work limit.");
         var rules = campaign.Content.RuntimeRules;
         var range = WorldGeometry.Nautical(deployment.BaseDetectionRange);
         var possibleGeneration = false;
@@ -168,7 +169,8 @@ internal sealed partial class CampaignWorld
                     {
                         if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                             return forecastReason;
-                        projected = _huntingCraftForecast![(rules.Crafts.GetExternalId(craft.Rule), craft.Id)];
+                        if (!_huntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out projected))
+                            continue;
                     }
                     else projected = AdvanceCraftFuel(owner, craft, state);
                     possible = !projected.LowFuel && !projected.MissionComplete &&
@@ -180,7 +182,8 @@ internal sealed partial class CampaignWorld
                 {
                     if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                         return forecastReason;
-                    var projected = _huntingCraftForecast!.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
+                    if (!_huntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out var projected))
+                        continue;
                     possible = projected.Status == "STR_OUT" && !projected.LowFuel && !projected.MissionComplete &&
                         projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craftRule, rules) &&
                         Near(new(projected.Longitude, projected.Latitude));
