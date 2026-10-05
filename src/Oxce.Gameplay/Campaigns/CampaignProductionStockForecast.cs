@@ -7,7 +7,8 @@ public sealed partial class CampaignState
     string? ICampaignProductionPreflight.ForecastStocks(
         IReadOnlyDictionary<int, List<CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
-        int? nextResearchTransferId, bool uncertainResearch, CampaignTimeTrigger highest, ref long work)
+        int? nextResearchTransferId, bool uncertainResearch, IReadOnlyList<CustomCounterChange>? researchCounters,
+        CampaignTimeTrigger highest, ref long work)
     {
         var rules = _content.RuntimeRules;
         List<(BaseState Owner, ProductionState Project, int Units, IReadOnlyDictionary<string, int>? RandomItems)> planned = [];
@@ -100,7 +101,7 @@ public sealed partial class CampaignState
                             if (uncertainCraftCounters?.Contains(craft) == true)
                                 return "Craft production requires other production identity forecasts.";
                             craftCounters ??= [];
-                            if (ForecastProducedCraftIdentity(craft, crafts, craftCounters, highest, ref work, out var identity) is { } identityReason)
+                            if (ForecastProducedCraftIdentity(craft, crafts, craftCounters, researchCounters, highest, ref work, out var identity) is { } identityReason)
                                 return identityReason;
                             if (!craftDelay) sources.Add(new(craft, identity) { Logistics = ProducedCraftLogistics(owner, craft) });
                         }
