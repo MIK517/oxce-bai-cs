@@ -62,6 +62,24 @@ if ($deliveryStart -lt 0 -or $deliveryEnd -le $deliveryStart) { throw 'Missing f
 $delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart).TrimEnd()
 $delivery = $delivery.Substring(0, $delivery.LastIndexOf('}')).TrimEnd()
 $template = $template.Replace('// PRODUCTION_DELIVERY', $delivery)
+$productionHeader = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/Production.h'))
+$productionEnum = [regex]::Match($productionHeader, 'enum productionProgress_e[^;]+;').Value
+if (-not $productionEnum) { throw 'Missing production progress enum.' }
+$template = $template.Replace('// PRODUCTION_ENUM', $productionEnum)
+$staffStart = $production.IndexOf('if (_isFallback)', [StringComparison]::Ordinal)
+$staffEnd = $production.IndexOf('int done = getAmountProduced();', $staffStart, [StringComparison]::Ordinal)
+if ($staffStart -lt 0 -or $staffEnd -le $staffStart) { throw 'Missing fallback production staffing fragment.' }
+$template = $template.Replace('// PRODUCTION_STAFFING', $production.Substring($staffStart, $staffEnd - $staffStart))
+$baseMethods = ''
+foreach ($signature in @('int Base::getUsedWorkshops() const', 'int Base::getFreeWorkshops() const', 'void Base::removeProduction(')) {
+    $baseMethods += (Read-ReferenceMethod 'src/Savegame/Base.cpp' $signature) + [Environment]::NewLine
+}
+$template = $template.Replace('// PRODUCTION_BASE_METHODS', $baseMethods)
+$hourProduction = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time1Hour()'
+$callerStart = $hourProduction.IndexOf('std::map<Production*, productionProgress_e> toRemove;', [StringComparison]::Ordinal)
+$callerEnd = $hourProduction.IndexOf('if (Options::storageLimitsEnforced)', $callerStart, [StringComparison]::Ordinal)
+if ($callerStart -lt 0 -or $callerEnd -le $callerStart) { throw 'Missing hourly production removal caller.' }
+$template = $template.Replace('// PRODUCTION_HOURLY_CALLER', $hourProduction.Substring($callerStart, $callerEnd - $callerStart))
 $continuationStart = $production.IndexOf('count++;', [StringComparison]::Ordinal)
 if ($continuationStart -lt 0) { throw 'Missing production continuation fragment.' }
 $continuation = $production.Substring($continuationStart).TrimEnd()

@@ -627,20 +627,19 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     {
         foreach (var owner in _bases)
         {
+            List<ProductionState> removals = [];
             foreach (var original in owner.Productions.ToArray())
             {
                 var production = original;
                 if (production.IsFallback)
                 {
-                    var freeEngineers = owner.Engineers;
-                    var freeWorkshops = AvailableWorkshops(owner) - UsedWorkshopSpace(owner);
-                    if (production.Spent == 0 && production.Assigned == 0)
-                        freeWorkshops -= _content.RuntimeRules.Manufacture[production.Rule].Value.Space;
-                    if (freeEngineers > 0 && freeWorkshops > 0)
+                    var additional = checked((int)ProductionProgress.FallbackAdditional(production.Spent,
+                        production.Assigned, _content.RuntimeRules.Manufacture[production.Rule].Value.Space,
+                        owner.Engineers, AvailableWorkshops(owner) - (long)UsedWorkshopSpace(owner)));
+                    if (additional > 0)
                     {
-                        var assigned = Math.Min(freeEngineers, freeWorkshops);
-                        owner.Engineers -= assigned;
-                        production = production with { Assigned = checked(production.Assigned + assigned) };
+                        production = production with { Assigned = checked(production.Assigned + additional) };
+                        owner.Engineers -= additional;
                         owner.Productions[owner.Productions.IndexOf(original)] = production;
                     }
                 }
@@ -661,20 +660,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     if (stop is not null) break;
                 }
                 var complete = !progressed.Infinite && after >= progressed.Amount;
-                if (complete || stop is not null)
-                {
-                    owner.Engineers = checked(owner.Engineers + progressed.Assigned);
-                    owner.Productions.Remove(production);
-                }
-                else
-                {
-                    var index = owner.Productions.IndexOf(production);
-                    owner.Productions[index] = progressed;
-                }
+                var index = owner.Productions.IndexOf(production);
+                owner.Productions[index] = progressed;
+                if (complete || stop is not null) removals.Add(progressed);
                 if (made != 0 || stop is not null || complete)
                     effects.Notify(new CampaignProductionProgress(owner.Id,
                         _content.RuntimeRules.Manufacture.GetExternalId(progressed.Rule), made,
                         stop ?? (complete ? "STR_PRODUCTION_COMPLETE" : null)));
+            }
+            // GeoscapeState::time1Hour removes projects after every step in this base.
+            // Released staff and workshop space cannot feed a later fallback this hour.
+            foreach (var production in removals)
+            {
+                owner.Engineers = checked(owner.Engineers + production.Assigned);
+                owner.Productions.Remove(production);
             }
         }
     }

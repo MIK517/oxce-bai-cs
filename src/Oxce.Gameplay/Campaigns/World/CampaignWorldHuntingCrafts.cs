@@ -58,7 +58,7 @@ internal sealed partial class CampaignWorld
         }
         if (highest >= CampaignTimeTrigger.OneHour &&
             campaign.ProductionPreflight.ForecastStocks(_huntingCraftSources, baseStocks,
-                researchStocks?.NextTransferId, researchMayChangeStocks, ref work) is { } productionReason)
+                researchStocks?.NextTransferId, researchMayChangeStocks, highest, ref work) is { } productionReason)
             return productionReason;
         foreach (var owner in campaign.BaseStates)
         {

@@ -7,7 +7,7 @@ public sealed partial class CampaignState
     string? ICampaignProductionPreflight.ForecastStocks(
         IReadOnlyDictionary<int, List<CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
-        int? nextResearchTransferId, bool uncertainResearch, ref long work)
+        int? nextResearchTransferId, bool uncertainResearch, CampaignTimeTrigger highest, ref long work)
     {
         var rules = _content.RuntimeRules;
         List<(BaseState Owner, ProductionState Project, int Units)> planned = [];
@@ -19,20 +19,47 @@ public sealed partial class CampaignState
         {
             var sources = crafts[owner.Id];
             var uncertainStocks = false;
-            foreach (var project in owner.Productions)
+            work += owner.Facilities.Count + (long)owner.Transfers.Count + owner.Productions.Count;
+            if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+            var workshops = owner.Facilities.Where(facility => facility.BuildTime == 0 ||
+                highest >= CampaignTimeTrigger.OneDay && facility.BuildTime == 1)
+                .Sum(facility => (long)rules.Facilities[facility.Rule].Value.Workshops);
+            var used = UsedWorkshopSpace(owner, rules);
+            long engineers = owner.Engineers;
+            foreach (var transfer in owner.Transfers)
+                if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Kind == CampaignTransferKind.Engineer)
+                    engineers += transfer.Quantity;
+            if (workshops > int.MaxValue || engineers > int.MaxValue)
+                return "Fallback production capacity exceeds the supported range.";
+            foreach (var original in owner.Productions)
             {
                 if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                var project = original;
                 var rule = rules.Manufacture[project.Rule].Value;
+                if (project.IsFallback)
+                {
+                    var additional = ProductionProgress.FallbackAdditional(project.Spent, project.Assigned,
+                        rule.Space, engineers, workshops - used);
+                    if ((long)project.Assigned + additional > int.MaxValue)
+                        return "Fallback production staffing exceeds the supported range.";
+                    if (additional > 0)
+                    {
+                        if (project.Spent == 0 && project.Assigned == 0) used += rule.Space;
+                        used += additional;
+                        engineers -= additional;
+                        project = project with { Assigned = project.Assigned + (int)additional };
+                    }
+                }
                 if ((long)project.Spent + project.Assigned > int.MaxValue) return "Production progress exceeds the supported range.";
                 if (ProductionRuleInvalid(rule) is { } invalid) return invalid;
                 var requested = ProductionProgress.Requested(rule.Time, project.Spent, project.Assigned, project.Amount, project.Infinite);
-                if (!project.IsFallback && requested == 0) continue;
+                if (requested == 0) continue;
                 work += rule.RequiredMaterials.Count * (long)sources.Count + rule.ProducedMaterials.Count + sources.Count;
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
-                var final = !project.IsFallback && !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var itemInputs = !project.IsFallback && rule.RequiredMaterials.All(material => material.Quantity == 0 || material.Item is not null);
+                var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
+                var itemInputs = rule.RequiredMaterials.All(material => material.Quantity == 0 || material.Item is not null);
                 var supported = (final || itemInputs) && !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)

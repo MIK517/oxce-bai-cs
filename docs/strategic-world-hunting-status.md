@@ -8,8 +8,8 @@ forecasts cover stock-free completions, held-item refunds, global obsolete
 and disabled-project cancellation, fixed spawned item arrivals, lookup and automatic
 discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
 production without a completing unit, final prepaid zero-score item units and
-recurring paid/item-input units participate in hunter forecasts. Remaining
-projections cover craft-consuming, sold, fallback, random/craft/person
+recurring paid/item-input units and fallback staffing participate in hunter forecasts. Remaining
+projections cover craft-consuming, sold, random/craft/person
 production, nonzero score effects, stochastic shared ammunition, random research
 reward choices and corpse consequences.
 The progress notes below record earlier guards and their later replacements.
@@ -309,3 +309,5 @@ Cycle validation: all 2,544 root tests pass with zero failures/skips, including 
 Branch 4c funded production composition: non-fallback fixed item projects without consumed inputs now forecast paid continuation in saved base/project order. The current unit is prepaid; later starts use the same checked accounting operation as execution, stop on insufficient money, and avoid charging after the finite last unit. Unknown earlier sale/cost effects retain a precise shared-accounting guard. Sixty-four native Production::step continuation/startItem/money rows compare fresh/cache unit counts, funds, stop reasons, stock and hunter targets with both transition reloads. Focused hunting/research compatibility passes 193 tests. Material consumption and fallback staffing remain subsequent slices; later-branch boundaries and 4d are unchanged.
 
 Branch 4c consumed production materials: fixed item completions now apply immediate output/reuse before each continuation input check. Delayed outputs stay unavailable to the next unit, and failed input checks leave funds unchanged. The production-owned forecast consumes only projected stocks and preserves saved project order; unknown earlier material effects retain a precise shared-material guard. Seventy-two native money/material/startItem rows compare unit counts, stop reasons, stocks, future arrivals and hunter outcomes with fresh/cache reloads. Craft input consumption and fallback staffing remain subsequent work; branch 4d and later-branch transitions are unchanged.
+
+Branch 4c fallback production composition: execution and forecasts share the queued-space/engineer assignment transition. Forecasts include due engineer arrivals and workshop construction completed at the preceding daily hook, then preserve project order and ongoing occupancy. The exact hourly reference caller confirmed that project removal and staff release occur after every production step in a base; execution now retains completed/stopped projects until that pass, so later fallback work cannot borrow their engineers early. Seventy-two native staffing rows and four deferred-release rows compare fresh/cache counts, stocks, funds-independent stops and hunter results with transition reloads. Focused hunting/research compatibility passes 203 cases. Capture inserts the native progress enum instead of synthesized values. Sold, craft-consuming, random/craft/person outputs and score effects remain explicit subsequent 4c work; later-branch guards and 4d are unchanged.
