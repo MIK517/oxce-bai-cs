@@ -135,11 +135,13 @@ public sealed partial class CampaignState
         }
     }
 
-    private int NextCraftId(string type)
+    private int NextCraftId(string type) => (int)NextCraftId(type, _nextIds.GetValueOrDefault(type, 1));
+
+    private long NextCraftId(string type, long projectedCounter)
     {
         var highest = _bases.SelectMany(b => b.Crafts.Where(c => _content.RuntimeRules.Crafts.GetExternalId(c.Rule) == type).Select(c => c.Id)
             .Concat(b.Transfers.Where(t => t.Craft?.RuleId == type).Select(t => t.Craft!.Id))).DefaultIfEmpty(0).Max();
-        return Math.Max(_nextIds.GetValueOrDefault(type, 1), highest == int.MaxValue ? int.MaxValue : highest + 1);
+        return Math.Max(projectedCounter, highest == int.MaxValue ? int.MaxValue : highest + 1L);
     }
 
     private int AvailableHangars(BaseState state, int type) => state.Facilities.Where(f => f.BuildTime == 0)

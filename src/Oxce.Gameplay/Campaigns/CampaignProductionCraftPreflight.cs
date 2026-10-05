@@ -31,6 +31,9 @@ public sealed partial class CampaignState
     private string? ProductionCraftCapacity(IReadOnlyDictionary<RuleHandle<CraftRuleFamily>, long> births,
         CampaignTimeTrigger highest, ref long work)
     {
+        IReadOnlyList<CustomCounterChange>? researchCounters = null;
+        if (highest >= CampaignTimeTrigger.OneDay && ResearchPreflight.TryForecastDailyStocks(ref work, out var researchForecast))
+            researchCounters = researchForecast.CounterChanges;
         long population = births.Values.Sum();
         foreach (var owner in _bases)
         {
@@ -44,8 +47,8 @@ public sealed partial class CampaignState
             work += _bases.Count + _bases.Sum(owner => owner.Crafts.Count + (long)owner.Transfers.Count);
             if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
             var type = _content.RuntimeRules.Crafts.GetExternalId(birth.Key);
-            if (ProducedCraftCounterRange(type, highest, ref work, out var range) is { } counterReason) return counterReason;
-            var next = Math.Max(NextCraftId(type), range.Maximum);
+            if (ProducedCraftCounterRange(type, highest, researchCounters, ref work, out var range) is { } counterReason) return counterReason;
+            var next = NextCraftId(type, range.Maximum);
             if (birth.Value > int.MaxValue - next)
                 return "Craft production exhausts the craft identity range.";
         }
@@ -60,23 +63,9 @@ public sealed partial class CampaignState
         var type = _content.RuntimeRules.Crafts.GetExternalId(craft);
         if (!counters.TryGetValue(craft, out var next))
         {
-            if (researchCounters is not null)
-            {
-                next = _nextIds.GetValueOrDefault(type, 1);
-                foreach (var change in researchCounters)
-                {
-                    if (++work > 1_000_000) return "Craft production exceeds the supported work limit.";
-                    if (change.Name != type) continue;
-                    next = change.Increase ? next + 1 : Math.Max(1, next - 1);
-                    if (next > int.MaxValue) return "Craft production exhausts the craft identity range.";
-                }
-            }
-            else
-            {
-                if (ProducedCraftCounterRange(type, highest, ref work, out var range) is { } counterReason) return counterReason;
-                if (range.Minimum != range.Maximum) return "Craft production requires daily research identity forecasts.";
-                next = range.Maximum;
-            }
+            if (ProducedCraftCounterRange(type, highest, researchCounters, ref work, out var range) is { } counterReason) return counterReason;
+            if (range.Minimum != range.Maximum) return "Craft production requires daily research identity forecasts.";
+            next = range.Maximum;
         }
         foreach (var owner in _bases)
         {
@@ -95,10 +84,24 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private string? ProducedCraftCounterRange(string type, CampaignTimeTrigger highest, ref long work,
+    private string? ProducedCraftCounterRange(string type, CampaignTimeTrigger highest,
+        IReadOnlyList<CustomCounterChange>? researchCounters, ref long work,
         out (long Minimum, long Maximum) range)
     {
         range = default;
+        if (researchCounters is not null)
+        {
+            long next = _nextIds.GetValueOrDefault(type, 1);
+            foreach (var change in researchCounters)
+            {
+                if (++work > 1_000_000) return "Craft production exceeds the supported work limit.";
+                if (change.Name != type) continue;
+                next = change.Increase ? next + 1 : Math.Max(1, next - 1);
+                if (next > int.MaxValue) return "Craft production exhausts the craft identity range.";
+            }
+            range = (next, next);
+            return null;
+        }
         if (highest >= CampaignTimeTrigger.OneDay)
             foreach (var owner in _bases)
             {

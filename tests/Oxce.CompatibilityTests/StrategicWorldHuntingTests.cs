@@ -13,6 +13,48 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DecreasedResearchCounterStillReservesSavedCraftIdentityFloor(bool cache)
+    {
+        var content = Load(cache, "research: [{name: FLOOR_TOPIC, cost: 1, decreaseCounter: [FLOOR_CRAFT]}]\ncrafts: [{type: FLOOR_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: FLOOR_BIRTH, category: STR_CRAFT, time: 1, producedItems: {FLOOR_CRAFT: 1}}]\nfacilities: [{type: FLOOR_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["FLOOR_CRAFT"] = int.MaxValue - 1 },
+            Bases = [initial.Bases[0] with
+            {
+                Crafts = [new("FLOOR_CRAFT", int.MaxValue - 1) { Logistics = CraftLogistics.LoadStarting(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("FLOOR_CRAFT")].Value, null) }], Soldiers = [],
+                Facilities = [.. initial.Bases[0].Facilities, new("FLOOR_LAB_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Research = [new("FLOOR_TOPIC", 1, 0, 1)],
+                Productions = [new("FLOOR_BIRTH", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+            }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Craft production exhausts the craft identity range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DifferentResearchRewardsKeepAtomicCraftIdentityForecastGuard(bool cache)
+    {
+        var content = Load(cache, "research: [{name: RANDOM_COUNTER_SOURCE, cost: 1, getOneFree: [RANDOM_COUNTER_A, RANDOM_COUNTER_B]}, {name: RANDOM_COUNTER_A, cost: 1, increaseCounter: [RANDOM_COUNTER_CRAFT]}, {name: RANDOM_COUNTER_B, cost: 1}]\ncrafts: [{type: RANDOM_COUNTER_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: RANDOM_COUNTER_BIRTH, category: STR_CRAFT, time: 1, producedItems: {RANDOM_COUNTER_CRAFT: 1}}]\nfacilities: [{type: RANDOM_COUNTER_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("RANDOM_COUNTER_LAB_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Research = [new("RANDOM_COUNTER_SOURCE", 1, 0, 1)],
+                Productions = [new("RANDOM_COUNTER_BIRTH", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+            }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Craft production requires daily research identity forecasts.");
+    }
+
+    [Theory]
     [InlineData(false, "single")]
     [InlineData(true, "single")]
     [InlineData(false, "sequential")]
