@@ -2831,6 +2831,93 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PersonnelProductionMatchesNativeQuartersAndHunterFallthrough(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionPersonnelRows")
+            .GroupBy(row => (Scientist: row[0].GetBoolean(), Delay: row[1].GetInt32(), Assigned: row[2].GetInt32(), Headroom: row[3].GetInt32())))
+        {
+            var quarters = group.Key.Assigned + 1 + group.Key.Headroom;
+            var content = Load(cache, $"crafts: [{{type: PERSONNEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: PERSONNEL_PRODUCT, time: 2, cost: 3, producedItems: {{SUPPLY: 1}}, spawnedPersonType: {(group.Key.Scientist ? "STR_SCIENTIST" : "STR_ENGINEER")}, transferTimes: [0, {group.Key.Delay}]}}]\nfacilities: [{{type: PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 6, personnel: {quarters}}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "PERSONNEL_HUNT",
+                    Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 }
+                }) with
+                { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [10], Incomes = [0], Expenditures = [0] };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                    {
+                        Longitude = 0.45, Latitude = 0.21, Soldiers = [], Engineers = 0, Scientists = 0, Research = [], Transfers = [],
+                        Items = new Dictionary<string, int>(),
+                        Facilities = [new("PERSONNEL_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                        Productions = [new("PERSONNEL_PRODUCT", group.Key.Assigned, 1, 2, row[4].GetBoolean(), false, false, new Dictionary<string, int>())]
+                    }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "personnel-before.sav");
+                var usedBefore = campaign.QueryStores(0).UsedQuarters;
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var progress = Assert.Single(result.Events.OfType<CampaignProductionProgress>());
+                var stop = progress.StopReason == "STR_PRODUCTION_COMPLETE" ? 1 : progress.StopReason == "STR_NOT_ENOUGH_LIVING_SPACE" ? 4 : 0;
+                var after = campaign.Capture();
+                var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "PERSONNEL_HUNT").Logistics!;
+                var transfers = after.Bases[0].Transfers;
+                Assert.All(transfers, transfer => Assert.Equal(group.Key.Scientist ? CampaignTransferKind.Scientist : CampaignTransferKind.Engineer, transfer.Kind));
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { progress.Produced, stop, usedBefore, campaign.QueryStores(0).UsedQuarters, transfers.Count, transfers[^1].Hours, after.Funds[^1], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), state.Status, state.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
+                // The native trace captures before time1Hour's deferred removal.
+                // Removing a stopped project releases its single reserved quarter.
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5)
+                    .Select((value, index) => index == 3 ? (object)(value.GetInt32() - (stop == 0 ? 0 : 1)) : value).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "personnel-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void PersonnelProductionTransferLimitsStopBeforeMutation(bool cache, bool population)
+    {
+        var content = Load(cache, "manufacture: [{name: PERSONNEL_LIMIT, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_ENGINEER}]\nfacilities: [{type: PERSONNEL_LIMIT_WORKSHOP, mapName: LOGISTICS, workshops: 100001, personnel: 200000}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = new() };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = population ? 1 : int.MaxValue },
+            Bases = [initial.Bases[0] with
+            {
+                Productions = [new("PERSONNEL_LIMIT", population ? 100001 : 1, 0, 1, true, false, false, new Dictionary<string, int>())],
+                Facilities = [new("PERSONNEL_LIMIT_WORKSHOP", 1, 1, 0, 0, false, false, false)]
+            }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "personnel-limit.sav");
+        AssertTimeBlocked(campaign, population ? "Production personnel arrivals exceed the supported population limit." : "Production arrivals exhaust the transfer identity range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void QueuedPersonnelProjectReservesOneQuarterUntilCancellation(bool cache)
+    {
+        var content = Load(cache, "manufacture: [{name: HELD_PERSONNEL, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_SCIENTIST}]\n");
+        var initial = HuntingSnapshot(content);
+        initial = initial with { Bases = [initial.Bases[0] with { Soldiers = [], Engineers = 0, Scientists = 0, Research = [], Transfers = [], Productions = [new("HELD_PERSONNEL", 0, 0, 1, false, false, false, new Dictionary<string, int>())] }] };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "personnel-held.sav");
+        Assert.Equal(1, campaign.QueryStores(0).UsedQuarters);
+        Assert.Empty(campaign.Execute(new ConfigureProductionProject(0, "HELD_PERSONNEL", 0, 1, Cancel: true)).Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(0, campaign.QueryStores(0).UsedQuarters);
+        Reload(content, campaign, 81, "personnel-cancelled.sav");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
