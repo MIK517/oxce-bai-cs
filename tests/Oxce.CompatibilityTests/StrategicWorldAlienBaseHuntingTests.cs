@@ -415,6 +415,52 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ZeroChanceHuntingDoesNotRequireStochasticServicingForecasts(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-timer");
+        var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row => row[0].GetString() == "zeroChance");
+        Assert.Equal(1, row[2].GetArrayLength());
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
+            "crafts: [{type: ZERO_CHANCE_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: ZERO_CHANCE_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]]}]\nfacilities: [{type: ZERO_CHANCE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var initial = Snapshot(content, "grounded", "HUNT_ZERO_CHANCE") with { Time = new(1, 1, 1, 1999, 0, 59, 55) };
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "ZERO_CHANCE_CRAFT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3
+            }
+        });
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [owner with
+            { Facilities = [.. owner.Facilities, new("ZERO_CHANCE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("ZERO_CHANCE_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())] }]
+        };
+        var control = CampaignState.Restore(initial with { World = WorldSnapshot.Empty }, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(control, 1);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "zero-chance-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(row[1].GetInt32(), Assert.Single(after.World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+        Assert.Empty(after.World.Missions);
+        var random = new SplitMix64RandomSource(control.Capture().RandomState);
+        random.NextInclusive(0, 99); // Native percent(0) still draws for each eligible craft.
+        Assert.Equal(random.State, after.RandomState);
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(control.Capture() with { World = WorldSnapshot.Empty })),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(after with { World = WorldSnapshot.Empty, RandomState = control.Capture().RandomState })));
+        Reload(content, campaign, 17, "zero-chance-after.sav");
+    }
+
     private static RuntimeContent Load(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
