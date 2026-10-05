@@ -10,7 +10,7 @@
 #include <cstdint>
 namespace OpenXcom {
 using Exception = std::runtime_error; using RuleCraft=void;
-struct Base; struct SavedGame; struct Item; struct ResearchMod; struct ProductionDeliveryCaller;
+struct Craft; struct Ufo; struct Base; struct SavedGame; struct Item; struct ResearchMod; struct ProductionDeliveryCaller;
 // PRODUCTION_ENUM
 const int BT_NONE=0;
 struct RNG { static inline int roll=0, calls=0, suppliedChoice=-1;
@@ -44,7 +44,8 @@ int requested() {
 using RuleManufacture=Production::Rule;
 // PRODUCTION_MONEY_RULE
 // PRODUCTION_AMOUNT
-struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = default;
+struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target();
+std::vector<Craft*> craftFollowers; std::vector<Ufo*> ufoFollowers; const auto& getCraftFollowers() const { return craftFollowers; } const auto& getUfoFollowers() const { return ufoFollowers; }
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
 struct Waypoint : Target { int id=0; int getId() const { return id; } void setId(int value) { id=value; } };
@@ -203,6 +204,7 @@ double getDistance(Target* target) const { return target->distance; }
 bool insideRadarRange(Target* target) const;
 };
 // RADAR
+// TARGET_DESTRUCTOR
 // RETARGET_METHODS
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
 long long funds=100; long long getFunds() const { return funds; } void setFunds(long long value) { funds=value; }
@@ -312,6 +314,20 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"deletedCraftFollowerRows\":[";
+serviceFirst=true;
+for(bool craftFollows:{false,true}) for(bool ufoFollows:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+auto* leader=new Craft(); Craft follower; follower._fuel=100; Ufo hunter; auto* original=new Waypoint(); original->lon=0.9; original->lat=0.5;
+hunter.setDestination(original); hunter.setSpeed(1000);
+if(craftFollows) { follower._status="STR_OUT"; follower.setDestination(leader); leader->craftFollowers={&follower}; }
+if(ufoFollows) { hunter.setTargetedXcomCraft(leader); leader->ufoFollowers={&hunter}; }
+delete leader;
+std::cout << '[' << (craftFollows?"true":"false") << ',' << (ufoFollows?"true":"false") << ",\"" << follower._status << "\"," << follower.speed << ',' << (follower._dest==&follower.base?"true":"false") << ','
+<< (hunter._isHunting?"true":"false") << ',' << (hunter._isEscorting?"true":"false") << ',' << (hunter._origWaypoint?"true":"false") << ',' << hunter._dest->lon << ',' << hunter._dest->lat << ',' << hunter.speed << ',';
+FuelCaller fuelCaller; if(craftFollows) fuelCaller.fuel(&follower); std::cout << follower._fuel << ']';
+delete hunter._dest;
 }
 std::cout << "],\"productionCraftUnloadRows\":[";
 serviceFirst=true;

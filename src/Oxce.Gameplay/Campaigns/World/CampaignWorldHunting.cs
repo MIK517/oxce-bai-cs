@@ -35,7 +35,7 @@ internal sealed partial class CampaignWorld
         {
             var ufo = UfoAfterTimedTransitions(saved, highest);
             if (ufo.Status != UfoStatus.Flying || !ufo.HunterKiller && !ufo.Hunting && !ufo.Escorting) continue;
-            if (due && ufo.HunterKiller)
+            if (due && ufo.HunterKiller || highest >= CampaignTimeTrigger.OneHour && ufo.Hunting)
             {
                 foreach (var owner in campaign.BaseStates)
                 {
@@ -64,7 +64,8 @@ internal sealed partial class CampaignWorld
         {
             if (ufo.OriginalWaypoint is not { IsNormalized: true }) return HuntStateReason;
             var valid = ufo.Hunting
-                ? ufo.Destination is { Kind: WorldTargetKind.Craft } craft && TargetCraft(craft) is not null
+                ? ufo.Destination is { Kind: WorldTargetKind.Craft } craft &&
+                    (forecastFuel ? ForecastHuntingTarget(craft) : TargetCraft(craft)) is not null
                 : ufo.Destination is { Kind: WorldTargetKind.Ufo } target && TargetUfo(target) is not null;
             if (!valid) projected = WorldHunting.Restore(projected);
         }

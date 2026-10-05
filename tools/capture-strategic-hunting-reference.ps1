@@ -68,6 +68,7 @@ $unloadStart = $unload.IndexOf('for (const auto& pair : *_items->getContents())'
 $unloadEnd = $unload.IndexOf('// Remove vehicles', $unloadStart, [StringComparison]::Ordinal)
 if ($unloadStart -lt 0 -or $unloadEnd -le $unloadStart) { throw 'Missing craft inventory unload fragment.' }
 $template = $template.Replace('// PRODUCTION_CRAFT_UNLOAD_ITEMS', $unload.Substring($unloadStart, $unloadEnd - $unloadStart))
+$template = $template.Replace('// TARGET_DESTRUCTOR', (Read-ReferenceMethod 'src/Savegame/Target.cpp' 'Target::~Target()'))
 $productionHeader = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/Production.h'))
 $productionEnum = [regex]::Match($productionHeader, 'enum productionProgress_e[^;]+;').Value
 if (-not $productionEnum) { throw 'Missing production progress enum.' }

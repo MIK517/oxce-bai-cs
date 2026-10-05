@@ -101,6 +101,7 @@ public sealed partial class CampaignState
                                 ChangeStock(stocks[owner.Id], cargoItem, cargo.Value);
                             }
                             sources.Remove(consumed);
+                            if (_handlers.Operation<World.ICampaignCraftRemoval>().ForecastFollowers(crafts, material.Id, consumed.Id, ref work) is { } followerReason) return followerReason;
                         }
                     }
                     accounting = nextAccounting;

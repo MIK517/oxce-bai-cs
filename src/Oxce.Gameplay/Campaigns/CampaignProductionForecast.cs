@@ -8,6 +8,7 @@ internal interface ICampaignProductionPreflight
     string? ForecastStocks(IReadOnlyDictionary<int, List<CampaignState.CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
         int? nextResearchTransferId, bool uncertainResearch, CampaignTimeTrigger highest, ref long work);
+    string? CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work);
     (long Minimum, long Maximum) CraftCounter(string name, CampaignTimeTrigger highest,
         (long Minimum, long Maximum) before);
 }
@@ -15,6 +16,36 @@ internal interface ICampaignProductionPreflight
 public sealed partial class CampaignState
 {
     internal ICampaignProductionPreflight ProductionPreflight => _handlers.Operation<ICampaignProductionPreflight>();
+
+    string? ICampaignProductionPreflight.CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work)
+    {
+        if (highest < CampaignTimeTrigger.OneHour) return null;
+        const string reason = "Craft target removal exceeds the supported work limit.";
+        long actors = ufos, removals = 0;
+        var rules = _content.RuntimeRules;
+        foreach (var owner in _bases)
+        {
+            actors += owner.Crafts.Count + owner.Transfers.Count(transfer => !transfer.Delivered && transfer.Craft is not null && transfer.Hours <= 1);
+            work += owner.Transfers.Count;
+            if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffing) return staffing;
+            for (var index = 0; index < owner.Productions.Count; index++)
+            {
+                var project = owner.Productions[index]; var rule = rules.Manufacture[project.Rule].Value;
+                work += rule.RequiredMaterials.Count + (long)rule.ProducedMaterials.Count;
+                if (work > 1_000_000) return reason;
+                var units = ProductionProgress.Requested(rule.Time, project.Spent, assignments[index], project.Amount, project.Infinite);
+                var starts = units - (!project.Infinite && ProductionProgress.Produced(rule.Time,
+                    project.Spent + assignments[index], project.Amount) >= project.Amount && units != 0 ? 1 : 0);
+                foreach (var material in rule.RequiredMaterials)
+                    if (material.Craft is not null) removals += starts;
+                foreach (var material in rule.ProducedMaterials)
+                    if (material.Craft is not null) actors = Math.Min(1_000_001, actors + Math.Min(1_000_001, units * (long)material.Quantity));
+            }
+        }
+        if (removals != 0 && (actors > 1_000_000 || removals > (1_000_000 - work) / Math.Max(1, actors))) return reason;
+        work += removals * actors;
+        return null;
+    }
 
     (long Minimum, long Maximum) ICampaignProductionPreflight.CraftCounter(string name, CampaignTimeTrigger highest,
         (long Minimum, long Maximum) before)

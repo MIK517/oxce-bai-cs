@@ -2086,6 +2086,99 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ConsumedCraftFollowersMatchNativeImmediateReturnAndUfoRestore(bool cache, bool hourly)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: DELETED_FOLLOWER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: DELETE_LEADER, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: DELETE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "deletedCraftFollowerRows"))
+        {
+            if (hourly && (!row[0].GetBoolean() || !row[1].GetBoolean())) continue;
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+            var leader = source with { Logistics = source.Logistics! with { Longitude = 0.4, Latitude = 0.2, Weapons = [], Items = new Dictionary<string, int>(), Vehicles = [] } };
+            var follower = source with
+            {
+                RuleId = "DELETED_FOLLOWER",
+                Id = 2,
+                Logistics = source.Logistics! with
+                {
+                    Status = row[0].GetBoolean() ? "STR_OUT" : "STR_REFUELLING",
+                    Speed = row[0].GetBoolean() ? 1000 : 0,
+                    Fuel = 100,
+                    Longitude = 0.5,
+                    Latitude = 0.21,
+                    Weapons = [],
+                    Items = new Dictionary<string, int>(),
+                    Vehicles = [],
+                    IsAutoPatrolling = false,
+                    Destination = row[0].GetBoolean() ? new(WorldTargetKind.Craft, "SHIP", 1, 0.4, 0.2) : null
+                }
+            };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21, Crafts = [leader, follower], Soldiers = [], Engineers = hourly ? 0 : 1,
+                Items = new Dictionary<string, int>(),
+                Facilities = [.. initial.Bases[0].Facilities, new("DELETE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = hourly ? [new("DELETE_LEADER", 1, 0, 2, false, false, false, new Dictionary<string, int>())] : []
+            }],
+                World = initial.World with
+                {
+                    Ufos = [initial.World.Ufos[0] with
+            {
+                Longitude = 0.40001, Latitude = 0.2, HunterKiller = false, Hunting = row[1].GetBoolean(), Speed = row[1].GetBoolean() ? 2200 : 1000,
+                Destination = row[1].GetBoolean() ? new(WorldTargetKind.Craft, "SHIP", 1, 0.4, 0.2) : new(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0, 0.9, 0.5),
+                OriginalWaypoint = row[1].GetBoolean() ? new(0.9, 0.5) : null
+            }]
+                }
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "deleted-leader-before.sav");
+            var result = hourly ? campaign.Execute(new AdvanceCampaignTime(1)) : campaign.Execute(new ConfigureProductionProject(initial.Bases[0].Id, "DELETE_LEADER", 0, 1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture(); Assert.DoesNotContain(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP");
+            var craft = Assert.Single(after.Bases[0].Crafts).Logistics!; var ufo = Assert.Single(after.World.Ufos);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { craft.Status, craft.Speed, craft.Destination?.Kind == WorldTargetKind.Base,
+                ufo.Hunting, ufo.Escorting, ufo.OriginalWaypoint is not null, ufo.Destination!.Longitude, ufo.Destination.Latitude, ufo.Speed });
+            // Ordinary movement follows the restored waypoint during the hourly case; its target remains unchanged.
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(2).Take(9).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            if (hourly)
+            {
+                Assert.Equal(row[11].GetInt32(), craft.Fuel);
+                Assert.Single(result.Events.OfType<CraftTargetLost>());
+            }
+            Reload(content, campaign, 81, "deleted-leader-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CraftRemovalFollowerWorkStopsBeforeAnUnboundedHourlyScan(bool cache)
+    {
+        var content = Load(cache, "manufacture: [{name: DELETE_MANY, time: 1, requiredItems: {SHIP: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: DELETE_MANY_WORKSHOP, mapName: LOGISTICS, workshops: 1001}]\n");
+        var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Soldiers = [], Engineers = 0,
+            Crafts = Enumerable.Range(1, 1001).Select(id => source with { Id = id, Logistics = source.Logistics! with
+                { Status = "STR_READY", Weapons = [], Items = new Dictionary<string, int>(), Vehicles = [], IsAutoPatrolling = false } }).ToArray(),
+            Facilities = [.. initial.Bases[0].Facilities, new("DELETE_MANY_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("DELETE_MANY", 1001, 0, 1, true, false, false, new Dictionary<string, int>())]
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Craft target removal exceeds the supported work limit.");
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void ProductionCraftUnloadStockOverflowStopsBeforeConsumption(bool cache)
