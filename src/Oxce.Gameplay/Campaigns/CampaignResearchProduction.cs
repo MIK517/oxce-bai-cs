@@ -728,12 +728,19 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         BaseState owner, RuntimeManufactureRule rule,
         out IReadOnlyList<ProductionMaterialConsumption> plan, out string reason)
     {
+        return TryPlanProductionMaterials(owner.Items, owner.Crafts, rule, out plan, out reason);
+    }
+
+    private static bool TryPlanProductionMaterials(
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int> items, IReadOnlyList<CraftState> crafts,
+        RuntimeManufactureRule rule, out IReadOnlyList<ProductionMaterialConsumption> plan, out string reason)
+    {
         var result = new List<ProductionMaterialConsumption>();
         foreach (var material in rule.RequiredMaterials)
         {
             if (material.Item is { } item)
             {
-                if (owner.Items.GetValueOrDefault(item) < material.Quantity)
+                if (items.GetValueOrDefault(item) < material.Quantity)
                 {
                     plan = [];
                     reason = "STR_NOT_ENOUGH_MATERIALS";
@@ -745,13 +752,13 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             if (material.Craft is not { } craft) continue;
             // Native eligibility counts grounded craft, while startItem removes
             // the first matching craft once, irrespective of the requested quantity.
-            if (owner.Crafts.Count(value => value.Rule == craft && value.Logistics?.Status != "STR_OUT") < material.Quantity)
+            if (crafts.Count(value => value.Rule == craft && value.Logistics?.Status != "STR_OUT") < material.Quantity)
             {
                 plan = [];
                 reason = "STR_NOT_ENOUGH_MATERIALS";
                 return false;
             }
-            var selected = owner.Crafts.FirstOrDefault(value => value.Rule == craft);
+            var selected = crafts.FirstOrDefault(value => value.Rule == craft);
             if (selected is null) continue;
             if (selected.Logistics is null)
             {
@@ -761,6 +768,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             }
             result.Add(new(material.Id, 1, null, selected));
         }
+        // startItem consumes every item before unloading any craft.
+        result.Sort(static (left, right) => (left.Item is null).CompareTo(right.Item is null));
         plan = result;
         reason = string.Empty;
         return true;

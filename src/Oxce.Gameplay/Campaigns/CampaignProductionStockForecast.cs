@@ -37,8 +37,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var itemInputs = rule.RequiredMaterials.All(material => material.Item is not null || material.Craft is { } type && material.Quantity == 0 && !sources.Any(craft => craft.Rule == type));
-                var supported = (final || itemInputs) && !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
+                var supported = !project.Sell && rule.Points == 0 && rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
                 {
@@ -78,10 +77,32 @@ public sealed partial class CampaignState
                     if (!project.Infinite && Produced(project) + (long)completed >= project.Amount) break;
                     if (rule.Cost > 0 && accounting.Funds < rule.Cost ||
                         !TryStageAccounting(-rule.Cost, accounting, out var nextAccounting)) break;
-                    if (rule.RequiredMaterials.Any(material => material.Item is { } item &&
-                        stocks[owner.Id].GetValueOrDefault(item) < material.Quantity)) break;
-                    foreach (var material in rule.RequiredMaterials)
+                    if (!TryPlanProductionMaterials(stocks[owner.Id], sources, rule, out var materials, out var materialReason))
+                    {
+                        if (materialReason != "STR_NOT_ENOUGH_MATERIALS") return materialReason;
+                        break;
+                    }
+                    foreach (var material in materials)
+                    {
                         if (material.Item is { } item) ChangeStock(stocks[owner.Id], item, -material.Quantity);
+                        else if (material.Craft is { Logistics: { } state } consumed)
+                        {
+                            work += state.Weapons.Count + (long)state.Items.Count + state.Vehicles.Count * 2L;
+                            if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                            IReadOnlyDictionary<string, int> unloaded;
+                            try { unloaded = CraftLogistics.UnloadedItems(state, rules); }
+                            catch (Exception error) when (error is OverflowException or InvalidDataException)
+                            { return "Production craft unload quantities exceed the supported range."; }
+                            foreach (var cargo in unloaded)
+                            {
+                                var cargoItem = rules.Items.GetRequired(cargo.Key);
+                                var quantity = stocks[owner.Id].GetValueOrDefault(cargoItem) + (long)cargo.Value;
+                                if (quantity > int.MaxValue) return "Production craft unload stocks exceed the supported range.";
+                                ChangeStock(stocks[owner.Id], cargoItem, cargo.Value);
+                            }
+                            sources.Remove(consumed);
+                        }
+                    }
                     accounting = nextAccounting;
                 }
                 planned.Add((owner, project, completed));
