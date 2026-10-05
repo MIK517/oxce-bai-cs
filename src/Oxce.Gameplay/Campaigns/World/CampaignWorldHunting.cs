@@ -34,6 +34,7 @@ internal sealed partial class CampaignWorld
         _huntingCraftSources = null;
         _baseHuntingCraftPopulationBound = null;
         _newbornNoTargetProofs.Clear();
+        _newbornSafeHuntingProofs.Clear();
         ResetEscortFlightPositions();
         var due = WorldHunting.RetargetDue(highest, speed, campaign.Content.RuntimeRules.Campaign.HunterKillerFastRetarget);
         long work = 0;

@@ -157,7 +157,7 @@ internal sealed partial class CampaignWorld
                     leaderOrigins.AddRange(ordinaryOrigins);
                     certainLeader = percentage <= 0;
                 }
-                if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert)
+                if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert || NewbornCanRevealHunt(step, wave))
                 {
                     possibleMarkerIds++;
                     if (grounded) possibleLandingIds++;
