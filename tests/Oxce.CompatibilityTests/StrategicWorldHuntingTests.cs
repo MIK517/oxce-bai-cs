@@ -2088,6 +2088,45 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ProductionCraftInputSelectionMatchesNativeQuantityAndFirstCraft(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionCraftInputRows").GroupBy(row => row[0].GetInt32()))
+        {
+            var content = Load(cache, $"manufacture: [{{name: CRAFT_INPUT, time: 1, requiredItems: {{SHIP: {group.Key}}}, producedItems: {{SUPPLY: 0}}}}]\nfacilities: [{{type: CRAFT_INPUT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
+                var source = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+                var craftIds = row[2].GetBoolean() ? new List<int> { 1 } : [];
+                craftIds.AddRange(Enumerable.Range(2, row[1].GetInt32()));
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                {
+                    Soldiers = [], Engineers = 0, Items = new Dictionary<string, int>(),
+                    Crafts = craftIds.Select(id => source with { Id = id, Logistics = source.Logistics! with
+                    { Status = id == 1 ? "STR_OUT" : "STR_READY", Weapons = [], Items = new Dictionary<string, int>(), Vehicles = [], IsAutoPatrolling = false } }).ToArray(),
+                    Facilities = [.. initial.Bases[0].Facilities, new("CRAFT_INPUT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("CRAFT_INPUT", 1, 0, 2, false, false, false, new Dictionary<string, int>())]
+                }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "craft-input-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var progress = Assert.Single(result.Events.OfType<CampaignProductionProgress>());
+                Assert.Equal(row[3].GetBoolean(), progress.StopReason is null);
+                var actual = JsonSerializer.SerializeToUtf8Bytes(campaign.Capture().Bases[0].Crafts.Select(craft => craft.Id).ToArray());
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row[4]);
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "craft-input-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void FallbackProgressOverflowBlocksWithoutAnyHunter(bool cache)
     {
         var content = Load(cache, "manufacture: [{name: FALLBACK_OVERFLOW, time: 100, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: FALLBACK_OVERFLOW_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");

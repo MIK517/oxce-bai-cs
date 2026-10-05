@@ -62,6 +62,7 @@ if ($deliveryStart -lt 0 -or $deliveryEnd -le $deliveryStart) { throw 'Missing f
 $delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart).TrimEnd()
 $delivery = $delivery.Substring(0, $delivery.LastIndexOf('}')).TrimEnd()
 $template = $template.Replace('// PRODUCTION_DELIVERY', $delivery)
+$template = $template.Replace('// PRODUCTION_CRAFT_COUNT', (Read-ReferenceMethod 'src/Savegame/Base.cpp' 'int Base::getCraftCountForProduction('))
 $productionHeader = [IO.File]::ReadAllText((Join-Path $reference 'src/Savegame/Production.h'))
 $productionEnum = [regex]::Match($productionHeader, 'enum productionProgress_e[^;]+;').Value
 if (-not $productionEnum) { throw 'Missing production progress enum.' }
