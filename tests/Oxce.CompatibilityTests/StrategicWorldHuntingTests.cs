@@ -15,6 +15,85 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void LargeEscortGraphsRefuseBeforePositionForecasts(bool cache)
+    {
+        var content = Load(cache);
+        var initial = HuntingSnapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = 501 }],
+                Ufos = Enumerable.Range(0, 501).Select(index => initial.World.Ufos[0] with
+                {
+                    UniqueId = 9 + index,
+                    Id = 3 + index,
+                    HunterKiller = false,
+                    Escorting = true,
+                    OriginalWaypoint = new(1, 0.6),
+                    Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.4, 0.2) { UniqueId = 9 },
+                }).ToArray(),
+            }
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO escort movement exceeds the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EscortChainsRingsAndSelfTargetsMatchNativeMovement(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
+        var content = Load(cache);
+        int[][] orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "escortMovement").GroupBy(row => (Shape: row[0].GetInt32(), Order: row[1].GetInt32())))
+        {
+            var initial = HuntingSnapshot(content);
+            var actors = Enumerable.Range(0, 3).Select(index => initial.World.Ufos[0] with
+            {
+                UniqueId = 9 + index,
+                Id = 3 + index,
+                HunterKiller = false,
+                Escort = false,
+                Longitude = 0.4 + index * 0.1,
+                Latitude = 0.2 + index * 0.05,
+                Escorting = group.Key.Shape != 0 || index != 0,
+                OriginalWaypoint = group.Key.Shape != 0 || index != 0 ? new(1, 0.6) : null,
+                Destination = group.Key.Shape == 0 && index == 0
+                    ? new(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0, 1, 0.6)
+                    : new(WorldTargetKind.Ufo, WorldTargetReference.UfoType,
+                        3 + (group.Key.Shape == 2 ? index : index == 0 ? 2 : index - 1), 0, 0)
+                    { UniqueId = 9 + (group.Key.Shape == 2 ? index : index == 0 ? 2 : index - 1) },
+            }).ToArray();
+            initial = initial with
+            {
+                World = initial.World with
+                {
+                    Ufos = orders[group.Key.Order].Select(index => actors[index]).ToArray(),
+                    Missions = [initial.World.Missions[0] with { LiveUfos = 3 }],
+                }
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-chain-before.sav");
+            foreach (var row in group)
+            {
+                AdvanceOne(campaign);
+                var after = campaign.Capture();
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { group.Key.Shape, group.Key.Order, row[2].GetInt32() }
+                    .Concat(after.World.Ufos.OrderBy(ufo => ufo.UniqueId).SelectMany(ufo => new object[]
+                    {
+                        decimal.Parse(ufo.Longitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
+                        decimal.Parse(ufo.Latitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
+                    })).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+                campaign = Reload(content, campaign, 81, "escort-chain-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void SoldierNameChecksIncludeTransfersQueuedByOtherProduction(bool cache)
     {
         var content = Load(cache, "manufacture: [{name: PENDING_STAFF, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_SCIENTIST}, {name: PENDING_SOLDIER, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: PENDING_WORKSHOP, mapName: LOGISTICS, workshops: 2500, personnel: 10000}]\n");
@@ -4317,27 +4396,6 @@ public sealed class StrategicWorldHuntingTests
         Assert.Equal(suppress ? 0 : 1, result.Events.OfType<UfoStartedHunting>().Count());
         Assert.True(Assert.Single(campaign.Capture().World.Ufos).Hunting);
         Reload(content, campaign, 81, "redundant-hunt-alert.sav");
-    }
-
-    [Fact]
-    public void EscortCyclesStopBeforeRecursiveMovementForecasts()
-    {
-        var content = Load();
-        var initial = HuntingSnapshot(content, escort: true);
-        initial = initial with
-        {
-            World = initial.World with
-            {
-                Ufos = [initial.World.Ufos[0] with
-                {
-                    Escorting = true,
-                    OriginalWaypoint = new(1, 0.6),
-                    Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 3, 0.4, 0.2) { UniqueId = 9 },
-                }],
-            }
-        };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "UFO escort chains require additional movement forecasts.");
     }
 
     [Fact]
