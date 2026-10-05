@@ -4,6 +4,32 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
+    private string? ForecastProducedSoldierCounter(Dictionary<string, long> counters,
+        IReadOnlyList<CustomCounterChange>? researchCounters, CampaignTimeTrigger highest, ref long work)
+    {
+        if (!counters.TryGetValue("STR_SOLDIER", out var next))
+        {
+            if (ProducedCraftCounterRange("STR_SOLDIER", highest, researchCounters, ref work, out var range) is { } reason) return reason;
+            if (range.Minimum != range.Maximum) return "Craft production requires daily research identity forecasts.";
+            next = range.Maximum;
+        }
+        foreach (var owner in _bases)
+        {
+            work += 1L + owner.Soldiers.Count + owner.Transfers.Count * 2L;
+            if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
+            foreach (var soldier in owner.Soldiers) next = Math.Max(next, (long)soldier.Id + 1);
+            var removesDelivered = owner.Transfers.Any(transfer => !transfer.Delivered && transfer.Hours <= 1);
+            foreach (var transfer in owner.Transfers)
+                // Due transfers remain soldiers after arrival; only previously
+                // delivered sidecars disappear during this hour's cleanup.
+                if (!(removesDelivered && transfer.Delivered) && transfer.Soldier is { } soldier)
+                    next = Math.Max(next, (long)soldier.Id + 1);
+        }
+        if (next >= int.MaxValue) return "Soldier production exhausts the soldier identity range.";
+        counters["STR_SOLDIER"] = next + 1;
+        return null;
+    }
+
     private string? ProducedSoldierReason(RuntimeManufactureRule rule, int births, ref long work)
     {
         var definition = _content.RuntimeRules.Soldiers[_content.RuntimeRules.Soldiers.GetRequired(rule.SpawnedPersonType)].Value;

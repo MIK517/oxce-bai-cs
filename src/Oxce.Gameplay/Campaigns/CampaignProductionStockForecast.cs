@@ -15,9 +15,22 @@ public sealed partial class CampaignState
         long transfers = 0;
         var uncertainTransfers = false;
         var uncertainAccounting = false;
-        Dictionary<RuleHandle<CraftRuleFamily>, long>? craftCounters = null;
+        Dictionary<string, long>? craftCounters = null;
         HashSet<RuleHandle<CraftRuleFamily>>? uncertainCraftCounters = null;
         var accounting = new AccountingState(_funds[^1], _incomes[^1], _expenditures[^1]);
+        var tracksSoldierCounter = false;
+        if (rules.Crafts.TryGet("STR_SOLDIER", out var soldierCraft))
+            foreach (var owner in _bases)
+            {
+                if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                foreach (var project in owner.Productions)
+                {
+                    var rule = rules.Manufacture[project.Rule].Value;
+                    work += 1L + rule.ProducedMaterials.Count;
+                    if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    tracksSoldierCounter |= rule.ProducedMaterials.Any(material => material.Craft == soldierCraft && material.Quantity > 0);
+                }
+            }
         foreach (var owner in _bases)
         {
             if (owner.Productions.Count == 0) continue;
@@ -53,11 +66,13 @@ public sealed partial class CampaignState
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
                 var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
-                var supported = deterministicRandom && (rule.SpawnedPersonType is "" or "STR_SCIENTIST" or "STR_ENGINEER");
+                var supported = deterministicRandom;
                 if (!supported)
                 {
                     foreach (var material in rule.ProducedMaterials)
                         if (material.Craft is { } craft) (uncertainCraftCounters ??= []).Add(craft);
+                    if (tracksSoldierCounter && rule.SpawnedPersonType is not "" and not "STR_SCIENTIST" and not "STR_ENGINEER")
+                        (uncertainCraftCounters ??= []).Add(soldierCraft);
                     uncertainAccounting |= project.Sell || !final && rule.Cost > 0;
                     uncertainStocks |= rule.RequiredMaterials.Any(material => material.Quantity > 0) ||
                         rule.RandomProducedItems.Count != 0 || !project.Sell && (
@@ -109,6 +124,14 @@ public sealed partial class CampaignState
                         foreach (var item in randomItems)
                             if (ForecastProductionItemOutput(owner.Id, rules.Items.GetRequired(item.Key), item.Value, crafts, stocks, ref work) is { } randomReason)
                                 return randomReason;
+                    if (tracksSoldierCounter && rule.SpawnedPersonType is not "" and not "STR_SCIENTIST" and not "STR_ENGINEER")
+                    {
+                        if (uncertainCraftCounters?.Contains(soldierCraft) == true)
+                            return "Craft production requires other production identity forecasts.";
+                        craftCounters ??= new(StringComparer.Ordinal);
+                        if (ForecastProducedSoldierCounter(craftCounters, researchCounters, highest, ref work) is { } soldierReason)
+                            return soldierReason;
+                    }
                     completed++;
                     if (personnel) personnelBirths++;
                     if (!project.Infinite && Produced(project) + (long)completed >= project.Amount) break;
