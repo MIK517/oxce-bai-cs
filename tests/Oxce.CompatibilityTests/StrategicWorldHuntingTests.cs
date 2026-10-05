@@ -1522,6 +1522,123 @@ public sealed class StrategicWorldHuntingTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void QueuedAutomaticDiscoveryKeepsNativeOrderAndAtomicHuntBoundary(bool cache, bool close)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchQueuedRows"))
+        {
+            var lateId = row[0].GetBoolean() ? "QUEUED_A_LATE" : "QUEUED_Z_LATE";
+            var content = Load(cache, $"crafts: [{{type: QUEUED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: QUEUED_SOURCE, cost: 1}}, {{name: QUEUED_DISABLER, cost: 0, dependencies: [QUEUED_SOURCE], disables: [{lateId}], listOrder: 901}}, {{name: {lateId}, cost: 0, dependencies: [QUEUED_SOURCE], disables: [QUEUED_HELD], listOrder: 900}}, {{name: QUEUED_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: QUEUED_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "QUEUED_HUNT",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING",
+                    Fuel = 60,
+                    Weapons = [],
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3
+                },
+            }) with
+            { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(),
+                    Facilities = [.. initial.Bases[0].Facilities, new("QUEUED_LAB", 1, 1, 0, 0, false, false, false)],
+                    Research = [new("QUEUED_SOURCE", 1, 0, 1), new("QUEUED_HELD", 0, 0, 100)],
+                }],
+                World = initial.World with { Ufos = [initial.World.Ufos[0] with { Longitude = close ? 0.45 : 0.4, Latitude = close ? 0.21 : 0.2 }] },
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "queued-stocks-before.sav");
+            if (close)
+            {
+                AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                continue;
+            }
+            Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            Assert.Equal(row[1].GetBoolean(), after.CompletedResearch.Contains(lateId));
+            Assert.Equal(row[2].GetInt32(), after.ResearchRuleStatus.GetValueOrDefault(lateId));
+            Assert.Equal(row[3].GetInt32() != 0, after.World.Ufos[0].Hunting);
+            Assert.Equal(99, after.Bases[0].Crafts.Single(craft => craft.RuleId == "QUEUED_HUNT").Logistics!.Fuel);
+            Assert.Empty(after.Bases[0].Research);
+            Reload(content, campaign, 81, "queued-stocks-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AutomaticDiscoveryUsesNativeUtf8MapOrderIndependentOfListOrder(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        const string first = "\uE000";
+        const string second = "\U00010000";
+        var content = Load(cache, $"research: [{{name: UNICODE_SOURCE, cost: 1}}, {{name: '{second}', cost: 0, dependencies: [UNICODE_SOURCE], listOrder: 1}}, {{name: '{first}', cost: 0, dependencies: [UNICODE_SOURCE], disables: ['{second}'], listOrder: 999}}]\nfacilities: [{{type: UNICODE_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var initial = HuntingSnapshot(content) with { World = new(), Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Facilities = [.. initial.Bases[0].Facilities, new("UNICODE_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("UNICODE_SOURCE", 1, 0, 1)],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "unicode-research-before.sav");
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchUnicodeRows"))
+        {
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { after.CompletedResearch.Contains(second), after.ResearchRuleStatus.GetValueOrDefault(second) });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+        }
+        Reload(content, campaign, 81, "unicode-research-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProtectedDiscoveryWorkLimitStopsBeforeHunterTickMutation(bool cache)
+    {
+        var topics = Enumerable.Range(0, 1100).Select(index => $"BOUNDED_CHILD_{index}").ToArray();
+        var automatic = string.Join(", ", topics.Select(id => $"{{name: {id}, cost: 0, requires: [BOUNDED_GATE]}}"));
+        var content = Load(cache, $"crafts: [{{type: BOUNDED_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: BOUNDED_SOURCE, cost: 1, spawnedItem: SUPPLY, unlocks: [{string.Join(", ", topics)}]}}, {{name: BOUNDED_GATE, cost: 1}}, {automatic}]\nfacilities: [{{type: BOUNDED_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "BOUNDED_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3
+            },
+        }) with
+        { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Items = new Dictionary<string, int>(),
+            Facilities = [.. initial.Bases[0].Facilities, new("BOUNDED_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("BOUNDED_SOURCE", 1, 0, 1)],
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO retargeting exceeds the supported work limit.");
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {

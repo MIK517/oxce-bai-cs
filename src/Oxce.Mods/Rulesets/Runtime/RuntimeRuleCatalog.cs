@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text;
 using Oxce.Mods.Resources;
 
 namespace Oxce.Mods.Rulesets.Runtime;
@@ -65,6 +66,10 @@ public sealed class RuntimeRuleCatalog
         Commendations = commendations;
         Skills = skills;
         Research = research;
+        var byteOrder = Comparer<byte[]>.Create(static (left, right) => left.AsSpan().SequenceCompareTo(right));
+        ResearchInMapOrder = Array.AsReadOnly(research.Rules
+            .Select(static entry => (Entry: entry, Key: Encoding.UTF8.GetBytes(entry.Id)))
+            .OrderBy(static pair => pair.Key, byteOrder).Select(static pair => pair.Entry).ToArray());
         Manufacture = manufacture;
         Events = events;
         Ufos = ufos;
@@ -96,6 +101,8 @@ public sealed class RuntimeRuleCatalog
     public RuntimeRuleFamily<CommendationRuleFamily, RuntimeCommendationRule> Commendations { get; }
     public RuntimeRuleFamily<SkillRuleFamily, RuntimeIdentityRule> Skills { get; }
     public RuntimeRuleFamily<ResearchRuleFamily, RuntimeResearchRule> Research { get; }
+    /// <summary>SavedGame::getAvailableResearchProjects iterates the UTF-8 std::map, independently of listOrder.</summary>
+    public IReadOnlyList<RuntimeRule<RuntimeResearchRule>> ResearchInMapOrder { get; }
     public RuntimeRuleFamily<ManufactureRuleFamily, RuntimeManufactureRule> Manufacture { get; }
     public RuntimeRuleFamily<EventRuleFamily, RuntimeEventRule> Events { get; }
     public RuntimeRuleFamily<UfoRuleFamily, RuntimeUfoRule> Ufos { get; }
