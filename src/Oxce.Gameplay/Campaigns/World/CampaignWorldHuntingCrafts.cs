@@ -31,6 +31,7 @@ internal sealed partial class CampaignWorld
             }
         }
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+        Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseStocks = [];
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
@@ -53,6 +54,16 @@ internal sealed partial class CampaignWorld
                 ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayChangeStocks,
                     researchStocks?.Arrivals.GetValueOrDefault(owner.Id), ref work) is { } inputReason)
                 return inputReason;
+            if (stocks is not null) baseStocks.Add(owner.Id, stocks);
+        }
+        if (highest >= CampaignTimeTrigger.OneHour &&
+            campaign.ProductionPreflight.ForecastStocks(_huntingCraftSources, baseStocks,
+                researchStocks?.NextTransferId, researchMayChangeStocks, ref work) is { } productionReason)
+            return productionReason;
+        foreach (var owner in campaign.BaseStates)
+        {
+            var sources = _huntingCraftSources[owner.Id];
+            var stocks = baseStocks.GetValueOrDefault(owner.Id);
             foreach (var craft in sources)
             {
                 if (ForecastHuntingCraftState(owner, craft, highest, stocks, out var state) is { } reason) return reason;

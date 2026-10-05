@@ -1,8 +1,13 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Campaigns;
 
-/// <summary>Production-owned bounds for IDs allocated before world creation.</summary>
+/// <summary>Production-owned hourly stock projections and ID bounds before world creation.</summary>
 internal interface ICampaignProductionPreflight
 {
+    string? ForecastStocks(IReadOnlyDictionary<int, List<CampaignState.CraftState>> crafts,
+        IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
+        int? nextResearchTransferId, bool uncertainResearch, ref long work);
     (long Minimum, long Maximum) CraftCounter(string name, CampaignTimeTrigger highest,
         (long Minimum, long Maximum) before);
 }

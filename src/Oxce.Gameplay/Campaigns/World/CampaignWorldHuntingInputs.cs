@@ -124,30 +124,6 @@ internal sealed partial class CampaignWorld
                     return "Craft service capacity exceeds the supported range.";
                 sources[index] = craft with { Logistics = CraftServicing.ReuseItem(craft.Logistics, rule, rules, item) };
             }
-        foreach (var production in owner.Productions)
-        {
-            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-            var rule = rules.Manufacture[production.Rule].Value;
-            if ((long)production.Spent + production.Assigned > int.MaxValue)
-                return "Production progress exceeds the supported range.";
-            if (rule.Time < 0) return "Production rule contains an unsupported negative value.";
-            // Existing units were paid when started. Without a completion, non-fallback
-            // projects cannot consume or deliver stocks/craft during this hour.
-            if (!production.IsFallback && ProductionProgress.Requested(rule.Time, production.Spent,
-                production.Assigned, production.Amount, production.Infinite) == 0) continue;
-            work += rule.RequiredMaterials.Count * (long)sources.Count + rule.ProducedMaterials.Count + sources.Count;
-            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-            if (rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Craft is { } type && sources.Any(craft =>
-                    craft.Rule == type && craft.Logistics?.Status != "STR_OUT")))
-                return "UFO retargeting requires production craft-consumption forecasts.";
-            if (fuelItems.Count != 0) return "UFO retargeting requires production fuel-stock forecasts.";
-            foreach (var craft in sources)
-                if (craft.Logistics is { Status: "STR_REFUELLING" or "STR_READY" } state &&
-                    state.Weapons.Any(weapon => weapon is { Disabled: false } &&
-                        rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value is { Clip.Length: > 0 } weaponRule &&
-                        weapon.Ammo < weaponRule.AmmoMaximum))
-                    return "UFO retargeting requires same-tick craft ammunition reuse forecasts.";
-        }
         return null;
     }
 }

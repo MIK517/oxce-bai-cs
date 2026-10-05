@@ -8,6 +8,7 @@ internal sealed record DailyResearchStockForecast(
     IReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>> Arrivals)
 {
     public string? UnavailableReason { get; init; }
+    public int? NextTransferId { get; init; }
 }
 
 public sealed partial class CampaignState
@@ -168,6 +169,7 @@ public sealed partial class CampaignState
             }
         }
         var arrivalCount = arrivals.Values.Sum(items => (long)items.Count);
+        int? nextTransfer = null;
         if (arrivalCount != 0)
         {
             work += _bases.Sum(owner => (long)owner.Transfers.Count);
@@ -177,11 +179,13 @@ public sealed partial class CampaignState
                 forecast = EmptyResearchStockForecast with { UnavailableReason = "Research arrivals exhaust the transfer identity range." };
                 return false;
             }
+            nextTransfer = (int)((long)NextTransferId() + arrivalCount);
         }
         forecast = new(new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(changes.ToDictionary(
             pair => pair.Key, pair => (IReadOnlyDictionary<string, int>)new ReadOnlyDictionary<string, int>(pair.Value))),
             new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(arrivals.ToDictionary(
-                pair => pair.Key, pair => (IReadOnlyList<KeyValuePair<string, int>>)pair.Value.AsReadOnly())));
+                pair => pair.Key, pair => (IReadOnlyList<KeyValuePair<string, int>>)pair.Value.AsReadOnly())))
+        { NextTransferId = nextTransfer };
         return true;
 
         void Refund(int baseId, RuntimeResearchRule rule)
