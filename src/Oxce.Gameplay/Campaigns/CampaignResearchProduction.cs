@@ -479,6 +479,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     if (units == 0) continue;
                     if (!scoreCapacity.Reserve(manufacture.Points, manufacture.Points, units))
                         return "Research and production scores exceed the supported range.";
+                    if (ReserveProductionHistory(production, manufacture, units, ref work) is { } historyReason) return historyReason;
                     var starts = units - (!production.Infinite && ProductionProgress.Produced(manufacture.Time,
                         production.Spent + assignments[index], production.Amount) >= production.Amount ? 1 : 0);
                     if (!accountingCapacity.Reserve(-manufacture.Cost, -manufacture.Cost, starts))

@@ -10,7 +10,7 @@ public sealed partial class CampaignState
         int? nextResearchTransferId, bool uncertainResearch, CampaignTimeTrigger highest, ref long work)
     {
         var rules = _content.RuntimeRules;
-        List<(BaseState Owner, ProductionState Project, int Units)> planned = [];
+        List<(BaseState Owner, ProductionState Project, int Units, IReadOnlyDictionary<string, int>? RandomItems)> planned = [];
         long transfers = 0;
         var uncertainTransfers = false;
         var uncertainAccounting = false;
@@ -37,13 +37,15 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var supported = rule.RandomProducedItems.Count == 0 && rule.SpawnedPersonType.Length == 0 &&
+                var deterministicRandom = TryForecastRandomProduction(rule, out var randomItems, ref work);
+                if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                var supported = deterministicRandom && rule.SpawnedPersonType.Length == 0 &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
                 {
                     uncertainAccounting |= project.Sell || !final && rule.Cost > 0;
                     uncertainStocks |= rule.RequiredMaterials.Any(material => material.Quantity > 0) ||
-                        !project.Sell && (rule.RandomProducedItems.Count != 0 ||
+                        rule.RandomProducedItems.Count != 0 || !project.Sell && (
                             (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0) &&
                             rule.ProducedMaterials.Any(material => material.Item is not null));
                     var itemDelay = rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0;
@@ -77,6 +79,10 @@ public sealed partial class CampaignState
                         if (ForecastProductionSale(rule, ref accounting, ref work) is { } saleReason) return saleReason;
                     }
                     else if (ForecastProductionItemOutputs(owner.Id, rule, crafts, stocks, ref work) is { } outputReason) return outputReason;
+                    if (randomItems is not null && (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0))
+                        foreach (var item in randomItems)
+                            if (ForecastProductionItemOutput(owner.Id, rules.Items.GetRequired(item.Key), item.Value, crafts, stocks, ref work) is { } randomReason)
+                                return randomReason;
                     completed++;
                     if (!project.Infinite && Produced(project) + (long)completed >= project.Amount) break;
                     if (rule.Cost > 0 && accounting.Funds < rule.Cost ||
@@ -110,9 +116,9 @@ public sealed partial class CampaignState
                     }
                     accounting = nextAccounting;
                 }
-                planned.Add((owner, project, completed));
-                if (!project.Sell && rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0)
-                    transfers += completed * (long)rule.ProducedMaterials.Count(material => material.Item is not null);
+                planned.Add((owner, project, completed, randomItems));
+                if (rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0)
+                    transfers += completed * (long)((project.Sell ? 0 : rule.ProducedMaterials.Count(material => material.Item is not null)) + (randomItems?.Count ?? 0));
             }
         }
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, long>> incoming = [];
@@ -130,18 +136,25 @@ public sealed partial class CampaignState
                 }
                 incoming.Add(owner.Id, quantities);
             }
-            foreach (var (owner, project, units) in planned)
+            foreach (var (owner, project, units, randomItems) in planned)
             {
-                if (project.Sell) continue;
                 var rule = rules.Manufacture[project.Rule].Value;
                 if (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0) continue;
-                foreach (var material in rule.ProducedMaterials)
+                if (!project.Sell) foreach (var material in rule.ProducedMaterials)
                 {
                     if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                     if (material.Item is not { } item) continue;
                     var quantity = incoming[owner.Id].GetValueOrDefault(item) + units * (long)material.Quantity;
                     if (quantity > int.MaxValue) return "Production arrivals exceed the supported quantity range.";
                     incoming[owner.Id][item] = quantity;
+                }
+                if (randomItems is not null) foreach (var item in randomItems)
+                {
+                    if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                    var handle = rules.Items.GetRequired(item.Key);
+                    var quantity = incoming[owner.Id].GetValueOrDefault(handle) + units * (long)item.Value;
+                    if (quantity > int.MaxValue) return "Production arrivals exceed the supported quantity range.";
+                    incoming[owner.Id][handle] = quantity;
                 }
             }
         }
@@ -213,25 +226,48 @@ public sealed partial class CampaignState
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks, ref long work)
     {
         if (rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0) return null;
-        var rules = _content.RuntimeRules;
         foreach (var material in rule.ProducedMaterials)
         {
             if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
             if (material.Item is not { } item) continue;
-            var quantity = (long)stocks[ownerId].GetValueOrDefault(item) + material.Quantity;
-            if (quantity > int.MaxValue) return "Production outputs exceed the supported stock range.";
-            stocks[ownerId][item] = (int)quantity;
-            if (rules.Items[item].Value.BattleType != 0) continue;
-            var sources = crafts[ownerId];
-            work += sources.Count;
-            if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-            for (var index = 0; index < sources.Count; index++)
-            {
-                var craft = sources[index];
-                var state = CraftServicing.ReuseItem(craft.Logistics!, rules.Crafts[craft.Rule].Value, rules, item);
-                if (!ReferenceEquals(state, craft.Logistics)) sources[index] = craft with { Logistics = state };
-            }
+            if (ForecastProductionItemOutput(ownerId, item, material.Quantity, crafts, stocks, ref work) is { } reason) return reason;
         }
         return null;
+    }
+
+    private string? ForecastProductionItemOutput(int ownerId, RuleHandle<ItemRuleFamily> item, int added,
+        IReadOnlyDictionary<int, List<CraftState>> crafts,
+        IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks, ref long work)
+    {
+        if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+        var rules = _content.RuntimeRules;
+        var quantity = (long)stocks[ownerId].GetValueOrDefault(item) + added;
+        if (quantity > int.MaxValue) return "Production outputs exceed the supported stock range.";
+        stocks[ownerId][item] = (int)quantity;
+        if (rules.Items[item].Value.BattleType != 0) return null;
+        var sources = crafts[ownerId];
+        work += sources.Count;
+        if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+        for (var index = 0; index < sources.Count; index++)
+        {
+            var craft = sources[index];
+            var state = CraftServicing.ReuseItem(craft.Logistics!, rules.Crafts[craft.Rule].Value, rules, item);
+            if (!ReferenceEquals(state, craft.Logistics)) sources[index] = craft with { Logistics = state };
+        }
+        return null;
+    }
+
+    private static bool TryForecastRandomProduction(RuntimeManufactureRule rule, out IReadOnlyDictionary<string, int>? items, ref long work)
+    {
+        items = null;
+        foreach (var set in rule.RandomProducedItems)
+        {
+            work += 1L + set.Items.Count;
+            if (work > 1_000_000) return false;
+            if (set.Weight == 0) continue;
+            if (items is null) items = set.Items;
+            else if (!items.SequenceEqual(set.Items)) return false;
+        }
+        return true;
     }
 }

@@ -62,6 +62,10 @@ if ($deliveryStart -lt 0 -or $deliveryEnd -le $deliveryStart) { throw 'Missing f
 $delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart).TrimEnd()
 $delivery = $delivery.Substring(0, $delivery.LastIndexOf('}')).TrimEnd()
 $template = $template.Replace('// PRODUCTION_DELIVERY', $delivery)
+$randomStart = $production.IndexOf('if (!_rules->getRandomProducedItems().empty())', $deliveryEnd, [StringComparison]::Ordinal)
+$randomEnd = $production.IndexOf('// Spawn persons', $randomStart, [StringComparison]::Ordinal)
+if ($randomStart -lt 0 -or $randomEnd -le $randomStart) { throw 'Missing random production delivery fragment.' }
+$template = $template.Replace('// PRODUCTION_RANDOM_DELIVERY', $production.Substring($randomStart, $randomEnd - $randomStart))
 $scoreStart = $production.IndexOf('if (_rules->getPoints() != 0)', [StringComparison]::Ordinal)
 $scoreEnd = $production.IndexOf('count++;', $scoreStart, [StringComparison]::Ordinal)
 if ($scoreStart -lt 0 -or $scoreEnd -le $scoreStart) { throw 'Missing production score fragment.' }
