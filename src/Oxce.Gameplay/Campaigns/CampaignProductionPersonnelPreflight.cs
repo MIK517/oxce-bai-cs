@@ -40,9 +40,12 @@ public sealed partial class CampaignState
                 possible += births * _bases.Count;
             }
         }
-        if (possible > 100_000) return "Production personnel arrivals exceed the supported population limit.";
         work += _bases.Sum(owner => owner.Transfers.Count + (long)owner.Productions.Count + owner.Research.Count);
         if (work > 1_000_000) return "Production arrivals exceed the supported work limit.";
+        // Reserve against the whole saved population. Do not rely on current
+        // arrivals/notification cleanup creating capacity before later hooks.
+        if (possible + _bases.Sum(owner => (long)owner.Transfers.Count) > 100_000)
+            return "Production personnel arrivals exceed the supported population limit.";
         return possible > int.MaxValue - (long)NextTransferId()
             ? "Production arrivals exhaust the transfer identity range." : null;
     }
