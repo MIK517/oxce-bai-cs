@@ -58,7 +58,7 @@ internal sealed partial class CampaignWorld
         foreach (var saved in _ufos)
             if (UfoForFlight(saved, highest).Escorting)
             {
-                work += 4L * _ufos.Count * _ufos.Count;
+                work += 4L * _ufos.Count * _ufos.Count + (long)_ufos.Count * _missions.Count;
                 break;
             }
         if (work > MaximumAlienBaseChecks)

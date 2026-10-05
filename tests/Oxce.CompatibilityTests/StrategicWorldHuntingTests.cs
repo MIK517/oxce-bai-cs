@@ -13,6 +13,39 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EscortPrefixesChargeMissionLookupsBeforeMutation(bool cache)
+    {
+        var content = Load(cache);
+        var initial = HuntingSnapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = Enumerable.Range(0, 5001).Select(index => initial.World.Missions[0] with
+                { Id = 4 + index, LiveUfos = index == 5000 ? 200 : 0 }).ToArray(),
+                Ufos = Enumerable.Range(0, 200).Select(index => initial.World.Ufos[0] with
+                {
+                    UniqueId = 9 + index,
+                    Id = 3 + index,
+                    MissionId = 5004,
+                    HunterKiller = false,
+                    Status = index == 199 ? UfoStatus.Flying : UfoStatus.Landed,
+                    Altitude = index == 199 ? WorldAltitudes.High : WorldAltitudes.Ground,
+                    SecondsRemaining = 5,
+                    Escorting = index == 199,
+                    OriginalWaypoint = index == 199 ? new(1, 0.6) : null,
+                    Destination = index == 199 ? new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 201, 0.4, 0.2) { UniqueId = 207 }
+                        : initial.World.Ufos[0].Destination,
+                }).ToArray(),
+            }
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO escort movement exceeds the supported work limit.");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
