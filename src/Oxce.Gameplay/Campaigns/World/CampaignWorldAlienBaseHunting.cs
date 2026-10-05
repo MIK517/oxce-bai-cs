@@ -5,6 +5,19 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private const string HuntGenerationReason = "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.";
+    private long? _baseHuntingCraftPopulationBound;
+
+    private string? BaseHuntingPopulationReason(CampaignTimeTrigger highest, ref long work, string boundary)
+    {
+        if (_baseHuntingCraftPopulationBound is null)
+        {
+            if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref work, out var population) is { } reason)
+                return reason;
+            _baseHuntingCraftPopulationBound = population;
+        }
+        work += campaign.BaseStates.Count + _baseHuntingCraftPopulationBound.Value;
+        return work > MaximumAlienBaseChecks ? boundary : null;
+    }
 
     private string? AlienBaseHuntingReason(AlienBaseSnapshot alienBase, RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest, ref long work, out bool canGenerate)
     {
@@ -13,7 +26,7 @@ internal sealed partial class CampaignWorld
         if (alienBase.MinutesSinceLastHuntMissionGeneration > int.MaxValue - 10)
             return "Alien base hunting timer exceeds the supported range.";
         if (alienBase.MinutesSinceLastHuntMissionGeneration + 10 < deployment.HuntMissionMaxFrequency) return null;
-        if (deployment.BaseDetectionChance <= 0) return null;
+        if (deployment.BaseDetectionChance <= 0) return BaseHuntingPopulationReason(highest, ref work, AlienBaseWorkReason);
         foreach (var owner in campaign.BaseStates)
         {
             work += owner.Crafts.Count;
@@ -33,7 +46,8 @@ internal sealed partial class CampaignWorld
                     {
                         if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                             return forecastReason;
-                        var forecast = _huntingCraftForecast!.GetValueOrDefault((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
+                        if (!_huntingCraftForecast!.TryGetValue((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id), out var forecast))
+                            continue;
                         if (WorldAlienBaseHunting.Eligible(forecast, rule.Undetectable,
                                 CraftLogistics.EffectiveDamageMaximum(forecast, rule, campaign.Content.RuntimeRules),
                                 alienBase.Position, deployment.BaseDetectionRange) &&
@@ -51,7 +65,8 @@ internal sealed partial class CampaignWorld
                 {
                     if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                         return forecastReason;
-                    projected = _huntingCraftForecast![(campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id)];
+                    if (!_huntingCraftForecast!.TryGetValue((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id), out projected))
+                        continue;
                 }
                 else projected = AdvanceCraftFuel(owner, craft, state);
                 if (!WorldAlienBaseHunting.Eligible(projected, rule.Undetectable, maximum,

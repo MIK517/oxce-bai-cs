@@ -580,15 +580,18 @@ public sealed class StrategicObjectiveBaseSpawnTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void NewBaseHuntingUsesRelaunchedHiddenLeaderSpeedForItsEscort(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NewBaseHuntingUsesRelaunchedHiddenLeaderSpeedForItsEscort(bool cache, bool consumed)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
         var content = LoadWorld(cache, hunting: true, huntingMission: "NEW_BASE_SUPPLY", extra:
-            "crafts: [{type: OBJECTIVE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: OBJECTIVE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n");
-        var initial = Initial(content);
+            "crafts: [{type: OBJECTIVE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: OBJECTIVE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n",
+            extraManufacture: consumed ? "- {name: CONSUME_OBJECTIVE_ESCORT, time: 1, requiredItems: {OBJECTIVE_ESCORT: 0}, producedItems: {SUPPLY: 0}}" : "");
+        var initial = Initial(content) with { Time = new(1, 1, 1, 1999, 1, consumed ? 59 : 29, 55) };
         var owner = initial.Bases[0];
         var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
         var leader = template with
@@ -625,8 +628,24 @@ public sealed class StrategicObjectiveBaseSpawnTests
             }
         };
         initial = initial with { Bases = [owner with { Crafts = [leader, escort], Soldiers = [] }] };
+        if (consumed) initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            { Facilities = [.. owner.Facilities, new("BASE_MARKER_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("CONSUME_OBJECTIVE_ESCORT", 1, 0, 2, false, false, false, new Dictionary<string, int>())] }]
+        };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "objective-escort-before.sav");
-        AssertTimeBlocked(campaign, "New base hunting supply waves require a live source forecast.");
+        if (!consumed) AssertTimeBlocked(campaign, "New base hunting supply waves require a live source forecast.");
+        else
+        {
+            using var deleted = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+            Assert.NotEmpty(TestFixtures.Rows(deleted.RootElement, "deletedCraftFollowerRows"));
+            AdvanceUnblocked(campaign, 1);
+            Assert.DoesNotContain(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "OBJECTIVE_ESCORT");
+            Assert.Empty(campaign.Capture().World.Missions);
+            Assert.Equal(100, Assert.Single(campaign.Capture().World.AlienBases).MinutesSinceLastHuntMissionGeneration);
+            Reload(content, campaign, 17, "objective-consumed-escort-after.sav");
+        }
     }
 
     [Theory]
