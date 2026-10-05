@@ -15,6 +15,59 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldEscortEnduranceTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void EscortChainCleanupRepairsOnlyDirectFollowersAcrossReloads(bool cache, bool reverse)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache);
+        var initial = Ring(content, 4, reverse);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Ufos = initial.World.Ufos.Select(ufo => ufo with
+                {
+                    Longitude = 0.4,
+                    Latitude = 0.2,
+                    TrajectoryPoint = content.RuntimeRules.UfoTrajectories[
+                    content.RuntimeRules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value.Waypoints.Count - 1,
+                    Escorting = ufo.UniqueId != 9,
+                    OriginalWaypoint = ufo.UniqueId != 9 ? new(0.400001, 0.2) : null,
+                    Destination = ufo.UniqueId == 9 ? WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2))
+                    : new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, ufo.Id - 1, 0.4, 0.2) { UniqueId = ufo.UniqueId - 1 },
+                }).ToArray()
+            },
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-deletion-before.sav");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "deletedUfoChainRows"))
+        {
+            AdvanceOne(campaign); // Terminal arrival retains the dead actor and skips subsequent movement/cleanup.
+            Assert.Contains(campaign.Capture().World.Ufos, ufo => ufo.Status == UfoStatus.Destroyed);
+            campaign = Reload(content, campaign, 81, "escort-terminal.sav");
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            Assert.Equal(4 - row[0].GetInt32(), Assert.Single(after.World.Missions).LiveUfos);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { row[0].GetInt32() }.Concat(
+                after.World.Ufos.OrderBy(ufo => ufo.UniqueId).Select(ufo => (object)new object[]
+                {
+                    ufo.UniqueId, ufo.Escorting, ufo.OriginalWaypoint is not null,
+                    ufo.Destination!.UniqueId, ufo.Speed,
+                    ufo.Destination.Kind == WorldTargetKind.Ufo ? 0 : ufo.Destination.Longitude,
+                    ufo.Destination.Kind == WorldTargetKind.Ufo ? 0 : ufo.Destination.Latitude,
+                })).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            campaign = Reload(content, campaign, 81, "escort-deletion-after.sav");
+        }
+        AdvanceUnblocked(campaign, 2);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.Equal(0, Assert.Single(campaign.Capture().World.Missions).LiveUfos);
+        Reload(content, campaign, 81, "escort-deletion-empty.sav");
+    }
+
     [Fact]
     public void PopulatedEscortTicksRecordColdAndWarmAllocationCosts()
     {
