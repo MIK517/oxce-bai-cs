@@ -8,7 +8,7 @@ internal interface ICampaignProductionPreflight
     string? ForecastStocks(IReadOnlyDictionary<int, List<CampaignState.CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
         int? nextResearchTransferId, bool uncertainResearch, CampaignTimeTrigger highest, ref long work);
-    string? CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work);
+    string? CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work, out IReadOnlySet<string> types);
     (long Minimum, long Maximum) CraftCounter(string name, CampaignTimeTrigger highest,
         (long Minimum, long Maximum) before);
 }
@@ -17,9 +17,11 @@ public sealed partial class CampaignState
 {
     internal ICampaignProductionPreflight ProductionPreflight => _handlers.Operation<ICampaignProductionPreflight>();
 
-    string? ICampaignProductionPreflight.CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work)
+    string? ICampaignProductionPreflight.CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work, out IReadOnlySet<string> types)
     {
+        types = System.Collections.Frozen.FrozenSet<string>.Empty;
         if (highest < CampaignTimeTrigger.OneHour) return null;
+        HashSet<string>? possibleTypes = null;
         const string reason = "Craft target removal exceeds the supported work limit.";
         long actors = ufos, removals = 0;
         var rules = _content.RuntimeRules;
@@ -37,13 +39,18 @@ public sealed partial class CampaignState
                 var starts = units - (!project.Infinite && ProductionProgress.Produced(rule.Time,
                     project.Spent + assignments[index], project.Amount) >= project.Amount && units != 0 ? 1 : 0);
                 foreach (var material in rule.RequiredMaterials)
-                    if (material.Craft is not null) removals += starts;
+                    if (material.Craft is { } craft && starts > 0)
+                    {
+                        removals += starts;
+                        (possibleTypes ??= new(StringComparer.Ordinal)).Add(rules.Crafts.GetExternalId(craft));
+                    }
                 foreach (var material in rule.ProducedMaterials)
                     if (material.Craft is not null) actors = Math.Min(1_000_001, actors + Math.Min(1_000_001, units * (long)material.Quantity));
             }
         }
         if (removals != 0 && (actors > 1_000_000 || removals > (1_000_000 - work) / Math.Max(1, actors))) return reason;
         work += removals * actors;
+        if (possibleTypes is not null) types = possibleTypes;
         return null;
     }
 

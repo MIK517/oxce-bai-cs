@@ -744,6 +744,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         RuntimeManufactureRule rule, out IReadOnlyList<ProductionMaterialConsumption> plan, out string reason)
     {
         var result = new List<ProductionMaterialConsumption>();
+        List<ProductionMaterialConsumption>? craftPlan = null;
         foreach (var material in rule.RequiredMaterials)
         {
             if (material.Item is { } item)
@@ -774,10 +775,11 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 reason = "Required craft material has unresolved logistics state.";
                 return false;
             }
-            result.Add(new(material.Id, 1, null, selected));
+            (craftPlan ??= []).Add(new(material.Id, 1, null, selected));
         }
-        // startItem consumes every item before unloading any craft.
-        result.Sort(static (left, right) => (left.Item is null).CompareTo(right.Item is null));
+        // startItem consumes every item before unloading any craft, preserving
+        // reference material order within both groups.
+        if (craftPlan is not null) result.AddRange(craftPlan);
         plan = result;
         reason = string.Empty;
         return true;
