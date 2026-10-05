@@ -269,6 +269,8 @@ public static class RuntimeRuleLinker
                 Purchase = new(rule.Value.Values.GetInteger("monthlyBuyLimit"), rule.Value.Values.GetString("monthlyBuyLimitMessage"),
                     rule.Value.Values.GetString("requiresBuyCountry"), rule.Value.RequiredBuyBaseFunctions, rule.Value.BuyRequirements),
                 IsAlien = rule.Value.Values.Boolean("liveAlien"),
+                Recoverable = rule.Value.Values.Boolean("recover"),
+                CorpseRecoverable = rule.Value.Values.Boolean("recoverCorpse"),
                 VehicleFixedAmmoSlot = rule.Value.Values.GetInteger("vehicleFixedAmmoSlot"),
                 VehicleArmor = rule.Value.Values.Boolean("fixedWeapon") && content.PersonnelTactical.Units.TryGet(rule.Id, out var vehicleUnit)
                     ? OptionalRuntime(armorHandles, vehicleUnit!.Value.Strings["armor"]) : null,
@@ -288,6 +290,7 @@ public static class RuntimeRuleLinker
             {
                 Type = rule.Id,
                 Group = rule.Value.Integers["group"],
+                CorpseGeoscape = OptionalItem(itemHandles, rule.Value.Strings["corpseGeo"]),
                 Stats = rule.Value.Stats.Values,
                 Vision = new(
                     rule.Value.Integers["visibilityAtDark"],
@@ -370,6 +373,7 @@ public static class RuntimeRuleLinker
             BuildFamily<UnitRuleFamily, UnitRule, RuntimeUnitRule>(generation,
                 content.PersonnelTactical.Units, rule => new(rule.Id)
                 {
+                    Armor = RequiredRule(armorHandles, rule.Value.Strings["armor"], "units", rule, "armor"),
                     SpawnUnit = OptionalRequired(unitHandles, rule.Value.Strings["spawnUnit"], "units", rule, "spawnUnit"),
                     LiveAlien = rule.Value.Strings["liveAlien"] == "\0"
                         ? OptionalItem(itemHandles, rule.Id)

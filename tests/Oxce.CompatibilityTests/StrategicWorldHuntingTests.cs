@@ -2960,6 +2960,43 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CorpseRuntimeProjectionsAndSavedOptionKeepFreshCacheSemantics(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchCorpseRows").GroupBy(row => (Recover: row[6].GetBoolean(), Corpse: row[7].GetBoolean())))
+        {
+            var content = Load(cache, $"items: [{{type: CORPSE_OUTPUT, recover: {group.Key.Recover.ToString().ToLowerInvariant()}, recoverCorpse: {group.Key.Corpse.ToString().ToLowerInvariant()}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nunits: [{{type: CORPSE_TOPIC, armor: CORPSE_ARMOR}}]\n");
+            var rules = content.RuntimeRules;
+            var armor = rules.Armors[rules.Units[rules.Units.GetRequired("CORPSE_TOPIC")].Value.Armor!.Value].Value;
+            var item = rules.Items[armor.CorpseGeoscape!.Value].Value;
+            Assert.Equal("CORPSE_OUTPUT", item.Type);
+            Assert.Equal(group.Key.Recover, item.Recoverable);
+            Assert.Equal(group.Key.Corpse, item.CorpseRecoverable);
+            var initial = HuntingSnapshot(content);
+            Assert.False(initial.Options.RetainCorpses);
+            foreach (var retain in new[] { false, true })
+            {
+                var campaign = CampaignState.Restore(initial with { Options = initial.Options with { RetainCorpses = retain } }, content, new SplitMix64RandomSource(81));
+                Assert.Equal(retain, Reload(content, campaign, 81, "corpse-option.sav").Options.RetainCorpses);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FixedRetainCorpsesOverridesImportedAndSavedSessionOptions(bool cache)
+    {
+        var content = Load(cache, "fixedUserOptions: {retainCorpses: 'true'}\n");
+        var initial = HuntingSnapshot(content) with { Options = new(RetainCorpses: false) };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        Assert.True(campaign.Options.RetainCorpses);
+        Assert.True(Reload(content, campaign, 81, "fixed-corpse-option.sav").Options.RetainCorpses);
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
