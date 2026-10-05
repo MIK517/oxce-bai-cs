@@ -18,6 +18,9 @@ internal sealed partial class CampaignWorld
         if (highest >= CampaignTimeTrigger.OneDay && fuelItems.Count != 0 &&
             owner.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost))
             return "UFO retargeting requires daily research fuel-stock forecasts.";
+        work += stocks.Count;
+        if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+        var serviceStocks = stocks.ToDictionary(pair => rules.Items.GetExternalId(pair.Key), pair => pair.Value, StringComparer.Ordinal);
         for (var index = 0; index < sources.Count; index++)
         {
             var craft = sources[index];
@@ -32,13 +35,25 @@ internal sealed partial class CampaignWorld
             else if (state.Status == "STR_REARMING")
             {
                 var weapon = state.Weapons.FirstOrDefault(weapon => weapon is { Rearming: true });
-                if (weapon is null) state = state with { Status = "STR_REFUELLING" };
-                else
+                try
                 {
-                    var weaponRule = rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value;
-                    if (weaponRule.Clip.Length != 0 && fuelItems.Contains(rules.Items.GetRequired(weaponRule.Clip)))
-                        return "UFO retargeting requires craft ammunition stock forecasts.";
+                    if (CraftServicing.TryForecastRearm(state, rules, serviceStocks, out var result))
+                    {
+                        state = result.State;
+                        if (result.ClipsUsed != 0)
+                        {
+                            var clip = rules.Items.GetRequired(result.Clip);
+                            stocks[clip] = stocks.GetValueOrDefault(clip) - result.ClipsUsed;
+                            serviceStocks[result.Clip] = stocks[clip];
+                        }
+                    }
+                    else if (weapon is not null &&
+                        rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.Clip is { Length: > 0 } clip &&
+                        fuelItems.Contains(rules.Items.GetRequired(clip)))
+                        return "UFO retargeting requires stochastic craft ammunition stock forecasts.";
                 }
+                catch (Exception exception) when (exception is OverflowException or InvalidDataException or ArgumentOutOfRangeException)
+                { return "Craft weapon service values exceed the supported range."; }
             }
             sources[index] = craft with { Logistics = state };
         }

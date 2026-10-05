@@ -100,6 +100,23 @@ public sealed class CraftServicingTests
     }
 
     [Fact]
+    public void RearmingForecastSharesExecutionAndDoesNotMutateInputs()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var state = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0)
+            with { Status = "STR_REARMING", Weapons = [new("FIXED", 0, true), null] };
+        var stores = new Dictionary<string, int> { ["BULKY"] = 2 };
+        var random = new SplitMix64RandomSource(7);
+        var before = random.State;
+        var executed = CraftServicing.Rearm(state, rules, stores, random);
+        Assert.True(CraftServicing.TryForecastRearm(state, rules, stores, out var forecast));
+        Assert.Equivalent(executed, forecast, strict: true);
+        Assert.Equal(before, random.State);
+        Assert.Equal(0, state.Weapons[0]!.Ammo);
+        Assert.Equal(2, stores["BULKY"]);
+    }
+
+    [Fact]
     public void AmmunitionShortageClearsOnlyFirstWeaponAndDoesNotSkipItsHour()
     {
         var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;

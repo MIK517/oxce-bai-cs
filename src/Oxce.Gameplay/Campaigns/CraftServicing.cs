@@ -6,6 +6,25 @@ namespace Oxce.Gameplay.Campaigns;
 /// <summary>Hourly maintenance from Craft.cpp and CraftWeapon.cpp at reference 4df3a5e.</summary>
 public static class CraftServicing
 {
+    /// <summary>Uses the execution transition without selecting an ammunition-saving outcome.</summary>
+    public static bool TryForecastRearm(CraftLogisticsState state, RuntimeRuleCatalog rules,
+        IReadOnlyDictionary<string, int> stores,
+        out (CraftLogisticsState State, string Clip, int ClipsUsed, bool MissingAmmo) result)
+    {
+        try { result = Rearm(state, rules, stores, ForecastRandom.Instance); return true; }
+        catch (UncertainRearmException) { result = (state, "", 0, false); return false; }
+    }
+
+    private sealed class UncertainRearmException : Exception;
+
+    private sealed class ForecastRandom : IRandomSource
+    {
+        internal static readonly ForecastRandom Instance = new();
+        public int NextExclusive(int exclusiveMaximum) => throw new UncertainRearmException();
+        public int NextInclusive(int minimum, int maximum) => throw new UncertainRearmException();
+        public double NextUnit() => throw new UncertainRearmException();
+    }
+
     /// <summary>GeoscapeState::time5Seconds and Craft::setShield, after craft movement.</summary>
     public static CraftLogisticsState RechargeGeoscapeShield(CraftLogisticsState state,
         int capacity, int recharge, IRandomSource random)

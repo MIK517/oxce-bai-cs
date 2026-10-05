@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 24472,
-      "sha256": "c0ae1f67de344bc41c830bb3a270807c7b2fc9f65d341a5f7f6cf1599db47a3c"
+      "size": 26182,
+      "sha256": "c2477a2bf7f70649ff50657c6ff38e1920a5d3b3f5b95369b7408f1335a8dad7"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 8241,
-      "sha256": "c32c12d0f61f500b38542e94acbeaacc04bb441ea10a611673b26ac0d1f698fd"
+      "size": 8411,
+      "sha256": "b513b94d1a1f5d4ea64deda7a1617e7d57faf55386d6ab223c420936e8285cc6"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",

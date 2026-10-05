@@ -8,15 +8,15 @@
 #include <string>
 namespace OpenXcom {
 using Exception = std::runtime_error;
-struct RNG { static inline int roll=0, calls=0;
+struct RNG { static inline int roll=0, calls=0, suppliedChoice=-1;
 static bool percent(int value) { ++calls; return roll < value; }
-static int generate(int,int) { ++calls; return calls % 2 == 0 ? 1 : 0; } };
+static int generate(int,int) { ++calls; return suppliedChoice >= 0 ? suppliedChoice : calls % 2 == 0 ? 1 : 0; } };
 double Nautical(double x) { return x / 60.0 * 3.14159265358979323846 / 180.0; }
 struct Target { double distance = 0, lon = 0, lat = 0; virtual ~Target() = default;
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
 struct Waypoint : Target { int id=0; int getId() const { return id; } void setId(int value) { id=value; } };
-struct Item { std::string getType() const { return "SUPPLY"; } int getClipSize() const { return 1; } };
+struct Item { int clipSize=1; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } };
 using RuleItem=Item;
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
 void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty) { count+=qty; } };
@@ -27,10 +27,11 @@ std::vector<Soldier*>* getSoldiers() { return &soldiers; }
 int getScientists() const { return scientists; } void setScientists(int value) { scientists=value; }
 int getEngineers() const { return engineers; } void setEngineers(int value) { engineers=value; } };
 struct CraftWeapon { bool rearming=false; bool isRearming() const { return rearming; }
-struct Rule { Item* clip=nullptr; int ammoMax=0; Item* getClipItem() const { return clip; } int getAmmoMax() const { return ammoMax; } } rule;
-const Rule* getRules() const { return &rule; } int rearm(int,int) { return 0; }
-int getAmmo() const { return 0; } bool isDisabled() const { return false; }
+struct Rule { Item* clip=nullptr; int ammoMax=0,rate=4; bool saving=false; int getRearmRate() const { return rate; } bool useStatisticalBulletSaving() const { return saving; } Item* getClipItem() const { return clip; } int getAmmoMax() const { return ammoMax; } } rule;
+const Rule* getRules() const { return &rule; } int _ammo=0; bool& _rearming=rearming; const Rule* _rules=&rule; int rearm(const int,const int); void setAmmo(int value) { _ammo=std::clamp(value,0,rule.ammoMax); }
+int getAmmo() const { return _ammo; } bool isDisabled() const { return false; }
 void setRearming(bool value) { rearming=value; } };
+// WEAPON_REARM
 struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
 struct Craft : MovingTarget {
 struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelItem=nullptr; int refuelRate=40;
@@ -171,6 +172,25 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
+std::cout << "],\"ammunitionFuelRows\":[";
+serviceFirst=true;
+for(int clipSize:{1,4}) for(bool saving:{false,true}) for(int ammo:{0,9}) for(int stock:{0,1,2}) for(int choice:{0,clipSize-1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+RNG::calls=0; RNG::suppliedChoice=choice;
+Item supply; supply.clipSize=clipSize; Base owner; owner.storage.count=stock;
+Craft gun,fuel; gun._base=&owner; gun._status="STR_REARMING";
+CraftWeapon weapon; weapon.rule.clip=&supply; weapon.rule.ammoMax=10; weapon.rule.saving=saving; weapon._ammo=ammo; weapon.rearming=true;
+gun._weapons={&weapon}; gun.rearm();
+fuel._base=&owner; fuel.rule.fuelItem=&supply; fuel._fuel=60; fuel.id=1;
+const auto missing=fuel.refuel(); ServiceGame game; if(missing.empty()) autoPatrol(&fuel,&game);
+if(fuel._status=="STR_OUT") { FuelCaller caller; caller.fuel(&fuel); }
+Ufo ufo; Craft* selected=fuel._status=="STR_OUT" ? select(&ufo,{&fuel}) : nullptr;
+std::cout << '[' << clipSize << ',' << (saving?"true":"false") << ',' << ammo << ',' << stock << ',' << choice << ','
+<< weapon.getAmmo() << ',' << (weapon.isRearming()?"true":"false") << ',' << owner.storage.count << ','
+<< '"' << fuel._status << '"' << ',' << fuel._fuel << ',' << (selected?selected->id:0) << ',' << RNG::calls << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+RNG::suppliedChoice=-1;
 std::cout << "],\"facilityFuelRows\":[";
 serviceFirst=true;
 for(int stock:{0,1,2}) for(int ammo:{0,1,2}) for(int build:{0,1}) for(bool reported:{false,true}) {
