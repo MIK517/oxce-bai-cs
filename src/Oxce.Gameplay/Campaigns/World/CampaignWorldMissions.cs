@@ -392,8 +392,6 @@ internal sealed partial class CampaignWorld
         if (maximum is < 0 or > int.MaxValue) return "UFO escort speed exceeds the supported range.";
         if (path.Waypoints.Count != 0 && path.Altitude(0) != 0 && !NoCraftCanBecomeHunterTarget())
             return "New UFO escorts require craft retarget forecasts.";
-        if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader && (leader.Hunting || leader.Escorting))
-            return "UFO escort chains require additional movement forecasts.";
         return null;
     }
 

@@ -14,6 +14,81 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldEscortSpawnTests
 {
     [Fact]
+    public void ImportedLeaderFlagsDoNotChangeNativeSpawnEscortSelection()
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnEscortChainRows"))
+        {
+            var flags = row[0].GetInt32();
+            var source = new UfoSnapshot(10, "UFO", 4, "TRAJ", 0, 0.3, 0.1, (UfoStatus)row[1].GetInt32(), WorldAltitudes.High)
+            { HunterKiller = true, Speed = 550, Destination = WorldTargetReference.ForWaypoint(0, new(0.4, 0.2)) };
+            var leader = source with
+            {
+                UniqueId = 9,
+                HunterKiller = false,
+                Longitude = 0.7,
+                Latitude = 0.3,
+                Hunting = flags == 1,
+                Escorting = flags >= 2,
+            };
+            var result = WorldHunting.InitializeEscort(source, true, 2200, [leader]);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object?[]
+            {
+                flags, row[1].GetInt32(), result.Escorting, result.Destination!.UniqueId,
+                result.Longitude, result.Latitude, result.Speed, result.OriginalWaypoint?.Longitude, result.OriginalWaypoint?.Latitude,
+            });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NewEscortsAttachToImportedHuntingAndEscortChains(bool cache, bool grounded)
+    {
+        var content = Load(cache);
+        foreach (var flags in new[] { 0, 1, 2, 3 })
+        {
+            var initial = SpawnSnapshot(content, UfoStatus.Flying);
+            var leader = initial.World.Ufos[0] with
+            {
+                Hunting = flags == 1,
+                Escorting = flags >= 2,
+                OriginalWaypoint = flags != 0 ? new(1, 0.6) : null,
+                Destination = flags == 1 ? new(WorldTargetKind.Craft, "SHIP", 1, 0.45, 0.21)
+                    : flags >= 2 ? new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, flags == 3 ? 3 : 4, 0.6, 0.3)
+                    { UniqueId = flags == 3 ? 9 : 10 } : initial.World.Ufos[0].Destination,
+            };
+            var other = initial.World.Ufos[0] with { UniqueId = 10, Id = 4, Longitude = 0.6, Latitude = 0.3 };
+            initial = initial with
+            {
+                World = initial.World with
+                {
+                    Ufos = [leader, other],
+                    Missions = [initial.World.Missions[0] with
+                { LiveUfos = 2, RuleId = grounded ? "MISSION_ESCORT_GROUND" : initial.World.Missions[0].RuleId }],
+                }
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "new-chain-before.sav");
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var born = Assert.Single(after.World.Ufos, ufo => ufo.UniqueId is not (9 or 10));
+            Assert.True(born.Escorting);
+            Assert.Equal(9, born.Destination!.UniqueId);
+            Assert.NotNull(born.OriginalWaypoint);
+            Assert.Equal(2200, born.Speed);
+            Assert.Equal(grounded ? UfoStatus.Landed : UfoStatus.Flying, born.Status);
+            if (!grounded) Assert.Equal(after.World.Ufos[0].Position, born.Position);
+            campaign = Reload(content, campaign, 81, "new-chain-after.sav");
+            AdvanceOne(campaign);
+            Assert.Equal(9, campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == born.UniqueId).Destination!.UniqueId);
+            Reload(content, campaign, 81, "new-chain-following-tick.sav");
+        }
+    }
+
+    [Fact]
     public void EscortInitializationMatchesPinnedSavedOrderOriginBackupAndSpeed()
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
