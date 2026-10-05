@@ -15,6 +15,75 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void UnknownRewardsDoNotReserveLookupOnlyCounterEffects(bool cache)
+    {
+        var content = Load(cache, "research: [{name: SAFE_COUNTER_SOURCE, cost: 1, lookup: LOOKUP_COUNTER_TOPIC, getOneFree: [SAFE_FREE_A, SAFE_FREE_B], increaseCounter: [SAFE_COUNTER]}, {name: SAFE_FREE_A, cost: 1}, {name: SAFE_FREE_B, cost: 1}, {name: LOOKUP_COUNTER_TOPIC, cost: 1, increaseCounter: [UNUSED_COUNTER]}]\nfacilities: [{type: SAFE_COUNTER_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["UNUSED_COUNTER"] = int.MaxValue },
+            Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("SAFE_COUNTER_LAB", 1, 1, 0, 0, false, false, false)],
+                Research = [new("SAFE_COUNTER_SOURCE", 1, 0, 1)]
+            }]
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(2, campaign.Capture().NextIds["SAFE_COUNTER"]);
+        Assert.Equal(int.MaxValue, campaign.Capture().NextIds["UNUSED_COUNTER"]);
+        Assert.Contains("LOOKUP_COUNTER_TOPIC", campaign.Capture().CompletedResearch);
+        Reload(content, campaign, 81, "safe-lookup-counters.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnknownResearchCounterWorkRefusesRepeatedlyWithoutMutation(bool cache)
+    {
+        var counters = string.Join(", ", Enumerable.Repeat("WORK_COUNTER", 1001));
+        var content = Load(cache, $"research: [{{name: COUNTER_WORK_TOPIC, cost: 1, getOneFree: [COUNTER_WORK_A, COUNTER_WORK_B], increaseCounter: [{counters}]}}, {{name: COUNTER_WORK_A, cost: 1, repeatable: true}}, {{name: COUNTER_WORK_B, cost: 1, repeatable: true}}]\nfacilities: [{{type: COUNTER_WORK_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
+        var owner = initial.Bases[0] with
+        {
+            Crafts = [],
+            Soldiers = [],
+            Facilities = [.. initial.Bases[0].Facilities, new("COUNTER_WORK_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("COUNTER_WORK_TOPIC", 1, 0, 1)]
+        };
+        initial = initial with { Bases = Enumerable.Range(0, 1001).Select(index => owner with { Id = index }).ToArray() };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        for (var attempt = 0; attempt < 2; attempt++)
+            AssertTimeBlocked(campaign, "Research custom counters exceed the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ResearchOnlyCounterOverflowRefusesBeforeDailyMutation(bool cache, bool randomReward)
+    {
+        var counters = randomReward ? ", getOneFree: [OVERFLOW_REWARD, SAFE_REWARD]" : ", increaseCounter: [OTHER_COUNTER]";
+        var content = Load(cache, $"research: [{{name: COUNTER_OVERFLOW_TOPIC, cost: 1{counters}}}, {{name: OVERFLOW_REWARD, cost: 1, increaseCounter: [OTHER_COUNTER]}}, {{name: SAFE_REWARD, cost: 1}}]\nfacilities: [{{type: COUNTER_OVERFLOW_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["OTHER_COUNTER"] = int.MaxValue },
+            Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("COUNTER_OVERFLOW_LAB", 1, 1, 0, 0, false, false, false)],
+                Research = [new("COUNTER_OVERFLOW_TOPIC", 1, 0, 1)]
+            }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Research custom counters exceed the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void DecreasedResearchCounterStillReservesSavedCraftIdentityFloor(bool cache)
     {
         var content = Load(cache, "research: [{name: FLOOR_TOPIC, cost: 1, decreaseCounter: [FLOOR_CRAFT]}]\ncrafts: [{type: FLOOR_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: FLOOR_BIRTH, category: STR_CRAFT, time: 1, producedItems: {FLOOR_CRAFT: 1}}]\nfacilities: [{type: FLOOR_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
