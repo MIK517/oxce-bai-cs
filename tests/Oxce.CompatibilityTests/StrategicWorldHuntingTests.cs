@@ -1098,7 +1098,7 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Fact]
-    public void AirborneHunterSpawnStopsBeforeCandidateRetargetForecastIsRequired()
+    public void AirborneHunterSpawnStopsBeforeCreationTimeCombat()
     {
         var content = Load();
         var snapshot = HuntingSnapshot(content);
@@ -1116,7 +1116,7 @@ public sealed class StrategicWorldHuntingTests
         { Logistics = craft.Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8), Fuel = 1000 } });
         snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Longitude = Degrees(10), Latitude = Degrees(8) }] };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
-            "Alien mission wave spawning requires world simulation.");
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
     [Theory]
@@ -1138,7 +1138,7 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Fact]
-    public void AirborneHunterSpawnIncludesPossibleAutoPatrolTargetsInItsBoundary()
+    public void AirborneHunterSpawnIncludesRelaunchedAutoPatrolTargets()
     {
         var content = Load();
         var snapshot = CreateSnapshot(content, "Auto patrol hunter boundary");
@@ -1153,8 +1153,13 @@ public sealed class StrategicWorldHuntingTests
                 Missions = [new(4, "MISSION_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)],
             },
         };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
-            "Alien mission wave spawning requires world simulation.");
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(campaign, 1);
+        var born = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.True(born.Hunting);
+        Assert.Equal("STR_OUT", campaign.Capture().Bases[0].Crafts.Single(craft =>
+            craft.Id == born.Destination!.Id && craft.RuleId == born.Destination.TypeId).Logistics!.Status);
+        Reload(content, campaign, 81, "auto-patrol-hunter-birth.sav");
     }
 
     [Fact]

@@ -5,15 +5,20 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private readonly HashSet<(int Mission, int Wave, string Ufo, int Mode)> _newbornNoTargetProofs = [];
+    private readonly HashSet<(int Mission, int Wave, string Ufo, int Mode)> _newbornSafeHuntingProofs = [];
 
-    private bool NoCraftCanBecomeHunterTarget(AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
+    private bool NewbornHuntingIsForecast(AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
+        _newbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, wave.UfoType, NewbornHuntMode(wave))) ||
         _newbornNoTargetProofs.Contains((mission.Id, mission.NextWave, wave.UfoType, NewbornHuntMode(wave))) ||
         NoCraftCanBecomeHunterTarget();
+
+    private bool NewbornCanRevealHunt(AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
+        _newbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, wave.UfoType, NewbornHuntMode(wave)));
 
     private int NewbornHuntMode(RuntimeMissionWave wave) => wave.HuntMode == -1
         ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HuntMode : wave.HuntMode;
 
-    private string? NewbornNoTargetReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule missionRule,
+    private string? NewbornHuntingReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule missionRule,
         CampaignTimeTrigger highest)
     {
         var wave = SpawnWave(mission, missionRule);
@@ -32,6 +37,7 @@ internal sealed partial class CampaignWorld
         if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref _huntingForecastWork) is { } reason)
             return reason;
         var origin = new WorldPosition(0, 0);
+        var possibleHunt = false;
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
         if (radar > 0)
         {
@@ -62,7 +68,14 @@ internal sealed partial class CampaignWorld
                 }
                 if (NewbornRadarSeparationReason(positions, (int)radar, ref _huntingForecastWork, out var separated) is { } separationReason)
                     return separationReason;
-                if (!separated) return null;
+                if (!separated)
+                {
+                    if (wave.Escort) return null;
+                    if (NewbornHuntReachReason(positions, rule, mission.Race, path, (int)radar,
+                            ref _huntingForecastWork) is { } reachReason)
+                        return reachReason;
+                    possibleHunt = true;
+                }
                 origin = positions[0].Center;
             }
         }
@@ -82,7 +95,44 @@ internal sealed partial class CampaignWorld
             if (ProjectHunting(hypothetical, highest, due: true, forecastFuel: true,
                 ref _huntingForecastWork, out _, out _) is { } candidateReason) return candidateReason;
         }
-        _newbornNoTargetProofs.Add(key);
+        if (possibleHunt) _newbornSafeHuntingProofs.Add(key);
+        else _newbornNoTargetProofs.Add(key);
+        return null;
+    }
+
+    private string? NewbornHuntReachReason(IReadOnlyList<SpawnArea> positions, RuntimeUfoRule rule,
+        string race, RuntimeUfoTrajectoryRule path, int radar, ref long work)
+    {
+        var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(race).SpeedMaximum;
+        if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
+        var hypothetical = new UfoSnapshot(0, string.Empty, 0, string.Empty, 0, 0, 0,
+            UfoStatus.Flying, WorldAltitudes.High)
+        { Speed = path.Speed(0, (int)maximum), Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) };
+        if (!WorldHunting.TryHunt(hypothetical, WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
+                (int)maximum, rule.HuntSpeed, out var hunted)) return "UFO hunt speed exceeds the supported range.";
+        var reach = WorldGeometry.RadianSpeed(hunted.Speed);
+        var rules = campaign.Content.RuntimeRules;
+        // Selection may depend on random constructor modes and spawn positions.
+        // Prove safety for every eligible target without forecasting RNG or IDs.
+        foreach (var owner in campaign.BaseStates)
+        {
+            if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            foreach (var craft in _huntingCraftSources![owner.Id])
+            {
+                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                var state = _huntingCraftForecast![(rules.Crafts.GetExternalId(craft.Rule), craft.Id)];
+                var craftRule = rules.Crafts[craft.Rule].Value;
+                if (state.Status != "STR_OUT" || craftRule.Undetectable || WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) ||
+                    state.Damage >= CraftLogistics.EffectiveDamageMaximum(state, craftRule, rules)) continue;
+                foreach (var position in positions)
+                {
+                    if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    var nearest = WorldGeometry.Distance(position.Center, new(state.Longitude, state.Latitude)) - position.Radius;
+                    if (nearest <= WorldGeometry.Nautical(radar) + 1e-12 && nearest <= reach + 1e-12)
+                        return HuntCombatReason;
+                }
+            }
+        }
         return null;
     }
 

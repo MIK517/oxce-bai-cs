@@ -13,6 +13,97 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornHuntingTests
 {
     [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void OrdinaryNewbornHuntersSelectCraftAndPersistPursuit(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = RetargetContent(cache, mode);
+        var initial = RetargetSnapshot(content);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            81, "target-birth-before.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.DoesNotContain(result.Events, item => item is CampaignActionBlocked);
+        var born = Assert.Single(campaign.Capture().World.Ufos);
+        var selection = Assert.Single(TestFixtures.Rows(oracle.RootElement, "selectionRows"),
+            row => row[0].GetInt32() == born.HuntMode && row[1].GetInt32() == 0);
+        var transition = Assert.Single(TestFixtures.Rows(oracle.RootElement, "retargetRows"), row => row[0].GetInt32() == 150);
+        Assert.True(born.Hunting);
+        Assert.True(born.Detected);
+        Assert.True(born.Id > 0);
+        Assert.Equal(selection[2].GetInt32(), born.Destination!.Id);
+        Assert.Equal(transition[1].GetInt32(), born.Speed);
+        Assert.Equal(WorldPosition.Create(Degrees(362), Degrees(2)), born.OriginalWaypoint);
+        var alert = Assert.Single(result.Events.OfType<UfoStartedHunting>());
+        Assert.Equal(born.UniqueId, alert.UniqueId);
+        Assert.Equal(born.Destination.Id, alert.CraftId);
+        var target = campaign.Capture().Bases[0].Crafts.Single(craft => craft.Id == born.Destination.Id).Logistics!;
+        var expected = WorldGeometry.Move(new(Degrees(10), Degrees(8)), new(target.Longitude, target.Latitude),
+            WorldGeometry.RadianSpeed(born.Speed));
+        Assert.Equal(expected.Longitude, born.Longitude, 12);
+        Assert.Equal(expected.Latitude, born.Latitude, 12);
+        campaign = Reload(content, campaign, 81, "target-birth-after.sav");
+        AdvanceUnblocked(campaign, 12);
+        Assert.Equal(born.Destination.Id, Assert.Single(campaign.Capture().World.Ufos).Destination!.Id);
+        Reload(content, campaign, 81, "target-birth-following.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrdinaryNewbornHuntingReservesNoAlertMarkersAndStopsBeforeCombat(bool cache)
+    {
+        var content = RetargetContent(cache, 0, noAlert: true);
+        var initial = RetargetSnapshot(content);
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue), content, new SplitMix64RandomSource(81)),
+            "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [owner with { Crafts = [owner.Crafts[0] with
+            { Logistics = owner.Crafts[0].Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8) } }] }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    private static RuntimeContent RetargetContent(bool cache, int mode, bool escort = false, bool noAlert = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+            crafts:
+              - {type: BIRTH_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
+              - {type: BIRTH_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
+            ufos:
+              - {type: BIRTH_RETARGET, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: 150, hunterKillerPercentage: 100, huntMode: {{mode}}, noAlert: {{noAlert.ToString().ToLowerInvariant()}}}
+            alienMissions:
+              - type: BIRTH_RETARGET_MISSION
+                objective: 0
+                waves: [{ufo: BIRTH_RETARGET, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, escort: {{escort.ToString().ToLowerInvariant()}}}]
+            """);
+
+    private static CampaignSnapshot RetargetSnapshot(RuntimeContent content, bool escort = false)
+    {
+        var initial = Snapshot(content, escort);
+        var owner = initial.Bases[0];
+        var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+        CraftSnapshot Craft(int id, string rule) => template with
+        {
+            Id = id,
+            RuleId = rule,
+            Logistics = template.Logistics! with
+            { Fuel = 1000, Damage = 0, Weapons = [], Longitude = Degrees(10) + WorldGeometry.Nautical(100), Latitude = Degrees(8) },
+        };
+        return initial with
+        {
+            Bases = [owner with { Crafts = [Craft(1, "BIRTH_SLOW"), Craft(2, "BIRTH_FAST")], Soldiers = [] }],
+            World = initial.World with { Missions = [initial.World.Missions[0] with { RuleId = "BIRTH_RETARGET_MISSION" }] },
+        };
+    }
+
+    [Theory]
     [InlineData(false, false, 0)]
     [InlineData(true, false, 0)]
     [InlineData(false, true, 0)]
@@ -97,8 +188,17 @@ public sealed class StrategicWorldNewbornHuntingTests
                 81, "pending-newborn-before.sav");
             if (hourly && hours == 1)
             {
-                AssertTimeBlocked(campaign, escort ? "New UFO escorts require craft retarget forecasts." :
-                    "Alien mission wave spawning requires world simulation.");
+                if (escort) AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
+                else
+                {
+                    AdvanceUnblocked(campaign, 1);
+                    Assert.Empty(campaign.Capture().Bases[0].Transfers);
+                    Assert.Equal("STR_OUT", Assert.Single(campaign.Capture().Bases[0].Crafts).Logistics!.Status);
+                    Assert.True(Assert.Single(campaign.Capture().World.Ufos).Hunting);
+                    campaign = Reload(content, campaign, 81, "pending-newborn-arrived.sav");
+                    AdvanceUnblocked(campaign, 1);
+                    Reload(content, campaign, 81, "pending-newborn-arrived-following.sav");
+                }
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -152,7 +252,7 @@ public sealed class StrategicWorldNewbornHuntingTests
                 Assert.Equal(100, content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SPATIAL_CRAFT")].Value.DamageMaximum);
                 if (near)
                 {
-                    AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+                    AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
                     continue;
                 }
                 AdvanceUnblocked(campaign, 1);
@@ -293,17 +393,17 @@ public sealed class StrategicWorldNewbornHuntingTests
             });
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "grounded-birth-before.sav");
-            if (row[6].GetString() == "STR_OUT")
+            if (escort && row[6].GetString() == "STR_OUT")
             {
-                AssertTimeBlocked(campaign, escort ? "New UFO escorts require craft retarget forecasts." :
-                    "Alien mission wave spawning requires world simulation.");
+                AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
             var state = Assert.Single(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "BIRTH_REFUEL").Logistics!;
-            Assert.Equal(row[5].GetInt32(), state.Fuel);
+            // The servicing oracle ends before the composed ten-minute fuel pass.
+            Assert.Equal(row[5].GetInt32(), state.Fuel + (state.Status == "STR_OUT" ? 60 : 0));
             Assert.Equal(row[6].GetString(), state.Status);
-            Assert.False(Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER").Hunting);
+            Assert.Equal(row[6].GetString() == "STR_OUT", Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER").Hunting);
             campaign = Reload(content, campaign, 81, "grounded-birth-after.sav");
             AdvanceUnblocked(campaign, 1);
             Reload(content, campaign, 81, "grounded-birth-following.sav");
@@ -431,10 +531,10 @@ public sealed class StrategicWorldNewbornHuntingTests
             };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "shared-birth-before.sav");
-            if (row[4].GetString() == "STR_OUT" || row[6].GetString() == "STR_OUT")
+            var airborne = row[4].GetString() == "STR_OUT" || row[6].GetString() == "STR_OUT";
+            if (escort && airborne)
             {
-                AssertTimeBlocked(campaign, escort ? "New UFO escorts require craft retarget forecasts." :
-                    "Alien mission wave spawning requires world simulation.");
+                AssertTimeBlocked(campaign, "New UFO escorts require craft retarget forecasts.");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -442,10 +542,11 @@ public sealed class StrategicWorldNewbornHuntingTests
             var first = after.Bases[0].Crafts[0].Logistics!;
             var second = after.Bases[0].Crafts[1].Logistics!;
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
-                { first.Fuel, first.Status, second.Fuel, second.Status, after.Bases[0].Items.GetValueOrDefault("SUPPLY") });
+                { first.Fuel + (first.Status == "STR_OUT" ? 1 : 0), first.Status,
+                    second.Fuel + (second.Status == "STR_OUT" ? 1 : 0), second.Status, after.Bases[0].Items.GetValueOrDefault("SUPPLY") });
             var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).Take(5).ToArray());
             Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
-            Assert.False(Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER").Hunting);
+            Assert.Equal(airborne, Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER").Hunting);
             campaign = Reload(content, campaign, 81, "shared-birth-after.sav");
             AdvanceUnblocked(campaign, 1);
             Reload(content, campaign, 81, "shared-birth-following.sav");
