@@ -6,6 +6,7 @@
 #include <vector>
 #include <stdexcept>
 #include <string>
+#include <map>
 namespace OpenXcom {
 using Exception = std::runtime_error;
 struct RNG { static inline int roll=0, calls=0, suppliedChoice=-1;
@@ -42,10 +43,20 @@ int getAmmo() const { return _ammo; } bool isDisabled() const { return false; }
 void setRearming(bool value) { rearming=value; } };
 // WEAPON_REARM
 struct ResearchRule {
+static const int RESEARCH_STATUS_DISABLED=2,RESEARCH_STATUS_NEW=0;
+std::string name="RESEARCH"; int cost=1,points=1; bool repeatable=false,sequential=false;
+std::vector<const ResearchRule*> disables,reenables,unlocks,free,dependencies,requirements;
+std::vector<std::pair<const ResearchRule*,std::vector<const ResearchRule*>>> protectedFree;
+const auto& getDisabled() const { return disables; } const auto& getReenabled() const { return reenables; }
+const auto& getUnlocked() const { return unlocks; } const auto& getGetOneFree() const { return free; }
+const auto& getGetOneFreeProtected() const { return protectedFree; } const auto& getRequirements() const { return requirements; }
+int getCost() const { return cost; } int getPoints() const { return points; }
+bool isRepeatable() const { return repeatable; } bool sequentialGetOneFree() const { return sequential; }
+
 bool holding=false,returns=false,destroy=false; Item* needed=nullptr; std::string spawned=""; int count=0; std::vector<std::string> list;
 bool isHoldingNeededItem() const { return holding; } bool returnItem() const { return returns; }
 bool destroyItem() const { return destroy; } Item* getNeededItem() const { return needed; }
-std::string getName() const { return "RESEARCH"; } std::string getSpawnedItem() const { return spawned; }
+std::string getName() const { return name; } std::string getSpawnedItem() const { return spawned; }
 int getSpawnedItemCount() const { return count; } const auto& getSpawnedItemList() const { return list; }
 };
 using RuleResearch=ResearchRule;
@@ -54,7 +65,11 @@ const RuleResearch* getRules() const { return rule; } bool isFinished() const { 
 struct ResearchCorpse : Item { bool isRecoverable() const { return true; } bool isCorpseRecoverable() const { return true; } };
 struct ResearchArmor { ResearchCorpse* getCorpseGeoscape() const { return nullptr; } };
 struct ResearchUnit { const ResearchArmor* getArmor() const { return nullptr; } };
-struct ResearchMod { mutable Item supply; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string&,bool) const { return nullptr; } };
+struct ResearchMod { std::vector<ResearchRule*> rules; mutable Item supply; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string&,bool) const { return nullptr; } };
+using Mod=ResearchMod;
+enum class DiscoverySourceType { FREE_AFTER };
+struct ResearchDiaryEntry { explicit ResearchDiaryEntry(const RuleResearch*) {} void setDate(int) {}
+struct { DiscoverySourceType type; const RuleResearch* research; std::string name; } source; };
 struct Options { static inline bool retainCorpses=true; };
 struct ResearchCaller {
 Storage storage; ResearchMod mod; const ResearchMod* _mod=&mod;
@@ -155,9 +170,28 @@ bool insideRadarRange(Target* target) const;
 // RADAR
 // RETARGET_METHODS
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
+std::vector<const RuleResearch*> _discovered; std::map<std::string,int> statuses; int _time=0,researchScore=0;
+bool isResearchRuleStatusDisabled(const std::string& id) const { auto found=statuses.find(id); return found!=statuses.end()&&found->second==2; }
+void setResearchRuleStatus(const std::string& id,int value) { statuses[id]=value; }
+bool isResearched(const RuleResearch* rule,bool) const { return std::find(_discovered.begin(),_discovered.end(),rule)!=_discovered.end(); }
+bool isResearched(const std::vector<const RuleResearch*>& topics,bool,bool disabled) const { return std::all_of(topics.begin(),topics.end(),[&](auto* r){ return isResearched(r,false)||(disabled&&isResearchRuleStatusDisabled(r->getName())); }); }
+void sortReserchVector(std::vector<const RuleResearch*>&) {} void removePoppedResearch(const RuleResearch*) {}
+void addResearchDiaryEntry(ResearchDiaryEntry* entry) { delete entry; } void addResearchScore(int value) { researchScore+=value; }
+void removeDiscoveredResearch(const RuleResearch* rule) { std::erase(_discovered,rule); }
+void getAvailableResearchProjects(std::vector<RuleResearch*>& available,const Mod* mod,Base*) const {
+for(auto* rule:mod->rules) if(!isResearchRuleStatusDisabled(rule->name)&&!isResearched(rule,false)&&
+std::all_of(rule->dependencies.begin(),rule->dependencies.end(),[&](auto* r){return isResearched(r,false);})&&
+std::all_of(rule->requirements.begin(),rule->requirements.end(),[&](auto* r){return isResearched(r,false);})) available.push_back(rule);
+}
+void addFinishedResearch(const RuleResearch*,const Mod*,Base*,bool score=true);
+const RuleResearch* selectGetOneFree(const RuleResearch*);
+bool hasUndiscoveredGetOneFree(const RuleResearch*,bool) const;
+bool hasUndiscoveredProtectedUnlock(const RuleResearch*) const;
+
 std::vector<Ufo*>* getUfos() { return &ufos; }
 std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
 int getId(const std::string&) { return 8+(int)waypoints.size(); } };
+// RESEARCH_DISCOVERY_METHODS
 struct ServiceGame { SavedGame save; SavedGame* getSavedGame() { return &save; } };
 void autoPatrol(Craft* xcraft, ServiceGame* _game) {
 // AUTO_PATROL
@@ -213,6 +247,26 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"researchDiscoveryRows\":[";
+serviceFirst=true;
+for(int mode:{0,1,2,3}) for(bool complete:{false,true}) for(bool finished:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule source,lookup,automatic,held; source.name="DISCOVERY_SOURCE"; lookup.name="DISCOVERY_LOOKUP"; automatic.name="DISCOVERY_AUTO"; held.name="DISCOVERY_HELD";
+automatic.cost=0; automatic.dependencies={&source}; held.cost=100;
+Item supply; held.holding=true; held.destroy=true; held.needed=&supply;
+if(mode==0) source.disables={&held};
+if(mode==1) lookup.disables={&held};
+if(mode==2) automatic.disables={&held};
+if(mode==3) { source.disables={&held}; automatic.reenables={&held}; }
+ResearchMod mod; mod.rules={&source,&lookup,&automatic,&held}; Base base; SavedGame saved;
+if(complete) saved._discovered={&source};
+saved.addFinishedResearch(&source,&mod,&base); if(mode==1) saved.addFinishedResearch(&lookup,&mod,&base);
+if(finished) saved.addFinishedResearch(&held,&mod,&base);
+ResearchCaller caller; ResearchProject project{&held,finished};
+if(saved.isResearchRuleStatusDisabled(held.name)) caller.refund(&project);
+std::cout << '[' << mode << ',' << (complete?"true":"false") << ',' << (finished?"true":"false") << ',' << caller.storage.count << ','
+<< saved.statuses[held.name] << ',' << (saved.isResearched(&automatic,false)?"true":"false") << ']';
 }
 std::cout << "],\"researchPrimaryRows\":[";
 serviceFirst=true;

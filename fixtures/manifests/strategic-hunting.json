@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded)",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded); SavedGame::addFinishedResearch/selectGetOneFree/hasUndiscoveredGetOneFree/hasUndiscoveredProtectedUnlock with controlled availability and diary collaborators",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 32332,
-      "sha256": "d861f027bedfc364a912dd6f418ed61066d9710a38b27a2aa20776ea079960f4"
+      "size": 36694,
+      "sha256": "7f864d0f81d257acfe25361ce51001cde9e63c12b5c1ea799f740c14a02d15db"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 11009,
-      "sha256": "53310b320372d2f886162c47ab4d2a616726fc5503f910ea1ec2833a927caa31"
+      "size": 11446,
+      "sha256": "0012ccfe513246fb5e5c36efa48034a26b64001a49d8d03c3ae3cf5ea4fc5072"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",
