@@ -47,4 +47,33 @@ public sealed partial class CampaignState
         }
         return null;
     }
+
+    private string? ForecastProducedCraftIdentity(RuleHandle<CraftRuleFamily> craft,
+        IReadOnlyDictionary<int, List<CraftState>> sources, Dictionary<RuleHandle<CraftRuleFamily>, long> counters,
+        CampaignTimeTrigger highest, ref long work, out int identity)
+    {
+        identity = 0;
+        var type = _content.RuntimeRules.Crafts.GetExternalId(craft);
+        if (!counters.TryGetValue(craft, out var next))
+        {
+            var range = CustomCounters.BeforeWorldCreation(type, highest);
+            if (range.Minimum != range.Maximum) return "Craft production requires daily research identity forecasts.";
+            next = range.Maximum;
+        }
+        foreach (var owner in _bases)
+        {
+            work += sources[owner.Id].Count + owner.Transfers.Count * 2L;
+            if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
+            foreach (var existing in sources[owner.Id])
+                if (existing.Rule == craft) next = Math.Max(next, (long)existing.Id + 1);
+            var removesDelivered = owner.Transfers.Any(transfer => !transfer.Delivered && transfer.Hours <= 1);
+            foreach (var transfer in owner.Transfers)
+                if (!(removesDelivered && (transfer.Delivered || transfer.Hours <= 1)) && transfer.Craft is { } pending && pending.RuleId == type)
+                    next = Math.Max(next, (long)pending.Id + 1);
+        }
+        if (next >= int.MaxValue) return "Craft production exhausts the craft identity range.";
+        identity = (int)next;
+        counters[craft] = next + 1;
+        return null;
+    }
 }

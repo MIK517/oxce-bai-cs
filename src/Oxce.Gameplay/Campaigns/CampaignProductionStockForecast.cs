@@ -14,6 +14,8 @@ public sealed partial class CampaignState
         long transfers = 0;
         var uncertainTransfers = false;
         var uncertainAccounting = false;
+        Dictionary<RuleHandle<CraftRuleFamily>, long>? craftCounters = null;
+        HashSet<RuleHandle<CraftRuleFamily>>? uncertainCraftCounters = null;
         var accounting = new AccountingState(_funds[^1], _incomes[^1], _expenditures[^1]);
         foreach (var owner in _bases)
         {
@@ -50,10 +52,11 @@ public sealed partial class CampaignState
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
                 var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
-                var supported = deterministicRandom && (rule.SpawnedPersonType is "" or "STR_SCIENTIST" or "STR_ENGINEER") &&
-                    (craftDelay || rule.ProducedMaterials.All(material => material.Craft is null));
+                var supported = deterministicRandom && (rule.SpawnedPersonType is "" or "STR_SCIENTIST" or "STR_ENGINEER");
                 if (!supported)
                 {
+                    foreach (var material in rule.ProducedMaterials)
+                        if (material.Craft is { } craft) (uncertainCraftCounters ??= []).Add(craft);
                     uncertainAccounting |= project.Sell || !final && rule.Cost > 0;
                     uncertainStocks |= rule.RequiredMaterials.Any(material => material.Quantity > 0) ||
                         rule.RandomProducedItems.Count != 0 || !project.Sell && (
@@ -91,6 +94,16 @@ public sealed partial class CampaignState
                         if (ForecastProductionSale(rule, ref accounting, ref work) is { } saleReason) return saleReason;
                     }
                     else if (ForecastProductionItemOutputs(owner.Id, rule, crafts, stocks, ref work) is { } outputReason) return outputReason;
+                    foreach (var material in rule.ProducedMaterials)
+                        if (material.Craft is { } craft)
+                        {
+                            if (uncertainCraftCounters?.Contains(craft) == true)
+                                return "Craft production requires other production identity forecasts.";
+                            craftCounters ??= [];
+                            if (ForecastProducedCraftIdentity(craft, crafts, craftCounters, highest, ref work, out var identity) is { } identityReason)
+                                return identityReason;
+                            if (!craftDelay) sources.Add(new(craft, identity) { Logistics = ProducedCraftLogistics(owner, craft) });
+                        }
                     if (randomItems is not null && (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0))
                         foreach (var item in randomItems)
                             if (ForecastProductionItemOutput(owner.Id, rules.Items.GetRequired(item.Key), item.Value, crafts, stocks, ref work) is { } randomReason)
