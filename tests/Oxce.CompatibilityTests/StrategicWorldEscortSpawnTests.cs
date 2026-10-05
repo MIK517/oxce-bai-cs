@@ -393,6 +393,61 @@ public sealed class StrategicWorldEscortSpawnTests
             "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
     }
 
+    [Theory]
+    [InlineData(false, false, 1)]
+    [InlineData(true, false, 1)]
+    [InlineData(false, true, 2)]
+    [InlineData(true, true, 2)]
+    [InlineData(false, true, 1)]
+    [InlineData(true, true, 1)]
+    public void LoadedIdleEscortConsidersIncomingPursuersOnlyAtHourlyArrival(bool cache, bool hourly, int hours)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"), row => row[0].GetInt32() == hours);
+        foreach (var earlyLeader in new[] { false, true })
+        {
+            var content = Load(cache);
+            var initial = IdleEscortSnapshot(content, earlyLeader
+                ? "MISSION_ESCORT_CHAIN_EARLY_LEADER" : "MISSION_ESCORT_CHAIN_LATE_LEADER");
+            var owner = initial.Bases[0];
+            var incoming = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+            incoming = incoming with
+            {
+                Logistics = incoming.Logistics! with
+                { Fuel = 300, IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [] }
+            };
+            initial = initial with
+            {
+                Time = new(1, 1, 1, 1999, 1, hourly ? 59 : 29, 55),
+                Bases = [owner with { Crafts = [], Soldiers = [],
+                    Transfers = [new(1, hours, CampaignTransferKind.Craft, "SHIP", 1, Craft: incoming)] }],
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "idle-pending-before.sav");
+            if (hourly && hours == 1)
+            {
+                AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Empty(after.Bases[0].Crafts);
+            Assert.Equal(hours - (hourly ? 1 : 0), Assert.Single(after.Bases[0].Transfers).Hours);
+            var leader = Assert.Single(after.World.Ufos, ufo => !ufo.HunterKiller);
+            var source = after.World.Ufos[0];
+            Assert.Equal(9, source.UniqueId);
+            Assert.True(source.Escorting);
+            Assert.Equal(leader.UniqueId, source.Destination!.UniqueId);
+            Assert.Equal(2200, source.Speed);
+            var origin = new WorldPosition(10 * Math.PI / 180, 8 * Math.PI / 180);
+            Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, origin, WorldGeometry.RadianSpeed(2200)), source.Position);
+            Assert.Equal(4, Assert.Single(after.World.Missions).LiveUfos);
+            campaign = Reload(content, campaign, 81, "idle-pending-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "idle-pending-following.sav");
+        }
+    }
+
     [Fact]
     public void LoadedIdleEscortRequiresForecastBeforeCancellingAnOrdinaryArrival()
     {

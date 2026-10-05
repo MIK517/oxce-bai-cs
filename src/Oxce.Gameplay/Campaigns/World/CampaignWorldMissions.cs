@@ -429,7 +429,8 @@ internal sealed partial class CampaignWorld
                     (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
                         campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
             foreach (var transfer in owner.Transfers)
-                if (!transfer.Delivered && transfer.Craft?.Logistics is { } state &&
+                if (_newbornHighestTrigger >= CampaignTimeTrigger.OneHour && transfer.Hours <= 1 &&
+                    !transfer.Delivered && transfer.Craft?.Logistics is { } state &&
                     (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
                         campaign.Content.RuntimeRules.Crafts[
                             campaign.Content.RuntimeRules.Crafts.GetRequired(transfer.Craft.RuleId)].Value.AutoPatrol)) return false;
