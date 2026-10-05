@@ -1964,6 +1964,127 @@ public sealed class StrategicWorldHuntingTests
             "Production captive populations exceed the supported range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MixedFutureProductionCannotUseIncompleteIdentityForecasts(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: MIXED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nmanufacture: [{name: MIXED_UNFORECAST_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, randomProducedItems: [[1, {SUPPLY: 1}]], transferTimes: [1]}, {name: MIXED_FIXED_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: MIXED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "MIXED_ID_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3
+            }
+        })
+            with
+        { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue - 1 },
+            Bases = [initial.Bases[0] with
+            {
+                Items = new Dictionary<string, int>(),
+                Facilities = [.. initial.Bases[0].Facilities, new("MIXED_ID_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("MIXED_UNFORECAST_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>()),
+                    new("MIXED_FIXED_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+            }],
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Production arrivals require other production effect forecasts.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ProductionFutureIdentitiesFollowDailyResearchAndHourlyCleanup(bool cache, bool research)
+    {
+        var content = Load(cache, "crafts: [{type: ORDERED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nresearch: [{name: ORDERED_ID_RESEARCH, cost: 1, spawnedItem: SUPPLY}]\nmanufacture: [{name: ORDERED_ID_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: ORDERED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "ORDERED_ID_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3
+            }
+        })
+            with
+        { Time = new(1, 1, 1, 1999, research ? 23 : 1, 59, 55) };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = research ? int.MaxValue - 1 : 1 },
+            Bases = [initial.Bases[0] with
+            {
+                Items = new Dictionary<string, int>(), Transfers = research ? [] : [new(int.MaxValue, 1, CampaignTransferKind.Item, "SUPPLY", 0)],
+                Facilities = [.. initial.Bases[0].Facilities, new("ORDERED_ID_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Research = research ? [new("ORDERED_ID_RESEARCH", 1, 0, 1)] : [],
+                Productions = [new("ORDERED_ID_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+            }],
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ordered-id-before.sav");
+        if (research)
+        {
+            AssertTimeBlocked(campaign, "Production arrivals exhaust the transfer identity range.");
+            return;
+        }
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Equal(1, Assert.Single(after.Bases[0].Transfers).Id);
+        Assert.Equal(2, after.NextIds["oxcePortTransfer"]);
+        Assert.True(after.World.Ufos[0].Hunting);
+        Reload(content, campaign, 81, "ordered-id-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProductionFundedRelaunchStopsBeforeSameTickHunterInterception(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: PRODUCTION_COMBAT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: PRODUCTION_COMBAT_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: PRODUCTION_COMBAT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "PRODUCTION_COMBAT_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                Longitude = 0.45,
+                Latitude = 0.21,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3
+            }
+        })
+            with
+        { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(),
+                Facilities = [.. initial.Bases[0].Facilities, new("PRODUCTION_COMBAT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("PRODUCTION_COMBAT_PRODUCT", 1, 0, 2, false, false, false, new Dictionary<string, int>())],
+            }],
+            World = initial.World with { Ufos = [initial.World.Ufos[0] with { Longitude = 0.45, Latitude = 0.21 }] },
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "production-combat-before.sav");
+        AssertTimeBlocked(campaign, "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {
