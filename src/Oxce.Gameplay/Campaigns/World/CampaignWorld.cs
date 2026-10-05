@@ -454,6 +454,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         _missionCounterForecast = null;
         _newHunterHasNoTarget = null;
         _newLeaderHasNoCraftPursuer = null;
+        _newbornHighestTrigger = highest;
         _siteBirthIdChanges = null;
         _objectiveBaseBirths = 0;
         _objectiveBasesBeforeHunting = 0;

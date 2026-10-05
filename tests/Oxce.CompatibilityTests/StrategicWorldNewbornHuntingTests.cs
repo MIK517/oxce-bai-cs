@@ -61,13 +61,60 @@ public sealed class StrategicWorldNewbornHuntingTests
             "Craft hunter attraction exceeds the supported range.");
     }
 
-    private static RuntimeContent Load(bool cache, bool escort, int mode, string extra = "") =>
+    [Theory]
+    [InlineData(false, false, 1)]
+    [InlineData(true, false, 1)]
+    [InlineData(false, true, 2)]
+    [InlineData(true, true, 2)]
+    [InlineData(false, true, 1)]
+    [InlineData(true, true, 1)]
+    public void PendingCraftJoinsNewbornCandidatesOnlyAtItsHourlyArrival(bool cache, bool hourly, int hours)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"), row => row[0].GetInt32() == hours);
+        foreach (var escort in new[] { false, true })
+        {
+            var content = Load(cache, escort, 0, radar: 300);
+            var initial = Snapshot(content, escort);
+            var owner = initial.Bases[0];
+            var incoming = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+            incoming = incoming with
+            {
+                Logistics = incoming.Logistics! with
+                { IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [] }
+            };
+            initial = initial with
+            {
+                Time = new(1, 1, 1, 1999, 1, hourly ? 59 : 29, 55),
+                Bases = [owner with { Crafts = [], Soldiers = [],
+                    Transfers = [new(1, hours, CampaignTransferKind.Craft, "SHIP", 1, Craft: incoming)] }],
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "pending-newborn-before.sav");
+            if (hourly && hours == 1)
+            {
+                AssertTimeBlocked(campaign, escort ? "New UFO escorts require craft retarget forecasts." :
+                    "Alien mission wave spawning requires world simulation.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Empty(after.Bases[0].Crafts);
+            Assert.Equal(hours - (hourly ? 1 : 0), Assert.Single(after.Bases[0].Transfers).Hours);
+            Assert.False(Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER").Hunting);
+            campaign = Reload(content, campaign, 81, "pending-newborn-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "pending-newborn-following.sav");
+        }
+    }
+
+    private static RuntimeContent Load(bool cache, bool escort, int mode, string extra = "", int radar = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             ufos:
               - type: ZERO_RADAR_HUNTER
                 speedMax: 2200
                 damageMax: 50
-                radarRange: 0
+                radarRange: {{radar}}
                 hunterKillerPercentage: 100
                 huntMode: {{mode}}
             alienMissions:
