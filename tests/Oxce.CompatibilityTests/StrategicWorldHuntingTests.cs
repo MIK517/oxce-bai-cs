@@ -12,6 +12,46 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldHuntingTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProducedCraftInitializationMatchesNativeCallerAndReload(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionCraftBirthRows"))
+        {
+            var fixedWeapon = row[0].GetBoolean();
+            var fuel = row[1].GetInt32();
+            var delay = row[2].GetInt32();
+            var content = Load(cache, $"craftWeapons: [{{type: BIRTH_FIXED, launcher: SUPPLY, ammoMax: 10, rearmRate: 4}}]\ncrafts: [{{type: PRODUCED_CRAFT, weapons: 1, fixedWeapons: [{(fixedWeapon ? "BIRTH_FIXED" : "''")}], fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: BIRTH_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{PRODUCED_CRAFT: 1, ZZ_IGNORED_MISSING: 99}}}}]\nfacilities: [{{type: BIRTH_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            Assert.Single(content.RuntimeRules.Manufacture[content.RuntimeRules.Manufacture.GetRequired("BIRTH_PRODUCT")].Value.ProducedMaterials);
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+            initial = initial with
+            {
+                NextIds = new Dictionary<string, int>(initial.NextIds) { ["PRODUCED_CRAFT"] = 10 },
+                Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Crafts = [], Soldiers = [],
+                    Facilities = [.. initial.Bases[0].Facilities, new("BIRTH_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("BIRTH_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+                }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "craft-birth-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var owner = campaign.Capture().Bases[0];
+            var craft = delay > 0 ? Assert.Single(owner.Transfers).Craft! : Assert.Single(owner.Crafts);
+            var state = craft.Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            { craft.Id, owner.Crafts.Count, owner.Transfers.Count, owner.Transfers.Count == 0 ? 0 : owner.Transfers[0].Hours,
+                state.Status, state.Fuel, state.Longitude, state.Latitude, state.Weapons[0]?.Ammo ?? 0,
+                state.Weapons[0]?.Rearming ?? false, state.IsAutoPatrolling });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray())), CanonicalJson.Normalize(actual));
+            Assert.Equal(11, campaign.Capture().NextIds["PRODUCED_CRAFT"]);
+            Reload(content, campaign, 81, "craft-birth-after.sav");
+        }
+    }
+
     [Fact]
     public void HunterInitializationMatchesPinnedConditionalDraws()
     {
