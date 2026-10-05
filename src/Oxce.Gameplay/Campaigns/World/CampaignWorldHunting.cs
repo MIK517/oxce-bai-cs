@@ -54,8 +54,8 @@ internal sealed partial class CampaignWorld
             if (alert && ufo.Id == 0) _possibleHuntMarkerIds++;
         }
         foreach (var saved in _ufos)
-            if (ForecastCancelledEscortArrival(UfoForFlight(saved, highest), highest, ref work) is { } arrivalReason)
-                return arrivalReason;
+            if (ForecastNewLeaderFlight(UfoForFlight(saved, highest), highest, ref work) is { } leaderReason)
+                return leaderReason;
         // Each prefix actor and target lookup is visited at most once per tick.
         // Refuse before building the ordered position cache, never during mutation.
         foreach (var saved in _ufos)

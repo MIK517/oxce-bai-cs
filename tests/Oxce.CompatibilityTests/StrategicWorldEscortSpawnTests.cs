@@ -26,6 +26,10 @@ public sealed class StrategicWorldEscortSpawnTests
     [InlineData(true, "direct-far")]
     [InlineData(false, "chain-far")]
     [InlineData(true, "chain-far")]
+    [InlineData(false, "direct-stationary")]
+    [InlineData(true, "direct-stationary")]
+    [InlineData(false, "chain-stationary")]
+    [InlineData(true, "chain-stationary")]
     public void NewLeaderAttachmentChecksActualCraftPursuitDependencies(bool cache, string kind)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -79,10 +83,10 @@ public sealed class StrategicWorldEscortSpawnTests
                 Status = "STR_OUT",
                 Fuel = 1000,
                 Damage = 0,
-                Speed = kind.EndsWith("-far", StringComparison.Ordinal) ? 6000 : 0,
+                Speed = kind is "direct" or "chain" || kind.EndsWith("-far", StringComparison.Ordinal) ? 6000 : 0,
                 Takeoff = 0,
-                Longitude = kind is "direct" or "chain" ? target.Longitude : 1,
-                Latitude = kind is "direct" or "chain" ? target.Latitude : 0.6,
+                Longitude = kind is "direct" or "chain" || kind.EndsWith("-stationary", StringComparison.Ordinal) ? target.Longitude : 1,
+                Latitude = kind is "direct" or "chain" || kind.EndsWith("-stationary", StringComparison.Ordinal) ? target.Latitude : 0.6,
                 Destination = kind == "patrol" ? null : new(WorldTargetKind.Ufo, WorldTargetReference.UfoType,
                 target.Id, target.Longitude, target.Latitude)
                 { UniqueId = target.UniqueId },
@@ -91,7 +95,7 @@ public sealed class StrategicWorldEscortSpawnTests
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "leader-dependency-before.sav");
         if (kind is "direct" or "chain")
         {
-            AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+            AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
             return;
         }
         AdvanceUnblocked(campaign, 1);
@@ -110,6 +114,14 @@ public sealed class StrategicWorldEscortSpawnTests
             Assert.Equal(expected.Longitude, pursuing.Longitude);
             Assert.Equal(expected.Latitude, pursuing.Latitude);
             Assert.Equal(movedTarget.Position, pursuing.Destination.Position);
+        }
+        if (kind.EndsWith("-stationary", StringComparison.Ordinal))
+        {
+            var pursuing = campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+            Assert.Equal(target.UniqueId, pursuing.Destination!.UniqueId);
+            Assert.Equal(target.Position, new(pursuing.Longitude, pursuing.Latitude));
+            Assert.Equal(campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == target.UniqueId).Position,
+                pursuing.Destination.Position);
         }
         campaign = Reload(content, campaign, 81, "leader-dependency-after.sav");
         AdvanceUnblocked(campaign, 1);
@@ -500,15 +512,84 @@ public sealed class StrategicWorldEscortSpawnTests
             },
         });
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
-        if (pursues) AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
-        else
+        var events = campaign.Execute(new AdvanceCampaignTime(1)).Events;
+        Assert.Empty(events.OfType<CampaignActionBlocked>());
+        Assert.Equal(1, Assert.Single(events.OfType<CampaignTimeAdvanced>()).Summary.TickCount);
+        Assert.Empty(events.OfType<CraftTargetLost>());
+        if (pursues) Assert.Equal(9, campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!.Destination!.UniqueId);
+        Assert.True(campaign.Capture().World.Ufos[0].Escorting);
+        campaign = Reload(content, campaign, 81, "independent-hidden-craft.sav");
+        AdvanceUnblocked(campaign, 1);
+        Reload(content, campaign, 81, "independent-hidden-craft-following.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewbornLeaderAttachmentPreservesNativeCraftContactLoss(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: SHIP, radarRange: 0, radarChance: 0}]\n");
+        var initial = IdleEscortSnapshot(content);
+        initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { Detected = true }] } };
+        initial = initial.WithCraft("SHIP", craft => craft with
         {
-            AdvanceUnblocked(campaign, 1);
-            Assert.True(campaign.Capture().World.Ufos[0].Escorting);
-            campaign = Reload(content, campaign, 81, "independent-hidden-craft.sav");
-            AdvanceUnblocked(campaign, 1);
-            Reload(content, campaign, 81, "independent-hidden-craft-following.sav");
-        }
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 1000,
+                Damage = 0,
+                Takeoff = 0,
+                Speed = 0,
+                Longitude = 1,
+                Latitude = 0.6,
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 },
+            }
+        });
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "leader-loss-before.sav");
+        var events = campaign.Execute(new AdvanceCampaignTime(1)).Events;
+        Assert.Empty(events.OfType<CampaignActionBlocked>());
+        var lost = Assert.Single(events.OfType<CraftTargetLost>());
+        var source = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == 9);
+        Assert.True(source.Escorting);
+        Assert.False(source.Detected);
+        Assert.Equal(source.Position, lost.Target.Position);
+        Assert.Equal(9, lost.Target.UniqueId);
+        Assert.False(lost.ReturningToBase);
+        var patrol = campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+        Assert.Null(patrol.Destination);
+        Assert.Equal(3000, patrol.Speed);
+        campaign = Reload(content, campaign, 81, "leader-loss-after.sav");
+        AdvanceUnblocked(campaign, 1);
+        Reload(content, campaign, 81, "leader-loss-following.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ClosePursuitStillRequiresForecastForAProbabilisticLeader(bool cache)
+    {
+        var content = Load(cache, """
+            alienMissions:
+              - type: UNCERTAIN_CLOSE_LEADER
+                objective: 0
+                waves: [{ufo: ESCORT_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, hunterKillerPercentage: 50}]
+            """);
+        var initial = IdleEscortSnapshot(content, "UNCERTAIN_CLOSE_LEADER").WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 1000,
+                Damage = 0,
+                Takeoff = 0,
+                Speed = 6000,
+                Longitude = 0.4,
+                Latitude = 0.2,
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 },
+            },
+        });
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
     }
 
     [Theory]
@@ -839,7 +920,7 @@ public sealed class StrategicWorldEscortSpawnTests
             },
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "New UFO escort movement exceeds the supported work limit.");
+            "UFO escort movement exceeds the supported work limit.");
     }
 
     [Fact]
