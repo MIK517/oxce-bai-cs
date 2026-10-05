@@ -4,16 +4,16 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private readonly HashSet<(int Mission, int Wave, string Ufo, int Mode)> _newbornNoTargetProofs = [];
-    private readonly HashSet<(int Mission, int Wave, string Ufo, int Mode)> _newbornSafeHuntingProofs = [];
+    private readonly HashSet<(int Mission, int Wave, int Counter, string Ufo, int Mode)> _newbornNoTargetProofs = [];
+    private readonly HashSet<(int Mission, int Wave, int Counter, string Ufo, int Mode)> _newbornSafeHuntingProofs = [];
 
     private bool NewbornHuntingIsForecast(AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
-        _newbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, wave.UfoType, NewbornHuntMode(wave))) ||
-        _newbornNoTargetProofs.Contains((mission.Id, mission.NextWave, wave.UfoType, NewbornHuntMode(wave))) ||
+        _newbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave))) ||
+        _newbornNoTargetProofs.Contains((mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave))) ||
         NoCraftCanBecomeHunterTarget();
 
     private bool NewbornCanRevealHunt(AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
-        _newbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, wave.UfoType, NewbornHuntMode(wave)));
+        _newbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave)));
 
     private int NewbornHuntMode(RuntimeMissionWave wave) => wave.HuntMode == -1
         ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HuntMode : wave.HuntMode;
@@ -32,7 +32,7 @@ internal sealed partial class CampaignWorld
             (wave.HunterKillerPercentage == -1 ? rule.HunterKillerPercentage : wave.HunterKillerPercentage) <= 0 ||
             NoCraftCanBecomeHunterTarget()) return null;
         var mode = NewbornHuntMode(wave);
-        var key = (mission.Id, mission.NextWave, wave.UfoType, mode);
+        var key = (mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, mode);
         if (_newbornNoTargetProofs.Contains(key)) return null;
         if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref _huntingForecastWork) is { } reason)
             return reason;
