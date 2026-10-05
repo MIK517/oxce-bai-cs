@@ -1,5 +1,3 @@
-using Oxce.Mods.Rulesets.Runtime;
-
 namespace Oxce.Gameplay.Campaigns.World;
 
 public sealed record UfoStartedHunting(int UniqueId, string CraftTypeId, int CraftId) : ICampaignEvent;

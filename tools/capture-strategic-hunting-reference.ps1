@@ -26,7 +26,8 @@ foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::re
     $refuelMethods += (Read-ReferenceMethod 'src/Savegame/Craft.cpp' $signature) + [Environment]::NewLine
 }
 $template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
-$template = $template.Replace('// TRANSFER_METHOD', (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'void Transfer::advance(Base *base)'))
+$template = $template.Replace('// TRANSFER_METHOD', (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'void Transfer::advance(Base *base)') + [Environment]::NewLine +
+    (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'int Transfer::getHours() const'))
 $halfHour = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time30Minutes()'
 $autoStart = $halfHour.IndexOf('if (xcraft->getStatus() == "STR_READY" && xcraft->getRules()->canAutoPatrol())', [StringComparison]::Ordinal)
 if ($autoStart -lt 0) { throw 'Missing auto-patrol fragment.' }

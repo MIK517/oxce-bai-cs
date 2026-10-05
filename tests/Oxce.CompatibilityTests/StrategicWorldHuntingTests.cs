@@ -662,19 +662,29 @@ public sealed class StrategicWorldHuntingTests
             var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
             var incoming = template with
             {
-                RuleId = "NATIVE_INCOMING_HUNT", Id = 2,
+                RuleId = "NATIVE_INCOMING_HUNT",
+                Id = 2,
                 Logistics = template.Logistics! with
                 {
-                    Status = row[1].GetString()!, Fuel = row[2].GetInt32(), Damage = row[3].GetInt32(),
-                    IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
-                    Longitude = 0.9, Latitude = 0.3, Weapons = [],
+                    Status = row[1].GetString()!,
+                    Fuel = row[2].GetInt32(),
+                    Damage = row[3].GetInt32(),
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Longitude = 0.9,
+                    Latitude = 0.3,
+                    Weapons = [],
                 },
             };
-            initial = initial with { Bases = [initial.Bases[0] with
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
             {
                 Longitude = 0.45, Latitude = 0.21, Crafts = [], Soldiers = [],
                 Transfers = [new(1, row[0].GetInt32(), CampaignTransferKind.Craft, "NATIVE_INCOMING_HUNT", 1, Craft: incoming)],
-            }] };
+            }]
+            };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "native-incoming-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -700,15 +710,19 @@ public sealed class StrategicWorldHuntingTests
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var incoming = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP") with
         {
-            RuleId = "CLOSE_INCOMING_HUNT", Id = 2,
+            RuleId = "CLOSE_INCOMING_HUNT",
+            Id = 2,
             Logistics = new(60, 0, "STR_REFUELLING", [], new Dictionary<string, int>(), [])
             { IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 },
         };
-        initial = initial with { Bases = [initial.Bases[0] with
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
         {
             Longitude = 0.4, Latitude = 0.2, Crafts = [], Soldiers = [],
             Transfers = [new(1, 1, CampaignTransferKind.Craft, "CLOSE_INCOMING_HUNT", 1, Craft: incoming)],
-        }] };
+        }]
+        };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
@@ -727,17 +741,24 @@ public sealed class StrategicWorldHuntingTests
                 RuleId = "SUPPLIED_FUEL_HUNT",
                 Logistics = craft.Logistics! with
                 {
-                    Status = row[1].GetString()!, Fuel = row[2].GetInt32(), IsAutoPatrolling = true,
-                    AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                    Status = row[1].GetString()!,
+                    Fuel = row[2].GetInt32(),
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
                     Weapons = row[4].GetBoolean() ? [new("HUNT_TRANSFER_GUN", 0)] : [],
                 },
-            }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
-            initial = initial with { Bases = [initial.Bases[0] with
+            }) with
+            { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
             {
                 Longitude = 0.45, Latitude = 0.21,
                 Items = row[3].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[3].GetInt32() },
                 Transfers = [new(1, row[0].GetInt32(), CampaignTransferKind.Item, "SUPPLY", 1)],
-            }] };
+            }]
+            };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "supplied-fuel-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -761,14 +782,17 @@ public sealed class StrategicWorldHuntingTests
         var content = Load();
         var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = new() };
         var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
-        initial = initial with { Bases = [initial.Bases[0] with
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
         {
             Soldiers = [],
             Crafts = Enumerable.Range(1, 1001).Select(id => template with
             { Id = id, Logistics = template.Logistics! with { Status = "STR_READY", Weapons = [] } }).ToArray(),
             Transfers = Enumerable.Range(1, 1001).Select(id =>
                 new TransferSnapshot(id, 1, CampaignTransferKind.Item, "SUPPLY", 1)).ToArray(),
-        }] };
+        }]
+        };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "Arrival item reuse exceeds the supported work limit.");
     }
@@ -785,18 +809,22 @@ public sealed class StrategicWorldHuntingTests
             var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
             var incoming = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP") with
             {
-                RuleId = "COMBINED_TRANSFER_HUNT", Id = 2,
+                RuleId = "COMBINED_TRANSFER_HUNT",
+                Id = 2,
                 Logistics = new(row[2].GetInt32(), 0, "STR_REFUELLING",
                     row[1].GetBoolean() ? [new("HUNT_COMBINED_GUN", 0)] : [], new Dictionary<string, int>(), [])
                 { IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 },
             };
             var itemTransfer = new TransferSnapshot(1, 1, CampaignTransferKind.Item, "SUPPLY", 1);
             var craftTransfer = new TransferSnapshot(2, 1, CampaignTransferKind.Craft, "COMBINED_TRANSFER_HUNT", 1, Craft: incoming);
-            initial = initial with { Bases = [initial.Bases[0] with
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
             {
                 Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(), Crafts = [], Soldiers = [],
                 Transfers = row[0].GetBoolean() ? [itemTransfer, craftTransfer] : [craftTransfer, itemTransfer],
-            }] };
+            }]
+            };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "combined-transfer-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -812,6 +840,29 @@ public sealed class StrategicWorldHuntingTests
             var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray());
             Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
             Reload(content, campaign, 81, "combined-transfer-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OverdueUndeliveredTransfersAreRefusedBeforeUnsafeNativeArrival(bool hunter)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load();
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "invalidArrivalRows"))
+        {
+            Assert.True(row[2].GetBoolean());
+            Assert.False(row[3].GetBoolean());
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            initial = initial with
+            {
+                World = hunter ? initial.World : new(),
+                Bases = [initial.Bases[0] with
+                { Transfers = [new(1, row[0].GetInt32(), CampaignTransferKind.Item, "SUPPLY", 1)] }],
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "overdue-arrival.sav");
+            AssertTimeBlocked(campaign, "Undelivered transfer arrival requires positive remaining hours.");
         }
     }
 
@@ -836,11 +887,15 @@ public sealed class StrategicWorldHuntingTests
             RuleId = "STOCK_GUARD_HUNT",
             Logistics = craft.Logistics! with
             {
-                Status = source == "weapon" ? "STR_REARMING" : "STR_REFUELLING", Fuel = 60,
-                IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                Status = source == "weapon" ? "STR_REARMING" : "STR_REFUELLING",
+                Fuel = 60,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
                 Weapons = source == "weapon" ? [new("HUNT_FUEL_GUN", 0, Rearming: true)] : [],
             },
-        }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        }) with
+        { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var owner = initial.Bases[0];
         if (source == "facility") owner = owner with { Facilities = [.. owner.Facilities, new("HUNT_FUEL_DEFENSE", 1, 1, 0, 0, false, false, false)] };
         if (source is "production" or "craft") owner = owner with
@@ -912,19 +967,28 @@ public sealed class StrategicWorldHuntingTests
         var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
         var leader = template with
         {
-            RuleId = "FUEL_RETURN_LEADER", Id = 2,
+            RuleId = "FUEL_RETURN_LEADER",
+            Id = 2,
             Logistics = template.Logistics! with { Fuel = 0, Speed = 0, Weapons = [] },
         };
-        var escort = template with { Logistics = template.Logistics! with
+        var escort = template with
         {
-            Fuel = 50, Speed = 6000, Weapons = [],
-            Destination = new(WorldTargetKind.Craft, "FUEL_RETURN_LEADER", 2, 0.45, 0.21),
-        } };
-        initial = initial with { Bases = [initial.Bases[0] with
+            Logistics = template.Logistics! with
+            {
+                Fuel = 50,
+                Speed = 6000,
+                Weapons = [],
+                Destination = new(WorldTargetKind.Craft, "FUEL_RETURN_LEADER", 2, 0.45, 0.21),
+            }
+        };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
         {
             Longitude = 0.45, Latitude = 0.21, Soldiers = [],
             Crafts = leaderFirst ? [leader, escort] : [escort, leader],
-        }] };
+        }]
+        };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         var result = campaign.Execute(new AdvanceCampaignTime(1));
         Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -951,11 +1015,16 @@ public sealed class StrategicWorldHuntingTests
             var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
             var leader = template with
             {
-                RuleId = "HUNT_FUEL_LEADER", Id = 2,
+                RuleId = "HUNT_FUEL_LEADER",
+                Id = 2,
                 Logistics = template.Logistics! with
                 {
-                    Status = relaunch ? "STR_REFUELLING" : "STR_OUT", Fuel = relaunch ? 60 : 0,
-                    IsAutoPatrolling = relaunch, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [],
+                    Status = relaunch ? "STR_REFUELLING" : "STR_OUT",
+                    Fuel = relaunch ? 60 : 0,
+                    IsAutoPatrolling = relaunch,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = [],
                 },
             };
             var escort = template with
@@ -963,15 +1032,20 @@ public sealed class StrategicWorldHuntingTests
                 RuleId = "HUNT_FUEL_ESCORT",
                 Logistics = template.Logistics! with
                 {
-                    Fuel = 50, Speed = 6000, Weapons = [],
+                    Fuel = 50,
+                    Speed = 6000,
+                    Weapons = [],
                     Destination = new(WorldTargetKind.Craft, "HUNT_FUEL_LEADER", 2, 0.45, 0.21),
                 },
             };
-            initial = initial with { Bases = [initial.Bases[0] with
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
             {
                 Longitude = 0.45, Latitude = 0.21, Soldiers = [],
                 Crafts = row[1].GetBoolean() ? [leader, escort] : [escort, leader],
-            }] };
+            }]
+            };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ordered-fuel-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
