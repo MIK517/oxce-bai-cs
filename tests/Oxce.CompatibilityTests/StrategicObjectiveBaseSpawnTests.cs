@@ -579,6 +579,56 @@ public sealed class StrategicObjectiveBaseSpawnTests
             }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewBaseHuntingUsesRelaunchedHiddenLeaderSpeedForItsEscort(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
+        var content = LoadWorld(cache, hunting: true, huntingMission: "NEW_BASE_SUPPLY", extra:
+            "crafts: [{type: OBJECTIVE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: OBJECTIVE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n");
+        var initial = Initial(content);
+        var owner = initial.Bases[0];
+        var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+        var leader = template with
+        {
+            RuleId = "OBJECTIVE_HIDDEN_LEADER",
+            Id = 2,
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Damage = 0,
+                Speed = 0,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3
+            }
+        };
+        var escort = template with
+        {
+            RuleId = "OBJECTIVE_ESCORT",
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 50,
+                Damage = 0,
+                Speed = 6000,
+                Weapons = [],
+                LowFuel = false,
+                MissionComplete = false,
+                Longitude = owner.Longitude,
+                Latitude = owner.Latitude,
+                Destination = new(WorldTargetKind.Craft, "OBJECTIVE_HIDDEN_LEADER", 2, owner.Longitude, owner.Latitude)
+            }
+        };
+        initial = initial with { Bases = [owner with { Crafts = [leader, escort], Soldiers = [] }] };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "objective-escort-before.sav");
+        AssertTimeBlocked(campaign, "New base hunting supply waves require a live source forecast.");
+    }
+
     private static CampaignSnapshot LandingInitial(RuntimeContent content)
     {
         var initial = Initial(content) with { Time = new CampaignTime(1, 1, 1, 1999, 1, 0, 0) };

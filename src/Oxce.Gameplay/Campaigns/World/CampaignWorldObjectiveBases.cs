@@ -162,7 +162,14 @@ internal sealed partial class CampaignWorld
                 var possible = false;
                 if (state.Status == "STR_OUT")
                 {
-                    var projected = AdvanceCraftFuel(owner, craft, state);
+                    var projected = state;
+                    if (state.Destination is { Kind: WorldTargetKind.Craft })
+                    {
+                        if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                            return forecastReason;
+                        projected = _huntingCraftForecast![(rules.Crafts.GetExternalId(craft.Rule), craft.Id)];
+                    }
+                    else projected = AdvanceCraftFuel(owner, craft, state);
                     possible = !projected.LowFuel && !projected.MissionComplete &&
                         projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craftRule, rules) &&
                         Near(new(projected.Longitude, projected.Latitude));
