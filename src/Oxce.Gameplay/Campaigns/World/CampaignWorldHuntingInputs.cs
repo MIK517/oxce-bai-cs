@@ -6,7 +6,7 @@ internal sealed partial class CampaignWorld
 {
     private string? ForecastHuntingHourlyInputs(CampaignState.BaseState owner,
         List<CampaignState.CraftState> sources, Dictionary<RuleHandle<ItemRuleFamily>, int> stocks,
-        CampaignTimeTrigger highest, bool researchMayComplete,
+        CampaignTimeTrigger highest, bool researchMayChangeStocks,
         IReadOnlyList<KeyValuePair<string, int>>? researchArrivals, ref long work)
     {
         var rules = campaign.Content.RuntimeRules;
@@ -16,11 +16,11 @@ internal sealed partial class CampaignWorld
         foreach (var transfer in owner.Transfers)
             if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming &&
                 rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value.RefuelItem is { } item) fuelItems.Add(item);
-        if (researchMayComplete && fuelItems.Count != 0)
+        if (researchMayChangeStocks && fuelItems.Count != 0)
             return "UFO retargeting requires daily research fuel-stock forecasts.";
         // Completion elsewhere can cancel held projects in this base and refund fuel.
         // Spawned items also arrive/reuse before refuelling, even for non-item-fuel craft.
-        if (researchMayComplete && sources.Any(craft => craft.Logistics is { Status: not "STR_OUT" } state &&
+        if (researchMayChangeStocks && sources.Any(craft => craft.Logistics is { Status: not "STR_OUT" } state &&
             state.Weapons.Any(weapon => weapon is { Disabled: false } &&
                 rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value is { Clip.Length: > 0 } weaponRule &&
                 weapon.Ammo < weaponRule.AmmoMaximum)))
