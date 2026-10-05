@@ -45,7 +45,14 @@ internal sealed partial class CampaignWorld
                 if (state.Damage >= maximum) continue;
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out _))
                     return SpeedRangeReason;
-                var projected = AdvanceCraftFuel(owner, craft, state);
+                var projected = state;
+                if (state.Destination is { Kind: WorldTargetKind.Craft })
+                {
+                    if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                        return forecastReason;
+                    projected = _huntingCraftForecast![(campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id)];
+                }
+                else projected = AdvanceCraftFuel(owner, craft, state);
                 if (!WorldAlienBaseHunting.Eligible(projected, rule.Undetectable, maximum,
                         alienBase.Position, deployment.BaseDetectionRange) || deployment.BaseDetectionChance <= 0) continue;
                 if (HuntingChoiceReason(alienBase, deployment, highest, ref work, ref canGenerate) is { } reason) return reason;
