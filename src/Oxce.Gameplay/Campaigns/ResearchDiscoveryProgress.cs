@@ -53,14 +53,19 @@ internal sealed class ResearchDiscoveryProgress(
                 if (statuses.GetValueOrDefault(enabled) == 2) statuses[enabled] = 0;
             if (wasComplete && !hadProtectedUnlock) continue;
             HashSet<string>? unlocked = null;
-            foreach (var candidate in rules.Research.Rules)
+            foreach (var candidate in rules.ResearchInMapOrder)
             {
                 work += 1L + candidate.Value.Dependencies.Count + candidate.Value.Requirements.Count +
                     candidate.Value.GetOneFree.Count + candidate.Value.Unlocks.Count;
                 foreach (var group in candidate.Value.GetOneFreeProtected) work += 1L + group.Topics.Count;
                 if (work > maximumWork) return false;
-                if (candidate.Value.Cost != 0 || queued.Contains(candidate.Id) ||
-                    candidate.Value.Requirements.Count != 0 && !rule.Unlocks.Contains(candidate.Id, StringComparer.Ordinal)) continue;
+                if (candidate.Value.Cost != 0 || queued.Contains(candidate.Id)) continue;
+                if (candidate.Value.Requirements.Count != 0)
+                {
+                    work += rule.Unlocks.Count;
+                    if (work > maximumWork) return false;
+                    if (!rule.Unlocks.Contains(candidate.Id, StringComparer.Ordinal)) continue;
+                }
                 if (statuses.GetValueOrDefault(candidate.Id) == 2 ||
                     candidate.Value.Requirements.Any(required => !completed.Contains(required)) ||
                     completed.Contains(candidate.Id) && !HasRemainingReward(candidate.Value) && !HasProtectedUnlock(candidate.Value)) continue;

@@ -179,9 +179,10 @@ void sortReserchVector(std::vector<const RuleResearch*>&) {} void removePoppedRe
 void addResearchDiaryEntry(ResearchDiaryEntry* entry) { delete entry; } void addResearchScore(int value) { researchScore+=value; }
 void removeDiscoveredResearch(const RuleResearch* rule) { std::erase(_discovered,rule); }
 void getAvailableResearchProjects(std::vector<RuleResearch*>& available,const Mod* mod,Base*) const {
-for(auto* rule:mod->rules) if(!isResearchRuleStatusDisabled(rule->name)&&!isResearched(rule,false)&&
+std::map<std::string,ResearchRule*> ordered; for(auto* rule:mod->rules) ordered[rule->name]=rule;
+for(const auto& pair:ordered) { auto* rule=pair.second; if(!isResearchRuleStatusDisabled(rule->name)&&!isResearched(rule,false)&&
 std::all_of(rule->dependencies.begin(),rule->dependencies.end(),[&](auto* r){return isResearched(r,false);})&&
-std::all_of(rule->requirements.begin(),rule->requirements.end(),[&](auto* r){return isResearched(r,false);})) available.push_back(rule);
+std::all_of(rule->requirements.begin(),rule->requirements.end(),[&](auto* r){return isResearched(r,false);})) available.push_back(rule); }
 }
 void addFinishedResearch(const RuleResearch*,const Mod*,Base*,bool score=true);
 const RuleResearch* selectGetOneFree(const RuleResearch*);
@@ -247,6 +248,27 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"researchUnicodeRows\":[";
+{
+ResearchRule source,disabler,late; source.name="UNICODE_SOURCE";
+disabler.name="\xEE\x80\x80"; late.name="\xF0\x90\x80\x80";
+disabler.cost=late.cost=0; disabler.dependencies=late.dependencies={&source}; disabler.disables={&late};
+ResearchMod mod; mod.rules={&source,&late,&disabler}; SavedGame saved; Base base;
+saved.addFinishedResearch(&source,&mod,&base);
+std::cout << '[' << (saved.isResearched(&late,false)?"true":"false") << ',' << saved.statuses[late.name] << ']';
+}
+std::cout << "],\"researchQueuedRows\":[";
+serviceFirst=true;
+for(bool lateFirst:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule source,disabler,late,held; source.name="QUEUED_SOURCE"; disabler.name="QUEUED_DISABLER"; late.name=lateFirst?"QUEUED_A_LATE":"QUEUED_Z_LATE"; held.name="QUEUED_HELD";
+disabler.cost=late.cost=0; disabler.dependencies=late.dependencies={&source}; disabler.disables={&late}; late.disables={&held};
+Item supply; held.holding=true; held.destroy=true; held.needed=&supply;
+ResearchMod mod; mod.rules=lateFirst?std::vector<ResearchRule*>{&source,&late,&disabler,&held}:std::vector<ResearchRule*>{&source,&disabler,&late,&held};
+SavedGame saved; Base base; saved.addFinishedResearch(&source,&mod,&base);
+ResearchCaller caller; ResearchProject project{&held,false}; if(saved.isResearchRuleStatusDisabled(held.name)) caller.refund(&project);
+std::cout << '[' << (lateFirst?"true":"false") << ',' << (saved.isResearched(&late,false)?"true":"false") << ',' << saved.statuses[late.name] << ',' << caller.storage.count << ']';
 }
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
