@@ -959,7 +959,7 @@ std::cout << '[' << mode << ',' << (landing ? "true" : "false") << ',' << capaci
 }
 std::cout << "],\"selectionRows\":[";
 first = true;
-for (int mode : {0,1}) for (int variant : {0,1,2,3,4,5,6}) {
+for (int mode : {0,1}) for (int variant : {0,1,2,3,4,5,6,7,8}) {
 if (!first) std::cout << ','; first = false;
 Craft a,b; a.id = 1; b.id = 2; a._stats.speedMax = 2000; b._stats.speedMax = 6000;
 a.distance = Nautical(100); b.distance = Nautical(100);
@@ -970,6 +970,8 @@ if (variant == 3) { a._lowFuel = true; b.rule.hidden = true; }
 if (variant == 4) { a.distance = Nautical(301); b.distance = Nautical(300); }
 if (variant == 5) { ufo._stats.radarRange = 0; }
 if (variant == 6) { ufo.original = &a; ufo.hunting = true; a._lowFuel = true; }
+if (variant == 7) { a.distance = Nautical(301); b.distance = Nautical(302); }
+if (variant == 8) { ufo._stats.radarRange = -1; a.distance = 0; b.distance = 0; }
 auto* selected = select(&ufo,crafts);
 std::cout << '[' << mode << ',' << variant << ',' << (selected ? selected->id : 0) << ']';
 }

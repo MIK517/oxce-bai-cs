@@ -112,6 +112,60 @@ public sealed class StrategicWorldNewbornHuntingTests
         }
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void PositiveRadarNewbornsUseAllPossibleSpawnOrigins(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "selectionRows"), row => row[0].GetInt32() == mode && row[1].GetInt32() == 7 && row[2].GetInt32() == 0);
+        foreach (var regional in new[] { false, true })
+            foreach (var near in new[] { false, true })
+            {
+                var extra = "regions: [{type: SPATIAL_REGION, areas: [[0, 90, -30, 50]], missionZones: [[[2, 28, -18, 18, 10]], [[8, 8, 2, 2, 10]], [[362, 362, 2, 2, 10]], [[20, 20, 8, 8, 10]], " +
+                    (regional ? "[[7, 9, 1, 3, 10]]" : "[[10, 10, 8, 8, 10]]") + "]}]\n";
+                extra += "crafts: [{type: SPATIAL_CRAFT, speedMax: 6000, damageMax: 100, fuelMax: 1000, patrolWithoutFuel: true}]\n";
+                var content = Load(cache, false, mode, extra, radar: 300);
+                var spawnAreas = WorldGeometry.MissionAreas(content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("SPATIAL_REGION")].Value, 4);
+                Assert.Equal(!regional, spawnAreas[0].IsPoint);
+                var initial = Snapshot(content, false).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "SPATIAL_CRAFT",
+                    Logistics = craft.Logistics! with
+                    {
+                        Fuel = 1000,
+                        Damage = 0,
+                        Weapons = [],
+                        Longitude = near ? Degrees(regional ? 8 : 10) : 1.2,
+                        Latitude = near ? Degrees(regional ? 2 : 8) : 0.6
+                    }
+                });
+                initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "SPATIAL_REGION" }] } };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "separated-birth-before.sav");
+                Assert.Equal(300, content.RuntimeRules.Ufos[content.RuntimeRules.Ufos.GetRequired("ZERO_RADAR_HUNTER")].Value.Stats.RadarRange);
+                var candidate = campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SPATIAL_CRAFT").Logistics!;
+                Assert.False(candidate.LowFuel);
+                Assert.False(candidate.MissionComplete);
+                Assert.Equal("STR_OUT", candidate.Status);
+                Assert.Equal(100, content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("SPATIAL_CRAFT")].Value.DamageMaximum);
+                if (near)
+                {
+                    AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+                    continue;
+                }
+                AdvanceUnblocked(campaign, 1);
+                var born = Assert.Single(campaign.Capture().World.Ufos);
+                Assert.True(born.HunterKiller);
+                Assert.False(born.Hunting);
+                Assert.Equal(mode, born.HuntMode);
+                campaign = Reload(content, campaign, 81, "separated-birth-after.sav");
+                AdvanceOne(campaign);
+                Reload(content, campaign, 81, "separated-birth-following.sav");
+            }
+    }
+
     private static RuntimeContent Load(bool cache, bool escort, int mode, string extra = "", int radar = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             ufos:

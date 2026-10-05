@@ -943,6 +943,12 @@ public sealed class StrategicWorldHuntingTests
                 a = a with { Latitude = WorldGeometry.Nautical(301) };
                 b = b with { Latitude = WorldGeometry.Nautical(300) };
             }
+            if (variant == 7)
+            {
+                a = a with { Latitude = WorldGeometry.Nautical(301) };
+                b = b with { Latitude = WorldGeometry.Nautical(302) };
+            }
+            if (variant == 8) { a = a with { Latitude = 0 }; b = b with { Latitude = 0 }; }
             Assert.True(WorldHunting.TryAttraction(mode, false, 0, 2000, 0, 100, out var attractionA));
             Assert.True(WorldHunting.TryAttraction(mode, false, 0, variant == 1 ? 2000 : 6000, 0, 100, out var attractionB));
             var ufo = new UfoSnapshot(9, "UFO", 4, "TRAJ", 0, 0, 0, UfoStatus.Flying, WorldAltitudes.Low)
@@ -952,7 +958,7 @@ public sealed class StrategicWorldHuntingTests
                 new(a, a.Position, attractionA, variant is 3 or 6, variant == 2, true),
                 new(b, b.Position, attractionB, variant == 2, variant == 3, true),
             ];
-            Assert.Equal(row[2].GetInt32(), WorldHunting.Select(ufo, variant == 5 ? 0 : 300, crafts)?.Id ?? 0);
+            Assert.Equal(row[2].GetInt32(), WorldHunting.Select(ufo, variant == 5 ? 0 : variant == 8 ? -1 : 300, crafts)?.Id ?? 0);
         }
     }
 
@@ -1106,6 +1112,9 @@ public sealed class StrategicWorldHuntingTests
                     { RuleId = "MISSION_HUNTER_AIR", NextWave = 0, LiveUfos = 0, SpawnCountdown = 0 }],
             },
         };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        { Logistics = craft.Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8), Fuel = 1000 } });
+        snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Longitude = Degrees(10), Latitude = Degrees(8) }] };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(81)),
             "Alien mission wave spawning requires world simulation.");
     }
