@@ -12,6 +12,7 @@ public sealed partial class CampaignState
         var rules = _content.RuntimeRules;
         List<(BaseState Owner, ProductionState Project, int Units)> planned = [];
         long transfers = 0;
+        var uncertainTransfers = false;
         foreach (var owner in _bases)
         {
             var sources = crafts[owner.Id];
@@ -33,6 +34,11 @@ public sealed partial class CampaignState
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
                 {
+                    var itemDelay = rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0;
+                    var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
+                    uncertainTransfers |= rule.SpawnedPersonType.Length != 0 ||
+                        itemDelay && (rule.RandomProducedItems.Count != 0 || !project.Sell && rule.ProducedMaterials.Any(material => material.Item is not null)) ||
+                        craftDelay && rule.ProducedMaterials.Any(material => material.Craft is not null);
                     if (rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Craft is { } type &&
                         sources.Any(craft => craft.Rule == type && craft.Logistics?.Status != "STR_OUT")))
                         return "UFO retargeting requires production craft-consumption forecasts.";
@@ -83,6 +89,7 @@ public sealed partial class CampaignState
         }
         if (transfers != 0)
         {
+            if (uncertainTransfers) return "Production arrivals require other production effect forecasts.";
             if (uncertainResearch) return "Production arrivals require daily research transfer-identity forecasts.";
             long next = nextResearchTransferId ?? _nextIds.GetValueOrDefault("oxcePortTransfer", 1);
             foreach (var owner in _bases)
