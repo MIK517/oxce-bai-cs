@@ -664,7 +664,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     made++;
                     if (!progressed.Infinite && before + made >= progressed.Amount) break;
                     stop = StartProductionUnit(owner, _content.RuntimeRules.Manufacture[progressed.Rule].Value,
-                        checkLivingSpace: made >= requested);
+                        checkLivingSpace: made >= requested, effects: effects);
                     if (stop is not null) break;
                 }
                 var complete = !progressed.Infinite && after >= progressed.Amount;
@@ -687,7 +687,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     }
 
     private string? StartProductionUnit(
-        BaseState owner, RuntimeManufactureRule rule, bool initial = false, bool checkLivingSpace = true)
+        BaseState owner, RuntimeManufactureRule rule, bool initial = false, bool checkLivingSpace = true, TimeEffects? effects = null)
     {
         // RuleManufacture::haveEnoughMoneyForOneMoreUnit: free units start even with negative funds.
         if (rule.Cost > 0 && _funds[^1] < rule.Cost) return "STR_NOT_ENOUGH_MONEY";
@@ -701,6 +701,13 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         }
         if (!TryPlanProductionMaterials(owner, rule, out var materialPlan, out var materialReason))
             return materialReason;
+        if (materialPlan.Any(material => material.Craft is not null))
+        {
+            var craftTargets = materialPlan.Where(material => material.Craft is not null)
+                .Select(material => (material.Id, material.Craft!.Id)).ToArray();
+            if (_handlers.Operation<World.ICampaignCraftRemoval>().PlanReason(craftTargets) is { } removalReason)
+                return removalReason;
+        }
         foreach (var material in materialPlan)
         {
             if (material.Item is { } item) ChangeStock(owner.Items, item, -material.Quantity);
@@ -709,6 +716,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 foreach (var unloaded in CraftLogistics.UnloadedItems(removed.Logistics!, _content.RuntimeRules))
                     ChangeStock(owner.Items, _content.RuntimeRules.Items.GetRequired(unloaded.Key), unloaded.Value);
                 owner.Crafts.Remove(removed);
+                _handlers.Operation<World.ICampaignCraftRemoval>().Removed(material.Id, removed.Id, effects);
                 foreach (var soldier in owner.Soldiers.Where(s => s.Personal is { } personal &&
                     personal.CraftType == material.Id && personal.CraftId == removed.Id).ToArray())
                 {

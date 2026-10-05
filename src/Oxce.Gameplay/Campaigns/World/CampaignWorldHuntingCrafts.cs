@@ -91,8 +91,8 @@ internal sealed partial class CampaignWorld
 
     private CampaignState.CraftState? ForecastHuntingTarget(WorldTargetReference target)
     {
-        if (_huntingCraftForecast?.GetValueOrDefault((target.TypeId, target.Id)) is not { } state)
-            return TargetCraft(target);
+        if (_huntingCraftForecast is null) return TargetCraft(target);
+        if (_huntingCraftForecast.GetValueOrDefault((target.TypeId, target.Id)) is not { } state) return null;
         return new(campaign.Content.RuntimeRules.Crafts.GetRequired(target.TypeId), target.Id) { Logistics = state };
     }
 

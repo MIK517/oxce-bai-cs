@@ -77,6 +77,7 @@ internal static class CampaignPreflightOrder
     public const int MonthlyWorldScheduling = 350;
     public const int Servicing = 400;
     public const int ResearchProduction = 500;
+    public const int ProductionCraftTargets = 510;
     public const int Transfers = 600;
 }
 

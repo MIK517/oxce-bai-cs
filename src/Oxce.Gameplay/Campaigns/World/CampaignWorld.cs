@@ -38,6 +38,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         RegisterAlienBaseOperations(registry);
         RegisterAlienBaseMonthly(registry);
         RegisterCraftOperations(registry);
+        RegisterCraftRemoval(registry);
         RegisterEventScheduling(registry);
         RegisterEventScripts(registry);
         RegisterMissionScripts(registry);
