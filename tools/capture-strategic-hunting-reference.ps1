@@ -62,6 +62,17 @@ if ($deliveryStart -lt 0 -or $deliveryEnd -le $deliveryStart) { throw 'Missing f
 $delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart).TrimEnd()
 $delivery = $delivery.Substring(0, $delivery.LastIndexOf('}')).TrimEnd()
 $template = $template.Replace('// PRODUCTION_DELIVERY', $delivery)
+$continuationStart = $production.IndexOf('count++;', [StringComparison]::Ordinal)
+if ($continuationStart -lt 0) { throw 'Missing production continuation fragment.' }
+$continuation = $production.Substring($continuationStart).TrimEnd()
+$continuation = $continuation.Substring(0, $continuation.LastIndexOf('}')).TrimEnd()
+$template = $template.Replace('// PRODUCTION_CONTINUATION', $continuation)
+$productionInputMethods = ''
+foreach ($signature in @('bool Production::haveEnoughMoneyForOneMoreUnit(', 'bool Production::haveEnoughLivingSpaceForOneMoreUnit(', 'bool Production::haveEnoughMaterialsForOneMoreUnit(', 'void Production::startItem(')) {
+    $productionInputMethods += (Read-ReferenceMethod 'src/Savegame/Production.cpp' $signature) + [Environment]::NewLine
+}
+$template = $template.Replace('// PRODUCTION_INPUT_METHODS', $productionInputMethods)
+$template = $template.Replace('// PRODUCTION_MONEY_RULE', (Read-ReferenceMethod 'src/Mod/RuleManufacture.cpp' 'bool RuleManufacture::haveEnoughMoneyForOneMoreUnit('))
 $template = $template.Replace('// PRODUCTION_COUNT', $production.Substring($progressStart, $progressEnd - $progressStart) + 'return produced; } return 0;')
 $template = $template.Replace('// WEAPON_REARM', (Read-ReferenceMethod 'src/Savegame/CraftWeapon.cpp' 'int CraftWeapon::rearm(const int available, const int clipSize)'))
 $template = $template.Replace('// FACILITY_REARM', (Read-ReferenceMethod 'src/Savegame/BaseFacility.cpp' 'const RuleItem* BaseFacility::rearm()'))

@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded); SavedGame::addFinishedResearch/selectGetOneFree/hasUndiscoveredGetOneFree/hasUndiscoveredProtectedUnlock with controlled availability and diary collaborators; Production::step fixed item delivery fragment including zero quantities",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded); SavedGame::addFinishedResearch/selectGetOneFree/hasUndiscoveredGetOneFree/hasUndiscoveredProtectedUnlock with controlled availability and diary collaborators; Production::step fixed item delivery fragment including zero quantities; Production::step continuation checks; Production::haveEnoughMoneyForOneMoreUnit/haveEnoughLivingSpaceForOneMoreUnit/haveEnoughMaterialsForOneMoreUnit/startItem and RuleManufacture::haveEnoughMoneyForOneMoreUnit",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 44071,
-      "sha256": "248b3290161a3a3b3408c20ad63b2630fc1a7035fcfab7027392e08a3ac4a245"
+      "size": 47165,
+      "sha256": "91026979cbdb374cd5bfd4513519fe60c70d2cfc2c57249cb2e783414fc504dc"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 11993,
-      "sha256": "2f3b21fe34a5b853ce2ad5cd511bc7a20d7d95f91fc52f6a4cc9105835d54f66"
+      "size": 13013,
+      "sha256": "cbb1571c5a4715560221a4d39646d11332b31e9a0ad32788a9983367d97acc2c"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",
