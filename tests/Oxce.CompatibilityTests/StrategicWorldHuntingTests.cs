@@ -859,28 +859,38 @@ public sealed class StrategicWorldHuntingTests
                 var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
                 var gun = template with
                 {
-                    RuleId = "HUNT_AMMO_CONSUMER", Id = 2,
+                    RuleId = "HUNT_AMMO_CONSUMER",
+                    Id = 2,
                     Logistics = template.Logistics! with
                     {
-                        Status = "STR_REARMING", Fuel = 100,
+                        Status = "STR_REARMING",
+                        Fuel = 100,
                         Weapons = [new("HUNT_AMMO_GUN", row[2].GetInt32(), Rearming: true)],
                     },
                 };
                 var fuel = template with
                 {
-                    RuleId = "HUNT_AMMO_FUEL", Id = 1,
+                    RuleId = "HUNT_AMMO_FUEL",
+                    Id = 1,
                     Logistics = template.Logistics! with
                     {
-                        Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true,
-                        AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3,
                     },
                 };
-                initial = initial with { Bases = [initial.Bases[0] with
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
                 {
                     Longitude = 0.45, Latitude = 0.21, Crafts = [gun, fuel], Soldiers = [],
                     Items = row[3].GetInt32() == 0 ? new Dictionary<string, int>() :
                         new Dictionary<string, int> { ["HUNT_SHARED_AMMO"] = row[3].GetInt32() },
-                }] };
+                }]
+                };
                 var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ammo-fuel-before.sav");
                 if (row[11].GetInt32() != 0)
                 {
@@ -919,17 +929,25 @@ public sealed class StrategicWorldHuntingTests
                 RuleId = "FACILITY_FUEL_HUNT",
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true,
-                    AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                    Status = "STR_REFUELLING",
+                    Fuel = 60,
+                    Weapons = [],
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
                 },
-            }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
-            initial = initial with { Bases = [initial.Bases[0] with
+            }) with
+            { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
             {
                 Longitude = 0.45, Latitude = 0.21,
                 Items = row[0].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[0].GetInt32() },
                 Facilities = [.. initial.Bases[0].Facilities, new("SHARED_HUNT_FACILITY", 1, 1,
                     row[2].GetInt32(), row[1].GetInt32(), row[3].GetBoolean(), true, false)],
-            }] };
+            }]
+            };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "facility-fuel-before.sav");
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -971,6 +989,86 @@ public sealed class StrategicWorldHuntingTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyResearchAmmunitionReuseIsGuardedWithoutItemFuel(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: RESEARCH_AMMO_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: RESEARCH_AMMO_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}]\nresearch: [{name: RESEARCH_AMMO_DELIVERY, cost: 1, spawnedItem: SUPPLY}]\nfacilities: [{type: RESEARCH_AMMO_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "RESEARCH_AMMO_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [new("RESEARCH_AMMO_GUN", 0)],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
+            },
+        }) with
+        { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(),
+            Facilities = [.. initial.Bases[0].Facilities, new("RESEARCH_AMMO_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("RESEARCH_AMMO_DELIVERY", 1, 0, 1)],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "research-ammo-hunt.sav");
+        AssertTimeBlocked(campaign, "UFO retargeting requires daily research ammunition-reuse forecasts.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OtherBaseResearchCompletionCanRefundFuelBeforeHunting(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: RESEARCH_FUEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: RESEARCH_FUEL_RETURN, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}]\nfacilities: [{type: RESEARCH_FUEL_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "RESEARCH_FUEL_HUNT",
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
+            },
+        }) with
+        { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        var owner = initial.Bases[0] with
+        {
+            Longitude = 0.45,
+            Latitude = 0.21,
+            Items = new Dictionary<string, int>(),
+            Facilities = [.. initial.Bases[0].Facilities, new("RESEARCH_FUEL_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("RESEARCH_FUEL_RETURN", 1, 0, 100)],
+        };
+        initial = initial with
+        {
+            Bases = [owner, owner with
+        {
+            Id = 1, Name = "Research headquarters", Crafts = [], Soldiers = [], Transfers = [],
+            Research = [new("RESEARCH_FUEL_RETURN", 1, 0, 1)],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "cross-base-research-fuel.sav");
+        AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
+        var control = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { HunterKiller = false }] } };
+        campaign = CampaignState.Restore(control, content, new SplitMix64RandomSource(81));
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Empty(after.Bases[0].Research);
+        Assert.Equal("STR_OUT", after.Bases[0].Crafts.Single(craft => craft.RuleId == "RESEARCH_FUEL_HUNT").Logistics!.Status);
+        Assert.Equal(99, after.Bases[0].Crafts.Single(craft => craft.RuleId == "RESEARCH_FUEL_HUNT").Logistics!.Fuel);
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {
@@ -1002,18 +1100,25 @@ public sealed class StrategicWorldHuntingTests
             RuleId = "UNFINISHED_HUNT",
             Logistics = craft.Logistics! with
             {
-                Status = "STR_REFUELLING", Fuel = 60, IsAutoPatrolling = true,
-                AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
                 Weapons = source == "ammunition" ? [new("UNFINISHED_GUN", 0, Rearming: false)] : [],
             },
-        }) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
-        initial = initial with { Bases = [initial.Bases[0] with
+        }) with
+        { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
         {
             Longitude = 0.45, Latitude = 0.21,
             Items = new Dictionary<string, int> { ["SUPPLY"] = 1 },
             Facilities = [.. initial.Bases[0].Facilities, new("UNFINISHED_WORKSHOP", 1, 1, 0, 0, false, false, false)],
             Productions = [new("UNFINISHED_PRODUCT", 1, source == "overflow" ? int.MaxValue : 0, 1, false, false, source == "fallback", new Dictionary<string, int>())],
-        }] };
+        }]
+        };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "unfinished-production-before.sav");
         if (source is "overflow" or "fallback")
         {

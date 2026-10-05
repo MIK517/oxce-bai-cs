@@ -9,6 +9,14 @@ internal sealed partial class CampaignWorld
         _huntingCraftForecast = [];
         _huntingCraftSources = [];
         var rules = campaign.Content.RuntimeRules;
+        var researchMayComplete = false;
+        if (highest >= CampaignTimeTrigger.OneDay)
+            foreach (var baseState in campaign.BaseStates)
+            {
+                work += baseState.Research.Count;
+                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                researchMayComplete |= baseState.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost);
+            }
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
@@ -20,7 +28,7 @@ internal sealed partial class CampaignWorld
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
             if (highest >= CampaignTimeTrigger.OneHour &&
-                ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, ref work) is { } inputReason)
+                ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayComplete, ref work) is { } inputReason)
                 return inputReason;
             foreach (var craft in sources)
             {

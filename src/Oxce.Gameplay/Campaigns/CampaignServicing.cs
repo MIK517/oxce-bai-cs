@@ -81,6 +81,7 @@ public sealed partial class CampaignState
                 if (rule.AmmoItem is { } item && result.Used != 0) ChangeServiceStock(owner, item, -result.Used);
                 if (result.Notify) effects.Notify(new FacilityServiceMessage(owner.Id, facility.X, facility.Y,
                     "STR_NOT_ENOUGH_ITEM_TO_REARM_FACILITY_AT_BASE"));
+                if (facility.Ammo == result.Ammo && facility.AmmoMissingReported == result.MissingReported) continue;
                 owner.Facilities[index] = facility with { Ammo = result.Ammo, AmmoMissingReported = result.MissingReported };
             }
         }

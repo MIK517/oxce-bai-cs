@@ -104,7 +104,8 @@ public sealed class CraftServicingTests
     {
         var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
         var state = CraftLogistics.Purchase(rules.Crafts[rules.Crafts.GetRequired("SHIP")].Value, rules, 0, 0)
-            with { Status = "STR_REARMING", Weapons = [new("FIXED", 0, true), null] };
+            with
+        { Status = "STR_REARMING", Weapons = [new("FIXED", 0, true), null] };
         var stores = new Dictionary<string, int> { ["BULKY"] = 2 };
         var random = new SplitMix64RandomSource(7);
         var before = random.State;
