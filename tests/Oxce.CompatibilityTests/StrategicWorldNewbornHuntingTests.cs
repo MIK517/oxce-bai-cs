@@ -219,6 +219,35 @@ public sealed class StrategicWorldNewbornHuntingTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NegativeRadarNewbornsValidateAttractionAndPersistWithoutTargets(bool cache, bool escort)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "selectionRows"), row => row[1].GetInt32() == 8 && row[2].GetInt32() == 0);
+        foreach (var radar in new[] { -1, int.MinValue })
+            foreach (var mode in new[] { 0, 1 })
+            {
+                var content = Load(cache, escort, mode, radar: radar);
+                var campaign = Reload(content, CampaignState.Restore(Snapshot(content, escort), content,
+                    new SplitMix64RandomSource(81)), 81, "negative-radar-before.sav");
+                AdvanceUnblocked(campaign, 1);
+                var born = Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER");
+                Assert.False(born.Hunting);
+                Assert.Equal(escort, born.Escorting);
+                Assert.Equal(mode, born.HuntMode);
+                campaign = Reload(content, campaign, 81, "negative-radar-after.sav");
+                AdvanceOne(campaign);
+                Reload(content, campaign, 81, "negative-radar-following.sav");
+                content = Load(cache, escort, mode, "crafts: [{type: SHIP, soldiers: 2147483647}]\n", radar);
+                AssertTimeBlocked(CampaignState.Restore(Snapshot(content, escort), content, new SplitMix64RandomSource(81)),
+                    "Craft hunter attraction exceeds the supported range.");
+            }
+    }
+
     private static RuntimeContent Load(bool cache, bool escort, int mode, string extra = "", int radar = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             ufos:
