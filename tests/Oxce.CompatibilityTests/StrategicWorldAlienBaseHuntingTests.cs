@@ -372,6 +372,49 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HiddenRelaunchLeaderSpeedCannotBypassBaseHuntingPreflight(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
+            "crafts: [{type: BASE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: BASE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n");
+        var initial = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+        var owner = initial.Bases[0];
+        var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+        var leader = template with
+        {
+            RuleId = "BASE_HIDDEN_LEADER",
+            Id = 2,
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3
+            }
+        };
+        var escort = template with
+        {
+            RuleId = "BASE_ESCORT",
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 50,
+                Speed = 6000,
+                Weapons = [],
+                Destination = new(WorldTargetKind.Craft, "BASE_HIDDEN_LEADER", 2, 0.2, 0.1)
+            }
+        };
+        initial = initial with { Bases = [owner with { Crafts = [leader, escort], Soldiers = [] }] };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "base-escort-before.sav");
+        AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+    }
+
     private static RuntimeContent Load(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
