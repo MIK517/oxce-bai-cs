@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 131 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 133 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 153 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 88 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 89 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 131 files.
+`src/Oxce.Gameplay` - 133 files.
 
 ### `Oxce.Gameplay`
 
@@ -392,6 +392,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignProductionProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
 - `CampaignResearchProduction` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
 - `CampaignState` (class) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
+- `CampaignState` (class) [CampaignResearchScorePreflight.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchScorePreflight.cs)
 - `CampaignState` (class) [CampaignResearchStockForecast.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchStockForecast.cs)
 - `CampaignState` (class) [CampaignSales.cs](../src/Oxce.Gameplay/Campaigns/CampaignSales.cs)
 - `CampaignState` (class) [CampaignScriptValues.cs](../src/Oxce.Gameplay/Campaigns/CampaignScriptValues.cs)
@@ -1204,9 +1205,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 88 files.
+`tests/Oxce.UnitTests` - 89 files.
 
-<details><summary>88 test classes</summary>
+<details><summary>89 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1247,6 +1248,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftServicingTests` ([CraftServicingTests.cs](../tests/Oxce.UnitTests/Gameplay/CraftServicingTests.cs))
 - `ProductionAccountingCapacityTests` ([ProductionAccountingCapacityTests.cs](../tests/Oxce.UnitTests/Gameplay/ProductionAccountingCapacityTests.cs))
 - `ProductionProgressTests` ([ProductionProgressTests.cs](../tests/Oxce.UnitTests/Gameplay/ProductionProgressTests.cs))
+- `ResearchScoreCapacityTests` ([ResearchScoreCapacityTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchScoreCapacityTests.cs))
 - `SoldierGenerationTests` ([SoldierGenerationTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierGenerationTests.cs))
 - `SoldierPilotingTests` ([SoldierPilotingTests.cs](../tests/Oxce.UnitTests/Gameplay/SoldierPilotingTests.cs))
 - `WorldAlienBaseHuntingTests` ([WorldAlienBaseHuntingTests.cs](../tests/Oxce.UnitTests/Gameplay/WorldAlienBaseHuntingTests.cs))

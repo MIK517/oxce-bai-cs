@@ -62,6 +62,11 @@ if ($deliveryStart -lt 0 -or $deliveryEnd -le $deliveryStart) { throw 'Missing f
 $delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart).TrimEnd()
 $delivery = $delivery.Substring(0, $delivery.LastIndexOf('}')).TrimEnd()
 $template = $template.Replace('// PRODUCTION_DELIVERY', $delivery)
+$scoreStart = $production.IndexOf('if (_rules->getPoints() != 0)', [StringComparison]::Ordinal)
+$scoreEnd = $production.IndexOf('count++;', $scoreStart, [StringComparison]::Ordinal)
+if ($scoreStart -lt 0 -or $scoreEnd -le $scoreStart) { throw 'Missing production score fragment.' }
+$template = $template.Replace('// PRODUCTION_SCORE', $production.Substring($scoreStart, $scoreEnd - $scoreStart))
+$template = $template.Replace('// RESEARCH_SCORE', (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::addResearchScore('))
 $template = $template.Replace('// PRODUCTION_CRAFT_COUNT', (Read-ReferenceMethod 'src/Savegame/Base.cpp' 'int Base::getCraftCountForProduction('))
 $unload = Read-ReferenceMethod 'src/Savegame/Craft.cpp' 'void Craft::unload()'
 $unloadStart = $unload.IndexOf('for (const auto& pair : *_items->getContents())', [StringComparison]::Ordinal)

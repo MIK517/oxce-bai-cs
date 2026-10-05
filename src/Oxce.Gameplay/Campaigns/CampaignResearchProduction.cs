@@ -438,6 +438,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
 
     private string? PreflightResearchProduction(CampaignTimeTrigger highest)
     {
+        var scoreCapacity = new ResearchScoreCapacity(_researchScores[^1]);
+        long work = 0;
         if (highest >= CampaignTimeTrigger.OneDay)
         {
             // Any topic can complete through free or lookup discoveries, so all research events are checked.
@@ -450,10 +452,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 foreach (var project in owner.Research)
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
                         return "Research progress exceeds the supported range.";
+            if (ReserveDailyResearchScores(ref scoreCapacity, ref work) is { } scoreReason) return scoreReason;
         }
         if (highest >= CampaignTimeTrigger.OneHour)
         {
-            long work = 0;
             var accountingCapacity = new ProductionAccountingCapacity(_funds[^1], _incomes[^1], _expenditures[^1]);
             foreach (var owner in _bases)
             {
@@ -475,6 +477,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
                     var units = ProductionProgress.Requested(manufacture.Time, production.Spent, assignments[index], production.Amount, production.Infinite);
                     if (units == 0) continue;
+                    if (!scoreCapacity.Reserve(manufacture.Points, manufacture.Points, units))
+                        return "Research and production scores exceed the supported range.";
                     var starts = units - (!production.Infinite && ProductionProgress.Produced(manufacture.Time,
                         production.Spent + assignments[index], production.Amount) >= production.Amount ? 1 : 0);
                     if (!accountingCapacity.Reserve(-manufacture.Cost, -manufacture.Cost, starts))
