@@ -2088,6 +2088,58 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ProductionMaterialContinuationMatchesNativeOutputThenInputOrder(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionMaterialRows").GroupBy(row => (Input: row[0].GetInt32(), Output: row[1].GetInt32(), Delay: row[3].GetInt32())))
+        {
+            var content = Load(cache, $"crafts: [{{type: MONEY_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: MONEY_PRODUCT, time: 2, cost: 3, requiredItems: {{SUPPLY: {group.Key.Input}}}, producedItems: {{SUPPLY: {group.Key.Output}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: MONEY_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "MONEY_PRODUCT_HUNT",
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    }
+                })
+                    with
+                { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [12] };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Engineers = 0, Items = row[2].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[2].GetInt32() },
+                    Facilities = [.. initial.Bases[0].Facilities, new("MONEY_PRODUCT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("MONEY_PRODUCT", row[4].GetInt32() * 2, 1, 4, false, false, false, new Dictionary<string, int>())],
+                }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "money-product-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var progress = Assert.Single(result.Events.OfType<CampaignProductionProgress>());
+                var after = campaign.Capture();
+                var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "MONEY_PRODUCT_HUNT").Logistics!;
+                var stop = progress.StopReason == "STR_PRODUCTION_COMPLETE" ? 0 : progress.StopReason == "STR_NOT_ENOUGH_MONEY" ? 2 : progress.StopReason == "STR_NOT_ENOUGH_MATERIALS" ? 3 : 1;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { progress.Produced, after.Funds[^1], stop,
+                    after.Bases[0].Items.GetValueOrDefault("SUPPLY"), craft.Status, craft.Fuel,
+                    after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0, after.Bases[0].Transfers.Count });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "money-product-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ProductionCostContinuationMatchesNativePaidUnitAndStopOrder(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");

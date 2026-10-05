@@ -287,6 +287,22 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
+std::cout << "],\"productionMaterialRows\":[";
+serviceFirst=true;
+for(int input:{1,2}) for(int output:{0,1,2}) for(int stock:{0,1,3}) for(int delay:{0,2}) for(int units:{1,3}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Item item; Base base; ServiceGame game; FuelCaller fuelCaller; Ufo hunter;
+craft.id=1; craft._base=&base; base.crafts={&craft}; base.storage.count=stock; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+Production progress; progress.rule.time=2; progress.rule.cost=3; progress.rule.requiredItems={{&item,input}};
+progress._timeSpent=1; progress._engineers=units*2; progress._amount=4;
+ProductionItemRule rule; rule.times={delay}; rule.produced={{&item,output}}; ProductionDeliveryCaller delivery{&rule}; ResearchMod mod; game.save.funds=12;
+const auto result=progress.scalarStep(&base,&game.save,&mod,delivery);
+if(craft._status=="STR_REFUELLING") { auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << input << ',' << output << ',' << stock << ',' << delay << ',' << units << ',' << progress.completedUnits << ',' << game.save.funds << ',' << result << ',' << base.storage.count << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ',' << base.transfers.size() << ']';
+for(auto* transfer:base.transfers) delete transfer; for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
 std::cout << "],\"productionMoneyRows\":[";
 serviceFirst=true;
 for(int cost:{0,3}) for(int funds:{-1,0,3,12}) for(int assignedUnits:{1,3}) for(int amount:{2,4}) for(bool infinite:{false,true}) {
