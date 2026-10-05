@@ -460,6 +460,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         {
             var accountingCapacity = new ProductionAccountingCapacity(_funds[^1], _incomes[^1], _expenditures[^1]);
             long possibleTransfers = 0;
+            Dictionary<RuleHandle<CraftRuleFamily>, long>? possibleCrafts = null;
             var personnelBirths = false;
             foreach (var owner in _bases)
             {
@@ -484,6 +485,13 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     if (units == 0) continue;
                     if (PossibleProductionTransfers(manufacture, production.Sell, units, ref work, out var transferCount) is { } transferReason) return transferReason;
                     possibleTransfers += transferCount;
+                    foreach (var material in manufacture.ProducedMaterials)
+                        if (material.Craft is { } craft)
+                        {
+                            possibleCrafts ??= [];
+                            possibleCrafts[craft] = possibleCrafts.GetValueOrDefault(craft) + units * (long)material.Quantity;
+                            if (ProducedCraftServiceReason(owner, craft) is { } craftReason) return craftReason;
+                        }
                     if (manufacture.SpawnedPersonType.Length != 0)
                     {
                         personnelBirths = true;
@@ -516,6 +524,12 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     return "Production personnel exceed the supported population range.";
             }
             if (personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } personnelReason) return personnelReason;
+            if (possibleCrafts is not null)
+            {
+                if (ProductionCraftCapacity(possibleCrafts, ref work) is { } craftReason) return craftReason;
+                if (!personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } arrivalReason)
+                    return arrivalReason.Replace("personnel", "craft", StringComparison.Ordinal);
+            }
         }
         return null;
     }
@@ -980,9 +994,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             var craftId = NextCraftId(id);
             _nextIds[id] = checked(craftId + 1);
             var key = FormattableString.Invariant($"created:{Identity.Id}:craft:{id}:{craftId}");
-            var definition = _content.RuntimeRules.Crafts[craft].Value;
-            var logistics = CraftLogistics.Arrive(CraftLogistics.Purchase(definition, _content.RuntimeRules,
-                owner.Longitude, owner.Latitude), definition, _content.RuntimeRules, owner.Longitude, owner.Latitude);
+            var logistics = ProducedCraftLogistics(owner, craft);
             var value = new CraftSnapshot(id, craftId) { PreservationKey = key, Logistics = logistics };
             if (transferHours == 0)
                 owner.Crafts.Add(new(craft, craftId) { PreservationKey = key, Logistics = logistics });

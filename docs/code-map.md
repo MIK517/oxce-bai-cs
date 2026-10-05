@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 136 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 137 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 136 files.
+`src/Oxce.Gameplay` - 137 files.
 
 ### `Oxce.Gameplay`
 
@@ -356,6 +356,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignTrainingCompleted` (record) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
 - `CampaignState` (class) [CampaignPersonnel.cs](../src/Oxce.Gameplay/Campaigns/CampaignPersonnel.cs)
 - `CampaignState` (class) [CampaignPriceScripts.cs](../src/Oxce.Gameplay/Campaigns/CampaignPriceScripts.cs)
+- `CampaignState` (class) [CampaignProductionCraftPreflight.cs](../src/Oxce.Gameplay/Campaigns/CampaignProductionCraftPreflight.cs)
 - `CampaignState` (class) [CampaignProductionForecast.cs](../src/Oxce.Gameplay/Campaigns/CampaignProductionForecast.cs)
 - `CampaignState` (class) [CampaignProductionHistoryPreflight.cs](../src/Oxce.Gameplay/Campaigns/CampaignProductionHistoryPreflight.cs)
 - `CampaignState` (class) [CampaignProductionPersonnelPreflight.cs](../src/Oxce.Gameplay/Campaigns/CampaignProductionPersonnelPreflight.cs)
