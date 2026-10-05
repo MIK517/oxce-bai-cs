@@ -20,6 +20,66 @@ public sealed class StrategicWorldEscortEnduranceTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void EscortRingDetectionExecutesLiveFlagsAndInstanceTagsAcrossRewrites(bool cache, bool reverse)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var tagValue = TestFixtures.Rows(oracle.RootElement, "tagValues")[2][1].GetInt32();
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+            extended:
+              tags:
+                Ufo: {ESCORT_INSTANCE: int}
+            ufos:
+              - type: HUNTER
+                scripts:
+                  detectUfoFromBase: |
+                    var int value;
+                    ufo.isEscorting value;
+                    if neq value 1; return DETECTION_NONE 0; end;
+                    ufo.isHunting value;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    ufo.isHunterKiller value;
+                    if neq value 0; return DETECTION_NONE 0; end;
+                    ufo.getTag value Tag.ESCORT_INSTANCE;
+                    if neq value {{tagValue}}; return DETECTION_NONE 0; end;
+                    return DETECTION_HYPERWAVE 100;
+            """);
+        var initial = Ring(content, 3, reverse);
+        initial = initial with
+        {
+            Time = new(1, 1, 1, 1999, 1, 29, 55),
+            World = initial.World with
+            {
+                Ufos = initial.World.Ufos.Select(ufo => ufo with
+                { Detected = false, HyperDetected = false, ScriptValues = [new("ESCORT_INSTANCE", "int", tagValue)] }).ToArray()
+            },
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-script-before.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(3, result.Events.OfType<UfoContactDetected>().Count());
+        for (var boundary = 0; boundary < 4; boundary++)
+        {
+            var after = campaign.Capture();
+            Assert.All(after.World.Ufos, ufo =>
+            {
+                Assert.True(ufo.Detected);
+                Assert.True(ufo.HyperDetected);
+                Assert.True(ufo.Escorting);
+                Assert.Equal(tagValue, Assert.Single(ufo.ScriptValues).Value);
+            });
+            campaign = Reload(content, campaign, 81, "escort-script-rewrite.sav");
+            campaign = Reload(content, campaign, 81, "escort-script-second-rewrite.sav");
+            if (boundary < 3) AdvanceUnblocked(campaign, 360);
+        }
+        Assert.Equal(3, Assert.Single(campaign.Capture().World.Missions).LiveUfos);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void EscortChainCleanupRepairsOnlyDirectFollowersAcrossReloads(bool cache, bool reverse)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
