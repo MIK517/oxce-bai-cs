@@ -531,7 +531,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
     private static void ValidateTransfer(TransferSnapshot transfer, RuntimeRuleCatalog rules)
     {
         PositiveId(transfer.Id, "transfer");
-        if (!Enum.IsDefined(transfer.Kind) || transfer.Quantity <= 0)
+        if (!Enum.IsDefined(transfer.Kind) || transfer.Quantity < 0 ||
+            transfer.Quantity == 0 && transfer.Kind != CampaignTransferKind.Item)
             throw new InvalidDataException("Transfer kind or quantity is invalid.");
         if (transfer.Hours == int.MinValue) throw new InvalidDataException("Transfer hours would overflow.");
         if ((transfer.Soldier is not null) != (transfer.Kind == CampaignTransferKind.Soldier) ||

@@ -56,6 +56,12 @@ $production = Read-ReferenceMethod 'src/Savegame/Production.cpp' 'productionProg
 $progressStart = $production.IndexOf('int done = getAmountProduced();', [StringComparison]::Ordinal)
 $progressEnd = $production.IndexOf('int count = 0;', $progressStart, [StringComparison]::Ordinal)
 if ($progressStart -lt 0 -or $progressEnd -le $progressStart) { throw 'Missing production completion-count fragment.' }
+$deliveryStart = $production.IndexOf('int transferTimeItems =', [StringComparison]::Ordinal)
+$deliveryEnd = $production.IndexOf('// Random manufacture', $deliveryStart, [StringComparison]::Ordinal)
+if ($deliveryStart -lt 0 -or $deliveryEnd -le $deliveryStart) { throw 'Missing fixed production delivery fragment.' }
+$delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart).TrimEnd()
+$delivery = $delivery.Substring(0, $delivery.LastIndexOf('}')).TrimEnd()
+$template = $template.Replace('// PRODUCTION_DELIVERY', $delivery)
 $template = $template.Replace('// PRODUCTION_COUNT', $production.Substring($progressStart, $progressEnd - $progressStart) + 'return produced; } return 0;')
 $template = $template.Replace('// WEAPON_REARM', (Read-ReferenceMethod 'src/Savegame/CraftWeapon.cpp' 'int CraftWeapon::rearm(const int available, const int clipSize)'))
 $template = $template.Replace('// FACILITY_REARM', (Read-ReferenceMethod 'src/Savegame/BaseFacility.cpp' 'const RuleItem* BaseFacility::rearm()'))

@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded); SavedGame::addFinishedResearch/selectGetOneFree/hasUndiscoveredGetOneFree/hasUndiscoveredProtectedUnlock with controlled availability and diary collaborators",
+      "sources": "Craft::getHunterKillerAttraction; Ufo::insideRadarRange; GeoscapeState::ufoHuntingAndEscorting target selection fragment; Ufo::backupOriginalDestination/setTargetedXcomCraft/setEscortedUfo/resetOriginalDestination/setDestination; time5Seconds fast condition; Ufo constructor hunter initialization; Craft::isIgnoredByHK; AlienMission::spawnUfo ordinary escort initialization fragment; GeoscapeState::ufoHuntingAndEscorting idle escort attachment fragment; Craft::setFuel/refuel/setDestination and GeoscapeState::time30Minutes auto-patrol fragment before target selection; Craft::repair/rearm hourly fallthrough with no pending weapon; Craft::getFuelConsumption/consumeFuel/returnToBase and GeoscapeState::time10Minutes ordered escort fuel fragment; Transfer::advance and Craft::setBase/checkup before half-hour maintenance; Craft::reuseItem and ItemsArrivingState reuse after Transfer::advance; Transfer::getHours and ItemsArrivingState zero-hour cleanup boundary; BaseFacility::rearm before craft refuelling; CraftWeapon::rearm shared ammunition/fuel stocks with controlled bullet-saving draws; Production::getAmountProduced and Production::step completion-count fragment; Base::removeResearch held-item return fragment with no matching corpse unit; SavedGame::handlePrimaryResearchSideEffects spawned item transfer fragment; GeoscapeState::time1Day primary topic collection (lookups excluded); SavedGame::addFinishedResearch/selectGetOneFree/hasUndiscoveredGetOneFree/hasUndiscoveredProtectedUnlock with controlled availability and diary collaborators; Production::step fixed item delivery fragment including zero quantities",
       "capture": "tools/capture-strategic-hunting-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_hunting_probe.cpp",
-      "size": 40039,
-      "sha256": "33c3b69f138308b666daf421a441c7b448f1552546877aed7b585d40d9edb663"
+      "size": 42289,
+      "sha256": "6d0e2b880668665cf5d00f2494dabb2908e3be648bcdec1bb3ac2c79896af97f"
     },
     {
       "path": "tools/capture-strategic-hunting-reference.ps1",
-      "size": 11446,
-      "sha256": "0012ccfe513246fb5e5c36efa48034a26b64001a49d8d03c3ae3cf5ea4fc5072"
+      "size": 11993,
+      "sha256": "2f3b21fe34a5b853ce2ad5cd511bc7a20d7d95f91fc52f6a4cc9105835d54f66"
     },
     {
       "path": "fixtures/public/savegames/strategic-hunting.rul",

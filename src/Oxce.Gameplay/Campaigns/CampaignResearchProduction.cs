@@ -875,7 +875,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
 
     private void DeliverProducedItem(BaseState owner, string id, int quantity, RuntimeManufactureRule rule)
     {
-        if (quantity <= 0) return;
+        if (quantity < 0) throw new InvalidDataException("Production item quantities cannot be negative.");
         var transferHours = rule.TransferTimes.Count == 0 ? 0 : Math.Max(0, rule.TransferTimes[0]);
         if (transferHours == 0)
         {

@@ -571,7 +571,7 @@ public sealed partial class CampaignState
                             break;
                         case CampaignTransferKind.Item:
                             var handle = _content.RuntimeRules.Items.GetRequired(transfer.RuleId);
-                            state.Items[handle] = state.Items.GetValueOrDefault(handle) + transfer.Quantity;
+                            ChangeStock(state.Items, handle, transfer.Quantity);
                             if (_content.RuntimeRules.Items[handle].Value.BattleType == 0)
                                 (reusableItems ??= []).Add(handle);
                             break;

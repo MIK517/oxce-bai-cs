@@ -1639,6 +1639,111 @@ public sealed class StrategicWorldHuntingTests
             "UFO retargeting exceeds the supported work limit.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ZeroQuantityProductionStillReusesCraftItemsAndPersistsTransfers(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionDeliveryRows").Where(row => row[3].GetInt32() == 0)
+            .GroupBy(row => (Fuel: row[0].GetBoolean(), Armed: row[1].GetBoolean(), Delay: row[2].GetInt32())))
+        {
+            var fuel = group.Key.Fuel ? ", refuelItem: SUPPLY" : "";
+            var content = Load(cache, $"crafts: [{{type: ZERO_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: ZERO_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: ZERO_PRODUCT, time: 1, producedItems: {{SUPPLY: 0}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: ZERO_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "ZERO_PRODUCT_HUNT",
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = group.Key.Armed ? [new("ZERO_PRODUCT_GUN", 0)] : [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    },
+                }) with
+                { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21,
+                    Items = row[4].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[4].GetInt32() },
+                    Facilities = [.. initial.Bases[0].Facilities, new("ZERO_PRODUCT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("ZERO_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+                }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "zero-product-before.sav");
+                Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "ZERO_PRODUCT_HUNT").Logistics!;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { after.Bases[0].Items.GetValueOrDefault("SUPPLY"),
+                    craft.Status, craft.Fuel, group.Key.Armed && craft.Weapons[0]!.Rearming, after.Bases[0].Transfers.Count });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).Take(5).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Assert.All(after.Bases[0].Transfers, transfer => Assert.Equal(0, transfer.Quantity));
+                Reload(content, campaign, 81, "zero-product-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReloadedZeroItemTransferArrivesOnceAndReusesCraftAmmunition(bool cache)
+    {
+        var content = Load(cache, "craftWeapons: [{type: ZERO_ARRIVAL_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_READY",
+                Fuel = 300,
+                Weapons = [new("ZERO_ARRIVAL_GUN", 0)],
+                IsAutoPatrolling = false
+            },
+        }) with
+        { World = new(), Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Items = new Dictionary<string, int>(), Transfers = [new(17, 1, CampaignTransferKind.Item, "SUPPLY", 0)],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "zero-arrival-before.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(17, Assert.Single(Assert.Single(result.Events.OfType<SuppliesArrived>()).TransferIds));
+        var after = campaign.Capture();
+        Assert.Empty(after.Bases[0].Transfers);
+        var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+        Assert.Equal("STR_REARMING", craft.Status);
+        Assert.True(craft.Weapons[0]!.Rearming);
+        campaign = Reload(content, campaign, 81, "zero-arrival-after.sav");
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<SuppliesArrived>());
+        Assert.Empty(campaign.Capture().Bases[0].Transfers);
+    }
+
+    [Theory]
+    [InlineData(CampaignTransferKind.Item, -1)]
+    [InlineData(CampaignTransferKind.Engineer, 0)]
+    [InlineData(CampaignTransferKind.Scientist, 0)]
+    public void ZeroItemTransferCompatibilityDoesNotPermitNegativeOrEmptyStaff(CampaignTransferKind kind, int quantity)
+    {
+        var content = Load();
+        var initial = HuntingSnapshot(content) with { World = new() };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        { Transfers = [new(17, 1, kind, kind == CampaignTransferKind.Item ? "SUPPLY" : "", quantity)] }]
+        };
+        Assert.Throws<InvalidDataException>(() => CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {
