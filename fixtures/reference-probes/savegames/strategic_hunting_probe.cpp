@@ -237,7 +237,7 @@ int getId(const std::string&) { return 8+(int)waypoints.size(); } };
 // RESEARCH_SCORE
 // RESEARCH_DISCOVERY_METHODS
 struct ProductionItemRule {
-std::vector<int> times; std::map<const RuleItem*,int> produced; std::vector<int> random; int points=0;
+std::vector<int> times; std::map<const RuleItem*,int> produced; std::vector<std::pair<int,std::map<const RuleItem*,int>>> random; int points=0;
 int getPoints() const { return points; }
 const auto& getTransferTimes() const { return times; } const auto& getProducedItems() const { return produced; }
 const auto& getRandomProducedItems() const { return random; }
@@ -247,6 +247,7 @@ const ProductionItemRule* _rules; bool sell=false; std::map<std::string,int> _ra
 bool getSellItems() const { return sell; }
 void deliver(Base* b,SavedGame* g) {
 // PRODUCTION_DELIVERY
+// PRODUCTION_RANDOM_DELIVERY
 // PRODUCTION_SCORE
 }
 };
@@ -318,6 +319,23 @@ std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craf
 auto* target=select(&hunter,active);
 std::cout << '[' << points << ',' << assigned << ',' << (infinite?"true":"false") << ',' << stock << ',' << progress.completedUnits << ',' << game.save.researchScore << ',' << base.storage.count << ',' << stop << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"productionDeterministicRandomRows\":[";
+scoreFirst=true;
+for(bool sell:{false,true}) for(int delay:{0,2}) for(int qty:{0,2}) for(bool duplicate:{false,true}) for(int assigned:{1,6}) for(bool infinite:{false,true}) {
+if(!scoreFirst) std::cout << ','; scoreFirst=false;
+Base base; ServiceGame game; ResearchMod mod; Item item; Production progress; Craft craft; Ufo hunter; FuelCaller fuelCaller;
+craft.id=1; craft._base=&base; base.crafts={&craft}; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+ProductionItemRule rule; rule.times={delay}; rule.produced={{&item,1}}; rule.random={{1,{{&item,qty}}}}; if(duplicate) rule.random.push_back({1,{{&item,qty}}});
+ProductionDeliveryCaller delivery{&rule}; delivery.sell=sell;
+progress.rule.time=2; progress.rule.requiredItems={{&item,2}}; progress._timeSpent=1; progress._engineers=assigned; progress._amount=2; progress.infinite=infinite;
+base.storage.count=1; RNG::suppliedChoice=duplicate?2:1;
+int stop=progress.scalarStep(&base,&game.save,&mod,delivery); RNG::suppliedChoice=-1;
+auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game);
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << (sell?"true":"false") << ',' << delay << ',' << qty << ',' << (duplicate?"true":"false") << ',' << assigned << ',' << (infinite?"true":"false") << ',' << progress.completedUnits << ',' << stop << ',' << base.storage.count << ',' << base.transfers.size() << ',' << delivery._randomProductionInfo["SUPPLY"] << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint; for(auto* transfer:base.transfers) delete transfer;
 }
 std::cout << "],";
 std::cout << "\"maintenanceRows\":[";

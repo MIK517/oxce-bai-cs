@@ -1969,7 +1969,7 @@ public sealed class StrategicWorldHuntingTests
     [InlineData(true)]
     public void MixedFutureProductionCannotUseIncompleteIdentityForecasts(bool cache)
     {
-        var content = Load(cache, "crafts: [{type: MIXED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nmanufacture: [{name: MIXED_UNFORECAST_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, randomProducedItems: [[1, {SUPPLY: 1}]], transferTimes: [1]}, {name: MIXED_FIXED_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: MIXED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        var content = Load(cache, "crafts: [{type: MIXED_ID_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\nmanufacture: [{name: MIXED_UNFORECAST_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, randomProducedItems: [[1, {SUPPLY: 1}], [1, {BULKY: 1}]], transferTimes: [1]}, {name: MIXED_FIXED_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, transferTimes: [1]}]\nfacilities: [{type: MIXED_ID_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
         {
             RuleId = "MIXED_ID_HUNT",
@@ -2753,6 +2753,81 @@ public sealed class StrategicWorldHuntingTests
         Assert.Empty(safe.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
         Assert.Equal(sign > 0 ? int.MaxValue : int.MinValue, safe.Capture().ResearchScores[^1]);
         Reload(content, safe, 81, "score-limit-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeterministicRandomProductionMatchesNativeOrderingAndHistory(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionDeterministicRandomRows")
+            .GroupBy(row => (Delay: row[1].GetInt32(), Quantity: row[2].GetInt32(), Duplicate: row[3].GetBoolean())))
+        {
+            var choices = $"[1, {{SUPPLY: {group.Key.Quantity}}}]";
+            if (group.Key.Duplicate) choices += $", [1, {{SUPPLY: {group.Key.Quantity}}}]";
+            var content = Load(cache, $"crafts: [{{type: RANDOM_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: RANDOM_PRODUCT, time: 2, requiredItems: {{SUPPLY: 2}}, producedItems: {{SUPPLY: 1}}, randomProducedItems: [{choices}], transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: RANDOM_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "RANDOM_HUNT",
+                    Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 }
+                }) with
+                { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                    {
+                        Longitude = 0.45, Latitude = 0.21, Soldiers = [],
+                        Items = new Dictionary<string, int> { ["SUPPLY"] = 1 },
+                        Facilities = [.. initial.Bases[0].Facilities, new("RANDOM_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                        Productions = [new("RANDOM_PRODUCT", row[4].GetInt32(), 1, 2, row[5].GetBoolean(), row[0].GetBoolean(), false, new Dictionary<string, int>())]
+                    }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "random-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var progress = Assert.Single(result.Events.OfType<CampaignProductionProgress>());
+                var after = campaign.Capture();
+                var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "RANDOM_HUNT").Logistics!;
+                var stop = progress.StopReason == "STR_PRODUCTION_COMPLETE" ? 1 : progress.StopReason == "STR_NOT_ENOUGH_MATERIALS" ? 3 : 0;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { progress.Produced, stop, after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Transfers.Count, state.Status, state.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(6).Where((_, index) => index != 4).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                if (after.Bases[0].Productions.Count != 0)
+                    Assert.Equal(row[10].GetInt32(), after.Bases[0].Productions[0].RandomProductionInfo["SUPPLY"]);
+                Reload(content, campaign, 81, "random-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void RandomProductionHistoryOverflowStopsBeforeTickMutation(bool cache, bool hunting)
+    {
+        var content = Load(cache, "manufacture: [{name: HISTORY_PRODUCT, time: 1, producedItems: {SUPPLY: 1}, randomProducedItems: [[0, {SUPPLY: 2147483647}], [1, {SUPPLY: 2}]]}]\nfacilities: [{type: HISTORY_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            World = hunting ? initial.World : new(),
+            Bases = [initial.Bases[0] with
+            {
+                Productions = [new("HISTORY_PRODUCT", 1, 0, 2, true, false, false, new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue - 2 })],
+                Facilities = [.. initial.Bases[0].Facilities, new("HISTORY_WORKSHOP", 1, 1, 0, 0, false, false, false)]
+            }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "random-limit.sav");
+        AssertTimeBlocked(campaign, "Random production history exceeds the supported range.");
+        var owner = initial.Bases[0];
+        initial = initial with { Bases = [owner with { Productions = [owner.Productions[0] with { RandomProductionInfo = new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue - 3 } }] }] };
+        var safe = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        Assert.Empty(safe.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(int.MaxValue, safe.Capture().Bases[0].Productions[0].RandomProductionInfo["SUPPLY"]);
+        Reload(content, safe, 81, "random-limit-after.sav");
     }
 
     [Theory]
