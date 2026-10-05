@@ -39,6 +39,7 @@ internal sealed partial class CampaignWorld
         var origin = new WorldPosition(0, 0);
         var possibleHunt = false;
         var initializedEscort = false;
+        var canRemainIdle = true;
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
         if (radar > 0)
         {
@@ -52,30 +53,15 @@ internal sealed partial class CampaignWorld
                     return null;
                 if (wave.Escort)
                 {
-                    _huntingForecastWork += _ufos.Count;
-                    if (_huntingForecastWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    if (WorldHunting.EscortLeader(mission.Id, _ufos) is { } leader)
-                    {
-                        positions = [new(leader.Position, 0)];
-                        initializedEscort = true;
-                    }
-                    else
-                    {
-                        _huntingForecastWork += _missions.Count;
-                        if (_huntingForecastWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                        var saved = FindMission(mission.Id);
-                        // Earlier immediate waves may append an ordinary leader at
-                        // a different origin. That source needs a separate forecast.
-                        if (saved is null || saved.NextWave != mission.NextWave || saved.NextUfoCounter != mission.NextUfoCounter)
-                            return null;
-                    }
+                    if (NewbornEscortOriginsReason(mission, missionRule, positions, ref _huntingForecastWork,
+                            out positions, out initializedEscort, out canRemainIdle) is { } escortReason) return escortReason;
                 }
                 if (NewbornRadarSeparationReason(positions, (int)radar, ref _huntingForecastWork, out var separated) is { } separationReason)
                     return separationReason;
                 if (!separated)
                 {
                     if (NewbornHuntReachReason(positions, rule, mission.Race, path, (int)radar,
-                            initializedEscort, ref _huntingForecastWork) is { } reachReason)
+                            initializedEscort, canRemainIdle, ref _huntingForecastWork) is { } reachReason)
                         return reachReason;
                     possibleHunt = true;
                 }
@@ -104,14 +90,15 @@ internal sealed partial class CampaignWorld
     }
 
     private string? NewbornHuntReachReason(IReadOnlyList<SpawnArea> positions, RuntimeUfoRule rule,
-        string race, RuntimeUfoTrajectoryRule path, int radar, bool initializedEscort, ref long work)
+        string race, RuntimeUfoTrajectoryRule path, int radar, bool initializedEscort, bool canRemainIdle, ref long work)
     {
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(race).SpeedMaximum;
         if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
         var hypothetical = new UfoSnapshot(0, string.Empty, 0, string.Empty, 0, 0, 0,
             UfoStatus.Flying, WorldAltitudes.High)
         {
-            Speed = initializedEscort ? (int)maximum : path.Speed(0, (int)maximum),
+            Speed = initializedEscort ? canRemainIdle ? Math.Max((int)maximum, path.Speed(0, (int)maximum)) : (int)maximum
+                : path.Speed(0, (int)maximum),
             Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6))
         };
         if (!WorldHunting.TryHunt(hypothetical, WorldTargetReference.ForWaypoint(0, new(1, 0.6)),

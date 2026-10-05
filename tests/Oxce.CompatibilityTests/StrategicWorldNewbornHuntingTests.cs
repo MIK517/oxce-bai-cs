@@ -170,25 +170,108 @@ public sealed class StrategicWorldNewbornHuntingTests
         // The first ordinary birth can provide the next birth's leader, changing
         // its initial speed from 550 to 2200 within the same immediate wave.
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "New UFO escorts require craft retarget forecasts.");
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Theory]
+    [InlineData(false, 0, false)]
+    [InlineData(true, 0, false)]
+    [InlineData(false, 1, false)]
+    [InlineData(true, 1, false)]
+    [InlineData(false, 0, true)]
+    [InlineData(true, 0, true)]
+    [InlineData(false, 1, true)]
+    [InlineData(true, 1, true)]
+    public void PriorOrdinaryBirthOriginsControlImmediateEscortHunting(bool cache, int mode, bool regional)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
+            row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
+        var content = RetargetContent(cache, mode, escort: true, priorLeader: true, regional: regional);
+        var initial = RetargetSnapshot(content);
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with { Crafts = [.. initial.Bases[0].Crafts.Select(craft => craft with
+            { Logistics = craft.Logistics! with { Longitude = Degrees(8) + WorldGeometry.Nautical(100), Latitude = Degrees(2) } })] }],
+            World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = regional ? "BIRTH_REGION" : "REGION" }] },
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "prior-origin-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var leader = Assert.Single(after.World.Ufos, ufo => !ufo.HunterKiller);
+        var escort = Assert.Single(after.World.Ufos, ufo => ufo.HunterKiller);
+        Assert.True(escort.Hunting);
+        Assert.False(escort.Escorting);
+        Assert.True(escort.Escort);
+        var selection = Assert.Single(TestFixtures.Rows(oracle.RootElement, "selectionRows"),
+            row => row[0].GetInt32() == mode && row[1].GetInt32() == 0);
+        Assert.Equal(selection[2].GetInt32(), escort.Destination!.Id);
+        Assert.Equal(2, Assert.Single(after.World.Missions).LiveUfos);
+        Assert.True(WorldGeometry.Distance(leader.Position, escort.Position) <= WorldGeometry.RadianSpeed(2200 + 3300) + 1e-12);
+        Assert.True(WorldGeometry.Distance(new(Degrees(10), Degrees(8)), escort.Position) > WorldGeometry.Nautical(300));
+        campaign = Reload(content, campaign, 81, "prior-origin-after.sav");
+        AdvanceUnblocked(campaign, 12);
+        Reload(content, campaign, 81, "prior-origin-following.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProbabilisticSameWaveLeadersAllowOnlySafeHuntingOutcomes(bool cache)
+    {
+        var content = RetargetContent(cache, 2, escort: true, huntSpeed: 0, slowStart: true,
+            count: 2, immediate: true, hunterPercentage: 50, noAlert: true);
+        var initial = RetargetSnapshot(content);
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - 1), content, new SplitMix64RandomSource(81)),
+            "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        HashSet<(bool First, bool Second)> outcomes = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var campaign = Reload(content, CampaignState.Restore(initial with { RandomState = seed }, content,
+                new SplitMix64RandomSource(seed)), seed, "probabilistic-leader-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(2, after.World.Ufos.Count);
+            outcomes.Add((after.World.Ufos[0].HunterKiller, after.World.Ufos[1].HunterKiller));
+            foreach (var hunter in after.World.Ufos.Where(ufo => ufo.HunterKiller))
+            {
+                Assert.True(hunter.Hunting);
+                Assert.True(hunter.Speed is 550 or 2200);
+                Assert.InRange(hunter.HuntMode, 0, 1);
+            }
+            campaign = Reload(content, campaign, seed, "probabilistic-leader-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, seed, "probabilistic-leader-following.sav");
+        }
+        Assert.Equal(4, outcomes.Count);
     }
 
     private static RuntimeContent RetargetContent(bool cache, int mode, bool escort = false, bool noAlert = false,
-        int huntSpeed = 150, bool slowStart = false, int count = 1, bool immediate = false, int hunterPercentage = 100) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+        int huntSpeed = 150, bool slowStart = false, int count = 1, bool immediate = false, int hunterPercentage = 100,
+        bool priorLeader = false, bool regional = false)
+    {
+        var waves = (priorLeader ? "- {ufo: UFO_SCOUT, count: 1, trajectory: BIRTH_PRIOR_PATH, timer: 9000}\n      " : "") +
+            $"- {{ufo: BIRTH_RETARGET, count: {count}, trajectory: BIRTH_RETARGET_PATH, timer: {(immediate || priorLeader ? 0 : 9000)}, escort: {escort.ToString().ToLowerInvariant()}}}";
+        var region = regional ? "regions: [{type: BIRTH_REGION, areas: [[0, 90, -30, 50]], missionZones: [[[2, 28, -18, 18, 10]], [[8, 8, 2, 2, 10]], [[22, 28, -8, 8, 11]], [[362, 362, 2, 2, 10]], [[10, 10, 8, 8, 10]], [[7.9, 8.1, 1.9, 2.1, 10]]]}]" : "";
+        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+            {{region}}
             crafts:
               - {type: BIRTH_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               - {type: BIRTH_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             ufos:
               - {type: BIRTH_RETARGET, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: {{huntSpeed}}, hunterKillerPercentage: {{hunterPercentage}}, huntMode: {{mode}}, noAlert: {{noAlert.ToString().ToLowerInvariant()}}}
             ufoTrajectories:
+              - id: BIRTH_PRIOR_PATH
+                waypoints: [[5, 3, 100], [3, 2, 80], [0, 3, 50]]
               - id: BIRTH_RETARGET_PATH
                 waypoints: [[4, 3, {{(slowStart ? 25 : 100)}}], [3, 2, 80], [0, 3, 50]]
             alienMissions:
               - type: BIRTH_RETARGET_MISSION
                 objective: 0
-                waves: [{ufo: BIRTH_RETARGET, count: {{count}}, trajectory: BIRTH_RETARGET_PATH, timer: {{(immediate ? 0 : 9000)}}, escort: {{escort.ToString().ToLowerInvariant()}}}]
+                waves:
+                  {{waves}}
             """);
+    }
 
     private static CampaignSnapshot RetargetSnapshot(RuntimeContent content, bool escort = false)
     {
