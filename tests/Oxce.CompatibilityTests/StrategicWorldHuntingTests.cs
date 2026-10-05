@@ -3056,6 +3056,77 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RecoveredCorpseStocksMatchNativeRefuelAndHunting(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchCorpseHuntingRows")
+            .GroupBy(row => (Need: row[1].GetBoolean(), Destroy: row[2].GetBoolean(), Returns: row[3].GetBoolean(), Unit: row[4].GetBoolean(), Recover: row[5].GetBoolean(), Corpse: row[6].GetBoolean())))
+        {
+            var unit = group.Key.Unit ? "units: [{type: CORPSE_TOPIC, armor: CORPSE_ARMOR}]\n" : "";
+            var content = Load(cache, $"items: [{{type: CORPSE_OUTPUT, recover: {Bool(group.Key.Recover)}, recoverCorpse: {Bool(group.Key.Corpse)}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE_OUTPUT, loftempsSet: [0]}}]\nresearch: [{{name: CORPSE_TOPIC, cost: 1, needItem: {Bool(group.Key.Need)}, destroyItem: {Bool(group.Key.Destroy)}, returnsItem: {Bool(group.Key.Returns)}, neededItem: SUPPLY}}]\n{unit}crafts: [{{type: CORPSE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: CORPSE_OUTPUT}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "CORPSE_HUNT",
+                    Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 }
+                }) with
+                { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+                initial = initial with
+                {
+                    Options = initial.Options with { RetainCorpses = row[0].GetBoolean() },
+                    Bases = [initial.Bases[0] with { Longitude = 0.45, Latitude = 0.21, Soldiers = [], Research = [new("CORPSE_TOPIC", 0, 1, 1)], Items = new Dictionary<string, int>() }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "corpse-hunt-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "CORPSE_HUNT").Logistics!;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("CORPSE_OUTPUT"), state.Status, state.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
+                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(7).ToArray())), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "corpse-hunt-after.sav");
+            }
+        }
+        static string Bool(bool value) => value.ToString().ToLowerInvariant();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void EarlierCompletionCancelsFinishedCorpseProjectBeforeItsDailyCaller(bool cache, bool returns)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var rows = TestFixtures.Rows(oracle.RootElement, "researchCorpseRows").Where(row => row[1].GetBoolean() && row[2].GetBoolean() && row[3].GetBoolean() == returns && row[4].GetBoolean() && row[5].GetBoolean() && row[6].GetBoolean() && row[7].GetBoolean() && !row[8].GetBoolean()).ToArray();
+        Assert.Equal(2, rows.Length);
+        var content = Load(cache, $"items: [{{type: CROSS_CORPSE}}]\narmors: [{{type: CROSS_CORPSE_ARMOR, corpseItem: CROSS_CORPSE, loftempsSet: [0]}}]\nunits: [{{type: CROSS_CORPSE_TOPIC, armor: CROSS_CORPSE_ARMOR}}]\nresearch: [{{name: CROSS_CORPSE_TOPIC, cost: 1, needItem: true, destroyItem: true, returnsItem: {returns.ToString().ToLowerInvariant()}, neededItem: SUPPLY}}]\ncrafts: [{{type: CROSS_CORPSE_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: CROSS_CORPSE}}]\n");
+        foreach (var row in rows)
+        {
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "CROSS_CORPSE_HUNT",
+                Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 }
+            }) with
+            { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+            var owner = initial.Bases[0] with { Longitude = 0.45, Latitude = 0.21, Soldiers = [], Research = [new("CROSS_CORPSE_TOPIC", 0, 1, 1)], Items = new Dictionary<string, int>() };
+            initial = initial with { Options = initial.Options with { RetainCorpses = row[0].GetBoolean() }, Bases = [owner with { Crafts = [] }, owner with { Id = 1 }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "cross-corpse-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            Assert.Single(result.Events.OfType<CampaignResearchCompleted>());
+            var after = campaign.Capture();
+            Assert.All(after.Bases, baseState => Assert.Empty(baseState.Research));
+            Assert.Equal(row[9].GetInt32(), after.Bases[1].Items.GetValueOrDefault("SUPPLY"));
+            Assert.Equal(row[10].GetInt32() != 0, after.World.Ufos[0].Hunting);
+            Assert.Equal(0, after.Bases[1].Items.GetValueOrDefault("CROSS_CORPSE"));
+            Reload(content, campaign, 81, "cross-corpse-after.sav");
+        }
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]

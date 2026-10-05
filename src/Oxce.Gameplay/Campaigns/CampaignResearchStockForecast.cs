@@ -37,13 +37,6 @@ public sealed partial class CampaignState
             projects.Add(owner.Id, new(owner.Research));
             changes.Add(owner.Id, new(StringComparer.Ordinal));
             arrivals.Add(owner.Id, []);
-            foreach (var project in owner.Research)
-            {
-                if ((long)project.Spent + project.Assigned < project.Cost) continue;
-                var entry = rules.Research[project.Rule];
-                var rule = entry.Value;
-                if (HoldsResearchItem(rule) && rule.DestroyItem && !rule.ReturnsItem && rules.Units.TryGet(entry.Id, out _)) return false;
-            }
         }
         foreach (var owner in _bases)
         {
@@ -89,7 +82,7 @@ public sealed partial class CampaignState
             foreach (var project in finished)
             {
                 var rule = rules.Research[project.Rule].Value;
-                if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(rule), rule.ReturnsItem, true)) Refund(owner.Id, rule);
+                Recover(owner.Id, rule, rules.Research.GetExternalId(project.Rule), finished: true, dailyCompletion: true);
                 work += local.Count;
                 if (work > 1_000_000) return false;
                 local.Remove(project);
@@ -142,8 +135,7 @@ public sealed partial class CampaignState
                         if (work > 1_000_000) return false;
                         var project = projects[other.Id].FirstOrDefault(project => project.Rule == rules.Research.GetRequired(entry.Id));
                         if (project is null) continue;
-                        if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(entry.Value), entry.Value.ReturnsItem,
-                            project.Spent >= project.Cost)) Refund(other.Id, entry.Value);
+                        Recover(other.Id, entry.Value, entry.Id, project.Spent >= project.Cost, dailyCompletion: false);
                         projects[other.Id].Remove(project);
                     }
                 work += entry.Value.SpawnedItemList.Count + 1L;
@@ -163,9 +155,8 @@ public sealed partial class CampaignState
             foreach (var project in projects[owner.Id])
             {
                 var entry = rules.Research[project.Rule];
-                if (statuses.GetValueOrDefault(entry.Id) == 2 &&
-                    ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(entry.Value), entry.Value.ReturnsItem,
-                        project.Spent >= project.Cost)) Refund(owner.Id, entry.Value);
+                if (statuses.GetValueOrDefault(entry.Id) == 2)
+                    Recover(owner.Id, entry.Value, entry.Id, project.Spent >= project.Cost, dailyCompletion: false);
             }
         }
         var arrivalCount = arrivals.Values.Sum(items => (long)items.Count);
@@ -188,10 +179,17 @@ public sealed partial class CampaignState
         { NextTransferId = nextTransfer };
         return true;
 
-        void Refund(int baseId, RuntimeResearchRule rule)
+        void Recover(int baseId, RuntimeResearchRule rule, string id, bool finished, bool dailyCompletion)
         {
-            if (rule.NeededItem is { } id && rules.Items.TryGet(id, out _))
-                changes[baseId][id] = changes[baseId].GetValueOrDefault(id) + 1;
+            var recovered = ResearchRecoveredItems(rule, id, finished, dailyCompletion);
+            if (recovered.Held is { } held) Add(held, 1);
+            if (recovered.Corpse is { } corpse && recovered.Corpses != 0) Add(corpse, recovered.Corpses);
+
+            void Add(RuleHandle<ItemRuleFamily> item, int quantity)
+            {
+                var itemId = rules.Items.GetExternalId(item);
+                changes[baseId][itemId] = checked(changes[baseId].GetValueOrDefault(itemId) + quantity);
+            }
         }
     }
 
