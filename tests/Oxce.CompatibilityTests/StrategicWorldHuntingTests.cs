@@ -15,6 +15,39 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void SoldierNameChecksIncludeTransfersQueuedByOtherProduction(bool cache)
+    {
+        var content = Load(cache, "manufacture: [{name: PENDING_STAFF, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_SCIENTIST}, {name: PENDING_SOLDIER, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: PENDING_WORKSHOP, mapName: LOGISTICS, workshops: 2500, personnel: 10000}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Soldiers = [], Crafts = [], Research = [], Transfers = [],
+            Facilities = [new("PENDING_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("PENDING_STAFF", 1111, 0, 1111, false, false, false, new Dictionary<string, int>()), new("PENDING_SOLDIER", 1000, 0, 1000, false, false, false, new Dictionary<string, int>())]
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Soldier production exceeds the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SoldierProductionBoundsGrowthOfPendingNameChecks(bool cache, bool split)
+    {
+        var content = Load(cache, "manufacture: [{name: NAME_WORK_A, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}, {name: NAME_WORK_B, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: NAME_WORK_SHOP, mapName: LOGISTICS, workshops: 1600, personnel: 10000}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+        ProductionSnapshot first = new("NAME_WORK_A", split ? 800 : 1600, 0, split ? 800 : 1600, false, false, false, new Dictionary<string, int>());
+        initial = initial with { Bases = [initial.Bases[0] with { Soldiers = [], Crafts = [], Transfers = [], Research = [], Facilities = [new("NAME_WORK_SHOP", 1, 1, 0, 0, false, false, false)], Productions = split ? [first, first with { RuleId = "NAME_WORK_B" }] : [first] }] };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Soldier production exceeds the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void SoldierAndCraftProductionShareCounterInNativeCallerOrder(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
