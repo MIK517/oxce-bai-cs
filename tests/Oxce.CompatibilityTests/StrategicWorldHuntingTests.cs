@@ -13,6 +13,40 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HunterCandidateScansChargeEmptyBasesBeforeMutation(bool cache, bool newborn)
+    {
+        var content = Load(cache, newborn ? "alienMissions: [{type: EMPTY_BASE_HUNTERS, objective: 0, waves: [{ufo: SPAWN_HUNTER_DEFAULTS, count: 1001, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]}]\n" : null);
+        var initial = HuntingSnapshot(content);
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Time = newborn ? new(1, 1, 1, 1999, 1, 29, 55) : initial.Time,
+            Bases = Enumerable.Range(0, 1001).Select(index => owner with
+            {
+                Id = index,
+                Facilities = [],
+                Crafts = [],
+                Soldiers = [],
+                Research = [],
+                Transfers = [],
+                Items = new Dictionary<string, int>(),
+            }).ToArray(),
+            World = initial.World with
+            {
+                Missions = newborn ? [new(4, "EMPTY_BASE_HUNTERS", "REGION", "RACE_A", 0, 0, 0, 0, -1)]
+                    : [initial.World.Missions[0] with { LiveUfos = 1001 }],
+                Ufos = newborn ? [] : Enumerable.Range(0, 1001).Select(index => initial.World.Ufos[0] with { UniqueId = 9 + index, Id = 3 + index }).ToArray(),
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            newborn ? "New UFO retargeting exceeds the supported work limit." : "UFO retargeting exceeds the supported work limit.");
+    }
+
+    [Theory]
     [InlineData(false, 0)]
     [InlineData(true, 0)]
     [InlineData(false, 1)]
@@ -52,7 +86,10 @@ public sealed class StrategicWorldHuntingTests
         Assert.All(after.Bases[0].Transfers, transfer => Assert.Equal(delay, transfer.Hours));
         Assert.Equal(1001, after.World.Ufos.Count);
         Assert.All(after.World.Ufos, ufo => Assert.False(ufo.Hunting));
-        Reload(content, campaign, 81, "delayed-population-after.sav");
+        campaign = Reload(content, campaign, 81, "delayed-population-after.sav");
+        AdvanceOne(campaign);
+        Assert.Equal(1001, campaign.Capture().Bases[0].Transfers.Count);
+        Reload(content, campaign, 81, "delayed-population-following-tick.sav");
     }
 
     [Theory]

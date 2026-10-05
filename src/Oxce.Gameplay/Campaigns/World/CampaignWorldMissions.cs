@@ -166,7 +166,7 @@ internal sealed partial class CampaignWorld
             var retargetWork = _huntingForecastWork + escortWork + newbornFollowerWork;
             if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref retargetWork, out var possibleCrafts) is { } populationReason)
                 return populationReason;
-            if (retargetWork + possibleCrafts * newFlyingHunters > MaximumAlienBaseChecks)
+            if (retargetWork + (possibleCrafts + campaign.BaseStates.Count + (long)_missions.Count) * newFlyingHunters > MaximumAlienBaseChecks)
                 return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";

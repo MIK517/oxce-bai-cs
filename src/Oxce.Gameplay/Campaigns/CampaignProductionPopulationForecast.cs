@@ -12,7 +12,7 @@ public sealed partial class CampaignState
         foreach (var owner in _bases)
         {
             population += owner.Crafts.Count;
-            work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            work += 1L + owner.Crafts.Count + owner.Transfers.Count;
             if (work > 1_000_000) return reason;
             if (highest < CampaignTimeTrigger.OneHour) continue;
             foreach (var transfer in owner.Transfers)
