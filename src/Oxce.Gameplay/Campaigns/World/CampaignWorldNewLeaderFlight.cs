@@ -6,12 +6,11 @@ internal sealed partial class CampaignWorld
 {
     private Dictionary<int, UfoSnapshot>? _newLeaderFlightForecast;
 
-    private string? ForecastCancelledEscortArrival(UfoSnapshot escort, CampaignTimeTrigger highest, ref long work)
+    private string? ForecastNewLeaderFlight(UfoSnapshot escort, CampaignTimeTrigger highest, ref long work)
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes || escort.Status != UfoStatus.Flying ||
             !escort.HunterKiller || !escort.Escort || escort.Hunting || escort.Escorting ||
-            escort.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
-            WorldGeometry.Distance(escort.Position, destination.Position) > WorldGeometry.RadianSpeed(escort.Speed) + 1e-12)
+            escort.Destination is not { Kind: WorldTargetKind.Waypoint })
             return null;
         work += _missions.Count + 1L;
         if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
