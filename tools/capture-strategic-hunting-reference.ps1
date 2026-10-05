@@ -52,6 +52,11 @@ foreach ($signature in @('void SavedGame::addFinishedResearch(', 'const RuleRese
 }
 $template = $template.Replace('// RESEARCH_DISCOVERY_METHODS', $discoveryMethods)
 $template = $template.Replace('// RESEARCH_SPAWN', $researchSpawn.Substring($spawnStart, $spawnEnd - $spawnStart))
+$counterStart = $researchSpawn.IndexOf('for (auto& inc : myResearchRule->getIncreaseCounter())', [StringComparison]::Ordinal)
+$counterEnd = $researchSpawn.LastIndexOf("`n`t}", [StringComparison]::Ordinal)
+if ($counterStart -lt 0 -or $counterEnd -le $counterStart) { throw 'Missing primary research counter fragment.' }
+$template = $template.Replace('// RESEARCH_PRIMARY_COUNTERS', $researchSpawn.Substring($counterStart, $counterEnd - $counterStart))
+$template = $template.Replace('// RESEARCH_COUNTER_METHODS', (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::increaseCustomCounter(') + [Environment]::NewLine + (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::decreaseCustomCounter('))
 $researchReturn = Read-ReferenceMethod 'src/Savegame/Base.cpp' 'void Base::removeResearch(ResearchProject * project)'
 $returnStart = $researchReturn.IndexOf('if (ruleResearch->isHoldingNeededItem())', [StringComparison]::Ordinal)
 $returnEnd = $researchReturn.IndexOf('Collections::deleteIf', $returnStart, [StringComparison]::Ordinal)

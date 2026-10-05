@@ -79,6 +79,8 @@ struct ResearchRule {
 static const int RESEARCH_STATUS_DISABLED=2,RESEARCH_STATUS_NEW=0;
 std::string name="RESEARCH"; int cost=1,points=1; bool repeatable=false,sequential=false;
 std::vector<const ResearchRule*> disables,reenables,unlocks,free,dependencies,requirements;
+std::vector<std::string> increases,decreases;
+const auto& getIncreaseCounter() const { return increases; } const auto& getDecreaseCounter() const { return decreases; }
 std::vector<std::pair<const ResearchRule*,std::vector<const ResearchRule*>>> protectedFree;
 const auto& getDisabled() const { return disables; } const auto& getReenabled() const { return reenables; }
 const auto& getUnlocked() const { return unlocks; } const auto& getGetOneFree() const { return free; }
@@ -226,6 +228,10 @@ bool insideRadarRange(Target* target) const;
 // TARGET_DESTRUCTOR
 // RETARGET_METHODS
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
+std::map<std::string,int> _ids; void increaseCustomCounter(const std::string&); void decreaseCustomCounter(const std::string&);
+void applyPrimaryCounters(const RuleResearch* myResearchRule) {
+// RESEARCH_PRIMARY_COUNTERS
+}
 std::vector<int64_t> _funds={100},_incomes={0},_expenditures={0}; int64_t& funds=_funds.back(); int sellCoefficient=100;
 int64_t getFunds() const { return funds; } void setFunds(int64_t); int getSellPriceCoefficient() const { return sellCoefficient; }
 std::vector<const RuleResearch*> _discovered; std::map<std::string,int> statuses; int _time=0; std::vector<int> _researchScores={0}; int& researchScore=_researchScores.back();
@@ -255,6 +261,7 @@ struct ProductionCraftCaller { const ProductionCraftRule* _rules; void complete(
 // PRODUCTION_CRAFT_DELIVERY
 } };
 // PRODUCTION_SALE_PRICE
+// RESEARCH_COUNTER_METHODS
 // PRODUCTION_ACCOUNTING
 // RESEARCH_SCORE
 // RESEARCH_DISCOVERY_METHODS
@@ -1012,6 +1019,17 @@ std::cout << "]," << '"' << existing._status << '"' << ',' << existing._fuel << 
 for(auto* craft:owner.crafts) if(craft!=&existing) { for(auto* weapon:craft->_weapons) delete weapon; delete craft; }
 for(auto* transfer:owner.transfers) { for(auto* weapon:transfer->_craft->_weapons) delete weapon; delete transfer->_craft; delete transfer; }
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"researchOrderedCounterRows\":["; first=true;
+for(int initial:{-1,1,3,20}) for(bool bonus:{false,true}) for(bool duplicate:{false,true}) {
+if(!first) std::cout << ','; first=false;
+ResearchRule topics[2]; auto* source=&topics[0]; auto* reward=&topics[1]; source->increases={"COUNTER_TRACE"}; source->decreases={"COUNTER_TRACE","COUNTER_TRACE"}; reward->increases={"COUNTER_TRACE","COUNTER_TRACE"}; reward->decreases={"COUNTER_TRACE"};
+SavedGame saved; if(initial!=-1) saved._ids["COUNTER_TRACE"]=initial;
+auto primary=ResearchCaller::primary(source,bonus?reward:nullptr); if(duplicate) primary.push_back(source); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) saved.applyPrimaryCounters(topic);
+std::cout << '[' << initial << ',' << (bonus?"true":"false") << ',' << (duplicate?"true":"false") << ',' << saved._ids["COUNTER_TRACE"] << ",[";
+bool changeFirst=true; for(auto* topic:primary) { for(auto& name:topic->increases) { if(!changeFirst) std::cout << ','; changeFirst=false; std::cout << "true"; } for(auto& name:topic->decreases) { if(!changeFirst) std::cout << ','; changeFirst=false; std::cout << "false"; } }
+std::cout << "]]";
 }
 std::cout << "]}\n";
 }

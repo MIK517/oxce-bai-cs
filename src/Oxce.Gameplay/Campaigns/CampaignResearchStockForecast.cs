@@ -9,6 +9,7 @@ internal sealed record DailyResearchStockForecast(
 {
     public string? UnavailableReason { get; init; }
     public int? NextTransferId { get; init; }
+    public IReadOnlyList<CustomCounterChange> CounterChanges { get; init; } = [];
 }
 
 public sealed partial class CampaignState
@@ -30,6 +31,7 @@ public sealed partial class CampaignState
         Dictionary<int, List<ResearchProjectState>> projects = [];
         Dictionary<int, Dictionary<string, int>> changes = [];
         Dictionary<int, List<KeyValuePair<string, int>>> arrivals = [];
+        List<CustomCounterChange>? counters = null;
         foreach (var owner in _bases)
         {
             work += owner.Research.Count;
@@ -144,6 +146,10 @@ public sealed partial class CampaignState
                     arrivals[owner.Id].Add(new(entry.Value.SpawnedItem, Math.Max(1, entry.Value.SpawnedItemCount)));
                 foreach (var id in entry.Value.SpawnedItemList)
                     if (rules.Items.TryGet(id, out _)) arrivals[owner.Id].Add(new(id, 1));
+                work += entry.Value.IncreaseCounters.Count + (long)entry.Value.DecreaseCounters.Count;
+                if (work > 1_000_000) return false;
+                foreach (var id in entry.Value.IncreaseCounters) (counters ??= []).Add(new(id, true));
+                foreach (var id in entry.Value.DecreaseCounters) (counters ??= []).Add(new(id, false));
             }
         }
         // time1Day removes disabled projects after all base loops, even when no
@@ -176,7 +182,7 @@ public sealed partial class CampaignState
             pair => pair.Key, pair => (IReadOnlyDictionary<string, int>)new ReadOnlyDictionary<string, int>(pair.Value))),
             new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(arrivals.ToDictionary(
                 pair => pair.Key, pair => (IReadOnlyList<KeyValuePair<string, int>>)pair.Value.AsReadOnly())))
-        { NextTransferId = nextTransfer };
+        { NextTransferId = nextTransfer, CounterChanges = counters?.AsReadOnly() ?? (IReadOnlyList<CustomCounterChange>)[] };
         return true;
 
         void Recover(int baseId, RuntimeResearchRule rule, string id, bool finished, bool dailyCompletion)
@@ -232,6 +238,7 @@ public sealed partial class CampaignState
             if (++work > 1_000_000) return false;
             if (!rules.Research.TryGet(id, out var handle)) continue;
             var rule = rules.Research[handle].Value;
+            if (rule.IncreaseCounters.Count != 0 || rule.DecreaseCounters.Count != 0) return false;
             if (rule.SpawnedItem.Length != 0 && rules.Items.TryGet(rule.SpawnedItem, out _)) return false;
             foreach (var item in rule.SpawnedItemList)
             {

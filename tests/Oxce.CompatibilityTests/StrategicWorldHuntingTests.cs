@@ -15,6 +15,47 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void DailyResearchCounterProjectionMatchesNativePrimaryOrdering(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var bonus in new[] { false, true })
+        {
+            var content = Load(cache, $"research: [{{name: A_COUNTER_SOURCE, cost: 1, increaseCounter: [COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE, COUNTER_TRACE]{(bonus ? ", getOneFree: [B_COUNTER_REWARD]" : "")}}}, {{name: B_COUNTER_REWARD, cost: 1, increaseCounter: [COUNTER_TRACE, COUNTER_TRACE], decreaseCounter: [COUNTER_TRACE]}}]\nfacilities: [{{type: COUNTER_TRACE_LAB, mapName: LOGISTICS, labs: 2}}]\n");
+            foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchOrderedCounterRows").Where(row => row[1].GetBoolean() == bonus))
+            {
+                var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
+                var ids = new Dictionary<string, int>(initial.NextIds);
+                if (row[0].GetInt32() != -1) ids["COUNTER_TRACE"] = row[0].GetInt32();
+                initial = initial with
+                {
+                    NextIds = ids,
+                    Bases = [initial.Bases[0] with
+                    {
+                        Facilities = [.. initial.Bases[0].Facilities, new("COUNTER_TRACE_LAB", 1, 1, 0, 0, false, false, false)],
+                        Research = [new("A_COUNTER_SOURCE", 1, 0, 1)]
+                    }]
+                };
+                if (row[2].GetBoolean()) initial = initial with { Bases = [initial.Bases[0], initial.Bases[0] with { Id = 1, Crafts = [], Soldiers = [] }] };
+                var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+                var before = campaign.Capture();
+                long work = 0;
+                Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast));
+                Assert.Equivalent(before, campaign.Capture(), strict: true);
+                Assert.All(forecast.CounterChanges, change => Assert.Equal("COUNTER_TRACE", change.Name));
+                Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row[4])),
+                    CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(forecast.CounterChanges.Select(change => change.Increase))));
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                Assert.Single(result.Events.OfType<CampaignResearchCompleted>());
+                Assert.Equal(row[3].GetInt32(), campaign.Capture().NextIds["COUNTER_TRACE"]);
+                Reload(content, campaign, 81, "counter-trace-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void DailyResearchCounterCannotExhaustLaterCraftBirthIdentity(bool cache)
     {
         var content = Load(cache, "research: [{name: BIRTH_COUNTER_TOPIC, cost: 1, increaseCounter: [COUNTER_CRAFT]}]\ncrafts: [{type: COUNTER_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: COUNTER_BIRTH, category: STR_CRAFT, time: 1, producedItems: {COUNTER_CRAFT: 1}}]\nfacilities: [{type: COUNTER_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
