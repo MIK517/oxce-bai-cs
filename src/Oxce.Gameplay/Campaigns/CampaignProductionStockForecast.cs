@@ -22,6 +22,15 @@ public sealed partial class CampaignState
                 return staffingReason;
             var sources = crafts[owner.Id];
             var uncertainStocks = false;
+            var uncertainPersonnel = false;
+            long personnelBirths = 0;
+            work += owner.Facilities.Count + (long)owner.Transfers.Count + owner.Research.Count + owner.Productions.Count;
+            if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+            var quarters = UsedQuartersWide(owner);
+            long availableQuarters = 0;
+            foreach (var facility in owner.Facilities)
+                if (facility.BuildTime == 0 || highest >= CampaignTimeTrigger.OneDay && facility.BuildTime == 1)
+                    availableQuarters += rules.Facilities[facility.Rule].Value.Personnel;
             var projectIndex = 0;
             foreach (var original in owner.Productions)
             {
@@ -39,7 +48,8 @@ public sealed partial class CampaignState
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
                 var deterministicRandom = TryForecastRandomProduction(rule, out var randomItems, ref work);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
-                var supported = deterministicRandom && rule.SpawnedPersonType.Length == 0 &&
+                var personnel = rule.SpawnedPersonType.Length != 0;
+                var supported = deterministicRandom && (rule.SpawnedPersonType is "" or "STR_SCIENTIST" or "STR_ENGINEER") &&
                     rule.ProducedMaterials.All(material => material.Craft is null);
                 if (!supported)
                 {
@@ -53,6 +63,7 @@ public sealed partial class CampaignState
                     uncertainTransfers |= rule.SpawnedPersonType.Length != 0 ||
                         itemDelay && (rule.RandomProducedItems.Count != 0 || !project.Sell && rule.ProducedMaterials.Any(material => material.Item is not null)) ||
                         craftDelay && rule.ProducedMaterials.Any(material => material.Craft is not null);
+                    uncertainPersonnel |= personnel;
                     if (rule.RequiredMaterials.Any(material => material.Craft is { } type && sources.Any(craft => craft.Rule == type)))
                         return "UFO retargeting requires production craft-consumption forecasts.";
                     if (sources.Any(craft => rules.Crafts[craft.Rule].Value.RefuelItem is not null))
@@ -70,6 +81,7 @@ public sealed partial class CampaignState
                     return "UFO retargeting requires shared production accounting forecasts.";
                 if (!final && uncertainStocks && rule.RequiredMaterials.Any(material => material.Quantity > 0))
                     return "UFO retargeting requires shared production material forecasts.";
+                if (personnel && uncertainPersonnel) return "UFO retargeting requires shared production personnel forecasts.";
                 var completed = 0;
                 for (; completed < requested;)
                 {
@@ -84,9 +96,13 @@ public sealed partial class CampaignState
                             if (ForecastProductionItemOutput(owner.Id, rules.Items.GetRequired(item.Key), item.Value, crafts, stocks, ref work) is { } randomReason)
                                 return randomReason;
                     completed++;
+                    if (personnel) personnelBirths++;
                     if (!project.Infinite && Produced(project) + (long)completed >= project.Amount) break;
                     if (rule.Cost > 0 && accounting.Funds < rule.Cost ||
                         !TryStageAccounting(-rule.Cost, accounting, out var nextAccounting)) break;
+                    // Native checks quarters only after the final completion of this
+                    // hour; intermediate completions can exceed capacity together.
+                    if (personnel && completed >= requested && availableQuarters < quarters + personnelBirths) break;
                     if (!TryPlanProductionMaterials(stocks[owner.Id], sources, rule, out var materials, out var materialReason))
                     {
                         if (materialReason != "STR_NOT_ENOUGH_MATERIALS") return materialReason;
@@ -117,6 +133,7 @@ public sealed partial class CampaignState
                     accounting = nextAccounting;
                 }
                 planned.Add((owner, project, completed, randomItems));
+                if (personnel) transfers += completed;
                 if (rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0)
                     transfers += completed * (long)((project.Sell ? 0 : rule.ProducedMaterials.Count(material => material.Item is not null)) + (randomItems?.Count ?? 0));
             }

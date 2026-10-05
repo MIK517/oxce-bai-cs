@@ -457,6 +457,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         if (highest >= CampaignTimeTrigger.OneHour)
         {
             var accountingCapacity = new ProductionAccountingCapacity(_funds[^1], _incomes[^1], _expenditures[^1]);
+            long possibleTransfers = 0;
+            var personnelBirths = false;
             foreach (var owner in _bases)
             {
                 foreach (var production in owner.Productions)
@@ -471,12 +473,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 }
                 if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffingReason)
                     return staffingReason;
+                long possiblePersonnel = 0;
                 for (var index = 0; index < owner.Productions.Count; index++)
                 {
                     var production = owner.Productions[index];
                     var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
                     var units = ProductionProgress.Requested(manufacture.Time, production.Spent, assignments[index], production.Amount, production.Infinite);
                     if (units == 0) continue;
+                    if (PossibleProductionTransfers(manufacture, production.Sell, units, ref work, out var transferCount) is { } transferReason) return transferReason;
+                    possibleTransfers += transferCount;
+                    if (manufacture.SpawnedPersonType.Length != 0)
+                    {
+                        personnelBirths = true;
+                        possiblePersonnel += units;
+                    }
                     if (!scoreCapacity.Reserve(manufacture.Points, manufacture.Points, units))
                         return "Research and production scores exceed the supported range.";
                     if (ReserveProductionHistory(production, manufacture, units, ref work) is { } historyReason) return historyReason;
@@ -500,7 +510,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                             return "Production accounting exceeds the supported range.";
                     }
                 }
+                if (possiblePersonnel != 0 && UsedQuartersWide(owner) + possiblePersonnel > int.MaxValue)
+                    return "Production personnel exceed the supported population range.";
             }
+            if (personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } personnelReason) return personnelReason;
         }
         return null;
     }

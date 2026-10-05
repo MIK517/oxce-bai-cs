@@ -66,6 +66,11 @@ $randomStart = $production.IndexOf('if (!_rules->getRandomProducedItems().empty(
 $randomEnd = $production.IndexOf('// Spawn persons', $randomStart, [StringComparison]::Ordinal)
 if ($randomStart -lt 0 -or $randomEnd -le $randomStart) { throw 'Missing random production delivery fragment.' }
 $template = $template.Replace('// PRODUCTION_RANDOM_DELIVERY', $production.Substring($randomStart, $randomEnd - $randomStart))
+$personStart = $production.IndexOf('const std::string &spawnedPersonType =', $randomEnd, [StringComparison]::Ordinal)
+$personEnd = $production.IndexOf('else', $production.IndexOf('else if (spawnedPersonType == "STR_ENGINEER")', $personStart, [StringComparison]::Ordinal) + 7, [StringComparison]::Ordinal)
+if ($personStart -lt 0 -or $personEnd -le $personStart) { throw 'Missing staff production transfer fragment.' }
+$template = $template.Replace('// PRODUCTION_PERSONNEL', $production.Substring($personStart, $personEnd - $personStart) + '}')
+$template = $template.Replace('// PRODUCTION_QUARTERS', (Read-ReferenceMethod 'src/Savegame/Base.cpp' 'int Base::getUsedQuarters() const'))
 $scoreStart = $production.IndexOf('if (_rules->getPoints() != 0)', [StringComparison]::Ordinal)
 $scoreEnd = $production.IndexOf('count++;', $scoreStart, [StringComparison]::Ordinal)
 if ($scoreStart -lt 0 -or $scoreEnd -le $scoreStart) { throw 'Missing production score fragment.' }
