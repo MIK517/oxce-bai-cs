@@ -18,6 +18,7 @@ public sealed record RuntimeInventoryRule(string Id, int Type, int Hand)
 /// <summary>Read-only Unit metadata used by script rule lookups.</summary>
 public sealed record RuntimeUnitRule(string Type)
 {
+    public RuleHandle<ArmorRuleFamily>? Armor { get; init; }
     public RuleHandle<UnitRuleFamily>? SpawnUnit { get; init; }
     public RuleHandle<ItemRuleFamily>? LiveAlien { get; init; }
     public RuleHandle<ItemRuleFamily>? CivilianRecoveryItem { get; init; }
@@ -272,6 +273,8 @@ public sealed record RuntimeItemRule(
     public int Waypoints { get; init; }
     public RuntimePurchaseRequirements Purchase { get; init; } = new(0, "", "", [], []);
     public bool IsAlien { get; init; }
+    public bool Recoverable { get; init; } = true;
+    public bool CorpseRecoverable { get; init; } = true;
     public int VehicleFixedAmmoSlot { get; init; }
     public RuleHandle<ArmorRuleFamily>? VehicleArmor { get; init; }
     public int PrisonType { get; init; }
@@ -288,6 +291,7 @@ public sealed record RuntimeArmorRule(
 {
     public string Type { get; init; } = "";
     public RuntimeArmorVision Vision { get; init; } = RuntimeArmorVision.Default;
+    public RuleHandle<ItemRuleFamily>? CorpseGeoscape { get; init; }
     public int Group { get; init; }
     public IReadOnlyDictionary<string, short> Stats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
 }

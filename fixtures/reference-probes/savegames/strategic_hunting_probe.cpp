@@ -49,11 +49,12 @@ std::vector<Craft*> craftFollowers; std::vector<Ufo*> ufoFollowers; const auto& 
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
 struct Waypoint : Target { int id=0; int getId() const { return id; } void setId(int value) { id=value; } };
-struct Item { int clipSize=1,sellCost=3; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } int getBattleType() const { return 0; } int getSellCost() const { return sellCost; } int getSellCostAdjusted(const Base*,const SavedGame*) const; };
+struct Item { int clipSize=1,sellCost=3; bool _recover=true,_recoverCorpse=true,corpse=false; bool isRecoverable() const; bool isCorpseRecoverable() const; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } int getBattleType() const { return 0; } int getSellCost() const { return sellCost; } int getSellCostAdjusted(const Base*,const SavedGame*) const; };
 using RuleItem=Item;
+// CORPSE_RECOVERY_FLAGS
 namespace ModScript { struct SellCostItem {}; template<class Tag,class... Args> int scriptFunc2(const Item*,int adjusted,Args...) { return adjusted; } }
-struct Storage { int count=0; int getItem(const Item*) const { return count; }
-void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty=1) { count+=qty; } };
+struct Storage { int count=0,corpses=0; int getItem(const Item* item) const { return item->corpse?corpses:count; }
+void removeItem(const Item* item,int qty=1) { (item->corpse?corpses:count)-=qty; } void addItem(const Item* item,int qty=1) { (item->corpse?corpses:count)+=qty; } };
 struct Craft; struct Transfer; struct Soldier {};
 struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Craft*>& _crafts=crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0; int& _engineers=engineers;
 std::vector<Production*> _productions; auto& getProductions() { return _productions; }
@@ -85,7 +86,8 @@ const auto& getGetOneFreeProtected() const { return protectedFree; } const auto&
 int getCost() const { return cost; } int getPoints() const { return points; }
 bool isRepeatable() const { return repeatable; } bool sequentialGetOneFree() const { return sequential; }
 
-bool holding=false,returns=false,destroy=false; Item* needed=nullptr; std::string spawned=""; int count=0; std::vector<std::string> list;
+bool holding=false,returns=false,destroy=false,needs=false; Item* needed=nullptr; std::string spawned=""; int count=0; std::vector<std::string> list;
+bool needItem() const { return needs; }
 bool isHoldingNeededItem() const { return holding; } bool returnItem() const { return returns; }
 bool destroyItem() const { return destroy; } Item* getNeededItem() const { return needed; }
 std::string getName() const { return name; } std::string getSpawnedItem() const { return spawned; }
@@ -94,10 +96,12 @@ int getSpawnedItemCount() const { return count; } const auto& getSpawnedItemList
 using RuleResearch=ResearchRule;
 struct ResearchProject { const RuleResearch* rule=nullptr; bool finished=false;
 const RuleResearch* getRules() const { return rule; } bool isFinished() const { return finished; } };
-struct ResearchCorpse : Item { bool isRecoverable() const { return true; } bool isCorpseRecoverable() const { return true; } };
-struct ResearchArmor { ResearchCorpse* getCorpseGeoscape() const { return nullptr; } };
-struct ResearchUnit { const ResearchArmor* getArmor() const { return nullptr; } };
-struct ResearchMod { std::vector<ResearchRule*> rules; mutable Item supply; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string&,bool) const { return nullptr; } };
+struct ResearchCorpse : Item {};
+struct ResearchArmor { const RuleItem* _corpseGeo=nullptr; const RuleItem* getCorpseGeoscape() const; };
+using Armor=ResearchArmor;
+// ARMOR_CORPSE
+struct ResearchUnit { const ResearchArmor* armor=nullptr; const ResearchArmor* getArmor() const { return armor; } };
+struct ResearchMod { std::vector<ResearchRule*> rules; mutable Item supply; ResearchUnit* matchedUnit=nullptr; std::string matchName="CORPSE_TOPIC"; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string& name,bool) const { return name==matchName?matchedUnit:nullptr; } };
 using Mod=ResearchMod;
 enum class DiscoverySourceType { FREE_AFTER };
 struct ResearchDiaryEntry { explicit ResearchDiaryEntry(const RuleResearch*) {} void setDate(int) {}
@@ -114,6 +118,9 @@ return topicsToCheck;
 }
 void refund(ResearchProject* project) { const RuleResearch* ruleResearch=project->getRules();
 // RESEARCH_REFUND
+}
+void dailyCorpse(const RuleResearch* research,Base* xbase) { const Mod* mod=_mod;
+// RESEARCH_DAILY_CORPSE
 }
 };
 struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
@@ -361,7 +368,19 @@ std::cout << '[' << (scientist?"true":"false") << ',' << delay << ',' << assigne
 for(auto* waypoint:game.save.waypoints) delete waypoint; for(auto* transfer:base.transfers) delete transfer;
 }
 std::cout << "],";
-std::cout << "\"maintenanceRows\":[";
+std::cout << "\"researchCorpseRows\":[";
+scoreFirst=true;
+for(bool retain:{false,true}) for(bool needs:{false,true}) for(bool destroy:{false,true}) for(bool returns:{false,true}) for(bool finished:{false,true}) for(bool unitExists:{false,true}) for(bool recover:{false,true}) for(bool recoverCorpse:{false,true}) for(bool daily:{false,true}) {
+if(!scoreFirst) std::cout << ','; scoreFirst=false;
+ResearchCaller caller; ResearchRule rule; ResearchProject project; ResearchCorpse corpse; ResearchArmor armor; ResearchUnit unit; Base base;
+rule.name="CORPSE_TOPIC"; rule.needs=needs; rule.destroy=destroy; rule.returns=returns; rule.holding=needs&&(destroy||returns); rule.needed=&caller.mod.supply;
+project.rule=&rule; project.finished=finished; corpse.corpse=true; corpse._recover=recover; corpse._recoverCorpse=recoverCorpse; armor._corpseGeo=&corpse; unit.armor=&armor; caller.mod.matchedUnit=unitExists?&unit:nullptr;
+Options::retainCorpses=retain; caller.refund(&project);
+if(daily&&finished) caller.dailyCorpse(&rule,&base);
+std::cout << '[' << (retain?"true":"false") << ',' << (needs?"true":"false") << ',' << (destroy?"true":"false") << ',' << (returns?"true":"false") << ',' << (finished?"true":"false") << ',' << (unitExists?"true":"false") << ',' << (recover?"true":"false") << ',' << (recoverCorpse?"true":"false") << ',' << (daily?"true":"false") << ',' << caller.storage.count+base.storage.count << ',' << caller.storage.corpses+base.storage.corpses << ']';
+}
+Options::retainCorpses=true;
+std::cout << "],\"maintenanceRows\":[";
 bool serviceFirst=true;
 for(bool itemFuel:{false,true}) for(int fuel:{0,60,100}) for(int stock:{0,1}) for(bool low:{false,true}) for(bool rearming:{false,true}) {
 if(!serviceFirst) std::cout << ','; serviceFirst=false;

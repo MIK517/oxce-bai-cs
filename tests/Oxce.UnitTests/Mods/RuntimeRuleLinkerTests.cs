@@ -12,6 +12,25 @@ namespace Oxce.UnitTests.Mods;
 public sealed class RuntimeRuleLinkerTests
 {
     [Theory]
+    [InlineData("", true, true)]
+    [InlineData(", recover: false", false, true)]
+    [InlineData(", recoverCorpse: false", true, false)]
+    public void ResearchCorpseRuntimeRelationshipsKeepRecoveryDefaults(string flags, bool recover, bool corpse)
+    {
+        using var fixture = new TemporaryModFixture($"items: [{{type: CORPSE{flags}}}]\narmors: [{{type: CORPSE_ARMOR, corpseItem: CORPSE, loftempsSet: [0]}}]\nunits: [{{type: CORPSE_UNIT, armor: CORPSE_ARMOR}}]\n");
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var rules = snapshot.Content.RuntimeRules;
+        var unit = rules.Units[rules.Units.GetRequired("CORPSE_UNIT")].Value;
+        var armor = rules.Armors[unit.Armor!.Value].Value;
+        var item = rules.Items[armor.CorpseGeoscape!.Value].Value;
+        Assert.Equal("CORPSE_ARMOR", armor.Type);
+        Assert.Equal("CORPSE", item.Type);
+        Assert.Equal(recover, item.Recoverable);
+        Assert.Equal(corpse, item.CorpseRecoverable);
+    }
+
+    [Theory]
     [InlineData("startingBase: {}", 0, 0)]
     [InlineData("startingBase: {scientists: 10, engineers: 20}", 10, 20)]
     [InlineData("startingBase: {scientists: 2147483647, engineers: 2147483647}", int.MaxValue, int.MaxValue)]

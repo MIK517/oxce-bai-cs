@@ -17,7 +17,7 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
     bool AutoCombatDefaultSoldier = true, bool AnytimePsiTraining = false, bool AllowPsiStrengthImprovement = false,
     int MaximumBases = 8, bool AllowBuildingQueue = false, bool UfoLandingAlert = false,
     bool AggressiveRetaliation = true, bool CraftLaunchAlways = false, bool SuppressLandingWithoutEquipment = false,
-    bool SuppressRedundantHunterAlert = true)
+    bool SuppressRedundantHunterAlert = true, bool RetainCorpses = false)
 {
     /// <summary>
     /// Mod::loadAll's fixedUserOptions pass: a loaded mod forces these user options for every
@@ -41,6 +41,7 @@ public sealed record CampaignOptions(bool StorageLimitsEnforced = false, bool Ca
             CraftLaunchAlways = Fixed("craftLaunchAlways", CraftLaunchAlways),
             SuppressLandingWithoutEquipment = Fixed("oxceGeoSuppressLandingWithoutEquipment", SuppressLandingWithoutEquipment),
             SuppressRedundantHunterAlert = Fixed("oxceGeoSuppressRedundantHKAlert", SuppressRedundantHunterAlert),
+            RetainCorpses = Fixed("retainCorpses", RetainCorpses),
         };
 
         bool Fixed(string id, bool current) =>

@@ -33,6 +33,12 @@ $spawnStart = $researchSpawn.IndexOf('RuleItem* spawnedItem =', [StringCompariso
 $spawnEnd = $researchSpawn.IndexOf('// 3l. handle spawned events', $spawnStart, [StringComparison]::Ordinal)
 if ($spawnStart -lt 0 -or $spawnEnd -le $spawnStart) { throw 'Missing research item transfer fragment.' }
 $dailyResearch = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time1Day()'
+$corpseStart = $dailyResearch.IndexOf('if (Options::retainCorpses && research->needItem()', [StringComparison]::Ordinal)
+$corpseEnd = $dailyResearch.IndexOf('// 3bb.', $corpseStart, [StringComparison]::Ordinal)
+if ($corpseStart -lt 0 -or $corpseEnd -le $corpseStart) { throw 'Missing daily research corpse fragment.' }
+$template = $template.Replace('// RESEARCH_DAILY_CORPSE', $dailyResearch.Substring($corpseStart, $corpseEnd - $corpseStart))
+$template = $template.Replace('// ARMOR_CORPSE', (Read-ReferenceMethod 'src/Mod/Armor.cpp' 'const RuleItem* Armor::getCorpseGeoscape() const'))
+$template = $template.Replace('// CORPSE_RECOVERY_FLAGS', (Read-ReferenceMethod 'src/Mod/RuleItem.cpp' 'bool RuleItem::isRecoverable() const') + [Environment]::NewLine + (Read-ReferenceMethod 'src/Mod/RuleItem.cpp' 'bool RuleItem::isCorpseRecoverable() const'))
 $primaryStart = $dailyResearch.IndexOf('topicsToCheck.push_back(research);', [StringComparison]::Ordinal)
 $primaryEnd = $dailyResearch.IndexOf('if (!topicsToCheck.empty())', $primaryStart, [StringComparison]::Ordinal)
 if ($primaryStart -lt 0 -or $primaryEnd -le $primaryStart) { throw 'Missing primary topic collection fragment.' }
