@@ -14,11 +14,40 @@ public sealed class StrategicProductionSiteCounterTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void ProductionPrecedesDirectSitesAndUfoConversionsSharingCraftMarkers(bool cache, bool conversion)
+    public void ProductionIdentityCounterAndSiteExpiryOverflowRefuseTogether(bool cache, bool soldier)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $"crafts: [{{type: STR_SOLDIER, fuelMax: 0, damageMax: 100}}]\nmanufacture: [{{name: EXPIRY_PRODUCT, time: 1, {(soldier ? "spawnedPersonType: RECRUIT, producedItems: {SUPPLY: 0}" : "category: STR_CRAFT, producedItems: {STR_SOLDIER: 1}")}}}]\nfacilities: [{{type: EXPIRY_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\nalienDeployments: [{{type: EXPIRY_COUNTER, markerName: EXPIRY_COUNTER, counterDespawn: STR_SOLDIER}}]\n");
+        var initial = CreateSnapshot(content, "Produced actor and expiry counter") with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial.WithNextId("STR_SOLDIER", int.MaxValue - 1) with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("EXPIRY_WORKSHOP", 5, 5, 0, 0, false, false, false)],
+                Productions = [new("EXPIRY_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+            }],
+            World = initial.World with { MissionSites = [new(1, "STR_ALIEN_TERROR", "EXPIRY_COUNTER", "RACE_A", 0.2, 0.1, 0) { Detected = true }] }
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "production-expiry-before.sav");
+        AssertTimeBlocked(campaign, "Mission site custom counter exceeds the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void ProductionPrecedesDirectSitesAndUfoConversionsSharingActorMarkers(bool cache, bool conversion, bool soldier)
     {
         TestFixtures.LoadVerifiedManifest("strategic-research-production");
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var rules = """
             facilities:
               - {type: SHARED_SITE_WORKSHOP, mapName: LOGISTICS, size: 1, workshops: 2}
             manufacture:
@@ -43,12 +72,16 @@ public sealed class StrategicProductionSiteCounterTests
                 spawnZone: 1
                 siteType: SHARED_SITE
                 waves: [{ufo: UFO_SCOUT, count: 1, trajectory: SHARED_SITE_ARRIVAL, timer: 3000, objective: true}]
-            """);
+            """;
+        if (soldier) rules = rules.Replace("category: STR_CRAFT", "spawnedPersonType: RECRUIT", StringComparison.Ordinal)
+            .Replace("producedItems: {SHIP: 1}", "producedItems: {SUPPLY: 0}", StringComparison.Ordinal)
+            .Replace("markerName: SHIP", "markerName: STR_SOLDIER", StringComparison.Ordinal);
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, rules);
         var initial = CreateSnapshot(content, "Shared craft site markers") with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var owner = initial.Bases[0];
-        var next = owner.Crafts.Where(craft => craft.RuleId == "SHIP").Max(craft => craft.Id) + 1;
+        var next = soldier ? owner.Soldiers.Max(value => value.Id) + 1 : owner.Crafts.Where(craft => craft.RuleId == "SHIP").Max(craft => craft.Id) + 1;
         var mission = conversion ? "SHARED_SITE_CONVERT" : "SHARED_SITE_DIRECT";
-        initial = initial.WithNextId("SHIP", next) with
+        initial = initial.WithNextId(soldier ? "STR_SOLDIER" : "SHIP", next) with
         {
             Bases = [owner with
             {
@@ -76,9 +109,10 @@ public sealed class StrategicProductionSiteCounterTests
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
         var after = campaign.Capture();
-        Assert.Contains(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP" && craft.Id == next);
+        if (soldier) Assert.Contains(after.Bases[0].Transfers, transfer => transfer.Soldier?.Id == next);
+        else Assert.Contains(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP" && craft.Id == next);
         Assert.Equal(next + 1, Assert.Single(after.World.MissionSites).Id);
-        Assert.Equal(next + 2, after.NextIds["SHIP"]);
+        Assert.Equal(next + 2, after.NextIds[soldier ? "STR_SOLDIER" : "SHIP"]);
         campaign = Reload(content, campaign, 17, "produced-craft-site.sav");
         AdvanceUnblocked(campaign, 1);
         Assert.Single(campaign.Capture().World.MissionSites);

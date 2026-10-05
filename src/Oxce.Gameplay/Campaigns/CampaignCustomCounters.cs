@@ -138,6 +138,12 @@ public sealed partial class CampaignState : ICampaignCustomCounters
             }
         }
 
+        if (highest >= CampaignTimeTrigger.OneHour)
+            foreach (var name in projected.Keys.ToArray())
+            {
+                var value = projected[name];
+                projected[name] = ProductionPreflight.CraftCounter(name, highest, (value, value)).Maximum;
+            }
         if (projected.Values.Any(static value => value > int.MaxValue)) return capacityReason;
 
         foreach (var change in changes)

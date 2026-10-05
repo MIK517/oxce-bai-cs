@@ -135,6 +135,14 @@ internal sealed partial class CampaignWorld
         }
         if (_siteBirthExpiryDecreases is not null)
             foreach (var change in _siteBirthExpiryDecreases) (_siteConversionCounterForecast ??= []).Add(new(change, false));
+        if (highest >= CampaignTimeTrigger.OneHour && counterChanges.Count != 0)
+        {
+            HashSet<string> labels = new(StringComparer.Ordinal);
+            foreach (var change in counterChanges)
+                if (change.Name.Length != 0 && labels.Add(change.Name) &&
+                    ProductionCounterWorkReason(highest, ref despawnWork, "Mission site custom counter forecasts exceed the supported work limit.") is { } reason)
+                    return reason;
+        }
         return campaign.CustomCounters.CapacityReason(counterChanges, highest);
     }
 

@@ -10,7 +10,7 @@ internal sealed partial class CampaignWorld
         {
             // Always account for identity collision scans, even between hourly ticks.
             // Hourly projections additionally scan arrivals and allocator floors.
-            work += owner.Crafts.Count * (hourly ? 2L : 1L) + owner.Transfers.Count * (hourly ? 3L : 1L);
+            work += 1L + owner.Crafts.Count * (hourly ? 2L : 1L) + owner.Transfers.Count * (hourly ? 4L : 1L) + (hourly ? owner.Soldiers.Count : 0);
             if (work > MaximumAlienBaseChecks) return boundary;
             if (!hourly) continue;
             foreach (var production in owner.Productions)

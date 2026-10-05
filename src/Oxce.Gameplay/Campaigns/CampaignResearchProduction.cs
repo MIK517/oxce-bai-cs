@@ -531,7 +531,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     return "Production personnel exceed the supported population range.";
             }
             if (personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } personnelReason) return personnelReason;
-            if (possibleSoldiers != 0 && ProductionSoldierCapacity(possibleSoldiers, possibleCrafts, highest, ref work) is { } soldierCapacityReason)
+            if (possibleSoldiers != 0 && ProductionSoldierCapacity(possibleSoldiers, possibleTransfers, possibleCrafts, highest, ref work) is { } soldierCapacityReason)
                 return soldierCapacityReason;
             if (possibleCrafts is not null)
             {

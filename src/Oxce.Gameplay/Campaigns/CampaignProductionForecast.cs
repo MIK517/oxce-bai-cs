@@ -60,6 +60,9 @@ public sealed partial class CampaignState
     {
         if (highest < CampaignTimeTrigger.OneHour) return before;
         long certain = 0;
+        long certainCrafts = 0, certainSoldiers = 0;
+        var makesCraft = false;
+        var makesSoldier = false;
         long possible = 0;
         long work = 0;
         var consumesCraft = false;
@@ -96,7 +99,8 @@ public sealed partial class CampaignState
                 foreach (var material in rule.ProducedMaterials)
                     if (material.Quantity > 0 && material.Craft is { } craft && rules.Crafts.GetExternalId(craft) == name)
                         quantity += material.Quantity;
-                if (quantity == 0) continue;
+                var soldierQuantity = name == "STR_SOLDIER" && rule.SpawnedPersonType is not "" and not "STR_SCIENTIST" and not "STR_ENGINEER" ? 1 : 0;
+                if (quantity == 0 && soldierQuantity == 0) continue;
                 if (rule.Time <= 0) continue; // Produced returns Amount before and after.
                 var done = production.Spent / rule.Time;
                 var after = ((long)production.Spent + production.Assigned) / rule.Time;
@@ -104,31 +108,47 @@ public sealed partial class CampaignState
                 var requested = (production.Infinite ? after : Math.Min(after, production.Amount)) - done;
                 var requestedMaximum = (production.Infinite ? afterMaximum : Math.Min(afterMaximum, production.Amount)) - done;
                 if (requestedMaximum <= 0) continue;
+                makesCraft |= quantity > 0;
+                makesSoldier |= soldierQuantity > 0;
                 if ((long)production.Spent + assignedMaximum > int.MaxValue)
                     throw new InvalidDataException("Fallback production progress forecasts exceed the supported range.");
                 // The first unit is already paid. Further units may stop for materials,
                 // funds or capacity; never credit their uncertain IDs as collision headroom.
-                if (requested > 0) certain += quantity;
+                if (requested > 0)
+                {
+                    certainCrafts += quantity;
+                    certainSoldiers += soldierQuantity;
+                    certain += quantity + soldierQuantity;
+                }
+                quantity += soldierQuantity;
                 if (quantity > 100_000 || requestedMaximum > (100_000 - possible) / quantity)
                     throw new InvalidDataException("Craft production ID forecasts exceed the supported population limit.");
                 possible += quantity * requestedMaximum;
             }
         }
         if (possible == 0) return before;
-        long floor = 1;
+        long floor = 1, soldierFloor = 1;
         foreach (var owner in _bases)
         {
-            work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            work += 1L + owner.Crafts.Count + owner.Transfers.Count * 2L + (makesSoldier ? owner.Soldiers.Count : 0);
             if (work > 1_000_000) throw new InvalidDataException("Craft production ID forecasts exceed the supported work limit.");
             foreach (var craft in owner.Crafts)
-                if (rules.Crafts.GetExternalId(craft.Rule) == name) floor = Math.Max(floor, (long)craft.Id + 1);
+                if (makesCraft && rules.Crafts.GetExternalId(craft.Rule) == name) floor = Math.Max(floor, (long)craft.Id + 1);
+            if (makesSoldier)
+                foreach (var soldier in owner.Soldiers) soldierFloor = Math.Max(soldierFloor, (long)soldier.Id + 1);
+            var removesDelivered = owner.Transfers.Any(transfer => !transfer.Delivered && transfer.Hours <= 1);
             foreach (var transfer in owner.Transfers)
-                if (!transfer.Delivered && transfer.Craft is { } craft && craft.RuleId == name) floor = Math.Max(floor, (long)craft.Id + 1);
+            {
+                if (removesDelivered && transfer.Delivered) continue;
+                if (makesCraft && transfer.Craft is { } craft && craft.RuleId == name) floor = Math.Max(floor, (long)craft.Id + 1);
+                if (makesSoldier && transfer.Soldier is { } soldier) soldierFloor = Math.Max(soldierFloor, (long)soldier.Id + 1);
+            }
         }
         // Consumption can remove the saved highest craft before the allocator
         // scans it. The persisted counter remains a floor even in that outcome.
-        var minimum = certain == 0 ? before.Minimum :
-            (consumesCraft ? before.Minimum : Math.Max(before.Minimum, floor)) + certain;
-        return (minimum, Math.Max(before.Maximum, floor) + possible);
+        var minimum = before.Minimum + certain;
+        if (!consumesCraft && certainCrafts != 0) minimum = Math.Max(minimum, floor + certainCrafts);
+        if (certainSoldiers != 0) minimum = Math.Max(minimum, soldierFloor + certainSoldiers);
+        return (minimum, Math.Max(before.Maximum, Math.Max(floor, soldierFloor)) + possible);
     }
 }

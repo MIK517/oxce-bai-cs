@@ -37,6 +37,8 @@ public sealed partial class CampaignState
         foreach (var pool in definition.NamePools)
             generationWork += pool.LookWeights.Count + pool.MaleFirst.Count + pool.FemaleFirst.Count + pool.MaleCallsign.Count + pool.FemaleCallsign.Count;
         generationWork += _bases.Count + _bases.Sum(owner => owner.Soldiers.Count + (long)owner.Transfers.Count);
+        if (generationWork > 1_000_000 || births > (1_000_000 - work) / (generationWork * 10))
+            return "Soldier production exceeds the supported work limit.";
         work += births * generationWork * 10; // Native duplicate generation retries at most ten times.
         if (work > 1_000_000) return "Soldier production exceeds the supported work limit.";
         if (SoldierGeneration.GenerationRestriction(definition) is { } reason) return reason;
@@ -59,9 +61,20 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private string? ProductionSoldierCapacity(long births, IReadOnlyDictionary<RuleHandle<CraftRuleFamily>, long>? craftBirths,
+    private string? ProductionSoldierCapacity(long births, long transfers, IReadOnlyDictionary<RuleHandle<CraftRuleFamily>, long>? craftBirths,
         CampaignTimeTrigger highest, ref long work)
     {
+        // Every earlier birth remains in a pending transfer for later name
+        // collection. Charge that growing scan across projects and bases.
+        if (births > 1_000_000 || births * (births - 1) / 2 > 1_000_000 - work)
+            return "Soldier production exceeds the supported work limit.";
+        work += births * (births - 1) / 2;
+        // Name collection traverses every pending transfer, including item,
+        // craft and staff transfers queued by other projects in this tick.
+        var otherTransfers = Math.Max(0, transfers - births);
+        if (otherTransfers > (1_000_000 - work) / births)
+            return "Soldier production exceeds the supported work limit.";
+        work += births * otherTransfers;
         long population = births;
         foreach (var owner in _bases)
         {
