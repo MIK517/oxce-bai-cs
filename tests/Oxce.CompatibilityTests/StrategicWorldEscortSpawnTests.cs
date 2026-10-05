@@ -224,7 +224,17 @@ public sealed class StrategicWorldEscortSpawnTests
     [Fact]
     public void EscortSpawnStopsBeforeCraftRetargetIsNeeded()
     {
-        var content = Load();
+        var content = Load(overlay: """
+            ufos:
+              - {type: POSITIVE_RADAR_ESCORT, speedMax: 2200, damageMax: 50, radarRange: 300}
+            alienMissions:
+              - type: POSITIVE_RADAR_ESCORT_MISSION
+                objective: 0
+                waves:
+                  - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+                  - {ufo: POSITIVE_RADAR_ESCORT, count: 1, trajectory: TRAJ_ESCORT_SPAWN, timer: 9000, hunterKillerPercentage: 100, escort: true}
+            """);
+        Assert.Equal(300, content.RuntimeRules.Ufos[content.RuntimeRules.Ufos.GetRequired("POSITIVE_RADAR_ESCORT")].Value.StatsForRace("RACE_A").RadarRange);
         var initial = SpawnSnapshot(content, UfoStatus.Flying).WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
@@ -234,6 +244,11 @@ public sealed class StrategicWorldEscortSpawnTests
                 MissionComplete = false,
             },
         });
+        initial = initial with
+        {
+            World = initial.World with
+            { Missions = [initial.World.Missions[0] with { RuleId = "POSITIVE_RADAR_ESCORT_MISSION" }] }
+        };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "New UFO escorts require craft retarget forecasts.");
     }
