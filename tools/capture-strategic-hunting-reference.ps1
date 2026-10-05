@@ -28,6 +28,7 @@ foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::re
 $template = $template.Replace('// REFUEL_METHODS', $refuelMethods)
 $template = $template.Replace('// TRANSFER_METHOD', (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'void Transfer::advance(Base *base)') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Savegame/Transfer.cpp' 'int Transfer::getHours() const'))
+$template = $template.Replace('// WEAPON_REARM', (Read-ReferenceMethod 'src/Savegame/CraftWeapon.cpp' 'int CraftWeapon::rearm(const int available, const int clipSize)'))
 $template = $template.Replace('// FACILITY_REARM', (Read-ReferenceMethod 'src/Savegame/BaseFacility.cpp' 'const RuleItem* BaseFacility::rearm()'))
 $halfHour = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time30Minutes()'
 $autoStart = $halfHour.IndexOf('if (xcraft->getStatus() == "STR_READY" && xcraft->getRules()->canAutoPatrol())', [StringComparison]::Ordinal)

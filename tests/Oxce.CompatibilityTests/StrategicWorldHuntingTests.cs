@@ -846,6 +846,68 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void CraftAmmunitionSharesFuelStocksWithoutForecastRandomDraws(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "ammunitionFuelRows")
+            .GroupBy(row => (Clip: row[0].GetInt32(), Saving: row[1].GetBoolean())))
+        {
+            var content = Load(cache, $"items: [{{type: HUNT_SHARED_AMMO, clipSize: {group.Key.Clip}}}]\ncraftWeapons: [{{type: HUNT_AMMO_GUN, ammoMax: 10, rearmRate: 4, bulletSaving: {group.Key.Saving.ToString().ToLowerInvariant()}, launcher: SUPPLY, clip: HUNT_SHARED_AMMO}}]\ncrafts: [{{type: HUNT_AMMO_CONSUMER, speedMax: 2000, damageMax: 100, fuelMax: 100, weapons: 1}}, {{type: HUNT_AMMO_FUEL, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: HUNT_SHARED_AMMO, autoPatrol: true}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+                var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+                var gun = template with
+                {
+                    RuleId = "HUNT_AMMO_CONSUMER", Id = 2,
+                    Logistics = template.Logistics! with
+                    {
+                        Status = "STR_REARMING", Fuel = 100,
+                        Weapons = [new("HUNT_AMMO_GUN", row[2].GetInt32(), Rearming: true)],
+                    },
+                };
+                var fuel = template with
+                {
+                    RuleId = "HUNT_AMMO_FUEL", Id = 1,
+                    Logistics = template.Logistics! with
+                    {
+                        Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                    },
+                };
+                initial = initial with { Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Crafts = [gun, fuel], Soldiers = [],
+                    Items = row[3].GetInt32() == 0 ? new Dictionary<string, int>() :
+                        new Dictionary<string, int> { ["HUNT_SHARED_AMMO"] = row[3].GetInt32() },
+                }] };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ammo-fuel-before.sav");
+                if (row[11].GetInt32() != 0)
+                {
+                    AssertTimeBlocked(campaign, "UFO retargeting requires stochastic craft ammunition stock forecasts.");
+                    continue;
+                }
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                var weapon = after.Bases[0].Crafts.Single(craft => craft.RuleId == "HUNT_AMMO_CONSUMER").Logistics!.Weapons[0]!;
+                var refuelled = after.Bases[0].Crafts.Single(craft => craft.RuleId == "HUNT_AMMO_FUEL").Logistics!;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+                {
+                    weapon.Ammo, weapon.Rearming, after.Bases[0].Items.GetValueOrDefault("HUNT_SHARED_AMMO"),
+                    refuelled.Status, refuelled.Fuel,
+                    after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+                });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).Take(6).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Reload(content, campaign, 81, "ammo-fuel-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void FacilityAmmunitionAndCraftFuelShareNativeStockOrder(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -910,7 +972,6 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData("weapon", "UFO retargeting requires craft ammunition stock forecasts.")]
     [InlineData("production", "UFO retargeting requires production fuel-stock forecasts.")]
     [InlineData("craft", "UFO retargeting requires production craft-consumption forecasts.")]
     public void UnforecastHourlyStockInputsStopBeforeMutation(string source, string reason)
@@ -918,8 +979,6 @@ public sealed class StrategicWorldHuntingTests
         var overlay = "crafts: [{type: STOCK_GUARD_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 1}]\n";
         overlay += source switch
         {
-            "facility" => "facilities: [{type: HUNT_FUEL_DEFENSE, mapName: LOGISTICS, ammoMax: 2, rearmRate: 1, ammoItem: SUPPLY}]\n",
-            "weapon" => "craftWeapons: [{type: HUNT_FUEL_GUN, ammoMax: 10, rearmRate: 1, launcher: SUPPLY, clip: SUPPLY}]\n",
             "production" => "manufacture: [{name: HUNT_STOCK_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\n",
             _ => "manufacture: [{name: HUNT_STOCK_PRODUCT, time: 1, requiredItems: {STOCK_GUARD_HUNT: 1}, producedItems: {SUPPLY: 1}}]\n",
         };
@@ -929,17 +988,16 @@ public sealed class StrategicWorldHuntingTests
             RuleId = "STOCK_GUARD_HUNT",
             Logistics = craft.Logistics! with
             {
-                Status = source == "weapon" ? "STR_REARMING" : "STR_REFUELLING",
+                Status = "STR_REFUELLING",
                 Fuel = 60,
                 IsAutoPatrolling = true,
                 AutoPatrolLongitude = 0.8,
                 AutoPatrolLatitude = 0.3,
-                Weapons = source == "weapon" ? [new("HUNT_FUEL_GUN", 0, Rearming: true)] : [],
+                Weapons = [],
             },
         }) with
         { Time = new(1, 1, 1, 1999, 1, 59, 55) };
         var owner = initial.Bases[0];
-        if (source == "facility") owner = owner with { Facilities = [.. owner.Facilities, new("HUNT_FUEL_DEFENSE", 1, 1, 0, 0, false, false, false)] };
         if (source is "production" or "craft") owner = owner with
         {
             Facilities = [.. owner.Facilities, new("FUEL_WORKSHOP", 1, 1, 0, 0, false, false, false)],
