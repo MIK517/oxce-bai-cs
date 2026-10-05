@@ -503,6 +503,31 @@ std::cout << '[' << (craftFollows?"true":"false") << ',' << (ufoFollows?"true":"
 FuelCaller fuelCaller; if(craftFollows) fuelCaller.fuel(&follower); std::cout << follower._fuel << ']';
 delete hunter._dest;
 }
+std::cout << "],\"deletedUfoChainRows\":[";
+{
+Ufo* actors[4];
+for(int index=0;index<4;++index) {
+actors[index]=new Ufo(); actors[index]->uniqueId=9+index; actors[index]->lon=0.4; actors[index]->lat=0.2;
+auto* waypoint=new Waypoint(); waypoint->lon=0.400001; waypoint->lat=0.2;
+actors[index]->setDestination(waypoint); actors[index]->setSpeed(2200);
+if(index>0) { actors[index]->setEscortedUfo(actors[index-1]); actors[index-1]->ufoFollowers={actors[index]}; }
+}
+for(int removed=0;removed<3;++removed) {
+if(removed) std::cout << ',';
+// Ufo's own reset precedes Target::~Target's direct-follower repair.
+actors[removed]->resetOriginalDestination(false); actors[removed]->ufoFollowers={actors[removed+1]};
+delete actors[removed]; actors[removed]=nullptr;
+std::cout << '[' << removed+1;
+for(int index=removed+1;index<4;++index) {
+auto* actor=actors[index]; auto* target=dynamic_cast<Ufo*>(actor->_dest);
+std::cout << ",[" << actor->uniqueId << ',' << (actor->_isEscorting?"true":"false") << ','
+<< (actor->_origWaypoint?"true":"false") << ',' << (target?target->uniqueId:0) << ',' << actor->speed << ','
+<< (target?0:actor->_dest->lon) << ',' << (target?0:actor->_dest->lat) << ']';
+}
+std::cout << ']';
+}
+actors[3]->resetOriginalDestination(false); delete actors[3]->_dest; actors[3]->_dest=nullptr; delete actors[3];
+}
 std::cout << "],\"productionCraftUnloadRows\":[";
 serviceFirst=true;
 for(int stock:{0,1,3}) for(int input:{0,1,2}) for(int loaded:{0,1,2,INT_MAX}) {
