@@ -526,7 +526,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             if (personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } personnelReason) return personnelReason;
             if (possibleCrafts is not null)
             {
-                if (ProductionCraftCapacity(possibleCrafts, ref work) is { } craftReason) return craftReason;
+                if (ProductionCraftCapacity(possibleCrafts, highest, ref work) is { } craftReason) return craftReason;
                 if (!personnelBirths && ProductionPersonnelTransferCapacity(possibleTransfers, highest, ref work) is { } arrivalReason)
                     return arrivalReason.Replace("personnel", "craft", StringComparison.Ordinal);
             }

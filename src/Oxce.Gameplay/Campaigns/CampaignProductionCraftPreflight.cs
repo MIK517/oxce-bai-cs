@@ -28,21 +28,25 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private string? ProductionCraftCapacity(IReadOnlyDictionary<RuleHandle<CraftRuleFamily>, long> births, ref long work)
+    private string? ProductionCraftCapacity(IReadOnlyDictionary<RuleHandle<CraftRuleFamily>, long> births,
+        CampaignTimeTrigger highest, ref long work)
     {
         long population = births.Values.Sum();
         foreach (var owner in _bases)
         {
-            work += owner.Crafts.Count + (long)owner.Transfers.Count;
+            work += 1L + owner.Crafts.Count + owner.Transfers.Count;
             if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
             population += owner.Crafts.Count + owner.Transfers.Count(transfer => !transfer.Delivered && transfer.Craft is not null);
         }
         if (population > 100_000) return "Craft production exceeds the supported population limit.";
         foreach (var birth in births)
         {
-            work += _bases.Sum(owner => owner.Crafts.Count + (long)owner.Transfers.Count);
+            work += _bases.Count + _bases.Sum(owner => owner.Crafts.Count + (long)owner.Transfers.Count);
             if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
-            if (birth.Value > int.MaxValue - (long)NextCraftId(_content.RuntimeRules.Crafts.GetExternalId(birth.Key)))
+            var type = _content.RuntimeRules.Crafts.GetExternalId(birth.Key);
+            if (ProducedCraftCounterRange(type, highest, ref work, out var range) is { } counterReason) return counterReason;
+            var next = Math.Max(NextCraftId(type), range.Maximum);
+            if (birth.Value > int.MaxValue - next)
                 return "Craft production exhausts the craft identity range.";
         }
         return null;
@@ -56,13 +60,13 @@ public sealed partial class CampaignState
         var type = _content.RuntimeRules.Crafts.GetExternalId(craft);
         if (!counters.TryGetValue(craft, out var next))
         {
-            var range = CustomCounters.BeforeWorldCreation(type, highest);
+            if (ProducedCraftCounterRange(type, highest, ref work, out var range) is { } counterReason) return counterReason;
             if (range.Minimum != range.Maximum) return "Craft production requires daily research identity forecasts.";
             next = range.Maximum;
         }
         foreach (var owner in _bases)
         {
-            work += sources[owner.Id].Count + owner.Transfers.Count * 2L;
+            work += 1L + sources[owner.Id].Count + owner.Transfers.Count * 2L;
             if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
             foreach (var existing in sources[owner.Id])
                 if (existing.Rule == craft) next = Math.Max(next, (long)existing.Id + 1);
@@ -74,6 +78,36 @@ public sealed partial class CampaignState
         if (next >= int.MaxValue) return "Craft production exhausts the craft identity range.";
         identity = (int)next;
         counters[craft] = next + 1;
+        return null;
+    }
+
+    private string? ProducedCraftCounterRange(string type, CampaignTimeTrigger highest, ref long work,
+        out (long Minimum, long Maximum) range)
+    {
+        range = default;
+        if (highest >= CampaignTimeTrigger.OneDay)
+            foreach (var owner in _bases)
+            {
+                work += 1L + owner.Research.Count;
+                if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
+                var finishing = false;
+                foreach (var project in owner.Research)
+                {
+                    if ((long)project.Spent + project.Assigned < project.Cost) continue;
+                    finishing = true;
+                    var rule = _content.RuntimeRules.Research[project.Rule].Value;
+                    work += rule.GetOneFree.Count + (long)rule.GetOneFreeProtected.Count;
+                    foreach (var group in rule.GetOneFreeProtected) work += group.Topics.Count;
+                    if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
+                }
+                if (!finishing) continue;
+                foreach (var entry in _content.RuntimeRules.Research.Rules)
+                {
+                    work += 1L + entry.Value.IncreaseCounters.Count + entry.Value.DecreaseCounters.Count;
+                    if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
+                }
+            }
+        range = CustomCounters.BeforeWorldCreation(type, highest);
         return null;
     }
 }

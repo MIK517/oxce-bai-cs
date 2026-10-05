@@ -13,6 +13,52 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyResearchCounterCannotExhaustLaterCraftBirthIdentity(bool cache)
+    {
+        var content = Load(cache, "research: [{name: BIRTH_COUNTER_TOPIC, cost: 1, increaseCounter: [COUNTER_CRAFT]}]\ncrafts: [{type: COUNTER_CRAFT, fuelMax: 100, refuelRate: 40}]\nmanufacture: [{name: COUNTER_BIRTH, category: STR_CRAFT, time: 1, producedItems: {COUNTER_CRAFT: 1}}]\nfacilities: [{type: COUNTER_LAB_WORKSHOP, mapName: LOGISTICS, labs: 1, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = WorldSnapshot.Empty };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["COUNTER_CRAFT"] = int.MaxValue - 1 },
+            Bases = [initial.Bases[0] with
+            {
+                Crafts = [], Soldiers = [],
+                Facilities = [.. initial.Bases[0].Facilities, new("COUNTER_LAB_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Research = [new("BIRTH_COUNTER_TOPIC", 1, 0, 1)],
+                Productions = [new("COUNTER_BIRTH", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+            }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Craft production exhausts the craft identity range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CraftProductionIdentityScansChargeEmptyBasesAgainstWorkLimit(bool cache)
+    {
+        var craftRows = string.Join(", ", Enumerable.Range(0, 1001).Select(index => $"{{type: EMPTY_SCAN_{index}}}"));
+        var productionRows = string.Join(", ", Enumerable.Range(0, 1001).Select(index => $"{{name: EMPTY_BIRTH_{index}, category: STR_CRAFT, time: 1, producedItems: {{EMPTY_SCAN_{index}: 1}}}}"));
+        var content = Load(cache, $"crafts: [{craftRows}]\nmanufacture: [{productionRows}]\nfacilities: [{{type: EMPTY_SCAN_WORKSHOP, mapName: LOGISTICS, workshops: 1001}}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+        var owner = initial.Bases[0] with { Crafts = [], Soldiers = [], Transfers = [], Research = [], Productions = [] };
+        initial = initial with
+        {
+            Bases = Enumerable.Range(0, 1001).Select(index => owner with
+            {
+                Id = index,
+                Facilities = index == 0 ? [.. owner.Facilities, new("EMPTY_SCAN_WORKSHOP", 1, 1, 0, 0, false, false, false)] : [],
+                Productions = index == 0 ? Enumerable.Range(0, 1001).Select(project => new ProductionSnapshot(
+                    $"EMPTY_BIRTH_{project}", 1, 0, 1, false, false, false, new Dictionary<string, int>())).ToArray() : []
+            }).ToArray()
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Craft production exceeds the supported work limit.");
+    }
+
+    [Theory]
     [InlineData(false, 0)]
     [InlineData(true, 0)]
     [InlineData(false, 1)]
