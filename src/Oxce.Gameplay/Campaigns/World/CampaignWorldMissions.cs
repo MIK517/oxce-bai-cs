@@ -141,7 +141,9 @@ internal sealed partial class CampaignWorld
             if (possibleNewLeaderMissions?.Contains(saved.MissionId) != true) continue;
             // The live retarget pass sees appended leaders. It does not relocate
             // this saved source, but replaces its waypoint and speed. Prove that
-            // no arrival, craft pursuit or UFO follower forecast depends on them.
+            // no ordinary arrival or craft pursuit forecast depends on them.
+            // UFO escort followers cannot trigger combat or waypoint transitions;
+            // their live ordered movement can safely follow this changed source.
             if (LoadedEscortNewLeaderReason(projected, ref newbornFollowerWork) is { } leaderReason)
                 return leaderReason;
             savedMovingEscorts++;
@@ -410,11 +412,6 @@ internal sealed partial class CampaignWorld
         if (escort.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
             !(WorldGeometry.Distance(escort.Position, destination.Position) > WorldGeometry.RadianSpeed(escort.Speed) + 1e-12))
             return "Loaded idle escorts require same-tick newborn waypoint forecasts.";
-        work += _ufos.Count;
-        if (work > MaximumAlienBaseChecks) return "New UFO escort selection exceeds the supported work limit.";
-        foreach (var follower in _ufos)
-            if (follower.Escorting && FollowsUfo(follower.Destination, escort))
-                return "Loaded idle escorts require same-tick newborn UFO follower forecasts.";
         return null;
     }
 

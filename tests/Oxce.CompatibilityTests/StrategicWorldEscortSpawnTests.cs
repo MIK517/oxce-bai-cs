@@ -398,10 +398,18 @@ public sealed class StrategicWorldEscortSpawnTests
             "Loaded idle escorts require same-tick newborn waypoint forecasts.");
     }
 
-    [Fact]
-    public void LoadedIdleEscortRequiresForecastBeforeMovingAnExistingUfoFollower()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void LoadedIdleEscortWithFollowersMatchesNativeNewLeaderMovement(bool cache, bool reverse)
     {
-        var content = Load();
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
+        using var attachment = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(attachment.RootElement, "spawnEscortSequenceRows"), row =>
+            !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
+        var content = Load(cache);
         var initial = IdleEscortSnapshot(content);
         var source = initial.World.Ufos[0];
         initial = initial with
@@ -415,6 +423,7 @@ public sealed class StrategicWorldEscortSpawnTests
                     Id = 4,
                     Longitude = 0.7,
                     Latitude = 0.3,
+                    Speed = 2200,
                     Escorting = true,
                     OriginalWaypoint = new(1, 0.6),
                     Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, source.Id,
@@ -422,8 +431,29 @@ public sealed class StrategicWorldEscortSpawnTests
                 }],
             },
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "Loaded idle escorts require same-tick newborn UFO follower forecasts.");
+        if (reverse) initial = initial with { World = initial.World with { Ufos = initial.World.Ufos.Reverse().ToArray() } };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "loaded-followers-before.sav");
+        var rows = TestFixtures.Rows(oracle.RootElement, "idleEscortFollowerMovement").Where(row => row[0].GetBoolean() == reverse).ToArray();
+        Assert.Equal(3, rows.Length);
+        foreach (var row in rows)
+        {
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var leader = Assert.Single(after.World.Ufos, ufo => ufo.UniqueId is not (9 or 10));
+            UfoSnapshot[] roles = [after.World.Ufos.Single(ufo => ufo.UniqueId == 9),
+                after.World.Ufos.Single(ufo => ufo.UniqueId == 10), leader];
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { reverse, row[1].GetInt32() }.Concat(
+                roles.SelectMany(ufo => new object[]
+                {
+                    decimal.Parse(ufo.Longitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
+                    decimal.Parse(ufo.Latitude.ToString("F12", System.Globalization.CultureInfo.InvariantCulture), System.Globalization.CultureInfo.InvariantCulture),
+                })).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            Assert.Equal(3, Assert.Single(after.World.Missions).LiveUfos);
+            Assert.Equal(leader.UniqueId, after.World.Ufos.Single(ufo => ufo.UniqueId == 9).Destination!.UniqueId);
+            Assert.Equal(9, after.World.Ufos.Single(ufo => ufo.UniqueId == 10).Destination!.UniqueId);
+            campaign = Reload(content, campaign, 81, "loaded-followers-after.sav");
+        }
     }
 
     [Fact]
@@ -451,7 +481,7 @@ public sealed class StrategicWorldEscortSpawnTests
             },
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "New UFO escort selection exceeds the supported work limit.");
+            "New UFO escort movement exceeds the supported work limit.");
     }
 
     [Fact]
