@@ -124,8 +124,13 @@ void dailyCorpse(const RuleResearch* research,Base* xbase) { const Mod* mod=_mod
 }
 };
 struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
+struct CraftBirthRule { bool fixed=false; int fuelMax=100; std::string getType() const { return "PRODUCED_CRAFT"; } };
 struct Cargo { std::map<const RuleItem*,int> values; const auto* getContents() const { return &values; } };
 struct Craft : MovingTarget {
+Craft()=default;
+Craft(const CraftBirthRule* rules,Base* owner,int identity) { id=identity; birthFixed=rules->fixed; _stats.fuelMax=rules->fuelMax; autoPatrol=false; setBase(owner); }
+void initFixedWeapons(const Mod*) { if(birthFixed) { auto* weapon=new CraftWeapon(); weapon->rule.ammoMax=10; _weapons.push_back(weapon); } }
+bool birthFixed=false;
 struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelItem=nullptr; int refuelRate=40;
 bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; }
 const Item* getRefuelItem() const { return fuelItem; } int getRefuelRate() const { return refuelRate; }
@@ -167,6 +172,7 @@ void Base::removeCraft(Craft* craft,bool unload) { consumedOrder.push_back(craft
 struct Transfer {
 explicit Transfer(int hours=1):_hours(hours) {}
 void setItems(const Item* item,int qty=1) { _itemId=item; _itemQty=qty; }
+void setCraft(Craft* craft) { _craft=craft; }
 void setScientists(int qty) { _scientists=qty; } void setEngineers(int qty) { _engineers=qty; }
 int _hours=1,_itemQty=0,_scientists=0,_engineers=0; Soldier* _soldier=nullptr; Craft* _craft=nullptr;
 const Item* _itemId=nullptr; bool _delivered=false;
@@ -243,7 +249,11 @@ bool hasUndiscoveredProtectedUnlock(const RuleResearch*) const;
 
 std::vector<Ufo*>* getUfos() { return &ufos; }
 std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
-int getId(const std::string&) { return 8+(int)waypoints.size(); } };
+int craftCounter=10; int getId(const std::string& type) { return type=="PRODUCED_CRAFT"?craftCounter++:8+(int)waypoints.size(); } };
+struct ProductionCraftRule { CraftBirthRule craft; std::vector<int> times; const CraftBirthRule* getProducedCraft() const { return &craft; } const auto& getTransferTimes() const { return times; } };
+struct ProductionCraftCaller { const ProductionCraftRule* _rules; void complete(Base* b,SavedGame* g,const Mod* m) {
+// PRODUCTION_CRAFT_DELIVERY
+} };
 // PRODUCTION_SALE_PRICE
 // PRODUCTION_ACCOUNTING
 // RESEARCH_SCORE
@@ -964,6 +974,19 @@ if(ufo._origWaypoint) std::cout << ufo._origWaypoint->lon << ',' << ufo._origWay
 else std::cout << "null,null";
 std::cout << ']';
 if(ufo._origWaypoint) delete ufo._origWaypoint; else delete ufo._dest;
+}
+std::cout << "],\"productionCraftBirthRows\":["; first=true;
+for(bool fixed:{false,true}) for(int fuel:{0,100}) for(int delay:{-1,0,1,3}) {
+if(!first) std::cout << ','; first=false;
+ProductionCraftRule rule; rule.craft.fixed=fixed; rule.craft.fuelMax=fuel; rule.times={0,0,delay};
+ProductionCraftCaller caller{&rule}; Base owner; owner.lon=0.45; owner.lat=0.21; SavedGame saved; Mod mod;
+caller.complete(&owner,&saved,&mod);
+auto* craft=owner.crafts.empty()?owner.transfers.front()->_craft:owner.crafts.front();
+if(owner.transfers.empty()&&craft->_status=="STR_REFUELLING") craft->refuel();
+std::cout << '[' << (fixed?"true":"false") << ',' << fuel << ',' << delay << ',' << craft->id << ',' << owner.crafts.size() << ',' << owner.transfers.size() << ','
+<< (owner.transfers.empty()?0:owner.transfers.front()->getHours()) << ',' << '"' << craft->_status << '"' << ',' << craft->_fuel << ',' << craft->lon << ',' << craft->lat << ','
+<< (craft->_weapons.empty()?0:craft->_weapons.front()->getAmmo()) << ',' << (craft->_weapons.empty()?"false":craft->_weapons.front()->isRearming()?"true":"false") << ',' << (craft->autoPatrol?"true":"false") << ']';
+for(auto* weapon:craft->_weapons) delete weapon; for(auto* transfer:owner.transfers) delete transfer; delete craft;
 }
 std::cout << "]}\n";
 }

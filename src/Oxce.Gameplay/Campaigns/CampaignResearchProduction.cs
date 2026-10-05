@@ -980,7 +980,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             var craftId = NextCraftId(id);
             _nextIds[id] = checked(craftId + 1);
             var key = FormattableString.Invariant($"created:{Identity.Id}:craft:{id}:{craftId}");
-            var logistics = CraftLogistics.LoadStarting(_content.RuntimeRules.Crafts[craft].Value, null);
+            var definition = _content.RuntimeRules.Crafts[craft].Value;
+            var logistics = CraftLogistics.Arrive(CraftLogistics.Purchase(definition, _content.RuntimeRules,
+                owner.Longitude, owner.Latitude), definition, _content.RuntimeRules, owner.Longitude, owner.Latitude);
             var value = new CraftSnapshot(id, craftId) { PreservationKey = key, Logistics = logistics };
             if (transferHours == 0)
                 owner.Crafts.Add(new(craft, craftId) { PreservationKey = key, Logistics = logistics });

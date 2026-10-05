@@ -11,6 +11,18 @@ namespace Oxce.UnitTests.Mods;
 
 public sealed class RuntimeRuleLinkerTests
 {
+    [Fact]
+    public void CraftManufactureProjectsOnlyFirstNativeOutput()
+    {
+        using var fixture = new TemporaryModFixture("crafts: [{type: FIRST}]\nmanufacture: [{name: BUILD, category: STR_CRAFT, time: 1, producedItems: {FIRST: 1, ZZ_IGNORED: 5}}]\n");
+        var snapshot = ContentSnapshotBuilder.Build(TestFixtures.CreatePlan(fixture.Root));
+        Assert.True(snapshot.Capabilities.Has(ContentLoadStage.RuntimeLinked), Diagnostics(snapshot));
+        var rules = snapshot.Content.RuntimeRules;
+        var output = Assert.Single(rules.Manufacture[rules.Manufacture.GetRequired("BUILD")].Value.ProducedMaterials);
+        Assert.Equal("FIRST", rules.Crafts.GetExternalId(output.Craft!.Value));
+        Assert.Equal(1, output.Quantity);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData(", armor: MISSING")]

@@ -63,6 +63,12 @@ $progressStart = $production.IndexOf('int done = getAmountProduced();', [StringC
 $progressEnd = $production.IndexOf('int count = 0;', $progressStart, [StringComparison]::Ordinal)
 if ($progressStart -lt 0 -or $progressEnd -le $progressStart) { throw 'Missing production completion-count fragment.' }
 $deliveryStart = $production.IndexOf('int transferTimeItems =', [StringComparison]::Ordinal)
+$craftStart = $production.IndexOf('auto ruleCraft = _rules->getProducedCraft();', [StringComparison]::Ordinal)
+$craftEnd = $production.IndexOf('else', $craftStart, [StringComparison]::Ordinal)
+# The first else belongs to transfer-vs-immediate delivery. The next is item production.
+$craftEnd = $production.IndexOf('else', $craftEnd + 4, [StringComparison]::Ordinal)
+if ($craftStart -lt 0 -or $craftEnd -le $craftStart) { throw 'Missing craft production fragment.' }
+$template = $template.Replace('// PRODUCTION_CRAFT_DELIVERY', $production.Substring($craftStart, $craftEnd - $craftStart))
 $deliveryEnd = $production.IndexOf('// Random manufacture', $deliveryStart, [StringComparison]::Ordinal)
 if ($deliveryStart -lt 0 -or $deliveryEnd -le $deliveryStart) { throw 'Missing fixed production delivery fragment.' }
 $delivery = $production.Substring($deliveryStart, $deliveryEnd - $deliveryStart).TrimEnd()
