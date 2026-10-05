@@ -124,11 +124,11 @@ void dailyCorpse(const RuleResearch* research,Base* xbase) { const Mod* mod=_mod
 }
 };
 struct MovingTarget : Target { Target* _dest = nullptr; void setDestination(Target* target) { _dest = target; } };
-struct CraftBirthRule { bool fixed=false; int fuelMax=100; std::string getType() const { return "PRODUCED_CRAFT"; } };
+struct CraftBirthRule { bool fixed=false; int fuelMax=100; Item* fuelItem=nullptr; std::string getType() const { return "PRODUCED_CRAFT"; } };
 struct Cargo { std::map<const RuleItem*,int> values; const auto* getContents() const { return &values; } };
 struct Craft : MovingTarget {
 Craft()=default;
-Craft(const CraftBirthRule* rules,Base* owner,int identity) { id=identity; birthFixed=rules->fixed; _stats.fuelMax=rules->fuelMax; autoPatrol=false; setBase(owner); }
+Craft(const CraftBirthRule* rules,Base* owner,int identity) { id=identity; birthFixed=rules->fixed; rule.fuelItem=rules->fuelItem; _stats.fuelMax=rules->fuelMax; autoPatrol=false; setBase(owner); }
 void initFixedWeapons(const Mod*) { if(birthFixed) { auto* weapon=new CraftWeapon(); weapon->rule.ammoMax=10; _weapons.push_back(weapon); } }
 bool birthFixed=false;
 struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelItem=nullptr; int refuelRate=40;
@@ -266,9 +266,13 @@ const auto& getRandomProducedItems() const { return random; }
 };
 struct ProductionDeliveryCaller {
 const ProductionItemRule* _rules; bool sell=false; std::map<std::string,int> _randomProductionInfo;
+const ProductionCraftRule* craftBirth=nullptr;
 bool getSellItems() const { return sell; }
 void deliver(Base* b,SavedGame* g) {
+if(craftBirth) ProductionCraftCaller{craftBirth}.complete(b,g,nullptr);
+else {
 // PRODUCTION_DELIVERY
+}
 // PRODUCTION_RANDOM_DELIVERY
 // PRODUCTION_PERSONNEL
 // PRODUCTION_SCORE
@@ -987,6 +991,27 @@ std::cout << '[' << (fixed?"true":"false") << ',' << fuel << ',' << delay << ','
 << (owner.transfers.empty()?0:owner.transfers.front()->getHours()) << ',' << '"' << craft->_status << '"' << ',' << craft->_fuel << ',' << craft->lon << ',' << craft->lat << ','
 << (craft->_weapons.empty()?0:craft->_weapons.front()->getAmmo()) << ',' << (craft->_weapons.empty()?"false":craft->_weapons.front()->isRearming()?"true":"false") << ',' << (craft->autoPatrol?"true":"false") << ']';
 for(auto* weapon:craft->_weapons) delete weapon; for(auto* transfer:owner.transfers) delete transfer; delete craft;
+}
+std::cout << "],\"productionCraftHuntingRows\":["; first=true;
+for(int delay:{-1,0,1,3}) for(bool fixed:{false,true}) for(int stock:{0,1,2,3,4,5,6,7}) for(int requested:{1,2}) for(int cost:{0,3}) {
+if(!first) std::cout << ','; first=false;
+Base owner; owner.lon=0.45; owner.lat=0.21; owner.storage.count=stock; SavedGame saved; saved.funds=5; Mod mod;
+Craft existing; existing.id=1; existing._base=&owner; existing._fuel=60; existing.rule.fuelItem=&mod.supply; owner.crafts.push_back(&existing);
+ProductionCraftRule birth; birth.craft.fixed=fixed; birth.craft.fuelItem=&mod.supply; birth.times={0,0,delay};
+ProductionItemRule output; ProductionDeliveryCaller delivery{&output}; delivery.craftBirth=&birth;
+Production project; project.rule.time=2; project.rule.cost=cost; project.rule.requiredItems={{&mod.supply,1}}; project._timeSpent=1; project._engineers=requested*2; project._amount=2;
+int stop=project.scalarStep(&owner,&saved,&mod,delivery);
+ServiceGame game; for(auto* craft:owner.crafts) if(craft->_status=="STR_REFUELLING") { auto missing=craft->refuel(); if(missing.empty()&&craft->_status=="STR_READY"&&craft->autoPatrol) autoPatrol(craft,&game); }
+FuelCaller fuelCaller; for(auto* craft:owner.crafts) if(craft->_status=="STR_OUT") fuelCaller.fuel(craft);
+Ufo hunter; std::vector<Craft*> active; for(auto* craft:owner.crafts) if(craft->_status=="STR_OUT") active.push_back(craft);
+auto* target=select(&hunter,active);
+std::cout << '[' << delay << ',' << (fixed?"true":"false") << ',' << stock << ',' << requested << ',' << cost << ',' << project.completedUnits << ',' << owner.storage.count << ',' << saved.funds << ',' << stop << ',' << owner.crafts.size()-1 << ',' << owner.transfers.size() << ",[";
+bool bornFirst=true; auto emit=[&](Craft* craft) { if(!bornFirst) std::cout << ','; bornFirst=false; std::cout << '[' << craft->id << ',' << '"' << craft->_status << '"' << ',' << craft->_fuel << ',' << (craft->_weapons.empty()?"false":craft->_weapons.front()->isRearming()?"true":"false") << ']'; };
+for(auto* craft:owner.crafts) if(craft!=&existing) emit(craft); for(auto* transfer:owner.transfers) emit(transfer->_craft);
+std::cout << "]," << '"' << existing._status << '"' << ',' << existing._fuel << ',' << (target?target->id:0) << ']';
+for(auto* craft:owner.crafts) if(craft!=&existing) { for(auto* weapon:craft->_weapons) delete weapon; delete craft; }
+for(auto* transfer:owner.transfers) { for(auto* weapon:transfer->_craft->_weapons) delete weapon; delete transfer->_craft; delete transfer; }
+for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 std::cout << "]}\n";
 }
