@@ -1833,6 +1833,137 @@ public sealed class StrategicWorldHuntingTests
             "Production arrivals exhaust the transfer identity range." : "Production outputs exceed the supported stock range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FreeRecurringProductionStocksMatchNativeUnitCapsAndReuse(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionFreeRows")
+            .GroupBy(row => (Armed: row[0].GetBoolean(), Quantity: row[4].GetInt32(), Delay: row[5].GetInt32())))
+        {
+            var content = Load(cache, $"crafts: [{{type: FREE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1, refuelItem: SUPPLY}}]\ncraftWeapons: [{{type: FREE_PRODUCT_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nmanufacture: [{{name: FREE_PRODUCT, time: 2, cost: 0, producedItems: {{SUPPLY: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}]\nfacilities: [{{type: FREE_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 6}}]\n");
+            foreach (var row in group)
+            {
+                var units = row[1].GetInt32();
+                var amount = row[2].GetInt32();
+                var infinite = row[3].GetBoolean();
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "FREE_PRODUCT_HUNT",
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = group.Key.Armed ? [new("FREE_PRODUCT_GUN", 0)] : [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    },
+                }) with
+                { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [-1] };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Engineers = 0,
+                    Items = row[6].GetInt32() == 0 ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = row[6].GetInt32() },
+                    Facilities = [.. initial.Bases[0].Facilities, new("FREE_PRODUCT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("FREE_PRODUCT", units * 2, 1, amount, infinite, false, false, new Dictionary<string, int>())],
+                }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "free-product-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "FREE_PRODUCT_HUNT").Logistics!;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { result.Events.OfType<CampaignProductionProgress>().Sum(progress => progress.Produced),
+                    after.Bases[0].Items.GetValueOrDefault("SUPPLY"), craft.Status, craft.Fuel,
+                    group.Key.Armed && craft.Weapons[0]!.Rearming, after.Bases[0].Transfers.Count,
+                    after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(7).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Assert.Equal(-1, after.Funds[^1]);
+                Assert.Equal(infinite || units < amount ? 1 : 0, after.Bases[0].Productions.Count);
+                Reload(content, campaign, 81, "free-product-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExcessiveFreeProductionWorkStopsBeforeClockInventoryAndRandomChanges(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: FREE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nmanufacture: [{name: FREE_BOUND_PRODUCT, time: 1, producedItems: {SUPPLY: 1}}]\nfacilities: [{type: FREE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 500001}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        { RuleId = "FREE_BOUND_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
+            with
+        { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Engineers = 0, Items = new Dictionary<string, int>(),
+            Facilities = [.. initial.Bases[0].Facilities, new("FREE_BOUND_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("FREE_BOUND_PRODUCT", 500001, 0, 1, true, false, false, new Dictionary<string, int>())],
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO retargeting exceeds the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void FreeProductionFutureQuantitiesAreBoundedBeforeMutation(bool cache, int units)
+    {
+        var content = Load(cache, $"crafts: [{{type: FUTURE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: FUTURE_BOUND_PRODUCT, time: 1, producedItems: {{SUPPLY: {int.MaxValue}}}, transferTimes: [1]}}]\nfacilities: [{{type: FUTURE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 2}}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        { RuleId = "FUTURE_BOUND_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
+            with
+        { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Items = new Dictionary<string, int>(),
+            Transfers = units == 1 ? [new(17, 2, CampaignTransferKind.Item, "SUPPLY", 1)] : [],
+            Facilities = [.. initial.Bases[0].Facilities, new("FUTURE_BOUND_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("FUTURE_BOUND_PRODUCT", units, 0, units, false, false, false, new Dictionary<string, int>())],
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Production arrivals exceed the supported quantity range.");
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void ProductionCaptivePopulationLimitsIncludeStocksAndFutureArrivals(bool cache, int delay)
+    {
+        var content = Load(cache, $"items: [{{type: CAPTIVE_PRODUCT_A, liveAlien: true, prisonType: 0}}, {{type: CAPTIVE_PRODUCT_B, liveAlien: true, prisonType: 0}}]\ncrafts: [{{type: CAPTIVE_BOUND_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nmanufacture: [{{name: CAPTIVE_BOUND_PRODUCT, time: 1, producedItems: {{CAPTIVE_PRODUCT_B: 1}}, transferTimes: [{delay}]}}]\nfacilities: [{{type: CAPTIVE_BOUND_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        { RuleId = "CAPTIVE_BOUND_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [] } })
+            with
+        { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Items = new Dictionary<string, int> { ["CAPTIVE_PRODUCT_A"] = int.MaxValue },
+            Facilities = [.. initial.Bases[0].Facilities, new("CAPTIVE_BOUND_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("CAPTIVE_BOUND_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+        }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Production captive populations exceed the supported range.");
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {

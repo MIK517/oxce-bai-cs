@@ -7,9 +7,11 @@ ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
 forecasts cover stock-free completions, held-item refunds, global obsolete
 and disabled-project cancellation, fixed spawned item arrivals, lookup and automatic
 discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
-production without a completing unit does not block retargeting. Remaining stock
-forecasts cover completing/fallback production, stochastic shared ammunition and
-random research reward choices and corpse consequences.
+production without a completing unit, final prepaid zero-score item units and
+recurring free/no-input item units participate in hunter forecasts. Remaining
+projections cover funded/material-consuming, sold, fallback, random/craft/person
+production, nonzero score effects, stochastic shared ammunition, random research
+reward choices and corpse consequences.
 The progress notes below record earlier guards and their later replacements.
 
 The strategic-hunting capture inserts Craft::getHunterKillerAttraction,
@@ -297,3 +299,5 @@ Cycle validation: root dotnet test passes 2,511 tests with no failures/skips, in
 Branch 4c zero-quantity production delivery: the pinned Production::step item fragment retains zero-valued outputs as observable delivery/reuse operations. Immediate zero outputs now interrupt eligible craft ammunition servicing exactly like nonzero outputs; delayed zero item transfers retain their identity, hours and payload through save rewrites and arrive/clean up once. Snapshot validation permits zero only for item transfers and still rejects negative quantities and empty staff transfers. Seventy-two native delivery/refuel/reuse rows include zero quantities; fresh/cache tests compare zero rows and reload both sides, plus incoming-zero cleanup regressions. Reference: Production.cpp fixed item delivery, Transfer::advance/save, Craft::reuseItem and Geoscape hourly ordering. This fixes delivery semantics without enabling speculative production forecasts; branch 4c and later transition gates remain open, and 4d is unchanged.
 
 Branch 4c final prepaid production forecasts: registered production-owned operations now project final fixed item outputs before hunter retargeting, after servicing/transfers and before every base refuels. Final units never charge inputs again, including paid materials/craft with insufficient current funds. Immediate outputs preserve native zero-quantity reuse; delayed outputs stay future arrivals and consume bounded transfer identity headroom, coordinated with earlier daily research arrivals and same-hour cleanup. Seventy-two native fixed-delivery rows compare fresh/cache hunting outcomes and both transition reloads; stock/identity overflow stops atomically. Ongoing/fallback, sold, random, craft and person production remain precise stock composition boundaries. Reference: Production::step final-unit break and item delivery, GeoscapeState::time1Hour ordering. Focused hunting/economy tests pass 169 cases; later branches and 4d are unchanged.
+
+Branch 4c recurring free production forecasts: non-fallback zero-cost/no-input projects now project every fixed item completion in native order, honoring finite caps and infinite production. Native completion-count and delivery fragments contribute 192 composed rows for zero/multiple units, zero/two outputs, delayed transfers, shared fuel and ammunition reuse. Fresh/cache scenarios reload before/after and preserve negative funds for free unit starts. Work, cumulative future item quantities, identity slots and captive populations are bounded before any campaign mutation. Sold, funded/material-consuming, fallback, random/craft/person outputs and nonzero research-score effects retain explicit composition guards pending their projections. Focused hunting/economy tests pass 181 cases. Reference: Production::step, getAmountProduced, haveEnoughMoneyForOneMoreUnit and fixed delivery/reuse. Branch 4c closure remains open; later boundaries and 4d are unchanged.
