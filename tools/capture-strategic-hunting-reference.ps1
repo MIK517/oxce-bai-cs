@@ -40,6 +40,11 @@ if ($primaryStart -lt 0 -or $primaryEnd -le $primaryStart) { throw 'Missing prim
 $primary = $dailyResearch.Substring($primaryStart, $primaryEnd - $primaryStart).TrimEnd()
 $primary = $primary.Substring(0, $primary.LastIndexOf('}')).TrimEnd()
 $template = $template.Replace('// RESEARCH_PRIMARY_TOPICS', $primary)
+$discoveryMethods = ''
+foreach ($signature in @('void SavedGame::addFinishedResearch(', 'const RuleResearch* SavedGame::selectGetOneFree(', 'bool SavedGame::hasUndiscoveredGetOneFree(', 'bool SavedGame::hasUndiscoveredProtectedUnlock(')) {
+    $discoveryMethods += (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' $signature) + [Environment]::NewLine
+}
+$template = $template.Replace('// RESEARCH_DISCOVERY_METHODS', $discoveryMethods)
 $template = $template.Replace('// RESEARCH_SPAWN', $researchSpawn.Substring($spawnStart, $spawnEnd - $spawnStart))
 $researchReturn = Read-ReferenceMethod 'src/Savegame/Base.cpp' 'void Base::removeResearch(ResearchProject * project)'
 $returnStart = $researchReturn.IndexOf('if (ruleResearch->isHoldingNeededItem())', [StringComparison]::Ordinal)

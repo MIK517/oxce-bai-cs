@@ -1399,6 +1399,61 @@ public sealed class StrategicWorldHuntingTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResearchDiscoveryAndDisabledRefundsMatchNativeBeforeHunting(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchDiscoveryRows").GroupBy(row => row[0].GetInt32()))
+        {
+            var mode = group.Key;
+            var source = mode is 0 or 3 ? ", disables: [DISCOVERY_HELD]" : mode == 1 ? ", lookup: DISCOVERY_LOOKUP" : "";
+            var lookup = mode == 1 ? ", disables: [DISCOVERY_HELD]" : "";
+            var automatic = mode == 2 ? ", disables: [DISCOVERY_HELD]" : mode == 3 ? ", reenables: [DISCOVERY_HELD]" : "";
+            var content = Load(cache, $"crafts: [{{type: DISCOVERY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: DISCOVERY_SOURCE, cost: 1{source}}}, {{name: DISCOVERY_LOOKUP, cost: 1{lookup}}}, {{name: DISCOVERY_AUTO, cost: 0, dependencies: [DISCOVERY_SOURCE]{automatic}}}, {{name: DISCOVERY_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: DISCOVERY_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "DISCOVERY_HUNT",
+                    Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING",
+                        Fuel = 60,
+                        Weapons = [],
+                        IsAutoPatrolling = true,
+                        AutoPatrolLongitude = 0.8,
+                        AutoPatrolLatitude = 0.3
+                    },
+                }) with
+                { Time = new(1, 1, 1, 1999, 23, 59, 55), CompletedResearch = row[1].GetBoolean() ? ["DISCOVERY_SOURCE"] : [] };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(),
+                    Facilities = [.. initial.Bases[0].Facilities, new("DISCOVERY_LAB", 1, 1, 0, 0, false, false, false)],
+                    Research = [new("DISCOVERY_SOURCE", 1, 0, 1), new("DISCOVERY_HELD", 0, row[2].GetBoolean() ? 100 : 0, 100)],
+                }]
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "discovery-refund-before.sav");
+                Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                var fuel = after.Bases[0].Crafts.Single(craft => craft.RuleId == "DISCOVERY_HUNT").Logistics!.Fuel;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+                {
+                    fuel == 99 ? 1 : 0, after.ResearchRuleStatus.GetValueOrDefault("DISCOVERY_HELD"),
+                    after.CompletedResearch.Contains("DISCOVERY_AUTO"),
+                });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Assert.Equal(row[3].GetInt32() != 0, after.World.Ufos[0].Hunting);
+                Reload(content, campaign, 81, "discovery-refund-after.sav");
+            }
+        }
+    }
+
     [Fact]
     public void ProductionCompletionCountMatchesPinnedCaller()
     {

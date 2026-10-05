@@ -522,63 +522,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
 
     private void AddFinishedResearch(BaseState owner, string initial, List<string> discoveries)
     {
-        if (!_content.RuntimeRules.Research.TryGet(initial, out var initialHandle) ||
-            _researchRuleStatus.GetValueOrDefault(initial) == 2) return;
-        var markDiscovered = !_content.RuntimeRules.Research[initialHandle].Value.Repeatable;
-        var queue = new List<string> { initial };
-        var queued = new HashSet<string>(StringComparer.Ordinal) { initial };
-        for (var offset = 0; offset < queue.Count; offset++)
+        long work = 0;
+        var progress = new ResearchDiscoveryProgress(_content.RuntimeRules, _completedResearch, _researchRuleStatus);
+        progress.Advance(initial, (id, rule) =>
         {
-            var id = queue[offset];
-            if (!_content.RuntimeRules.Research.TryGet(id, out var handle) ||
-                _researchRuleStatus.GetValueOrDefault(id) == 2) continue;
-            var rule = _content.RuntimeRules.Research[handle].Value;
-            var wasComplete = _completedResearch.Contains(id);
-            // Captured before disables/re-enables, like SavedGame::addFinishedResearch step 1.
-            var hadProtectedUnlock = wasComplete && HasProtectedUnlock(rule);
-            if (!wasComplete)
-            {
-                if (markDiscovered)
-                {
-                    _completedResearch.Add(id);
-                    discoveries.Add(id);
-                }
-                _researchScores[^1] = checked(_researchScores[^1] + rule.Points);
-                foreach (var disabled in rule.Disables)
-                {
-                    _completedResearch.Remove(disabled);
-                    _researchRuleStatus[disabled] = 2;
-                }
-            }
-            foreach (var enabled in rule.Reenables)
-                if (_researchRuleStatus.GetValueOrDefault(enabled) == 2) _researchRuleStatus[enabled] = 0;
-            if (wasComplete && !hadProtectedUnlock) continue;
-            HashSet<string>? unlocked = null;
-            foreach (var candidate in _content.RuntimeRules.Research.Rules)
-            {
-                if (candidate.Value.Cost != 0 || queued.Contains(candidate.Id)) continue;
-                if ((candidate.Value.Requirements.Count == 0 || rule.Unlocks.Contains(candidate.Id, StringComparer.Ordinal)) &&
-                    ZeroCostResearchAvailable(owner, candidate.Id, candidate.Value, ref unlocked) && queued.Add(candidate.Id))
-                    queue.Add(candidate.Id);
-            }
-        }
-    }
-
-    /// <summary>
-    /// SavedGame::getAvailableResearchProjects for the completing base: besides the global
-    /// rules, a topic already running there, lacking its needed item, or lacking required
-    /// base functions is not auto-completed.
-    /// </summary>
-    private bool ZeroCostResearchAvailable(
-        BaseState owner, string id, RuntimeResearchRule rule, ref HashSet<string>? unlocked)
-    {
-        unlocked ??= ExplicitlyUnlockedResearch();
-        if (CoreResearchUnavailable(id, rule, ResearchEligibilityOptions.None, unlocked) is not null) return false;
-        var handle = _content.RuntimeRules.Research.GetRequired(id);
-        if (owner.Research.Any(project => project.Rule == handle)) return false;
-        if (rule.NeedItem && (rule.NeededItem is null || !_content.RuntimeRules.Items.TryGet(rule.NeededItem, out var item) ||
-            owner.Items.GetValueOrDefault(item) == 0)) return false;
-        return HasFunctions(owner, rule.RequiredBaseFunctions);
+            var handle = _content.RuntimeRules.Research.GetRequired(id);
+            var eligible = !owner.Research.Any(project => project.Rule == handle) &&
+                (!rule.NeedItem || rule.NeededItem is { } needed && _content.RuntimeRules.Items.TryGet(needed, out var item) &&
+                    owner.Items.GetValueOrDefault(item) != 0) && HasFunctions(owner, rule.RequiredBaseFunctions);
+            return (eligible, 0L);
+        }, (id, points, markDiscovered) =>
+        {
+            if (markDiscovered) discoveries.Add(id);
+            _researchScores[^1] = checked(_researchScores[^1] + points);
+        }, ref work, long.MaxValue);
     }
 
     private string? CoreResearchUnavailable(
@@ -602,10 +559,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
 
     private string? SelectResearchReward(RuntimeResearchRule rule)
     {
-        var candidates = rule.GetOneFree.Where(IsNew).ToList();
-        foreach (var protectedGroup in rule.GetOneFreeProtected)
-            if (_completedResearch.Contains(protectedGroup.Prerequisite))
-                candidates.AddRange(protectedGroup.Topics.Where(IsNew));
+        var candidates = new ResearchDiscoveryProgress(_content.RuntimeRules, _completedResearch, _researchRuleStatus).RewardCandidates(rule);
         if (candidates.Count == 0) return null;
         return rule.SequentialGetOneFree ? candidates[0] : candidates[_random.NextExclusive(candidates.Count)];
     }

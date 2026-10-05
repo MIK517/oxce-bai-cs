@@ -21,10 +21,11 @@ public sealed partial class CampaignState
         forecast = EmptyResearchStockForecast;
         if (DailyItemsUnchanged(ref work)) return true;
         var rules = _content.RuntimeRules;
-        // Automatic discoveries can disable a held project. Reward, lookup and
-        // protected unlock choices require a richer research-state projection.
-        work += rules.Research.Count;
-        if (work > 1_000_000 || rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.Disables.Count != 0)) return false;
+        work += rules.Research.Count + (long)_completedResearch.Count + _researchRuleStatus.Count;
+        if (work > 1_000_000) return false;
+        var completed = new HashSet<string>(_completedResearch, StringComparer.Ordinal);
+        var statuses = new Dictionary<string, int>(_researchRuleStatus, StringComparer.Ordinal);
+        var discovery = new ResearchDiscoveryProgress(rules, completed, statuses);
         Dictionary<int, List<ResearchProjectState>> projects = [];
         Dictionary<int, Dictionary<string, int>> changes = [];
         Dictionary<int, List<KeyValuePair<string, int>>> arrivals = [];
@@ -40,8 +41,7 @@ public sealed partial class CampaignState
                 if ((long)project.Spent + project.Assigned < project.Cost) continue;
                 var entry = rules.Research[project.Rule];
                 var rule = entry.Value;
-                if (rule.GetOneFree.Count != 0 || rule.GetOneFreeProtected.Count != 0 || LookupChangesStatuses(rule) ||
-                    rule.Unlocks.Count != 0 || rule.Disables.Count != 0 || rule.Reenables.Count != 0 ||
+                if (rule.GetOneFree.Count != 0 || rule.GetOneFreeProtected.Count != 0 ||
                     HoldsResearchItem(rule) && rule.DestroyItem && !rule.ReturnsItem && rules.Units.TryGet(entry.Id, out _)) return false;
             }
         }
@@ -57,29 +57,79 @@ public sealed partial class CampaignState
                 local[index] = project with { Spent = project.Spent + project.Assigned };
             }
             var finished = local.Where(project => project.Spent >= project.Cost).ToArray();
+            var provided = new HashSet<string>(StringComparer.Ordinal);
+            work += owner.Facilities.Count;
+            foreach (var facility in owner.Facilities)
+            {
+                var functions = rules.Facilities[facility.Rule].Value.ProvidedBaseFunctions;
+                work += functions.Count;
+                if (work > 1_000_000) return false;
+                // Daily construction advances before research in this base.
+                if (facility.BuildTime <= 1) provided.UnionWith(functions);
+            }
+            foreach (var country in _countries)
+            {
+                var rule = rules.Countries[country.Rule].Value;
+                work += 1L + rule.Areas.Count + rule.ProvidedBaseFunctions.Count;
+                if (work > 1_000_000) return false;
+                if (!rule.Areas.Any(area => AreaContains(area, owner.Longitude, owner.Latitude))) continue;
+                provided.UnionWith(rule.ProvidedBaseFunctions);
+                break;
+            }
+            foreach (var region in _regions)
+            {
+                var rule = rules.Regions[region.Rule].Value;
+                work += 1L + rule.Areas.Count + rule.ProvidedBaseFunctions.Count;
+                if (work > 1_000_000) return false;
+                if (!rule.Areas.Any(area => AreaContains(area, owner.Longitude, owner.Latitude))) continue;
+                provided.UnionWith(rule.ProvidedBaseFunctions);
+                break;
+            }
             HashSet<RuleHandle<ResearchRuleFamily>> sideEffects = [];
             foreach (var project in finished)
             {
                 var rule = rules.Research[project.Rule].Value;
                 if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(rule), rule.ReturnsItem, true)) Refund(owner.Id, rule);
+                work += local.Count;
+                if (work > 1_000_000) return false;
+                local.Remove(project);
+                var id = rules.Research.GetExternalId(project.Rule);
+                if (!Discover(id, ref work) || rule.Lookup.Length != 0 && !Discover(rule.Lookup, ref work)) return false;
                 sideEffects.Add(project.Rule);
             }
-            local.RemoveAll(project => project.Spent >= project.Cost);
+
+            bool Discover(string id, ref long projectionWork)
+            {
+                long localWork = 0;
+                var supported = discovery.Advance(id, (candidateId, candidate) =>
+                {
+                    var handle = rules.Research.GetRequired(candidateId);
+                    var active = local.Any(project => project.Rule == handle);
+                    var availableItem = !candidate.NeedItem || candidate.NeededItem is { } needed &&
+                        rules.Items.TryGet(needed, out var item) &&
+                        (long)owner.Items.GetValueOrDefault(item) + changes[owner.Id].GetValueOrDefault(needed) != 0;
+                    return (!active && availableItem && candidate.RequiredBaseFunctions.All(provided.Contains),
+                        local.Count + (long)candidate.RequiredBaseFunctions.Count + 1);
+                }, null, ref localWork, 1_000_000 - projectionWork);
+                projectionWork += localWork;
+                return supported;
+            }
             work += rules.Research.Count;
             if (work > 1_000_000) return false;
             foreach (var entry in rules.Research.Rules)
             {
                 if (!sideEffects.Contains(rules.Research.GetRequired(entry.Id))) continue;
-                foreach (var other in _bases)
-                {
-                    work += projects[other.Id].Count * 2L;
-                    if (work > 1_000_000) return false;
-                    var project = projects[other.Id].FirstOrDefault(project => project.Rule == rules.Research.GetRequired(entry.Id));
-                    if (project is null) continue;
-                    if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(entry.Value), entry.Value.ReturnsItem,
-                        project.Spent >= project.Cost)) Refund(other.Id, entry.Value);
-                    projects[other.Id].Remove(project);
-                }
+                if (!discovery.HasRemainingReward(entry.Value) && !discovery.HasProtectedUnlock(entry.Value))
+                    foreach (var other in _bases)
+                    {
+                        work += projects[other.Id].Count * 2L;
+                        if (work > 1_000_000) return false;
+                        var project = projects[other.Id].FirstOrDefault(project => project.Rule == rules.Research.GetRequired(entry.Id));
+                        if (project is null) continue;
+                        if (ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(entry.Value), entry.Value.ReturnsItem,
+                            project.Spent >= project.Cost)) Refund(other.Id, entry.Value);
+                        projects[other.Id].Remove(project);
+                    }
                 work += entry.Value.SpawnedItemList.Count + 1L;
                 if (work > 1_000_000) return false;
                 if (entry.Value.SpawnedItem.Length != 0 && rules.Items.TryGet(entry.Value.SpawnedItem, out _))
@@ -97,7 +147,7 @@ public sealed partial class CampaignState
             foreach (var project in projects[owner.Id])
             {
                 var entry = rules.Research[project.Rule];
-                if (_researchRuleStatus.GetValueOrDefault(entry.Id) == 2 &&
+                if (statuses.GetValueOrDefault(entry.Id) == 2 &&
                     ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(entry.Value), entry.Value.ReturnsItem,
                         project.Spent >= project.Cost)) Refund(owner.Id, entry.Value);
             }
@@ -118,15 +168,6 @@ public sealed partial class CampaignState
             new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(arrivals.ToDictionary(
                 pair => pair.Key, pair => (IReadOnlyList<KeyValuePair<string, int>>)pair.Value.AsReadOnly())));
         return true;
-
-        bool LookupChangesStatuses(RuntimeResearchRule rule)
-        {
-            if (rule.Lookup.Length == 0 || !rules.Research.TryGet(rule.Lookup, out var handle)) return false;
-            var lookup = rules.Research[handle].Value;
-            // Daily lookups call addFinishedResearch, never primary side effects.
-            // Automatic status changes are checked at catalogue scope above.
-            return lookup.Disables.Count != 0 || lookup.Reenables.Count != 0;
-        }
 
         void Refund(int baseId, RuntimeResearchRule rule)
         {
