@@ -15,6 +15,53 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldEscortEnduranceTests
 {
+    [Fact]
+    public void PopulatedEscortTicksRecordColdAndWarmAllocationCosts()
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"]);
+        List<object> measurements = [];
+        foreach (var reverse in new[] { false, true })
+        {
+            _ = Measure(8, reverse, false);
+            _ = Measure(8, reverse, true);
+            var small = Measure(32, reverse, true);
+            var large = Measure(128, reverse, true);
+            // Both saved orders stay below 1 KB per actor/tick after target memoization.
+            Assert.InRange((large.Cold - small.Cold) / 96.0, 0, 12 * 1024);
+            Assert.InRange((large.Warm - small.Warm) / 96.0, 0, 12 * 1024);
+        }
+        var path = TestFixtures.RepositoryPath("artifacts", "world-escort-closure-measurements.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, JsonSerializer.Serialize(measurements));
+
+        (long Cold, long Warm) Measure(int count, bool reverse, bool record)
+        {
+            var campaign = CampaignState.Restore(Ring(content, count, reverse), content, new SplitMix64RandomSource(81));
+            var cold = Tick();
+            AdvanceUnblocked(campaign, 720 - 12);
+            var warm = Tick();
+            var after = campaign.Capture();
+            Assert.Equal(count, after.World.Ufos.Count);
+            Assert.Equal(count, Assert.Single(after.World.Missions).LiveUfos);
+            Reload(content, campaign, 81, "populated-escort.sav");
+            if (record) measurements.Add(new { count, reverse, ticks = 12, cold.Bytes, cold.Milliseconds, warmBytes = warm.Bytes, warmMilliseconds = warm.Milliseconds });
+            return (cold.Bytes, warm.Bytes);
+
+            (long Bytes, double Milliseconds) Tick()
+            {
+                var start = Stopwatch.GetTimestamp();
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                var result = campaign.Execute(new AdvanceCampaignTime(12));
+                var bytes = GC.GetAllocatedBytesForCurrentThread() - before;
+                var milliseconds = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                Assert.Equal(12, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+                return (bytes, milliseconds);
+            }
+        }
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]

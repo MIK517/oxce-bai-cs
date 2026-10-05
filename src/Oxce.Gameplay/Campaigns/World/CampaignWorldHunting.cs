@@ -10,6 +10,7 @@ internal sealed partial class CampaignWorld
     private Dictionary<(string TypeId, int Id), CraftLogisticsState>? _huntingCraftForecast;
     private Dictionary<int, List<CampaignState.CraftState>>? _huntingCraftSources;
     private List<WorldPosition>? _escortFlightPositions;
+    private (UfoSnapshot? Source, UfoSnapshot? Projected)[]? _escortFlightTargets;
     private int _escortFlightEndIndex;
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
     private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
@@ -188,13 +189,24 @@ internal sealed partial class CampaignWorld
         }
         if (!ufo.Escorting || ufo.Destination is not { Kind: WorldTargetKind.Ufo } reference || TargetUfo(reference) is not { } target)
             return ufo;
+        var index = UfoIndex(ufo.UniqueId);
+        if (index >= 0 && _escortFlightTargets is { } cached && index < cached.Length &&
+            ReferenceEquals(cached[index].Source, ufo)) return cached[index].Projected!;
         var position = UfoForFlight(target, highest).Position;
         // Reference target pointers see earlier actors after movement and later
         // actors before movement. Even cycles only depend on earlier list entries.
         var targetIndex = UfoIndex(target.UniqueId);
-        if (targetIndex < UfoIndex(ufo.UniqueId))
+        if (targetIndex < index)
             position = buildingPrefix ? _escortFlightPositions![targetIndex] : EscortFlightPosition(targetIndex, highest);
-        return ufo with { Destination = reference with { Longitude = position.Longitude, Latitude = position.Latitude } };
+        var projected = reference.Position == position ? ufo : ufo with
+        { Destination = reference with { Longitude = position.Longitude, Latitude = position.Latitude } };
+        if (index >= 0)
+        {
+            if (_escortFlightTargets is null || _escortFlightTargets.Length < _ufos.Count)
+                Array.Resize(ref _escortFlightTargets, _ufos.Count);
+            _escortFlightTargets[index] = (ufo, projected);
+        }
+        return projected;
     }
 
     private WorldPosition EscortFlightPosition(int targetIndex, CampaignTimeTrigger highest)
@@ -218,7 +230,8 @@ internal sealed partial class CampaignWorld
 
     private void ResetEscortFlightPositions()
     {
-        _escortFlightPositions = null;
+        _escortFlightPositions?.Clear();
+        if (_escortFlightTargets is { } cached) Array.Clear(cached);
         _escortFlightEndIndex = int.MaxValue;
     }
 
