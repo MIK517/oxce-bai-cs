@@ -1029,7 +1029,7 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void DailyResearchAmmunitionReuseIsGuardedWithoutItemFuel(bool cache)
+    public void DailyResearchAmmunitionReusePrecedesHuntingWithoutItemFuel(bool cache)
     {
         var content = Load(cache, "crafts: [{type: RESEARCH_AMMO_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1}]\ncraftWeapons: [{type: RESEARCH_AMMO_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}]\nresearch: [{name: RESEARCH_AMMO_DELIVERY, cost: 1, spawnedItem: SUPPLY}]\nfacilities: [{type: RESEARCH_AMMO_LAB, mapName: LOGISTICS, labs: 1}]\n");
         var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -1056,7 +1056,15 @@ public sealed class StrategicWorldHuntingTests
         }]
         };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "research-ammo-hunt.sav");
-        AssertTimeBlocked(campaign, "UFO retargeting requires daily research ammunition-reuse forecasts.");
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "RESEARCH_AMMO_HUNT").Logistics!;
+        Assert.Equal("STR_REARMING", craft.Status);
+        Assert.Equal(60, craft.Fuel);
+        Assert.True(craft.Weapons[0]!.Rearming);
+        Assert.False(after.World.Ufos[0].Hunting);
+        Assert.Equal(1, after.Bases[0].Items["SUPPLY"]);
+        Reload(content, campaign, 81, "research-ammo-hunt-after.sav");
     }
 
     [Theory]
@@ -1175,6 +1183,89 @@ public sealed class StrategicWorldHuntingTests
         Assert.Equal(99, after.Bases[0].Crafts.Single(craft => craft.RuleId == "DIRECT_REFUND_HUNT").Logistics!.Fuel);
         Assert.Equal("DIRECT_REFUND_HUNT", after.World.Ufos[0].Destination!.TypeId);
         Reload(content, campaign, 81, "direct-refund-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FixedResearchDeliveriesMatchNativeStockAndReuseOrder(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchSpawnRows")
+            .GroupBy(row => (Fuel: row[0].GetBoolean(), Main: row[1].GetBoolean(), Count: row[2].GetInt32(), Duplicates: row[3].GetInt32())))
+        {
+            var fuel = group.Key.Fuel ? ", refuelItem: SUPPLY" : "";
+            var items = "MISSING" + string.Concat(Enumerable.Repeat(", SUPPLY", group.Key.Duplicates));
+            var content = Load(cache, $"crafts: [{{type: FIXED_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, weapons: 1{fuel}}}]\ncraftWeapons: [{{type: FIXED_RESEARCH_GUN, ammoMax: 10, rearmRate: 4, launcher: SUPPLY, clip: SUPPLY}}]\nresearch: [{{name: FIXED_RESEARCH_DELIVERY, cost: 1, spawnedItem: {(group.Key.Main ? "SUPPLY" : "MISSING")}, spawnedItemCount: {group.Key.Count}, spawnedItemList: [{items}]}}]\nfacilities: [{{type: FIXED_RESEARCH_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            foreach (var row in group)
+            {
+                var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+                {
+                    RuleId = "FIXED_RESEARCH_HUNT", Logistics = craft.Logistics! with
+                    {
+                        Status = "STR_REFUELLING", Fuel = 60,
+                        Weapons = group.Key.Fuel ? [] : [new("FIXED_RESEARCH_GUN", 0)],
+                        IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+                    },
+                }) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+                initial = initial with { Bases = [initial.Bases[0] with
+                {
+                    Longitude = 0.45, Latitude = 0.21,
+                    Items = row[4].GetInt32() == 0 ? new Dictionary<string, int>() :
+                        new Dictionary<string, int> { ["SUPPLY"] = row[4].GetInt32() },
+                    Facilities = [.. initial.Bases[0].Facilities, new("FIXED_RESEARCH_LAB", 1, 1, 0, 0, false, false, false)],
+                    Research = [new("FIXED_RESEARCH_DELIVERY", 1, 0, 1)],
+                }] };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "fixed-research-before.sav");
+                var result = campaign.Execute(new AdvanceCampaignTime(1));
+                Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+                var after = campaign.Capture();
+                var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "FIXED_RESEARCH_HUNT").Logistics!;
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+                {
+                    result.Events.OfType<SuppliesArrived>().Sum(arrived => arrived.TransferIds.Count),
+                    after.Bases[0].Items.GetValueOrDefault("SUPPLY"), craft.Status, craft.Fuel,
+                    craft.Weapons.Count == 0 ? false : craft.Weapons[0]?.Rearming ?? false,
+                    after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+                });
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).ToArray());
+                Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+                Assert.Empty(after.Bases[0].Transfers);
+                Reload(content, campaign, 81, "fixed-research-after.sav");
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ResearchDeliveryLimitsStopBeforeAnyTickMutation(bool cache, bool identities)
+    {
+        var content = Load(cache, "crafts: [{type: LIMITED_RESEARCH_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]\nresearch: [{name: LIMITED_RESEARCH_DELIVERY, cost: 1, spawnedItem: SUPPLY}]\nfacilities: [{type: LIMITED_RESEARCH_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+        {
+            RuleId = "LIMITED_RESEARCH_HUNT", Logistics = craft.Logistics! with
+            {
+                Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3,
+            },
+        }) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with { Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21,
+            Items = identities ? new Dictionary<string, int>() : new Dictionary<string, int> { ["SUPPLY"] = int.MaxValue },
+            Facilities = [.. initial.Bases[0].Facilities, new("LIMITED_RESEARCH_LAB", 1, 1, 0, 0, false, false, false)],
+            Research = [new("LIMITED_RESEARCH_DELIVERY", 1, 0, 1)],
+        }] };
+        if (identities) initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue },
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "research-delivery-limit.sav");
+        AssertTimeBlocked(campaign, identities ? "Research arrivals exhaust the transfer identity range." :
+            "Research arrivals exceed the supported stock range.");
     }
 
     [Fact]

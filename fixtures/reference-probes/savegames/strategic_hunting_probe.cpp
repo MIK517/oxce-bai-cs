@@ -29,8 +29,8 @@ struct Item { int clipSize=1; std::string getType() const { return "SUPPLY"; } i
 using RuleItem=Item;
 struct Storage { int count=0; int getItem(const Item*) const { return count; }
 void removeItem(const Item*,int qty=1) { count-=qty; } void addItem(const Item*,int qty=1) { count+=qty; } };
-struct Craft; struct Soldier {};
-struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Soldier*> soldiers; int scientists=0,engineers=0;
+struct Craft; struct Transfer; struct Soldier {};
+struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0;
 Storage* getStorageItems() { return &storage; } std::vector<Craft*>* getCrafts() { return &crafts; }
 std::vector<Soldier*>* getSoldiers() { return &soldiers; }
 int getScientists() const { return scientists; } void setScientists(int value) { scientists=value; }
@@ -54,11 +54,12 @@ const RuleResearch* getRules() const { return rule; } bool isFinished() const { 
 struct ResearchCorpse : Item { bool isRecoverable() const { return true; } bool isCorpseRecoverable() const { return true; } };
 struct ResearchArmor { ResearchCorpse* getCorpseGeoscape() const { return nullptr; } };
 struct ResearchUnit { const ResearchArmor* getArmor() const { return nullptr; } };
-struct ResearchMod { ResearchUnit* getUnit(const std::string&,bool) const { return nullptr; } };
+struct ResearchMod { mutable Item supply; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string&,bool) const { return nullptr; } };
 struct Options { static inline bool retainCorpses=true; };
 struct ResearchCaller {
 Storage storage; ResearchMod mod; const ResearchMod* _mod=&mod;
 Storage* getStorageItems() { return &storage; }
+void spawn(const RuleResearch*,const ResearchMod*,Base*);
 void refund(ResearchProject* project) { const RuleResearch* ruleResearch=project->getRules();
 // RESEARCH_REFUND
 }
@@ -99,12 +100,17 @@ int getHunterKillerAttraction(int huntMode) const;
 };
 // REFUEL_METHODS
 struct Transfer {
+explicit Transfer(int hours=1):_hours(hours) {}
+void setItems(const Item* item,int qty=1) { _itemId=item; _itemQty=qty; }
 int _hours=1,_itemQty=0,_scientists=0,_engineers=0; Soldier* _soldier=nullptr; Craft* _craft=nullptr;
 const Item* _itemId=nullptr; bool _delivered=false;
 void advance(Base*);
 int getHours() const;
 };
 // TRANSFER_METHOD
+void ResearchCaller::spawn(const RuleResearch* myResearchRule,const ResearchMod* mod,Base* base) {
+// RESEARCH_SPAWN
+}
 struct BaseFacility {
 struct Rule { Item* item=nullptr; int getAmmoMax() const { return 2; } int getRearmRate() const { return 1; }
 const Item* getAmmoItem() const { return item; } } rule;
@@ -202,6 +208,26 @@ std::cout << '[' << (itemFuel?"true":"false") << ',' << fuel << ',' << stock << 
 << (rearming?"true":"false") << ',' << craft._fuel << ",\"" << craft._status << "\"," << craft.base.storage.count << ','
 << (craft._lowFuel?"true":"false") << ',' << (!missing.empty()?"true":"false") << ',' << craft._takeoff << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"researchSpawnRows\":[";
+serviceFirst=true;
+for(bool itemFuel:{false,true}) for(bool main:{false,true}) for(int count:{-2,0,2}) for(int duplicates:{0,1,2}) for(int stock:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule rule; rule.spawned=main?"SUPPLY":"MISSING"; rule.count=count; rule.list={"MISSING"};
+for(int i=0;i<duplicates;i++) rule.list.push_back("SUPPLY");
+ResearchMod mod; Base owner; owner.storage.count=stock; ResearchCaller research; research.spawn(&rule,&mod,&owner);
+Craft craft; craft.id=1; craft._base=&owner; craft._fuel=60; craft.rule.fuelItem=itemFuel?&mod.supply:nullptr;
+CraftWeapon weapon; weapon.rule.clip=&mod.supply; weapon.rule.ammoMax=10; craft._weapons=itemFuel?std::vector<CraftWeapon*>{}:std::vector<CraftWeapon*>{&weapon};
+for(auto* transfer:owner.transfers) transfer->advance(&owner);
+for(auto* transfer:owner.transfers) craft.reuseItem(transfer->_itemId);
+ServiceGame game; if(craft._status=="STR_REFUELLING") { const auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game); }
+if(craft._status=="STR_OUT") { FuelCaller caller; caller.fuel(&craft); }
+Ufo ufo; auto* selected=craft._status=="STR_OUT"?select(&ufo,{&craft}):nullptr;
+std::cout << '[' << (itemFuel?"true":"false") << ',' << (main?"true":"false") << ',' << count << ',' << duplicates << ',' << stock << ','
+<< owner.transfers.size() << ',' << owner.storage.count << ',' << '"' << craft._status << '"' << ',' << craft._fuel << ','
+<< (weapon.rearming?"true":"false") << ',' << (selected?selected->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint;
+for(auto* transfer:owner.transfers) delete transfer;
 }
 std::cout << "],\"researchRefundRows\":[";
 serviceFirst=true;

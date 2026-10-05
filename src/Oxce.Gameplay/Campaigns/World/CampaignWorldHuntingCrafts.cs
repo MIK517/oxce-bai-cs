@@ -18,10 +18,15 @@ internal sealed partial class CampaignWorld
                 researchMayComplete |= baseState.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost);
             }
         DailyResearchStockForecast? researchStocks = null;
-        if (researchMayComplete && campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast))
+        if (researchMayComplete)
         {
-            researchStocks = forecast;
-            researchMayComplete = false;
+            var supported = campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast);
+            if (forecast.UnavailableReason is { } researchReason) return researchReason;
+            if (supported)
+            {
+                researchStocks = forecast;
+                researchMayComplete = false;
+            }
         }
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
         foreach (var owner in campaign.BaseStates)
@@ -43,7 +48,8 @@ internal sealed partial class CampaignWorld
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
             if (highest >= CampaignTimeTrigger.OneHour &&
-                ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayComplete, ref work) is { } inputReason)
+                ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayComplete,
+                    researchStocks?.Arrivals.GetValueOrDefault(owner.Id), ref work) is { } inputReason)
                 return inputReason;
             foreach (var craft in sources)
             {
