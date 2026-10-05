@@ -17,6 +17,8 @@ internal sealed partial class CampaignWorld
                 if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 researchMayComplete |= baseState.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost);
             }
+        if (researchMayComplete && campaign.ResearchPreflight.DailyItemsUnchanged(ref work)) researchMayComplete = false;
+        if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
