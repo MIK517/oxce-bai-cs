@@ -242,6 +242,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 Status = "STR_OUT",
                 LowFuel = false,
                 MissionComplete = false,
+                Fuel = 300,
             },
         });
         initial = initial with

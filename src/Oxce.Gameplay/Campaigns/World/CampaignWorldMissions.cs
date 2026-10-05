@@ -93,7 +93,7 @@ internal sealed partial class CampaignWorld
                         MissionExpiryReason(step, rule, ref cleanupWork) is { } expiryReason) return expiryReason;
                     continue;
                 }
-                if (ZeroRadarNewbornReason(step, rule, highest) is { } newbornReason) return newbornReason;
+                if (NewbornNoTargetReason(step, rule, highest) is { } newbornReason) return newbornReason;
                 if (NewEscortWave(rule, SpawnWave(step, rule)))
                 {
                     escortSelectionWork += _ufos.Count;

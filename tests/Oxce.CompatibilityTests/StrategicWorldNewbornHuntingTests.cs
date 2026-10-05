@@ -74,20 +74,22 @@ public sealed class StrategicWorldNewbornHuntingTests
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"), row => row[0].GetInt32() == hours);
         foreach (var escort in new[] { false, true })
         {
-            var content = Load(cache, escort, 0, radar: 300);
+            var content = Load(cache, escort, 0,
+                "crafts: [{type: TIMED_INCOMING, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n", radar: 300);
             var initial = Snapshot(content, escort);
             var owner = initial.Bases[0];
             var incoming = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
             incoming = incoming with
             {
+                RuleId = "TIMED_INCOMING",
                 Logistics = incoming.Logistics! with
-                { IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [] }
+                { Damage = 0, Fuel = 60, IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3, Weapons = [] }
             };
             initial = initial with
             {
                 Time = new(1, 1, 1, 1999, 1, hourly ? 59 : 29, 55),
                 Bases = [owner with { Crafts = [], Soldiers = [],
-                    Transfers = [new(1, hours, CampaignTransferKind.Craft, "SHIP", 1, Craft: incoming)] }],
+                    Transfers = [new(1, hours, CampaignTransferKind.Craft, "TIMED_INCOMING", 1, Craft: incoming)] }],
             };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
                 81, "pending-newborn-before.sav");
@@ -124,6 +126,51 @@ public sealed class StrategicWorldNewbornHuntingTests
                   - {ufo: ZERO_RADAR_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, escort: {{escort.ToString().ToLowerInvariant()}}}
             {{extra}}
             """);
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GroundedAutoPatrolCraftBlocksNewbornHuntersOnlyWhenRefuellingLaunchesIt(bool cache, bool escort)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, escort, 0,
+            "crafts: [{type: BIRTH_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n", radar: 300);
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
+        {
+            var initial = Snapshot(content, escort).WithCraft("SHIP", craft => craft with
+            {
+                RuleId = "BIRTH_REFUEL",
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_REFUELLING",
+                    Fuel = row[1].GetInt32(),
+                    LowFuel = row[3].GetBoolean(),
+                    IsAutoPatrolling = true,
+                    AutoPatrolLongitude = 0.8,
+                    AutoPatrolLatitude = 0.3,
+                    Weapons = []
+                },
+            });
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "grounded-birth-before.sav");
+            if (row[6].GetString() == "STR_OUT")
+            {
+                AssertTimeBlocked(campaign, escort ? "New UFO escorts require craft retarget forecasts." :
+                    "Alien mission wave spawning requires world simulation.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var state = Assert.Single(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "BIRTH_REFUEL").Logistics!;
+            Assert.Equal(row[5].GetInt32(), state.Fuel);
+            Assert.Equal(row[6].GetString(), state.Status);
+            Assert.False(Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "ZERO_RADAR_HUNTER").Hunting);
+            campaign = Reload(content, campaign, 81, "grounded-birth-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "grounded-birth-following.sav");
+        }
+    }
 
     [Theory]
     [InlineData(false, 0)]
