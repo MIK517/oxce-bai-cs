@@ -49,8 +49,9 @@ public sealed partial class CampaignState
                 var deterministicRandom = TryForecastRandomProduction(rule, out var randomItems, ref work);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
+                var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
                 var supported = deterministicRandom && (rule.SpawnedPersonType is "" or "STR_SCIENTIST" or "STR_ENGINEER") &&
-                    rule.ProducedMaterials.All(material => material.Craft is null);
+                    (craftDelay || rule.ProducedMaterials.All(material => material.Craft is null));
                 if (!supported)
                 {
                     uncertainAccounting |= project.Sell || !final && rule.Cost > 0;
@@ -59,7 +60,6 @@ public sealed partial class CampaignState
                             (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0) &&
                             rule.ProducedMaterials.Any(material => material.Item is not null));
                     var itemDelay = rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0;
-                    var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
                     uncertainTransfers |= rule.SpawnedPersonType.Length != 0 ||
                         itemDelay && (rule.RandomProducedItems.Count != 0 || !project.Sell && rule.ProducedMaterials.Any(material => material.Item is not null)) ||
                         craftDelay && rule.ProducedMaterials.Any(material => material.Craft is not null);
@@ -134,6 +134,7 @@ public sealed partial class CampaignState
                 }
                 planned.Add((owner, project, completed, randomItems));
                 if (personnel) transfers += completed;
+                if (craftDelay) transfers += completed * (long)rule.ProducedMaterials.Where(material => material.Craft is not null).Sum(material => material.Quantity);
                 if (rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0)
                     transfers += completed * (long)((project.Sell ? 0 : rule.ProducedMaterials.Count(material => material.Item is not null)) + (randomItems?.Count ?? 0));
             }

@@ -13,9 +13,54 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ProducedCraftInitializationMatchesNativeCallerAndReload(bool cache)
+    [InlineData(false, "counter")]
+    [InlineData(true, "counter")]
+    [InlineData(false, "existing")]
+    [InlineData(true, "existing")]
+    [InlineData(false, "transfer")]
+    [InlineData(true, "transfer")]
+    [InlineData(false, "arrivals")]
+    [InlineData(true, "arrivals")]
+    [InlineData(false, "population")]
+    [InlineData(true, "population")]
+    [InlineData(false, "service")]
+    [InlineData(true, "service")]
+    public void CraftProductionCapacityRefusesBeforeOrdinaryWorldMutation(bool cache, string failure)
+    {
+        var fuel = failure == "service" ? -1 : 100;
+        var units = failure == "population" ? 100_001 : 1;
+        var content = Load(cache, $"crafts: [{{type: CAPACITY_CRAFT, fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: CAPACITY_BIRTH, category: STR_CRAFT, time: 1, transferTimes: [0, 0, 1], producedItems: {{CAPACITY_CRAFT: 1}}}}]\nfacilities: [{{type: CAPACITY_WORKSHOP, mapName: LOGISTICS, workshops: {units}}}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+        var existing = new CraftSnapshot("CAPACITY_CRAFT", int.MaxValue)
+        { Logistics = CraftLogistics.LoadStarting(content.RuntimeRules.Crafts[content.RuntimeRules.Crafts.GetRequired("CAPACITY_CRAFT")].Value, null) };
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int>(initial.NextIds)
+            { ["CAPACITY_CRAFT"] = failure == "counter" ? int.MaxValue : 1, ["oxcePortTransfer"] = failure == "arrivals" ? int.MaxValue : 1 },
+            Bases = [initial.Bases[0] with
+            {
+                Crafts = failure == "existing" ? [existing] : [], Soldiers = [],
+                Transfers = failure == "transfer" ? [new TransferSnapshot(2, 2, CampaignTransferKind.Craft, "CAPACITY_CRAFT", 1, Craft: existing)] : [],
+                Facilities = [.. initial.Bases[0].Facilities, new("CAPACITY_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("CAPACITY_BIRTH", units, 0, units, false, false, false, new Dictionary<string, int>())]
+            }]
+        };
+        var reason = failure switch
+        {
+            "service" => "Produced craft service values exceed the supported range.",
+            "population" => "Craft production exceeds the supported population limit.",
+            "arrivals" => "Production arrivals exhaust the transfer identity range.",
+            _ => "Craft production exhausts the craft identity range."
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), reason);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ProducedCraftInitializationMatchesNativeCallerAndReload(bool cache, bool hunting)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionCraftBirthRows"))
@@ -23,15 +68,19 @@ public sealed class StrategicWorldHuntingTests
             var fixedWeapon = row[0].GetBoolean();
             var fuel = row[1].GetInt32();
             var delay = row[2].GetInt32();
-            var content = Load(cache, $"craftWeapons: [{{type: BIRTH_FIXED, launcher: SUPPLY, ammoMax: 10, rearmRate: 4}}]\ncrafts: [{{type: PRODUCED_CRAFT, weapons: 1, fixedWeapons: [{(fixedWeapon ? "BIRTH_FIXED" : "''")}], fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: BIRTH_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{PRODUCED_CRAFT: 1, ZZ_IGNORED_MISSING: 99}}}}]\nfacilities: [{{type: BIRTH_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            if (hunting && delay <= 0) continue;
+            var content = Load(cache, $"craftWeapons: [{{type: BIRTH_FIXED, launcher: SUPPLY, ammoMax: 10, rearmRate: 4}}]\ncrafts: [{{type: BIRTH_HUNT, fuelMax: 100, refuelRate: 40, speedMax: 2000, damageMax: 100, autoPatrol: true, refuelItem: SUPPLY}}, {{type: PRODUCED_CRAFT, weapons: 1, fixedWeapons: [{(fixedWeapon ? "BIRTH_FIXED" : "''")}], fuelMax: {fuel}, refuelRate: 40}}]\nmanufacture: [{{name: BIRTH_PRODUCT, category: STR_CRAFT, time: 1, transferTimes: [0, 0, {delay}], producedItems: {{PRODUCED_CRAFT: 1, ZZ_IGNORED_MISSING: 99}}}}]\nfacilities: [{{type: BIRTH_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
             Assert.Single(content.RuntimeRules.Manufacture[content.RuntimeRules.Manufacture.GetRequired("BIRTH_PRODUCT")].Value.ProducedMaterials);
-            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+            var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
+            { RuleId = "BIRTH_HUNT", Logistics = craft.Logistics! with { Status = "STR_REFUELLING", Fuel = 60, Weapons = [], IsAutoPatrolling = true, AutoPatrolLongitude = 0.8, AutoPatrolLatitude = 0.3 } });
+            initial = initial with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = hunting ? initial.World : WorldSnapshot.Empty };
             initial = initial with
             {
                 NextIds = new Dictionary<string, int>(initial.NextIds) { ["PRODUCED_CRAFT"] = 10 },
                 Bases = [initial.Bases[0] with
                 {
-                    Longitude = 0.45, Latitude = 0.21, Crafts = [], Soldiers = [],
+                    Longitude = 0.45, Latitude = 0.21, Crafts = hunting ? initial.Bases[0].Crafts : [], Soldiers = [],
+                    Items = hunting ? new Dictionary<string, int> { ["SUPPLY"] = 1 } : new Dictionary<string, int>(),
                     Facilities = [.. initial.Bases[0].Facilities, new("BIRTH_WORKSHOP", 1, 1, 0, 0, false, false, false)],
                     Productions = [new("BIRTH_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
                 }]
@@ -40,14 +89,20 @@ public sealed class StrategicWorldHuntingTests
             var result = campaign.Execute(new AdvanceCampaignTime(1));
             Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
             var owner = campaign.Capture().Bases[0];
-            var craft = delay > 0 ? Assert.Single(owner.Transfers).Craft! : Assert.Single(owner.Crafts);
+            var craft = delay > 0 ? Assert.Single(owner.Transfers).Craft! : Assert.Single(owner.Crafts, craft => craft.RuleId == "PRODUCED_CRAFT");
             var state = craft.Logistics!;
             var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
-            { craft.Id, owner.Crafts.Count, owner.Transfers.Count, owner.Transfers.Count == 0 ? 0 : owner.Transfers[0].Hours,
+            { craft.Id, owner.Crafts.Count(craft => craft.RuleId == "PRODUCED_CRAFT"), owner.Transfers.Count, owner.Transfers.Count == 0 ? 0 : owner.Transfers[0].Hours,
                 state.Status, state.Fuel, state.Longitude, state.Latitude, state.Weapons[0]?.Ammo ?? 0,
                 state.Weapons[0]?.Rearming ?? false, state.IsAutoPatrolling });
             Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray())), CanonicalJson.Normalize(actual));
             Assert.Equal(11, campaign.Capture().NextIds["PRODUCED_CRAFT"]);
+            if (hunting)
+            {
+                Assert.Equal(0, owner.Items.GetValueOrDefault("SUPPLY"));
+                Assert.Equal(1, Assert.Single(campaign.Capture().World.Ufos).Destination!.Id);
+                Assert.Equal(WorldTargetKind.Craft, campaign.Capture().World.Ufos[0].Destination!.Kind);
+            }
             Reload(content, campaign, 81, "craft-birth-after.sav");
         }
     }
