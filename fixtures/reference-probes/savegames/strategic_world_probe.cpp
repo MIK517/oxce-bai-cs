@@ -100,6 +100,13 @@ public:
 
 class Ufo : public MovingTarget {
 public:
+	enum Status { FLYING, LANDED, CRASHED, DESTROYED, IGNORE_ME };
+	Status _status = FLYING;
+	int _secondsRemaining = 5;
+	bool _detected = false, hunting = false, escorting = false;
+	bool isHunting() const { return hunting; }
+	bool isEscorting() const { return escorting; }
+	void think();
 	static const char *ALTITUDE_STRING[];
 	const RuleUfo *_rules = nullptr;
 	std::string _altitude = "STR_HIGH_UC";
@@ -112,6 +119,7 @@ const char *Ufo::ALTITUDE_STRING[] = { "STR_GROUND", "STR_VERY_LOW", "STR_LOW_UC
 // UFO_CALCULATE_SPEED
 // UFO_GET_VISIBILITY
 // UFO_GET_ALTITUDE_INT
+// UFO_THINK
 
 struct RuleCraft { bool _refuelItem = false; bool getRefuelItem() const { return _refuelItem; } };
 class Base;
@@ -243,6 +251,33 @@ int main()
 		for (const auto& step : steps) std::cout << ',' << step;
 		std::cout << ']';
 	}
+
+	// Reference time5Seconds visits live target pointers in saved UFO order.
+	// Imported escort chains and rings need no recursive movement.
+	std::cout << "],\"escortMovement\":[";
+	first = true;
+	for (int shape : { 0, 1, 2 })
+		for (int order : { 0, 1, 2, 3, 4, 5 })
+		{
+			Target destination; destination.setLongitude(1.0); destination.setLatitude(0.6);
+			Ufo actors[3];
+			for (int index = 0; index < 3; ++index) {
+				actors[index].setLongitude(0.4 + index * 0.1);
+				actors[index].setLatitude(0.2 + index * 0.05);
+				actors[index].setSpeed(2200);
+				actors[index].escorting = shape != 0 || index != 0;
+				actors[index]._dest = shape == 2 ? &actors[index] : index == 0 ?
+					(shape == 0 ? &destination : &actors[2]) : &actors[index - 1];
+			}
+			int permutations[6][3] = {{0,1,2},{0,2,1},{1,0,2},{1,2,0},{2,0,1},{2,1,0}};
+			for (int step = 1; step <= 3; ++step) {
+				for (int index : permutations[order]) actors[index].think();
+				if (!first) std::cout << ','; first = false;
+				std::cout << '[' << shape << ',' << order << ',' << step;
+				for (const auto& actor : actors) std::cout << ',' << fixed12(actor.getLongitude()) << ',' << fixed12(actor.getLatitude());
+				std::cout << ']';
+			}
+		}
 
 	// Region containment, including the wrapped-longitude and pole rules.
 	std::cout << "],\"regions\":[";

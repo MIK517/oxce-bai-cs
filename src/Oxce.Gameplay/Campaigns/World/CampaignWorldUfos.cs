@@ -138,8 +138,6 @@ internal sealed partial class CampaignWorld
                 {
                     siteLinkWork += 2L * _ufos.Count;
                     if (siteLinkWork > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    if (escorted.Hunting || escorted.Escorting)
-                        return "UFO escort chains require additional movement forecasts.";
                 }
                 if (ufo.Hunting && ForecastHuntingTarget(destination) is { Logistics: { } targetState } targetCraft &&
                     targetState.Damage < CraftLogistics.EffectiveDamageMaximum(targetState,

@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "src/Savegame/Target.cpp (setLongitude, setLatitude, getDistance), MovingTarget.cpp (calculateRadianSpeed, setSpeed, calculateSpeed, calculateMeetPoint, reachedDestination, move), Ufo.cpp (calculateSpeed, getVisibility, getAltitudeInt), Craft.cpp (recalcSpeedMaxRadian, getFuelConsumption, getFuelLimit, getBaseRange), Base.cpp (getDetectionChance), WeightedOptions.cpp (choose, set), AlienStrategy.cpp (addMissionRun, addMissionLocation, validMissionLocation), Mod/RuleRegion.cpp (insideRegion, getRandomPoint), fmath.h (AreSame, Deg2Rad, Nautical, XcomDistance)",
+      "sources": "src/Savegame/Target.cpp (setLongitude, setLatitude, getDistance), MovingTarget.cpp (calculateRadianSpeed, setSpeed, calculateSpeed, calculateMeetPoint, reachedDestination, move), Ufo.cpp (calculateSpeed, getVisibility, getAltitudeInt), Craft.cpp (recalcSpeedMaxRadian, getFuelConsumption, getFuelLimit, getBaseRange), Base.cpp (getDetectionChance), WeightedOptions.cpp (choose, set), AlienStrategy.cpp (addMissionRun, addMissionLocation, validMissionLocation), Mod/RuleRegion.cpp (insideRegion, getRandomPoint), fmath.h (AreSame, Deg2Rad, Nautical, XcomDistance); Ufo::think with GeoscapeState::time5Seconds saved-order movement, controlled live escort targets (chain, ring and self)",
       "probe": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
       "capture": "tools/capture-strategic-world-reference.ps1",
       "compiler": "MSVC x64, /std:c++20; method bodies inserted verbatim by the capture script, randomness scripted by the probe"
@@ -16,13 +16,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_world_probe.cpp",
-      "size": 16593,
-      "sha256": "7a7075f2a4b302baf04e0710d7bd9d9ba8bc021223f1c5985862a5c2f7f4b89d"
+      "size": 18101,
+      "sha256": "19027ac34c1d278a60735875aa695ccd39c46ed41c095bb692d7cf6cd7595240"
     },
     {
       "path": "tools/capture-strategic-world-reference.ps1",
-      "size": 7483,
-      "sha256": "197fb8140b961964d876102c54a3366f4ed800df70d792b1ef30f2041ce5128c"
+      "size": 7761,
+      "sha256": "8943a7318bca5630a30859fe12221cf09cadfca902557c6829961d3160909f61"
     },
     {
       "path": "fixtures/public/savegames/strategic-escort.rul",

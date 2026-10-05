@@ -9,6 +9,7 @@ internal sealed partial class CampaignWorld
     private long _huntingForecastWork;
     private Dictionary<(string TypeId, int Id), CraftLogisticsState>? _huntingCraftForecast;
     private Dictionary<int, List<CampaignState.CraftState>>? _huntingCraftSources;
+    private List<WorldPosition>? _escortFlightPositions;
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
     private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
 
@@ -29,6 +30,7 @@ internal sealed partial class CampaignWorld
         _huntingForecastWork = 0;
         _huntingCraftForecast = null;
         _huntingCraftSources = null;
+        _escortFlightPositions = null;
         var due = WorldHunting.RetargetDue(highest, speed, campaign.Content.RuntimeRules.Campaign.HunterKillerFastRetarget);
         long work = 0;
         foreach (var saved in _ufos)
@@ -50,6 +52,16 @@ internal sealed partial class CampaignWorld
             if (projected != ufo) (_retargetForecast ??= []).Add(saved.UniqueId, projected);
             if (alert && ufo.Id == 0) _possibleHuntMarkerIds++;
         }
+        // Each prefix actor and target lookup is visited at most once per tick.
+        // Refuse before building the ordered position cache, never during mutation.
+        foreach (var saved in _ufos)
+            if (UfoForFlight(saved, highest).Escorting)
+            {
+                work += 4L * _ufos.Count * _ufos.Count;
+                break;
+            }
+        if (work > MaximumAlienBaseChecks)
+            return "UFO escort movement exceeds the supported work limit.";
         _huntingForecastWork = work;
         return CanAllocateUfoMarkerIds(_possibleHuntMarkerIds)
             ? null : "UFO contact marker IDs are exhausted or collide with a saved UFO.";
@@ -130,8 +142,6 @@ internal sealed partial class CampaignWorld
             foreach (var target in _ufos)
             {
                 if (target.MissionId != ufo.MissionId || target.HunterKiller) continue;
-                if (target.Hunting || target.Escorting)
-                    return "UFO escort chains require additional movement forecasts.";
                 projected = WorldHunting.Escort(projected,
                     new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id, target.Longitude, target.Latitude)
                     { UniqueId = target.UniqueId }, (int)maximum);
@@ -169,7 +179,7 @@ internal sealed partial class CampaignWorld
     private bool PlannedHuntMarker(UfoSnapshot ufo) => ufo.Id == 0 &&
         _retargetForecast?.TryGetValue(ufo.UniqueId, out var projected) == true && projected.Detected;
 
-    private UfoSnapshot ProjectFlightTarget(UfoSnapshot ufo, CampaignTimeTrigger highest)
+    private UfoSnapshot ProjectFlightTarget(UfoSnapshot ufo, CampaignTimeTrigger highest, bool buildingPrefix = false)
     {
         if (ufo.Hunting && ufo.Destination is { Kind: WorldTargetKind.Craft } craft)
         {
@@ -179,13 +189,26 @@ internal sealed partial class CampaignWorld
         }
         if (!ufo.Escorting || ufo.Destination is not { Kind: WorldTargetKind.Ufo } reference || TargetUfo(reference) is not { } target)
             return ufo;
-        if (target.Hunting || target.Escorting) return ufo; // The movement preflight rejects chains before recursion.
-        var position = target.Position;
-        // Reference UFOs move in list order. Ordinary earlier targets have moved
-        // before this escort; later targets still use their previous coordinates.
-        if (UfoIndex(target.UniqueId) < UfoIndex(ufo.UniqueId))
-            position = ForecastUfo(target, highest).Position;
+        var position = UfoForFlight(target, highest).Position;
+        // Reference target pointers see earlier actors after movement and later
+        // actors before movement. Even cycles only depend on earlier list entries.
+        var targetIndex = UfoIndex(target.UniqueId);
+        if (targetIndex < UfoIndex(ufo.UniqueId))
+            position = buildingPrefix ? _escortFlightPositions![targetIndex] : EscortFlightPosition(targetIndex, highest);
         return ufo with { Destination = reference with { Longitude = position.Longitude, Latitude = position.Latitude } };
+    }
+
+    private WorldPosition EscortFlightPosition(int targetIndex, CampaignTimeTrigger highest)
+    {
+        _escortFlightPositions ??= [];
+        for (var index = _escortFlightPositions.Count; index <= targetIndex; index++)
+        {
+            var actor = ProjectFlightTarget(UfoForFlight(_ufos[index], highest), highest, buildingPrefix: true);
+            _escortFlightPositions.Add(actor.Status == UfoStatus.Flying && actor.Destination is { } destination
+                ? WorldGeometry.Move(actor.Position, destination.Position, WorldGeometry.RadianSpeed(actor.Speed))
+                : actor.Position);
+        }
+        return _escortFlightPositions[targetIndex];
     }
 
     private int UfoIndex(int uniqueId)
