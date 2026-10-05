@@ -15,6 +15,41 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void SoldierAndCraftProductionShareCounterInNativeCallerOrder(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "crafts: [{type: STR_SOLDIER, speedMax: 2000, damageMax: 100, fuelMax: 0}]\nmanufacture: [{name: SHARED_PERSON, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT}, {name: SHARED_CRAFT, category: STR_CRAFT, time: 1, producedItems: {STR_SOLDIER: 1}}, {name: SHARED_BOTH, category: STR_CRAFT, time: 1, producedItems: {STR_SOLDIER: 1}, spawnedPersonType: RECRUIT}]\nfacilities: [{type: SHARED_WORKSHOP, mapName: LOGISTICS, workshops: 2}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionSharedSoldierCraftCounterRows"))
+        {
+            var order = row[0].GetInt32();
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+            ProductionSnapshot person = new("SHARED_PERSON", 1, 0, 1, false, false, false, new Dictionary<string, int>());
+            ProductionSnapshot craft = new("SHARED_CRAFT", 1, 0, 1, false, false, false, new Dictionary<string, int>());
+            initial = initial with
+            {
+                NextIds = new Dictionary<string, int>(initial.NextIds) { ["STR_SOLDIER"] = 20 },
+                Bases = [initial.Bases[0] with
+                {
+                    Soldiers = [], Research = [], Transfers = [],
+                    Facilities = [.. initial.Bases[0].Facilities, new("SHARED_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = order == 0 ? [person, craft] : order == 1 ? [craft, person] : [person with { RuleId = "SHARED_BOTH" }]
+                }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "shared-birth-before.sav");
+            Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var born = Assert.Single(after.Bases[0].Crafts, value => value.RuleId == "STR_SOLDIER");
+            var soldier = Assert.Single(after.Bases[0].Transfers).Soldier!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { order, born.Id, soldier.Id, after.NextIds["STR_SOLDIER"] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            Assert.Equal(1, after.World.Ufos[0].Destination!.Id);
+            Reload(content, campaign, 81, "shared-birth-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ManufacturedSoldiersMatchNativeCallerAndPendingNameRetries(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -3353,17 +3388,19 @@ public sealed class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void PersonnelProductionMatchesNativeQuartersAndHunterFallthrough(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void PersonnelProductionMatchesNativeQuartersAndHunterFallthrough(bool cache, bool soldier)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionPersonnelRows")
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, soldier ? "productionSoldierHuntingRows" : "productionPersonnelRows")
             .GroupBy(row => (Scientist: row[0].GetBoolean(), Delay: row[1].GetInt32(), Assigned: row[2].GetInt32(), Headroom: row[3].GetInt32())))
         {
             var quarters = group.Key.Assigned + 1 + group.Key.Headroom;
             var times = group.Key.Delay < 0 ? "0" : $"0, {group.Key.Delay}";
-            var content = Load(cache, $"crafts: [{{type: PERSONNEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: PERSONNEL_PRODUCT, time: 2, cost: 3, producedItems: {{SUPPLY: 1}}, spawnedPersonType: {(group.Key.Scientist ? "STR_SCIENTIST" : "STR_ENGINEER")}, transferTimes: [{times}]}}]\nfacilities: [{{type: PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 6, personnel: {quarters}}}]\n");
+            var content = Load(cache, $"crafts: [{{type: PERSONNEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: PERSONNEL_PRODUCT, time: 2, cost: 3, producedItems: {{SUPPLY: 1}}, spawnedPersonType: {(soldier ? "RECRUIT" : group.Key.Scientist ? "STR_SCIENTIST" : "STR_ENGINEER")}, transferTimes: [{times}]}}]\nfacilities: [{{type: PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 6, personnel: {quarters}}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -3374,6 +3411,7 @@ public sealed class StrategicWorldHuntingTests
                 { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [10], Incomes = [0], Expenditures = [0] };
                 initial = initial with
                 {
+                    NextIds = new Dictionary<string, int>(initial.NextIds) { ["STR_SOLDIER"] = 20 },
                     Bases = [initial.Bases[0] with
                     {
                         Longitude = 0.45, Latitude = 0.21, Soldiers = [], Engineers = 0, Scientists = 0, Research = [], Transfers = [],
@@ -3391,11 +3429,16 @@ public sealed class StrategicWorldHuntingTests
                 var after = campaign.Capture();
                 var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "PERSONNEL_HUNT").Logistics!;
                 var transfers = after.Bases[0].Transfers;
-                Assert.All(transfers, transfer => Assert.Equal(group.Key.Scientist ? CampaignTransferKind.Scientist : CampaignTransferKind.Engineer, transfer.Kind));
+                Assert.All(transfers, transfer => Assert.Equal(soldier ? CampaignTransferKind.Soldier : group.Key.Scientist ? CampaignTransferKind.Scientist : CampaignTransferKind.Engineer, transfer.Kind));
+                if (soldier)
+                {
+                    Assert.Equal(row[16].GetInt32(), after.NextIds["STR_SOLDIER"]);
+                    Assert.Equal(Enumerable.Range(20, progress.Produced), transfers.Select(transfer => transfer.Soldier!.Id));
+                }
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { progress.Produced, stop, usedBefore, campaign.QueryStores(0).UsedQuarters, transfers.Count, transfers[^1].Hours, after.Funds[^1], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), state.Status, state.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0 });
                 // The native trace captures before time1Hour's deferred removal.
                 // Removing a stopped project releases its single reserved quarter.
-                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5)
+                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).Take(11)
                     .Select((value, index) => index == 3 ? (object)(value.GetInt32() - (stop == 0 ? 0 : 1)) : value).ToArray());
                 Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
                 Reload(content, campaign, 81, "personnel-after.sav");

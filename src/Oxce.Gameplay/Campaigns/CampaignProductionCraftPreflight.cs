@@ -64,12 +64,12 @@ public sealed partial class CampaignState
     }
 
     private string? ForecastProducedCraftIdentity(RuleHandle<CraftRuleFamily> craft,
-        IReadOnlyDictionary<int, List<CraftState>> sources, Dictionary<RuleHandle<CraftRuleFamily>, long> counters,
+        IReadOnlyDictionary<int, List<CraftState>> sources, Dictionary<string, long> counters,
         IReadOnlyList<CustomCounterChange>? researchCounters, CampaignTimeTrigger highest, ref long work, out int identity)
     {
         identity = 0;
         var type = _content.RuntimeRules.Crafts.GetExternalId(craft);
-        if (!counters.TryGetValue(craft, out var next))
+        if (!counters.TryGetValue(type, out var next))
         {
             if (ProducedCraftCounterRange(type, highest, researchCounters, ref work, out var range) is { } counterReason) return counterReason;
             if (range.Minimum != range.Maximum) return "Craft production requires daily research identity forecasts.";
@@ -88,7 +88,7 @@ public sealed partial class CampaignState
         }
         if (next >= int.MaxValue) return "Craft production exhausts the craft identity range.";
         identity = (int)next;
-        counters[craft] = next + 1;
+        counters[type] = next + 1;
         return null;
     }
 
