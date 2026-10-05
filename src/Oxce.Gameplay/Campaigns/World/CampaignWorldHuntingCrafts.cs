@@ -35,7 +35,7 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
-            work += owner.Crafts.Count + (long)owner.Items.Count + owner.Transfers.Count;
+            work += 1L + owner.Crafts.Count + owner.Items.Count + owner.Transfers.Count;
             if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
             if (highest >= CampaignTimeTrigger.ThirtyMinutes) stocks = new(owner.Items);
             if (researchStocks?.StockChanges.GetValueOrDefault(owner.Id) is { } changes)
