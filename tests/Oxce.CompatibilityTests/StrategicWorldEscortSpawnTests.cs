@@ -685,6 +685,32 @@ public sealed class StrategicWorldEscortSpawnTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void CancelledArrivalForecastDoesNotOverflowAnUnvalidatedPriorBirth(bool cache)
+    {
+        var content = Load(cache, """
+            alienMissions:
+              - type: EXHAUSTED_IDLE_LEADER
+                objective: 0
+                waves:
+                  - {ufo: ESCORT_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0, hunterKillerPercentage: 100}
+                  - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}
+            """);
+        var initial = IdleEscortSnapshot(content, "EXHAUSTED_IDLE_LEADER");
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { LiveUfos = int.MaxValue }],
+                Ufos = [initial.World.Ufos[0] with { TrajectoryPoint = 2, Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) }],
+            }
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Mission counter forecasts exceed the supported range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void LoadedIdleEscortAllowsAutoPatrolCraftThatRemainGrounded(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
