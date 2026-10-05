@@ -9,23 +9,25 @@ internal sealed partial class CampaignWorld
         _huntingCraftForecast = [];
         _huntingCraftSources = [];
         var rules = campaign.Content.RuntimeRules;
-        var researchMayComplete = false;
+        var researchMayChangeStocks = false;
         if (highest >= CampaignTimeTrigger.OneDay)
             foreach (var baseState in campaign.BaseStates)
             {
                 work += baseState.Research.Count;
                 if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                researchMayComplete |= baseState.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost);
+                researchMayChangeStocks |= baseState.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost);
             }
+        if (highest >= CampaignTimeTrigger.OneDay && campaign.ResearchPreflight.HasDisabledDailyProjects(ref work))
+            researchMayChangeStocks = true;
         DailyResearchStockForecast? researchStocks = null;
-        if (researchMayComplete)
+        if (researchMayChangeStocks)
         {
             var supported = campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast);
             if (forecast.UnavailableReason is { } researchReason) return researchReason;
             if (supported)
             {
                 researchStocks = forecast;
-                researchMayComplete = false;
+                researchMayChangeStocks = false;
             }
         }
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
@@ -48,7 +50,7 @@ internal sealed partial class CampaignWorld
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
             if (highest >= CampaignTimeTrigger.OneHour &&
-                ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayComplete,
+                ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayChangeStocks,
                     researchStocks?.Arrivals.GetValueOrDefault(owner.Id), ref work) is { } inputReason)
                 return inputReason;
             foreach (var craft in sources)

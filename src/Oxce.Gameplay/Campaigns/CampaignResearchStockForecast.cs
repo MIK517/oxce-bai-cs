@@ -88,6 +88,20 @@ public sealed partial class CampaignState
                     if (rules.Items.TryGet(id, out _)) arrivals[owner.Id].Add(new(id, 1));
             }
         }
+        // time1Day removes disabled projects after all base loops, even when no
+        // topic completed today. These cancellations can return held fuel.
+        foreach (var owner in _bases)
+        {
+            work += projects[owner.Id].Count;
+            if (work > 1_000_000) return false;
+            foreach (var project in projects[owner.Id])
+            {
+                var entry = rules.Research[project.Rule];
+                if (_researchRuleStatus.GetValueOrDefault(entry.Id) == 2 &&
+                    ResearchItemLifecycle.ReturnsHeldItem(HoldsResearchItem(entry.Value), entry.Value.ReturnsItem,
+                        project.Spent >= project.Cost)) Refund(owner.Id, entry.Value);
+            }
+        }
         var arrivalCount = arrivals.Values.Sum(items => (long)items.Count);
         if (arrivalCount != 0)
         {
@@ -110,6 +124,17 @@ public sealed partial class CampaignState
             if (rule.NeededItem is { } id && rules.Items.TryGet(id, out _))
                 changes[baseId][id] = changes[baseId].GetValueOrDefault(id) + 1;
         }
+    }
+
+    bool ICampaignResearchPreflight.HasDisabledDailyProjects(ref long work)
+    {
+        foreach (var owner in _bases)
+            foreach (var project in owner.Research)
+            {
+                if (++work > 1_000_000) return true;
+                if (_researchRuleStatus.GetValueOrDefault(_content.RuntimeRules.Research.GetExternalId(project.Rule)) == 2) return true;
+            }
+        return false;
     }
 
     private bool DailyItemsUnchanged(ref long work)
