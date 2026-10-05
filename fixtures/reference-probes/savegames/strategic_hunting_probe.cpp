@@ -345,11 +345,11 @@ for(auto* waypoint:game.save.waypoints) delete waypoint; for(auto* transfer:base
 }
 std::cout << "],\"productionPersonnelRows\":[";
 scoreFirst=true;
-for(bool scientist:{false,true}) for(int delay:{0,3}) for(int assigned:{1,6}) for(int headroom:{0,1,2}) for(bool infinite:{false,true}) {
+for(bool scientist:{false,true}) for(int delay:{-1,0,3}) for(int assigned:{1,6}) for(int headroom:{0,1,2}) for(bool infinite:{false,true}) {
 if(!scoreFirst) std::cout << ','; scoreFirst=false;
 Base base; ServiceGame game; ResearchMod mod; Item item; Production progress; Craft craft; Ufo hunter; FuelCaller fuelCaller;
 craft.id=1; craft._base=&base; base.crafts={&craft}; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
-ProductionItemRule rule; rule.times={0,delay}; rule.produced={{&item,1}}; rule.person=scientist?"STR_SCIENTIST":"STR_ENGINEER"; ProductionDeliveryCaller delivery{&rule};
+ProductionItemRule rule; rule.times=delay<0?std::vector<int>{0}:std::vector<int>{0,delay}; rule.produced={{&item,1}}; rule.person=scientist?"STR_SCIENTIST":"STR_ENGINEER"; ProductionDeliveryCaller delivery{&rule};
 progress.rule.time=2; progress.rule.cost=3; progress.rule.person=rule.person; progress._timeSpent=1; progress._engineers=assigned; progress._amount=2; progress.infinite=infinite; base._productions={&progress}; game.save.funds=10;
 base.quarters=assigned+1+headroom; int usedBefore=base.getUsedQuarters();
 int stop=progress.scalarStep(&base,&game.save,&mod,delivery);

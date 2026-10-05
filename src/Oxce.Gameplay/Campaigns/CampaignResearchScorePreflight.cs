@@ -28,6 +28,8 @@ public sealed partial class CampaignState
                 long bonusNegative = 0;
                 // Earlier completions can expose protected/free choices, or re-enable them.
                 // Reserve each possible reward without selecting it or consuming RNG.
+                work += rule.GetOneFreeProtected.Count;
+                if (work > 1_000_000) return "Research score forecasts exceed the supported work limit.";
                 foreach (var id in rule.GetOneFree.Concat(rule.GetOneFreeProtected.SelectMany(group => group.Topics)))
                 {
                     if (++work > 1_000_000) return "Research score forecasts exceed the supported work limit.";

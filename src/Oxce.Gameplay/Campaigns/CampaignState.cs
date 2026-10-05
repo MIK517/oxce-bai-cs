@@ -562,6 +562,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         var usedQuarters = state.Soldiers.Count + (long)state.Scientists + state.Engineers;
         usedQuarters += state.Research.Sum(project => (long)project.Assigned);
         usedQuarters += state.Productions.Sum(project => (long)project.Assigned);
+        usedQuarters += state.Productions.Count(project => rules.Manufacture[project.Rule].Value.SpawnedPersonType.Length != 0);
         var incomingItems = new Dictionary<RuleHandle<ItemRuleFamily>, long>();
         foreach (var transfer in state.Transfers.Where(transfer => !transfer.Delivered))
         {

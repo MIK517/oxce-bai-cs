@@ -2840,7 +2840,8 @@ public sealed class StrategicWorldHuntingTests
             .GroupBy(row => (Scientist: row[0].GetBoolean(), Delay: row[1].GetInt32(), Assigned: row[2].GetInt32(), Headroom: row[3].GetInt32())))
         {
             var quarters = group.Key.Assigned + 1 + group.Key.Headroom;
-            var content = Load(cache, $"crafts: [{{type: PERSONNEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: PERSONNEL_PRODUCT, time: 2, cost: 3, producedItems: {{SUPPLY: 1}}, spawnedPersonType: {(group.Key.Scientist ? "STR_SCIENTIST" : "STR_ENGINEER")}, transferTimes: [0, {group.Key.Delay}]}}]\nfacilities: [{{type: PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 6, personnel: {quarters}}}]\n");
+            var times = group.Key.Delay < 0 ? "0" : $"0, {group.Key.Delay}";
+            var content = Load(cache, $"crafts: [{{type: PERSONNEL_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: PERSONNEL_PRODUCT, time: 2, cost: 3, producedItems: {{SUPPLY: 1}}, spawnedPersonType: {(group.Key.Scientist ? "STR_SCIENTIST" : "STR_ENGINEER")}, transferTimes: [{times}]}}]\nfacilities: [{{type: PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 6, personnel: {quarters}}}]\n");
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -2915,6 +2916,47 @@ public sealed class StrategicWorldHuntingTests
         Assert.Empty(campaign.Execute(new ConfigureProductionProject(0, "HELD_PERSONNEL", 0, 1, Cancel: true)).Events.OfType<CampaignActionBlocked>());
         Assert.Equal(0, campaign.QueryStores(0).UsedQuarters);
         Reload(content, campaign, 81, "personnel-cancelled.sav");
+    }
+
+    [Fact]
+    public void EmptyProtectedRewardGroupsCountTowardScoreForecastWork()
+    {
+        var groups = string.Join(", ", Enumerable.Range(0, 1001).Select(index => $"EMPTY_SCORE_GATE_{index}: []"));
+        var gates = string.Join(", ", Enumerable.Range(0, 1001).Select(index => $"{{name: EMPTY_SCORE_GATE_{index}, cost: 1}}"));
+        var content = Load(overlay: $"research: [{{name: EMPTY_SCORE_SOURCE, cost: 1, getOneFreeProtected: {{{groups}}}}}, {gates}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), World = new() };
+        var owner = initial.Bases[0] with { Crafts = [], Soldiers = [], Transfers = [], Productions = [], Scientists = 0, Engineers = 0, Research = [new("EMPTY_SCORE_SOURCE", 0, 1, 1)] };
+        initial = initial with { Bases = Enumerable.Range(0, 1001).Select(id => owner with { Id = id }).ToArray() };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Research score forecasts exceed the supported work limit.");
+    }
+
+    [Fact]
+    public void ExistingTransfersConsumePersonnelProductionPopulationCapacity()
+    {
+        var content = Load(overlay: "manufacture: [{name: POPULATED_PERSONNEL, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_ENGINEER}]\nfacilities: [{type: POPULATED_PERSONNEL_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = new() };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Transfers = Enumerable.Range(1, 100000).Select(id => new TransferSnapshot(id, 2, CampaignTransferKind.Item, "SUPPLY", 1)).ToArray(),
+                Facilities = [new("POPULATED_PERSONNEL_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("POPULATED_PERSONNEL", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+            }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Production personnel arrivals exceed the supported population limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImportedPersonnelReservationsCannotOverflowQuarters(bool cache)
+    {
+        var content = Load(cache, "manufacture: [{name: IMPORTED_PERSONNEL, time: 1, producedItems: {SUPPLY: 0}, spawnedPersonType: STR_ENGINEER}]\n");
+        var initial = HuntingSnapshot(content);
+        initial = initial with { Bases = [initial.Bases[0] with { Soldiers = [], Scientists = 0, Engineers = int.MaxValue, Research = [], Transfers = [], Productions = [new("IMPORTED_PERSONNEL", 0, 0, 1, false, false, false, new Dictionary<string, int>())] }] };
+        var error = Assert.Throws<InvalidDataException>(() => CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)));
+        Assert.Equal("Base personnel including incoming transfers exceed the supported range.", error.Message);
     }
 
     [Theory]
