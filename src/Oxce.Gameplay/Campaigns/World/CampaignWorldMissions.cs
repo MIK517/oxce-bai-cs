@@ -163,27 +163,10 @@ internal sealed partial class CampaignWorld
         }
         if (newFlyingHunters != 0)
         {
-            long possibleCrafts = 0;
-            foreach (var owner in campaign.BaseStates)
-            {
-                possibleCrafts += owner.Crafts.Count;
-                foreach (var transfer in owner.Transfers)
-                    if (!transfer.Delivered && transfer.Craft is not null) possibleCrafts++;
-                // Production precedes this wave on an hourly tick. Reserve the
-                // finite queue as an upper bound without predicting staff or stocks.
-                if (highest >= CampaignTimeTrigger.OneHour)
-                    foreach (var production in owner.Productions)
-                        foreach (var material in campaign.Content.RuntimeRules.Manufacture[production.Rule].Value.ProducedMaterials)
-                            if (material.Craft is not null)
-                            {
-                                if (production.Infinite) return "New UFO retargeting requires finite craft production forecasts.";
-                                possibleCrafts += production.Amount;
-                                break;
-                            }
-                if (possibleCrafts > MaximumAlienBaseChecks)
-                    return "New UFO retargeting exceeds the supported work limit.";
-            }
-            if (_huntingForecastWork + possibleCrafts * newFlyingHunters + escortWork + newbornFollowerWork > MaximumAlienBaseChecks)
+            var retargetWork = _huntingForecastWork + escortWork + newbornFollowerWork;
+            if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref retargetWork, out var possibleCrafts) is { } populationReason)
+                return populationReason;
+            if (retargetWork + possibleCrafts * newFlyingHunters > MaximumAlienBaseChecks)
                 return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";

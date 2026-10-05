@@ -12,6 +12,7 @@ internal interface ICampaignProductionPreflight
     string? CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work, out IReadOnlySet<string> types);
     (long Minimum, long Maximum) CraftCounter(string name, CampaignTimeTrigger highest,
         (long Minimum, long Maximum) before);
+    string? CraftPopulationBound(CampaignTimeTrigger highest, ref long work, out long population);
 }
 
 public sealed partial class CampaignState

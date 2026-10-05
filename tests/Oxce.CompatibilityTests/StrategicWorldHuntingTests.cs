@@ -15,6 +15,41 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void NewHunterPopulationBoundsUseNativeHourlyProgressIncludingInfiniteQueues(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, "manufacture: [{name: POPULATION_FOUR, category: STR_CRAFT, time: 4, producedItems: {SHIP: 1}}, {name: POPULATION_HUNDRED, category: STR_CRAFT, time: 100, producedItems: {SHIP: 1}}]\nfacilities: [{type: POPULATION_WORKSHOP, mapName: LOGISTICS, workshops: 10}]\n");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionProgressRows").Where(row => row[0].GetInt32() > 0))
+        {
+            var initial = CreateSnapshot(content, "Native hourly craft population") with
+            {
+                Time = new(1, 1, 1, 1999, 1, 59, 55),
+                World = new() { Missions = [new(4, "MISSION_HUNTER_AIR", "REGION", "RACE_A", 0, 0, 0, 0, -1)] },
+            };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            {
+                Research = [],
+                Facilities = [.. initial.Bases[0].Facilities, new("POPULATION_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new(row[0].GetInt32() == 4 ? "POPULATION_FOUR" : "POPULATION_HUNDRED",
+                    row[2].GetInt32(), row[1].GetInt32(), 20, row[3].GetBoolean(), false, false, new Dictionary<string, int>())],
+            }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "hourly-population-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            Assert.Equal(1, Assert.Single(result.Events.OfType<CampaignTimeAdvanced>()).Summary.TickCount);
+            var after = campaign.Capture();
+            Assert.Equal(initial.Bases[0].Crafts.Count + row[4].GetInt32(), after.Bases[0].Crafts.Count);
+            Assert.False(Assert.Single(after.World.Ufos).Hunting);
+            Reload(content, campaign, 81, "hourly-population-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void EscortPrefixesChargeMissionLookupsBeforeMutation(bool cache)
     {
         var content = Load(cache);
