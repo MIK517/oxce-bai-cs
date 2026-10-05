@@ -1029,9 +1029,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             var soldierId = NextSoldierId();
             _nextIds["STR_SOLDIER"] = checked(soldierId + 1);
             var personal = SoldierGeneration.Generate(definition,
-                _content.RuntimeRules.Armors.GetExternalId(definition.Armor), -1,
-                _bases.SelectMany(baseState => baseState.Soldiers)
-                    .Select(s => s.Personal?.Name ?? "").ToHashSet(StringComparer.Ordinal), _random);
+                _content.RuntimeRules.Armors.GetExternalId(definition.Armor), SelectNationality(definition, owner),
+                _bases.SelectMany(baseState => baseState.Soldiers.Select(soldier => soldier.Personal?.Name ?? "")
+                    .Concat(baseState.Transfers.Where(transfer => transfer.Soldier is not null)
+                        .Select(transfer => transfer.Soldier!.Personal?.Name ?? ""))).ToHashSet(StringComparer.Ordinal), _random);
             if (rule.SpawnedSoldierTemplate is { } template)
                 personal = SoldierGeneration.ApplyTemplate(personal, template, definition,
                     _content.RuntimeRules, _random);

@@ -13,6 +13,62 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ManufacturedSoldiersMatchNativeCallerAndPendingNameRetries(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionSoldierRows"))
+        {
+            var delay = row[0].GetInt32();
+            var fixedName = row[1].GetBoolean();
+            var overlay = row[2].GetBoolean();
+            var pending = row[3].GetBoolean();
+            var content = Load(cache, $"hireByCountryOdds: 100\nsoldiers: [{{type: COUNTRY_PRODUCT_SOLDIER, armor: ARMOR, soldierNames: [SoldierName/test.nam, SoldierName/test.nam], minStats: {{health: 30}}, maxStats: {{health: 30}}}}]\nmanufacture: [{{name: SOLDIER_PRODUCT, time: 1, producedItems: {{SUPPLY: 0}}, spawnedPersonType: COUNTRY_PRODUCT_SOLDIER, transferTimes: [{(delay < 0 ? "0" : $"0, {delay}")}], spawnedPersonName: '{(fixedName ? "FORCED" : "")}', spawnedSoldier: {{{(overlay ? "name: TEMPLATE NAME, currentStats: {health: 45}" : "")}}}}}]\nfacilities: [{{type: SOLDIER_PRODUCT_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), World = WorldSnapshot.Empty };
+            var owner = initial.Bases[0];
+            var prior = owner.Soldiers[0] with { Personal = owner.Soldiers[0].Personal! with { CraftType = "", CraftId = 0, Name = "Alex Example" } };
+            initial = initial with
+            {
+                NextIds = new Dictionary<string, int>(initial.NextIds) { ["STR_SOLDIER"] = row[5].GetInt32() },
+                Bases = [owner with
+                {
+                    Longitude = 0.45, Latitude = 0.21, Crafts = [], Soldiers = [], Research = [],
+                    Transfers = pending ? [new(1, 2, CampaignTransferKind.Soldier, "RECRUIT", 1, prior)] : [],
+                    Facilities = [.. owner.Facilities, new("SOLDIER_PRODUCT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("SOLDIER_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())]
+                }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "soldier-production-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var transfer = after.Bases[0].Transfers[^1];
+            var soldier = transfer.Soldier!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { transfer.Hours, soldier.Id, after.NextIds["STR_SOLDIER"], soldier.Personal!.Nationality, soldier.Personal.Name });
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(4).Take(5).ToArray());
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Assert.Equal(overlay ? 45 : 30, soldier.Personal.CurrentStats["health"]);
+            // The pinned Mod caller retries duplicates before applying the template
+            // and final name. Pending-transfer names participate in all ten tries.
+            var random = new SplitMix64RandomSource(81);
+            random.Restore(initial.RandomState);
+            random.NextInclusive(0, 99); // Guaranteed country selection still draws.
+            var definition = content.RuntimeRules.Soldiers[content.RuntimeRules.Soldiers.GetRequired("COUNTRY_PRODUCT_SOLDIER")].Value;
+            for (var attempt = 0; attempt < row[9].GetInt32(); attempt++)
+                SoldierGeneration.Generate(definition, "ARMOR", 0, new HashSet<string>(), random);
+            var template = content.RuntimeRules.Manufacture[content.RuntimeRules.Manufacture.GetRequired("SOLDIER_PRODUCT")].Value.SpawnedSoldierTemplate!;
+            var personal = SoldierGeneration.ApplyTemplate(soldier.Personal, template, definition, content.RuntimeRules, random);
+            if (!fixedName) SoldierGeneration.RegenerateName(personal, definition, random);
+            Assert.Equal(random.State, after.RandomState);
+            Reload(content, campaign, 81, "soldier-production-after.sav");
+            AdvanceUnblocked(campaign, transfer.Hours * 720);
+            Assert.Contains(campaign.Capture().Bases[0].Soldiers, value => value.Id == soldier.Id && value.Personal!.Name == soldier.Personal.Name);
+            Reload(content, campaign, 81, "soldier-production-arrived.sav");
+        }
+    }
+
+    [Theory]
     [InlineData(false, "counter")]
     [InlineData(true, "counter")]
     [InlineData(false, "soldier")]
