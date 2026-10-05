@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 122 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 123 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 122 files.
+`src/Oxce.Gameplay` - 123 files.
 
 ### `Oxce.Gameplay`
 
@@ -415,6 +415,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftServiceCapacities` (record) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftLogistics` (class) [CraftLogistics.cs](../src/Oxce.Gameplay/Campaigns/CraftLogistics.cs)
 - `CraftServicing` (class) [CraftServicing.cs](../src/Oxce.Gameplay/Campaigns/CraftServicing.cs) - Hourly maintenance from Craft.cpp and CraftWeapon.cpp at reference 4df3a5e.
+- `FacilityServicing` (class) [FacilityServicing.cs](../src/Oxce.Gameplay/Campaigns/FacilityServicing.cs) - Pure BaseFacility::rearm transition at reference 4df3a5e.
 - `CraftArrivalServiceMessage` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
 - `LogisticsOperation` (enum) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
 - `PrepareLogisticsQuote` (record) [LogisticsContracts.cs](../src/Oxce.Gameplay/Campaigns/LogisticsContracts.cs)
