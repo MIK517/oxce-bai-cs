@@ -7,11 +7,11 @@ ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
 forecasts cover stock-free completions, held-item refunds, global obsolete
 and disabled-project cancellation, fixed spawned item arrivals, lookup and automatic
 discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
-production without a completing unit, final prepaid zero-score item units and
-recurring paid/item-input units and fallback staffing participate in hunter forecasts. Remaining
-projections cover scripted sales, random/craft/person
-production, stochastic shared ammunition, random research
-reward choices and corpse consequences.
+production without a completing unit, scored fixed/sold item output, deterministic random
+output, scientist/engineer transfers, recurring paid/item-input units and fallback staffing
+participate in hunter forecasts. Research forecasts also include native corpse recovery.
+Remaining projections cover scripted sale prices, genuinely different random output,
+craft/soldier production, stochastic shared ammunition and random research reward choices.
 The progress notes below record earlier guards and their later replacements.
 
 The strategic-hunting capture inserts Craft::getHunterKillerAttraction,
@@ -349,3 +349,5 @@ Branch 4c corpse evidence and projections: 512 pinned removal/daily-interrogatio
 Branch 4c live research recovery: completion applies the Base::removeResearch held/corpse effect and the separate daily interrogation corpse effect before discoveries. Cancellation applies only the removal effect, looking up the unit by research name even when neededItem differs. All 512 native rows pass fresh/cache and before/after reloads; the shared local lifecycle rule uses the same verified oracle. Command/daily preflight bounds recovered stocks, including possible earlier cross-base cancellations, so corpse overflow refuses before staff/project/time mutation. Completed projects remain deleted after rewriting saves. Hunter corpse stock composition follows in the next slice; later-branch boundaries and 4d are unchanged.
 
 Branch 4c corpse composition: daily stock projection now uses the same removal/daily recovery operation as execution before automatic discoveries and hourly inputs, including earlier-base cancellations and final disabled-project cleanup. The old unit/corpse forecast guard is removed. Another 128 pinned recovery/refuel/hunting rows pass fresh/cache plus transition reloads; cross-base fixtures prove a cancelled finished project receives only the removal corpse and cannot run its later daily caller. Recovery changes retain exact item identities and do not invoke item reuse for direct corpse addition. Random reward choices and other uncertain compositions retain their specific guards. Later-branch boundaries and 4d remain unchanged.
+
+The corpse batch audit removes empty-research preflight allocations and avoids duplicate unit-armor runtime diagnostics: typed validation still rejects absent/missing armor, with two focused regressions. All 2,669 root tests pass with zero failures/skips, including the unchanged allocation gates and private corpus classifications. Native checksums and code-map/diff verification pass; no fixture expectations or limits were relaxed. Branch 4c remains open and 4d is untouched.

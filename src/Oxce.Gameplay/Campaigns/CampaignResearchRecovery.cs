@@ -39,6 +39,10 @@ public sealed partial class CampaignState
 
     private string? PreflightResearchRecovery(ref long work)
     {
+        var hasProjects = false;
+        foreach (var owner in _bases)
+            if (owner.Research.Count != 0) { hasProjects = true; break; }
+        if (!hasProjects) return null;
         var finishing = FinishingResearchTopics();
         var possible = finishing.Count == 0 ? new HashSet<string>(StringComparer.Ordinal) : DailyResearchPossibilities(finishing);
         HashSet<string> disabled = new(StringComparer.Ordinal);
