@@ -28,6 +28,7 @@ internal sealed partial class CampaignWorld
     private string? HuntingReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
         _retargetForecast = null;
+        _newLeaderFlightForecast = null;
         _possibleHuntMarkerIds = 0;
         _huntingForecastWork = 0;
         _huntingCraftForecast = null;
@@ -52,6 +53,9 @@ internal sealed partial class CampaignWorld
             if (projected != ufo) (_retargetForecast ??= []).Add(saved.UniqueId, projected);
             if (alert && ufo.Id == 0) _possibleHuntMarkerIds++;
         }
+        foreach (var saved in _ufos)
+            if (ForecastCancelledEscortArrival(UfoForFlight(saved, highest), highest, ref work) is { } arrivalReason)
+                return arrivalReason;
         // Each prefix actor and target lookup is visited at most once per tick.
         // Refuse before building the ordered position cache, never during mutation.
         foreach (var saved in _ufos)
@@ -177,6 +181,7 @@ internal sealed partial class CampaignWorld
     }
 
     private UfoSnapshot UfoForFlight(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
+        _newLeaderFlightForecast?.GetValueOrDefault(ufo.UniqueId) ??
         _retargetForecast?.GetValueOrDefault(ufo.UniqueId) ?? UfoAfterTimedTransitions(ufo, highest);
 
     private bool PlannedHuntMarker(UfoSnapshot ufo) => ufo.Id == 0 &&

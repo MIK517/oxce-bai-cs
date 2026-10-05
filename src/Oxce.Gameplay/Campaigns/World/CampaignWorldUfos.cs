@@ -133,7 +133,8 @@ internal sealed partial class CampaignWorld
             {
                 if (ufo.OriginalWaypoint is not { IsNormalized: true }) return HuntStateReason;
                 if (ufo.Hunting && destination.Kind != WorldTargetKind.Craft ||
-                    ufo.Escorting && destination.Kind != WorldTargetKind.Ufo)
+                    ufo.Escorting && destination.Kind != WorldTargetKind.Ufo &&
+                    !ReferenceEquals(_newLeaderFlightForecast?.GetValueOrDefault(ufo.UniqueId), ufo))
                     return HuntStateReason;
                 if (ufo.Escorting && TargetUfo(destination) is { } escorted)
                 {

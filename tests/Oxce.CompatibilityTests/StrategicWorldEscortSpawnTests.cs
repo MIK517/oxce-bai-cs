@@ -572,10 +572,19 @@ public sealed class StrategicWorldEscortSpawnTests
         }
     }
 
-    [Fact]
-    public void LoadedIdleEscortRequiresForecastBeforeCancellingAnOrdinaryArrival()
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void LoadedIdleEscortCancelsOrdinaryArrivalWhenPointLeaderIsCertain(bool cache, int arrival)
     {
-        var content = Load();
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "spawnEscortSequenceRows"), row =>
+            !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
+        var content = Load(cache);
         var initial = IdleEscortSnapshot(content);
         initial = initial with
         {
@@ -583,13 +592,94 @@ public sealed class StrategicWorldEscortSpawnTests
             {
                 Ufos = [initial.World.Ufos[0] with
                 {
-                    TrajectoryPoint = 2,
+                    TrajectoryPoint = arrival == 2 ? 0 : arrival == 1 ? 2 : 0,
+                    TrajectoryId = arrival == 2 ? "TRAJ_HUNTER_GROUND" : "TRAJ_SPAWN_FIXED",
                     Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)),
                 }],
             },
         };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "cancel-arrival-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var source = after.World.Ufos.Single(ufo => ufo.UniqueId == 9);
+        var leader = Assert.Single(after.World.Ufos, ufo => !ufo.HunterKiller);
+        Assert.True(source.Escorting);
+        Assert.Equal(leader.UniqueId, source.Destination!.UniqueId);
+        Assert.Equal(UfoStatus.Flying, source.Status);
+        Assert.Equal(initial.World.Ufos[0].TrajectoryPoint, source.TrajectoryPoint);
+        Assert.Equal(new WorldPosition(0.400001, 0.2), source.OriginalWaypoint);
+        Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, new(Degrees(10), Degrees(8)),
+            WorldGeometry.RadianSpeed(2200)), source.Position);
+        campaign = Reload(content, campaign, 81, "cancel-arrival-after.sav");
+        AdvanceUnblocked(campaign, 1);
+        Reload(content, campaign, 81, "cancel-arrival-following.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void LoadedIdleEscortRetainsArrivalGuardForUncertainFirstLeader(bool cache, bool regional)
+    {
+        var content = Load(cache, $$"""
+            regions:
+              - type: IDLE_LEADER_AREA
+                missionZones:
+                  - [[7.9, 8.1, 1.9, 2.1]]
+                  - []
+                  - []
+                  - [[362, 362, 2, 2]]
+            alienMissions:
+              - type: UNCERTAIN_IDLE_LEADER
+                objective: 0
+                waves:
+                  - {ufo: UFO_SCOUT, count: 1, trajectory: {{(regional ? "TRAJ_AIRBORNE" : "TRAJ_SPAWN_FIXED")}}, timer: 9000, hunterKillerPercentage: {{(regional ? 0 : 50)}}}
+            """);
+        var initial = IdleEscortSnapshot(content, "UNCERTAIN_IDLE_LEADER");
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { RegionId = regional ? "IDLE_LEADER_AREA" : "REGION" }],
+                Ufos = [initial.World.Ufos[0] with { TrajectoryPoint = 2, Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) }]
+            }
+        };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
             "Loaded idle escorts require same-tick newborn waypoint forecasts.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CancelledTerminalEscortArrivalCannotHideFollowingCraftInterception(bool cache)
+    {
+        var content = Load(cache, "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
+        var initial = IdleEscortSnapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Ufos = [initial.World.Ufos[0] with
+        { Detected = true, TrajectoryPoint = 2, Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) }]
+            }
+        };
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 1000,
+                Damage = 0,
+                Speed = 6000,
+                Longitude = 0.4,
+                Latitude = 0.2,
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 },
+            }
+        });
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Craft interception requires strategic combat (Phase 6 branch 5).");
     }
 
     [Theory]
@@ -636,11 +726,15 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void LoadedIdleEscortWithFollowersMatchesNativeNewLeaderMovement(bool cache, bool reverse)
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void LoadedIdleEscortWithFollowersMatchesNativeNewLeaderMovement(bool cache, bool reverse, bool cancelsArrival)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world");
         using var attachment = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -648,7 +742,8 @@ public sealed class StrategicWorldEscortSpawnTests
             !row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetBoolean());
         var content = Load(cache);
         var initial = IdleEscortSnapshot(content);
-        var source = initial.World.Ufos[0];
+        var source = cancelsArrival ? initial.World.Ufos[0] with
+        { TrajectoryPoint = 2, Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) } : initial.World.Ufos[0];
         initial = initial with
         {
             World = initial.World with
