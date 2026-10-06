@@ -48,6 +48,36 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, "UFO retargeting requires stochastic production material forecasts.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AmmunitionMaterialBoundsAdmitEqualEligibilityOutcomes(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var rows = TestFixtures.Rows(oracle.RootElement, "productionAmmunitionMaterialRows");
+        foreach (var input in new[] { 1, 2 })
+        {
+            var content = LoadSavingMaterialContent(cache, input);
+            foreach (var group in rows.Where(row => row[1].GetInt32() == input && row[2].GetInt32() == 3 && row[3].GetInt32() != 0)
+                .GroupBy(row => (Stock: row[0].GetInt32(), Amount: row[2].GetInt32(), Assigned: row[3].GetInt32())))
+            {
+                var initial = SavingMaterialSnapshot(content, group.Key.Stock, group.Key.Amount, group.Key.Assigned);
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                    81, "saving-material-bounds-before.sav");
+                // Native progress/result must agree across both controlled saving
+                // outcomes. Stock quantities themselves are allowed to differ.
+                if (group.Select(row => (row[7].GetInt32(), row[8].GetInt32(), row[9].GetInt32())).Distinct().Count() != 1)
+                {
+                    AssertTimeBlocked(campaign, "UFO retargeting requires stochastic production material forecasts.");
+                    continue;
+                }
+                AdvanceUnblocked(campaign, 1);
+                AssertSavingMaterialResult(campaign.Capture(), group);
+                Reload(content, campaign, 81, "saving-material-bounds-after.sav");
+            }
+        }
+    }
+
     private static RuntimeContent LoadSavingMaterialContent(bool cache, int input) => Load(cache,
         "items: [{type: SUPPLY, clipSize: 4}]\n" +
         "craftWeapons: [{type: SAVING_MATERIAL_GUN, ammoMax: 10, rearmRate: 4, bulletSaving: true, launcher: SUPPLY, clip: SUPPLY}]\n" +

@@ -141,14 +141,20 @@ public sealed partial class CampaignState
                     // Native checks quarters only after the final completion of this
                     // hour; intermediate completions can exceed capacity together.
                     if (personnel && completed >= requested && availableQuarters < quarters + personnelBirths) break;
-                    if (stockUncertainty.TryGetValue(owner.Id, out var uncertainty) &&
-                        rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Item is { } item && uncertainty.ContainsKey(item)))
-                        return "UFO retargeting requires stochastic production material forecasts.";
                     if (!TryPlanProductionMaterials(stocks[owner.Id], sources, rule, out var materials, out var materialReason))
                     {
                         if (materialReason != "STR_NOT_ENOUGH_MATERIALS") return materialReason;
                         break;
                     }
+                    // All inputs are nonnegative. If the upper stocks cannot start
+                    // another unit, neither can any smaller saving outcome. When
+                    // they can, prove every uncertain input is also present at its
+                    // lower bound before applying the same consumption to both.
+                    if (stockUncertainty.TryGetValue(owner.Id, out var uncertainty))
+                        foreach (var material in materials)
+                            if (material.Item is { } item &&
+                                stocks[owner.Id].GetValueOrDefault(item) - (long)uncertainty.GetValueOrDefault(item) < material.Quantity)
+                                return "UFO retargeting requires stochastic production material forecasts.";
                     foreach (var material in materials)
                     {
                         if (material.Item is { } item) ChangeStock(stocks[owner.Id], item, -material.Quantity);
