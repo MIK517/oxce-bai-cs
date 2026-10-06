@@ -15,66 +15,64 @@ public sealed partial class CampaignState
     private readonly Dictionary<string, PriceItemReference> _priceItemReferences = new(StringComparer.Ordinal);
     private readonly ScriptRuntimeValue[] _priceInputs = new ScriptRuntimeValue[5];
     private readonly ScriptRuntimeValue[] _priceOutput = new ScriptRuntimeValue[1];
+    private readonly Dictionary<(string Id, bool Buying), PriceInvocation?> _priceInvocations = [];
+    // Programs are parser-specific, so the program instance identifies a shared invocation.
+    private readonly Dictionary<ScriptProgram, PriceInvocation> _priceSharedInvocations = new(ReferenceEqualityComparer.Instance);
+    /// <summary>The forecast and boxed time of the price invocation currently executing.</summary>
+    private (PriceForecastContext Forecast, object Time)? _priceCall;
 
     private int ItemPrice(string id, RuntimeItemRule rule, bool buying, out string? unavailable, PriceForecastContext? forecast = null)
     {
         unavailable = null;
-        var parser = buying ? "buyCostItem" : "sellCostItem";
         var baseCost = buying ? rule.CostBuy : rule.CostSell;
         var coefficient = (buying ? _content.RuntimeRules.Campaign.BuyPriceCoefficients : _content.RuntimeRules.Campaign.SellPriceCoefficients)[(int)Difficulty];
         var adjusted = StrategicLogisticsMath.AdjustedItemPrice(baseCost, coefficient);
-        var artifact = rule.Scripts.Select(h => _content.RuntimeRules.Scripts[h].Value.Artifact).FirstOrDefault(a => a.ParserName == parser);
-        var plan = _content.EventPlans.FirstOrDefault(p => p.ParserName == parser)?.Plan;
-        if (artifact is null && plan is null) return adjusted;
+        if (PriceInvocationFor(id, rule, buying) is not { } invocation) return adjusted;
         // Current-price callers have the same bounded, read-only execution as
         // future production callers, with today's clock and research answers.
         forecast ??= new(Time, DaysPassed, false, 0);
-        var program = artifact?.Program ?? PriceDefault(parser);
-        var programs = (plan?.Before.Select(e => e.Program) ?? []).Append(program).Concat(plan?.After.Select(e => e.Program) ?? []);
-        // Native getTime returns one pointer throughout this price invocation,
-        // including its before/current/after programs. Box the value only once.
-        object timeReference = forecast.Time;
-        var builder = new ScriptHostBindingsBuilder();
-        var seen = new HashSet<int>();
-        foreach (var candidate in programs)
+        // The cached setup is replayed with its original work charges and refusal order.
+        for (var index = 0; index < invocation.Programs.Length; index++)
         {
-            if ((forecast.Work += 1L + candidate.Bindings.Count) > 1_000_000)
+            var check = invocation.Checks[index];
+            if ((forecast.Work += check.Charge) > 1_000_000)
             {
                 unavailable = "Production price forecasts exceed the supported work limit.";
                 return adjusted;
             }
-            _priceFrame.Prepare(candidate);
-            foreach (var binding in candidate.Bindings)
+            _priceFrame.Prepare(invocation.Programs[index]);
+            foreach (var binding in check.Bindings)
             {
-                if (binding.Name.EndsWith(".getTag", StringComparison.Ordinal) &&
-                    (forecast.Work += _content.Tags.Types.Count) > 1_000_000)
+                if (binding.Tag && (forecast.Work += _content.Tags.Types.Count) > 1_000_000)
                 {
                     unavailable = "Production price tag metadata exceeds the supported work limit.";
                     return adjusted;
                 }
-                if (!PriceBindingSupported(binding))
+                if (!binding.Supported)
                 {
                     unavailable = $"Price script requires unsupported binding {binding.Name}.";
                     return adjusted;
                 }
-                if (seen.Add(binding.Id.Value)) builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding, args, forecast, timeReference));
             }
         }
-        var providers = builder.Build();
         _priceInputs[0] = ScriptRuntimeValue.FromScalar(baseCost);
         _priceInputs[1] = ScriptRuntimeValue.FromScalar(coefficient);
         _priceInputs[2] = ScriptRuntimeValue.FromReference(this);
         _priceInputs[3] = ScriptRuntimeValue.FromReference(PriceItemReferenceFor(id, rule));
         _priceInputs[4] = ScriptRuntimeValue.FromReference(_content.RuntimeRules);
         _priceOutput[0] = ScriptRuntimeValue.FromScalar(adjusted);
+        // Native getTime returns one pointer throughout this price invocation,
+        // including its before/current/after programs. Box the value only once.
+        var outer = _priceCall;
+        _priceCall = new(forecast, forecast.Time);
         try
         {
-            if ((plan?.Count ?? 0) + 1 > ScriptLimits.DefaultMaximumEventExecutions)
+            if (invocation.PlanCount + 1 > ScriptLimits.DefaultMaximumEventExecutions)
             {
                 unavailable = "Production price forecasts exceed the supported event limit.";
                 return adjusted;
             }
-            foreach (var candidate in programs)
+            foreach (var candidate in invocation.Programs)
             {
                 var remaining = 1_000_000 - forecast.Work;
                 if (remaining <= 0)
@@ -83,7 +81,7 @@ public sealed partial class CampaignState
                     break;
                 }
                 var options = new ScriptExecutionOptions { MaximumSteps = (int)Math.Min(remaining, ScriptExecutionOptions.Default.MaximumSteps) };
-                var result = ScriptVm.ExecuteWithInputs(candidate, _priceOutput, _priceInputs, _priceOutput, _priceFrame, options, providers);
+                var result = ScriptVm.ExecuteWithInputs(candidate, _priceOutput, _priceInputs, _priceOutput, _priceFrame, options, invocation.Providers);
                 forecast.Work += result.Steps;
                 if (forecast.Work > 1_000_000)
                 {
@@ -92,13 +90,67 @@ public sealed partial class CampaignState
                 }
                 if (!result.Succeeded)
                 {
-                    unavailable = $"Price {(plan is null ? "script" : "event")} failed: {result.FailureMessage ?? result.DiagnosticCode}.";
+                    unavailable = $"Price {(invocation.HasPlan ? "event" : "script")} failed: {result.FailureMessage ?? result.DiagnosticCode}.";
                     break;
                 }
             }
             return _priceOutput[0].Scalar;
         }
-        finally { Array.Clear(_priceInputs); Array.Clear(_priceOutput); }
+        finally
+        {
+            _priceCall = outer;
+            Array.Clear(_priceInputs);
+            Array.Clear(_priceOutput);
+        }
+    }
+
+    /// <summary>
+    /// The invariant part of an item price invocation: its ordered programs, binding checks and host
+    /// providers. Content is immutable for the campaign, so it is built once per item and parser,
+    /// and shared by items that run the same program. Null when the item has no price script.
+    /// </summary>
+    private PriceInvocation? PriceInvocationFor(string id, RuntimeItemRule rule, bool buying)
+    {
+        if (_priceInvocations.TryGetValue((id, buying), out var cached)) return cached;
+        var parser = buying ? "buyCostItem" : "sellCostItem";
+        var artifact = rule.Scripts.Select(h => _content.RuntimeRules.Scripts[h].Value.Artifact).FirstOrDefault(a => a.ParserName == parser);
+        var plan = _content.EventPlans.FirstOrDefault(p => p.ParserName == parser)?.Plan;
+        PriceInvocation? invocation = null;
+        if (artifact is not null || plan is not null)
+        {
+            var program = artifact?.Program ?? PriceDefault(parser);
+            if (!_priceSharedInvocations.TryGetValue(program, out invocation))
+            {
+                invocation = BuildPriceInvocation([.. (plan?.Before.Select(e => e.Program) ?? []), program,
+                    .. (plan?.After.Select(e => e.Program) ?? [])], plan is not null ? plan.Count : 0, plan is not null);
+                _priceSharedInvocations.Add(program, invocation);
+            }
+        }
+        _priceInvocations.Add((id, buying), invocation);
+        return invocation;
+    }
+
+    private PriceInvocation BuildPriceInvocation(ScriptProgram[] programs, int planCount, bool hasPlan)
+    {
+        var builder = new ScriptHostBindingsBuilder();
+        var seen = new HashSet<int>();
+        var checks = new PriceProgramCheck[programs.Length];
+        for (var index = 0; index < programs.Length; index++)
+        {
+            var bindings = programs[index].Bindings;
+            var bindingChecks = new PriceBindingCheck[bindings.Count];
+            for (var bindingIndex = 0; bindingIndex < bindings.Count; bindingIndex++)
+            {
+                var binding = bindings[bindingIndex];
+                var supported = PriceBindingSupported(binding);
+                bindingChecks[bindingIndex] = new(binding.Name.EndsWith(".getTag", StringComparison.Ordinal), supported, binding.Name);
+                // The first declaration of a binding ID serves every program, as before caching.
+                if (supported && seen.Add(binding.Id.Value))
+                    builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding, args, _priceCall!.Value.Forecast, _priceCall.Value.Time));
+            }
+            checks[index] = new(1L + bindings.Count, bindingChecks);
+        }
+        return new PriceInvocation(programs, checks, planCount, hasPlan, builder.Build());
     }
 
     private ScriptProgram PriceDefault(string parser)
@@ -260,6 +312,14 @@ public sealed partial class CampaignState
     }
 
     private sealed record PriceItemReference(string Id, RuntimeItemRule Rule);
+
+    private sealed record PriceInvocation(ScriptProgram[] Programs, PriceProgramCheck[] Checks, int PlanCount, bool HasPlan,
+        ScriptHostBindings Providers);
+
+    /// <summary>Setup work charged before a program runs, and its binding checks in declaration order.</summary>
+    private sealed record PriceProgramCheck(long Charge, PriceBindingCheck[] Bindings);
+
+    private readonly record struct PriceBindingCheck(bool Tag, bool Supported, string Name);
 
     private sealed class PriceForecastContext(CampaignTime time, int daysPassed, bool daily, long work)
     {

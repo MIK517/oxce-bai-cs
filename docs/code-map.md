@@ -11,21 +11,21 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 | Project | Files | References |
 | --- | ---: | --- |
-| [Oxce.Benchmarks](#oxcebenchmarks) | 12 | Engine, Formats, Mods, Rendering, Resources, Savegames |
+| [Oxce.Benchmarks](#oxcebenchmarks) | 15 | Engine, Formats, Mods, Rendering, Resources, Savegames |
 | [Oxce.App](#oxceapp) | 3 | Engine, Extensions, Formats, Mods, Platform.Sdl, Rendering, Savegames |
 | [Oxce.Core](#oxcecore) | 8 | - |
 | [Oxce.Engine](#oxceengine) | 16 | Core, Gameplay, Rendering, Resources |
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 150 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 151 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 162 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 163 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 92 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -34,16 +34,19 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Benchmarks
 
-`benchmarks/Oxce.Benchmarks` - 12 files.
+`benchmarks/Oxce.Benchmarks` - 15 files.
 
 ### `Oxce.Benchmarks`
 
 - `CampaignSaveBenchmarks` (class) [CampaignSaveBenchmarks.cs](../benchmarks/Oxce.Benchmarks/CampaignSaveBenchmarks.cs)
+- `CampaignTimeAdvanceBenchmarks` (class) [CampaignTimeAdvanceBenchmarks.cs](../benchmarks/Oxce.Benchmarks/CampaignTimeAdvanceBenchmarks.cs) - Geoscape time advance on public strategic fixtures.
 - `FrozenDictionaryBenchmarks` (class) [FrozenDictionaryBenchmarks.cs](../benchmarks/Oxce.Benchmarks/FrozenDictionaryBenchmarks.cs)
 - `MixerBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
 - `MixerContentionBenchmarks` (class) [MixerBenchmarks.cs](../benchmarks/Oxce.Benchmarks/MixerBenchmarks.cs)
 - `Phase3ContentBenchmarks` (class) [Phase3ContentBenchmarks.cs](../benchmarks/Oxce.Benchmarks/Phase3ContentBenchmarks.cs)
+- `PriceScriptBenchmarks` (class) [PriceScriptBenchmarks.cs](../benchmarks/Oxce.Benchmarks/PriceScriptBenchmarks.cs) - A purchase quote prices every catalog item, so scripted `buyCostItem` prices run once per item.
 - `Program` (class) [Program.cs](../benchmarks/Oxce.Benchmarks/Program.cs)
+- `PublicCampaignFixtures` (internal class) [PublicCampaignFixtures.cs](../benchmarks/Oxce.Benchmarks/PublicCampaignFixtures.cs) - Builds strategic campaigns from the public `strategic-logistics` fixture mod and its `fixtures/public/savegames` overlays, the same input...
 - `RenderingBenchmarks` (class) [RenderingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RenderingBenchmarks.cs)
 - `ResourceRuntimeBenchmarks` (class) [ResourceRuntimeBenchmarks.cs](../benchmarks/Oxce.Benchmarks/ResourceRuntimeBenchmarks.cs)
 - `RuntimeRuleLinkingBenchmarks` (class) [RuntimeRuleLinkingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RuntimeRuleLinkingBenchmarks.cs)
@@ -289,7 +292,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 150 files.
+`src/Oxce.Gameplay` - 151 files.
 
 ### `Oxce.Gameplay`
 
@@ -1043,14 +1046,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 162 files.
+`tests/Oxce.CompatibilityTests` - 163 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>160 test classes</summary>
+<details><summary>161 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1123,6 +1126,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicMissionStrategyTests` ([StrategicMissionStrategyTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionStrategyTests.cs))
 - `StrategicObjectiveBaseSpawnTests` ([StrategicObjectiveBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicObjectiveBaseSpawnTests.cs))
 - `StrategicOperationBaseSpawnTests` ([StrategicOperationBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicOperationBaseSpawnTests.cs))
+- `StrategicPriceInvocationTests` ([StrategicPriceInvocationTests.cs](../tests/Oxce.CompatibilityTests/StrategicPriceInvocationTests.cs))
 - `StrategicProductionCounterForecastTests` ([StrategicProductionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionCounterForecastTests.cs))
 - `StrategicProductionPriceMetadataTests` ([StrategicProductionPriceCountryTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionPriceCountryTests.cs))
 - `StrategicProductionPriceMetadataTests` ([StrategicProductionPriceDamageTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionPriceDamageTests.cs))
@@ -1471,7 +1475,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-infiltration-region](../fixtures/manifests/strategic-infiltration-region.json) | cpp-reference | `savegames/strategic-infiltration-region.expected.json` | `StrategicInfiltrationTests` ([StrategicInfiltrationTests.cs](../tests/Oxce.CompatibilityTests/StrategicInfiltrationTests.cs)) |
 | [strategic-infiltration-repeat](../fixtures/manifests/strategic-infiltration-repeat.json) | cpp-reference | `savegames/strategic-infiltration-repeat.expected.json` | `StrategicInfiltrationRepeatTests` ([StrategicInfiltrationRepeatTests.cs](../tests/Oxce.CompatibilityTests/StrategicInfiltrationRepeatTests.cs)) |
 | [strategic-infiltration](../fixtures/manifests/strategic-infiltration.json) | cpp-reference | `savegames/strategic-infiltration.expected.json` | `StrategicInfiltrationTests` ([StrategicInfiltrationTests.cs](../tests/Oxce.CompatibilityTests/StrategicInfiltrationTests.cs)) |
-| [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
+| [strategic-logistics](../fixtures/manifests/strategic-logistics.json) | cpp-reference | `savegames/strategic-logistics.expected.json` | `PublicCampaignFixtures (benchmark)` ([PublicCampaignFixtures.cs](../benchmarks/Oxce.Benchmarks/PublicCampaignFixtures.cs))<br>`StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | [strategic-mission-base-target](../fixtures/manifests/strategic-mission-base-target.json) | cpp-reference | `savegames/strategic-mission-base-target.expected.json` | `StrategicMissionBaseTargetTests` ([StrategicMissionBaseTargetTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionBaseTargetTests.cs))<br>`StrategicMissionStrategyTests` ([StrategicMissionStrategyTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionStrategyTests.cs)) |
 | [strategic-mission-counter](../fixtures/manifests/strategic-mission-counter.json) | cpp-reference | `savegames/strategic-mission-counter.expected.json` | `StrategicMissionCounterForecastTests` ([StrategicMissionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionCounterForecastTests.cs)) |
 | [strategic-mission-operation](../fixtures/manifests/strategic-mission-operation.json) | cpp-reference | `savegames/strategic-mission-operation.expected.json` | `StrategicMissionInitializationTests` ([StrategicMissionInitializationTests.cs](../tests/Oxce.CompatibilityTests/StrategicMissionInitializationTests.cs)) |
@@ -1528,6 +1532,6 @@ A test is listed when it names the manifest id or its expected file.
 | `mods/rule-operations` | `Phase3ContentCorpusTests` ([Phase3ContentCorpusTests.cs](../tests/Oxce.CompatibilityTests/Phase3ContentCorpusTests.cs))<br>`RulesetCompositionFixtureTests` ([RulesetCompositionFixtureTests.cs](../tests/Oxce.CompatibilityTests/RulesetCompositionFixtureTests.cs)) |
 | `mods/runtime-rule-linking` | `RuntimeRuleLinkingBenchmarks (benchmark)` ([RuntimeRuleLinkingBenchmarks.cs](../benchmarks/Oxce.Benchmarks/RuntimeRuleLinkingBenchmarks.cs))<br>`CompiledResourceDependencyTests` ([CompiledResourceDependencyTests.cs](../tests/Oxce.CompatibilityTests/CompiledResourceDependencyTests.cs))<br>`RuntimeRuleLinkingFixtureTests` ([RuntimeRuleLinkingFixtureTests.cs](../tests/Oxce.CompatibilityTests/RuntimeRuleLinkingFixtureTests.cs))<br>`StartingPersonnelFixtureTests` ([StartingPersonnelFixtureTests.cs](../tests/Oxce.CompatibilityTests/StartingPersonnelFixtureTests.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | `mods/script-content` | `Phase3ContentBenchmarks (benchmark)` ([Phase3ContentBenchmarks.cs](../benchmarks/Oxce.Benchmarks/Phase3ContentBenchmarks.cs)) |
-| `mods/strategic-logistics` | `StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`StrategicReadinessTestContent (helper)` ([StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
+| `mods/strategic-logistics` | `PublicCampaignFixtures (benchmark)` ([PublicCampaignFixtures.cs](../benchmarks/Oxce.Benchmarks/PublicCampaignFixtures.cs))<br>`StrategicLogisticsFixtureTests` ([StrategicLogisticsFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicLogisticsFixtureTests.cs))<br>`StrategicReadinessTestContent (helper)` ([StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs))<br>`InstallationContentLoaderTests` ([InstallationContentLoaderTests.cs](../tests/Oxce.UnitTests/Mods/InstallationContentLoaderTests.cs))<br>`TestFixtures (helper)` ([TestFixtures.cs](../tests/Shared/TestFixtures.cs)) |
 | `mods/terrain-deployment-rules` | `TerrainDeploymentRulesFixtureTests` ([TerrainDeploymentRulesFixtureTests.cs](../tests/Oxce.CompatibilityTests/TerrainDeploymentRulesFixtureTests.cs)) |
 | `mods/typed-rule-replay` | `TypedRuleReplayFixtureTests` ([TypedRuleReplayFixtureTests.cs](../tests/Oxce.CompatibilityTests/TypedRuleReplayFixtureTests.cs)) |

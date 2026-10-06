@@ -536,6 +536,54 @@ steady-state size rather than construction work. The fresh semantic manifest rem
 9,591,410 bytes with SHA-256
 `C52A5EA199A378EA557ACD9E86B87977DB107A81C1A92817ACF421B2C579B02D`.
 
+### Geoscape time-advance and price-script result (2026-10-06)
+
+`CampaignTimeAdvanceBenchmarks` and `PriceScriptBenchmarks` run on public fixtures
+(`strategic-logistics` plus the `strategic-world`/`strategic-hunting` overlays), so they
+need no private data. Time advance is reported per five-second tick over one in-game hour.
+Each scenario is validated outside the timed region: full advance, unchanged actor
+population, and active pursuit or escort formations at the end. The reference performs
+17,280 ticks per in-game day, which at one-day speed is one `geoClockSpeed` frame
+(80 ms by default).
+
+Measured in the Linux VM (2 cores, .NET SDK 10.0.401) with the in-process toolchain and 12
+warmup iterations; absolute values are host-dependent. "Before" is `83b6bb0`.
+
+| Scenario | Before | After | Allocated |
+|---|---:|---:|---:|
+| 32 flying UFOs | 36.8 us/tick | 18.3 us/tick | 6.5 KiB/tick |
+| 128 flying UFOs | 133.4 us/tick | 63.2 us/tick | 26.1 KiB/tick |
+| 32 UFOs, two crafts pursuing | 52.5 us/tick | 21.0 us/tick | 7.0 KiB/tick |
+| 8 leaders with 24 hunter-killer escorts, 5-second speed | 50.0 us/tick | 35.8 us/tick | 25.9 KiB/tick |
+| 8 leaders with 24 hunter-killer escorts, one-day speed | 40.8 us/tick | 26.9 us/tick | 17.6 KiB/tick |
+| Purchase quote, 400 items, one global price event | 795.8 us | 371.2 us | 1.23 MiB -> 169 KiB |
+| Purchase quote, 400 items, one script per item | 696.5 us | 366.4 us | 1.05 MiB -> 156 KiB |
+
+The world preflight recomputed each UFO's waypoint distance and full movement step in
+several independent checks. Status-only checks now skip the movement step, a step reuses
+its distance, and distances are memoized for one preflight pass by the exact coordinate
+bits. The craft-movement preflight evaluates the craft-independent terminal UFO arrival
+once instead of once per pursuing craft. Price invocations cache their ordered programs,
+binding checks and host providers per item and parser, and replay the original setup
+work charges and refusal order.
+
+This addresses audit items P1-P3 and shares the country read operations between price
+and detection callers. P4's reuse of hunting craft facts and candidate buffers remains
+a separate optimization. The behavior is pinned by the existing movement, hunting and
+country-script fixtures; reference methods include `MovingTarget::move/calculateSpeed`,
+`GeoscapeState::time5Seconds/timeAdvance`, `SavedGame::ScriptRegister` and the `Country`
+getters at commit `4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15`.
+
+Windows review validation passed all 3,195 root tests without failures or skips,
+including private corpus, fixture checksums, endurance and allocation gates. Full
+formatting and code-map verification passed. All twelve new benchmark parameter cases
+completed an in-process Dry smoke run; those cold-run timings are not performance
+baselines.
+
+With `IterationSetup`, BenchmarkDotNet runs one invocation per iteration. Use at least ten
+warmup iterations; with three, the hunter-killer escort scenario is still tiering up and
+reports up to three times its steady-state cost.
+
 ### Windows x64 publish-size baseline
 
 The distribution profiles were measured on 2026-09-04 with .NET SDK 10.0.302 on

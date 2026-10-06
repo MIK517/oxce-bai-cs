@@ -49,7 +49,7 @@ internal sealed partial class CampaignWorld
     {
         ufo = ProjectFlightTarget(UfoForFlight(ufo, highest), highest);
         if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying || ufo.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
-            WorldGeometry.Distance(ufo.Position, destination.Position) > WorldGeometry.RadianSpeed(ufo.Speed)) return false;
+            UfoDestinationDistance(ufo) > WorldGeometry.RadianSpeed(ufo.Speed)) return false;
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
         return IsSiteConversion(ufo, ForecastMission(ufo.MissionId, highest), trajectory);

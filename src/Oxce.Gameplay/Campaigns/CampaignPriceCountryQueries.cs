@@ -17,26 +17,13 @@ public sealed partial class CampaignState
         var receiver = args[0].Reference;
         if (name == "Country.getCurrentActivityAlien" && receiver is CountryState && forecast.Time != Time)
             return ScriptBindingResult.Failure("Production prices require world alien-activity forecasts.");
+        if (GeoscapeCountryQueries.IsList(name))
+        {
+            GeoscapeCountryQueries.InvokeList(name, args, _countries);
+            return ScriptBindingResult.Success;
+        }
         switch (name)
         {
-            case "GeoscapeGame.getCountries.init":
-                args[1] = ScriptRuntimeValue.FromScalar(0);
-                args[2] = ScriptRuntimeValue.FromScalar(receiver is null ? 0 : _countries.Count);
-                break;
-            case "GeoscapeGame.getCountries.list":
-                if (receiver is null)
-                {
-                    args[1] = ScriptRuntimeValue.FromScalar(0);
-                    args[2] = ScriptRuntimeValue.FromScalar(0);
-                    args[3] = ScriptRuntimeValue.FromReference(null);
-                }
-                else
-                {
-                    var index = args[1].Scalar;
-                    args[3] = ScriptRuntimeValue.FromReference((uint)index < (uint)_countries.Count ? _countries[index] : null);
-                    args[1] = ScriptRuntimeValue.FromScalar(unchecked(index + 1));
-                }
-                break;
             case "Country.getRuleCountry":
                 var country = receiver as CountryState;
                 var definition = country is null ? null : _content.RuntimeRules.Countries[country.Rule].Value;
@@ -46,13 +33,7 @@ public sealed partial class CampaignState
             default:
                 args[1] = ScriptRuntimeValue.FromScalar(receiver switch
                 {
-                    CountryState owner => name switch
-                    {
-                        "Country.getPact" => owner.Pact ? 1 : 0,
-                        "Country.getCurrentActivityXcom" => owner.ActivityXcom[^1],
-                        "Country.getCurrentActivityAlien" => owner.ActivityAlien[^1],
-                        _ => owner.Funding[^1],
-                    },
+                    CountryState owner => GeoscapeCountryQueries.Value(name, owner),
                     RuntimeCountryRule rule => rule.FundingCap,
                     _ => 0,
                 });

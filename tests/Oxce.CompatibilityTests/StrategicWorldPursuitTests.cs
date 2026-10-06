@@ -353,6 +353,94 @@ public sealed class StrategicWorldPursuitTests
         Reload(content, campaign, 92, "escort.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TerminalArrivalElsewhereSkipsEveryPursuerInTheCraftPass(bool terminal)
+    {
+        // The first pursuer is far from its target and would not arrive; the second sits on it and
+        // would intercept. A terminal arrival by an unrelated, later UFO skips the whole craft pass,
+        // so the answer computed for the first craft must also apply to the second. Without it, the
+        // second craft must still be checked after the first craft's non-arrival.
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = TwoPursuerSnapshot(content, terminal);
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
+        if (!terminal)
+        {
+            AssertTimeBlocked(campaign, "Craft interception requires strategic combat (Phase 6 branch 5).");
+            return;
+        }
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        Assert.Equal(UfoStatus.Destroyed, after.World.Ufos.Single(ufo => ufo.UniqueId == 10).Status);
+        // The skipped craft pass leaves the would-be interceptor on its target, unchanged.
+        var before = snapshot.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP" && craft.Id == 2).Logistics!;
+        var interceptor = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP" && craft.Id == 2).Logistics!;
+        Assert.Equal((before.Longitude, before.Latitude, WorldTargetKind.Ufo),
+            (interceptor.Longitude, interceptor.Latitude, interceptor.Destination!.Kind));
+        Reload(content, campaign, 92, "two-pursuer-terminal.sav");
+    }
+
+    [Fact]
+    public void RepeatedRefusedTicksLeaveNoPreflightStateBehind()
+    {
+        // A refused tick is retried, the cause is removed by a command, and time then advances.
+        // The result must match a campaign that never attempted the refused tick.
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = TwoPursuerSnapshot(content, terminal: false);
+        var retried = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
+        AssertTimeBlocked(retried, "Craft interception requires strategic combat (Phase 6 branch 5).");
+        AssertTimeBlocked(retried, "Craft interception requires strategic combat (Phase 6 branch 5).");
+        var direct = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(92));
+        foreach (var campaign in new[] { retried, direct })
+        {
+            Assert.DoesNotContain(campaign.Execute(new RecallCraft(snapshot.Bases[0].Id, "SHIP", 2)).Events,
+                notification => notification is CampaignActionBlocked);
+            AdvanceUnblocked(campaign, 12);
+        }
+        Assert.Equivalent(direct.Capture(), retried.Capture(), strict: true);
+    }
+
+    private static CampaignSnapshot TwoPursuerSnapshot(RuntimeContent content, bool terminal)
+    {
+        var snapshot = PursuitCampaign(content).Capture();
+        var target = snapshot.World.Ufos[0] with { Speed = 0, Longitude = 0.6, Latitude = 0.3 };
+        // A later UFO of another mission stops on its own waypoint this tick. Its mission is
+        // interrupted only in the terminal case, which destroys the UFO and ends the flight pass.
+        var other = snapshot.World.Ufos[0] with
+        {
+            UniqueId = 10,
+            Id = 4,
+            MissionId = 5,
+            Detected = false,
+            Longitude = 0.9,
+            Latitude = -0.2,
+            Destination = WorldTargetReference.ForWaypoint(0, new(0.9, -0.2)),
+        };
+        var otherMission = snapshot.World.Missions[0] with { Id = 5, Interrupted = terminal };
+        if (!terminal) other = other with { Destination = WorldTargetReference.ForWaypoint(0, new(2.5, -0.2)) };
+        var ship = snapshot.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        var pursuit = new WorldTargetReference(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id,
+            target.Longitude, target.Latitude)
+        { UniqueId = target.UniqueId };
+        var interceptor = ship with
+        {
+            Id = 2,
+            PreservationKey = "",
+            Logistics = ship.Logistics! with { Longitude = target.Longitude, Latitude = target.Latitude, Destination = pursuit },
+        };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Destination = pursuit } });
+        return snapshot.WithNextId("STR_UFO", 5) with
+        {
+            World = snapshot.World with
+            {
+                Missions = [snapshot.World.Missions[0], otherMission],
+                Ufos = [target, other],
+            },
+            Bases = [snapshot.Bases[0] with { Crafts = [.. snapshot.Bases[0].Crafts, interceptor] }, .. snapshot.Bases.Skip(1)],
+        };
+    }
+
     private static CampaignState PursuitCampaign(RuntimeContent content)
     {
         var campaign = CreateUfoTransitCampaign(content, new(1, 1, 1, 1999, 1, 0, 0), "UFO_SCOUT", 2200);

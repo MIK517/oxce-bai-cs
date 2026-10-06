@@ -204,6 +204,7 @@ internal sealed partial class CampaignWorld
     {
         var bases = campaign.BaseStates;
         var possibleRelaunches = 0;
+        bool? terminalUfoArrival = null;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
         {
             var owner = bases[baseIndex];
@@ -226,7 +227,7 @@ internal sealed partial class CampaignWorld
                     return "Airborne craft fuel or takeoff state is out of range.";
                 if (!new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
                     return "Airborne craft coordinates are invalid.";
-                if (CraftArrivalReason(owner, craft, state, highest) is { } arrivalReason) return arrivalReason;
+                if (CraftArrivalReason(owner, craft, state, highest, ref terminalUfoArrival) is { } arrivalReason) return arrivalReason;
             }
             if (highest < CampaignTimeTrigger.OneHour) continue;
             // Transfer::advance/checkup precedes refuelling and auto-patrol relaunch.
