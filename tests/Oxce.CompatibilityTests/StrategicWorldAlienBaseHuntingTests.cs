@@ -379,7 +379,11 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void HiddenRelaunchLeaderSpeedCannotBypassBaseHuntingPreflight(bool cache, bool consumed)
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void HiddenRelaunchLeaderSpeedCannotBypassBaseHuntingPreflight(bool cache, bool consumed, bool independent = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
@@ -415,6 +419,15 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             }
         };
         initial = initial with { Bases = [owner with { Crafts = [leader, escort], Soldiers = [] }] };
+        if (independent)
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            {
+                Longitude = 0.2, Latitude = 0.1,
+                Crafts = [leader, escort with { Logistics = escort.Logistics! with { Fuel = 100, Destination = null } }],
+            }]
+            };
         if (consumed) initial = initial with
         {
             Bases = [initial.Bases[0] with

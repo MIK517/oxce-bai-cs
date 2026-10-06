@@ -34,6 +34,7 @@ internal sealed partial class CampaignWorld
         _huntingCraftForecast = null;
         _huntingCraftSources = null;
         _baseHuntingCraftPopulationBound = null;
+        _baseHuntingCraftRemovalTypes = null;
         _newbornNoTargetProofs.Clear();
         _newbornSafeHuntingProofs.Clear();
         ResetEscortFlightPositions();
