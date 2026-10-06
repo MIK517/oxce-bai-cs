@@ -23,11 +23,25 @@ public sealed partial class CampaignState
             if (!forecast.CountryAlienActivity.TryGetValue(projectedCountry, out var activity))
             {
                 var work = forecast.Work;
-                var reason = WorldActivityPreflight.CountryAfterDailyProgress(projectedCountry, null, null,
+                var reason = WorldActivityPreflight.CountryAfterDailyProgress(projectedCountry,
+                    forecast.CompletedResearch ?? forecast.GuaranteedResearch,
+                    forecast.CompletedResearch is null ? forecast.PossibleResearch : null,
                     ref work, out activity, out var needsResearch);
                 forecast.Work = work;
                 if (reason is not null) return ScriptBindingResult.Failure(reason);
-                if (needsResearch) return ScriptBindingResult.Failure("Production prices require alien-base deletion forecasts.");
+                if (needsResearch)
+                {
+                    if (PreparePriceResearchForecast(forecast) is { } researchReason)
+                        return ScriptBindingResult.Failure(researchReason);
+                    work = forecast.Work;
+                    reason = WorldActivityPreflight.CountryAfterDailyProgress(projectedCountry,
+                        forecast.CompletedResearch ?? forecast.GuaranteedResearch,
+                        forecast.CompletedResearch is null ? forecast.PossibleResearch : null,
+                        ref work, out activity, out needsResearch);
+                    forecast.Work = work;
+                    if (reason is not null) return ScriptBindingResult.Failure(reason);
+                    if (needsResearch) return ScriptBindingResult.Failure("Production prices require alien-base deletion forecasts.");
+                }
                 forecast.CountryAlienActivity.Add(projectedCountry, activity);
             }
             args[1] = ScriptRuntimeValue.FromScalar(activity);
