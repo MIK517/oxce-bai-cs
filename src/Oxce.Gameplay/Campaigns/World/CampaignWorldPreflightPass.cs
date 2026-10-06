@@ -50,6 +50,8 @@ internal sealed partial class CampaignWorld
         // checks that run before it never read these values.
         public Dictionary<int, UfoSnapshot>? RetargetForecast;
         public readonly List<WorldHuntCraft> HuntingCandidates = [];
+        public readonly Dictionary<CampaignState.CraftState, HuntingCraftFacts> HuntingFacts =
+            new(ReferenceEqualityComparer.Instance);
         public Dictionary<int, UfoSnapshot>? NewLeaderFlightForecast;
         public int PossibleHuntMarkerIds;
         public long HuntingForecastWork;
@@ -88,6 +90,7 @@ internal sealed partial class CampaignWorld
         {
             RetargetForecast = null;
             HuntingCandidates.Clear();
+            HuntingFacts.Clear();
             NewLeaderFlightForecast = null;
             PossibleHuntMarkerIds = 0;
             HuntingForecastWork = 0;
