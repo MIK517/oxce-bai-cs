@@ -18,17 +18,21 @@ internal sealed partial class CampaignWorld
         var mission = MissionAfterDailyResearch(saved, _dailyResearchForecast);
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        if (rule.Objective != RuntimeMissionObjective.Score ||
+        if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Infiltration or
+                RuntimeMissionObjective.Base or RuntimeMissionObjective.Site or RuntimeMissionObjective.Supply) ||
             IsOver(mission, rule) || mission.Interrupted || mission.NextWave >= rule.Waves.Count ||
             mission.SpawnCountdown > 30 || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra)
             return null;
         foreach (var step in DueWaveSteps(mission, rule))
         {
-            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            work += 3L * _alienBases.Count + 1;
+            if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             var wave = SpawnWave(step, rule);
             if (!CanAdvanceWaveCounters(step, rule, wave)) return null;
+            if (CanAdvanceNoObjectWave(step, rule)) continue;
             if (wave.Ufo is not { } handle) continue;
-            var percentage = wave.HunterKillerPercentage == -1 ? rules.Ufos[handle].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
+            var percentage = rule.Objective == RuntimeMissionObjective.Supply && wave.Objective ? 0 :
+                wave.HunterKillerPercentage == -1 ? rules.Ufos[handle].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
             if (percentage >= 100) continue;
             // A prior stochastic ordinary birth can change the first leader.
             if (percentage > 0 || wave.Trajectory is not { } trajectory) return null;

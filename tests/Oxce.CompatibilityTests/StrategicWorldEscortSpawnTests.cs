@@ -672,6 +672,103 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void NonRetaliationObjectivesForecastTheirFirstOrdinaryLeader(bool cache, int objective)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
+        Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "supplyRows"));
+        var content = Load(cache, $$"""
+            alienMissions:
+              - type: IDLE_OBJECTIVE_LEADER
+                objective: {{objective}}
+                operationType: 1
+                waves:
+                  - {ufo: ESCORT_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000, hunterKillerPercentage: {{(objective == 5 ? 100 : 0)}}, objective: {{(objective == 5 ? "true" : "false")}}}
+                  - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}
+            """);
+        var initial = IdleEscortSnapshot(content, "IDLE_OBJECTIVE_LEADER");
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBases = [new(2, "ALIEN_BASE_DEPLOY", "RACE_A", 0.2, 0.1)],
+                Missions = [initial.World.Missions[0] with
+            { AlienBase = new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 2, 0.2, 0.1) }],
+                Ufos = [initial.World.Ufos[0] with { TrajectoryPoint = 2,
+            Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) }],
+            }
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "objective-leader-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var source = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == 9);
+        var leader = Assert.Single(campaign.Capture().World.Ufos, ufo => !ufo.HunterKiller);
+        Assert.Equal(leader.UniqueId, source.Destination!.UniqueId);
+        Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, new(0.2, 0.1), WorldGeometry.RadianSpeed(2200)), source.Position);
+        Assert.Equal(2, source.TrajectoryPoint);
+        Assert.Single(campaign.Capture().World.AlienBases);
+        Assert.Empty(campaign.Capture().World.MissionSites);
+        campaign = Reload(content, campaign, 81, "objective-leader-after.sav");
+        AdvanceUnblocked(campaign, 1);
+        Reload(content, campaign, 81, "objective-leader-following.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void SuppressedSupplyBirthCannotBecomeAPhantomLeader(bool cache, bool immediateFollower)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "supplyRows"), row =>
+            row[0].GetInt32() == 1 && row[1].GetInt32() == 1 && row[2].GetInt32() == 0 && row[4].GetInt32() == 0);
+        var content = Load(cache, $$"""
+            alienMissions:
+              - type: SUPPRESSED_IDLE_LEADER
+                objective: 5
+                operationType: 1
+                waves:
+                  - {ufo: ESCORT_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0, hunterKillerPercentage: 100, objective: true}
+                  - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: {{(immediateFollower ? 0 : 9000)}}}
+            """);
+        var initial = IdleEscortSnapshot(content, "SUPPRESSED_IDLE_LEADER").WithNextId("STR_UFO_UNIQUE", 41);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Ufos = [initial.World.Ufos[0] with
+        { TrajectoryPoint = 2, Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) }]
+            }
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "suppressed-leader-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        if (immediateFollower)
+        {
+            var leader = Assert.Single(campaign.Capture().World.Ufos, ufo => !ufo.HunterKiller);
+            Assert.Equal(41, leader.UniqueId);
+            var source = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == 9);
+            Assert.Equal(leader.UniqueId, source.Destination!.UniqueId);
+            Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, new(Degrees(10), Degrees(8)),
+                WorldGeometry.RadianSpeed(2200)), source.Position);
+        }
+        else
+        {
+            Assert.Equal(41, campaign.Capture().NextIds["STR_UFO_UNIQUE"]);
+            Assert.DoesNotContain(campaign.Capture().World.Ufos, ufo => ufo.Escorting || !ufo.HunterKiller);
+        }
+        campaign = Reload(content, campaign, 81, "suppressed-leader-after.sav");
+        AdvanceUnblocked(campaign, 1);
+        Reload(content, campaign, 81, "suppressed-leader-following.sav");
+    }
+
+    [Theory]
     [InlineData(false, false, 1)]
     [InlineData(true, false, 1)]
     [InlineData(false, true, 2)]
