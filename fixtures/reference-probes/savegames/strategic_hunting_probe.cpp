@@ -1152,5 +1152,17 @@ Item item; item.sellCost=7; ProductionItemRule rule; rule.produced={{&item,2}}; 
 const auto price=item.getSellCostAdjusted(&base,&save); delivery.deliver(&base,&save);
 std::cout << '[' << mode << ',' << daily << ',' << researched << ',' << save.priceSecond << ',' << save.priceHour << ',' << save.priceDays << ',' << save.priceMonths << ',' << save.priceDifficulty << ',' << price << ',' << save.funds << ']';
 }
+std::cout << "],\"correlatedLeaderOrderRows\":["; first=true;
+for(bool firstHunter:{false,true}) for(bool same:{false,true}) {
+if(!first) std::cout << ','; first=false;
+Ufo source,early,late; source._isHunterKiller=true; source._isEscort=true; source.speed=550;
+source._dest=new Waypoint(); source._dest->lon=1; source._dest->lat=0.6;
+early._isHunterKiller=firstHunter; early.uniqueId=10; early.lon=0.7; early.lat=0.3;
+late.uniqueId=11; late.lon=same?0.7:0.8; late.lat=0.3;
+SavedGame game; game.ufos={&source,&early,&late}; retargetEscort(&source,game);
+auto* target=dynamic_cast<Ufo*>(source._dest);
+std::cout << '[' << (firstHunter?"true":"false") << ',' << (same?"true":"false") << ',' << target->uniqueId << ',' << target->lon << ',' << target->lat << ',' << source.speed << ']';
+delete source._origWaypoint;
+}
 std::cout << "]}\n";
 }
