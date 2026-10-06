@@ -118,6 +118,7 @@ public sealed partial class CampaignState
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleItem" or "RuleMod.getRuleResearch" or
         "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" or
+        "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits" or "RuleMod.getSmokeReduction" or
         "RuleItem.getType" or "RuleItem.hasCategory" or "Time.getDay" or "Time.getMonth" or
         "Time.getYear" or "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
@@ -130,6 +131,13 @@ public sealed partial class CampaignState
         }
         if (binding.Name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokePriceTag(binding, args, forecast);
         var name = binding.Name;
+        if (name == "RuleMod.getSmokeReduction")
+        {
+            if (args[0].Reference is not RuntimeRuleCatalog)
+                return ScriptBindingResult.Failure("Price smoke reduction requires a nonnull Mod receiver.");
+            args[1] = ScriptRuntimeValue.FromScalar(unchecked(args[1].Scalar * _content.RuntimeRules.Campaign.MaximumViewDistance) / 60);
+            return ScriptBindingResult.Success;
+        }
         if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } &&
             args[0].Reference is not null && args[2].Reference is string queriedResearch)
         {
@@ -213,6 +221,8 @@ public sealed partial class CampaignState
                 args[1] = ScriptRuntimeValue.FromScalar(args[0].Reference is null ? 0 : name switch
                 {
                     "GeoscapeGame.difficultyLevel" => (int)Difficulty,
+                    "RuleMod.getMaxViewDistance" => _content.RuntimeRules.Campaign.MaximumViewDistance,
+                    "RuleMod.getMaxDarknessToSeeUnits" => _content.RuntimeRules.Campaign.MaximumDarknessToSeeUnits,
                     "GeoscapeGame.getDaysPassed" => forecast?.DaysPassed ?? DaysPassed,
                     "GeoscapeGame.getMonthsPassed" => MonthsPassed,
                     "GeoscapeGame.isResearched" => args[2].Reference is string research && _completedResearch.Contains(research) ? 1 : 0,
