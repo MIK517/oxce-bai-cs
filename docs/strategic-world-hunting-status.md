@@ -2,6 +2,18 @@
 
 Branch 4c. Pinned reference: 4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15.
 
+## Candidate storage and craft fact reuse (2026-10-07)
+
+Retarget selection reuses separate preflight and execution candidate buffers.
+Each hunter replaces the saved-order contents, and selection releases its
+references immediately. Existing native `strategic-hunting` selection/attraction
+rows and fresh/cache mixed-mode, recall and reload scenarios verify the boundary.
+Reference: `GeoscapeState::ufoHuntingAndEscorting/updateActiveCrafts`,
+`Craft::getHunterKillerAttraction` and `Ufo::insideRadarRange` at the pinned commit.
+All 456 focused cases pass (454 existing cases plus two corrected fresh/cache
+transition cases). Hunter-independent fact caching and populated acceptance
+follow in this cycle.
+
 Current maintenance composition supports repairs, deterministic craft/facility ammunition,
 ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
 forecasts cover stock-free completions, held-item refunds, global obsolete
