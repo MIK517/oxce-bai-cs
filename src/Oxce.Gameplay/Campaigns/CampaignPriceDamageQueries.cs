@@ -7,16 +7,25 @@ namespace Oxce.Gameplay.Campaigns;
 public sealed partial class CampaignState
 {
     private static bool PriceDamageQuerySupported(string name) =>
-        name is "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" || WorldDetectionDamageQueries.IsClassification(name);
+        name is "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" || WorldDetectionDamageQueries.IsClassification(name) ||
+        name != "RuleDamageType.getRandomDamage" && WorldDetectionDamageQueries.Supports(name);
 
     private static ScriptBindingResult InvokePriceDamageQuery(string name, Span<ScriptRuntimeValue> args)
     {
         if (name is "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType")
             args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is PriceItemReference item
                 ? name == "RuleItem.getDamageType" ? item.Rule.Damage : item.Rule.MeleeDamage : null);
-        else
+        else if (WorldDetectionDamageQueries.IsClassification(name))
             args[1] = ScriptRuntimeValue.FromScalar(args[0].Reference is RuntimeItemDamageRule damage
                 ? WorldDetectionDamageQueries.Classification(name, damage) : 0);
+        else
+        {
+            var value = args[0].Reference is RuntimeItemDamageRule profile
+                ? WorldDetectionDamageQueries.Result(name, profile, args.Length > 2 ? args[2].Scalar : 0) : 0;
+            if (!WorldDetectionDamageQueries.InIntegerRange(value))
+                return ScriptBindingResult.Failure("Price damage query exceeds the supported integer range.");
+            args[1] = ScriptRuntimeValue.FromScalar((int)value);
+        }
         return ScriptBindingResult.Success;
     }
 }
