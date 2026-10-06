@@ -8,7 +8,7 @@ public sealed partial class CampaignState
 {
     private static bool PriceDamageQuerySupported(string name) =>
         name is "RuleItem.getDamageType" or "RuleItem.getMeleeDamageType" || WorldDetectionDamageQueries.IsClassification(name) ||
-        name != "RuleDamageType.getRandomDamage" && WorldDetectionDamageQueries.Supports(name);
+        WorldDetectionDamageQueries.Supports(name);
 
     private static ScriptBindingResult InvokePriceDamageQuery(string name, Span<ScriptRuntimeValue> args)
     {
@@ -18,6 +18,13 @@ public sealed partial class CampaignState
         else if (WorldDetectionDamageQueries.IsClassification(name))
             args[1] = ScriptRuntimeValue.FromScalar(args[0].Reference is RuntimeItemDamageRule damage
                 ? WorldDetectionDamageQueries.Classification(name, damage) : 0);
+        else if (name == "RuleDamageType.getRandomDamage")
+        {
+            // Native wrapper does not inspect power or consume RNG when either pointer is null.
+            if (args[0].Reference is not null && args[3].Reference is not null)
+                return ScriptBindingResult.Failure("Price random damage requires a null profile or null state.");
+            args[1] = ScriptRuntimeValue.FromScalar(0);
+        }
         else
         {
             var value = args[0].Reference is RuntimeItemDamageRule profile
