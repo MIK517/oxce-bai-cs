@@ -7,7 +7,7 @@ using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
-public sealed class StrategicProductionPriceMetadataTests
+public sealed partial class StrategicProductionPriceMetadataTests
 {
     [Theory]
     [InlineData(false, false)]
