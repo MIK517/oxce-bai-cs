@@ -97,6 +97,15 @@ mechanical translations with no executable acceptance test.
 - Do not lower test strictness just because they fail, consider wheter it weakens the coverage first
 - Run formatting and checksum tests before major branch push
 
+## Documentation ownership
+
+- Record each fact once and link to it elsewhere; do not copy paragraphs between documents.
+- Phase 6 world work: subsystem slices, audits and evidence belong in the matching
+  `docs/strategic-*-status.md`; cross-cutting checkpoints, current scope and remaining guards
+  belong in the Progress section of `docs/phase-6-world-integration-plan.md`.
+  `docs/phase-6-ownership.md` keeps the ownership and fixture ledger, and
+  `docs/implementation-plan.md` keeps phase-level status; both link to those records.
+
 ## Completion standard
 
 A subsystem is not complete because it compiles. It is complete when its agreed
