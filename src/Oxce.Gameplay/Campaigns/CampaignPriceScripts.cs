@@ -1,7 +1,7 @@
 using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.Scripting.Compilation;
-using Oxce.Scripting.Events;
 using Oxce.Scripting.Runtime;
 using Oxce.Scripting;
 
@@ -25,16 +25,19 @@ public sealed partial class CampaignState
         var artifact = rule.Scripts.Select(h => _content.RuntimeRules.Scripts[h].Value.Artifact).FirstOrDefault(a => a.ParserName == parser);
         var plan = _content.EventPlans.FirstOrDefault(p => p.ParserName == parser)?.Plan;
         if (artifact is null && plan is null) return adjusted;
+        // Current-price callers have the same bounded, read-only execution as
+        // future production callers, with today's clock and research answers.
+        forecast ??= new(Time, DaysPassed, false, 0);
         var program = artifact?.Program ?? PriceDefault(parser);
         var programs = (plan?.Before.Select(e => e.Program) ?? []).Append(program).Concat(plan?.After.Select(e => e.Program) ?? []);
         // Native getTime returns one pointer throughout this price invocation,
         // including its before/current/after programs. Box the value only once.
-        object timeReference = forecast?.Time ?? Time;
+        object timeReference = forecast.Time;
         var builder = new ScriptHostBindingsBuilder();
         var seen = new HashSet<int>();
         foreach (var candidate in programs)
         {
-            if (forecast is not null && (forecast.Work += 1L + candidate.Bindings.Count) > 1_000_000)
+            if ((forecast.Work += 1L + candidate.Bindings.Count) > 1_000_000)
             {
                 unavailable = "Production price forecasts exceed the supported work limit.";
                 return adjusted;
@@ -59,45 +62,32 @@ public sealed partial class CampaignState
         _priceOutput[0] = ScriptRuntimeValue.FromScalar(adjusted);
         try
         {
-            if (forecast is not null)
+            if ((plan?.Count ?? 0) + 1 > ScriptLimits.DefaultMaximumEventExecutions)
             {
-                if ((plan?.Count ?? 0) + 1 > ScriptLimits.DefaultMaximumEventExecutions)
-                {
-                    unavailable = "Production price forecasts exceed the supported event limit.";
-                    return adjusted;
-                }
-                foreach (var candidate in programs)
-                {
-                    var remaining = 1_000_000 - forecast.Work;
-                    if (remaining <= 0)
-                    {
-                        unavailable = "Production price forecasts exceed the supported work limit.";
-                        break;
-                    }
-                    var options = new ScriptExecutionOptions { MaximumSteps = (int)Math.Min(remaining, ScriptExecutionOptions.Default.MaximumSteps) };
-                    var result = ScriptVm.ExecuteWithInputs(candidate, _priceOutput, _priceInputs, _priceOutput, _priceFrame, options, providers);
-                    forecast.Work += result.Steps;
-                    if (forecast.Work > 1_000_000)
-                    {
-                        unavailable = "Production price forecasts exceed the supported work limit.";
-                        break;
-                    }
-                    if (!result.Succeeded)
-                    {
-                        unavailable = $"Price {(plan is null ? "script" : "event")} failed: {result.FailureMessage ?? result.DiagnosticCode}.";
-                        break;
-                    }
-                }
+                unavailable = "Production price forecasts exceed the supported event limit.";
+                return adjusted;
             }
-            else if (plan is null)
+            foreach (var candidate in programs)
             {
-                var result = ScriptVm.ExecuteWithInputs(program, _priceOutput, _priceInputs, _priceOutput, _priceFrame, hostBindings: providers);
-                if (!result.Succeeded) unavailable = $"Price script failed: {result.FailureMessage ?? result.DiagnosticCode}.";
-            }
-            else
-            {
-                var result = ScriptEventRunner.Execute(plan, program, _priceOutput, _priceOutput, _priceFrame, hostBindings: providers, inputs: _priceInputs);
-                if (!result.Succeeded) unavailable = $"Price event failed: {result.FailureMessage ?? result.DiagnosticCode}.";
+                var remaining = 1_000_000 - forecast.Work;
+                if (remaining <= 0)
+                {
+                    unavailable = "Production price forecasts exceed the supported work limit.";
+                    break;
+                }
+                var options = new ScriptExecutionOptions { MaximumSteps = (int)Math.Min(remaining, ScriptExecutionOptions.Default.MaximumSteps) };
+                var result = ScriptVm.ExecuteWithInputs(candidate, _priceOutput, _priceInputs, _priceOutput, _priceFrame, options, providers);
+                forecast.Work += result.Steps;
+                if (forecast.Work > 1_000_000)
+                {
+                    unavailable = "Production price forecasts exceed the supported work limit.";
+                    break;
+                }
+                if (!result.Succeeded)
+                {
+                    unavailable = $"Price {(plan is null ? "script" : "event")} failed: {result.FailureMessage ?? result.DiagnosticCode}.";
+                    break;
+                }
             }
             return _priceOutput[0].Scalar;
         }
@@ -114,11 +104,11 @@ public sealed partial class CampaignState
         return program;
     }
 
-    private static bool PriceBindingSupported(string name) => name is
+    private static bool PriceBindingSupported(string name) => WorldDetectionItemQueries.Supports(name) || name is
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleItem" or "RuleMod.getRuleResearch" or
         "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" or
-        "RuleItem.getType" or "RuleItem.getWeight" or "RuleItem.getBattleType" or "Time.getDay" or "Time.getMonth" or
+        "RuleItem.getType" or "RuleItem.hasCategory" or "Time.getDay" or "Time.getMonth" or
         "Time.getYear" or "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
     private ScriptBindingResult InvokePriceBinding(string name, Span<ScriptRuntimeValue> args, PriceForecastContext? forecast, object timeReference)
@@ -164,6 +154,18 @@ public sealed partial class CampaignState
             return ScriptBindingResult.Success;
         }
         var item = args[0].Reference as PriceItemReference;
+        if (WorldDetectionItemQueries.Supports(name))
+        {
+            args[1] = ScriptRuntimeValue.FromScalar(item is null ? 0 : WorldDetectionItemQueries.Value(name, item.Rule));
+            return ScriptBindingResult.Success;
+        }
+        if (name == "RuleItem.hasCategory")
+        {
+            if (forecast is not null && (forecast.Work += item?.Rule.Categories.Count ?? 0) > 1_000_000)
+                return ScriptBindingResult.Failure("Production price category queries exceed the supported work limit.");
+            args[1] = ScriptRuntimeValue.FromScalar(item?.Rule.Categories.Contains(args[2].Text ?? "", StringComparer.Ordinal) == true ? 1 : 0);
+            return ScriptBindingResult.Success;
+        }
         var researchRule = args[0].Reference is string topic && _content.RuntimeRules.Research.TryGet(topic, out var researchHandle)
             ? _content.RuntimeRules.Research[researchHandle].Value : null;
         var time = args[0].Reference is CampaignTime value ? value : (CampaignTime)timeReference;
