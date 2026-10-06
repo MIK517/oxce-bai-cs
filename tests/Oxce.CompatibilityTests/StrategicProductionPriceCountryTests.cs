@@ -1,11 +1,62 @@
 using Oxce.Gameplay.Campaigns;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicProductionPriceMetadataTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void PriceCountryPactsAndXcomHistoriesStayStableBeforeMonthRollover(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "countryList");
+        var code = "var int count; var int value; var ptr Country absent null; " +
+            "absent.getPact value; if neq value 0; div cost_current 0; end; absent.getCurrentActivityXcom value; " +
+            "if neq value 0; div cost_current 0; end; loop var country geoscape_game.getCountries.list; ";
+        for (var index = 0; index < 2; index++)
+            code += $"if eq count {index}; country.getPact value; if neq value {rows[index][5].GetInt32()}; div cost_current 0; end; " +
+                $"country.getCurrentActivityXcom value; if neq value {rows[index][4].GetInt32()}; div cost_current 0; end; end; ";
+        code += "add count 1; end; if neq count 2; div cost_current 0; end; return 7;";
+        AssertPrice(Load(cache, global, code, extraRules: "countries: [{type: PRICE_COUNTRY_A}, {type: PRICE_COUNTRY_B}]"), snapshot: PriceCountries);
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void CurrentAlienActivityPricesExecuteAndOnlyConsumedFutureQueriesBlock(bool cache, bool global, bool consumed)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var rows = TestFixtures.Rows(oracle.RootElement, "countryList");
+        var code = "var int count; var int value; var ptr Country absent null; absent.getCurrentActivityAlien value; " +
+            "if neq value 0; div cost_current 0; end; loop var country geoscape_game.getCountries.list; " +
+            $"if eq 1 {(consumed ? 1 : 0)}; ";
+        for (var index = 0; index < 2; index++)
+            code += $"if eq count {index}; country.getCurrentActivityAlien value; if neq value {rows[index][3].GetInt32()}; div cost_current 0; end; end; ";
+        code += "end; add count 1; end; return 7;";
+        var content = Load(cache, global, code, extraRules: "countries: [{type: PRICE_COUNTRY_A}, {type: PRICE_COUNTRY_B}]");
+        var campaign = Reload(content, Create(content, initial => PriceStock(PriceCountries(initial))), 81, "country-current-price.sav");
+        var before = campaign.Capture();
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(before.Bases[0].Id, LogisticsOperation.Sell)).Events)).Quote;
+        Assert.Equal(7, Assert.Single(quote.Rows, row => row.RuleId == "PRICE_META_ITEM").UnitCost);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        if (consumed) AssertTimeBlocked(campaign,
+            $"Price {(global ? "event" : "script")} failed: Script binding 'Country.getCurrentActivityAlien' failed: Production prices require world alien-activity forecasts..");
+        else AssertPrice(content, snapshot: PriceCountries);
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]

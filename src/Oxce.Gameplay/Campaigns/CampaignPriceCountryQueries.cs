@@ -9,11 +9,14 @@ public sealed partial class CampaignState
 
     private static bool PriceCountryQuerySupported(string name) => name is
         "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list" or
-        "Country.getRuleCountry" or "Country.getCurrentFunding" or "RuleCountry.getFundingCap";
+        "Country.getRuleCountry" or "Country.getCurrentFunding" or "RuleCountry.getFundingCap" or
+        "Country.getPact" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien";
 
-    private ScriptBindingResult InvokePriceCountryQuery(string name, Span<ScriptRuntimeValue> args)
+    private ScriptBindingResult InvokePriceCountryQuery(string name, Span<ScriptRuntimeValue> args, PriceForecastContext forecast)
     {
         var receiver = args[0].Reference;
+        if (name == "Country.getCurrentActivityAlien" && receiver is CountryState && forecast.Time != Time)
+            return ScriptBindingResult.Failure("Production prices require world alien-activity forecasts.");
         switch (name)
         {
             case "GeoscapeGame.getCountries.init":
@@ -43,7 +46,13 @@ public sealed partial class CampaignState
             default:
                 args[1] = ScriptRuntimeValue.FromScalar(receiver switch
                 {
-                    CountryState owner => owner.Funding[^1],
+                    CountryState owner => name switch
+                    {
+                        "Country.getPact" => owner.Pact ? 1 : 0,
+                        "Country.getCurrentActivityXcom" => owner.ActivityXcom[^1],
+                        "Country.getCurrentActivityAlien" => owner.ActivityAlien[^1],
+                        _ => owner.Funding[^1],
+                    },
                     RuntimeCountryRule rule => rule.FundingCap,
                     _ => 0,
                 });
