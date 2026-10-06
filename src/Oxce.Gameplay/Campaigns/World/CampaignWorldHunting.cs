@@ -83,6 +83,7 @@ internal sealed partial class CampaignWorld
         if (maximum is < 0 or > int.MaxValue || radar is < int.MinValue or > int.MaxValue)
             return "UFO hunting stats exceed the supported range.";
         var crafts = forecastFuel ? _pass.HuntingCandidates : _huntingCandidates;
+        var factsCache = forecastFuel ? _pass.HuntingFacts : _huntingFacts;
         crafts.Clear();
         foreach (var owner in campaign.BaseStates)
         {
@@ -96,23 +97,25 @@ internal sealed partial class CampaignWorld
                     (rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
                 var original = projected.Hunting && projected.Destination is { } destination &&
                     destination.TypeId == rules.Crafts.GetExternalId(craft.Rule) && destination.Id == craft.Id;
-                var damageMaximum = CraftLogistics.EffectiveDamageMaximum(state, craftRule, rules);
+                var facts = HuntingFactsFor(craft, state, craftRule, factsCache);
+                var damageMaximum = facts.DamageMaximum;
                 var active = state.Status == "STR_OUT" && state.Damage < damageMaximum;
                 if (!active && !original) continue;
-                if (!CraftLogistics.TryEffectiveSpeedMaximum(craftRule, state.Weapons, rules, out var craftSpeed))
+                if (!ReadHuntingSpeed(ref facts, craftRule))
                     return SpeedRangeReason;
                 var ignored = WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete);
                 var attraction = 0;
                 if (!ignored && (original || !craftRule.Undetectable))
                 {
-                    if (!CraftLogistics.TryEffectiveUnitCapacities(craftRule, state.Weapons, rules, out var capacity) ||
+                    if (!ReadHuntingCapacity(ref facts, craftRule) ||
                         damageMaximum is < int.MinValue or > int.MaxValue ||
-                        !WorldHunting.TryAttraction(ufo.HuntMode, craftRule.AllowLanding, capacity.SoldierCapacity,
-                            craftSpeed, state.Damage, (int)damageMaximum, out attraction))
+                        !WorldHunting.TryAttraction(ufo.HuntMode, craftRule.AllowLanding, facts.Units,
+                            facts.Speed, state.Damage, (int)damageMaximum, out attraction))
                         return "Craft hunter attraction exceeds the supported range.";
                 }
-                var reference = new WorldTargetReference(WorldTargetKind.Craft, rules.Crafts.GetExternalId(craft.Rule),
+                var reference = facts.Reference ??= new WorldTargetReference(WorldTargetKind.Craft, rules.Crafts.GetExternalId(craft.Rule),
                     craft.Id, state.Longitude, state.Latitude);
+                factsCache[craft] = facts;
                 crafts.Add(new(reference, reference.Position, attraction, ignored, craftRule.Undetectable, active));
             }
         }
@@ -147,6 +150,16 @@ internal sealed partial class CampaignWorld
     }
 
     private void RetargetUfos(CampaignState.TimeEffects effects, bool due)
+    {
+        try { RetargetUfosCore(effects, due); }
+        finally
+        {
+            _huntingFacts.Clear();
+            _huntingCandidates.Clear();
+        }
+    }
+
+    private void RetargetUfosCore(CampaignState.TimeEffects effects, bool due)
     {
         long work = 0;
         for (var index = 0; index < _ufos.Count; index++)

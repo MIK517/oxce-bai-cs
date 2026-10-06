@@ -33,13 +33,13 @@ public sealed partial class StrategicWorldHuntingTests
         };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         int[] expectedTargets = [2, 1, 2];
-        for (var tick = 0; tick < 3; tick++)
+        for (var tick = 0; tick < 6; tick++)
         {
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
             Assert.Equal(expectedTargets, after.World.Ufos.Select(ufo => ufo.Destination!.Id));
             Assert.All(after.World.Ufos, ufo => Assert.True(ufo.Hunting));
-            campaign = Reload(content, campaign, 81, "mixed-hunter-modes.sav");
+            if (tick == 2) campaign = Reload(content, campaign, 81, "mixed-hunter-modes.sav");
         }
         Assert.DoesNotContain(campaign.Execute(new RecallCraft(owner.Id, "HUNT_FAST", 2)).Events,
             item => item is CampaignActionBlocked);

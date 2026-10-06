@@ -11,8 +11,17 @@ rows and fresh/cache mixed-mode, recall and reload scenarios verify the boundary
 Reference: `GeoscapeState::ufoHuntingAndEscorting/updateActiveCrafts`,
 `Craft::getHunterKillerAttraction` and `Ufo::insideRadarRange` at the pinned commit.
 All 456 focused cases pass (454 existing cases plus two corrected fresh/cache
-transition cases). Hunter-independent fact caching and populated acceptance
-follow in this cycle.
+transition cases).
+
+Damage maximum, speed, unit capacity and target reference now reuse immutable
+craft-source facts across hunters within a caller. Speed and capacity remain
+lazy at the original consumed-input checks; attraction, original-target status
+and range still depend on each hunter. Preflight resets at hunting start and
+checks source identity; live execution uses a separate cache cleared in `finally`
+after each retarget invocation. Both ten-minute and five-second calls rebuild
+their live view after preceding handlers. Saved order and every logical work
+charge remain unchanged. The mixed-mode case also steps multiple ticks without
+reload on each side of its persistence boundary. Populated acceptance follows.
 
 Current maintenance composition supports repairs, deterministic craft/facility ammunition,
 ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
