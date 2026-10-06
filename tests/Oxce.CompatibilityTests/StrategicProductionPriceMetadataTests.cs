@@ -98,6 +98,51 @@ public sealed class StrategicProductionPriceMetadataTests
         AssertPrice(content, snapshot: initial => initial with { ScriptValues = [new("PRICE_GAME", "int", value)] });
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ModSettingsAndSmokePreserveNativeSignedArithmetic(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "modSettings"))
+        {
+            var code = "var ptr RuleMod absent null; var int value; rules.getMaxViewDistance value; " +
+                $"if neq value {row[0].GetInt32()}; div cost_current 0; end; rules.getMaxDarknessToSeeUnits value; " +
+                $"if neq value {row[1].GetInt32()}; div cost_current 0; end; " +
+                "absent.getMaxViewDistance value; if neq value 0; div cost_current 0; end; " +
+                "absent.getMaxDarknessToSeeUnits value; if neq value 0; div cost_current 0; end; return 7;";
+            AssertPrice(Load(cache, global, code, extraRules: $"maxViewDistance: {row[0].GetInt32()}\nmaxDarknessToSeeUnits: {row[1].GetInt32()}"));
+        }
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "smokeReduction"))
+            AssertPrice(Load(cache, global, $"var ptr RuleMod alias rules; var int value {row[1].GetInt32()}; " +
+                "alias.getSmokeReduction value; return value;", extraRules: $"maxViewDistance: {row[0].GetInt32()}"), row[2].GetInt32());
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void OnlyConsumedNullModSmokeCallsStopBeforeMutation(bool cache, bool global, bool consumed)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        var code = "var ptr RuleMod absent null; var int value 15; " +
+            $"if eq 1 {(consumed ? 1 : 0)}; absent.getSmokeReduction value; end; return 7;";
+        var content = Load(cache, global, code);
+        if (!consumed) AssertPrice(content);
+        else
+        {
+            var campaign = Reload(content, Create(content), 81, "null-mod-price.sav");
+            AssertTimeBlocked(campaign, $"Price {(global ? "event" : "script")} failed: Script binding 'RuleMod.getSmokeReduction' failed: Price smoke reduction requires a nonnull Mod receiver..");
+        }
+    }
+
     private static RuntimeContent Load(bool cache, bool global, string code, string itemFields = "",
         string extraRules = "", string extraExtended = "", string extraItems = "")
     {
