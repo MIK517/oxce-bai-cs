@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Oxce.CompatibilityTests;
 
-public sealed class StrategicWorldHuntingTests
+public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
     [InlineData(false, false)]

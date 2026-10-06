@@ -62,7 +62,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var deterministicRandom = TryForecastRandomProduction(rule, out var randomItems, ref work);
+                var deterministicRandom = TryForecastRandomProduction(owner, rule, out var randomItems, ref work);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
                 var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
@@ -312,17 +312,32 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private static bool TryForecastRandomProduction(RuntimeManufactureRule rule, out IReadOnlyDictionary<string, int>? items, ref long work)
+    private bool TryForecastRandomProduction(BaseState owner, RuntimeManufactureRule rule,
+        out IReadOnlyDictionary<string, int>? items, ref long work)
     {
         items = null;
-        foreach (var set in rule.RandomProducedItems)
+        if (rule.RandomProducedItems.Count == 0) return true;
+        var rules = _content.RuntimeRules;
+        HashSet<RuleHandle<ItemRuleFamily>> sensitive = [];
+        foreach (var craft in rules.Crafts.Rules)
         {
-            work += 1L + set.Items.Count;
-            if (work > 1_000_000) return false;
-            if (set.Weight == 0) continue;
-            if (items is null) items = set.Items;
-            else if (!items.SequenceEqual(set.Items)) return false;
+            if (++work > 1_000_000) return false;
+            if (craft.Value.RefuelItem is { } fuel) sensitive.Add(fuel);
         }
-        return true;
+        foreach (var project in owner.Productions)
+        {
+            var product = rules.Manufacture[project.Rule].Value;
+            work += 1L + product.RequiredMaterials.Count;
+            if (work > 1_000_000) return false;
+            foreach (var material in product.RequiredMaterials)
+                if (material.Item is { } item && material.Quantity > 0) sensitive.Add(item);
+        }
+        var immediate = rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0;
+        return ProductionOutputEnvelope.TryCreate(rule.RandomProducedItems, id =>
+        {
+            var item = rules.Items.GetRequired(id);
+            var definition = rules.Items[item].Value;
+            return immediate && definition.BattleType != 0 && !definition.IsAlien && !sensitive.Contains(item);
+        }, ref work, out items);
     }
 }
