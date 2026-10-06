@@ -38,6 +38,15 @@ All twelve in-process Dry time-advance smoke cases pass. BenchmarkDotNet's optio
 CPU metadata query reported a sandbox CIM denial during export; benchmark
 execution and allocation reporting completed, and no host changes were made.
 
+Batch audit reviewed source identity, consumed-only lazy fields, original-target
+exceptions, mixed modes, saved order, work charges, both live retarget positions
+in the tick, cache release and exact coordinate bits. No additional confirmed
+defect was found. All 3,201 root tests pass with zero failures/skips, including
+native checksums, private classifications, endurance and existing allocation
+gates. Full formatting, code-map and diff checks pass; the Release benchmark
+build has no warnings. Useful measurement files and benchmark reports remain;
+no native probe or host configuration changes were made.
+
 Current maintenance composition supports repairs, deterministic craft/facility ammunition,
 ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
 forecasts cover stock-free completions, held-item refunds, global obsolete

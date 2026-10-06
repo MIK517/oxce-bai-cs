@@ -63,6 +63,12 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-07 hunting performance cycle: three slices and their batch audit close
+  the candidate/fact reuse and populated selection acceptance work. See
+  [evidence and validation](strategic-world-hunting-status.md#candidate-storage-and-craft-fact-reuse-2026-10-07).
+  The 4c headless gate remains open for mission-generation/uncertainty projections
+  and branch-wide reconciliation. Later-branch guards and 4d are unchanged.
+
 - Opening plan/scope commit: `b06cb39`.
 - Event scheduling slice: runtime timer projections, transaction-owned research/manufacturing
   scheduling, generated history, countdowns/interrupted cleanup and due-payload guards.
