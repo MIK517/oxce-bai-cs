@@ -11,6 +11,40 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DelayedVariantReservationsUseActualTransferCardinality(bool cache)
+    {
+        var content = Load(cache, VariantProductionRules(0, 2));
+        var initial = VariantProductionSnapshot(content, false);
+        initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue - 3 } };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Equal(3, after.Bases[0].Transfers.Count);
+        Assert.Equal(int.MaxValue, after.NextIds["oxcePortTransfer"]);
+        Reload(content, campaign, 81, "variant-transfer-range.sav");
+        initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue - 2 } };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Production arrivals exhaust the transfer identity range.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DelayedVariantArrivalUpperBoundsIncludePendingStock(bool cache)
+    {
+        var content = Load(cache, VariantProductionRules(0, 2));
+        var initial = VariantProductionSnapshot(content, false);
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with { Transfers = [new(17, 4, CampaignTransferKind.Item, "INERT_A", int.MaxValue)] }],
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "Production arrivals exceed the supported quantity range.");
+    }
+
+    [Theory]
     [InlineData(false, "fuel")]
     [InlineData(true, "fuel")]
     [InlineData(false, "material")]
@@ -40,15 +74,17 @@ public sealed partial class StrategicWorldHuntingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void InertRandomOutputsPreserveNativeFuelAndRealHistory(bool cache)
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void InertRandomOutputsPreserveNativeFuelAndRealHistory(bool cache, int delay)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var rows = TestFixtures.Rows(oracle.RootElement, "productionVariantRows").Where(row => row[1].GetInt32() == 0).ToArray();
+        var rows = TestFixtures.Rows(oracle.RootElement, "productionVariantRows").Where(row => row[1].GetInt32() == delay).ToArray();
         foreach (var variant in rows.GroupBy(row => row[2].GetInt32()))
         {
-            var content = Load(cache, VariantProductionRules(variant.Key, 0));
+            var content = Load(cache, VariantProductionRules(variant.Key, delay));
             foreach (var sell in new[] { false, true })
             {
                 HashSet<int> selected = [];
@@ -60,7 +96,8 @@ public sealed partial class StrategicWorldHuntingTests
                     Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
                     var progress = Assert.Single(result.Events.OfType<CampaignProductionProgress>());
                     var after = campaign.Capture();
-                    var history = Assert.Single(after.Bases[0].Productions).RandomProductionInfo;
+                    var history = after.Bases[0].Productions.Count != 0 ? Assert.Single(after.Bases[0].Productions).RandomProductionInfo
+                        : after.Bases[0].Transfers.GroupBy(transfer => transfer.RuleId).ToDictionary(group => group.Key, group => group.Sum(transfer => transfer.Quantity));
                     var choice = variant.Key == 0 ? history.GetValueOrDefault("INERT_B") == 2 ? 2 : 1
                         : history.GetValueOrDefault("INERT_A") == 1 ? 1 : 2;
                     selected.Add(choice);

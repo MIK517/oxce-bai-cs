@@ -62,7 +62,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var deterministicRandom = TryForecastRandomProduction(owner, rule, out var randomItems, ref work);
+                var deterministicRandom = TryForecastRandomProduction(owner, rule, out var randomItems, out var randomTransferCount, ref work);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
                 var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
@@ -173,7 +173,7 @@ public sealed partial class CampaignState
                 if (personnel) transfers += completed;
                 if (craftDelay) transfers += completed * (long)rule.ProducedMaterials.Where(material => material.Craft is not null).Sum(material => material.Quantity);
                 if (rule.TransferTimes.Count != 0 && rule.TransferTimes[0] > 0)
-                    transfers += completed * (long)((project.Sell ? 0 : rule.ProducedMaterials.Count(material => material.Item is not null)) + (randomItems?.Count ?? 0));
+                    transfers += completed * (long)((project.Sell ? 0 : rule.ProducedMaterials.Count(material => material.Item is not null)) + randomTransferCount);
             }
         }
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, long>> incoming = [];
@@ -313,9 +313,10 @@ public sealed partial class CampaignState
     }
 
     private bool TryForecastRandomProduction(BaseState owner, RuntimeManufactureRule rule,
-        out IReadOnlyDictionary<string, int>? items, ref long work)
+        out IReadOnlyDictionary<string, int>? items, out int transferCount, ref long work)
     {
         items = null;
+        transferCount = 0;
         if (rule.RandomProducedItems.Count == 0) return true;
         var rules = _content.RuntimeRules;
         HashSet<RuleHandle<ItemRuleFamily>> sensitive = [];
@@ -333,11 +334,20 @@ public sealed partial class CampaignState
                 if (material.Item is { } item && material.Quantity > 0) sensitive.Add(item);
         }
         var immediate = rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0;
+        var minimumTransfers = int.MaxValue;
+        foreach (var choice in rule.RandomProducedItems)
+        {
+            if (++work > 1_000_000) return false;
+            if (choice.Weight == 0) continue;
+            transferCount = Math.Max(transferCount, choice.Items.Count);
+            minimumTransfers = Math.Min(minimumTransfers, choice.Items.Count);
+        }
+        var stableTransfers = immediate || minimumTransfers == transferCount;
         return ProductionOutputEnvelope.TryCreate(rule.RandomProducedItems, id =>
         {
             var item = rules.Items.GetRequired(id);
             var definition = rules.Items[item].Value;
-            return immediate && definition.BattleType != 0 && !definition.IsAlien && !sensitive.Contains(item);
+            return stableTransfers && definition.BattleType != 0 && !definition.IsAlien && !sensitive.Contains(item);
         }, ref work, out items);
     }
 }
