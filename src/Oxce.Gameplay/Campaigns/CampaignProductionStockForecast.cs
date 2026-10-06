@@ -107,7 +107,7 @@ public sealed partial class CampaignState
                     if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                     if (project.Sell)
                     {
-                        if (ForecastProductionSale(rule, ref accounting, ref work) is { } saleReason) return saleReason;
+                        if (ForecastProductionSale(rule, highest, ref accounting, ref work) is { } saleReason) return saleReason;
                     }
                     else if (ForecastProductionItemOutputs(owner.Id, rule, crafts, stocks, ref work) is { } outputReason) return outputReason;
                     foreach (var material in rule.ProducedMaterials)
@@ -254,21 +254,21 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private string? ForecastProductionSale(RuntimeManufactureRule rule, ref AccountingState accounting, ref long work)
+    private string? ForecastProductionSale(RuntimeManufactureRule rule, CampaignTimeTrigger highest, ref AccountingState accounting, ref long work)
     {
         var rules = _content.RuntimeRules;
-        var coefficient = rules.Campaign.SellPriceCoefficients[(int)Difficulty];
+        var daily = highest >= CampaignTimeTrigger.OneDay;
+        if (daily && DaysPassed == int.MaxValue) return "Production price days exceed the supported range.";
+        var forecast = new PriceForecastContext(Time.Advance(out _), DaysPassed + (daily ? 1 : 0), daily, work);
         foreach (var material in rule.ProducedMaterials)
         {
             if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
             if (material.Item is not { } item) continue;
             var itemRule = rules.Items[item].Value;
-            // The price VM may read time or research changed by earlier hooks.
-            // Do not execute it against the current campaign as a future projection.
-            if (itemRule.Scripts.Any(handle => rules.Scripts[handle].Value.Artifact.ParserName == "sellCostItem") ||
-                _content.EventPlans.Any(plan => plan.ParserName == "sellCostItem"))
-                return "UFO retargeting requires production sale-price script forecasts.";
-            var price = StrategicLogisticsMath.AdjustedItemPrice(itemRule.CostSell, coefficient);
+            forecast.Work = work;
+            var price = ItemPrice(rules.Items.GetExternalId(item), itemRule, false, out var unavailable, forecast);
+            work = forecast.Work;
+            if (unavailable is not null) return unavailable;
             if (!TryStageAccounting(checked((long)price * material.Quantity), accounting, out var next))
                 return "Production accounting exceeds the supported range.";
             accounting = next;

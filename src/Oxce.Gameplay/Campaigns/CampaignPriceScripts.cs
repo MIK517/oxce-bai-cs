@@ -3,6 +3,7 @@ using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Scripting.Compilation;
 using Oxce.Scripting.Events;
 using Oxce.Scripting.Runtime;
+using Oxce.Scripting;
 
 namespace Oxce.Gameplay.Campaigns;
 
@@ -13,7 +14,7 @@ public sealed partial class CampaignState
     private readonly ScriptRuntimeValue[] _priceInputs = new ScriptRuntimeValue[5];
     private readonly ScriptRuntimeValue[] _priceOutput = new ScriptRuntimeValue[1];
 
-    private int ItemPrice(string id, RuntimeItemRule rule, bool buying, out string? unavailable)
+    private int ItemPrice(string id, RuntimeItemRule rule, bool buying, out string? unavailable, PriceForecastContext? forecast = null)
     {
         unavailable = null;
         var parser = buying ? "buyCostItem" : "sellCostItem";
@@ -29,6 +30,11 @@ public sealed partial class CampaignState
         var seen = new HashSet<int>();
         foreach (var candidate in programs)
         {
+            if (forecast is not null && (forecast.Work += 1L + candidate.Bindings.Count) > 1_000_000)
+            {
+                unavailable = "Production price forecasts exceed the supported work limit.";
+                return adjusted;
+            }
             _priceFrame.Prepare(candidate);
             foreach (var binding in candidate.Bindings)
             {
@@ -37,7 +43,7 @@ public sealed partial class CampaignState
                     unavailable = $"Price script requires unsupported binding {binding.Name}.";
                     return adjusted;
                 }
-                if (seen.Add(binding.Id.Value)) builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding.Name, args));
+                if (seen.Add(binding.Id.Value)) builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding.Name, args, forecast));
             }
         }
         var providers = builder.Build();
@@ -49,7 +55,32 @@ public sealed partial class CampaignState
         _priceOutput[0] = ScriptRuntimeValue.FromScalar(adjusted);
         try
         {
-            if (plan is null)
+            if (forecast is not null)
+            {
+                if ((plan?.Count ?? 0) + 1 > ScriptLimits.DefaultMaximumEventExecutions)
+                {
+                    unavailable = "Production price forecasts exceed the supported event limit.";
+                    return adjusted;
+                }
+                foreach (var candidate in programs)
+                {
+                    var remaining = 1_000_000 - forecast.Work;
+                    if (remaining <= 0)
+                    {
+                        unavailable = "Production price forecasts exceed the supported work limit.";
+                        break;
+                    }
+                    var options = new ScriptExecutionOptions { MaximumSteps = (int)Math.Min(remaining, ScriptExecutionOptions.Default.MaximumSteps) };
+                    var result = ScriptVm.ExecuteWithInputs(candidate, _priceOutput, _priceInputs, _priceOutput, _priceFrame, options, providers);
+                    forecast.Work += result.Steps;
+                    if (!result.Succeeded)
+                    {
+                        unavailable = $"Price {(plan is null ? "script" : "event")} failed: {result.FailureMessage ?? result.DiagnosticCode}.";
+                        break;
+                    }
+                }
+            }
+            else if (plan is null)
             {
                 var result = ScriptVm.ExecuteWithInputs(program, _priceOutput, _priceInputs, _priceOutput, _priceFrame, hostBindings: providers);
                 if (!result.Succeeded) unavailable = $"Price script failed: {result.FailureMessage ?? result.DiagnosticCode}.";
@@ -80,13 +111,15 @@ public sealed partial class CampaignState
         "RuleItem.getType" or "RuleItem.getWeight" or "RuleItem.getBattleType" or "Time.getDay" or "Time.getMonth" or
         "Time.getYear" or "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
-    private ScriptBindingResult InvokePriceBinding(string name, Span<ScriptRuntimeValue> args)
+    private ScriptBindingResult InvokePriceBinding(string name, Span<ScriptRuntimeValue> args, PriceForecastContext? forecast)
     {
+        if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } && args[0].Reference is not null)
+            return ScriptBindingResult.Failure("Production prices require daily research forecasts.");
         var item = args[0].Reference as PriceItemReference;
-        var time = args[0].Reference is CampaignTime value ? value : Time;
+        var time = args[0].Reference is CampaignTime value ? value : forecast?.Time ?? Time;
         switch (name)
         {
-            case "GeoscapeGame.getTime": args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is null ? null : Time); break;
+            case "GeoscapeGame.getTime": args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is null ? null : forecast?.Time ?? Time); break;
             case "RuleItem.getType": args[1] = ScriptRuntimeValue.FromText(item?.Id ?? ""); break;
             case "RuleMod.getRuleItem":
                 var ruleId = args[2].Text ?? "";
@@ -101,7 +134,7 @@ public sealed partial class CampaignState
                 args[1] = ScriptRuntimeValue.FromScalar(args[0].Reference is null ? 0 : name switch
                 {
                     "GeoscapeGame.difficultyLevel" => (int)Difficulty,
-                    "GeoscapeGame.getDaysPassed" => DaysPassed,
+                    "GeoscapeGame.getDaysPassed" => forecast?.DaysPassed ?? DaysPassed,
                     "GeoscapeGame.getMonthsPassed" => MonthsPassed,
                     "GeoscapeGame.isResearched" => args[2].Reference is string research && _completedResearch.Contains(research) ? 1 : 0,
                     "RuleItem.getWeight" => item?.Rule.Weight ?? 0,
@@ -121,4 +154,12 @@ public sealed partial class CampaignState
     }
 
     private sealed record PriceItemReference(string Id, RuntimeItemRule Rule);
+
+    private sealed class PriceForecastContext(CampaignTime time, int daysPassed, bool daily, long work)
+    {
+        public CampaignTime Time { get; } = time;
+        public int DaysPassed { get; } = daysPassed;
+        public bool Daily { get; } = daily;
+        public long Work { get; set; } = work;
+    }
 }

@@ -52,7 +52,7 @@ struct Waypoint : Target { int id=0; int getId() const { return id; } void setId
 struct Item { int clipSize=1,sellCost=3; bool _recover=true,_recoverCorpse=true,corpse=false; bool isRecoverable() const; bool isCorpseRecoverable() const; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } int getBattleType() const { return 0; } int getSellCost() const { return sellCost; } int getSellCostAdjusted(const Base*,const SavedGame*) const; };
 using RuleItem=Item;
 // CORPSE_RECOVERY_FLAGS
-namespace ModScript { struct SellCostItem {}; template<class Tag,class... Args> int scriptFunc2(const Item*,int adjusted,Args...) { return adjusted; } }
+namespace ModScript { struct SellCostItem {}; int price(const Item*,int,int,const Item*,const SavedGame*,int); template<class Tag> int scriptFunc2(const Item* owner,int adjusted,int cost,const Item* item,const SavedGame* save,int coefficient) { return price(owner,adjusted,cost,item,save,coefficient); } }
 struct Storage { int count=0,corpses=0; int getItem(const Item* item) const { return item->corpse?corpses:count; }
 void removeItem(const Item* item,int qty=1) { (item->corpse?corpses:count)-=qty; } void addItem(const Item* item,int qty=1) { (item->corpse?corpses:count)+=qty; } };
 struct Craft; struct Transfer; struct RuleSoldier { void* getDefaultArmor() const { return nullptr; } };
@@ -246,6 +246,7 @@ void applyPrimaryCounters(const RuleResearch* myResearchRule) {
 // RESEARCH_PRIMARY_COUNTERS
 }
 std::vector<int64_t> _funds={100},_incomes={0},_expenditures={0}; int64_t& funds=_funds.back(); int sellCoefficient=100;
+int priceScript=-1,priceSecond=0,priceHour=0,priceDays=0,priceMonths=0,priceDifficulty=0; bool priceResearched=false;
 int64_t getFunds() const { return funds; } void setFunds(int64_t); int getSellPriceCoefficient() const { return sellCoefficient; }
 std::vector<const RuleResearch*> _discovered; std::map<std::string,int> statuses; int _time=0; std::vector<int> _researchScores={0}; int& researchScore=_researchScores.back();
 bool isResearchRuleStatusDisabled(const std::string& id) const { auto found=statuses.find(id); return found!=statuses.end()&&found->second==2; }
@@ -275,6 +276,9 @@ struct ProductionCraftRule { CraftBirthRule craft; std::vector<int> times; const
 struct ProductionCraftCaller { const ProductionCraftRule* _rules; void complete(Base* b,SavedGame* g,const Mod* m) {
 // PRODUCTION_CRAFT_DELIVERY
 } };
+int ModScript::price(const Item*,int adjusted,int,const Item*,const SavedGame* save,int) {
+switch(save->priceScript) { case 0:return save->priceSecond; case 1:return save->priceHour+save->priceDays; case 2:return save->priceDays; case 3:return save->priceDifficulty+save->priceMonths; case 4:return save->priceResearched?save->priceDays:save->priceHour; default:return adjusted; }
+}
 // PRODUCTION_SALE_PRICE
 // RESEARCH_COUNTER_METHODS
 // PRODUCTION_ACCOUNTING
@@ -1139,6 +1143,14 @@ else if(order==1) { craftCaller.deliver(&base,&save); personCaller.deliver(&base
 else { craftCaller._rules=&person; craftCaller.deliver(&base,&save); }
 std::cout << '[' << order << ',' << base.crafts.back()->id << ',' << base.transfers.back()->_soldier->id << ',' << save.soldierCounter << ']';
 delete base.crafts.back(); for(auto* transfer:base.transfers) { delete transfer->_soldier; delete transfer; }
+}
+std::cout << "],\"productionScriptSaleContextRows\":["; first=true;
+for(int mode:{0,1,2,3,4}) for(int daily:{0,1}) for(int researched:{0,1}) {
+if(!first) std::cout << ','; first=false;
+Base base; SavedGame save; save.priceScript=mode; save.priceSecond=0; save.priceHour=daily?0:2; save.priceDays=daily?13:12; save.priceMonths=3; save.priceDifficulty=4; save.priceResearched=researched!=0; save.funds=0;
+Item item; item.sellCost=7; ProductionItemRule rule; rule.produced={{&item,2}}; ProductionDeliveryCaller delivery{&rule}; delivery.sell=true;
+const auto price=item.getSellCostAdjusted(&base,&save); delivery.deliver(&base,&save);
+std::cout << '[' << mode << ',' << daily << ',' << researched << ',' << save.priceSecond << ',' << save.priceHour << ',' << save.priceDays << ',' << save.priceMonths << ',' << save.priceDifficulty << ',' << price << ',' << save.funds << ']';
 }
 std::cout << "]}\n";
 }
