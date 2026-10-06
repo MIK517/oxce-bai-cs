@@ -112,7 +112,7 @@ public sealed partial class CampaignState
     }
 
     private bool PriceBindingSupported(ScriptBindingDeclaration binding) =>
-        PriceValueCopy(binding) || PriceTagSupported(binding) || PriceRuleQuerySupported(binding.Name) ||
+        PriceValueCopy(binding) || PriceTagSupported(binding) || PriceRuleQuerySupported(binding.Name) || PriceCountryQuerySupported(binding.Name) ||
             PriceInventoryQuerySupported(binding.Name) || PriceDamageQuerySupported(binding.Name) || PriceBindingNameSupported(binding.Name);
 
     private static bool PriceBindingNameSupported(string name) => WorldDetectionItemQueries.Supports(name) || name is
@@ -132,6 +132,7 @@ public sealed partial class CampaignState
         }
         if (binding.Name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokePriceTag(binding, args, forecast);
         var name = binding.Name;
+        if (PriceCountryQuerySupported(name)) return InvokePriceCountryQuery(name, args);
         if (PriceDamageQuerySupported(name)) return InvokePriceDamageQuery(name, args);
         if (PriceInventoryQuerySupported(name)) return InvokePriceInventoryQuery(name, args);
         if (PriceRuleQuerySupported(name)) return InvokePriceRuleQuery(name, args);
