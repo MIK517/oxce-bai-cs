@@ -18,7 +18,7 @@ internal sealed partial class CampaignWorld
         var mission = MissionAfterDailyResearch(saved, _dailyResearchForecast);
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
-        if (rule.Objective != RuntimeMissionObjective.Score || rule.OperationType != RuntimeMissionOperationType.Space ||
+        if (rule.Objective != RuntimeMissionObjective.Score ||
             IsOver(mission, rule) || mission.Interrupted || mission.NextWave >= rule.Waves.Count ||
             mission.SpawnCountdown > 30 || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra)
             return null;
@@ -38,6 +38,8 @@ internal sealed partial class CampaignWorld
                 work += zone.Areas.Count + 1L;
                 if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             }
+            work += _alienBases.Count;
+            if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             if (!TryOrdinarySpawnPositions(step, rule, rules.UfoTrajectories[trajectory].Value, region, out var origins) ||
                 origins.Count != 1 || origins[0].Radius != 0) return null;
             var ufoRule = rules.Ufos[rules.Ufos.GetRequired(escort.RuleId)].Value;

@@ -593,6 +593,85 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 4)]
+    [InlineData(true, 4)]
+    public void BaseOriginLeaderAttachmentUsesNativeOverrideAndRaceSpeed(bool cache, int operation)
+    {
+        using var originOracle = TestFixtures.ReadVerifiedExpected("strategic-mission-origin");
+        var originRow = TestFixtures.Rows(originOracle.RootElement, "rows").Single(row =>
+            row[0].GetInt32() == 0 && row[1].GetInt32() == 1 && row[2].GetInt32() == 1);
+        var origin = new WorldPosition(originRow[3].GetDouble(), originRow[4].GetDouble());
+        var content = Load(cache, $$$"""
+            crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]
+            ufos:
+              - type: ESCORT_HUNTER
+                raceBonus: {RACE_B: {speedMax: 100}}
+            alienMissions:
+              - type: IDLE_BASE_LEADER
+                objective: 0
+                operationType: {{{operation}}}
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 9000}]
+            """);
+        foreach (var race in new[] { "RACE_A", "RACE_B" })
+        {
+            var initial = IdleEscortSnapshot(content, "IDLE_BASE_LEADER");
+            initial = initial with
+            {
+                World = initial.World with
+                {
+                    AlienBases = [new(2, "ALIEN_BASE_DEPLOY", race, origin.Longitude, origin.Latitude)],
+                    Missions = [initial.World.Missions[0] with { Race = race,
+                AlienBase = new(WorldTargetKind.AlienBase, "STR_ALIEN_BASE", 2, origin.Longitude, origin.Latitude) }],
+                    Ufos = [initial.World.Ufos[0] with { Detected = true, TrajectoryPoint = 2,
+                Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) }],
+                }
+            };
+            initial = initial.WithCraft("SHIP", craft => craft with
+            {
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_OUT",
+                    Fuel = 1000,
+                    Damage = 0,
+                    Takeoff = 0,
+                    Speed = 6000,
+                    Longitude = 1,
+                    Latitude = 0.6,
+                    Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 },
+                }
+            });
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "base-leader-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var source = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == 9);
+            var leader = Assert.Single(campaign.Capture().World.Ufos, ufo => !ufo.HunterKiller);
+            Assert.Equal(leader.UniqueId, source.Destination!.UniqueId);
+            var speed = race == "RACE_A" ? 2200 : 2300;
+            Assert.Equal(speed, source.Speed);
+            Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, origin, WorldGeometry.RadianSpeed(speed)), source.Position);
+            Assert.Equal(2, source.TrajectoryPoint);
+            var craft = campaign.Capture().Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+            Assert.Equal(source.Position, craft.Destination!.Position);
+            Assert.Equal(WorldGeometry.Move(new(1, 0.6), source.Position, WorldGeometry.RadianSpeed(6000)), new(craft.Longitude, craft.Latitude));
+            campaign = Reload(content, campaign, 81, "base-leader-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "base-leader-following.sav");
+            var daily = initial.WithNextId("STR_UFO_UNIQUE", 41) with
+            { Time = new(1, 1, 1, 1999, 23, 59, 55), CompletedResearch = ["UNLOCK"] };
+            var deleted = CampaignState.Restore(daily, content, new SplitMix64RandomSource(81));
+            AdvanceUnblocked(deleted, 1);
+            Assert.Empty(deleted.Capture().World.AlienBases);
+            Assert.DoesNotContain(deleted.Capture().World.Ufos, ufo => !ufo.HunterKiller);
+            Assert.Equal(41, deleted.Capture().NextIds["STR_UFO_UNIQUE"]);
+            Assert.All(deleted.Capture().World.Missions, mission => Assert.True(mission.Interrupted));
+            deleted = Reload(content, deleted, 81, "base-leader-deleted.sav");
+            AdvanceUnblocked(deleted, 1);
+            Reload(content, deleted, 81, "base-leader-deleted-following.sav");
+        }
+    }
+
+    [Theory]
     [InlineData(false, false, 1)]
     [InlineData(true, false, 1)]
     [InlineData(false, true, 2)]
