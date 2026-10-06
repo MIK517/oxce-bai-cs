@@ -6,6 +6,9 @@ internal sealed partial class CampaignWorld
 {
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
     private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
+    // Execution has its own buffer: daily/hourly handlers may change the craft population
+    // and state after preflight. Each hunter replaces the contents before selection.
+    private readonly List<WorldHuntCraft> _huntingCandidates = [];
 
     private void RegisterHunting(CampaignCapabilityRegistry registry)
     {
@@ -79,7 +82,8 @@ internal sealed partial class CampaignWorld
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
         if (maximum is < 0 or > int.MaxValue || radar is < int.MinValue or > int.MaxValue)
             return "UFO hunting stats exceed the supported range.";
-        var crafts = new List<WorldHuntCraft>();
+        var crafts = forecastFuel ? _pass.HuntingCandidates : _huntingCandidates;
+        crafts.Clear();
         foreach (var owner in campaign.BaseStates)
         {
             if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
@@ -113,6 +117,7 @@ internal sealed partial class CampaignWorld
             }
         }
         var selected = WorldHunting.Select(projected, (int)radar, crafts);
+        crafts.Clear();
         if (selected is not null)
         {
             var original = projected.Hunting ? projected.Destination : null;

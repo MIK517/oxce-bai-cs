@@ -49,6 +49,7 @@ internal sealed partial class CampaignWorld
         // Reset by BeginHunting, when hunting and escort forecasts start later in the pass. The
         // checks that run before it never read these values.
         public Dictionary<int, UfoSnapshot>? RetargetForecast;
+        public readonly List<WorldHuntCraft> HuntingCandidates = [];
         public Dictionary<int, UfoSnapshot>? NewLeaderFlightForecast;
         public int PossibleHuntMarkerIds;
         public long HuntingForecastWork;
@@ -86,6 +87,7 @@ internal sealed partial class CampaignWorld
         public void BeginHunting()
         {
             RetargetForecast = null;
+            HuntingCandidates.Clear();
             NewLeaderFlightForecast = null;
             PossibleHuntMarkerIds = 0;
             HuntingForecastWork = 0;
