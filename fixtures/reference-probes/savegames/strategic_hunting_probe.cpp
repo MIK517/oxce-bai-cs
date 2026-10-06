@@ -49,12 +49,12 @@ std::vector<Craft*> craftFollowers; std::vector<Ufo*> ufoFollowers; const auto& 
 double getLongitude() const { return lon; } double getLatitude() const { return lat; }
 void setLongitude(double value) { lon = value; } void setLatitude(double value) { lat = value; } };
 struct Waypoint : Target { int id=0; int getId() const { return id; } void setId(int value) { id=value; } };
-struct Item { int clipSize=1,sellCost=3; bool _recover=true,_recoverCorpse=true,corpse=false; bool isRecoverable() const; bool isCorpseRecoverable() const; std::string getType() const { return "SUPPLY"; } int getClipSize() const { return clipSize; } int getBattleType() const { return 0; } int getSellCost() const { return sellCost; } int getSellCostAdjusted(const Base*,const SavedGame*) const; };
+struct Item { std::string type="SUPPLY"; int battle=0; int clipSize=1,sellCost=3; bool _recover=true,_recoverCorpse=true,corpse=false; bool isRecoverable() const; bool isCorpseRecoverable() const; std::string getType() const { return type; } int getClipSize() const { return clipSize; } int getBattleType() const { return battle; } int getSellCost() const { return sellCost; } int getSellCostAdjusted(const Base*,const SavedGame*) const; };
 using RuleItem=Item;
 // CORPSE_RECOVERY_FLAGS
 namespace ModScript { struct SellCostItem {}; int price(const Item*,int,int,const Item*,const SavedGame*,int); template<class Tag> int scriptFunc2(const Item* owner,int adjusted,int cost,const Item* item,const SavedGame* save,int coefficient) { return price(owner,adjusted,cost,item,save,coefficient); } }
-struct Storage { int count=0,corpses=0; int getItem(const Item* item) const { return item->corpse?corpses:count; }
-void removeItem(const Item* item,int qty=1) { (item->corpse?corpses:count)-=qty; } void addItem(const Item* item,int qty=1) { (item->corpse?corpses:count)+=qty; } };
+struct Storage { int count=0,corpses=0; std::map<std::string,int> extra; int getItem(const Item* item) const { if(item->type!="SUPPLY"&&!item->corpse) { auto it=extra.find(item->type); return it==extra.end()?0:it->second; } return item->corpse?corpses:count; }
+void removeItem(const Item* item,int qty=1) { if(item->type!="SUPPLY"&&!item->corpse) extra[item->type]-=qty; else (item->corpse?corpses:count)-=qty; } void addItem(const Item* item,int qty=1) { if(item->type!="SUPPLY"&&!item->corpse) extra[item->type]+=qty; else (item->corpse?corpses:count)+=qty; } };
 struct Craft; struct Transfer; struct RuleSoldier { void* getDefaultArmor() const { return nullptr; } };
 namespace YAML { struct YamlRootNodeReader { bool overlay; YamlRootNodeReader(bool value,const char*):overlay(value) {} }; }
 struct Soldier { static inline int generated=0; std::string name="Alex Example"; int nationality=0,id=0;
@@ -396,6 +396,25 @@ auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game);
 std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
 auto* target=select(&hunter,active);
 std::cout << '[' << (sell?"true":"false") << ',' << delay << ',' << qty << ',' << (duplicate?"true":"false") << ',' << assigned << ',' << (infinite?"true":"false") << ',' << progress.completedUnits << ',' << stop << ',' << base.storage.count << ',' << base.transfers.size() << ',' << delivery._randomProductionInfo["SUPPLY"] << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints) delete waypoint; for(auto* transfer:base.transfers) delete transfer;
+}
+std::cout << "],\"productionVariantRows\":[";
+scoreFirst=true;
+for(bool sell:{false,true}) for(int delay:{0,2}) for(int variant:{0,1,2}) for(int choice:{1,2}) {
+if(!scoreFirst) std::cout << ','; scoreFirst=false;
+Base base; ServiceGame game; ResearchMod mod; Item item,a,b; a.type="INERT_A"; b.type="INERT_B"; a.battle=b.battle=1;
+Production progress; Craft craft; Ufo hunter; FuelCaller fuelCaller;
+craft.id=1; craft._base=&base; base.crafts={&craft}; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+ProductionItemRule rule; rule.times={delay}; rule.produced={{&item,1}};
+rule.random={{1,{{&item,2},{&a,1}}},{1,{{&item,2},{variant==0?&b:&a,variant==2?0:2}}}};
+ProductionDeliveryCaller delivery{&rule}; delivery.sell=sell;
+progress.rule.time=2; progress.rule.requiredItems={{&item,2}}; progress._timeSpent=1; progress._engineers=1; progress._amount=2; progress.infinite=true;
+base.storage.count=1; RNG::suppliedChoice=choice;
+int stop=progress.scalarStep(&base,&game.save,&mod,delivery); RNG::suppliedChoice=-1;
+auto missing=craft.refuel(); if(missing.empty()) autoPatrol(&craft,&game);
+std::vector<Craft*> active; if(craft._status=="STR_OUT") { fuelCaller.fuel(&craft); active.push_back(&craft); }
+auto* target=select(&hunter,active);
+std::cout << '[' << (sell?"true":"false") << ',' << delay << ',' << variant << ',' << choice << ',' << progress.completedUnits << ',' << stop << ',' << base.storage.count << ',' << base.storage.getItem(&a) << ',' << base.storage.getItem(&b) << ',' << base.transfers.size() << ',' << delivery._randomProductionInfo["SUPPLY"] << ',' << delivery._randomProductionInfo["INERT_A"] << ',' << delivery._randomProductionInfo["INERT_B"] << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint; for(auto* transfer:base.transfers) delete transfer;
 }
 std::cout << "],\"productionPersonnelRows\":[";

@@ -18,7 +18,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 148 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 149 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
@@ -27,7 +27,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
 | [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 159 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
-| [Oxce.UnitTests](#oxceunittests) | 91 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
+| [Oxce.UnitTests](#oxceunittests) | 92 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
 | [Oxce.FixtureTool](#oxcefixturetool) | 1 | FixtureSupport, Formats, Mods, Savegames |
 | [Oxce.ResourceBrowser](#oxceresourcebrowser) | 2 | Formats, Mods, Platform.Sdl, Rendering, Resources |
@@ -289,7 +289,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 148 files.
+`src/Oxce.Gameplay` - 149 files.
 
 ### `Oxce.Gameplay`
 
@@ -1222,9 +1222,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.UnitTests
 
-`tests/Oxce.UnitTests` - 91 files.
+`tests/Oxce.UnitTests` - 92 files.
 
-<details><summary>91 test classes</summary>
+<details><summary>92 test classes</summary>
 
 - `ProjectDependencyTests` ([ProjectDependencyTests.cs](../tests/Oxce.UnitTests/Architecture/ProjectDependencyTests.cs))
 - `DiagnosticTests` ([DiagnosticTests.cs](../tests/Oxce.UnitTests/Core/DiagnosticTests.cs))
@@ -1264,6 +1264,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CraftLogisticsTests` ([CraftLogisticsTests.cs](../tests/Oxce.UnitTests/Gameplay/CraftLogisticsTests.cs))
 - `CraftServicingTests` ([CraftServicingTests.cs](../tests/Oxce.UnitTests/Gameplay/CraftServicingTests.cs))
 - `ProductionAccountingCapacityTests` ([ProductionAccountingCapacityTests.cs](../tests/Oxce.UnitTests/Gameplay/ProductionAccountingCapacityTests.cs))
+- `ProductionOutputEnvelopeTests` ([ProductionOutputEnvelopeTests.cs](../tests/Oxce.UnitTests/Gameplay/ProductionOutputEnvelopeTests.cs))
 - `ProductionProgressTests` ([ProductionProgressTests.cs](../tests/Oxce.UnitTests/Gameplay/ProductionProgressTests.cs))
 - `ResearchCounterProjectionTests` ([ResearchCounterProjectionTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchCounterProjectionTests.cs))
 - `ResearchItemLifecycleTests` ([ResearchItemLifecycleTests.cs](../tests/Oxce.UnitTests/Gameplay/ResearchItemLifecycleTests.cs))
