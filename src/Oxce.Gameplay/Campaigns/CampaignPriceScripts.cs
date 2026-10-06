@@ -112,7 +112,8 @@ public sealed partial class CampaignState
     }
 
     private bool PriceBindingSupported(ScriptBindingDeclaration binding) =>
-        PriceValueCopy(binding) || PriceTagSupported(binding) || PriceRuleQuerySupported(binding.Name) || PriceBindingNameSupported(binding.Name);
+        PriceValueCopy(binding) || PriceTagSupported(binding) || PriceRuleQuerySupported(binding.Name) ||
+            PriceInventoryQuerySupported(binding.Name) || PriceBindingNameSupported(binding.Name);
 
     private static bool PriceBindingNameSupported(string name) => WorldDetectionItemQueries.Supports(name) || name is
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
@@ -131,6 +132,7 @@ public sealed partial class CampaignState
         }
         if (binding.Name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokePriceTag(binding, args, forecast);
         var name = binding.Name;
+        if (PriceInventoryQuerySupported(name)) return InvokePriceInventoryQuery(name, args);
         if (PriceRuleQuerySupported(name)) return InvokePriceRuleQuery(name, args);
         if (name == "RuleMod.getSmokeReduction")
         {
