@@ -2,6 +2,19 @@
 
 Branch 4c. Pinned reference: 4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15.
 
+## Production material uncertainty (2026-10-07)
+
+The hunting forecast now passes hourly ammunition-stock uncertainty to its
+production-owned operation. Material uncertainty is consumed only when native
+`Production::step` actually attempts another unit: idle projects, final units,
+money/quarters stops and zero positive material requirements do not read it.
+The existing precise restriction remains at a reached material check. The native
+`strategic-hunting` capture adds 96 controlled-saving/production rows, retaining
+all earlier fields. Fresh/cache idle/final scenarios execute the VM hunting
+caller and reload both transitions. Reference: `CraftWeapon::rearm`,
+`Craft::rearm`, `Production::step/haveEnoughMaterialsForOneMoreUnit/startItem`
+and the `GeoscapeState` hourly-before-half-hour fallthrough.
+
 ## Future country activity prices (2026-10-07)
 
 Consumed hourly country alien-activity queries now read the existing history:

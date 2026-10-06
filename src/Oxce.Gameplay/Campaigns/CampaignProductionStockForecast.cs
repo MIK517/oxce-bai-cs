@@ -7,6 +7,7 @@ public sealed partial class CampaignState
     string? ICampaignProductionPreflight.ForecastStocks(
         IReadOnlyDictionary<int, List<CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
+        IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stockUncertainty,
         int? nextResearchTransferId, bool uncertainResearch, IReadOnlyList<CustomCounterChange>? researchCounters,
         CampaignTimeTrigger highest, ref long work)
     {
@@ -140,6 +141,9 @@ public sealed partial class CampaignState
                     // Native checks quarters only after the final completion of this
                     // hour; intermediate completions can exceed capacity together.
                     if (personnel && completed >= requested && availableQuarters < quarters + personnelBirths) break;
+                    if (stockUncertainty.TryGetValue(owner.Id, out var uncertainty) &&
+                        rule.RequiredMaterials.Any(material => material.Quantity > 0 && material.Item is { } item && uncertainty.ContainsKey(item)))
+                        return "UFO retargeting requires stochastic production material forecasts.";
                     if (!TryPlanProductionMaterials(stocks[owner.Id], sources, rule, out var materials, out var materialReason))
                     {
                         if (materialReason != "STR_NOT_ENOUGH_MATERIALS") return materialReason;

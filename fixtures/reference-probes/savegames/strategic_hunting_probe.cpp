@@ -843,6 +843,23 @@ std::cout << '[' << clipSize << ',' << (saving?"true":"false") << ',' << ammo <<
 for(auto* waypoint:game.save.waypoints) delete waypoint;
 }
 RNG::suppliedChoice=-1;
+std::cout << "],\"productionAmmunitionMaterialRows\":[";
+serviceFirst=true;
+for(int stock:{0,1,2,4}) for(int input:{1,2}) for(int amount:{1,3}) for(int assigned:{0,1,2}) for(int choice:{0,3}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+RNG::calls=0; RNG::suppliedChoice=choice;
+Item item; item.clipSize=4; Base base; base.storage.count=stock; ServiceGame game; ResearchMod mod;
+Craft gun; gun._base=&base; gun._status="STR_REARMING"; gun._fuel=100;
+CraftWeapon weapon; weapon.rule.clip=&item; weapon.rule.ammoMax=10; weapon.rule.saving=true; weapon._ammo=9; weapon.rearming=true;
+gun._weapons={&weapon}; base.crafts={&gun}; gun.rearm();
+Production progress; progress.rule.time=1; progress.rule.requiredItems={{&item,input}}; progress._engineers=assigned; progress._amount=amount;
+ProductionItemRule rule; rule.produced={{&item,1}}; ProductionDeliveryCaller delivery{&rule};
+const auto result=progress.scalarStep(&base,&game.save,&mod,delivery);
+std::cout << '[' << stock << ',' << input << ',' << amount << ',' << assigned << ',' << choice << ','
+<< weapon.getAmmo() << ',' << (weapon.isRearming()?"true":"false") << ',' << progress.completedUnits << ','
+<< progress._timeSpent << ',' << result << ',' << base.storage.count << ',' << RNG::calls << ']';
+}
+RNG::suppliedChoice=-1;
 std::cout << "],\"facilityFuelRows\":[";
 serviceFirst=true;
 for(int stock:{0,1,2}) for(int ammo:{0,1,2}) for(int build:{0,1}) for(bool reported:{false,true}) {
