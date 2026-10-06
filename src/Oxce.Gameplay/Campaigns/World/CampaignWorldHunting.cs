@@ -193,8 +193,10 @@ internal sealed partial class CampaignWorld
         if (ufo.Hunting && ufo.Destination is { Kind: WorldTargetKind.Craft } craft)
         {
             if (_pass.HuntingCraftForecast?.GetValueOrDefault((craft.TypeId, craft.Id)) is { } state)
-                return ufo with { Destination = craft with { Longitude = state.Longitude, Latitude = state.Latitude } };
-            return Resolve(craft) is { } resolved ? ufo with { Destination = resolved } : ufo;
+                return SameTargetCoordinates(craft, state.Longitude, state.Latitude) ? ufo :
+                    ufo with { Destination = craft with { Longitude = state.Longitude, Latitude = state.Latitude } };
+            return Resolve(craft) is { } resolved && !SameTargetCoordinates(craft, resolved.Longitude, resolved.Latitude)
+                ? ufo with { Destination = resolved } : ufo;
         }
         if (!ufo.Escorting || ufo.Destination is not { Kind: WorldTargetKind.Ufo } reference || TargetUfo(reference) is not { } target)
             return ufo;
@@ -243,4 +245,8 @@ internal sealed partial class CampaignWorld
             if (_ufos[index].UniqueId == uniqueId) return index;
         return -1;
     }
+
+    private static bool SameTargetCoordinates(WorldTargetReference target, double longitude, double latitude) =>
+        BitConverter.DoubleToInt64Bits(target.Longitude) == BitConverter.DoubleToInt64Bits(longitude) &&
+        BitConverter.DoubleToInt64Bits(target.Latitude) == BitConverter.DoubleToInt64Bits(latitude);
 }

@@ -21,7 +21,22 @@ checks source identity; live execution uses a separate cache cleared in `finally
 after each retarget invocation. Both ten-minute and five-second calls rebuild
 their live view after preceding handlers. Saved order and every logical work
 charge remain unchanged. The mixed-mode case also steps multiple ticks without
-reload on each side of its persistence boundary. Populated acceptance follows.
+reload on each side of its persistence boundary.
+
+Populated 8/32/128-hunter checks now run at one/eight bases with sixteen craft per
+base, fresh/cache content, mixed hunt modes and transition reloads. Their initial
+measurement exposed 2,472 bytes per additional hunter/tick from repeated target
+projections. Returning the existing snapshot when target coordinate bits are
+unchanged reduces the measured warm differential to 680 bytes; the new 1 KB gate
+passes without changing ordinary-flight or escort bounds. Bitwise coordinate
+comparison preserves signed zero. Cold and warm costs are recorded in
+`artifacts/hunter-selection-*.json`; timings remain informational.
+
+The Release benchmark adds sustained selection by 32 hunters against sixteen
+craft, with explicit five-second/one-day context and end-state assertions.
+All twelve in-process Dry time-advance smoke cases pass. BenchmarkDotNet's optional
+CPU metadata query reported a sandbox CIM denial during export; benchmark
+execution and allocation reporting completed, and no host changes were made.
 
 Current maintenance composition supports repairs, deterministic craft/facility ammunition,
 ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
