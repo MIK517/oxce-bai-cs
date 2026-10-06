@@ -4118,7 +4118,7 @@ public sealed class StrategicWorldHuntingTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void ScriptedProductionSalePriceStopsAtomicallyOnlyWhenHuntingNeedsProjection(bool cache, bool global)
+    public void ScriptedProductionSalePriceUsesTheActualHourlyContextDuringHunting(bool cache, bool global)
     {
         var script = "var ptr Time moment; var int second; geoscape_game.getTime moment; moment.getSecond second; return second;";
         var overlay = "items: [{type: SCRIPTED_SALE_ITEM, costSell: 7" + (global ? "" : $", scripts: {{sellCostItem: '{script}'}}") +
@@ -4135,12 +4135,69 @@ public sealed class StrategicWorldHuntingTests
         }]
         };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "scripted-sale-before.sav");
-        AssertTimeBlocked(campaign, "UFO retargeting requires production sale-price script forecasts.");
+        AdvanceUnblocked(campaign, 1);
         var ordinary = CampaignState.Restore(initial with { World = new() }, content, new SplitMix64RandomSource(81));
         var result = ordinary.Execute(new AdvanceCampaignTime(1));
         Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
         Assert.Equal(0, ordinary.Capture().Funds[^1]); // The actual caller runs at 02:00:00.
+        Assert.Equal(ordinary.Capture().Funds, campaign.Capture().Funds);
+        Reload(content, campaign, 81, "scripted-hunting-sale-after.sav");
         Reload(content, ordinary, 81, "scripted-sale-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ProductionPriceVmMatchesNativeCallerContextAndAccounting(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionScriptSaleContextRows")
+                     .Where(row => row[0].GetInt32() < 4 && row[2].GetInt32() == 0))
+        {
+            var mode = row[0].GetInt32();
+            var daily = row[1].GetInt32() != 0;
+            var script = mode switch
+            {
+                0 => "var ptr Time moment; var int value; geoscape_game.getTime moment; moment.getSecond value; return value;",
+                1 => "var ptr Time moment; var int value; var int days; geoscape_game.getTime moment; moment.getHour value; geoscape_game.getDaysPassed days; add value days; return value;",
+                2 => "var int value; geoscape_game.getDaysPassed value; return value;",
+                _ => "var int value; var int months; geoscape_game.difficultyLevel value; geoscape_game.getMonthsPassed months; add value months; return value;",
+            };
+            var overlay = "items: [{type: CONTEXT_SALE_ITEM, costSell: 7" +
+                (global ? "" : $", scripts: {{sellCostItem: '{script}'}}") +
+                "}]\nmanufacture: [{name: CONTEXT_SALE, time: 1, producedItems: {CONTEXT_SALE_ITEM: 2}}]\nfacilities: [{type: CONTEXT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
+                (global ? $"extended: {{scripts: {{sellCostItem: [{{new: context-sale-price, offset: 1, code: '{script}'}}]}}}}\n" : "");
+            var content = Load(cache, overlay);
+            var initial = HuntingSnapshot(content) with
+            {
+                Time = new(1, 1, 1, 1999, daily ? 23 : 1, 59, 55),
+                DaysPassed = 12,
+                MonthsPassed = 3,
+                Difficulty = CampaignDifficulty.Superhuman,
+                Funds = [0],
+            };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            {
+                Research = [],
+                Facilities = [.. initial.Bases[0].Facilities, new("CONTEXT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("CONTEXT_SALE", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
+            }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "context-sale-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(row[9].GetInt64(), campaign.Capture().Funds[^1]);
+            Assert.Equal(row[5].GetInt32(), campaign.Capture().DaysPassed);
+            var control = CampaignState.Restore(initial with { World = new() }, content, new SplitMix64RandomSource(81));
+            AdvanceUnblocked(control, 1);
+            Assert.Equal(control.Capture().Funds, campaign.Capture().Funds);
+            campaign = Reload(content, campaign, 81, "context-sale-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, 81, "context-sale-following.sav");
+        }
     }
 
     [Theory]
