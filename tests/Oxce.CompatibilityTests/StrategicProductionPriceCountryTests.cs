@@ -83,16 +83,77 @@ public sealed partial class StrategicProductionPriceMetadataTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void ConsumedDailyAlienActivityStillRequiresItsWorldProjection(bool cache, bool global)
+    public void DailyBaseActivityPricesPreserveSignedPointsAndFirstCountryOrder(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-activity");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "activityRows"))
+        {
+            var points = row[0].GetInt32();
+            var expected = 11 + row[4].GetInt32();
+            var content = Load(cache, global,
+                "var int count; var int value; var int first; loop var country geoscape_game.getCountries.list; " +
+                $"country.getCurrentActivityAlien value; if eq count 0; if neq value {expected}; div cost_current 0; end; set first value; " +
+                "else; if neq value 7; div cost_current 0; end; end; add count 1; end; return first;",
+                extraRules: "countries: [{type: PRICE_COUNTRY_A, areas: [[0, 30, -20, 20]]}, {type: PRICE_COUNTRY_B, areas: [[0, 30, -20, 20]]}]\n" +
+                    $"alienDeployments: [{{type: PRICE_PASSIVE_BASE, alienBase: true, markerName: STR_ALIEN_BASE, points: {points}}}]\n" +
+                    "ufos: [{type: HUNTER, missionScore: 5}]\n");
+            var campaign = Reload(content, Create(content, initial => PriceCountries(initial) with
+            {
+                Time = new(1, 1, 1, 1999, 23, 59, 55),
+                World = initial.World with { AlienBases = [new(1, "PRICE_PASSIVE_BASE", "RACE_A", 0.2, 0.1)] },
+            }), 81, "daily-base-country-price-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(expected, after.Funds[^1]);
+            Assert.Equal(expected + 5, after.Countries[0].ActivityAlien[^1]);
+            Assert.Equal(7, after.Countries[1].ActivityAlien[^1]);
+            Reload(content, campaign, 81, "daily-base-country-price-after.sav");
+        }
+    }
+
+    [Fact]
+    public void DailyCountryActivityProjectionChargesWorkBeforeMutation()
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-activity");
+        var content = Load(false, false, "return 7;", extraRules:
+            "countries: [{type: PRICE_COUNTRY_A, areas: [[0, 30, -20, 20]]}]\n" +
+            "alienDeployments: [{type: PRICE_PASSIVE_BASE, alienBase: true, markerName: STR_ALIEN_BASE, points: 7}]\n");
+        var campaign = Create(content, initial => initial with
+        {
+            Countries = [new("PRICE_COUNTRY_A", [2000], [9], [7], false, false, false, [])],
+            World = initial.World with { AlienBases = [new(1, "PRICE_PASSIVE_BASE", "RACE_A", 0.2, 0.1)] },
+        });
+        var before = campaign.Capture();
+        long work = 999_999;
+        Assert.Equal("Production country activity forecasts exceed the supported work limit.",
+            campaign.WorldActivityPreflight.CountryAfterDailyProgress(campaign.CountryStates[0], null, null,
+                ref work, out var activity, out var needsResearch));
+        Assert.True(work > 1_000_000);
+        Assert.Equal(7, activity);
+        Assert.False(needsResearch);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ConsumedDailyAlienActivityDeletionStillRequiresResearchProjection(bool cache, bool global)
     {
         TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
         var content = Load(cache, global,
             "var int value; loop var country geoscape_game.getCountries.list; country.getCurrentActivityAlien value; end; return 7;",
-            extraRules: "countries: [{type: PRICE_COUNTRY_A}, {type: PRICE_COUNTRY_B}]");
+            extraRules: "countries: [{type: PRICE_COUNTRY_A, areas: [[0, 30, -20, 20]]}, {type: PRICE_COUNTRY_B}]\n" +
+                "research: [{name: PRICE_SELF_DESTRUCT, cost: 1}]\nalienDeployments: [{type: PRICE_DELETING_BASE, alienBase: true, markerName: STR_ALIEN_BASE, points: 1, baseSelfDestructCode: PRICE_SELF_DESTRUCT}]\n");
         var campaign = Reload(content, Create(content, initial => PriceCountries(initial) with
-        { Time = new(1, 1, 1, 1999, 23, 59, 55) }), 81, "daily-country-price-before.sav");
+        {
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            World = initial.World with
+            { AlienBases = [new(1, "PRICE_DELETING_BASE", "RACE_A", 0.2, 0.1)] }
+        }), 81, "daily-country-price-before.sav");
         AssertTimeBlocked(campaign,
-            $"Price {(global ? "event" : "script")} failed: Script binding 'Country.getCurrentActivityAlien' failed: Production prices require world alien-activity forecasts..");
+            $"Price {(global ? "event" : "script")} failed: Script binding 'Country.getCurrentActivityAlien' failed: Production prices require alien-base deletion forecasts..");
     }
 
     [Theory]

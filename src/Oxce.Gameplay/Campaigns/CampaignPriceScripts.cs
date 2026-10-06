@@ -331,5 +331,6 @@ public sealed partial class CampaignState
         public IReadOnlySet<string>? CompletedResearch { get; set; }
         public IReadOnlySet<string>? GuaranteedResearch { get; set; }
         public IReadOnlySet<string>? PossibleResearch { get; set; }
+        public Dictionary<CountryState, int>? CountryAlienActivity { get; set; }
     }
 }

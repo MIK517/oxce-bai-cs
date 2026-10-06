@@ -17,8 +17,22 @@ public sealed partial class CampaignState
         var receiver = args[0].Reference;
         // Hourly production precedes the half-hour world score handlers. Only a
         // daily fallthrough can change alien activity before this price caller.
-        if (name == "Country.getCurrentActivityAlien" && receiver is CountryState && forecast.Time != Time && forecast.Daily)
-            return ScriptBindingResult.Failure("Production prices require world alien-activity forecasts.");
+        if (name == "Country.getCurrentActivityAlien" && receiver is CountryState projectedCountry && forecast.Time != Time && forecast.Daily)
+        {
+            forecast.CountryAlienActivity ??= new(ReferenceEqualityComparer.Instance);
+            if (!forecast.CountryAlienActivity.TryGetValue(projectedCountry, out var activity))
+            {
+                var work = forecast.Work;
+                var reason = WorldActivityPreflight.CountryAfterDailyProgress(projectedCountry, null, null,
+                    ref work, out activity, out var needsResearch);
+                forecast.Work = work;
+                if (reason is not null) return ScriptBindingResult.Failure(reason);
+                if (needsResearch) return ScriptBindingResult.Failure("Production prices require alien-base deletion forecasts.");
+                forecast.CountryAlienActivity.Add(projectedCountry, activity);
+            }
+            args[1] = ScriptRuntimeValue.FromScalar(activity);
+            return ScriptBindingResult.Success;
+        }
         if (GeoscapeCountryQueries.IsList(name))
         {
             GeoscapeCountryQueries.InvokeList(name, args, _countries);
