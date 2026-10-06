@@ -30,6 +30,15 @@ fresh/cache cases pass, including atomic divergent sequences, both transition
 reloads and exhausted-work purity. Native probes and their captured output stay
 project-local; the reference checkout remains unchanged.
 
+The batch audit reproduced an uncharged idle-rule validation scan using 128
+zero-quantity material edges near the shared work limit. The additional fix
+reserves required/produced material validation, random output sets and their
+items, and event weight scans before the common validator. All ten focused cases
+pass without changing state or RNG on rejection. Formatting/code-map/diff checks
+pass. The first root run passed 3,225 of 3,226 tests; its stationary patrol
+allocation case reported a 256-byte population differential and passed in an
+isolated rerun with its original threshold. A full root recheck is pending.
+
 ## Future country activity prices (2026-10-07)
 
 Consumed hourly country alien-activity queries now read the existing history:

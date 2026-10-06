@@ -74,6 +74,10 @@ documents; entries here link to them instead of copying them.
   [three slices and audit](strategic-world-hunting-status.md#future-country-activity-prices-2026-10-07).
   The broader generation and uncertainty projections still keep the 4c gate open.
 
+- 2026-10-07 material uncertainty cycle: consumed-only production checks and
+  equal stock-bound outcomes are implemented with ordered acceptance. See the
+  [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
+
 - Opening plan/scope commit: `b06cb39`.
 - Event scheduling slice: runtime timer projections, transaction-owned research/manufacturing
   scheduling, generated history, countdowns/interrupted cleanup and due-payload guards.

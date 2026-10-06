@@ -145,6 +145,34 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
+    [Fact]
+    public void IdleProductionRuleValidationSharesTheMaterialForecastBudget()
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var ids = Enumerable.Range(0, 128).Select(index => $"WIDE_MATERIAL_{index}").ToArray();
+        var content = Load(false, "items: [" + string.Join(", ", ids.Select(id => $"{{type: {id}}}")) + "]\n" +
+            "manufacture: [{name: WIDE_MATERIAL_PRODUCT, time: 1, requiredItems: {" +
+            string.Join(", ", ids.Select(id => $"{id}: 0")) + "}, producedItems: {SUPPLY: 1}}]\n");
+        var initial = HuntingSnapshot(content);
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Productions = [new("WIDE_MATERIAL_PRODUCT", 0, 0, 1, false, false, false, new Dictionary<string, int>())],
+            }],
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        var before = campaign.Capture();
+        var crafts = campaign.BaseStates.ToDictionary(owner => owner.Id, owner => owner.Crafts.ToList());
+        var stocks = campaign.BaseStates.ToDictionary(owner => owner.Id, owner => new Dictionary<RuleHandle<ItemRuleFamily>, int>(owner.Items));
+        long work = 999_900;
+        Assert.Equal("UFO retargeting exceeds the supported work limit.", campaign.ProductionPreflight.ForecastStocks(
+            crafts, stocks, new Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>>(),
+            null, false, null, CampaignTimeTrigger.OneHour, ref work));
+        Assert.True(work > 1_000_000);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
     private static RuntimeContent LoadSavingMaterialContent(bool cache, int input, int? nextInput = null) => Load(cache,
         "items: [{type: SUPPLY, clipSize: 4}]\n" +
         "craftWeapons: [{type: SAVING_MATERIAL_GUN, ammoMax: 10, rearmRate: 4, bulletSaving: true, launcher: SUPPLY, clip: SUPPLY}]\n" +
