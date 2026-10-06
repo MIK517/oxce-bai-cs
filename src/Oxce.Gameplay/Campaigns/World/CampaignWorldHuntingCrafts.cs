@@ -59,20 +59,8 @@ internal sealed partial class CampaignWorld
             if (stocks is not null) baseStocks.Add(owner.Id, stocks);
             if (uncertainty?.Count > 0) baseUncertainty.Add(owner.Id, uncertainty);
         }
-        foreach (var owner in campaign.BaseStates)
-        {
-            if (!baseUncertainty.TryGetValue(owner.Id, out var uncertainty)) continue;
-            foreach (var project in owner.Productions)
-            {
-                var product = rules.Manufacture[project.Rule].Value;
-                work += 1L + product.RequiredMaterials.Count;
-                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                if (product.RequiredMaterials.Any(material => material.Quantity > 0 && material.Item is { } item && uncertainty.ContainsKey(item)))
-                    return "UFO retargeting requires stochastic production material forecasts.";
-            }
-        }
         if (highest >= CampaignTimeTrigger.OneHour &&
-            campaign.ProductionPreflight.ForecastStocks(_pass.HuntingCraftSources, baseStocks,
+            campaign.ProductionPreflight.ForecastStocks(_pass.HuntingCraftSources, baseStocks, baseUncertainty,
                 researchStocks?.NextTransferId, researchMayChangeStocks, researchStocks?.CounterChanges, highest, ref work) is { } productionReason)
             return productionReason;
         foreach (var owner in campaign.BaseStates)
