@@ -597,7 +597,9 @@ public sealed class StrategicWorldEscortSpawnTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void StochasticEarlierLeadersAllowPursuitOnlyWhenTheirPointOriginsAgree(bool cache, bool same)
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void StochasticEarlierLeadersAllowPursuitOnlyWhenTheirPointOriginsAgree(bool cache, bool same, bool fast = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         var evidence = TestFixtures.Rows(oracle.RootElement, "correlatedLeaderOrderRows").Where(row => row[1].GetBoolean() == same).ToArray();
@@ -613,7 +615,7 @@ public sealed class StrategicWorldEscortSpawnTests
                 Fuel = 1000,
                 Damage = 0,
                 Takeoff = 0,
-                Speed = 0,
+                Speed = fast ? 6000 : 0,
                 Longitude = 0.4,
                 Latitude = 0.2,
                 Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 }
@@ -623,9 +625,10 @@ public sealed class StrategicWorldEscortSpawnTests
         for (ulong seed = 1; seed <= 32; seed++)
         {
             var campaign = Reload(content, CampaignState.Restore(initial with { RandomState = seed }, content, new SplitMix64RandomSource(seed)), seed, "correlated-leader-before.sav");
-            if (!same)
+            if (!same || fast)
             {
-                AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+                AssertTimeBlocked(campaign, fast ? "Craft interception requires strategic combat (Phase 6 branch 5)." :
+                    "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -645,7 +648,7 @@ public sealed class StrategicWorldEscortSpawnTests
             AdvanceUnblocked(campaign, 1);
             Reload(content, campaign, seed, "correlated-leader-following.sav");
         }
-        if (same) Assert.Equal(2, outcomes.Count);
+        if (same && !fast) Assert.Equal(2, outcomes.Count);
     }
 
     [Theory]
