@@ -79,9 +79,25 @@ internal sealed partial class CampaignWorld
         {
             var sources = _huntingCraftSources[owner.Id];
             var stocks = baseStocks.GetValueOrDefault(owner.Id);
+            Dictionary<RuleHandle<ItemRuleFamily>, int>? minimumStocks = null;
+            if (baseUncertainty.TryGetValue(owner.Id, out var uncertainty))
+            {
+                work += stocks!.Count + (long)uncertainty.Count;
+                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                minimumStocks = new(stocks);
+                foreach (var item in uncertainty) minimumStocks[item.Key] = stocks.GetValueOrDefault(item.Key) - item.Value;
+            }
             foreach (var craft in sources)
             {
                 if (ForecastHuntingCraftState(owner, craft, highest, stocks, out var state) is { } reason) return reason;
+                if (minimumStocks is not null)
+                {
+                    work += 1L + craft.Logistics!.Weapons.Count * 3L;
+                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (ForecastHuntingCraftState(owner, craft, highest, minimumStocks, out var lower) is { } lowerReason) return lowerReason;
+                    if (!lower.Weapons.SequenceEqual(state.Weapons) || (lower with { Weapons = state.Weapons }) != state)
+                        return "UFO retargeting requires stochastic craft ammunition stock forecasts.";
+                }
                 _huntingCraftForecast.Add((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
             }
         }

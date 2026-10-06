@@ -71,8 +71,6 @@ internal sealed partial class CampaignWorld
                         var clip = rules.Items.GetRequired(upper.Clip);
                         var maximum = serviceStocks.GetValueOrDefault(upper.Clip) - upper.MinimumUsed;
                         var minimum = (minimumServiceStocks ?? serviceStocks).GetValueOrDefault(upper.Clip) - lower.MaximumUsed;
-                        if (maximum != minimum && fuelItems.Contains(clip))
-                            return "UFO retargeting requires stochastic craft ammunition stock forecasts.";
                         if (maximum != minimum && minimumServiceStocks is null)
                         {
                             work += serviceStocks.Count;

@@ -12,6 +12,84 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldHuntingTests
 {
     [Theory]
+    [InlineData(false, "stock")]
+    [InlineData(true, "stock")]
+    [InlineData(false, "transfer")]
+    [InlineData(true, "transfer")]
+    [InlineData(false, "production")]
+    [InlineData(true, "production")]
+    [InlineData(false, "facility")]
+    [InlineData(true, "facility")]
+    public void SharedAmmunitionFuelRangesExecuteWhenEveryOutcomeRelaunchesTheSameCraft(bool cache, string source)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var native = TestFixtures.Rows(oracle.RootElement, "ammunitionFuelRows")
+            .Where(row => row[0].GetInt32() == 4 && row[1].GetBoolean() && row[2].GetInt32() == 9 && row[3].GetInt32() == 2).ToArray();
+        var overlay = AmmunitionForecastRules();
+        if (source == "production") overlay += "manufacture: [{name: RANGE_REFILL, time: 1, producedItems: {RANGE_AMMO: 1}}]\n";
+        overlay += "facilities: [{type: RANGE_WORKSHOP, mapName: LOGISTICS, workshops: 1}, {type: RANGE_FACILITY, mapName: LOGISTICS, ammoItem: RANGE_AMMO, ammoMax: 2, rearmRate: 1}]\n";
+        var content = Load(cache, overlay);
+        HashSet<int> outcomes = [];
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var initial = AmmunitionRangeSnapshot(content, source == "stock" ? 2 : source == "facility" ? 3 : 1, true) with { RandomState = seed };
+            var owner = initial.Bases[0];
+            if (source == "transfer") initial = initial with { Bases = [owner with { Transfers = [new(17, 1, CampaignTransferKind.Item, "RANGE_AMMO", 1)] }] };
+            if (source == "production") initial = initial with
+            {
+                Bases = [owner with
+            {
+                Facilities = [.. owner.Facilities, new("RANGE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("RANGE_REFILL", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+            }]
+            };
+            if (source == "facility") initial = initial with { Bases = [owner with { Facilities = [.. owner.Facilities, new("RANGE_FACILITY", 1, 1, 0, 0, false, false, false)] }] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)), seed, "ammo-fuel-range-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var stock = after.Bases[0].Items.GetValueOrDefault("RANGE_AMMO");
+            outcomes.Add(stock);
+            var row = Assert.Single(native, row => row[7].GetInt32() == stock);
+            var gun = after.Bases[0].Crafts[0].Logistics!.Weapons[0]!;
+            var craft = after.Bases[0].Crafts[1].Logistics!;
+            var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).Take(6).ToArray());
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { gun.Ammo, gun.Rearming, stock, craft.Status, craft.Fuel, after.World.Ufos[0].Destination!.Id });
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+            Reload(content, campaign, seed, "ammo-fuel-range-after.sav");
+        }
+        Assert.Equal(2, outcomes.Count);
+    }
+
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    public void OrderedFuelConsumersRequireEnoughStockAtBothAmmunitionEndpoints(bool cache, int stock)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = Load(cache, AmmunitionForecastRules());
+        var initial = AmmunitionRangeSnapshot(content, stock, true);
+        var owner = initial.Bases[0];
+        initial = initial with { Bases = [owner with { Crafts = [owner.Crafts[0], owner.Crafts[1], owner.Crafts[1] with { Id = 4 }] }] };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ammo-fuel-order-before.sav");
+        if (stock == 2) AssertTimeBlocked(campaign, "UFO retargeting requires stochastic craft ammunition stock forecasts.");
+        else
+        {
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.All(after.Bases[0].Crafts.Where(craft => craft.RuleId == "RANGE_FUEL"), craft =>
+            {
+                Assert.Equal("STR_OUT", craft.Logistics!.Status);
+                Assert.Equal(99, craft.Logistics.Fuel);
+            });
+            Assert.True(after.World.Ufos[0].Hunting);
+            Assert.Equal(1, after.World.Ufos[0].Destination!.Id);
+            Reload(content, campaign, 81, "ammo-fuel-order-after.sav");
+        }
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]

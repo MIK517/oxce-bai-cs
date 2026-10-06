@@ -7,16 +7,16 @@ ordered transfers, item reuse, shared refuelling and escort fuel. Research-owned
 forecasts cover stock-free completions, held-item refunds, global obsolete
 and disabled-project cancellation, fixed spawned item arrivals, lookup and automatic
 discoveries, disablers/re-enablers and deterministic free/protected-free rewards. Non-fallback
-production without a completing unit, scored fixed/sold item output, deterministic random
+production without a completing unit, scored fixed/sold item output, deterministic and proven-inert random
 output, scientist/engineer transfers, recurring paid/item-input units and fallback staffing
 participate in hunter forecasts. Research forecasts also include native corpse recovery.
 Production price scripts use the future hourly context, exact deterministic daily
 discoveries, supported immutable rule metadata/tags, Mod settings and deterministic
 damage queries, with native pointer identity. Current buy/sell callers share the same
 bounded execution; random damage is limited to native null short circuits.
-Remaining projections cover uncertain research-dependent sale prices, genuinely different random output,
-stochastic shared ammunition, uncertain actor identity counters and random research
-reward choices. Soldier production is composed with nationality, pending-name retries,
+Remaining projections cover uncertain research-dependent sale prices and future alien activity,
+relevant random output, divergent shared-ammunition servicing/refuelling/material outcomes,
+uncertain actor identity counters and random research reward choices. Soldier production is composed with nationality, pending-name retries,
 transfers, shared counters and hunting. Deterministic craft manufacture is composed through
 initialization, delayed/immediate output, servicing and further craft consumption.
 The progress notes below record earlier guards and their later replacements.
@@ -552,3 +552,5 @@ Country-price batch audit: no confirmed implementation defect was found. Reviewe
 Branch 4c ammunition range operation: CraftServicing now derives exact native weapon transitions and minimum/maximum clip consumption from both statistical-saving endpoints, without a campaign random source. The existing execution operation supplies all arithmetic, clamping and missing-ammo semantics. All strategic-hunting ammunitionFuelRows bound the range across fresh/cache rules; malformed consumed ammo fails without changing inputs. Reference: CraftWeapon::rearm and Craft::rearm at 4df3a5e. Live shared-stock integration follows; 4d untouched.
 
 Branch 4c live ammunition intervals: hourly hunting forecasts now retain exact craft/weapon states while carrying bounded nonfuel clip stocks through saved-order shared rearming, facility use, transfers and production validation. Actual stock and RNG remain live-execution decisions. Ambiguous craft/facility transitions, positive manufacturing inputs that consume uncertain clips, and possible stock overflow stop before mutation. Twelve fresh/cache seeded shared/nonshared cases and atomic effect guards pass with before/after reloads. Reference: Craft::rearm, CraftWeapon::rearm, BaseFacility::rearm, Transfer::advance and Production::step; fuel intervals follow next; 4d untouched.
+
+Branch 4c stochastic fuel convergence: hunting forecasts now advance lower and upper shared clip stocks in saved craft order and admit the tick only when both produce the same complete craft state. Fixed arrivals/output and exact facility use preserve those bounds. Actual random savings, stock, notifications and RNG remain execution-owned. Native ammunitionFuelRows now execute their sufficient-stock stochastic cases; twelve fresh/cache refill/order cases cover transfers, production, facilities, two consumers and atomic scarcity. Positive uncertain manufacturing inputs and divergent servicing remain precise guards. Reference: Craft::rearm/refuel, GeoscapeState hourly-to-half-hour fallthrough and Production::step; 4d untouched.
