@@ -102,10 +102,11 @@ internal sealed partial class CampaignWorld
     // happens after the UFO reaches its old destination and cannot change that arrival position.
     // Preflight neither executes scripts nor consumes RNG.
     private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfo(UfoSnapshot ufo,
-        CampaignTimeTrigger highest) => ForecastUfoStep(ProjectFlightTarget(UfoForFlight(ufo, highest), highest), highest);
+        CampaignTimeTrigger highest, bool needPosition = true) =>
+        ForecastUfoStep(ProjectFlightTarget(UfoForFlight(ufo, highest), highest), highest, needPosition);
 
     private (WorldPosition Position, UfoStatus Status, int Speed) ForecastUfoStep(UfoSnapshot ufo,
-        CampaignTimeTrigger highest)
+        CampaignTimeTrigger highest, bool needPosition = true)
     {
         if (ufo.Status == UfoStatus.Landed)
             return ufo.SecondsRemaining == 5 ? (ufo.Position, UfoStatus.Flying,
@@ -115,8 +116,14 @@ internal sealed partial class CampaignWorld
                             campaign.Content.RuntimeRules.Ufos.GetRequired(ufo.RuleId)].Value.StatsForRace(
                                 FindMission(ufo.MissionId)!.Race).SpeedMaximum)) : (ufo.Position, ufo.Status, ufo.Speed);
         if (ufo.Status != UfoStatus.Flying) return (ufo.Position, ufo.Status, ufo.Speed);
-        var position = WorldGeometry.Move(ufo.Position, ufo.Destination!.Position, WorldGeometry.RadianSpeed(ufo.Speed));
-        if (WorldGeometry.Distance(ufo.Position, ufo.Destination.Position) > WorldGeometry.RadianSpeed(ufo.Speed))
+        var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
+        var distance = UfoDestinationDistance(ufo);
+        var destination = ufo.Destination!.Position;
+        // Status-only callers skip MovingTarget::move. The speed vector is only used for a step
+        // that does not reach the destination; an arriving step snaps to it.
+        var position = !needPosition ? ufo.Position : WorldGeometry.Move(ufo.Position, destination, speedRadian,
+            distance > speedRadian ? WorldGeometry.SpeedVector(ufo.Position, destination, speedRadian) : default, distance);
+        if (distance > speedRadian)
             return (position, ufo.Status, ufo.Speed);
         if (ufo.Hunting || ufo.Escorting) return (position, ufo.Status, ufo.Speed);
         var mission = ForecastMission(ufo.MissionId, highest);
@@ -133,12 +140,20 @@ internal sealed partial class CampaignWorld
             landing ? 0 : trajectory.Speed(ufo.TrajectoryPoint + 1, rule.StatsForRace(mission.Race).SpeedMaximum));
     }
 
+    /// <summary>Whether any UFO's arrival ends this tick's flight pass; independent of the craft asking.</summary>
+    private bool AnyUfoEndsFlightPass(CampaignTimeTrigger highest)
+    {
+        foreach (var candidate in _ufos)
+            if (EndsUfoFlightPass(candidate, highest)) return true;
+        return false;
+    }
+
     private bool EndsUfoFlightPass(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
         UfoForFlight(ufo, highest).Status == UfoStatus.Flying &&
-        ForecastUfo(ufo, highest).Status == UfoStatus.Destroyed;
+        ForecastUfo(ufo, highest, needPosition: false).Status == UfoStatus.Destroyed;
 
     private string? CraftArrivalReason(CampaignState.BaseState owner, CampaignState.CraftState craft,
-        CraftLogisticsState state, CampaignTimeTrigger highest)
+        CraftLogisticsState state, CampaignTimeTrigger highest, ref bool? terminalUfoArrival)
     {
         if (state.Destination is { Kind: WorldTargetKind.Craft } escort && escort.Id == craft.Id &&
             escort.TypeId == campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule))
@@ -175,8 +190,9 @@ internal sealed partial class CampaignWorld
             targetPosition = projectedUfo.Value.Position;
         }
         // A terminal UFO arrival skips the entire craft pass, regardless of list order.
-        foreach (var candidate in _ufos)
-            if (EndsUfoFlightPass(candidate, highest)) return null;
+        // The answer is the same for every craft, so the craft-movement preflight computes it once.
+        terminalUfoArrival ??= AnyUfoEndsFlightPass(highest);
+        if (terminalUfoArrival.Value) return null;
         var from = new WorldPosition(state.Longitude, state.Latitude);
         var position = state.Takeoff > 0 ? from : WorldGeometry.Move(from, targetPosition, WorldGeometry.RadianSpeed(state.Speed));
         if (!WorldGeometry.ReachedDestination(position, targetPosition)) return null;

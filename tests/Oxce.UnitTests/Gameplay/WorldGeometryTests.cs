@@ -56,6 +56,28 @@ public sealed class WorldGeometryTests
         Assert.Equal(position, WorldGeometry.Move(position, destination, WorldGeometry.RadianSpeed(100_000)));
     }
 
+    [Theory]
+    [InlineData(0.4, 0.2, 0.4, 0.2, 100)] // coincident
+    [InlineData(0.4, 0.2, 0.4001, 0.2, 100_000)] // arrives within one step
+    [InlineData(0.4, 0.2, 3.0, -0.6, 2200)] // ordinary step
+    [InlineData(0.4, 0.2, 3.0, -0.6, 0)] // zero speed
+    [InlineData(0.2, 0.0002, 3.3415926535897931, -0.0002, 5000)] // antipode
+    [InlineData(1.0, 1.5707963267948966, 2.0, 1.2, 3000)] // from the north pole
+    [InlineData(1.0, -1.2, 4.0, -1.5707963267948966, 3000)] // to the south pole
+    public void MoveWithPrecomputedDistanceMatchesMove(double fromLongitude, double fromLatitude,
+        double toLongitude, double toLatitude, int speed)
+    {
+        var from = WorldPosition.Create(fromLongitude, fromLatitude);
+        var to = WorldPosition.Create(toLongitude, toLatitude);
+        var speedRadian = WorldGeometry.RadianSpeed(speed);
+        var vector = WorldGeometry.SpeedVector(from, to, speedRadian);
+        var distance = WorldGeometry.Distance(from, to);
+        Assert.Equal(WorldGeometry.Move(from, to, speedRadian), WorldGeometry.Move(from, to, speedRadian, vector, distance));
+        // A step of exactly the remaining distance snaps to the destination, like the native `>` test.
+        Assert.Equal(WorldGeometry.Move(from, to, distance, vector), WorldGeometry.Move(from, to, distance, vector, distance));
+        Assert.Equal(WorldPosition.Create(to.Longitude, to.Latitude), WorldGeometry.Move(from, to, distance, vector, distance));
+    }
+
     [Fact]
     public void MissionZoneAndAreaFailuresAreDiagnosed()
     {

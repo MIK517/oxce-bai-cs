@@ -115,9 +115,13 @@ public static class WorldGeometry
     }
 
     internal static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian,
-        (double Longitude, double Latitude) vector)
+        (double Longitude, double Latitude) vector) => Move(current, destination, speedRadian, vector, Distance(current, destination));
+
+    /// <param name="distance">Exactly <c>Distance(current, destination)</c>, computed once by the caller.</param>
+    internal static WorldPosition Move(WorldPosition current, WorldPosition destination, double speedRadian,
+        (double Longitude, double Latitude) vector, double distance)
     {
-        if (Distance(current, destination) > speedRadian)
+        if (distance > speedRadian)
             return current.WithLongitude(current.Longitude + vector.Longitude).WithLatitude(current.Latitude + vector.Latitude);
         return current.WithLongitude(destination.Longitude).WithLatitude(destination.Latitude);
     }

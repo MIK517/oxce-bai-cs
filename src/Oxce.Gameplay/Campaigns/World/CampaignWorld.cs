@@ -450,6 +450,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
     private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
+        _ufoDestinationDistances.Clear();
         _dailyResearchForecast = null;
         _missionCounterForecast = null;
         _newHunterHasNoTarget = null;

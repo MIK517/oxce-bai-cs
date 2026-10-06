@@ -152,7 +152,7 @@ internal sealed partial class CampaignWorld
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
             // MovingTarget::move snaps to this stationary waypoint when distance is
             // not greater than one step, including the reference's NaN fallback.
-            if (!(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
+            if (!(UfoDestinationDistance(ufo) > speedRadian))
             {
                 if (FindMission(ufo.MissionId) is null) return "UFO mission link requires world simulation.";
                 var mission = ForecastMission(ufo.MissionId, highest);
@@ -205,8 +205,9 @@ internal sealed partial class CampaignWorld
             var destination = ufo.Destination!;
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
             var vector = WorldGeometry.SpeedVector(ufo.Position, destination.Position, speedRadian);
-            var moved = WorldGeometry.Move(ufo.Position, destination.Position, speedRadian, vector);
-            if (!ufo.Hunting && !ufo.Escorting && !(WorldGeometry.Distance(ufo.Position, destination.Position) > speedRadian))
+            var distance = WorldGeometry.Distance(ufo.Position, destination.Position);
+            var moved = WorldGeometry.Move(ufo.Position, destination.Position, speedRadian, vector, distance);
+            if (!ufo.Hunting && !ufo.Escorting && !(distance > speedRadian))
             {
                 var mission = FindMission(ufo.MissionId)!;
                 var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
@@ -409,7 +410,7 @@ internal sealed partial class CampaignWorld
     private bool ArrivesOnGround(UfoSnapshot ufo, CampaignTimeTrigger highest)
     {
         if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying ||
-            WorldGeometry.Distance(ufo.Position, ufo.Destination!.Position) > WorldGeometry.RadianSpeed(ufo.Speed))
+            UfoDestinationDistance(ufo) > WorldGeometry.RadianSpeed(ufo.Speed))
             return false;
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(ufo.TrajectoryId)].Value;
@@ -418,6 +419,28 @@ internal sealed partial class CampaignWorld
         if (IsSiteConversion(ufo, mission, trajectory)) return false;
         return next < trajectory.Waypoints.Count && trajectory.Altitude(next) == 0 &&
             !mission.Interrupted;
+    }
+
+    // Target::getDistance from a UFO to its destination, memoized by the exact bits of both
+    // coordinates. Distance is a pure function of those four values, so an entry can never be
+    // stale; re-projected UFOs (retarget, suppression, escort target updates) simply produce other
+    // keys. Keys hold no references, so per-tick projections are not kept alive across a GC. The
+    // world preflight clears the table when it starts, bounding it to one pass; the craft-movement
+    // preflight later in the same pass reuses the entries. Only distances are cached, never an
+    // outcome that depends on pass-local forecasts.
+    private readonly Dictionary<(long, long, long, long), double> _ufoDestinationDistances = [];
+
+    private double UfoDestinationDistance(UfoSnapshot ufo)
+    {
+        var destination = ufo.Destination!;
+        var key = (BitConverter.DoubleToInt64Bits(ufo.Longitude), BitConverter.DoubleToInt64Bits(ufo.Latitude),
+            BitConverter.DoubleToInt64Bits(destination.Longitude), BitConverter.DoubleToInt64Bits(destination.Latitude));
+        if (!_ufoDestinationDistances.TryGetValue(key, out var distance))
+        {
+            distance = WorldGeometry.Distance(ufo.Position, destination.Position);
+            _ufoDestinationDistances.Add(key, distance);
+        }
+        return distance;
     }
 
     private AlienMissionSnapshot? FindMission(int id)

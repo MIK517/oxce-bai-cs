@@ -181,23 +181,8 @@ internal sealed partial class CampaignWorld
             case "Country.getRuleCountry":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is CampaignState.CountryState owner ? rules.Countries[owner.Rule].Value : null);
                 break;
-            case "GeoscapeGame.getCountries.init":
-                args[1] = ScriptRuntimeValue.FromScalar(0);
-                args[2] = ScriptRuntimeValue.FromScalar(receiver is null ? 0 : campaign.CountryStates.Count);
-                break;
-            case "GeoscapeGame.getCountries.list":
-                if (receiver is null)
-                {
-                    args[1] = ScriptRuntimeValue.FromScalar(0);
-                    args[2] = ScriptRuntimeValue.FromScalar(0);
-                    args[3] = ScriptRuntimeValue.FromReference(null);
-                }
-                else
-                {
-                    var index = args[1].Scalar;
-                    args[3] = ScriptRuntimeValue.FromReference((uint)index < (uint)campaign.CountryStates.Count ? campaign.CountryStates[index] : null);
-                    args[1] = ScriptRuntimeValue.FromScalar(unchecked(index + 1));
-                }
+            case "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list":
+                GeoscapeCountryQueries.InvokeList(name, args, campaign.CountryStates);
                 break;
             case "GeoscapeGame.getTime":
                 _detectionTime.Time = campaign.Time;
@@ -207,14 +192,7 @@ internal sealed partial class CampaignWorld
                 args[1] = ScriptRuntimeValue.FromScalar(receiver is null ? 0 :
                     ufo is not null ? DetectionUfoValue(name, ufo) :
                     craft is not null ? DetectionCraftValue(name, craft) :
-                    receiver is CampaignState.CountryState country ? name switch
-                    {
-                        "Country.getPact" => country.Pact ? 1 : 0,
-                        "Country.getCurrentFunding" => country.Funding[^1],
-                        "Country.getCurrentActivityXcom" => country.ActivityXcom[^1],
-                        "Country.getCurrentActivityAlien" => country.ActivityAlien[^1],
-                        _ => throw new InvalidOperationException("Detection country provider was not preflighted."),
-                    } :
+                    receiver is CampaignState.CountryState country ? GeoscapeCountryQueries.Value(name, country) :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
                     receiver is RuntimeItemRule itemRule ? WorldDetectionItemQueries.Value(name, itemRule) :
                     receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :

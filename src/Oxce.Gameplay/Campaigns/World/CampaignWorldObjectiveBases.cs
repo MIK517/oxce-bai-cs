@@ -272,7 +272,7 @@ internal sealed partial class CampaignWorld
     {
         var ufo = ProjectFlightTarget(UfoForFlight(saved, highest), highest);
         if (ufo.Hunting || ufo.Escorting || ufo.Status != UfoStatus.Flying || ufo.Destination is null ||
-            WorldGeometry.Distance(ufo.Position, ufo.Destination.Position) > WorldGeometry.RadianSpeed(ufo.Speed)) return null;
+            UfoDestinationDistance(ufo) > WorldGeometry.RadianSpeed(ufo.Speed)) return null;
         var mission = ForecastMission(ufo.MissionId, highest);
         if (mission.Interrupted) return null;
         var rules = campaign.Content.RuntimeRules;
