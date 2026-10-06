@@ -29,13 +29,15 @@ public class CampaignTimeAdvanceBenchmarks
         Pursuit32,
         /// <summary>8 missions, each with one leader and three hunter-killer escorts; one craft airborne.</summary>
         Escorts32,
+        /// <summary>32 stationary hunters repeatedly evaluate sixteen airborne craft.</summary>
+        Hunters32Crafts16,
     }
 
     private RuntimeContent _content = null!;
     private CampaignSnapshot _snapshot = null!;
     private CampaignState _campaign = null!;
 
-    [Params(Scenario.Flight8, Scenario.Flight32, Scenario.Flight128, Scenario.Pursuit32, Scenario.Escorts32)]
+    [Params(Scenario.Flight8, Scenario.Flight32, Scenario.Flight128, Scenario.Pursuit32, Scenario.Escorts32, Scenario.Hunters32Crafts16)]
     public Scenario Case { get; set; }
 
     /// <summary>
@@ -48,7 +50,8 @@ public class CampaignTimeAdvanceBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _content = LoadContent(["strategic-world.rul", "strategic-hunting.rul"]);
+        _content = LoadContent(["strategic-world.rul", "strategic-hunting.rul"],
+            "ufos: [{type: STATIONARY_HUNTER, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: 0}]\n");
         _snapshot = Case switch
         {
             Scenario.Flight8 => Flight(8, detected: false),
@@ -56,6 +59,7 @@ public class CampaignTimeAdvanceBenchmarks
             Scenario.Flight128 => Flight(128, detected: false),
             Scenario.Pursuit32 => Pursuit(32),
             Scenario.Escorts32 => Escorts(8, 3),
+            Scenario.Hunters32Crafts16 => Hunters(32, 16),
             _ => throw new ArgumentOutOfRangeException(nameof(Case)),
         };
         Validate();
@@ -152,6 +156,38 @@ public class CampaignTimeAdvanceBenchmarks
         return campaign.Capture();
     }
 
+    private CampaignSnapshot Hunters(int hunters, int crafts)
+    {
+        var initial = Flight(hunters, detected: true);
+        var owner = initial.Bases[0];
+        var template = owner.Crafts.First(craft => craft.RuleId == "SHIP");
+        return initial with
+        {
+            Bases = [owner with
+            {
+                Soldiers = [],
+                Crafts = [.. Enumerable.Range(1, crafts).Select(id => template with
+                {
+                    Id = id,
+                    Logistics = template.Logistics! with
+                    {
+                        Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0,
+                        Longitude = 0.45, Latitude = 0.21, Destination = null, Weapons = [],
+                    },
+                })],
+            }, .. initial.Bases.Skip(1)],
+            World = initial.World with
+            {
+                Ufos = [.. initial.World.Ufos.Select(ufo => ufo with
+                {
+                    RuleId = "STATIONARY_HUNTER", HunterKiller = true, HuntMode = ufo.UniqueId % 2,
+                    Longitude = 0.4, Latitude = 0.2,
+                    Speed = 0, SpeedRadian = 0, SpeedLongitude = 0, SpeedLatitude = 0,
+                })],
+            },
+        };
+    }
+
     private void Validate()
     {
         Restore();
@@ -177,5 +213,8 @@ public class CampaignTimeAdvanceBenchmarks
         }
         if (Case == Scenario.Escorts32 && after.World.Ufos.Any(ufo => ufo.HunterKiller && !ufo.Escorting))
             throw new InvalidOperationException("An escort formation broke during the measured interval.");
+        if (Case == Scenario.Hunters32Crafts16 &&
+            (after.Bases[0].Crafts.Count != 16 || after.World.Ufos.Any(ufo => !ufo.Hunting || ufo.Destination?.Id != 1)))
+            throw new InvalidOperationException("The populated hunter selection changed during the measured interval.");
     }
 }

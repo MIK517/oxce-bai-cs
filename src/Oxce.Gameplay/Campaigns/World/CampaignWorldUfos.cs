@@ -200,7 +200,8 @@ internal sealed partial class CampaignWorld
                 continue;
             }
             if (ufo.Status != UfoStatus.Flying) continue;
-            if ((ufo.Hunting || ufo.Escorting) && Resolve(ufo.Destination) is { } target)
+            if ((ufo.Hunting || ufo.Escorting) && Resolve(ufo.Destination) is { } target &&
+                !SameTargetCoordinates(ufo.Destination!, target.Longitude, target.Latitude))
                 ufo = ufo with { Destination = target };
             var destination = ufo.Destination!;
             var speedRadian = WorldGeometry.RadianSpeed(ufo.Speed);
