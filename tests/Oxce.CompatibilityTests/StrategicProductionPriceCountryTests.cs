@@ -35,7 +35,7 @@ public sealed partial class StrategicProductionPriceMetadataTests
     [InlineData(true, false, true)]
     [InlineData(false, true, true)]
     [InlineData(true, true, true)]
-    public void CurrentAlienActivityPricesExecuteAndOnlyConsumedFutureQueriesBlock(bool cache, bool global, bool consumed)
+    public void CurrentAndHourlyAlienActivityPricesExecuteWithConsumedOnlyReads(bool cache, bool global, bool consumed)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
         var rows = TestFixtures.Rows(oracle.RootElement, "countryList");
@@ -52,9 +52,47 @@ public sealed partial class StrategicProductionPriceMetadataTests
             new PrepareLogisticsQuote(before.Bases[0].Id, LogisticsOperation.Sell)).Events)).Quote;
         Assert.Equal(7, Assert.Single(quote.Rows, row => row.RuleId == "PRICE_META_ITEM").UnitCost);
         Assert.Equivalent(before, campaign.Capture(), strict: true);
-        if (consumed) AssertTimeBlocked(campaign,
+        AssertPrice(content, snapshot: PriceCountries);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HourlyPricesReadActivityBeforeHalfHourUfoScores(bool cache, bool global)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        var content = Load(cache, global,
+            "var int activity; loop var country geoscape_game.getCountries.list; country.getCurrentActivityAlien activity; end; return activity;",
+            extraRules: "countries: [{type: PRICE_COUNTRY_A, areas: [[0, 30, -20, 20]]}]\nufos: [{type: HUNTER, missionScore: 5}]\n");
+        var campaign = Reload(content, Create(content, initial => initial with
+        {
+            Countries = [new("PRICE_COUNTRY_A", [2000], [9], [7], false, false, false, [])],
+        }), 81, "hourly-country-score-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(7, after.Funds[^1]);
+        Assert.Equal(12, Assert.Single(after.Countries).ActivityAlien[^1]);
+        Reload(content, campaign, 81, "hourly-country-score-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ConsumedDailyAlienActivityStillRequiresItsWorldProjection(bool cache, bool global)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        var content = Load(cache, global,
+            "var int value; loop var country geoscape_game.getCountries.list; country.getCurrentActivityAlien value; end; return 7;",
+            extraRules: "countries: [{type: PRICE_COUNTRY_A}, {type: PRICE_COUNTRY_B}]");
+        var campaign = Reload(content, Create(content, initial => PriceCountries(initial) with
+        { Time = new(1, 1, 1, 1999, 23, 59, 55) }), 81, "daily-country-price-before.sav");
+        AssertTimeBlocked(campaign,
             $"Price {(global ? "event" : "script")} failed: Script binding 'Country.getCurrentActivityAlien' failed: Production prices require world alien-activity forecasts..");
-        else AssertPrice(content, snapshot: PriceCountries);
     }
 
     [Theory]

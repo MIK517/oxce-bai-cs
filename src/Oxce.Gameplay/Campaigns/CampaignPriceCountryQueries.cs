@@ -15,7 +15,9 @@ public sealed partial class CampaignState
     private ScriptBindingResult InvokePriceCountryQuery(string name, Span<ScriptRuntimeValue> args, PriceForecastContext forecast)
     {
         var receiver = args[0].Reference;
-        if (name == "Country.getCurrentActivityAlien" && receiver is CountryState && forecast.Time != Time)
+        // Hourly production precedes the half-hour world score handlers. Only a
+        // daily fallthrough can change alien activity before this price caller.
+        if (name == "Country.getCurrentActivityAlien" && receiver is CountryState && forecast.Time != Time && forecast.Daily)
             return ScriptBindingResult.Failure("Production prices require world alien-activity forecasts.");
         if (GeoscapeCountryQueries.IsList(name))
         {
