@@ -55,6 +55,16 @@ public sealed partial class CampaignState
                 var assigned = assignments[projectIndex++];
                 var project = original.Assigned == assigned ? original : original with { Assigned = assigned };
                 var rule = rules.Manufacture[project.Rule].Value;
+                // Validation consumes rule edges even when this hour produces no
+                // unit. Reserve those scans before calling the shared validator.
+                work += 2L * (rule.RequiredMaterials.Count + (long)rule.ProducedMaterials.Count) +
+                    rule.RandomProducedItems.Count + (long)rule.Events.Count;
+                if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                foreach (var choice in rule.RandomProducedItems)
+                {
+                    work += choice.Items.Count;
+                    if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                }
                 if (ProductionRuleInvalid(rule) is { } invalid) return invalid;
                 var requested = ProductionProgress.Requested(rule.Time, project.Spent, project.Assigned, project.Amount, project.Infinite);
                 if (requested == 0) continue;
