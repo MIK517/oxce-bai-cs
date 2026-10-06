@@ -2306,6 +2306,9 @@ public sealed class StrategicWorldHuntingTests
         long work = 0;
         Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var stockOnly));
         Assert.Null(stockOnly.CompletedResearch);
+        long limitedWork = 1_000_000;
+        Assert.False(campaign.ResearchPreflight.TryForecastDailyStocks(ref limitedWork, out var refused, includeDiscoveries: true));
+        Assert.Null(refused.CompletedResearch);
         Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var discovery, includeDiscoveries: true));
         Assert.NotNull(discovery.CompletedResearch);
         Assert.Contains("STOCK_FREE_REWARD", discovery.CompletedResearch);
@@ -4407,6 +4410,75 @@ public sealed class StrategicWorldHuntingTests
             Assert.Equal(control.Capture().CompletedResearch, campaign.Capture().CompletedResearch);
             Reload(content, campaign, 81, "query-price-after.sav");
         }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ProductionPriceClockPointersMatchNativeIdentity(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "priceTimePointerRows"))
+        {
+            var script = "var ptr GeoscapeGame absent null; var ptr Time a; var ptr Time b; var int second; " +
+                $"{(row[0].GetBoolean() ? "geoscape_game" : "absent")}.getTime a; " +
+                $"{(row[0].GetBoolean() ? "geoscape_game" : "absent")}.getTime b; " +
+                $"if {(row[2].GetBoolean() ? "neq" : "eq")} a b; div cost_current 0; end; " +
+                $"if {(row[1].GetBoolean() ? "eq" : "neq")} a null; div cost_current 0; end; " +
+                "a.getSecond second; add second 7; return second;";
+            var content = Load(cache, "manufacture: [{name: CLOCK_PRICE_PRODUCT, time: 1, producedItems: {CLOCK_PRICE_ITEM: 1}}]\nfacilities: [{type: CLOCK_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
+                (global ? $"items: [{{type: CLOCK_PRICE_ITEM}}]\nextended: {{scripts: {{sellCostItem: [{{new: clock-identity-price, offset: 1, code: '{script}'}}]}}}}\n" :
+                    $"items: [{{type: CLOCK_PRICE_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n"));
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), Funds = [0] };
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+                {
+                    Facilities = [.. initial.Bases[0].Facilities, new("CLOCK_PRICE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                    Productions = [new("CLOCK_PRICE_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
+                }],
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "clock-pointer-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(7, campaign.Capture().Funds[^1]);
+            Reload(content, campaign, 81, "clock-pointer-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ProductionPriceRulePointersKeepNativeDefaultsAndSentinels(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        Assert.Equal(0, oracle.RootElement.GetProperty("noneItem").GetInt32());
+        const string script = "var ptr RuleMod absent null; var ptr RuleResearch topic; var ptr RuleResearch lookup; var ptr RuleItem item; var ptr RuleItem wanted; var int value; " +
+            "rules.getRuleItem item \"STR_NONE\"; if neq item null; div cost_current 0; end; " +
+            "rules.getRuleResearch topic \"SUPPLY\"; topic.getNeededItem item; rules.getRuleItem wanted \"SUPPLY\"; if neq item wanted; div cost_current 0; end; " +
+            "rules.getRuleResearch topic \"SELF_PRICE_TOPIC\"; topic.getLookup lookup; if neq lookup null; div cost_current 0; end; " +
+            "absent.getRuleResearch topic \"SUPPLY\"; topic.getCost value; if neq value 0; div cost_current 0; end; " +
+            "rules.getRuleItem item \"RULE_POINTER_PRICE_ITEM\"; if neq item item_rule; div cost_current 0; end; return 7;";
+        var content = Load(cache, "research: [{name: SUPPLY, cost: 1, needItem: true}, {name: SELF_PRICE_TOPIC, cost: 1, lookup: SELF_PRICE_TOPIC}]\nmanufacture: [{name: RULE_POINTER_PRICE_PRODUCT, time: 1, producedItems: {RULE_POINTER_PRICE_ITEM: 1}}]\nfacilities: [{type: RULE_POINTER_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
+            (global ? $"items: [{{type: STR_NONE}}, {{type: RULE_POINTER_PRICE_ITEM}}]\nextended: {{scripts: {{sellCostItem: [{{new: rule-pointer-price, offset: 1, code: '{script}'}}]}}}}\n" :
+                $"items: [{{type: STR_NONE}}, {{type: RULE_POINTER_PRICE_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n"));
+        Assert.True(content.RuntimeRules.Items.TryGet("STR_NONE", out _));
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("RULE_POINTER_PRICE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("RULE_POINTER_PRICE_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
+            }],
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "rule-pointer-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(7, campaign.Capture().Funds[^1]);
+        Reload(content, campaign, 81, "rule-pointer-after.sav");
     }
 
     [Theory]

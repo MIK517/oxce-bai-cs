@@ -239,7 +239,9 @@ bool insideRadarRange(Target* target) const;
 // RADAR
 // TARGET_DESTRUCTOR
 // RETARGET_METHODS
+struct GameTime {};
 struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
+GameTime clockValue; GameTime* clock=&clockValue; GameTime* getTime() const;
 std::vector<Base*> bases; auto* getBases() { return &bases; }
 int selectSoldierNationalityByLocation(const Mod*,const RuleSoldier*,const Target*) const { return 0; }
 bool isResearched(int) const { return false; }
@@ -272,6 +274,7 @@ bool hasUndiscoveredProtectedUnlock(const RuleResearch*) const;
 std::vector<Ufo*>* getUfos() { return &ufos; }
 std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
 int craftCounter=10,soldierCounter=20; int getId(const std::string& type) { return type=="STR_SOLDIER"?soldierCounter++:type=="PRODUCED_CRAFT"?craftCounter++:8+(int)waypoints.size(); } };
+// PRICE_TIME_POINTER
 const int TRANSFER_SOLDIER=1;
 // PRODUCTION_SOLDIER_GENERATION
 struct ProductionCraftRule { CraftBirthRule craft; std::vector<int> times; const CraftBirthRule* getProducedCraft() const { return &craft; } const auto& getTransferTimes() const { return times; } };
@@ -1153,6 +1156,14 @@ Base base; SavedGame save; save.priceScript=mode; save.priceSecond=0; save.price
 Item item; item.sellCost=7; ProductionItemRule rule; rule.produced={{&item,2}}; ProductionDeliveryCaller delivery{&rule}; delivery.sell=true;
 const auto price=item.getSellCostAdjusted(&base,&save); delivery.deliver(&base,&save);
 std::cout << '[' << mode << ',' << daily << ',' << researched << ',' << save.priceSecond << ',' << save.priceHour << ',' << save.priceDays << ',' << save.priceMonths << ',' << save.priceDifficulty << ',' << price << ',' << save.funds << ']';
+}
+std::cout << "],\"priceTimePointerRows\":["; first=true;
+for(bool present:{false,true}) {
+if(!first) std::cout << ','; first=false;
+SavedGame save; const SavedGame* receiver=present?&save:nullptr;
+const GameTime* a=&save.clockValue; const GameTime* b=&save.clockValue;
+getTimeScript(receiver,a); getTimeScript(receiver,b);
+std::cout << '[' << (present?"true":"false") << ',' << (a?"true":"false") << ',' << (a==b?"true":"false") << ']';
 }
 std::cout << "],\"researchPriceGetterRows\":["; first=true;
 for(bool present:{false,true}) for(bool linked:{false,true}) for(bool needed:{false,true}) for(int mode:{0,1,2}) {

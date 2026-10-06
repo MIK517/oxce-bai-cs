@@ -27,6 +27,9 @@ public sealed partial class CampaignState
         if (artifact is null && plan is null) return adjusted;
         var program = artifact?.Program ?? PriceDefault(parser);
         var programs = (plan?.Before.Select(e => e.Program) ?? []).Append(program).Concat(plan?.After.Select(e => e.Program) ?? []);
+        // Native getTime returns one pointer throughout this price invocation,
+        // including its before/current/after programs. Box the value only once.
+        object timeReference = forecast?.Time ?? Time;
         var builder = new ScriptHostBindingsBuilder();
         var seen = new HashSet<int>();
         foreach (var candidate in programs)
@@ -44,7 +47,7 @@ public sealed partial class CampaignState
                     unavailable = $"Price script requires unsupported binding {binding.Name}.";
                     return adjusted;
                 }
-                if (seen.Add(binding.Id.Value)) builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding.Name, args, forecast));
+                if (seen.Add(binding.Id.Value)) builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding.Name, args, forecast, timeReference));
             }
         }
         var providers = builder.Build();
@@ -118,7 +121,7 @@ public sealed partial class CampaignState
         "RuleItem.getType" or "RuleItem.getWeight" or "RuleItem.getBattleType" or "Time.getDay" or "Time.getMonth" or
         "Time.getYear" or "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
-    private ScriptBindingResult InvokePriceBinding(string name, Span<ScriptRuntimeValue> args, PriceForecastContext? forecast)
+    private ScriptBindingResult InvokePriceBinding(string name, Span<ScriptRuntimeValue> args, PriceForecastContext? forecast, object timeReference)
     {
         if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } &&
             args[0].Reference is not null && args[2].Reference is string queriedResearch)
@@ -163,14 +166,14 @@ public sealed partial class CampaignState
         var item = args[0].Reference as PriceItemReference;
         var researchRule = args[0].Reference is string topic && _content.RuntimeRules.Research.TryGet(topic, out var researchHandle)
             ? _content.RuntimeRules.Research[researchHandle].Value : null;
-        var time = args[0].Reference is CampaignTime value ? value : forecast?.Time ?? Time;
+        var time = args[0].Reference is CampaignTime value ? value : (CampaignTime)timeReference;
         switch (name)
         {
-            case "GeoscapeGame.getTime": args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is null ? null : forecast?.Time ?? Time); break;
+            case "GeoscapeGame.getTime": args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is null ? null : timeReference); break;
             case "RuleItem.getType": args[1] = ScriptRuntimeValue.FromText(item?.Id ?? ""); break;
             case "RuleMod.getRuleItem":
                 var ruleId = args[2].Text ?? "";
-                args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is not null && _content.RuntimeRules.Items.TryGet(ruleId, out var handle)
+                args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is not null && ruleId != "STR_NONE" && _content.RuntimeRules.Items.TryGet(ruleId, out var handle)
                     ? PriceItemReferenceFor(ruleId, _content.RuntimeRules.Items[handle].Value) : null);
                 break;
             case "RuleMod.getRuleResearch":
