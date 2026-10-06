@@ -17,7 +17,7 @@ public sealed partial class CampaignState
 
     private bool PriceTagSupported(ScriptBindingDeclaration binding) =>
         binding.Name is "RuleItem.getTag" or "RuleResearch.getTag" or "RuleMod.getTag" or "GeoscapeGame.getTag" or
-            "RuleArmor.getTag" or "RuleSkill.getTag" &&
+            "RuleArmor.getTag" or "RuleSkill.getTag" or "RuleSoldier.getTag" &&
         _content.Tags.Types.Any(type => type.Id.Value == binding.Parameters[2].Type.Id.Value &&
             binding.Name == type.Name + ".getTag");
 
@@ -47,6 +47,8 @@ public sealed partial class CampaignState
                 RuntimeRuleCatalog when tag.Owner == "RuleMod" => _priceRuleTags!.GetValueOrDefault(("extended", "globals", tag.Name)),
                 RuntimeArmorRule armor when tag.Owner == "RuleArmor" => _priceRuleTags!.GetValueOrDefault(("armors", armor.Type, tag.Name)),
                 RuntimeIdentityRule skill when tag.Owner == "RuleSkill" => _priceRuleTags!.GetValueOrDefault(("skills", skill.Id, tag.Name)),
+                RuntimeSoldierRule soldier when tag.Owner == "RuleSoldier" && _priceSoldierIds.TryGetValue(soldier, out var id) =>
+                    _priceRuleTags!.GetValueOrDefault(("soldiers", id, tag.Name)),
                 CampaignState state when tag.Owner == "GeoscapeGame" => state.ScriptValue(tag.Name),
                 _ => 0,
             };
