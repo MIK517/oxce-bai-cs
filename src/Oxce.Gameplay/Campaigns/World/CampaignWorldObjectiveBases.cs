@@ -164,8 +164,10 @@ internal sealed partial class CampaignWorld
                 var possible = false;
                 if (state.Status == "STR_OUT")
                 {
+                    if (BaseHuntingCraftRemovalReason(highest, ref work) is { } removalReason) return removalReason;
                     var projected = state;
-                    if (state.Destination is { Kind: WorldTargetKind.Craft })
+                    if (state.Destination is { Kind: WorldTargetKind.Craft } ||
+                        _baseHuntingCraftRemovalTypes!.Contains(rules.Crafts.GetExternalId(craft.Rule)))
                     {
                         if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                             return forecastReason;
