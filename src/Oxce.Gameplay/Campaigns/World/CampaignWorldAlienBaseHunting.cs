@@ -6,6 +6,16 @@ internal sealed partial class CampaignWorld
 {
     private const string HuntGenerationReason = "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.";
     private long? _baseHuntingCraftPopulationBound;
+    private IReadOnlySet<string>? _baseHuntingCraftRemovalTypes;
+
+    private string? BaseHuntingCraftRemovalReason(CampaignTimeTrigger highest, ref long work)
+    {
+        if (_baseHuntingCraftRemovalTypes is not null) return null;
+        if (campaign.ProductionPreflight.CraftRemovalWork(_ufos.Count, highest, ref work, out var types) is { } reason)
+            return reason;
+        _baseHuntingCraftRemovalTypes = types;
+        return null;
+    }
 
     private string? BaseHuntingPopulationReason(CampaignTimeTrigger highest, ref long work, string boundary)
     {
@@ -56,12 +66,14 @@ internal sealed partial class CampaignWorld
                     continue;
                 }
                 if (state.LowFuel || state.MissionComplete) continue;
+                if (BaseHuntingCraftRemovalReason(highest, ref work) is { } removalReason) return removalReason;
                 var maximum = CraftLogistics.EffectiveDamageMaximum(state, rule, campaign.Content.RuntimeRules);
                 if (state.Damage >= maximum) continue;
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out _))
                     return SpeedRangeReason;
                 var projected = state;
-                if (state.Destination is { Kind: WorldTargetKind.Craft })
+                if (state.Destination is { Kind: WorldTargetKind.Craft } ||
+                    _baseHuntingCraftRemovalTypes!.Contains(campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule)))
                 {
                     if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                         return forecastReason;
