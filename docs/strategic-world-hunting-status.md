@@ -23,6 +23,13 @@ by preflight. All 96 new native rows classify equal progress/results separately
 from divergent material eligibility; fresh/cache interval and retained-guard
 cases pass with transition reloads. Divergent inputs still stop the entire tick.
 
+Ordered acceptance adds 32 two-project native traces and checks unit counts,
+completion/shortage notifications and surviving project progress as well as
+weapons and stocks. Every preceding oracle field is unchanged. Nine focused
+fresh/cache cases pass, including atomic divergent sequences, both transition
+reloads and exhausted-work purity. Native probes and their captured output stay
+project-local; the reference checkout remains unchanged.
+
 ## Future country activity prices (2026-10-07)
 
 Consumed hourly country alien-activity queries now read the existing history:

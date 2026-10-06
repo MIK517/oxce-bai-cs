@@ -860,6 +860,27 @@ std::cout << '[' << stock << ',' << input << ',' << amount << ',' << assigned <<
 << progress._timeSpent << ',' << result << ',' << base.storage.count << ',' << RNG::calls << ']';
 }
 RNG::suppliedChoice=-1;
+std::cout << "],\"productionAmmunitionSequenceRows\":[";
+serviceFirst=true;
+for(int stock:{1,2,4,8}) for(int input:{1,2}) for(int nextInput:{1,2}) for(int choice:{0,3}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+RNG::calls=0; RNG::suppliedChoice=choice;
+Item item; item.clipSize=4; Base base; base.storage.count=stock; ServiceGame game; ResearchMod mod;
+Craft gun; gun._base=&base; gun._status="STR_REARMING"; gun._fuel=100;
+CraftWeapon weapon; weapon.rule.clip=&item; weapon.rule.ammoMax=10; weapon.rule.saving=true; weapon._ammo=9; weapon.rearming=true;
+gun._weapons={&weapon}; base.crafts={&gun}; gun.rearm();
+Production first,second; first.rule.time=second.rule.time=1;
+first.rule.requiredItems={{&item,input}}; second.rule.requiredItems={{&item,nextInput}};
+first._engineers=second._engineers=2; first._amount=second._amount=3;
+ProductionItemRule rule; rule.produced={{&item,1}}; ProductionDeliveryCaller delivery{&rule};
+const auto firstResult=first.scalarStep(&base,&game.save,&mod,delivery);
+const auto secondResult=second.scalarStep(&base,&game.save,&mod,delivery);
+std::cout << '[' << stock << ',' << input << ',' << nextInput << ',' << choice << ','
+<< first.completedUnits << ',' << firstResult << ',' << first._timeSpent << ','
+<< second.completedUnits << ',' << secondResult << ',' << second._timeSpent << ','
+<< base.storage.count << ',' << weapon.getAmmo() << ',' << (weapon.isRearming()?"true":"false") << ',' << RNG::calls << ']';
+}
+RNG::suppliedChoice=-1;
 std::cout << "],\"facilityFuelRows\":[";
 serviceFirst=true;
 for(int stock:{0,1,2}) for(int ammo:{0,1,2}) for(int build:{0,1}) for(bool reported:{false,true}) {
