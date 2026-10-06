@@ -7,7 +7,8 @@ internal sealed partial class CampaignWorld
     private string? ForecastHuntingHourlyInputs(CampaignState.BaseState owner,
         List<CampaignState.CraftState> sources, Dictionary<RuleHandle<ItemRuleFamily>, int> stocks,
         CampaignTimeTrigger highest, bool researchMayChangeStocks,
-        IReadOnlyList<KeyValuePair<string, int>>? researchArrivals, ref long work)
+        IReadOnlyList<KeyValuePair<string, int>>? researchArrivals,
+        Dictionary<RuleHandle<ItemRuleFamily>, int> uncertainty, ref long work)
     {
         var rules = campaign.Content.RuntimeRules;
         var fuelItems = new HashSet<RuleHandle<ItemRuleFamily>>();
@@ -16,6 +17,16 @@ internal sealed partial class CampaignWorld
         foreach (var transfer in owner.Transfers)
             if (!transfer.Delivered && transfer.Hours <= 1 && transfer.Craft is { } incoming &&
                 rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value.RefuelItem is { } item) fuelItems.Add(item);
+        foreach (var project in owner.Productions)
+        {
+            var product = rules.Manufacture[project.Rule].Value;
+            work += 1L + product.ProducedMaterials.Count;
+            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+            if (product.TransferTimes.Count > 2 && product.TransferTimes[2] > 0) continue;
+            foreach (var material in product.ProducedMaterials)
+                if (material.Craft is { } craft && material.Quantity > 0 && rules.Crafts[craft].Value.RefuelItem is { } fuel)
+                    fuelItems.Add(fuel);
+        }
         if (researchMayChangeStocks && fuelItems.Count != 0)
             return "UFO retargeting requires daily research fuel-stock forecasts.";
         // Completion elsewhere can cancel held projects in this base and refund fuel.
@@ -28,6 +39,7 @@ internal sealed partial class CampaignWorld
 
         work += stocks.Count;
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+        Dictionary<string, int>? minimumServiceStocks = null;
         var serviceStocks = stocks.ToDictionary(pair => rules.Items.GetExternalId(pair.Key), pair => pair.Value, StringComparer.Ordinal);
         for (var index = 0; index < sources.Count; index++)
         {
@@ -42,23 +54,37 @@ internal sealed partial class CampaignWorld
             }
             else if (state.Status == "STR_REARMING")
             {
-                var weapon = state.Weapons.FirstOrDefault(weapon => weapon is { Rearming: true });
                 try
                 {
-                    if (CraftServicing.TryForecastRearm(state, rules, serviceStocks, out var result))
+                    work += 1L + state.Weapons.Count * 4L;
+                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (!CraftServicing.TryForecastRearmRange(state, rules, serviceStocks, out var upper))
+                        return "UFO retargeting requires stochastic craft ammunition transition forecasts.";
+                    var lower = upper;
+                    if (minimumServiceStocks is not null &&
+                        (!CraftServicing.TryForecastRearmRange(state, rules, minimumServiceStocks, out lower) ||
+                         lower.MissingAmmo != upper.MissingAmmo || !lower.State.Weapons.SequenceEqual(upper.State.Weapons) ||
+                         (lower.State with { Weapons = upper.State.Weapons }) != upper.State))
+                        return "UFO retargeting requires stochastic shared craft ammunition forecasts.";
+                    if (upper.Clip.Length != 0)
                     {
-                        state = result.State;
-                        if (result.ClipsUsed != 0)
+                        var clip = rules.Items.GetRequired(upper.Clip);
+                        var maximum = serviceStocks.GetValueOrDefault(upper.Clip) - upper.MinimumUsed;
+                        var minimum = (minimumServiceStocks ?? serviceStocks).GetValueOrDefault(upper.Clip) - lower.MaximumUsed;
+                        if (maximum != minimum && fuelItems.Contains(clip))
+                            return "UFO retargeting requires stochastic craft ammunition stock forecasts.";
+                        if (maximum != minimum && minimumServiceStocks is null)
                         {
-                            var clip = rules.Items.GetRequired(result.Clip);
-                            stocks[clip] = stocks.GetValueOrDefault(clip) - result.ClipsUsed;
-                            serviceStocks[result.Clip] = stocks[clip];
+                            work += serviceStocks.Count;
+                            if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                            minimumServiceStocks = new(serviceStocks, StringComparer.Ordinal);
                         }
+                        stocks[clip] = serviceStocks[upper.Clip] = maximum;
+                        if (minimumServiceStocks is not null) minimumServiceStocks[upper.Clip] = minimum;
+                        if (minimum != maximum) uncertainty[clip] = maximum - minimum;
+                        else uncertainty.Remove(clip);
                     }
-                    else if (weapon is not null &&
-                        rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.Clip is { Length: > 0 } clip &&
-                        fuelItems.Contains(rules.Items.GetRequired(clip)))
-                        return "UFO retargeting requires stochastic craft ammunition stock forecasts.";
+                    state = upper.State;
                 }
                 catch (Exception exception) when (exception is OverflowException or InvalidDataException or ArgumentOutOfRangeException)
                 { return "Craft weapon service values exceed the supported range."; }
@@ -74,8 +100,20 @@ internal sealed partial class CampaignWorld
                 highest >= CampaignTimeTrigger.OneDay ? Math.Max(0, facility.BuildTime - 1) : facility.BuildTime,
                 facility.AmmoMissingReported, rule.AmmoItem is not null,
                 rule.AmmoItem is { } item ? stocks.GetValueOrDefault(item) : 0);
-            if (rule.AmmoItem is { } consumed && result.Used != 0)
-                stocks[consumed] = stocks.GetValueOrDefault(consumed) - result.Used;
+            if (rule.AmmoItem is { } consumed)
+            {
+                var maximum = stocks.GetValueOrDefault(consumed);
+                var minimum = maximum - uncertainty.GetValueOrDefault(consumed);
+                var lower = FacilityServicing.Rearm(facility.Ammo, rule.AmmoMaximum, rule.RearmRate,
+                    highest >= CampaignTimeTrigger.OneDay ? Math.Max(0, facility.BuildTime - 1) : facility.BuildTime,
+                    facility.AmmoMissingReported, true, minimum);
+                if (lower.Ammo != result.Ammo || lower.MissingReported != result.MissingReported || lower.Notify != result.Notify)
+                    return "UFO retargeting requires stochastic facility ammunition forecasts.";
+                stocks[consumed] = maximum - result.Used;
+                var difference = stocks[consumed] - (minimum - lower.Used);
+                if (difference != 0) uncertainty[consumed] = difference;
+                else uncertainty.Remove(consumed);
+            }
         }
         // Transfers run after all hourly servicing and before half-hour refuelling.
         // ItemsArrivingState reuses delivered items after all due craft have arrived.
