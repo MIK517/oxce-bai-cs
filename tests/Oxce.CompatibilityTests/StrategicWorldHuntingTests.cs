@@ -2318,7 +2318,9 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ResearchDiscoveryAndDisabledRefundsMatchNativeBeforeHunting(bool cache)
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ResearchDiscoveryAndDisabledRefundsMatchNativeBeforeHunting(bool cache, bool priced = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchDiscoveryRows").GroupBy(row => row[0].GetInt32()))
@@ -2327,7 +2329,8 @@ public sealed class StrategicWorldHuntingTests
             var source = mode is 0 or 3 ? ", disables: [DISCOVERY_HELD]" : mode == 1 ? ", lookup: DISCOVERY_LOOKUP" : "";
             var lookup = mode == 1 ? ", disables: [DISCOVERY_HELD]" : "";
             var automatic = mode == 2 ? ", disables: [DISCOVERY_HELD]" : mode == 3 ? ", reenables: [DISCOVERY_HELD]" : "";
-            var content = Load(cache, $"crafts: [{{type: DISCOVERY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: DISCOVERY_SOURCE, cost: 1{source}}}, {{name: DISCOVERY_LOOKUP, cost: 1{lookup}}}, {{name: DISCOVERY_AUTO, cost: 0, dependencies: [DISCOVERY_SOURCE]{automatic}}}, {{name: DISCOVERY_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: DISCOVERY_LAB, mapName: LOGISTICS, labs: 1}}]\n");
+            var priceOverlay = priced ? "items: [{type: DISCOVERY_PRICE_ITEM, scripts: {sellCostItem: 'var ptr RuleResearch topic; var int known; var int held; rules.getRuleResearch topic \"DISCOVERY_AUTO\"; geoscape_game.isResearched known topic; rules.getRuleResearch topic \"DISCOVERY_HELD\"; geoscape_game.isResearched held topic; mul held 10; add known held; return known;'}}]\nmanufacture: [{name: DISCOVERY_PRICE_PRODUCT, time: 1, producedItems: {DISCOVERY_PRICE_ITEM: 1}}]\n" : "";
+            var content = Load(cache, $"crafts: [{{type: DISCOVERY_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}}]\nresearch: [{{name: DISCOVERY_SOURCE, cost: 1{source}}}, {{name: DISCOVERY_LOOKUP, cost: 1{lookup}}}, {{name: DISCOVERY_AUTO, cost: 0, dependencies: [DISCOVERY_SOURCE]{automatic}}}, {{name: DISCOVERY_HELD, cost: 100, needItem: true, destroyItem: true, neededItem: SUPPLY}}]\nfacilities: [{{type: DISCOVERY_LAB, mapName: LOGISTICS, labs: 1, workshops: 1}}]\n" + priceOverlay);
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(content).WithCraft("SHIP", craft => craft with
@@ -2351,6 +2354,7 @@ public sealed class StrategicWorldHuntingTests
                     Longitude = 0.45, Latitude = 0.21, Items = new Dictionary<string, int>(),
                     Facilities = [.. initial.Bases[0].Facilities, new("DISCOVERY_LAB", 1, 1, 0, 0, false, false, false)],
                     Research = [new("DISCOVERY_SOURCE", 1, 0, 1), new("DISCOVERY_HELD", 0, row[2].GetBoolean() ? 100 : 0, 100)],
+                    Productions = priced ? [new("DISCOVERY_PRICE_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())] : [],
                 }]
                 };
                 var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "discovery-refund-before.sav");
@@ -2371,6 +2375,9 @@ public sealed class StrategicWorldHuntingTests
                 var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(3).ToArray());
                 Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
                 Assert.Equal(row[3].GetInt32() != 0, after.World.Ufos[0].Hunting);
+                if (priced)
+                    Assert.Equal(initial.Funds[^1] + (row[5].GetBoolean() ? 1 : 0) +
+                        (row[2].GetBoolean() && row[4].GetInt32() != 2 ? 10 : 0), after.Funds[^1]);
                 Reload(content, campaign, 81, "discovery-refund-after.sav");
             }
         }
@@ -4399,6 +4406,68 @@ public sealed class StrategicWorldHuntingTests
             Assert.Equal(control.Capture().RandomState, campaign.Capture().RandomState);
             Assert.Equal(control.Capture().CompletedResearch, campaign.Capture().CompletedResearch);
             Reload(content, campaign, 81, "query-price-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DailyProductionPricesObserveNativeDeterministicResearchRewards(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        const string script = "var ptr RuleResearch topic; var int a; var int b; var int source; rules.getRuleResearch topic \"PRICE_REWARD_A\"; geoscape_game.isResearched a topic; rules.getRuleResearch topic \"PRICE_REWARD_B\"; geoscape_game.isResearched b topic; rules.getRuleResearch topic \"PRICE_REWARD_SOURCE\"; geoscape_game.isResearched source topic; mul b 10; mul source 100; add a b; add a source; return a;";
+        foreach (var group in TestFixtures.Rows(oracle.RootElement, "researchRewardRows")
+                     .GroupBy(row => (Sequential: row[0].GetBoolean(), Duplicate: row[1].GetBoolean())))
+        {
+            var overlay = $"research: [{{name: PRICE_REWARD_SOURCE, cost: 1, sequentialGetOneFree: {group.Key.Sequential.ToString().ToLowerInvariant()}, getOneFree: [{(group.Key.Duplicate ? "PRICE_REWARD_A, PRICE_REWARD_A" : "PRICE_REWARD_A")}], getOneFreeProtected: {{PRICE_REWARD_GATE: [PRICE_REWARD_B]}}}}, {{name: PRICE_REWARD_A, cost: 1}}, {{name: PRICE_REWARD_B, cost: 1}}, {{name: PRICE_REWARD_GATE, cost: 1}}]\n" +
+                (global ? $"extended: {{scripts: {{sellCostItem: [{{new: price-reward, offset: 1, code: '{script}'}}]}}}}\nitems: [{{type: PRICE_REWARD_ITEM}}]\n" : $"items: [{{type: PRICE_REWARD_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n") +
+                "manufacture: [{name: PRICE_REWARD_PRODUCT, time: 1, producedItems: {PRICE_REWARD_ITEM: 1}}]\nfacilities: [{type: PRICE_REWARD_LAB, mapName: LOGISTICS, labs: 1, workshops: 1}]\n";
+            var content = Load(cache, overlay);
+            foreach (var row in group)
+            {
+                List<string> completed = [];
+                if (row[2].GetInt32() == 1) completed.Add("PRICE_REWARD_A");
+                if (row[3].GetInt32() == 1) completed.Add("PRICE_REWARD_B");
+                if (row[4].GetBoolean()) completed.Add("PRICE_REWARD_GATE");
+                Dictionary<string, int> statuses = new(StringComparer.Ordinal);
+                if (row[2].GetInt32() == 2) statuses.Add("PRICE_REWARD_A", 2);
+                if (row[3].GetInt32() == 2) statuses.Add("PRICE_REWARD_B", 2);
+                var initial = HuntingSnapshot(content) with
+                {
+                    Time = new(1, 1, 1, 1999, 23, 59, 55),
+                    Funds = [0],
+                    World = new(),
+                    CompletedResearch = completed,
+                    ResearchRuleStatus = statuses,
+                };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                    {
+                        Research = [new("PRICE_REWARD_SOURCE", 1, 0, 1)],
+                        Facilities = [.. initial.Bases[0].Facilities, new("PRICE_REWARD_LAB", 1, 1, 0, 0, false, false, false)],
+                        Productions = [new("PRICE_REWARD_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
+                    }],
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "price-reward-before.sav");
+                if (!group.Key.Sequential && row[2].GetInt32() == 0 && row[3].GetInt32() == 0 && row[4].GetBoolean())
+                {
+                    AssertTimeBlocked(campaign, $"Price {(global ? "event" : "script")} failed: Script binding 'GeoscapeGame.isResearched' failed: Production prices require uncertain daily research forecasts..");
+                    continue;
+                }
+                AdvanceUnblocked(campaign, 1);
+                var expected = 100 + (row[2].GetInt32() == 1 || row[5].GetInt32() == 1 ? 1 : 0) +
+                    (row[3].GetInt32() == 1 || row[5].GetInt32() == 2 ? 10 : 0);
+                Assert.Equal(expected, campaign.Capture().Funds[^1]);
+                var controlContent = Load(cache, overlay.Replace(script, $"return {expected};", StringComparison.Ordinal));
+                var control = CampaignState.Restore(initial, controlContent, new SplitMix64RandomSource(81));
+                AdvanceUnblocked(control, 1);
+                Assert.Equal(control.Capture().RandomState, campaign.Capture().RandomState);
+                Assert.Equal(control.Capture().CompletedResearch, campaign.Capture().CompletedResearch);
+                Reload(content, campaign, 81, "price-reward-after.sav");
+            }
         }
     }
 
