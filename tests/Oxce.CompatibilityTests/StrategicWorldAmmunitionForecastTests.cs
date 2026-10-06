@@ -1,13 +1,94 @@
 using System.Text.Json;
 using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Core.Random;
+using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
 using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicWorldHuntingTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NonfuelAmmunitionRangesPreserveRealStocksAndSharedCraftStates(bool cache, bool shared)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = Load(cache, AmmunitionForecastRules());
+        HashSet<int> quantities = [];
+        for (ulong seed = 1; seed <= 20; seed++)
+        {
+            var initial = AmmunitionRangeSnapshot(content, shared ? 3 : 1, false) with { RandomState = seed };
+            if (shared) initial = initial with
+            {
+                Bases = [initial.Bases[0] with { Crafts = [initial.Bases[0].Crafts[0], initial.Bases[0].Crafts[0] with { Id = 3 }, initial.Bases[0].Crafts[1]] }],
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)), seed, "ammo-range-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.All(after.Bases[0].Crafts.Where(craft => craft.RuleId == "RANGE_CONSUMER"), craft =>
+            {
+                Assert.Equal(10, craft.Logistics!.Weapons[0]!.Ammo);
+                Assert.False(craft.Logistics.Weapons[0]!.Rearming);
+                Assert.Equal("STR_REARMING", craft.Logistics.Status);
+            });
+            var stock = after.Bases[0].Items.GetValueOrDefault("RANGE_AMMO");
+            Assert.InRange(stock, shared ? 1 : 0, shared ? 3 : 1);
+            quantities.Add(stock);
+            Assert.True(Assert.Single(after.World.Ufos).Hunting);
+            Reload(content, campaign, seed, "ammo-range-after.sav");
+        }
+        Assert.Equal(shared ? 3 : 2, quantities.Count);
+    }
+
+    [Theory]
+    [InlineData(false, "craft")]
+    [InlineData(true, "craft")]
+    [InlineData(false, "facility")]
+    [InlineData(true, "facility")]
+    [InlineData(false, "material")]
+    [InlineData(true, "material")]
+    [InlineData(false, "overflow")]
+    [InlineData(true, "overflow")]
+    public void StochasticSharedEffectsStopBeforeTickMutation(bool cache, string effect)
+    {
+        var overlay = AmmunitionForecastRules();
+        if (effect is "material" or "overflow") overlay +=
+            $"manufacture: [{{name: RANGE_PRODUCT, time: 1, {(effect == "material" ? "requiredItems: {RANGE_AMMO: 1}, producedItems: {SUPPLY: 1}" : "producedItems: {RANGE_AMMO: 1}")}}}]\n";
+        overlay += "facilities: [{type: RANGE_WORKSHOP, mapName: LOGISTICS, workshops: 6}, {type: RANGE_FACILITY, mapName: LOGISTICS, ammoItem: RANGE_AMMO, ammoMax: 2, rearmRate: 1}]\n";
+        var content = Load(cache, overlay);
+        var initial = AmmunitionRangeSnapshot(content, effect == "overflow" ? int.MaxValue : 1, false);
+        var owner = initial.Bases[0];
+        if (effect == "craft") initial = initial with
+        {
+            Bases = [owner with { Crafts = [owner.Crafts[0], owner.Crafts[0] with { Id = 3, Logistics = owner.Crafts[0].Logistics! with { Weapons = [new("RANGE_GUN", 0, true)] } }, owner.Crafts[1]] }],
+        };
+        else if (effect == "facility") initial = initial with
+        {
+            Bases = [owner with { Facilities = [.. owner.Facilities, new("RANGE_FACILITY", 1, 1, 0, 0, false, false, false)] }],
+        };
+        else initial = initial with
+        {
+            Bases = [owner with
+            {
+                Facilities = [.. owner.Facilities, new("RANGE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("RANGE_PRODUCT", 2, 0, 99, true, false, false, new Dictionary<string, int>())],
+            }],
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), effect switch
+        {
+            "craft" => "UFO retargeting requires stochastic shared craft ammunition forecasts.",
+            "facility" => "UFO retargeting requires stochastic facility ammunition forecasts.",
+            "material" => "UFO retargeting requires stochastic production material forecasts.",
+            _ => "Production outputs exceed the supported stock range.",
+        });
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -39,4 +120,42 @@ public sealed partial class StrategicWorldHuntingTests
         $"items: [{{type: RANGE_AMMO, clipSize: {clipSize}}}]\n" +
         $"craftWeapons: [{{type: RANGE_GUN, ammoMax: 10, rearmRate: 4, bulletSaving: {saving.ToString().ToLowerInvariant()}, launcher: SUPPLY, clip: RANGE_AMMO}}]\n" +
         "crafts: [{type: RANGE_CONSUMER, speedMax: 2000, damageMax: 100, fuelMax: 100, weapons: 1}, {type: RANGE_FUEL, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: RANGE_AMMO, autoPatrol: true}]\n";
+
+    private static CampaignSnapshot AmmunitionRangeSnapshot(RuntimeContent content, int stock, bool fuel)
+    {
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55) };
+        var template = initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP");
+        var gun = template with
+        {
+            RuleId = "RANGE_CONSUMER",
+            Id = 2,
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_REARMING",
+                Fuel = 100,
+                Weapons = [new("RANGE_GUN", 9, true)],
+            }
+        };
+        var target = fuel ? template with
+        {
+            RuleId = "RANGE_FUEL",
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_REFUELLING",
+                Fuel = 60,
+                Weapons = [],
+                IsAutoPatrolling = true,
+                AutoPatrolLongitude = 0.8,
+                AutoPatrolLatitude = 0.3,
+            }
+        } : template;
+        return initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Longitude = 0.45, Latitude = 0.21, Crafts = [gun, target], Soldiers = [],
+            Items = new Dictionary<string, int> { ["RANGE_AMMO"] = stock },
+        } ]
+        };
+    }
 }

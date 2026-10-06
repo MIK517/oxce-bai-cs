@@ -32,6 +32,7 @@ internal sealed partial class CampaignWorld
         }
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseStocks = [];
+        Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseUncertainty = [];
         foreach (var owner in campaign.BaseStates)
         {
             Dictionary<RuleHandle<ItemRuleFamily>, int>? stocks = null;
@@ -50,11 +51,25 @@ internal sealed partial class CampaignWorld
             _huntingCraftSources.Add(owner.Id, sources);
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
+            Dictionary<RuleHandle<ItemRuleFamily>, int>? uncertainty = highest >= CampaignTimeTrigger.OneHour ? [] : null;
             if (highest >= CampaignTimeTrigger.OneHour &&
                 ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayChangeStocks,
-                    researchStocks?.Arrivals.GetValueOrDefault(owner.Id), ref work) is { } inputReason)
+                    researchStocks?.Arrivals.GetValueOrDefault(owner.Id), uncertainty!, ref work) is { } inputReason)
                 return inputReason;
             if (stocks is not null) baseStocks.Add(owner.Id, stocks);
+            if (uncertainty?.Count > 0) baseUncertainty.Add(owner.Id, uncertainty);
+        }
+        foreach (var owner in campaign.BaseStates)
+        {
+            if (!baseUncertainty.TryGetValue(owner.Id, out var uncertainty)) continue;
+            foreach (var project in owner.Productions)
+            {
+                var product = rules.Manufacture[project.Rule].Value;
+                work += 1L + product.RequiredMaterials.Count;
+                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                if (product.RequiredMaterials.Any(material => material.Quantity > 0 && material.Item is { } item && uncertainty.ContainsKey(item)))
+                    return "UFO retargeting requires stochastic production material forecasts.";
+            }
         }
         if (highest >= CampaignTimeTrigger.OneHour &&
             campaign.ProductionPreflight.ForecastStocks(_huntingCraftSources, baseStocks,
