@@ -15,6 +15,14 @@ caller and reload both transitions. Reference: `CraftWeapon::rearm`,
 `Craft::rearm`, `Production::step/haveEnoughMaterialsForOneMoreUnit/startItem`
 and the `GeoscapeState` hourly-before-half-hour fallthrough.
 
+Reached material checks now use monotone stock bounds. An upper-bound shortage
+stops every outcome; a successful upper plan executes only when its item inputs
+also exist at the lower bound. Fixed outputs, item subtraction and craft unloads
+preserve the saving difference in saved project order. No saving roll is chosen
+by preflight. All 96 new native rows classify equal progress/results separately
+from divergent material eligibility; fresh/cache interval and retained-guard
+cases pass with transition reloads. Divergent inputs still stop the entire tick.
+
 ## Future country activity prices (2026-10-07)
 
 Consumed hourly country alien-activity queries now read the existing history:
