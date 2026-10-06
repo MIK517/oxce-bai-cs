@@ -593,6 +593,62 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void StochasticEarlierLeadersAllowPursuitOnlyWhenTheirPointOriginsAgree(bool cache, bool same)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var evidence = TestFixtures.Rows(oracle.RootElement, "correlatedLeaderOrderRows").Where(row => row[1].GetBoolean() == same).ToArray();
+        Assert.Equal(2, evidence.Length);
+        Assert.Equal(same, evidence[0][3].GetDouble() == evidence[1][3].GetDouble());
+        var trajectory = same ? "TRAJ_SPAWN_FIXED" : "TRAJ_ESCORT_DISTINCT";
+        var content = Load(cache, $"crafts: [{{type: SHIP, undetectable: true, radarRange: 20000, radarChance: 100}}]\nalienMissions: [{{type: CORRELATED_IDLE_LEADERS, objective: 0, waves: [{{ufo: ESCORT_HUNTER, count: 1, trajectory: {trajectory}, timer: 0, hunterKillerPercentage: 50}}, {{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0, hunterKillerPercentage: 0}}]}}]\n");
+        var initial = IdleEscortSnapshot(content, "CORRELATED_IDLE_LEADERS").WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 1000,
+                Damage = 0,
+                Takeoff = 0,
+                Speed = 0,
+                Longitude = 0.4,
+                Latitude = 0.2,
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, 9, 0.4, 0.2) { UniqueId = 9 }
+            },
+        });
+        var outcomes = new HashSet<bool>();
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var campaign = Reload(content, CampaignState.Restore(initial with { RandomState = seed }, content, new SplitMix64RandomSource(seed)), seed, "correlated-leader-before.sav");
+            if (!same)
+            {
+                AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(3, after.World.Ufos.Count);
+            outcomes.Add(after.World.Ufos[1].HunterKiller);
+            var source = after.World.Ufos[0];
+            var leader = after.World.Ufos.First(ufo => !ufo.HunterKiller);
+            Assert.True(source.Escorting);
+            Assert.Equal(leader.UniqueId, source.Destination!.UniqueId);
+            Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, WorldPosition.Create(10 * Math.PI / 180, 8 * Math.PI / 180),
+                WorldGeometry.RadianSpeed(2200)), source.Position);
+            var craft = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+            Assert.Equal(9, craft.Destination!.UniqueId);
+            Assert.Equal(source.Position, craft.Destination.Position);
+            campaign = Reload(content, campaign, seed, "correlated-leader-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, seed, "correlated-leader-following.sav");
+        }
+        if (same) Assert.Equal(2, outcomes.Count);
+    }
+
+    [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 1)]
     [InlineData(false, 4)]
