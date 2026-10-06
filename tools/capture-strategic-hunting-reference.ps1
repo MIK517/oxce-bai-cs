@@ -21,6 +21,11 @@ function Read-ReferenceMethod([string]$RelativePath, [string]$Signature) {
     return $source.Substring($start, $end - $start)
 }
 $template = [IO.File]::ReadAllText((Join-Path $repository 'fixtures/reference-probes/savegames/strategic_hunting_probe.cpp'))
+$researchGetters = (Read-ReferenceMethod 'src/Mod/RuleResearch.cpp' 'int RuleResearch::getCost() const').Replace('_cost', 'cost') + [Environment]::NewLine +
+    (Read-ReferenceMethod 'src/Mod/RuleResearch.cpp' 'int RuleResearch::getPoints() const').Replace('_points', 'points') + [Environment]::NewLine +
+    (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleResearch* getLookup() const').Replace('getLookup()', 'RuleResearch::getLookup()').Replace('_lookup', 'lookup') + [Environment]::NewLine +
+    (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleItem* getNeededItem() const').Replace('getNeededItem()', 'RuleResearch::getNeededItem()').Replace('_neededItem', 'needed')
+$template = $template.Replace('// RESEARCH_RULE_GETTERS', $researchGetters)
 $refuelMethods = ''
 foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::refuel()', 'void Craft::setDestination(Target *dest)', 'void Craft::repair()', 'const RuleItem* Craft::rearm()', 'int Craft::getFuelConsumption(int speed, int escortSpeed) const', 'void Craft::consumeFuel(int escortSpeed)', 'void Craft::returnToBase()', 'void Craft::checkup()', 'void Craft::setBase(Base *base, bool move)', 'void Craft::reuseItem(const RuleItem* item)')) {
     $refuelMethods += (Read-ReferenceMethod 'src/Savegame/Craft.cpp' $signature) + [Environment]::NewLine

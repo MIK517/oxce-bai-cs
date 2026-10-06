@@ -11,6 +11,7 @@ public sealed partial class CampaignState
 {
     private readonly ScriptExecutionFrame _priceFrame = new();
     private readonly Dictionary<string, ScriptProgram> _priceDefaults = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PriceItemReference> _priceItemReferences = new(StringComparer.Ordinal);
     private readonly ScriptRuntimeValue[] _priceInputs = new ScriptRuntimeValue[5];
     private readonly ScriptRuntimeValue[] _priceOutput = new ScriptRuntimeValue[1];
 
@@ -50,7 +51,7 @@ public sealed partial class CampaignState
         _priceInputs[0] = ScriptRuntimeValue.FromScalar(baseCost);
         _priceInputs[1] = ScriptRuntimeValue.FromScalar(coefficient);
         _priceInputs[2] = ScriptRuntimeValue.FromReference(this);
-        _priceInputs[3] = ScriptRuntimeValue.FromReference(new PriceItemReference(id, rule));
+        _priceInputs[3] = ScriptRuntimeValue.FromReference(PriceItemReferenceFor(id, rule));
         _priceInputs[4] = ScriptRuntimeValue.FromReference(_content.RuntimeRules);
         _priceOutput[0] = ScriptRuntimeValue.FromScalar(adjusted);
         try
@@ -113,6 +114,7 @@ public sealed partial class CampaignState
     private static bool PriceBindingSupported(string name) => name is
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleItem" or "RuleMod.getRuleResearch" or
+        "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" or
         "RuleItem.getType" or "RuleItem.getWeight" or "RuleItem.getBattleType" or "Time.getDay" or "Time.getMonth" or
         "Time.getYear" or "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
@@ -159,6 +161,8 @@ public sealed partial class CampaignState
             return ScriptBindingResult.Success;
         }
         var item = args[0].Reference as PriceItemReference;
+        var researchRule = args[0].Reference is string topic && _content.RuntimeRules.Research.TryGet(topic, out var researchHandle)
+            ? _content.RuntimeRules.Research[researchHandle].Value : null;
         var time = args[0].Reference is CampaignTime value ? value : forecast?.Time ?? Time;
         switch (name)
         {
@@ -167,11 +171,21 @@ public sealed partial class CampaignState
             case "RuleMod.getRuleItem":
                 var ruleId = args[2].Text ?? "";
                 args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is not null && _content.RuntimeRules.Items.TryGet(ruleId, out var handle)
-                    ? new PriceItemReference(ruleId, _content.RuntimeRules.Items[handle].Value) : null);
+                    ? PriceItemReferenceFor(ruleId, _content.RuntimeRules.Items[handle].Value) : null);
                 break;
             case "RuleMod.getRuleResearch":
                 var researchId = args[2].Text ?? "";
-                args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is not null && _content.RuntimeRules.Research.TryGet(researchId, out _) ? researchId : null);
+                args[1] = ScriptRuntimeValue.FromReference(args[0].Reference is not null && _content.RuntimeRules.Research.TryGet(researchId, out var topicHandle)
+                    ? _content.RuntimeRules.Research.GetExternalId(topicHandle) : null);
+                break;
+            case "RuleResearch.getLookup":
+                args[1] = ScriptRuntimeValue.FromReference(researchRule is not null && _content.RuntimeRules.Research.TryGet(researchRule.Lookup, out var lookup)
+                    ? _content.RuntimeRules.Research.GetExternalId(lookup) : null);
+                break;
+            case "RuleResearch.getNeededItem":
+                args[1] = ScriptRuntimeValue.FromReference(researchRule is { NeedItem: true, NeededItem: { } needed } && needed != "STR_NONE" &&
+                    _content.RuntimeRules.Items.TryGet(needed, out var neededHandle)
+                    ? PriceItemReferenceFor(needed, _content.RuntimeRules.Items[neededHandle].Value) : null);
                 break;
             default:
                 args[1] = ScriptRuntimeValue.FromScalar(args[0].Reference is null ? 0 : name switch
@@ -182,6 +196,8 @@ public sealed partial class CampaignState
                     "GeoscapeGame.isResearched" => args[2].Reference is string research && _completedResearch.Contains(research) ? 1 : 0,
                     "RuleItem.getWeight" => item?.Rule.Weight ?? 0,
                     "RuleItem.getBattleType" => item?.Rule.BattleType ?? 0,
+                    "RuleResearch.getCost" => researchRule?.Cost ?? 0,
+                    "RuleResearch.getPoints" => researchRule?.Points ?? 0,
                     "Time.getDay" => time.Day,
                     "Time.getMonth" => time.Month,
                     "Time.getYear" => time.Year,
@@ -194,6 +210,16 @@ public sealed partial class CampaignState
                 break;
         }
         return ScriptBindingResult.Success;
+    }
+
+    private PriceItemReference PriceItemReferenceFor(string id, RuntimeItemRule rule)
+    {
+        if (!_priceItemReferences.TryGetValue(id, out var reference))
+        {
+            reference = new(id, rule);
+            _priceItemReferences.Add(id, reference);
+        }
+        return reference;
     }
 
     private sealed record PriceItemReference(string Id, RuntimeItemRule Rule);
