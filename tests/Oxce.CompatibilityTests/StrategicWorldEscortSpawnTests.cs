@@ -769,6 +769,41 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FutureLeaderFlightProofDoesNotLeakIntoEarlierDetectionScripts(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        var content = Load(cache, """
+            ufos:
+              - type: ESCORT_HUNTER
+                scripts:
+                  detectUfoFromBase: |
+                    var int escorting;
+                    ufo.isEscorting escorting;
+                    if eq escorting 0;
+                      return DETECTION_HYPERWAVE 100;
+                    end;
+                    return DETECTION_NONE 0;
+            """);
+        var campaign = CampaignState.Restore(IdleEscortSnapshot(content), content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(campaign, 1);
+        var source = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == 9);
+        Assert.True(source.Escorting);
+        Assert.True(source.Detected);
+        Assert.True(source.HyperDetected);
+        campaign = Reload(content, campaign, 81, "leader-detection-after.sav");
+        campaign = CampaignState.Restore(campaign.Capture() with { Time = new(1, 1, 1, 1999, 1, 59, 55) },
+            content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(campaign, 1);
+        source = campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == 9);
+        Assert.True(source.Escorting);
+        Assert.False(source.Detected);
+        Assert.False(source.HyperDetected);
+        Reload(content, campaign, 81, "leader-detection-next-pass.sav");
+    }
+
+    [Theory]
     [InlineData(false, false, 1)]
     [InlineData(true, false, 1)]
     [InlineData(false, true, 2)]
