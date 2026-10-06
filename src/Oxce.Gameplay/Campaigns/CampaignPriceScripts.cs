@@ -121,6 +121,21 @@ public sealed partial class CampaignState
         if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } &&
             args[0].Reference is not null && args[2].Reference is string queriedResearch)
         {
+            if (!forecast.ResearchProjectionAttempted)
+            {
+                forecast.ResearchProjectionAttempted = true;
+                var work = forecast.Work;
+                if (ResearchPreflight.TryForecastDailyStocks(ref work, out var research, includeDiscoveries: true))
+                    forecast.CompletedResearch = research.CompletedResearch;
+                forecast.Work = work;
+            }
+            if (forecast.Work > 1_000_000)
+                return ScriptBindingResult.Failure("Production price research forecasts exceed the supported work limit.");
+            if (forecast.CompletedResearch is { } completed)
+            {
+                args[1] = ScriptRuntimeValue.FromScalar(completed.Contains(queriedResearch) ? 1 : 0);
+                return ScriptBindingResult.Success;
+            }
             if (forecast.GuaranteedResearch is null)
             {
                 // Bound both existing research projections before they scan rule edges.
@@ -189,6 +204,8 @@ public sealed partial class CampaignState
         public int DaysPassed { get; } = daysPassed;
         public bool Daily { get; } = daily;
         public long Work { get; set; } = work;
+        public bool ResearchProjectionAttempted { get; set; }
+        public IReadOnlySet<string>? CompletedResearch { get; set; }
         public IReadOnlySet<string>? GuaranteedResearch { get; set; }
         public IReadOnlySet<string>? PossibleResearch { get; set; }
     }

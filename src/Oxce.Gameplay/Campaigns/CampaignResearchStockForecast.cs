@@ -180,6 +180,11 @@ public sealed partial class CampaignState
             }
             nextTransfer = (int)((long)NextTransferId() + arrivalCount);
         }
+        if (includeDiscoveries)
+        {
+            work += completed.Count;
+            if (work > 1_000_000) return false;
+        }
         forecast = new(new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(changes.ToDictionary(
             pair => pair.Key, pair => (IReadOnlyDictionary<string, int>)new ReadOnlyDictionary<string, int>(pair.Value))),
             new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(arrivals.ToDictionary(
