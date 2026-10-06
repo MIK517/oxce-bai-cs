@@ -8,6 +8,17 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class CraftServicingTests
 {
+    [Fact]
+    public void RearmRangeRejectsInvalidConsumedAmmoWithoutChangingStocks()
+    {
+        var rules = CampaignLogisticsTests.LoadFixture().RuntimeRules;
+        var state = new CraftLogisticsState(100, 0, "STR_REARMING", [new("FIXED", -1, true)], new Dictionary<string, int>(), []);
+        var stores = new Dictionary<string, int> { ["BULKY"] = 1 };
+        Assert.Throws<InvalidDataException>(() => CraftServicing.TryForecastRearmRange(state, rules, stores, out _));
+        Assert.Equal(1, stores["BULKY"]);
+        Assert.Equal(-1, state.Weapons[0]!.Ammo);
+    }
+
     [Theory]
     [InlineData(-1, 1, 1)]
     [InlineData(0, -1, 1)]
