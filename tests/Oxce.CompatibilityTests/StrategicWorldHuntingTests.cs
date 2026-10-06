@@ -2283,6 +2283,41 @@ public sealed class StrategicWorldHuntingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void DailyResearchDiscoveryForecastBypassesTheStockOnlyShortcut(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var row = TestFixtures.Rows(oracle.RootElement, "researchRewardRows").First(value =>
+            !value[0].GetBoolean() && !value[1].GetBoolean() && value[2].GetInt32() == 0 &&
+            value[3].GetInt32() == 0 && !value[4].GetBoolean());
+        Assert.Equal(1, row[5].GetInt32());
+        var content = Load(cache, "research: [{name: STOCK_FREE_SOURCE, cost: 1, getOneFree: [STOCK_FREE_REWARD]}, {name: STOCK_FREE_REWARD, cost: 1}]\nfacilities: [{type: STOCK_FREE_LAB, mapName: LOGISTICS, labs: 1}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with
+        {
+            World = new(),
+            Bases = [initial.Bases[0] with
+            {
+                Research = [new("STOCK_FREE_SOURCE", 1, 0, 1)],
+                Facilities = [.. initial.Bases[0].Facilities, new("STOCK_FREE_LAB", 1, 1, 0, 0, false, false, false)],
+            }],
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "stock-free-before.sav");
+        var before = campaign.Capture();
+        long work = 0;
+        Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var stockOnly));
+        Assert.Null(stockOnly.CompletedResearch);
+        Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var discovery, includeDiscoveries: true));
+        Assert.NotNull(discovery.CompletedResearch);
+        Assert.Contains("STOCK_FREE_REWARD", discovery.CompletedResearch);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(campaign.Capture().CompletedResearch.Order(StringComparer.Ordinal), discovery.CompletedResearch.Order(StringComparer.Ordinal));
+        Reload(content, campaign, 81, "stock-free-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void ResearchDiscoveryAndDisabledRefundsMatchNativeBeforeHunting(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -2319,8 +2354,14 @@ public sealed class StrategicWorldHuntingTests
                 }]
                 };
                 var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "discovery-refund-before.sav");
+                var before = campaign.Capture();
+                long work = 0;
+                Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast, includeDiscoveries: true));
+                Assert.NotNull(forecast.CompletedResearch);
+                Assert.Equivalent(before, campaign.Capture(), strict: true);
                 Assert.Empty(campaign.Execute(new AdvanceCampaignTime(1)).Events.OfType<CampaignActionBlocked>());
                 var after = campaign.Capture();
+                Assert.Equal(after.CompletedResearch.Order(StringComparer.Ordinal), forecast.CompletedResearch.Order(StringComparer.Ordinal));
                 var fuel = after.Bases[0].Crafts.Single(craft => craft.RuleId == "DISCOVERY_HUNT").Logistics!.Fuel;
                 var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
                 {
@@ -2382,14 +2423,22 @@ public sealed class StrategicWorldHuntingTests
                     Research = [new("REWARD_SOURCE", 0, 0, 100)] }]
                 };
                 var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "reward-stocks-before.sav");
+                var before = campaign.Capture();
+                long work = 0;
+                var supported = campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast, includeDiscoveries: true);
+                Assert.Equivalent(before, campaign.Capture(), strict: true);
                 if (!group.Key.Sequential && row[2].GetInt32() == 0 && row[3].GetInt32() == 0 && row[4].GetBoolean())
                 {
+                    Assert.False(supported);
                     AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
                     continue;
                 }
                 var result = campaign.Execute(new AdvanceCampaignTime(1));
                 Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
                 var after = campaign.Capture();
+                Assert.True(supported);
+                Assert.NotNull(forecast.CompletedResearch);
+                Assert.Equal(after.CompletedResearch.Order(StringComparer.Ordinal), forecast.CompletedResearch.Order(StringComparer.Ordinal));
                 var discoveries = Assert.Single(result.Events.OfType<CampaignResearchCompleted>()).Discoveries;
                 var bonus = row[5].GetInt32();
                 Assert.Equal(bonus != 0, after.World.Ufos[0].Hunting);

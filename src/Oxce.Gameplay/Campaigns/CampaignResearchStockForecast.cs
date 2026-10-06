@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Collections.ObjectModel;
 using Oxce.Mods.Rulesets.Runtime;
 
@@ -10,6 +11,7 @@ internal sealed record DailyResearchStockForecast(
     public string? UnavailableReason { get; init; }
     public int? NextTransferId { get; init; }
     public IReadOnlyList<CustomCounterChange> CounterChanges { get; init; } = [];
+    public IReadOnlySet<string>? CompletedResearch { get; init; }
 }
 
 public sealed partial class CampaignState
@@ -18,10 +20,10 @@ public sealed partial class CampaignState
         new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(new Dictionary<int, IReadOnlyDictionary<string, int>>()),
         new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(new Dictionary<int, IReadOnlyList<KeyValuePair<string, int>>>()));
 
-    bool ICampaignResearchPreflight.TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast)
+    bool ICampaignResearchPreflight.TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries)
     {
         forecast = EmptyResearchStockForecast;
-        if (DailyItemsUnchanged(ref work)) return true;
+        if (!includeDiscoveries && DailyItemsUnchanged(ref work)) return true;
         var rules = _content.RuntimeRules;
         work += rules.Research.Count + (long)_completedResearch.Count + _researchRuleStatus.Count;
         if (work > 1_000_000) return false;
@@ -182,7 +184,11 @@ public sealed partial class CampaignState
             pair => pair.Key, pair => (IReadOnlyDictionary<string, int>)new ReadOnlyDictionary<string, int>(pair.Value))),
             new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(arrivals.ToDictionary(
                 pair => pair.Key, pair => (IReadOnlyList<KeyValuePair<string, int>>)pair.Value.AsReadOnly())))
-        { NextTransferId = nextTransfer, CounterChanges = counters?.AsReadOnly() ?? (IReadOnlyList<CustomCounterChange>)[] };
+        {
+            NextTransferId = nextTransfer,
+            CounterChanges = counters?.AsReadOnly() ?? (IReadOnlyList<CustomCounterChange>)[],
+            CompletedResearch = includeDiscoveries ? completed.ToFrozenSet(StringComparer.Ordinal) : null,
+        };
         return true;
 
         void Recover(int baseId, RuntimeResearchRule rule, string id, bool finished, bool dailyCompletion)
