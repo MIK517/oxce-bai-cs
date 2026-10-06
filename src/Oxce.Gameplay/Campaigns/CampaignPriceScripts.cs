@@ -73,6 +73,11 @@ public sealed partial class CampaignState
                     var options = new ScriptExecutionOptions { MaximumSteps = (int)Math.Min(remaining, ScriptExecutionOptions.Default.MaximumSteps) };
                     var result = ScriptVm.ExecuteWithInputs(candidate, _priceOutput, _priceInputs, _priceOutput, _priceFrame, options, providers);
                     forecast.Work += result.Steps;
+                    if (forecast.Work > 1_000_000)
+                    {
+                        unavailable = "Production price forecasts exceed the supported work limit.";
+                        break;
+                    }
                     if (!result.Succeeded)
                     {
                         unavailable = $"Price {(plan is null ? "script" : "event")} failed: {result.FailureMessage ?? result.DiagnosticCode}.";
