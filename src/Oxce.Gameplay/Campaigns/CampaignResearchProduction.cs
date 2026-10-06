@@ -473,8 +473,6 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     // Restored saves can carry projects that were never validated by a start command.
                     var manufacture = _content.RuntimeRules.Manufacture[production.Rule].Value;
                     if (ProductionRuleInvalid(manufacture) is { } invalidReason) return invalidReason;
-                    if (production.Sell && ProductionSellUnavailable(manufacture) is { } sellReason)
-                        return sellReason;
                 }
                 if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffingReason)
                     return staffingReason;
@@ -517,13 +515,18 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                         if (++work > 1_000_000) return "Production accounting exceeds the supported work limit.";
                         if (material.Item is not { } item) continue;
                         var rule = _content.RuntimeRules.Items[item].Value;
-                        var scripted = rule.Scripts.Any(handle => _content.RuntimeRules.Scripts[handle].Value.Artifact.ParserName == "sellCostItem") ||
-                            _content.EventPlans.Any(plan => plan.ParserName == "sellCostItem");
-                        var price = StrategicLogisticsMath.AdjustedItemPrice(rule.CostSell,
-                            _content.RuntimeRules.Campaign.SellPriceCoefficients[(int)Difficulty]);
-                        var minimum = (long)(scripted ? int.MinValue : price) * material.Quantity;
-                        var maximum = (long)(scripted ? int.MaxValue : price) * material.Quantity;
-                        if (!accountingCapacity.Reserve(minimum, maximum, units))
+                        var daily = highest >= CampaignTimeTrigger.OneDay;
+                        if (daily && DaysPassed == int.MaxValue) return "Production price days exceed the supported range.";
+                        var forecast = new PriceForecastContext(Time.Advance(out _), DaysPassed + (daily ? 1 : 0), daily, work);
+                        var price = ItemPrice(material.Id, rule, false, out var unavailable, forecast);
+                        var priceWork = forecast.Work - work;
+                        // Read-only prices are identical for each unit in this hour.
+                        // Reserve their repeated VM work before running any delivery.
+                        work += priceWork * units;
+                        if (unavailable is not null) return unavailable;
+                        if (work > 1_000_000) return "Production price forecasts exceed the supported work limit.";
+                        var value = (long)price * material.Quantity;
+                        if (!accountingCapacity.Reserve(value, value, units))
                             return "Production accounting exceeds the supported range.";
                     }
                 }

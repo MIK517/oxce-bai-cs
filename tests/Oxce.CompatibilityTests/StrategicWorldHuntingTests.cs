@@ -4020,14 +4020,20 @@ public sealed class StrategicWorldHuntingTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void FixedProductionSalesMatchNativeContinuationAndSharedFunds(bool cache, bool crossBase)
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void FixedProductionSalesMatchNativeContinuationAndSharedFunds(bool cache, bool crossBase, bool scripted = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var group in TestFixtures.Rows(oracle.RootElement, "productionSaleRows")
             .GroupBy(row => (Cost: row[0].GetInt32(), Quantity: row[4].GetInt32(), Coefficient: row[5].GetInt32(), Delay: row[6].GetInt32())))
         {
             var coefficient = group.Key.Coefficient;
-            var caseContent = Load(cache, $"sellPriceCoefficient: [{coefficient}, {coefficient}, {coefficient}, {coefficient}, {coefficient}]\nitems: [{{type: SALE_OUTPUT, costSell: 7}}]\ncrafts: [{{type: SALE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SALE_PRODUCT, time: 2, cost: {group.Key.Cost}, producedItems: {{SALE_OUTPUT: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}, {{name: SALE_LATER, time: 1, cost: 3, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SALE_WORKSHOP, mapName: LOGISTICS, workshops: 8}}]\n");
+            var itemScript = scripted ? ", scripts: {sellCostItem: 'mul cost_current 2; return cost_current;'}" : "";
+            var events = scripted ? "extended: {scripts: {sellCostItem: [{new: before-production-price, offset: -1, code: 'add cost_current 1; return cost_current;'}, {new: after-production-price, offset: 1, code: 'div cost_current 2; sub cost_current 1; return cost_current;'}]}}\n" : "";
+            var caseContent = Load(cache, $"sellPriceCoefficient: [{coefficient}, {coefficient}, {coefficient}, {coefficient}, {coefficient}]\nitems: [{{type: SALE_OUTPUT, costSell: 7{itemScript}}}]\ncrafts: [{{type: SALE_PRODUCT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}}]\nmanufacture: [{{name: SALE_PRODUCT, time: 2, cost: {group.Key.Cost}, producedItems: {{SALE_OUTPUT: {group.Key.Quantity}}}, transferTimes: [{group.Key.Delay}]}}, {{name: SALE_LATER, time: 1, cost: 3, producedItems: {{SUPPLY: 1}}}}]\nfacilities: [{{type: SALE_WORKSHOP, mapName: LOGISTICS, workshops: 8}}]\n" + events);
             foreach (var row in group)
             {
                 var initial = HuntingSnapshot(caseContent).WithCraft("SHIP", craft => craft with
@@ -4143,6 +4149,70 @@ public sealed class StrategicWorldHuntingTests
         Assert.Equal(ordinary.Capture().Funds, campaign.Capture().Funds);
         Reload(content, campaign, 81, "scripted-hunting-sale-after.sav");
         Reload(content, ordinary, 81, "scripted-sale-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void ProductionFuturePriceFailuresAndAggregateWorkAreAtomic(bool cache, bool hunting, bool workLimit)
+    {
+        var script = workLimit ? "loop var i 200000; end; return cost_current;" :
+            "var ptr Time moment; var int second; geoscape_game.getTime moment; moment.getSecond second; div cost_current second; return cost_current;";
+        var content = Load(cache, $"items: [{{type: PRICE_FAILURE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\nmanufacture: [{{name: PRICE_FAILURE_PRODUCT, time: 1, producedItems: {{PRICE_FAILURE_ITEM: 1}}}}]\nfacilities: [{{type: PRICE_FAILURE_WORKSHOP, mapName: LOGISTICS, workshops: 4}}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
+        initial = initial with
+        {
+            World = hunting ? initial.World : new(),
+            Bases = [initial.Bases[0] with
+        {
+            Facilities = [.. initial.Bases[0].Facilities, new("PRICE_FAILURE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("PRICE_FAILURE_PRODUCT", workLimit ? 4 : 1, 0, workLimit ? 4 : 1, false, true, false, new Dictionary<string, int>())],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "price-failure-before.sav");
+        var before = campaign.Capture();
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        var reason = Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason;
+        Assert.Contains(workLimit ? "limit" : "operation 'div' failed", reason, StringComparison.Ordinal);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Reload(content, campaign, 81, "price-failure-blocked.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void KnownScriptedProductionPricesReserveTheirActualAccountingRange(bool cache, bool hunting)
+    {
+        foreach (var price in new[] { -7, 7 })
+        {
+            var content = Load(cache, $"items: [{{type: EXACT_PRICE_ITEM, costSell: 1, scripts: {{sellCostItem: 'return {price};'}}}}]\nmanufacture: [{{name: EXACT_PRICE_PRODUCT, time: 1, producedItems: {{EXACT_PRICE_ITEM: 1}}}}]\nfacilities: [{{type: EXACT_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+            var funds = price > 0 ? long.MaxValue - 10 : long.MinValue + 10;
+            var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [funds], Incomes = [0], Expenditures = [0] };
+            initial = initial with
+            {
+                World = hunting ? initial.World : new(),
+                Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("EXACT_PRICE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Productions = [new("EXACT_PRICE_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
+            }]
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "exact-price-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(funds + price, campaign.Capture().Funds[^1]);
+            Assert.Equal(Math.Max(0, price), campaign.Capture().Incomes[^1]);
+            Assert.Equal(Math.Max(0, -price), campaign.Capture().Expenditures[^1]);
+            Reload(content, campaign, 81, "exact-price-after.sav");
+        }
     }
 
     [Theory]
