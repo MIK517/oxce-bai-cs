@@ -12,6 +12,38 @@ public sealed partial class StrategicProductionPriceMetadataTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void CurrentBuyPricesComposeNativeMetadataAndEventOrderWithoutMutation(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        var native = TestFixtures.Rows(oracle.RootElement, "conversionRows")
+            .Single(row => row[0].GetInt32() == 20 && row[1].GetInt32() == 39)[2][3].GetInt32();
+        var code = "var ptr RuleDamageType damage; var ptre RandomState random null; var ptr Time time; var int value; var int power; " +
+            "geoscape_game.getTime time; time.getSecond value; if neq value 55; div cost_current 0; end; " +
+            "item_rule.getTag value Tag.PRICE_BUY_TAG; if neq value -7; div cost_current 0; end; " +
+            "item_rule.getPower power; item_rule.getDamageType damage; damage.getRandomDamage value power random; " +
+            "if neq value 0; div cost_current 0; end; damage.getDamageToHealth value power; " +
+            $"if neq value {native}; div cost_current 0; end; add cost_current value; return;";
+        var events = global ? "" : "scripts:\n  buyCostItem:\n" +
+            "    - {new: price-buy-before, offset: -1, code: 'add cost_current 1; return;'}\n" +
+            "    - {new: price-buy-after, offset: 1, code: 'div cost_current 3; return;'}\n";
+        var content = Load(cache, global, code, "costBuy: 7\npower: 39\ndamageAlter: {ToHealth: 0.5}\ntags: {PRICE_BUY_TAG: -7}",
+            extraExtended: "tags:\n  RuleItem: {PRICE_BUY_TAG: int}\n" + events, buying: true);
+        var campaign = Reload(content, Create(content, snapshot => PriceStock(snapshot) with { Funds = [10_000] }), 81, "price-buy-before.sav");
+        var before = campaign.Capture();
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(before.Bases[0].Id, LogisticsOperation.Purchase)).Events)).Quote;
+        var row = Assert.Single(quote.Rows, row => row.RuleId == "PRICE_META_ITEM");
+        Assert.Equal(global ? 7 + native : (8 + native) / 3, row.UnitCost);
+        Assert.Null(row.UnavailableReason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Reload(content, campaign, 81, "price-buy-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void NullRandomDamagePreservesNativeShortCircuitAndCurrentPricePurity(bool cache, bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
