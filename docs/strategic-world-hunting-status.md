@@ -2,6 +2,18 @@
 
 Branch 4c. Pinned reference: 4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15.
 
+## Future country activity prices (2026-10-07)
+
+Consumed hourly country alien-activity queries now read the existing history:
+`GeoscapeState::time1Hour` production prices precede `time30Minutes` UFO/site
+scoring, and no non-daily handler changes that history before production.
+Native `strategic-detection-scripts` country getter rows and the `strategic-world`
+score evidence feed fresh/cache item/global price calls, current quote purity,
+transition reloads and explicit before/after half-hour values. Daily calls
+retain their precise projection guard for the following slices. Reference:
+`GeoscapeState::timeAdvance/time1Day/time1Hour/time30Minutes`,
+`Production::step`, `RuleItem::getSellCostAdjusted` and Country history getters.
+
 ## Candidate storage and craft fact reuse (2026-10-07)
 
 Retarget selection reuses separate preflight and execution candidate buffers.
