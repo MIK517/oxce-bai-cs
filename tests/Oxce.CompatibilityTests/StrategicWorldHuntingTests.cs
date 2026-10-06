@@ -4154,20 +4154,23 @@ public sealed class StrategicWorldHuntingTests
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "productionScriptSaleContextRows")
-                     .Where(row => row[0].GetInt32() < 4 && row[2].GetInt32() == 0))
+                     .Where(row => row[0].GetInt32() == 4 || row[2].GetInt32() == 0))
         {
             var mode = row[0].GetInt32();
             var daily = row[1].GetInt32() != 0;
+            var researched = row[2].GetInt32() != 0;
             var script = mode switch
             {
                 0 => "var ptr Time moment; var int value; geoscape_game.getTime moment; moment.getSecond value; return value;",
                 1 => "var ptr Time moment; var int value; var int days; geoscape_game.getTime moment; moment.getHour value; geoscape_game.getDaysPassed days; add value days; return value;",
                 2 => "var int value; geoscape_game.getDaysPassed value; return value;",
-                _ => "var int value; var int months; geoscape_game.difficultyLevel value; geoscape_game.getMonthsPassed months; add value months; return value;",
+                3 => "var int value; var int months; geoscape_game.difficultyLevel value; geoscape_game.getMonthsPassed months; add value months; return value;",
+                _ => "var ptr RuleResearch topic; var ptr Time moment; var int known; var int days; var int hour; rules.getRuleResearch topic \"PRICE_TOPIC\"; geoscape_game.isResearched known topic; if eq known 1; geoscape_game.getDaysPassed days; return days; end; geoscape_game.getTime moment; moment.getHour hour; return hour;",
             };
-            var overlay = "items: [{type: CONTEXT_SALE_ITEM, costSell: 7" +
+            script = script.Replace("'", "''", StringComparison.Ordinal);
+            var overlay = "research: [{name: PRICE_TOPIC, cost: 1}]\nitems: [{type: CONTEXT_SALE_ITEM, costSell: 7" +
                 (global ? "" : $", scripts: {{sellCostItem: '{script}'}}") +
-                "}]\nmanufacture: [{name: CONTEXT_SALE, time: 1, producedItems: {CONTEXT_SALE_ITEM: 2}}]\nfacilities: [{type: CONTEXT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" +
+                "}]\nmanufacture: [{name: CONTEXT_SALE, time: 1, producedItems: {CONTEXT_SALE_ITEM: 2}}]\nfacilities: [{type: CONTEXT_WORKSHOP, mapName: LOGISTICS, workshops: 1, labs: 1}]\n" +
                 (global ? $"extended: {{scripts: {{sellCostItem: [{{new: context-sale-price, offset: 1, code: '{script}'}}]}}}}\n" : "");
             var content = Load(cache, overlay);
             var initial = HuntingSnapshot(content) with
@@ -4177,13 +4180,15 @@ public sealed class StrategicWorldHuntingTests
                 MonthsPassed = 3,
                 Difficulty = CampaignDifficulty.Superhuman,
                 Funds = [0],
+                DebugMode = true,
+                CompletedResearch = researched && !daily ? ["PRICE_TOPIC"] : [],
             };
             initial = initial with
             {
                 Bases = [initial.Bases[0] with
             {
-                Research = [],
                 Facilities = [.. initial.Bases[0].Facilities, new("CONTEXT_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                Research = researched && daily ? [new("PRICE_TOPIC", 1, 0, 1)] : [],
                 Productions = [new("CONTEXT_SALE", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
             }]
             };
@@ -4191,12 +4196,61 @@ public sealed class StrategicWorldHuntingTests
             AdvanceUnblocked(campaign, 1);
             Assert.Equal(row[9].GetInt64(), campaign.Capture().Funds[^1]);
             Assert.Equal(row[5].GetInt32(), campaign.Capture().DaysPassed);
+            Assert.Equal(researched, campaign.Capture().CompletedResearch.Contains("PRICE_TOPIC"));
             var control = CampaignState.Restore(initial with { World = new() }, content, new SplitMix64RandomSource(81));
             AdvanceUnblocked(control, 1);
             Assert.Equal(control.Capture().Funds, campaign.Capture().Funds);
             campaign = Reload(content, campaign, 81, "context-sale-after.sav");
             AdvanceUnblocked(campaign, 1);
             Reload(content, campaign, 81, "context-sale-following.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, "uncertain")]
+    [InlineData(true, "uncertain")]
+    [InlineData(false, "unrelated")]
+    [InlineData(true, "unrelated")]
+    [InlineData(false, "dead")]
+    [InlineData(true, "dead")]
+    [InlineData(false, "null")]
+    [InlineData(true, "null")]
+    public void DailyProductionPriceQueriesOnlyGuardConsumedUncertainResearch(bool cache, string query)
+    {
+        var script = query switch
+        {
+            "dead" => "var ptr RuleResearch topic; var int known; if eq 0 1; rules.getRuleResearch topic \"PRICE_REWARD_A\"; geoscape_game.isResearched known topic; return known; end; return 7;",
+            "null" => "var ptr RuleResearch topic; var int known; geoscape_game.isResearched known topic; return known;",
+            _ => $"var ptr RuleResearch topic; var int known; rules.getRuleResearch topic \"{(query == "uncertain" ? "PRICE_REWARD_A" : "PRICE_UNRELATED")}\"; geoscape_game.isResearched known topic; return known;",
+        };
+        var overlay = "research: [{name: PRICE_RANDOM_SOURCE, cost: 1, getOneFree: [PRICE_REWARD_A, PRICE_REWARD_B]}, {name: PRICE_REWARD_A, cost: 1}, {name: PRICE_REWARD_B, cost: 1}, {name: PRICE_UNRELATED, cost: 1}]\n" +
+            $"items: [{{type: QUERY_PRICE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\n" +
+            "manufacture: [{name: QUERY_PRICE_PRODUCT, time: 1, producedItems: {QUERY_PRICE_ITEM: 1}}]\nfacilities: [{type: QUERY_PRICE_LAB, mapName: LOGISTICS, labs: 1, workshops: 1}]\n";
+        var content = Load(cache, overlay);
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), Funds = [0] };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Research = [new("PRICE_RANDOM_SOURCE", 1, 0, 1)],
+            Facilities = [.. initial.Bases[0].Facilities, new("QUERY_PRICE_LAB", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("QUERY_PRICE_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "query-price-before.sav");
+        if (query == "uncertain")
+            AssertTimeBlocked(campaign, "Price script failed: Script binding 'GeoscapeGame.isResearched' failed: Production prices require uncertain daily research forecasts..");
+        else
+        {
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(query == "dead" ? 7 : 0, campaign.Capture().Funds[^1]);
+            Assert.Contains("PRICE_RANDOM_SOURCE", campaign.Capture().CompletedResearch);
+            var controlContent = Load(cache, overlay.Replace(script, query == "dead" ? "return 7;" : "return 0;", StringComparison.Ordinal));
+            var control = CampaignState.Restore(initial, controlContent, new SplitMix64RandomSource(81));
+            AdvanceUnblocked(control, 1);
+            Assert.Equal(control.Capture().RandomState, campaign.Capture().RandomState);
+            Assert.Equal(control.Capture().CompletedResearch, campaign.Capture().CompletedResearch);
+            Reload(content, campaign, 81, "query-price-after.sav");
         }
     }
 

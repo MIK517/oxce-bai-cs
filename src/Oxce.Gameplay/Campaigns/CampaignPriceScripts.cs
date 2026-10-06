@@ -113,8 +113,31 @@ public sealed partial class CampaignState
 
     private ScriptBindingResult InvokePriceBinding(string name, Span<ScriptRuntimeValue> args, PriceForecastContext? forecast)
     {
-        if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } && args[0].Reference is not null)
-            return ScriptBindingResult.Failure("Production prices require daily research forecasts.");
+        if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } &&
+            args[0].Reference is not null && args[2].Reference is string queriedResearch)
+        {
+            if (forecast.GuaranteedResearch is null)
+            {
+                // Bound both existing research projections before they scan rule edges.
+                forecast.Work += 8L * (_bases.Count + _completedResearch.Count + _researchRuleStatus.Count + _content.RuntimeRules.Research.Count);
+                foreach (var owner in _bases) forecast.Work += 8L * owner.Research.Count;
+                if (forecast.Work > 1_000_000) return ScriptBindingResult.Failure("Production price research forecasts exceed the supported work limit.");
+                foreach (var entry in _content.RuntimeRules.Research.Rules)
+                {
+                    var rule = entry.Value;
+                    forecast.Work += 8L * (rule.GetOneFree.Count + rule.Disables.Count + rule.GetOneFreeProtected.Count);
+                    foreach (var group in rule.GetOneFreeProtected) forecast.Work += 8L * group.Topics.Count;
+                    if (forecast.Work > 1_000_000) return ScriptBindingResult.Failure("Production price research forecasts exceed the supported work limit.");
+                }
+                forecast.GuaranteedResearch = ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+                forecast.PossibleResearch = ResearchPreflight.PossibleResearchAfterDailyProgress();
+            }
+            var guaranteed = forecast.GuaranteedResearch.Contains(queriedResearch);
+            if (guaranteed != forecast.PossibleResearch!.Contains(queriedResearch))
+                return ScriptBindingResult.Failure("Production prices require uncertain daily research forecasts.");
+            args[1] = ScriptRuntimeValue.FromScalar(guaranteed ? 1 : 0);
+            return ScriptBindingResult.Success;
+        }
         var item = args[0].Reference as PriceItemReference;
         var time = args[0].Reference is CampaignTime value ? value : forecast?.Time ?? Time;
         switch (name)
@@ -161,5 +184,7 @@ public sealed partial class CampaignState
         public int DaysPassed { get; } = daysPassed;
         public bool Daily { get; } = daily;
         public long Work { get; set; } = work;
+        public IReadOnlySet<string>? GuaranteedResearch { get; set; }
+        public IReadOnlySet<string>? PossibleResearch { get; set; }
     }
 }
