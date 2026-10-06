@@ -26,6 +26,9 @@ $researchGetters = (Read-ReferenceMethod 'src/Mod/RuleResearch.cpp' 'int RuleRes
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleResearch* getLookup() const').Replace('getLookup()', 'RuleResearch::getLookup()').Replace('_lookup', 'lookup') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleItem* getNeededItem() const').Replace('getNeededItem()', 'RuleResearch::getNeededItem()').Replace('_neededItem', 'needed')
 $template = $template.Replace('// RESEARCH_RULE_GETTERS', $researchGetters)
+$template = $template.Replace('// PRICE_TIME_POINTER',
+    (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'GameTime *SavedGame::getTime() const').Replace('_time', 'clock') + [Environment]::NewLine +
+    (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void getTimeScript(const SavedGame* sg, const GameTime*& r)'))
 $refuelMethods = ''
 foreach ($signature in @('void Craft::setFuel(int fuel)', 'std::string Craft::refuel()', 'void Craft::setDestination(Target *dest)', 'void Craft::repair()', 'const RuleItem* Craft::rearm()', 'int Craft::getFuelConsumption(int speed, int escortSpeed) const', 'void Craft::consumeFuel(int escortSpeed)', 'void Craft::returnToBase()', 'void Craft::checkup()', 'void Craft::setBase(Base *base, bool move)', 'void Craft::reuseItem(const RuleItem* item)')) {
     $refuelMethods += (Read-ReferenceMethod 'src/Savegame/Craft.cpp' $signature) + [Environment]::NewLine
