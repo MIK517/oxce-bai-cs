@@ -132,7 +132,7 @@ public sealed partial class CampaignState
         }
         if (binding.Name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokePriceTag(binding, args, forecast);
         var name = binding.Name;
-        if (PriceCountryQuerySupported(name)) return InvokePriceCountryQuery(name, args);
+        if (PriceCountryQuerySupported(name)) return InvokePriceCountryQuery(name, args, forecast);
         if (PriceDamageQuerySupported(name)) return InvokePriceDamageQuery(name, args);
         if (PriceInventoryQuerySupported(name)) return InvokePriceInventoryQuery(name, args);
         if (PriceRuleQuerySupported(name)) return InvokePriceRuleQuery(name, args);
