@@ -14,6 +14,16 @@ retain their precise projection guard for the following slices. Reference:
 `GeoscapeState::timeAdvance/time1Day/time1Hour/time30Minutes`,
 `Production::step`, `RuleItem::getSellCostAdjusted` and Country history getters.
 
+A registered internal world operation now projects daily deployment points for
+the consumed country before production. It preserves first matching saved-country
+order, signed points and intermediate overflow checks, and charges containment
+work to the shared price budget. Successful values are reused only inside the
+price forecast context; no RNG, live history or persistence field is changed.
+Verified `strategic-alien-base-activity` rows exercise positive/negative points,
+overlapping countries, daily-before-hourly-before-half-hour values and reloads.
+The 65 focused activity cases pass, including pure work-exhaustion validation.
+Research-conditioned deletion remains the next slice's precise guard.
+
 ## Candidate storage and craft fact reuse (2026-10-07)
 
 Retarget selection reuses separate preflight and execution candidate buffers.
