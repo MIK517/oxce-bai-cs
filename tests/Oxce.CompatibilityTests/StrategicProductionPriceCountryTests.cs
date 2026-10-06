@@ -139,21 +139,62 @@ public sealed partial class StrategicProductionPriceMetadataTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void ConsumedDailyAlienActivityDeletionStillRequiresResearchProjection(bool cache, bool global)
+    public void DailyAlienActivityPricesFollowResearchDeletionBeforeBaseScoring(bool cache, bool global)
     {
-        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         var content = Load(cache, global,
-            "var int value; loop var country geoscape_game.getCountries.list; country.getCurrentActivityAlien value; end; return 7;",
+            "var int value; loop var country geoscape_game.getCountries.list; country.getCurrentActivityAlien value; end; return value;",
             extraRules: "countries: [{type: PRICE_COUNTRY_A, areas: [[0, 30, -20, 20]]}, {type: PRICE_COUNTRY_B}]\n" +
-                "research: [{name: PRICE_SELF_DESTRUCT, cost: 1}]\nalienDeployments: [{type: PRICE_DELETING_BASE, alienBase: true, markerName: STR_ALIEN_BASE, points: 1, baseSelfDestructCode: PRICE_SELF_DESTRUCT}]\n");
-        var campaign = Reload(content, Create(content, initial => PriceCountries(initial) with
+                "research: [{name: PRICE_SELF_DESTRUCT, cost: 1}, {name: PRICE_LOOKUP, cost: 1, lookup: PRICE_SELF_DESTRUCT}]\n" +
+                "alienDeployments: [{type: PRICE_DELETING_BASE, alienBase: true, markerName: STR_ALIEN_BASE, points: 7, baseSelfDestructCode: PRICE_SELF_DESTRUCT}]\n" +
+                "ufos: [{type: HUNTER, missionScore: 5}]\n",
+            extraFacilities: "- {type: PRICE_ACTIVITY_LAB, mapName: LOGISTICS, labs: 10}");
+        foreach (var mode in new[] { "incomplete", "complete", "direct", "lookup" })
         {
-            Time = new(1, 1, 1, 1999, 23, 59, 55),
-            World = initial.World with
-            { AlienBases = [new(1, "PRICE_DELETING_BASE", "RACE_A", 0.2, 0.1)] }
-        }), 81, "daily-country-price-before.sav");
-        AssertTimeBlocked(campaign,
-            $"Price {(global ? "event" : "script")} failed: Script binding 'Country.getCurrentActivityAlien' failed: Production prices require alien-base deletion forecasts..");
+            var campaign = Reload(content, Create(content, initial => PriceCountries(initial) with
+            {
+                Time = new(1, 1, 1, 1999, 23, 59, 55),
+                CompletedResearch = mode == "complete" ? ["PRICE_SELF_DESTRUCT"] : [],
+                World = initial.World with { AlienBases = [new(1, "PRICE_DELETING_BASE", "RACE_A", 0.2, 0.1)] },
+                Bases = [initial.Bases[0] with
+                {
+                    Facilities = [.. initial.Bases[0].Facilities, new("PRICE_ACTIVITY_LAB", 2, 1, 0, 0, false, false, false)],
+                    Research = mode is "direct" or "lookup" ? [new(mode == "direct" ? "PRICE_SELF_DESTRUCT" : "PRICE_LOOKUP", 1, 0, 1)] : [],
+                }],
+            }), 81, "daily-country-price-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(mode == "incomplete" ? 14 : 7, after.Funds[^1]);
+            Assert.Equal(after.Funds[^1] + 5, after.Countries[1].ActivityAlien[^1]);
+            Assert.Equal(mode == "incomplete" ? 1 : 0, after.World.AlienBases.Count);
+            Reload(content, campaign, 81, "daily-country-price-after.sav");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyCountryActivityRejectsUncertainDeletionWithoutChangingState(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
+        var content = Load(cache, false, "return 7;", extraRules:
+            "countries: [{type: PRICE_COUNTRY_A, areas: [[0, 30, -20, 20]]}]\n" +
+            "research: [{name: PRICE_SELF_DESTRUCT, cost: 1}]\n" +
+            "alienDeployments: [{type: PRICE_DELETING_BASE, alienBase: true, markerName: STR_ALIEN_BASE, points: 7, baseSelfDestructCode: PRICE_SELF_DESTRUCT}]\n");
+        var campaign = Create(content, initial => initial with
+        {
+            Countries = [new("PRICE_COUNTRY_A", [2000], [9], [7], false, false, false, [])],
+            World = initial.World with { AlienBases = [new(1, "PRICE_DELETING_BASE", "RACE_A", 0.2, 0.1)] },
+        });
+        var before = campaign.Capture();
+        long work = 0;
+        Assert.Equal("Production prices require uncertain alien-base deletion forecasts.",
+            campaign.WorldActivityPreflight.CountryAfterDailyProgress(campaign.CountryStates[0],
+                new HashSet<string>(StringComparer.Ordinal), new HashSet<string>(StringComparer.Ordinal) { "PRICE_SELF_DESTRUCT" },
+                ref work, out var activity, out var needsResearch));
+        Assert.Equal(7, activity);
+        Assert.False(needsResearch);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
     [Theory]

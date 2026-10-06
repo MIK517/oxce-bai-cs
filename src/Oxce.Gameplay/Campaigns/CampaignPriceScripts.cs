@@ -198,38 +198,14 @@ public sealed partial class CampaignState
         if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } &&
             args[0].Reference is not null && args[2].Reference is string queriedResearch)
         {
-            if (!forecast.ResearchProjectionAttempted)
-            {
-                forecast.ResearchProjectionAttempted = true;
-                var work = forecast.Work;
-                if (ResearchPreflight.TryForecastDailyStocks(ref work, out var research, includeDiscoveries: true))
-                    forecast.CompletedResearch = research.CompletedResearch;
-                forecast.Work = work;
-            }
-            if (forecast.Work > 1_000_000)
-                return ScriptBindingResult.Failure("Production price research forecasts exceed the supported work limit.");
+            if (PreparePriceResearchForecast(forecast) is { } researchReason)
+                return ScriptBindingResult.Failure(researchReason);
             if (forecast.CompletedResearch is { } completed)
             {
                 args[1] = ScriptRuntimeValue.FromScalar(completed.Contains(queriedResearch) ? 1 : 0);
                 return ScriptBindingResult.Success;
             }
-            if (forecast.GuaranteedResearch is null)
-            {
-                // Bound both existing research projections before they scan rule edges.
-                forecast.Work += 8L * (_bases.Count + _completedResearch.Count + _researchRuleStatus.Count + _content.RuntimeRules.Research.Count);
-                foreach (var owner in _bases) forecast.Work += 8L * owner.Research.Count;
-                if (forecast.Work > 1_000_000) return ScriptBindingResult.Failure("Production price research forecasts exceed the supported work limit.");
-                foreach (var entry in _content.RuntimeRules.Research.Rules)
-                {
-                    var rule = entry.Value;
-                    forecast.Work += 8L * (rule.GetOneFree.Count + rule.Disables.Count + rule.GetOneFreeProtected.Count);
-                    foreach (var group in rule.GetOneFreeProtected) forecast.Work += 8L * group.Topics.Count;
-                    if (forecast.Work > 1_000_000) return ScriptBindingResult.Failure("Production price research forecasts exceed the supported work limit.");
-                }
-                forecast.GuaranteedResearch = ResearchPreflight.GuaranteedResearchAfterDailyProgress();
-                forecast.PossibleResearch = ResearchPreflight.PossibleResearchAfterDailyProgress();
-            }
-            var guaranteed = forecast.GuaranteedResearch.Contains(queriedResearch);
+            var guaranteed = forecast.GuaranteedResearch!.Contains(queriedResearch);
             if (guaranteed != forecast.PossibleResearch!.Contains(queriedResearch))
                 return ScriptBindingResult.Failure("Production prices require uncertain daily research forecasts.");
             args[1] = ScriptRuntimeValue.FromScalar(guaranteed ? 1 : 0);
@@ -299,6 +275,36 @@ public sealed partial class CampaignState
                 break;
         }
         return ScriptBindingResult.Success;
+    }
+
+    private string? PreparePriceResearchForecast(PriceForecastContext forecast)
+    {
+        if (!forecast.ResearchProjectionAttempted)
+        {
+            forecast.ResearchProjectionAttempted = true;
+            var work = forecast.Work;
+            if (ResearchPreflight.TryForecastDailyStocks(ref work, out var research, includeDiscoveries: true))
+                forecast.CompletedResearch = research.CompletedResearch;
+            forecast.Work = work;
+        }
+        if (forecast.Work > 1_000_000) return "Production price research forecasts exceed the supported work limit.";
+        if (forecast.CompletedResearch is null && forecast.GuaranteedResearch is null)
+        {
+            // Bound both existing research projections before they scan rule edges.
+            forecast.Work += 8L * (_bases.Count + _completedResearch.Count + _researchRuleStatus.Count + _content.RuntimeRules.Research.Count);
+            foreach (var owner in _bases) forecast.Work += 8L * owner.Research.Count;
+            if (forecast.Work > 1_000_000) return "Production price research forecasts exceed the supported work limit.";
+            foreach (var entry in _content.RuntimeRules.Research.Rules)
+            {
+                var rule = entry.Value;
+                forecast.Work += 8L * (rule.GetOneFree.Count + rule.Disables.Count + rule.GetOneFreeProtected.Count);
+                foreach (var group in rule.GetOneFreeProtected) forecast.Work += 8L * group.Topics.Count;
+                if (forecast.Work > 1_000_000) return "Production price research forecasts exceed the supported work limit.";
+            }
+            forecast.GuaranteedResearch = ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+            forecast.PossibleResearch = ResearchPreflight.PossibleResearchAfterDailyProgress();
+        }
+        return null;
     }
 
     private PriceItemReference PriceItemReferenceFor(string id, RuntimeItemRule rule)

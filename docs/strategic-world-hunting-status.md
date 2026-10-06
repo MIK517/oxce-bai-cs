@@ -9,8 +9,7 @@ Consumed hourly country alien-activity queries now read the existing history:
 scoring, and no non-daily handler changes that history before production.
 Native `strategic-detection-scripts` country getter rows and the `strategic-world`
 score evidence feed fresh/cache item/global price calls, current quote purity,
-transition reloads and explicit before/after half-hour values. Daily calls
-retain their precise projection guard for the following slices. Reference:
+transition reloads and explicit before/after half-hour values. Reference:
 `GeoscapeState::timeAdvance/time1Day/time1Hour/time30Minutes`,
 `Production::step`, `RuleItem::getSellCostAdjusted` and Country history getters.
 
@@ -21,8 +20,16 @@ work to the shared price budget. Successful values are reused only inside the
 price forecast context; no RNG, live history or persistence field is changed.
 Verified `strategic-alien-base-activity` rows exercise positive/negative points,
 overlapping countries, daily-before-hourly-before-half-hour values and reloads.
-The 65 focused activity cases pass, including pure work-exhaustion validation.
-Research-conditioned deletion remains the next slice's precise guard.
+The focused activity cases include pure work-exhaustion validation.
+
+Daily projection now shares the existing bounded research forecast with price
+`isResearched` queries. Completed, directly completed and lookup research remove
+an alien base before its daily points; incomplete research preserves it. Uncertain
+deletion retains a consumed-country restriction before mutation. Fresh/cache
+item/global calls compare those four transitions with the verified
+`strategic-alien-base-cleanup` caller order, then reload before and after the tick.
+Half-hour UFO points remain later than production in every case. No research,
+world state or RNG is changed by the projection itself.
 
 ## Candidate storage and craft fact reuse (2026-10-07)
 
