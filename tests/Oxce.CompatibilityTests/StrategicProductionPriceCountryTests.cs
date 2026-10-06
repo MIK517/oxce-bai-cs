@@ -11,6 +11,33 @@ public sealed partial class StrategicProductionPriceMetadataTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void PriceCountryTagsRetainTypedOwnersSavedValuesAndNullDefaults(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        var value = TestFixtures.Rows(oracle.RootElement, "tagValues")[2][1].GetInt32();
+        var code = "var ptr Country absent null; var ptr RuleCountry rule; var ptr RuleCountry missing null; " +
+            "var Country.Tag selected Tag.PRICE_SAVED_COUNTRY; var Country.Tag alias selected; var int value; var int count; " +
+            "loop var country geoscape_game.getCountries.list; country.getTag value alias; " +
+            $"if neq value {value}; div cost_current 0; end; country.getTag value Tag.PRICE_COUNTRY_MISSING; if neq value 0; div cost_current 0; end; " +
+            "country.getRuleCountry rule; rule.getTag value Tag.PRICE_COUNTRY_RULE; " +
+            "if neq value 37; div cost_current 0; end; add count 1; end; " +
+            "absent.getTag value alias; if neq value 0; div cost_current 0; end; " +
+            "missing.getTag value Tag.PRICE_COUNTRY_RULE; if neq value 0; div cost_current 0; end; " +
+            "if neq count 2; div cost_current 0; end; return 7;";
+        var content = Load(cache, global, code,
+            extraRules: "countries: [{type: PRICE_COUNTRY_A, tags: {PRICE_COUNTRY_RULE: 37}}, {type: PRICE_COUNTRY_B, tags: {PRICE_COUNTRY_RULE: 37}}]",
+            extraExtended: "tags:\n  Country: {PRICE_SAVED_COUNTRY: int, PRICE_COUNTRY_MISSING: int}\n  RuleCountry: {PRICE_COUNTRY_RULE: int}");
+        AssertPrice(content, snapshot: initial => PriceCountries(initial) with
+        {
+            Countries = PriceCountries(initial).Countries.Select(country => country with { ScriptValues = [new("PRICE_SAVED_COUNTRY", "int", value)] }).ToArray(),
+        });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void CountryPriceLoopsPreserveSavedOrderFundingAndCanonicalRules(bool cache, bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");

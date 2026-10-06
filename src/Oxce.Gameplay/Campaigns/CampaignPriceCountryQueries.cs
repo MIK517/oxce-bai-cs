@@ -5,6 +5,8 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
+    private readonly Dictionary<RuntimeCountryRule, string> _priceCountryIds = new(ReferenceEqualityComparer.Instance);
+
     private static bool PriceCountryQuerySupported(string name) => name is
         "GeoscapeGame.getCountries.init" or "GeoscapeGame.getCountries.list" or
         "Country.getRuleCountry" or "Country.getCurrentFunding" or "RuleCountry.getFundingCap";
@@ -33,7 +35,10 @@ public sealed partial class CampaignState
                 }
                 break;
             case "Country.getRuleCountry":
-                args[1] = ScriptRuntimeValue.FromReference(receiver is CountryState country ? _content.RuntimeRules.Countries[country.Rule].Value : null);
+                var country = receiver as CountryState;
+                var definition = country is null ? null : _content.RuntimeRules.Countries[country.Rule].Value;
+                if (definition is not null) _priceCountryIds.TryAdd(definition, _content.RuntimeRules.Countries.GetExternalId(country!.Rule));
+                args[1] = ScriptRuntimeValue.FromReference(definition);
                 break;
             default:
                 args[1] = ScriptRuntimeValue.FromScalar(receiver switch
