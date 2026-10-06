@@ -2,6 +2,7 @@ using Oxce.Mods.Rulesets.Content;
 using Oxce.Mods.Rulesets.Runtime;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Scripting.Compilation;
+using Oxce.Scripting.Api;
 using Oxce.Scripting.Runtime;
 using Oxce.Scripting;
 
@@ -45,12 +46,18 @@ public sealed partial class CampaignState
             _priceFrame.Prepare(candidate);
             foreach (var binding in candidate.Bindings)
             {
-                if (!PriceBindingSupported(binding.Name))
+                if (binding.Name.EndsWith(".getTag", StringComparison.Ordinal) &&
+                    (forecast.Work += _content.Tags.Types.Count) > 1_000_000)
+                {
+                    unavailable = "Production price tag metadata exceeds the supported work limit.";
+                    return adjusted;
+                }
+                if (!PriceBindingSupported(binding))
                 {
                     unavailable = $"Price script requires unsupported binding {binding.Name}.";
                     return adjusted;
                 }
-                if (seen.Add(binding.Id.Value)) builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding.Name, args, forecast, timeReference));
+                if (seen.Add(binding.Id.Value)) builder.Add(binding.Id, (_, args) => InvokePriceBinding(binding, args, forecast, timeReference));
             }
         }
         var providers = builder.Build();
@@ -104,15 +111,25 @@ public sealed partial class CampaignState
         return program;
     }
 
-    private static bool PriceBindingSupported(string name) => WorldDetectionItemQueries.Supports(name) || name is
+    private bool PriceBindingSupported(ScriptBindingDeclaration binding) =>
+        PriceValueCopy(binding) || PriceTagSupported(binding) || PriceBindingNameSupported(binding.Name);
+
+    private static bool PriceBindingNameSupported(string name) => WorldDetectionItemQueries.Supports(name) || name is
         "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleItem" or "RuleMod.getRuleResearch" or
         "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" or
         "RuleItem.getType" or "RuleItem.hasCategory" or "Time.getDay" or "Time.getMonth" or
         "Time.getYear" or "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
 
-    private ScriptBindingResult InvokePriceBinding(string name, Span<ScriptRuntimeValue> args, PriceForecastContext? forecast, object timeReference)
+    private ScriptBindingResult InvokePriceBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args, PriceForecastContext forecast, object timeReference)
     {
+        if (PriceValueCopy(binding))
+        {
+            args[0] = args[1];
+            return ScriptBindingResult.Success;
+        }
+        if (binding.Name.EndsWith(".getTag", StringComparison.Ordinal)) return InvokePriceTag(binding, args, forecast);
+        var name = binding.Name;
         if (name == "GeoscapeGame.isResearched" && forecast is { Daily: true } &&
             args[0].Reference is not null && args[2].Reference is string queriedResearch)
         {

@@ -70,6 +70,34 @@ public sealed class StrategicProductionPriceMetadataTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void TypedRuleGlobalAndSavedCampaignTagsRetainNativeValues(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-scripts");
+        using var copyOracle = TestFixtures.ReadVerifiedExpected("strategic-detection-value-copy");
+        var value = TestFixtures.Rows(oracle.RootElement, "tagValues")[2][1].GetInt32();
+        Assert.Equal(value, copyOracle.RootElement.GetProperty("tagCopy").GetInt32());
+        var code = "var ptr RuleItem absent null; var ptr RuleResearch research; var ptr RuleResearch absentResearch null; " +
+            "var ptr RuleMod absentMod null; var ptr GeoscapeGame absentGame null; var RuleItem.Tag selected; var RuleItem.Tag alias; var int value; " +
+            "set selected Tag.PRICE_ITEM; set alias selected; item_rule.getTag value alias; " +
+            $"if neq value {value}; div cost_current 0; end; absent.getTag value alias; if neq value 0; div cost_current 0; end; " +
+            "item_rule.getTag value Tag.PRICE_MISSING; if neq value 0; div cost_current 0; end; " +
+            "rules.getRuleResearch research \"PRICE_TAG_RESEARCH\"; research.getTag value Tag.PRICE_RESEARCH; " +
+            $"if neq value {value}; div cost_current 0; end; absentResearch.getTag value Tag.PRICE_RESEARCH; if neq value 0; div cost_current 0; end; " +
+            $"rules.getTag value Tag.PRICE_MOD; if neq value {value}; div cost_current 0; end; " +
+            "absentMod.getTag value Tag.PRICE_MOD; if neq value 0; div cost_current 0; end; " +
+            $"geoscape_game.getTag value Tag.PRICE_GAME; if neq value {value}; div cost_current 0; end; " +
+            "absentGame.getTag value Tag.PRICE_GAME; if neq value 0; div cost_current 0; end; return 7;";
+        var content = Load(cache, global, code, $"tags: {{PRICE_ITEM: {value}}}",
+            $"research: [{{name: PRICE_TAG_RESEARCH, cost: 1, tags: {{PRICE_RESEARCH: {value}}}}}]",
+            $"tags:\n  RuleItem: {{PRICE_ITEM: int, PRICE_MISSING: int}}\n  RuleResearch: {{PRICE_RESEARCH: int}}\n  RuleMod: {{PRICE_MOD: int}}\n  GeoscapeGame: {{PRICE_GAME: int}}\nglobals: {{PRICE_MOD: {value}}}");
+        AssertPrice(content, snapshot: initial => initial with { ScriptValues = [new("PRICE_GAME", "int", value)] });
+    }
+
     private static RuntimeContent Load(bool cache, bool global, string code, string itemFields = "",
         string extraRules = "", string extraExtended = "", string extraItems = "")
     {
@@ -85,7 +113,7 @@ public sealed class StrategicProductionPriceMetadataTests
     private static string Indent(string text, int count) => text.Length == 0 ? "" :
         string.Join('\n', text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').Select(line => new string(' ', count) + line)) + "\n";
 
-    private static CampaignState Create(RuntimeContent content)
+    private static CampaignState Create(RuntimeContent content, Func<CampaignSnapshot, CampaignSnapshot>? snapshot = null)
     {
         var initial = CreateUfoTransitCampaign(content, new(1, 1, 1, 1999, 1, 59, 55), "HUNTER", 2200).Capture();
         initial = initial.WithCraft("SHIP", craft => craft with
@@ -111,12 +139,12 @@ public sealed class StrategicProductionPriceMetadataTests
                 Productions = [new("PRICE_META_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
             }],
         };
-        return CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        return CampaignState.Restore(snapshot?.Invoke(initial) ?? initial, content, new SplitMix64RandomSource(81));
     }
 
-    private static void AssertPrice(RuntimeContent content, int expected = 7)
+    private static void AssertPrice(RuntimeContent content, int expected = 7, Func<CampaignSnapshot, CampaignSnapshot>? snapshot = null)
     {
-        var campaign = Reload(content, Create(content), 81, "price-metadata-before.sav");
+        var campaign = Reload(content, Create(content, snapshot), 81, "price-metadata-before.sav");
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(expected, campaign.Capture().Funds[^1]);
         Assert.True(Assert.Single(campaign.Capture().World.Ufos).Hunting);
