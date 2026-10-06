@@ -4220,6 +4220,35 @@ public sealed class StrategicWorldHuntingTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void ProductionPricePreflightUsesOnlyTheDueFutureCaller(bool cache, bool completes)
+    {
+        var script = completes ? "var int days; geoscape_game.getDaysPassed days; if eq days 12; div cost_current 0; end; return days;" : "div cost_current 0; return cost_current;";
+        var content = Load(cache, $"items: [{{type: DUE_PRICE_ITEM, costSell: 7, scripts: {{sellCostItem: '{script}'}}}}]\nmanufacture: [{{name: DUE_PRICE_PRODUCT, time: 1, producedItems: {{DUE_PRICE_ITEM: 1}}}}]\nfacilities: [{{type: DUE_PRICE_WORKSHOP, mapName: LOGISTICS, workshops: 1}}]\n");
+        var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), DaysPassed = 12, Funds = [0] };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        {
+            Research = [],
+            Facilities = [.. initial.Bases[0].Facilities, new("DUE_PRICE_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+            Productions = [new("DUE_PRICE_PRODUCT", completes ? 1 : 0, 0, 1, false, true, false, new Dictionary<string, int>())],
+        }]
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "due-price-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(completes ? 13 : 0, campaign.Capture().Funds[^1]);
+        Assert.Equal(completes ? 0 : 1, campaign.Capture().Bases[0].Productions.Count);
+        var control = CampaignState.Restore(initial with { World = new() }, content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(control, 1);
+        Assert.Equal(control.Capture().Funds, campaign.Capture().Funds);
+        Reload(content, campaign, 81, "due-price-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void ProductionPriceVmMatchesNativeCallerContextAndAccounting(bool cache, bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
