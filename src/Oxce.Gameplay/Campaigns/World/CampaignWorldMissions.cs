@@ -10,9 +10,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
-    private bool? _newHunterHasNoTarget;
-    private CampaignTimeTrigger _newbornHighestTrigger;
-
     private void RegisterMissionOperations(CampaignCapabilityRegistry registry)
     {
         registry.Timed(CampaignTimeTrigger.OneDay, CampaignTimeOrder.DayWorldMissionInterruption,
@@ -151,7 +148,7 @@ internal sealed partial class CampaignWorld
         }
         var finalUfoCount = (long)_ufos.Count + ufoSpawns;
         var escortWork = 2L * newEscorts * finalUfoCount + (long)savedIdleEscorts * ufoSpawns;
-        if (_huntingForecastWork + escortWork + newbornFollowerWork > MaximumAlienBaseChecks)
+        if (_pass.HuntingForecastWork + escortWork + newbornFollowerWork > MaximumAlienBaseChecks)
             return "New UFO escort selection exceeds the supported work limit.";
         if (2L * (savedMovingEscorts + newEscorts) * finalUfoCount > MaximumAlienBaseChecks)
             return "New UFO escort movement exceeds the supported work limit.";
@@ -166,7 +163,7 @@ internal sealed partial class CampaignWorld
         }
         if (newFlyingHunters != 0)
         {
-            var retargetWork = _huntingForecastWork + escortWork + newbornFollowerWork;
+            var retargetWork = _pass.HuntingForecastWork + escortWork + newbornFollowerWork;
             if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref retargetWork, out var possibleCrafts) is { } populationReason)
                 return populationReason;
             if (retargetWork + (possibleCrafts + campaign.BaseStates.Count + (long)_missions.Count) * newFlyingHunters > MaximumAlienBaseChecks)
@@ -383,7 +380,7 @@ internal sealed partial class CampaignWorld
 
     // A new hunter has no original target. With no current or potential airborne
     // craft, the reference retarget pass cannot select a craft.
-    private bool NoCraftCanBecomeHunterTarget() => _newHunterHasNoTarget ??= CalculateNoHunterTarget();
+    private bool NoCraftCanBecomeHunterTarget() => _pass.NewHunterHasNoTarget ??= CalculateNoHunterTarget();
 
     private bool CalculateNoHunterTarget()
     {
@@ -398,7 +395,7 @@ internal sealed partial class CampaignWorld
                     (state.Status == "STR_OUT" && !WorldHunting.IsIgnored(state.LowFuel, state.MissionComplete) || state.IsAutoPatrolling &&
                         campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.AutoPatrol)) return false;
             foreach (var transfer in owner.Transfers)
-                if (_newbornHighestTrigger >= CampaignTimeTrigger.OneHour && transfer.Hours <= 1 &&
+                if (_pass.NewbornHighestTrigger >= CampaignTimeTrigger.OneHour && transfer.Hours <= 1 &&
                     !transfer.Delivered && transfer.Craft?.Logistics is { } state &&
                     (state.Status == "STR_OUT" || state.IsAutoPatrolling &&
                         campaign.Content.RuntimeRules.Crafts[

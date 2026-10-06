@@ -4,14 +4,6 @@ public sealed record UfoStartedHunting(int UniqueId, string CraftTypeId, int Cra
 
 internal sealed partial class CampaignWorld
 {
-    private Dictionary<int, UfoSnapshot>? _retargetForecast;
-    private int _possibleHuntMarkerIds;
-    private long _huntingForecastWork;
-    private Dictionary<(string TypeId, int Id), CraftLogisticsState>? _huntingCraftForecast;
-    private Dictionary<int, List<CampaignState.CraftState>>? _huntingCraftSources;
-    private List<WorldPosition>? _escortFlightPositions;
-    private (UfoSnapshot? Source, UfoSnapshot? Projected)[]? _escortFlightTargets;
-    private int _escortFlightEndIndex;
     private const string HuntStateReason = "UFO hunting or escort state requires a valid original waypoint.";
     private const string HuntCombatReason = "UFO hunting interception requires strategic combat (Phase 6 branch 5).";
 
@@ -27,32 +19,22 @@ internal sealed partial class CampaignWorld
 
     private string? HuntingReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
-        _retargetForecast = null;
-        _newLeaderFlightForecast = null;
-        _possibleHuntMarkerIds = 0;
-        _huntingForecastWork = 0;
-        _huntingCraftForecast = null;
-        _huntingCraftSources = null;
-        _baseHuntingCraftPopulationBound = null;
-        _baseHuntingCraftRemovalTypes = null;
-        _newbornNoTargetProofs.Clear();
-        _newbornSafeHuntingProofs.Clear();
-        ResetEscortFlightPositions();
+        _pass.BeginHunting();
         var due = WorldHunting.RetargetDue(highest, speed, campaign.Content.RuntimeRules.Campaign.HunterKillerFastRetarget);
         long work = 0;
         foreach (var saved in _ufos)
         {
             var ufo = UfoAfterTimedTransitions(saved, highest);
             if (ufo.Status != UfoStatus.Flying || !ufo.HunterKiller && !ufo.Hunting && !ufo.Escorting) continue;
-            if (_huntingCraftForecast is null && (due && ufo.HunterKiller || highest >= CampaignTimeTrigger.OneHour && ufo.Hunting))
+            if (_pass.HuntingCraftForecast is null && (due && ufo.HunterKiller || highest >= CampaignTimeTrigger.OneHour && ufo.Hunting))
             {
                 if (ForecastHuntingCrafts(highest, ref work) is { } craftReason)
                     return craftReason;
             }
             if (ProjectHunting(ufo, highest, due, forecastFuel: true, ref work, out var projected, out var alert) is { } reason)
                 return reason;
-            if (projected != ufo) (_retargetForecast ??= []).Add(saved.UniqueId, projected);
-            if (alert && ufo.Id == 0) _possibleHuntMarkerIds++;
+            if (projected != ufo) (_pass.RetargetForecast ??= []).Add(saved.UniqueId, projected);
+            if (alert && ufo.Id == 0) _pass.PossibleHuntMarkerIds++;
         }
         foreach (var saved in _ufos)
             if (ForecastNewLeaderFlight(UfoForFlight(saved, highest), highest, ref work) is { } leaderReason)
@@ -67,8 +49,8 @@ internal sealed partial class CampaignWorld
             }
         if (work > MaximumAlienBaseChecks)
             return "UFO escort movement exceeds the supported work limit.";
-        _huntingForecastWork = work;
-        return CanAllocateUfoMarkerIds(_possibleHuntMarkerIds)
+        _pass.HuntingForecastWork = work;
+        return CanAllocateUfoMarkerIds(_pass.PossibleHuntMarkerIds)
             ? null : "UFO contact marker IDs are exhausted or collide with a saved UFO.";
     }
 
@@ -101,12 +83,12 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
         {
             if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-            foreach (var craft in forecastFuel ? _huntingCraftSources![owner.Id] : owner.Crafts)
+            foreach (var craft in forecastFuel ? _pass.HuntingCraftSources![owner.Id] : owner.Crafts)
             {
                 if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 if (craft.Logistics is not { } state) continue;
                 var craftRule = rules.Crafts[craft.Rule].Value;
-                if (forecastFuel) state = _huntingCraftForecast!.GetValueOrDefault(
+                if (forecastFuel) state = _pass.HuntingCraftForecast!.GetValueOrDefault(
                     (rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
                 var original = projected.Hunting && projected.Destination is { } destination &&
                     destination.TypeId == rules.Crafts.GetExternalId(craft.Rule) && destination.Id == craft.Id;
@@ -182,66 +164,59 @@ internal sealed partial class CampaignWorld
     }
 
     private UfoSnapshot UfoForFlight(UfoSnapshot ufo, CampaignTimeTrigger highest) =>
-        _newLeaderFlightForecast?.GetValueOrDefault(ufo.UniqueId) ??
-        _retargetForecast?.GetValueOrDefault(ufo.UniqueId) ?? UfoAfterTimedTransitions(ufo, highest);
+        _pass.NewLeaderFlightForecast?.GetValueOrDefault(ufo.UniqueId) ??
+        _pass.RetargetForecast?.GetValueOrDefault(ufo.UniqueId) ?? UfoAfterTimedTransitions(ufo, highest);
 
     private bool PlannedHuntMarker(UfoSnapshot ufo) => ufo.Id == 0 &&
-        _retargetForecast?.TryGetValue(ufo.UniqueId, out var projected) == true && projected.Detected;
+        _pass.RetargetForecast?.TryGetValue(ufo.UniqueId, out var projected) == true && projected.Detected;
 
     private UfoSnapshot ProjectFlightTarget(UfoSnapshot ufo, CampaignTimeTrigger highest, bool buildingPrefix = false)
     {
         if (ufo.Hunting && ufo.Destination is { Kind: WorldTargetKind.Craft } craft)
         {
-            if (_huntingCraftForecast?.GetValueOrDefault((craft.TypeId, craft.Id)) is { } state)
+            if (_pass.HuntingCraftForecast?.GetValueOrDefault((craft.TypeId, craft.Id)) is { } state)
                 return ufo with { Destination = craft with { Longitude = state.Longitude, Latitude = state.Latitude } };
             return Resolve(craft) is { } resolved ? ufo with { Destination = resolved } : ufo;
         }
         if (!ufo.Escorting || ufo.Destination is not { Kind: WorldTargetKind.Ufo } reference || TargetUfo(reference) is not { } target)
             return ufo;
         var index = UfoIndex(ufo.UniqueId);
-        if (index >= 0 && _escortFlightTargets is { } cached && index < cached.Length &&
+        if (index >= 0 && _pass.EscortFlightTargets is { } cached && index < cached.Length &&
             ReferenceEquals(cached[index].Source, ufo)) return cached[index].Projected!;
         var position = UfoForFlight(target, highest).Position;
         // Reference target pointers see earlier actors after movement and later
         // actors before movement. Even cycles only depend on earlier list entries.
         var targetIndex = UfoIndex(target.UniqueId);
         if (targetIndex < index)
-            position = buildingPrefix ? _escortFlightPositions![targetIndex] : EscortFlightPosition(targetIndex, highest);
+            position = buildingPrefix ? _pass.EscortFlightPositions![targetIndex] : EscortFlightPosition(targetIndex, highest);
         var projected = reference.Position == position ? ufo : ufo with
         { Destination = reference with { Longitude = position.Longitude, Latitude = position.Latitude } };
         if (index >= 0)
         {
-            if (_escortFlightTargets is null || _escortFlightTargets.Length < _ufos.Count)
-                Array.Resize(ref _escortFlightTargets, _ufos.Count);
-            _escortFlightTargets[index] = (ufo, projected);
+            if (_pass.EscortFlightTargets is null || _pass.EscortFlightTargets.Length < _ufos.Count)
+                Array.Resize(ref _pass.EscortFlightTargets, _ufos.Count);
+            _pass.EscortFlightTargets[index] = (ufo, projected);
         }
         return projected;
     }
 
     private WorldPosition EscortFlightPosition(int targetIndex, CampaignTimeTrigger highest)
     {
-        _escortFlightPositions ??= [];
-        for (var index = _escortFlightPositions.Count; index <= targetIndex; index++)
+        _pass.EscortFlightPositions ??= [];
+        for (var index = _pass.EscortFlightPositions.Count; index <= targetIndex; index++)
         {
             var actor = ProjectFlightTarget(UfoForFlight(_ufos[index], highest), highest, buildingPrefix: true);
-            if (index > _escortFlightEndIndex)
+            if (index > _pass.EscortFlightEndIndex)
             {
-                _escortFlightPositions.Add(actor.Position);
+                _pass.EscortFlightPositions.Add(actor.Position);
                 continue;
             }
             var flight = ForecastUfoStep(actor, highest);
-            _escortFlightPositions.Add(flight.Position);
+            _pass.EscortFlightPositions.Add(flight.Position);
             if (actor.Status == UfoStatus.Flying && flight.Status == UfoStatus.Destroyed)
-                _escortFlightEndIndex = index;
+                _pass.EscortFlightEndIndex = index;
         }
-        return _escortFlightPositions[targetIndex];
-    }
-
-    private void ResetEscortFlightPositions()
-    {
-        _escortFlightPositions?.Clear();
-        if (_escortFlightTargets is { } cached) Array.Clear(cached);
-        _escortFlightEndIndex = int.MaxValue;
+        return _pass.EscortFlightPositions[targetIndex];
     }
 
     private int UfoIndex(int uniqueId)

@@ -132,7 +132,7 @@ internal sealed partial class CampaignWorld
         if (mission.Interrupted || ufo.TrajectoryPoint + 1 >= trajectory.Waypoints.Count)
             return (position, UfoStatus.Destroyed, 0);
         if (IsSiteConversion(ufo, mission, trajectory))
-            return (position, MissionRule(mission).RespawnUfoAfterSiteDespawn && _suppressedUfoSites?.Contains(ufo.UniqueId) != true
+            return (position, MissionRule(mission).RespawnUfoAfterSiteDespawn && _pass.SuppressedUfoSites?.Contains(ufo.UniqueId) != true
                 ? UfoStatus.IgnoreMe : UfoStatus.Destroyed, 0);
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         var landing = trajectory.Altitude(ufo.TrajectoryPoint + 1) == 0;
@@ -162,7 +162,7 @@ internal sealed partial class CampaignWorld
             destination.Kind is WorldTargetKind.Base or WorldTargetKind.Waypoint or WorldTargetKind.Craft) return null;
         if (highest >= CampaignTimeTrigger.OneDay && destination.Kind == WorldTargetKind.AlienBase)
         {
-            var guaranteed = campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+            var guaranteed = GuaranteedDailyResearch();
             foreach (var alienBase in _alienBases)
                 if (FollowsAlienBase(destination, alienBase) && BaseDestroyedAfterDailyResearch(alienBase, guaranteed))
                     return null;

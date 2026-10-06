@@ -5,9 +5,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private List<CustomCounterChange>? _siteBirthIdChanges;
-    private List<CustomCounterChange>? _siteBirthExpiryIncreases;
-    private List<CustomCounterChange>? _siteBirthExpiryDecreases;
     private bool IsDirectSiteWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         var wave = rule.Waves[mission.NextWave];
@@ -76,14 +73,14 @@ internal sealed partial class CampaignWorld
                         return "Direct mission site counters share an unsupported UFO ID namespace.";
                     if ((expiryCandidates ??= []).Add(handle))
                     {
-                        _siteBirthExpiryIncreases ??= [];
-                        if (deployment.CounterDespawn.Length != 0) _siteBirthExpiryIncreases.Add(new(deployment.CounterDespawn, true));
-                        if (deployment.CounterFailure.Length != 0) _siteBirthExpiryIncreases.Add(new(deployment.CounterFailure, true));
-                        if (deployment.CounterAll.Length != 0) _siteBirthExpiryIncreases.Add(new(deployment.CounterAll, true));
-                        _siteBirthExpiryDecreases ??= [];
-                        if (deployment.DecreaseCounterDespawn.Length != 0) _siteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterDespawn, false));
-                        if (deployment.DecreaseCounterFailure.Length != 0) _siteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterFailure, false));
-                        if (deployment.DecreaseCounterAll.Length != 0) _siteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterAll, false));
+                        _pass.SiteBirthExpiryIncreases ??= [];
+                        if (deployment.CounterDespawn.Length != 0) _pass.SiteBirthExpiryIncreases.Add(new(deployment.CounterDespawn, true));
+                        if (deployment.CounterFailure.Length != 0) _pass.SiteBirthExpiryIncreases.Add(new(deployment.CounterFailure, true));
+                        if (deployment.CounterAll.Length != 0) _pass.SiteBirthExpiryIncreases.Add(new(deployment.CounterAll, true));
+                        _pass.SiteBirthExpiryDecreases ??= [];
+                        if (deployment.DecreaseCounterDespawn.Length != 0) _pass.SiteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterDespawn, false));
+                        if (deployment.DecreaseCounterFailure.Length != 0) _pass.SiteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterFailure, false));
+                        if (deployment.DecreaseCounterAll.Length != 0) _pass.SiteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterAll, false));
                     }
                 }
                 markers.Add(deployment.MarkerName);
@@ -101,7 +98,7 @@ internal sealed partial class CampaignWorld
                 return "Mission site and UFO creation share an unsupported ID namespace.";
             var count = markerReservations.GetValueOrDefault(marker) + 1;
             markerReservations[marker] = count;
-            (_siteBirthIdChanges ??= []).Add(new(marker, true));
+            (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
             if (highest >= CampaignTimeTrigger.OneDay)
             {
                 work += (long)rules.Research.Count * campaign.BaseStates.Count;

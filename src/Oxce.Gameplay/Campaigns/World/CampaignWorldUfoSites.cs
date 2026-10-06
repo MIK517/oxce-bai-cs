@@ -5,9 +5,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private HashSet<int>? _suppressedUfoSites;
-    private List<CustomCounterForecast>? _siteConversionCounterForecast;
-
     private string? UfoSiteConversionsReason(CampaignTimeTrigger highest)
     {
         Dictionary<string, int>? reservations = null;
@@ -36,7 +33,7 @@ internal sealed partial class CampaignWorld
         for (var index = 0; index <= last; index++)
         {
             var saved = _ufos[index];
-            if (!ArrivesAtSite(saved, highest) || _suppressedUfoSites?.Contains(saved.UniqueId) == true) continue;
+            if (!ArrivesAtSite(saved, highest) || _pass.SuppressedUfoSites?.Contains(saved.UniqueId) == true) continue;
             var ufo = UfoForFlight(saved, highest);
             var mission = ForecastMission(ufo.MissionId, highest);
             if (UfoSiteFollowersReason(ufo, MissionRule(mission), UfoSiteArea(ufo, mission, ufo.Destination!.Position),
@@ -91,8 +88,8 @@ internal sealed partial class CampaignWorld
         work += SiteDeploymentSelectionWork(wave, rule, area);
         if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
         var candidates = SiteDeploymentCandidates(wave, rule, area);
-        if (candidates.Count == 0 && (_suppressedUfoSites ??= []).Add(ufo.UniqueId))
-            ResetEscortFlightPositions(); // Suppression changes a dormant conversion into a terminal arrival.
+        if (candidates.Count == 0 && (_pass.SuppressedUfoSites ??= []).Add(ufo.UniqueId))
+            _pass.ResetEscortFlight(); // Suppression changes a dormant conversion into a terminal arrival.
         work += (long)candidates.Count * (1L + _sites.Count + _alienBases.Count);
         if (work > MaximumAlienBaseChecks) return "UFO site conversion exceeds the supported work limit.";
         if (candidates.Count != 0 && (long)_sites.Count + _ufos.Count > 100_000)
@@ -114,7 +111,7 @@ internal sealed partial class CampaignWorld
         {
             var count = reservations.GetValueOrDefault(marker) + 1;
             reservations[marker] = count;
-            work += _siteConversionCounterForecast?.Count ?? 0;
+            work += _pass.SiteConversionCounterForecast?.Count ?? 0;
             if (highest >= CampaignTimeTrigger.OneDay)
             {
                 work += (long)rules.Research.Count * campaign.BaseStates.Count;
@@ -129,19 +126,19 @@ internal sealed partial class CampaignWorld
                     }
             }
             if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
-            if (_siteBirthIdChanges?.Any(change => change.Name == marker) == true &&
-                _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+            if (_pass.SiteBirthIdChanges?.Any(change => change.Name == marker) == true &&
+                _pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
                 return "UFO site conversion shares decreased marker counters with same-tick direct sites.";
             if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } productionWork)
                 return productionWork;
-            if (_siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+            if (_pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
             {
                 if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } decreaseWork)
                     return decreaseWork;
                 if (campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1)
                     return "UFO site conversion shares decreased marker counters with same-tick craft production.";
             }
-            var (first, maximum) = campaign.CustomCounters.BeforeWorldCreation(marker, highest, _siteConversionCounterForecast, includeProduction: true);
+            var (first, maximum) = campaign.CustomCounters.BeforeWorldCreation(marker, highest, _pass.SiteConversionCounterForecast, includeProduction: true);
             var end = maximum + count;
             if (first <= 0 || end > int.MaxValue ||
                 _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= first && site.Id < end) ||

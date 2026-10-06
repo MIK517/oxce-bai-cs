@@ -42,7 +42,7 @@ internal sealed partial class CampaignWorld
             break;
         }
         var dailyBases = highest >= CampaignTimeTrigger.OneDay && _alienBases.Count != 0;
-        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases && _objectiveBaseScores is not { Count: > 0 }) return null;
+        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases && _pass.ObjectiveBaseScores is not { Count: > 0 }) return null;
         var regionTotals = campaign.RegionStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         var countryTotals = campaign.CountryStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         if (dailyBases)
@@ -50,8 +50,8 @@ internal sealed partial class CampaignWorld
                 if (!BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch) && CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
                         regionTotals, countryTotals) is { } reason)
                     return reason;
-        if (_objectiveBaseScores is not null)
-            foreach (var birth in _objectiveBaseScores)
+        if (_pass.ObjectiveBaseScores is not null)
+            foreach (var birth in _pass.ObjectiveBaseScores)
                 if (CheckPossibleActivity(birth.Positions, birth.Points, regionTotals, countryTotals, guaranteedAward: false) is { } reason)
                     return reason;
         // Marker capacity is reserved for every contact that could be made, whatever the
@@ -232,7 +232,7 @@ internal sealed partial class CampaignWorld
             foreach (var takeoff in newbornTakeoffScores)
                 if (CheckPossibleActivity(takeoff.Positions, takeoff.Points, regionTotals, countryTotals) is { } liftReason)
                     return liftReason;
-        if (!CanAllocateUfoMarkerIds(possibleMarkerIds + _possibleHuntMarkerIds))
+        if (!CanAllocateUfoMarkerIds(possibleMarkerIds + _pass.PossibleHuntMarkerIds))
             return "UFO contact marker IDs are exhausted or collide with a saved UFO.";
         return CanAllocateUfoMarkerIds(possibleLandingIds, landing: true)
             ? null : "UFO landing marker IDs are exhausted or collide with a saved UFO.";

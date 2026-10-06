@@ -27,7 +27,6 @@ internal sealed partial class CampaignWorld
         "Mission site despawn requires research or event payloads.";
     private const string SiteUfoFollowerBoundary =
         "Targeted mission site despawn requires UFO follower destination repair.";
-    private IReadOnlySet<string>? _siteDespawnResearchForecast;
 
     private void RegisterSiteOperations(CampaignCapabilityRegistry registry)
     {
@@ -77,13 +76,13 @@ internal sealed partial class CampaignWorld
 
     private string? SiteTimingReason(CampaignTimeTrigger highest)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0 && _siteBirthIdChanges is not { Count: > 0 }) return null;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes || _sites.Count == 0 && _pass.SiteBirthIdChanges is not { Count: > 0 }) return null;
         var rules = campaign.Content.RuntimeRules;
         var counterChanges = new List<CustomCounterChange>();
-        if (_siteBirthIdChanges is not null)
+        if (_pass.SiteBirthIdChanges is not null)
         {
-            counterChanges.AddRange(_siteBirthIdChanges);
-            _siteConversionCounterForecast = _siteBirthIdChanges.Select(static change => new CustomCounterForecast(change, false)).ToList();
+            counterChanges.AddRange(_pass.SiteBirthIdChanges);
+            _pass.SiteConversionCounterForecast = _pass.SiteBirthIdChanges.Select(static change => new CustomCounterForecast(change, false)).ToList();
         }
         var discovered = FirstSiteDiscoveredThisTick(highest);
         long despawnWork = 0;
@@ -125,16 +124,16 @@ internal sealed partial class CampaignWorld
                 var start = counterChanges.Count;
                 AddSiteCounterChanges(counterChanges, deployment);
                 for (var index = start; index < counterChanges.Count; index++)
-                    (_siteConversionCounterForecast ??= []).Add(new(counterChanges[index], true));
+                    (_pass.SiteConversionCounterForecast ??= []).Add(new(counterChanges[index], true));
             }
         }
-        if (_siteBirthExpiryIncreases is not null)
+        if (_pass.SiteBirthExpiryIncreases is not null)
         {
-            counterChanges.AddRange(_siteBirthExpiryIncreases);
-            foreach (var change in _siteBirthExpiryIncreases) (_siteConversionCounterForecast ??= []).Add(new(change, false));
+            counterChanges.AddRange(_pass.SiteBirthExpiryIncreases);
+            foreach (var change in _pass.SiteBirthExpiryIncreases) (_pass.SiteConversionCounterForecast ??= []).Add(new(change, false));
         }
-        if (_siteBirthExpiryDecreases is not null)
-            foreach (var change in _siteBirthExpiryDecreases) (_siteConversionCounterForecast ??= []).Add(new(change, false));
+        if (_pass.SiteBirthExpiryDecreases is not null)
+            foreach (var change in _pass.SiteBirthExpiryDecreases) (_pass.SiteConversionCounterForecast ??= []).Add(new(change, false));
         if (highest >= CampaignTimeTrigger.OneHour && counterChanges.Count != 0)
         {
             HashSet<string> labels = new(StringComparer.Ordinal);
@@ -209,8 +208,7 @@ internal sealed partial class CampaignWorld
             if (rule.InterruptResearch.Length == 0) return SiteDespawnBoundary;
             if (highest >= CampaignTimeTrigger.OneDay)
             {
-                _siteDespawnResearchForecast ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
-                if (!_siteDespawnResearchForecast.Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
+                if (!GuaranteedDailyResearch().Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
             }
             else if (!campaign.HasCompletedResearch(rule.InterruptResearch)) return SiteDespawnBoundary;
         }

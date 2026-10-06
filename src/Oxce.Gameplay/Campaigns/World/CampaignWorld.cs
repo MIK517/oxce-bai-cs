@@ -450,26 +450,12 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     /// <summary>The reason live world state blocks time until its handlers exist.</summary>
     private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
-        _ufoDestinationDistances.Clear();
-        _dailyResearchForecast = null;
-        _missionCounterForecast = null;
-        _newHunterHasNoTarget = null;
-        _newbornHighestTrigger = highest;
-        _siteBirthIdChanges = null;
-        _objectiveBaseBirths = 0;
-        _objectiveBasesBeforeHunting = 0;
-        _objectiveBaseHuntingMissions = 0;
-        _objectiveBaseScores = null;
-        _siteBirthExpiryIncreases = null;
-        _siteBirthExpiryDecreases = null;
-        _siteConversionCounterForecast = null;
-        _siteDespawnResearchForecast = null;
-        _suppressedUfoSites = null;
+        _pass.BeginWorld(highest);
         var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
         if (interruptionReason is not null) return interruptionReason;
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
         if (destructionReason is not null) return destructionReason;
-        _dailyResearchForecast = guaranteedResearch;
+        _pass.DailyResearchForecast = guaranteedResearch;
         if (PrepareMissionCounterForecasts(highest) is { } counterReason) return counterReason;
         if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
         if (SiteFollowerWorkReason(highest) is { } followerWorkReason) return followerWorkReason;

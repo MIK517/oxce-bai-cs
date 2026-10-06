@@ -16,7 +16,7 @@ internal sealed partial class CampaignWorld
             if (rule.BaseSelfDestructCodeId.Length == 0) continue;
             if (rule.BaseSelfDestructCode is null)
                 return "Alien base self-destruction references undefined research.";
-            guaranteedResearch ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+            guaranteedResearch ??= GuaranteedDailyResearch();
             possible ??= campaign.ResearchPreflight.PossibleResearchAfterDailyProgress();
             if (!possible.Contains(rule.BaseSelfDestructCodeId)) continue;
             if (!guaranteedResearch.Contains(rule.BaseSelfDestructCodeId))

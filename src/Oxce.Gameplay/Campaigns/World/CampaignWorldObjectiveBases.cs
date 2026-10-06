@@ -5,11 +5,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private int _objectiveBaseBirths;
-    private int _objectiveBasesBeforeHunting;
-    private int _objectiveBaseHuntingMissions;
-    private List<(IReadOnlyList<SpawnArea> Positions, int Points)>? _objectiveBaseScores;
-
     private static bool CompletesBaseObjective(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
         rule.Objective == RuntimeMissionObjective.Base && !wave.ObjectiveOnTheLandingSite &&
         mission.NextWave + 1 == rule.Waves.Count && (ulong)mission.NextUfoCounter + 1 >= wave.UfoCount;
@@ -33,11 +28,11 @@ internal sealed partial class CampaignWorld
     private string? ReserveObjectiveBase(RuntimeAlienMissionRule rule, IReadOnlyList<MissionArea> areas,
         CampaignTimeTrigger highest, Dictionary<string, int> reservations, ref long work, bool landing = false)
     {
-        if (++_objectiveBaseBirths > 100_000 - _alienBases.Count)
+        if (++_pass.ObjectiveBaseBirths > 100_000 - _alienBases.Count)
             return "Base objective population exceeds the supported limit.";
-        if (ulong.MaxValue - _alienBaseBirthSequence < (ulong)_objectiveBaseBirths)
+        if (ulong.MaxValue - _alienBaseBirthSequence < (ulong)_pass.ObjectiveBaseBirths)
             return "Base objective birth sequence is exhausted.";
-        if (!landing) _objectiveBasesBeforeHunting++;
+        if (!landing) _pass.ObjectiveBasesBeforeHunting++;
         var rules = campaign.Content.RuntimeRules;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         var positions = new List<SpawnArea>();
@@ -64,7 +59,7 @@ internal sealed partial class CampaignWorld
                 markers.Add(marker);
             }
         }
-        if (canHunt) _objectiveBaseHuntingMissions++;
+        if (canHunt) _pass.ObjectiveBaseHuntingMissions++;
         foreach (var marker in markers)
         {
             if (ProductionCounterWorkReason(highest, ref work, "Base objective creation exceeds the supported work limit.") is { } productionWork)
@@ -74,7 +69,7 @@ internal sealed partial class CampaignWorld
             work += _alienBases.Count + (long)_sites.Count;
             // ProductionCounterWorkReason already charges craft/transfer identity scans.
             if (landing)
-                work += (_siteBirthIdChanges?.Count ?? 0) + 2L * (_siteConversionCounterForecast?.Count ?? 0);
+                work += (_pass.SiteBirthIdChanges?.Count ?? 0) + 2L * (_pass.SiteConversionCounterForecast?.Count ?? 0);
             // Counter forecasts include daily research; charge its scans too.
             if (highest >= CampaignTimeTrigger.OneDay)
             {
@@ -89,12 +84,12 @@ internal sealed partial class CampaignWorld
                     }
             }
             if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
-            if (landing && _siteBirthIdChanges?.Any(change => change.Name == marker) == true &&
-                _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+            if (landing && _pass.SiteBirthIdChanges?.Any(change => change.Name == marker) == true &&
+                _pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
                 return "Landing base creation shares decreased marker counters with same-tick world births.";
             var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest,
-                landing ? _siteConversionCounterForecast : null, includeProduction: true);
-            if (landing && _siteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
+                landing ? _pass.SiteConversionCounterForecast : null, includeProduction: true);
+            if (landing && _pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
             {
                 // A later decrease may reuse the ID of a craft born this hour.
                 // The snapshot craft list cannot detect that future collision.
@@ -109,7 +104,7 @@ internal sealed partial class CampaignWorld
                 _sites.Any(existing => MarkerName(existing.DeploymentId) == marker && existing.Id >= range.Minimum && existing.Id < end) ||
                 CraftIdCollision(marker, range.Minimum, end))
                 return "Base objective IDs are exhausted or collide.";
-            if (!landing) (_siteBirthIdChanges ??= []).Add(new(marker, true));
+            if (!landing) (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
         }
         // Patrol discovery runs after these births, including delivered craft.
         foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
@@ -118,7 +113,7 @@ internal sealed partial class CampaignWorld
         foreach (var state in campaign.CountryStates) scoreGeometry += rules.Countries[state.Rule].Value.Areas.Count;
         work += areas.Count * scoreGeometry;
         if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
-        (_objectiveBaseScores ??= []).Add((positions, rule.Points));
+        (_pass.ObjectiveBaseScores ??= []).Add((positions, rule.Points));
         return null;
     }
 
@@ -167,11 +162,11 @@ internal sealed partial class CampaignWorld
                     if (BaseHuntingCraftRemovalReason(highest, ref work) is { } removalReason) return removalReason;
                     var projected = state;
                     if (state.Destination is { Kind: WorldTargetKind.Craft } ||
-                        _baseHuntingCraftRemovalTypes!.Contains(rules.Crafts.GetExternalId(craft.Rule)))
+                        _pass.BaseHuntingCraftRemovalTypes!.Contains(rules.Crafts.GetExternalId(craft.Rule)))
                     {
-                        if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                        if (_pass.HuntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                             return forecastReason;
-                        if (!_huntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out projected))
+                        if (!_pass.HuntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out projected))
                             continue;
                     }
                     else projected = AdvanceCraftFuel(owner, craft, state);
@@ -182,9 +177,9 @@ internal sealed partial class CampaignWorld
                 else if (state.IsAutoPatrolling && craftRule.AutoPatrol &&
                     (Near(new(state.Longitude, state.Latitude)) || Near(new(owner.Longitude, owner.Latitude))))
                 {
-                    if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                    if (_pass.HuntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                         return forecastReason;
-                    if (!_huntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out var projected))
+                    if (!_pass.HuntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out var projected))
                         continue;
                     possible = projected.Status == "STR_OUT" && !projected.LowFuel && !projected.MissionComplete &&
                         projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craftRule, rules) &&
@@ -200,9 +195,9 @@ internal sealed partial class CampaignWorld
                 var craft = rules.Crafts[rules.Crafts.GetRequired(transfer.Craft.RuleId)].Value;
                 if (!craft.Undetectable && craft.AutoPatrol && Near(new(owner.Longitude, owner.Latitude)))
                 {
-                    if (_huntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
+                    if (_pass.HuntingCraftForecast is null && ForecastHuntingCrafts(highest, ref work) is { } forecastReason)
                         return forecastReason;
-                    var projected = _huntingCraftForecast!.GetValueOrDefault((transfer.Craft.RuleId, transfer.Craft.Id));
+                    var projected = _pass.HuntingCraftForecast!.GetValueOrDefault((transfer.Craft.RuleId, transfer.Craft.Id));
                     if (projected is { Status: "STR_OUT", LowFuel: false, MissionComplete: false } &&
                         projected.Damage < CraftLogistics.EffectiveDamageMaximum(projected, craft, rules) &&
                         Near(new(projected.Longitude, projected.Latitude)) && ChoiceReason(ref work) is { } reason) return reason;
@@ -248,10 +243,10 @@ internal sealed partial class CampaignWorld
 
     private string? ObjectiveBasePatrolReason(CampaignTimeTrigger highest)
     {
-        if (highest < CampaignTimeTrigger.TenMinutes || _objectiveBasesBeforeHunting == 0) return null;
+        if (highest < CampaignTimeTrigger.TenMinutes || _pass.ObjectiveBasesBeforeHunting == 0) return null;
         long possibleCrafts = 0;
         foreach (var owner in campaign.BaseStates) possibleCrafts += owner.Crafts.Count + (long)owner.Transfers.Count;
-        return possibleCrafts * (_alienBases.Count + (long)_objectiveBasesBeforeHunting) > MaximumAlienBaseChecks
+        return possibleCrafts * (_alienBases.Count + (long)_pass.ObjectiveBasesBeforeHunting) > MaximumAlienBaseChecks
             ? "Base objective patrol discovery exceeds the supported work limit." : null;
     }
 
