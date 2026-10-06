@@ -1,4 +1,5 @@
 using Oxce.TestSupport;
+using Oxce.Gameplay.Campaigns;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
@@ -6,6 +7,76 @@ namespace Oxce.CompatibilityTests;
 
 public sealed partial class StrategicProductionPriceMetadataTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NullRandomDamagePreservesNativeShortCircuitAndCurrentPricePurity(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-detection-damage");
+        var rows = TestFixtures.Rows(oracle.RootElement, "nullRandomDamage");
+        Assert.Equal(0, oracle.RootElement.GetProperty("unusedRandomCalls").GetInt32());
+        var code = "var ptr RuleDamageType damage; var ptr RuleDamageType absent null; var ptre RandomState random null; " +
+            "var ptre RandomState copy; var int value; set copy random; item_rule.getDamageType damage; " +
+            $"damage.getRandomDamage value 2147483647 copy; if neq value {rows[0].GetInt32()}; div cost_current 0; end; " +
+            $"absent.getRandomDamage value -2147483648 random; if neq value {rows[1].GetInt32()}; div cost_current 0; end; " +
+            $"absent.getRandomDamage value cost_current copy; if neq value {rows[2].GetInt32()}; div cost_current 0; end; return 7;";
+        var content = Load(cache, global, code, "damageAlter: {ToHealth: 1e100}");
+        var campaign = Reload(content, Create(content, PriceStock), 81, "price-null-random-before.sav");
+        var before = campaign.Capture();
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(before.Bases[0].Id, LogisticsOperation.Sell)).Events)).Quote;
+        var row = Assert.Single(quote.Rows, row => row.RuleId == "PRICE_META_ITEM");
+        Assert.Equal(7, row.UnitCost);
+        Assert.Null(row.UnavailableReason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        AdvanceUnblocked(campaign, 1);
+        var constant = Create(Load(cache, global, "return 7;", "damageAlter: {ToHealth: 1e100}"), PriceStock);
+        AdvanceUnblocked(constant, 1);
+        Assert.Equal(constant.Capture().RandomState, campaign.Capture().RandomState);
+        Assert.Equal(7, campaign.Capture().Funds[^1]);
+        Reload(content, campaign, 81, "price-null-random-after.sav");
+    }
+
+    private static CampaignSnapshot PriceStock(CampaignSnapshot snapshot) => snapshot with
+    {
+        Bases = [snapshot.Bases[0] with
+        {
+            Items = new Dictionary<string, int>(snapshot.Bases[0].Items, StringComparer.Ordinal) { ["PRICE_META_ITEM"] = 1 },
+        }],
+    };
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void CurrentAndForecastPricesShareOneBoundedEventExecutionBudget(bool cache, bool aggregate)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-damage");
+        var code = aggregate ? "loop var i 150000; add cost_current 0; end; return;" :
+            "var ptr RuleDamageType absent null; var ptre RandomState random null; var int value; " +
+            "loop var i 2147483647; absent.getRandomDamage value cost_current random; end; return;";
+        var events = !aggregate ? "" : "scripts:\n  sellCostItem:\n" +
+            "    - new: price-budget-before\n      offset: -1\n      code: '" + code + "'\n" +
+            "    - new: price-budget-after\n      offset: 1\n      code: '" + code + "'";
+        if (aggregate) AssertPrice(Load(cache, false, code)); // Each program fits; their combined execution does not.
+        var content = Load(cache, false, code, extraExtended: events);
+        var campaign = Reload(content, Create(content, PriceStock), 81, "price-budget-before.sav");
+        var before = campaign.Capture();
+        var quote = Assert.IsType<LogisticsQuoted>(Assert.Single(campaign.Execute(
+            new PrepareLogisticsQuote(before.Bases[0].Id, LogisticsOperation.Sell)).Events)).Quote;
+        var row = Assert.Single(quote.Rows, row => row.RuleId == "PRICE_META_ITEM");
+        Assert.Contains("limit", row.UnavailableReason!);
+        Assert.Equal(0, row.MaximumQuantity);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(0, Assert.IsType<CampaignTimeAdvanced>(result.Events[0]).Summary.TickCount);
+        Assert.Contains("limit", Assert.IsType<CampaignActionBlocked>(result.Events[^1]).Reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
     private static readonly string[] PriceDamageReaders =
         ["getDamageToArmorPre", "getDamageToArmor", "getDamageToEnergy", "getDamageToHealth",
          "getDamageToItem", "getDamageToMana", "getDamageToMorale", "getDamageToStun",
