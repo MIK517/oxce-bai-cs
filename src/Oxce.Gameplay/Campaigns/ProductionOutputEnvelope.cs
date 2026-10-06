@@ -33,6 +33,18 @@ internal static class ProductionOutputEnvelope
             differs = true;
             if (!allowsVariation(item.Key)) return false;
         }
+        // Reuse changes craft status immediately. Even identical quantities must
+        // retain the relative delivery order of effects that are not inert.
+        string[]? effectOrder = null;
+        foreach (var choice in choices)
+        {
+            work += 1L + choice.Items.Count;
+            if (work > 1_000_000) return false;
+            if (choice.Weight == 0) continue;
+            var order = choice.Items.Keys.Where(id => !allowsVariation(id)).ToArray();
+            if (effectOrder is null) effectOrder = order;
+            else if (!effectOrder.SequenceEqual(order, StringComparer.Ordinal)) return false;
+        }
         if (differs) items = bounds.ToDictionary(item => item.Key, item => item.Value.Maximum, StringComparer.Ordinal);
         return true;
     }

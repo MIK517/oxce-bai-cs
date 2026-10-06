@@ -15,7 +15,7 @@ public sealed class ProductionOutputEnvelopeTests
         Assert.Equal(2, items!["FUEL"]);
         Assert.Equal(1, items["A"]);
         Assert.Equal(2, items["B"]);
-        Assert.Equal(11, work);
+        Assert.Equal(19, work);
     }
 
     [Theory]
@@ -28,11 +28,13 @@ public sealed class ProductionOutputEnvelopeTests
     }
 
     [Fact]
-    public void EquivalentMapsDoNotRequireVariationPermission()
+    public void ProtectedDeliveryOrderCannotBeInferredFromEqualQuantities()
     {
         long work = 0;
         var first = Choice(1, ("A", 0), ("B", 2));
-        Assert.True(ProductionOutputEnvelope.TryCreate([first, Choice(7, ("B", 2), ("A", 0))], _ => false, ref work, out var items));
+        Assert.False(ProductionOutputEnvelope.TryCreate([first, Choice(7, ("B", 2), ("A", 0))], _ => false, ref work, out _));
+        work = 0;
+        Assert.True(ProductionOutputEnvelope.TryCreate([first, Choice(7, ("B", 2), ("A", 0))], _ => true, ref work, out var items));
         Assert.Same(first.Items, items);
     }
 
