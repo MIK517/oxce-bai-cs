@@ -4,16 +4,11 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    // Pure daily projection, shared by world and subsequent craft preflight.
-    // It is reset on each preflight and never appears in campaign persistence.
-    private IReadOnlySet<string>? _dailyResearchForecast;
-    private Dictionary<int, AlienMissionSnapshot>? _missionCounterForecast;
-
     private AlienMissionSnapshot ForecastMission(int id, CampaignTimeTrigger highest)
     {
         var mission = FindMission(id) ?? throw new InvalidDataException("UFO forecast requires a mission link.");
-        if (highest >= CampaignTimeTrigger.ThirtyMinutes && _missionCounterForecast?.TryGetValue(id, out var counters) == true) return counters;
-        return highest >= CampaignTimeTrigger.OneDay ? MissionAfterDailyResearch(mission, _dailyResearchForecast) : mission;
+        if (highest >= CampaignTimeTrigger.ThirtyMinutes && _pass.MissionCounterForecast?.TryGetValue(id, out var counters) == true) return counters;
+        return highest >= CampaignTimeTrigger.OneDay ? MissionAfterDailyResearch(mission, _pass.DailyResearchForecast) : mission;
     }
 
     private string? PrepareMissionCounterForecasts(CampaignTimeTrigger highest)
@@ -25,7 +20,7 @@ internal sealed partial class CampaignWorld
         {
             foreach (var saved in _missions)
             {
-                var mission = MissionAfterDailyResearch(saved, _dailyResearchForecast);
+                var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
                 var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
                 if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
                     mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
@@ -47,7 +42,7 @@ internal sealed partial class CampaignWorld
                         Interrupted = InstantRetaliationWithoutTarget(step, rule),
                     };
                 }
-                (_missionCounterForecast ??= []).Add(saved.Id, projected);
+                (_pass.MissionCounterForecast ??= []).Add(saved.Id, projected);
             }
         }
         catch (InvalidDataException error) when (error.Message != WaveWorkReason) { return error.Message; }
@@ -83,7 +78,7 @@ internal sealed partial class CampaignWorld
             if (rule.InterruptResearch is null)
                 return "Alien mission interruption references undefined research.";
             if (mission.Interrupted) continue;
-            guaranteedResearch ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+            guaranteedResearch ??= GuaranteedDailyResearch();
             possibleResearch ??= campaign.ResearchPreflight.PossibleResearchAfterDailyProgress();
             if (!possibleResearch.Contains(id)) continue;
             if (!guaranteedResearch.Contains(id))

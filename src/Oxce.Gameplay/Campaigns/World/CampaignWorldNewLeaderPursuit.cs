@@ -17,9 +17,9 @@ internal sealed partial class CampaignWorld
                 if (NewLeaderPursuitDependency(state.Destination!, source, ref work, out var depends) is { } dependencyReason)
                     return dependencyReason;
                 if (!depends) continue;
-                if (_huntingCraftForecast is null && ForecastHuntingCrafts(_newbornHighestTrigger, ref work) is { } forecastReason)
+                if (_pass.HuntingCraftForecast is null && ForecastHuntingCrafts(_pass.NewbornHighestTrigger, ref work) is { } forecastReason)
                     return forecastReason;
-                if (!_huntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out state) ||
+                if (!_pass.HuntingCraftForecast!.TryGetValue((rules.Crafts.GetExternalId(craft.Rule), craft.Id), out state) ||
                     state.Status != "STR_OUT" || state.Destination is not { Kind: WorldTargetKind.Ufo } target) continue;
                 if (NewLeaderPursuitDependency(target, source, ref work, out depends) is { } projectedReason) return projectedReason;
                 // Hidden, ignored and damaged craft still pursue targets. Servicing,
@@ -39,7 +39,7 @@ internal sealed partial class CampaignWorld
         work += _ufos.Count + (long)_missions.Count + 1;
         if (work > MaximumAlienBaseChecks) return "New UFO escort selection exceeds the supported work limit.";
         if (TargetUfo(target) is not { } actor) return null;
-        var projected = UfoForFlight(actor, _newbornHighestTrigger);
+        var projected = UfoForFlight(actor, _pass.NewbornHighestTrigger);
         if (projected.Status != UfoStatus.Flying) return NewLeaderPursuitReason;
         var speed = projected.Speed;
         if (actor.UniqueId == source.UniqueId)
@@ -85,7 +85,7 @@ internal sealed partial class CampaignWorld
                 depends = true;
                 return null;
             }
-            var projected = UfoForFlight(actor, _newbornHighestTrigger);
+            var projected = UfoForFlight(actor, _pass.NewbornHighestTrigger);
             if (!projected.Escorting || projected.Destination is not { Kind: WorldTargetKind.Ufo } leader) return null;
             target = leader;
         }

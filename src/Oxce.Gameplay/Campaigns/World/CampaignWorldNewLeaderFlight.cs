@@ -4,8 +4,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private Dictionary<int, UfoSnapshot>? _newLeaderFlightForecast;
-
     private string? ForecastNewLeaderFlight(UfoSnapshot escort, CampaignTimeTrigger highest, ref long work)
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes || escort.Status != UfoStatus.Flying ||
@@ -15,7 +13,7 @@ internal sealed partial class CampaignWorld
         work += _missions.Count + 1L;
         if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
         if (FindMission(escort.MissionId) is not { } saved) return null;
-        var mission = MissionAfterDailyResearch(saved, _dailyResearchForecast);
+        var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
         if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Infiltration or
@@ -58,7 +56,7 @@ internal sealed partial class CampaignWorld
             // Flight-only stand-in: the real leader is appended after saved UFOs,
             // so its point origin is the exact target for this movement pass.
             // Never allocate a future actor identity or change detection inputs.
-            (_newLeaderFlightForecast ??= []).Add(escort.UniqueId,
+            (_pass.NewLeaderFlightForecast ??= []).Add(escort.UniqueId,
                 WorldHunting.Escort(escort, WorldTargetReference.ForWaypoint(0, origins[0].Center), (int)maximum));
             return null;
         }

@@ -72,7 +72,6 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
         var rules = campaign.Content.RuntimeRules;
-        IReadOnlySet<string>? researchAfterDailyProgress = null;
         foreach (var scheduled in _events)
         {
             var rule = rules.Events[rules.Events.GetRequired(scheduled.RuleId)].Value;
@@ -81,8 +80,7 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
                 if (rule.InterruptResearch.Length == 0) return EventPayloadReason;
                 if (highest >= CampaignTimeTrigger.OneDay)
                 {
-                    researchAfterDailyProgress ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
-                    if (!researchAfterDailyProgress.Contains(rule.InterruptResearch)) return EventPayloadReason;
+                    if (!GuaranteedDailyResearch().Contains(rule.InterruptResearch)) return EventPayloadReason;
                 }
                 else if (!IsEventInterrupted(rule)) return EventPayloadReason;
             }

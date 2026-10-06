@@ -134,7 +134,7 @@ internal sealed partial class CampaignWorld
                 if (ufo.OriginalWaypoint is not { IsNormalized: true }) return HuntStateReason;
                 if (ufo.Hunting && destination.Kind != WorldTargetKind.Craft ||
                     ufo.Escorting && destination.Kind != WorldTargetKind.Ufo &&
-                    !ReferenceEquals(_newLeaderFlightForecast?.GetValueOrDefault(ufo.UniqueId), ufo))
+                    !ReferenceEquals(_pass.NewLeaderFlightForecast?.GetValueOrDefault(ufo.UniqueId), ufo))
                     return HuntStateReason;
                 if (ufo.Escorting && TargetUfo(destination) is { } escorted)
                 {
@@ -421,24 +421,15 @@ internal sealed partial class CampaignWorld
             !mission.Interrupted;
     }
 
-    // Target::getDistance from a UFO to its destination, memoized by the exact bits of both
-    // coordinates. Distance is a pure function of those four values, so an entry can never be
-    // stale; re-projected UFOs (retarget, suppression, escort target updates) simply produce other
-    // keys. Keys hold no references, so per-tick projections are not kept alive across a GC. The
-    // world preflight clears the table when it starts, bounding it to one pass; the craft-movement
-    // preflight later in the same pass reuses the entries. Only distances are cached, never an
-    // outcome that depends on pass-local forecasts.
-    private readonly Dictionary<(long, long, long, long), double> _ufoDestinationDistances = [];
-
     private double UfoDestinationDistance(UfoSnapshot ufo)
     {
         var destination = ufo.Destination!;
         var key = (BitConverter.DoubleToInt64Bits(ufo.Longitude), BitConverter.DoubleToInt64Bits(ufo.Latitude),
             BitConverter.DoubleToInt64Bits(destination.Longitude), BitConverter.DoubleToInt64Bits(destination.Latitude));
-        if (!_ufoDestinationDistances.TryGetValue(key, out var distance))
+        if (!_pass.UfoDestinationDistances.TryGetValue(key, out var distance))
         {
             distance = WorldGeometry.Distance(ufo.Position, destination.Position);
-            _ufoDestinationDistances.Add(key, distance);
+            _pass.UfoDestinationDistances.Add(key, distance);
         }
         return distance;
     }

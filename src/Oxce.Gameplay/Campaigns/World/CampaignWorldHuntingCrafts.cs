@@ -6,8 +6,8 @@ internal sealed partial class CampaignWorld
 {
     private string? ForecastHuntingCrafts(CampaignTimeTrigger highest, ref long work)
     {
-        _huntingCraftForecast = [];
-        _huntingCraftSources = [];
+        _pass.HuntingCraftForecast = [];
+        _pass.HuntingCraftSources = [];
         var rules = campaign.Content.RuntimeRules;
         var researchMayChangeStocks = false;
         if (highest >= CampaignTimeTrigger.OneDay)
@@ -48,7 +48,7 @@ internal sealed partial class CampaignWorld
                     stocks![item] = (int)quantity;
                 }
             var sources = new List<CampaignState.CraftState>(owner.Crafts);
-            _huntingCraftSources.Add(owner.Id, sources);
+            _pass.HuntingCraftSources.Add(owner.Id, sources);
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is null) return "Craft servicing requires resolved craft state.";
             Dictionary<RuleHandle<ItemRuleFamily>, int>? uncertainty = highest >= CampaignTimeTrigger.OneHour ? [] : null;
@@ -72,12 +72,12 @@ internal sealed partial class CampaignWorld
             }
         }
         if (highest >= CampaignTimeTrigger.OneHour &&
-            campaign.ProductionPreflight.ForecastStocks(_huntingCraftSources, baseStocks,
+            campaign.ProductionPreflight.ForecastStocks(_pass.HuntingCraftSources, baseStocks,
                 researchStocks?.NextTransferId, researchMayChangeStocks, researchStocks?.CounterChanges, highest, ref work) is { } productionReason)
             return productionReason;
         foreach (var owner in campaign.BaseStates)
         {
-            var sources = _huntingCraftSources[owner.Id];
+            var sources = _pass.HuntingCraftSources[owner.Id];
             var stocks = baseStocks.GetValueOrDefault(owner.Id);
             Dictionary<RuleHandle<ItemRuleFamily>, int>? minimumStocks = null;
             if (baseUncertainty.TryGetValue(owner.Id, out var uncertainty))
@@ -98,32 +98,32 @@ internal sealed partial class CampaignWorld
                     if (!lower.Weapons.SequenceEqual(state.Weapons) || (lower with { Weapons = state.Weapons }) != state)
                         return "UFO retargeting requires stochastic craft ammunition stock forecasts.";
                 }
-                _huntingCraftForecast.Add((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
+                _pass.HuntingCraftForecast.Add((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
             }
         }
         if (highest < CampaignTimeTrigger.TenMinutes) return null;
         // Every relaunch precedes fuel use. Fuel itself runs in saved craft order;
         // an earlier leader's return can change its speed before a later escort burns fuel.
         foreach (var owner in campaign.BaseStates)
-            foreach (var craft in _huntingCraftSources[owner.Id])
+            foreach (var craft in _pass.HuntingCraftSources[owner.Id])
             {
                 if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 var key = (rules.Crafts.GetExternalId(craft.Rule), craft.Id);
-                var state = _huntingCraftForecast[key];
+                var state = _pass.HuntingCraftForecast[key];
                 if (state.Status != "STR_OUT") continue;
                 if (!owner.IsPlaced || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
                     return "Airborne craft coordinates require a placed base and normalized positions.";
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out _))
                     return SpeedRangeReason;
-                _huntingCraftForecast[key] = AdvanceCraftFuel(owner, craft, state, _huntingCraftForecast);
+                _pass.HuntingCraftForecast[key] = AdvanceCraftFuel(owner, craft, state, _pass.HuntingCraftForecast);
             }
         return null;
     }
 
     private CampaignState.CraftState? ForecastHuntingTarget(WorldTargetReference target)
     {
-        if (_huntingCraftForecast is null) return TargetCraft(target);
-        if (_huntingCraftForecast.GetValueOrDefault((target.TypeId, target.Id)) is not { } state) return null;
+        if (_pass.HuntingCraftForecast is null) return TargetCraft(target);
+        if (_pass.HuntingCraftForecast.GetValueOrDefault((target.TypeId, target.Id)) is not { } state) return null;
         return new(campaign.Content.RuntimeRules.Crafts.GetRequired(target.TypeId), target.Id) { Logistics = state };
     }
 
