@@ -584,7 +584,11 @@ public sealed class StrategicObjectiveBaseSpawnTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void NewBaseHuntingUsesRelaunchedHiddenLeaderSpeedForItsEscort(bool cache, bool consumed)
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void NewBaseHuntingUsesRelaunchedHiddenLeaderSpeedForItsEscort(bool cache, bool consumed, bool independent = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
@@ -628,6 +632,14 @@ public sealed class StrategicObjectiveBaseSpawnTests
             }
         };
         initial = initial with { Bases = [owner with { Crafts = [leader, escort], Soldiers = [] }] };
+        if (independent)
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            {
+                Crafts = [leader, escort with { Logistics = escort.Logistics! with { Fuel = 100, Destination = null } }],
+            }]
+            };
         if (consumed) initial = initial with
         {
             Bases = [initial.Bases[0] with
