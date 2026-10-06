@@ -69,6 +69,11 @@ documents; entries here link to them instead of copying them.
   The 4c headless gate remains open for mission-generation/uncertainty projections
   and branch-wide reconciliation. Later-branch guards and 4d are unchanged.
 
+- 2026-10-07 country-price cycle: hourly activity and daily surviving-base points
+  now execute through bounded research-aware forecasts. See the
+  [three slices and audit](strategic-world-hunting-status.md#future-country-activity-prices-2026-10-07).
+  The broader generation and uncertainty projections still keep the 4c gate open.
+
 - Opening plan/scope commit: `b06cb39`.
 - Event scheduling slice: runtime timer projections, transaction-owned research/manufacturing
   scheduling, generated history, countdowns/interrupted cleanup and due-payload guards.

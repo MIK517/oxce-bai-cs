@@ -31,6 +31,14 @@ item/global calls compare those four transitions with the verified
 Half-hour UFO points remain later than production in every case. No research,
 world state or RNG is changed by the projection itself.
 
+The three-slice batch audit found no additional confirmed defect. It checked
+native trigger fallthrough, consumed-only/null queries, signed intermediate
+activity bounds, exact versus uncertain research, context-local cache lifetime
+and shared work charges. Root `dotnet test` passes 3,216 tests without failures
+or skips, including fixture checksums, private corpus and allocation gates.
+Formatting, regenerated code-map and diff verification pass. The owning internal
+operation adds no save/cache schema and leaves event, combat and month guards intact.
+
 ## Candidate storage and craft fact reuse (2026-10-07)
 
 Retarget selection reuses separate preflight and execution candidate buffers.
