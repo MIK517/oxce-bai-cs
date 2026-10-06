@@ -92,17 +92,19 @@ std::vector<std::pair<const ResearchRule*,std::vector<const ResearchRule*>>> pro
 const auto& getDisabled() const { return disables; } const auto& getReenabled() const { return reenables; }
 const auto& getUnlocked() const { return unlocks; } const auto& getGetOneFree() const { return free; }
 const auto& getGetOneFreeProtected() const { return protectedFree; } const auto& getRequirements() const { return requirements; }
-int getCost() const { return cost; } int getPoints() const { return points; }
+int getCost() const; int getPoints() const;
+const ResearchRule* lookup=nullptr; const ResearchRule* getLookup() const;
 bool isRepeatable() const { return repeatable; } bool sequentialGetOneFree() const { return sequential; }
 
 bool holding=false,returns=false,destroy=false,needs=false; Item* needed=nullptr; std::string spawned=""; int count=0; std::vector<std::string> list;
 bool needItem() const { return needs; }
 bool isHoldingNeededItem() const { return holding; } bool returnItem() const { return returns; }
-bool destroyItem() const { return destroy; } Item* getNeededItem() const { return needed; }
+bool destroyItem() const { return destroy; } const RuleItem* getNeededItem() const;
 std::string getName() const { return name; } std::string getSpawnedItem() const { return spawned; }
 int getSpawnedItemCount() const { return count; } const auto& getSpawnedItemList() const { return list; }
 };
 using RuleResearch=ResearchRule;
+// RESEARCH_RULE_GETTERS
 struct ResearchProject { const RuleResearch* rule=nullptr; bool finished=false;
 const RuleResearch* getRules() const { return rule; } bool isFinished() const { return finished; } };
 struct ResearchCorpse : Item {};
@@ -1151,6 +1153,17 @@ Base base; SavedGame save; save.priceScript=mode; save.priceSecond=0; save.price
 Item item; item.sellCost=7; ProductionItemRule rule; rule.produced={{&item,2}}; ProductionDeliveryCaller delivery{&rule}; delivery.sell=true;
 const auto price=item.getSellCostAdjusted(&base,&save); delivery.deliver(&base,&save);
 std::cout << '[' << mode << ',' << daily << ',' << researched << ',' << save.priceSecond << ',' << save.priceHour << ',' << save.priceDays << ',' << save.priceMonths << ',' << save.priceDifficulty << ',' << price << ',' << save.funds << ']';
+}
+std::cout << "],\"researchPriceGetterRows\":["; first=true;
+for(bool present:{false,true}) for(bool linked:{false,true}) for(bool needed:{false,true}) for(int mode:{0,1,2}) {
+if(!first) std::cout << ','; first=false;
+ResearchRule rule,lookup; Item item; rule.cost=mode==2?INT_MAX:mode; rule.points=mode==0?-7:mode==1?0:17;
+lookup.points=23; rule.lookup=linked?&lookup:nullptr; rule.needs=needed; rule.needed=needed?&item:nullptr;
+const RuleResearch* receiver=present?&rule:nullptr;
+// The script member dispatcher supplies zero/null for a null receiver; the VM is excluded.
+const auto* lookupValue=receiver?receiver->getLookup():nullptr;
+const auto* itemValue=receiver?receiver->getNeededItem():nullptr;
+std::cout << '[' << (present?"true":"false") << ',' << (linked?"true":"false") << ',' << (needed?"true":"false") << ',' << rule.cost << ',' << rule.points << ',' << (receiver?receiver->getCost():0) << ',' << (receiver?receiver->getPoints():0) << ',' << (lookupValue?lookupValue->getPoints():0) << ',' << (itemValue?1:0) << ']';
 }
 std::cout << "],\"correlatedLeaderOrderRows\":["; first=true;
 for(bool firstHunter:{false,true}) for(bool same:{false,true}) {

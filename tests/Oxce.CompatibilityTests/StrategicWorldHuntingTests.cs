@@ -4414,6 +4414,53 @@ public sealed class StrategicWorldHuntingTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
+    public void ProductionPriceResearchGettersMatchNativeMetadataAndNulls(bool cache, bool global)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        using var api = TestFixtures.ReadVerifiedExpected("script-api-catalog");
+        foreach (var name in new[] { "RuleResearch.getCost", "RuleResearch.getPoints", "RuleResearch.getLookup", "RuleResearch.getNeededItem" })
+            Assert.Contains(TestFixtures.Rows(api.RootElement, "bindings"), binding =>
+                binding.GetProperty("name").GetString() == name &&
+                binding.GetProperty("parsers").EnumerateArray().Any(parser => parser.GetString() == "sellCostItem"));
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "researchPriceGetterRows"))
+            for (var mode = 0; mode < 4; mode++)
+            {
+                var present = row[0].GetBoolean();
+                var linked = row[1].GetBoolean();
+                var needed = row[2].GetBoolean();
+                var script = "var ptr RuleResearch topic; var ptr RuleResearch lookup; var ptr RuleResearch again; var ptr RuleItem item; var ptr RuleItem wanted; var int value; " +
+                    $"rules.getRuleResearch topic \"{(present ? "PRICE_META_SOURCE" : "MISSING")}\"; " + (mode switch
+                    {
+                        0 => "topic.getCost value; return value;",
+                        1 => "topic.getPoints value; return value;",
+                        2 => "topic.getLookup lookup; rules.getRuleResearch again \"PRICE_META_LOOKUP\"; if neq lookup null; if neq lookup again; div cost_current 0; end; end; lookup.getPoints value; return value;",
+                        _ => "topic.getNeededItem item; rules.getRuleItem wanted \"SUPPLY\"; if neq item null; if neq item wanted; div cost_current 0; end; return 1; end; return 0;",
+                    });
+                var overlay = $"research: [{{name: PRICE_META_SOURCE, cost: {row[3].GetInt32()}, points: {row[4].GetInt32()}, needItem: {needed.ToString().ToLowerInvariant()}, neededItem: SUPPLY{(linked ? ", lookup: PRICE_META_LOOKUP" : "")}}}, {{name: PRICE_META_LOOKUP, cost: 1, points: 23}}]\n" +
+                    (global ? $"extended: {{scripts: {{sellCostItem: [{{new: research-metadata-price, offset: 1, code: '{script}'}}]}}}}\nitems: [{{type: PRICE_META_ITEM}}]\n" : $"items: [{{type: PRICE_META_ITEM, scripts: {{sellCostItem: '{script}'}}}}]\n") +
+                    "manufacture: [{name: PRICE_META_PRODUCT, time: 1, producedItems: {PRICE_META_ITEM: 1}}]\nfacilities: [{type: PRICE_META_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n";
+                var content = Load(cache, overlay);
+                var initial = HuntingSnapshot(content) with { Time = new(1, 1, 1, 1999, 1, 59, 55), Funds = [0] };
+                initial = initial with
+                {
+                    Bases = [initial.Bases[0] with
+                    {
+                        Facilities = [.. initial.Bases[0].Facilities, new("PRICE_META_WORKSHOP", 1, 1, 0, 0, false, false, false)],
+                        Productions = [new("PRICE_META_PRODUCT", 1, 0, 1, false, true, false, new Dictionary<string, int>())],
+                    }],
+                };
+                var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "research-metadata-before.sav");
+                AdvanceUnblocked(campaign, 1);
+                Assert.Equal(row[5 + mode].GetInt32(), campaign.Capture().Funds[^1]);
+                Reload(content, campaign, 81, "research-metadata-after.sav");
+            }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void DailyProductionPricesObserveNativeDeterministicResearchRewards(bool cache, bool global)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
