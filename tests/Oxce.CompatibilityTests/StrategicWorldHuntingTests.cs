@@ -1773,7 +1773,7 @@ public sealed partial class StrategicWorldHuntingTests
                 }]
                 };
                 var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "ammo-fuel-before.sav");
-                if (row[11].GetInt32() != 0)
+                if (row[11].GetInt32() != 0 && row[3].GetInt32() == 1)
                 {
                     AssertTimeBlocked(campaign, "UFO retargeting requires stochastic craft ammunition stock forecasts.");
                     continue;
@@ -1789,7 +1789,10 @@ public sealed partial class StrategicWorldHuntingTests
                     refuelled.Status, refuelled.Fuel,
                     after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
                 });
-                var expected = JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Skip(5).Take(6).ToArray());
+                var native = row[11].GetInt32() == 0 ? row : group.Single(candidate =>
+                    candidate[2].GetInt32() == row[2].GetInt32() && candidate[3].GetInt32() == row[3].GetInt32() &&
+                    candidate[7].GetInt32() == after.Bases[0].Items.GetValueOrDefault("HUNT_SHARED_AMMO"));
+                var expected = JsonSerializer.SerializeToUtf8Bytes(native.EnumerateArray().Skip(5).Take(6).ToArray());
                 Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
                 Reload(content, campaign, 81, "ammo-fuel-after.sav");
             }
