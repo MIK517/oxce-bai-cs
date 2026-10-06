@@ -144,12 +144,13 @@ public sealed partial class StrategicProductionPriceMetadataTests
     }
 
     private static RuntimeContent Load(bool cache, bool global, string code, string itemFields = "",
-        string extraRules = "", string extraExtended = "", string extraItems = "")
+        string extraRules = "", string extraExtended = "", string extraItems = "", bool buying = false)
     {
+        var parser = buying ? "buyCostItem" : "sellCostItem";
         var item = "items:\n  - type: PRICE_META_ITEM\n    costSell: 7\n" + Indent(itemFields, 4) +
-            (global ? "" : "    scripts:\n      sellCostItem: |\n" + Indent(code, 8)) + Indent(extraItems, 2);
+            (global ? "" : $"    scripts:\n      {parser}: |\n" + Indent(code, 8)) + Indent(extraItems, 2);
         var extended = extraExtended.Length == 0 && !global ? "" : "extended:\n" + Indent(extraExtended, 2) +
-            (global ? "  scripts:\n    sellCostItem:\n      - new: price-metadata\n        offset: 1\n        code: |\n" + Indent(code, 10) : "");
+            (global ? $"  scripts:\n    {parser}:\n      - new: price-metadata\n        offset: 1\n        code: |\n" + Indent(code, 10) : "");
         return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache,
             item + extended + "manufacture: [{name: PRICE_META_PRODUCT, time: 1, producedItems: {PRICE_META_ITEM: 1}}]\n" +
             "facilities: [{type: PRICE_META_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" + extraRules + "\n");
