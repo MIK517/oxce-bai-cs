@@ -28,10 +28,11 @@ internal sealed partial class CampaignWorld
                 return "Endless infiltration restart timer exceeds the supported range.";
         }
         var rules = campaign.Content.RuntimeRules;
+        if (PrepareInfiltrationCountries(highest, ref work) is { } countryReason) return countryReason;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         work += (long)campaign.CountryStates.Count * (region.Areas.Count + 1L);
         if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
-        var eligible = campaign.CountryStates.Count(country => Eligible(country, region));
+        var eligible = campaign.CountryStates.Count(country => EligibleAfterDailyDestruction(country, region));
         if (eligible == 0) return null;
         if (rules.Campaign.BuildInfiltrationBaseCloseToTheCountry)
             return CountryInfiltrationReason(mission, rule, region, highest, markers, ref work, generated, source);
@@ -59,7 +60,7 @@ internal sealed partial class CampaignWorld
         var areas = new List<MissionArea>();
         foreach (var country in campaign.CountryStates)
         {
-            if (!Eligible(country, region)) continue;
+            if (!EligibleAfterDailyDestruction(country, region)) continue;
             var countryRule = rules.Countries[country.Rule].Value;
             if (countryRule.Areas.Count == 0) return "Infiltration country has no spawn areas.";
             work += 100L * (2 * geometry + countryRule.Areas.Count + 1L);
@@ -81,6 +82,40 @@ internal sealed partial class CampaignWorld
 
     private bool Eligible(CampaignState.CountryState country, RuntimeRegionRule region) =>
         WorldInfiltration.CanInfiltrate(country.Pact, country.NewPact, country.CancelPact) &&
+        WorldGeometry.InsideRegion(region, new(campaign.Content.RuntimeRules.Countries[country.Rule].Value.LabelLongitude,
+            campaign.Content.RuntimeRules.Countries[country.Rule].Value.LabelLatitude));
+
+    private string? PrepareInfiltrationCountries(CampaignTimeTrigger highest, ref long work)
+    {
+        if (_pass.InfiltrationCountries is not null) return null;
+        var rules = campaign.Content.RuntimeRules;
+        var destruction = highest >= CampaignTimeTrigger.OneDay && rules.Campaign.AllowCountriesToCancelAlienPact;
+        work += campaign.CountryStates.Count * (destruction ? 3L * _alienBases.Count + 1 : 1L);
+        if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
+        var eligible = new HashSet<CampaignState.CountryState>(ReferenceEqualityComparer.Instance);
+        foreach (var country in campaign.CountryStates)
+        {
+            var newPact = country.NewPact;
+            var cancelPact = country.CancelPact;
+            if (destruction)
+            {
+                var id = rules.Countries.GetExternalId(country.Rule);
+                foreach (var alienBase in _alienBases)
+                    if (alienBase.PactCountryId == id && BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast))
+                    {
+                        newPact = false;
+                        cancelPact = country.Pact;
+                        break;
+                    }
+            }
+            if (WorldInfiltration.CanInfiltrate(country.Pact, newPact, cancelPact)) eligible.Add(country);
+        }
+        _pass.InfiltrationCountries = eligible;
+        return null;
+    }
+
+    private bool EligibleAfterDailyDestruction(CampaignState.CountryState country, RuntimeRegionRule region) =>
+        _pass.InfiltrationCountries!.Contains(country) &&
         WorldGeometry.InsideRegion(region, new(campaign.Content.RuntimeRules.Countries[country.Rule].Value.LabelLongitude,
             campaign.Content.RuntimeRules.Countries[country.Rule].Value.LabelLatitude));
 

@@ -33,6 +33,14 @@ internal sealed partial class CampaignWorld
         if (generated is not null) work += 8;
         if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
         var additional = generated?.ReservePopulation() ?? 1;
+        var pact = rule.Objective == RuntimeMissionObjective.Infiltration;
+        if (pact)
+        {
+            // Each successful completion makes its country pending before the next mission runs.
+            // Alternative sources cannot create more pact bases than there are eligible countries.
+            additional = Math.Min(additional, _pass.InfiltrationCountries!.Count - _pass.PactBaseBirths);
+            _pass.PactBaseBirths += additional;
+        }
         _pass.ObjectiveBaseBirths += additional;
         if (_pass.ObjectiveBaseBirths > 100_000 - _alienBases.Count)
             return "Base objective population exceeds the supported limit.";
@@ -74,6 +82,13 @@ internal sealed partial class CampaignWorld
             if (ProductionCounterWorkReason(highest, ref work, "Base objective creation exceeds the supported work limit.") is { } productionWork)
                 return productionWork;
             var markerAdditional = generated?.ReserveMarker(marker) ?? 1;
+            if (pact)
+            {
+                var pactMarkers = _pass.PactBaseMarkerBirths ??= new(StringComparer.Ordinal);
+                var prior = pactMarkers.GetValueOrDefault(marker);
+                markerAdditional = Math.Min(markerAdditional, _pass.InfiltrationCountries!.Count - prior);
+                pactMarkers[marker] = prior + markerAdditional;
+            }
             var count = reservations.GetValueOrDefault(marker) + markerAdditional;
             reservations[marker] = count;
             work += _alienBases.Count + (long)_sites.Count;

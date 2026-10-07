@@ -34,6 +34,9 @@ internal sealed partial class CampaignWorld
         public CampaignTimeTrigger NewbornHighestTrigger;
         public List<CustomCounterChange>? SiteBirthIdChanges;
         public int ObjectiveBaseBirths;
+        public HashSet<CampaignState.CountryState>? InfiltrationCountries;
+        public int PactBaseBirths;
+        public Dictionary<string, int>? PactBaseMarkerBirths;
         public int ObjectiveBasesBeforeHunting;
         public int ObjectiveBaseHuntingMissions;
         public List<(IReadOnlyList<SpawnArea> Positions, int Points, WorldTargetReference? Source, bool Hunting)>? ObjectiveBaseScores;
@@ -91,6 +94,9 @@ internal sealed partial class CampaignWorld
             NewbornHighestTrigger = highest;
             SiteBirthIdChanges = null;
             ObjectiveBaseBirths = 0;
+            InfiltrationCountries = null;
+            PactBaseBirths = 0;
+            PactBaseMarkerBirths = null;
             ObjectiveBasesBeforeHunting = 0;
             ObjectiveBaseHuntingMissions = 0;
             ObjectiveBaseScores = null;

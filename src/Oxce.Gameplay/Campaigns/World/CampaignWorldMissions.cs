@@ -37,6 +37,7 @@ internal sealed partial class CampaignWorld
         var siteSpawns = 0;
         GeneratedTargetReservations? generatedSites = null;
         GeneratedTargetReservations? generatedBases = null;
+        GeneratedTargetReservations? generatedPactBases = null;
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             var mission = forecast.Mission;
@@ -66,9 +67,9 @@ internal sealed partial class CampaignWorld
                 }
                 if (CompletesInfiltration(step, rule, rule.Waves[step.NextWave]))
                 {
-                    if (forecast.Generated) (generatedBases ??= new()).Begin(mission, forecast.Hunting);
+                    if (forecast.Generated) (generatedPactBases ??= new()).Begin(mission, forecast.Hunting);
                     if (InfiltrationReason(step, rule, highest, siteMarkerReservations ??= new(StringComparer.Ordinal),
-                            ref geometryWork, forecast.Generated ? generatedBases : null,
+                            ref geometryWork, forecast.Generated ? generatedPactBases : null,
                             forecast.Generated ? mission.AlienBase : null) is { } infiltrationReason)
                         return infiltrationReason;
                 }

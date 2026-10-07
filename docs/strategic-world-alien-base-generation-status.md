@@ -672,3 +672,17 @@ run 72 hours through UFO/mission cleanup, preserve one pending pact and reject
 real marker overflow atomically. All 271 generation/infiltration/repeat cases pass.
 Late hunting infiltration completion retains its specific forecast boundary;
 cross-source eligibility and daily pact-base destruction are part of the audit.
+
+The batch audit confirmed a missed daily pact-cancellation eligibility change
+and false capacity reservations when several sources compete for one country.
+Pure country forecasts now apply guaranteed daily base destruction before
+regional/country search, charging their scans and retaining native
+`Country::setCancelPact`/`canBeInfiltrated` semantics. Pact births and marker
+reservations are bounded by the projected eligible countries; ordinary base
+alternatives retain independent reservations because they do not consume a
+country. Six fresh/cache regressions cover the original atomic-collision gap,
+safe destruction/reinfiltration reloads, shared-country final ID capacity, and
+mixed pact/ordinary base capacity. The cleanup and infiltration captures pin
+the native flag transition. All 327 focused generation/infiltration/repeat/
+objective-base cases pass. Region and cross-objective correlations remain
+conservative; there is no RNG or campaign mutation during preflight.
