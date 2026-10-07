@@ -341,3 +341,10 @@ leader/no-leader cases, caller-specific activity, strict birth/following reloads
 and combined-point overflow refusal. All 355 focused generation/newborn/escort/
 landing cases pass. The blanket generated ground-release restriction is removed;
 immediate site objectives and the established later-branch guards remain.
+
+The three-slice batch audit found no confirmed defect. It checked caller ordering,
+optional birth activity, escort relocation and saved-UFO terminal arrivals that
+defer newborn takeoffs. Root validation passes all 3,316 tests without failures
+or skips, including native checksums, private corpus and unchanged allocation
+gates. Formatting, code-map and diff checks pass; the pinned reference remains
+clean. Existing evidence remains useful and no disposable probes were created.
