@@ -110,7 +110,6 @@ internal sealed partial class CampaignWorld
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
                     if (IsDirectSiteWave(step, rule))
                     {
-                        if (hunting && rule.Objective == RuntimeMissionObjective.Site) return GeneratedWaveBoundary;
                         continue;
                     }
                     if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) ||

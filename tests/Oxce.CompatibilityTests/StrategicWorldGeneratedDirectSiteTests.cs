@@ -24,6 +24,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     [InlineData(true, true, 5)]
     [InlineData(false, false, 3)]
     [InlineData(true, false, 3)]
+    [InlineData(false, true, 3)]
+    [InlineData(true, true, 3)]
     public void GeneratedDeploymentWavesCreateAndExpireSitesWithoutUfosAtBothCallers(bool cache, bool hunting, int objective)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
@@ -202,6 +204,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
     public void GeneratedSelectedDirectChainsKeepOneAreaAcrossWavesAndReload(bool cache, bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
@@ -226,7 +230,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 Assert.Equal(Degrees(mission.MissionSiteZoneArea == 0 ? 2 : -2), site.Latitude);
             });
             campaign = Reload(content, campaign, seed, "selected-direct-chain-born.sav");
-            AdvanceUnblocked(campaign, 3000);
+            // The second hidden site receives hourly postponement before discovery.
+            AdvanceUnblocked(campaign, 4000);
             Reload(content, campaign, seed, "selected-direct-chain-expired.sav");
             Assert.Empty(campaign.Capture().World.MissionSites);
             Assert.Empty(campaign.Capture().World.Missions);
