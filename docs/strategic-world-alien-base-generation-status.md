@@ -485,3 +485,12 @@ durations and 72 hours of selected direct/UFO activity with daily reloads.
 All 292 focused generation/site-spawn/site-timer/base-hunting cases pass. Reviewed
 source grouping, selected-area reuse, deployment precedence, empty-zone refusal
 and late payload timing; no additional correctness defect was confirmed.
+
+Final root validation passes all 3,390 tests without failures or skips, including
+native checksums, private corpus and unchanged population/allocation gates.
+Full formatting verification, regenerated code-map and diff checks pass; the
+reference remains clean at the pinned commit. No new probes were created; empty
+successful-format logs were removed and reusable evidence remains. This closes
+the six-cycle timed run (18 implementation slices and six batch audits). Other
+immediate objectives, broader uncertainty forecasts and branch-wide headless
+acceptance still keep 4c open; no 4d work was started.

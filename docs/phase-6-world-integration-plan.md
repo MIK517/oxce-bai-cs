@@ -79,6 +79,12 @@ documents; entries here link to them instead of copying them.
   [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
 
 - Opening plan/scope commit: `b06cb39`.
+- 2026-10-07 selected direct-site cycle: daily/hunting selected-area sites,
+  mixed chains and exclusive direct activity ranges execute with transition
+  reloads and 72-hour acceptance. See
+  [owned slices and batch audit](strategic-world-alien-base-generation-status.md#generated-selected-direct-sites-2026-10-07).
+  Wider immediate objectives, UFO activity/expiry-counter uncertainty and
+  branch-wide reconciliation keep 4c open; later-branch guards and 4d are unchanged.
 - 2026-10-07 generated deployment cycle: daily/hunting score and supply sites,
   mixed immediate chains and 72-hour reload acceptance now execute. See
   [owned slices and batch audit](strategic-world-alien-base-generation-status.md#generated-deployment-only-waves-2026-10-07).
