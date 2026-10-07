@@ -155,3 +155,11 @@ and speed; fresh/cache tests compare that trace and reload before birth, after
 birth and after takeoff. A one-step initial timer retains a precise guard.
 Reference: pinned `AlienMission::spawnUfo`, `Ufo::think/takeoff` and the daily,
 half-hour and five-second Geoscape caller positions.
+
+The hunting caller now also admits those ground births, including non-escort
+hunter initialization. Landed UFOs miss both retarget passes; their future
+takeoff uses the saved-mission forecasts with real identity. Fresh/cache ordinary
+and 100-percent-hunter cases cover both callers, native timer countdown, no
+premature hunting/escort state, correct half-hour points and three reloads.
+Creation-time airborne hunters, ground escorts and same-tick ground releases
+retain the lifecycle restriction.
