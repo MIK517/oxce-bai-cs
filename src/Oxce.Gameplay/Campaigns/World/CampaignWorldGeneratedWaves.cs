@@ -94,7 +94,6 @@ internal sealed partial class CampaignWorld
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 var wave = rule.Waves[step.NextWave];
                 if (rule.Objective != RuntimeMissionObjective.Site || !wave.Objective) continue;
-                if (hunting) return GeneratedWaveBoundary;
                 consumesArea = true;
             }
             var areaCount = consumesArea
