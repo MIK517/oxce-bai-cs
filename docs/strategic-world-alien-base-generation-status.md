@@ -361,3 +361,12 @@ semantics. Fresh/cache seeded cases cover both selected city areas and
 `objectiveOnTheLandingSite`, strict birth/conversion/expiry reloads and precise
 empty-zone/resource-limit refusals. All 198 focused generation/selected-site/
 newborn cases pass. Hunting openings remain guarded for the next slice.
+
+The later hunting caller now projects selected objective areas too, while
+preserving its skipped half-hour scoring/detection. Fresh/cache cases execute
+both landing flags across seeded area choices, convert and expire sites through
+strict reloads, and retain precise malformed-area refusals. Both creation
+callers also compose for 72 hours with daily reloads through UFO deletion,
+mission cleanup and site expiry. All 196 focused generation/selected-site/
+base-hunting/conversion cases pass. Deployment-only generated objectives remain
+guarded; event payload, combat and campaign-month boundaries are unchanged.
