@@ -8,6 +8,9 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
+    private readonly record struct GeneratedActivityKey(WorldTargetReference Source, string Rule, string Region,
+        string Race, int Area, int Wave, int Counter, bool Hunting);
+
     private void RegisterUfoDetection(CampaignCapabilityRegistry registry)
     {
         registry.Command<IgnoreUfoContact>(IgnoreContact);
@@ -106,6 +109,7 @@ internal sealed partial class CampaignWorld
         long activityWork = 0;
         List<(IReadOnlyList<SpawnArea> Positions, int Points)>? newbornTakeoffScores = null;
         Dictionary<(int Source, string Marker), (int Contacts, int Landings)>? generatedContacts = null;
+        HashSet<GeneratedActivityKey>? generatedAwards = null;
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             if (!halfHour && !forecast.Hunting) continue;
@@ -151,11 +155,20 @@ internal sealed partial class CampaignWorld
                 activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length) * 2;
                 if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
                 var grounded = trajectory.Altitude(0) == 0;
+                var newAward = true;
+                if (forecast.Generated)
+                {
+                    // Area alternatives have the same birth/lift positions unless
+                    // the origin selects that area or an escort can relocate there.
+                    var area = NewEscortWave(missionRule, wave) || wave.Objective && trajectory.Zone(0) == missionRule.SpawnZone
+                        ? mission.MissionSiteZoneArea : -1;
+                    newAward = (generatedAwards ??= []).Add(new(mission.AlienBase!, mission.RuleId, mission.RegionId,
+                        mission.Race, area, step.NextWave, step.NextUfoCounter, forecast.Hunting));
+                }
                 if (!forecast.Hunting)
                 {
-                    var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1,
-                        guaranteedAward: !forecast.Generated);
-                    if (reason is not null) return reason;
+                    if (newAward && CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1,
+                            guaranteedAward: !forecast.Generated) is { } reason) return reason;
                     if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
                             ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
                 }
@@ -171,7 +184,7 @@ internal sealed partial class CampaignWorld
                     missionContacts++;
                     if (grounded) missionLandings++;
                 }
-                if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
+                if (newAward && grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
                     missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration))
                     (newbornTakeoffScores ??= []).Add((positions, missionRule.Points));
             }
