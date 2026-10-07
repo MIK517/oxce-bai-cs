@@ -603,3 +603,14 @@ stable mission/UFO linkage, cleanup and absence of premature pact/base effects.
 All 256 generation/base-hunting cases pass. Native baseHunting and
 `AlienMission::think`, plus verified hunting-generation/lifecycle captures,
 establish the caller order. Final objective completion retains its precise guard.
+
+Daily generated final base waves now consume the existing objective-base creation
+forecast and handler at the mission think position, before UFO scoring/detection.
+The handler owns deployment selection, land search, marker IDs, birth sequence,
+race and completion points. Four fresh/cache airborne/one-step-ground cases
+reproduce the former completion guard, check the native base-before-UFO order,
+exact score capacity and atomic marker/activity overflow, then run 72 hours with
+daily reloads through UFO/mission cleanup. Base takeoff points remain suppressed
+as in `AlienMission::ufoLifting`; `addScore` likewise excludes infiltration.
+All 270 generation/objective-base cases pass. Hunting final completion,
+infiltration completion and generated no-object-only final bases remain guarded.
