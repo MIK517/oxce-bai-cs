@@ -97,14 +97,9 @@ internal sealed partial class CampaignWorld
                 if (rule.Objective == RuntimeMissionObjective.Site && wave.Objective) return GeneratedWaveBoundary;
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
                 if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) ||
-                    wave.Ufo is not { } ufo || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
-                var ufoRule = campaign.Content.RuntimeRules.Ufos[ufo].Value;
+                    wave.Ufo is null || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
                 var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
-                var hunter = !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
-                    (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0;
                 if (path.Waypoints.Count == 0 || path.Altitude(0) == 0 && path.GroundTimer <= 1 ||
-                    hunter && wave.Escort && path.Altitude(0) != 0 &&
-                        (long)ufoRule.Stats.RadarRange + ufoRule.RaceBonus(race).RadarRange > 0 && !NoCraftCanBecomeHunterTarget() ||
                     !CanSpawnOrdinaryUfoWave(step, rule, requireHuntingForecast: false)) return GeneratedWaveBoundary;
             }
             (_pass.GeneratedWaveMissions ??= []).Add((candidate, hunting));

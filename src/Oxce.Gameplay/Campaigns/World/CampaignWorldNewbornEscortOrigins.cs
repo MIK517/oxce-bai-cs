@@ -8,7 +8,7 @@ internal sealed partial class CampaignWorld
 
     private string? NewbornEscortOriginsReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule missionRule,
         IReadOnlyList<SpawnArea> nominal, ref long work, out IReadOnlyList<SpawnArea> positions,
-        out bool canInitialize, out bool canRemainIdle)
+        out bool canInitialize, out bool canRemainIdle, AlienMissionSnapshot? creationMission = null)
     {
         positions = nominal;
         canInitialize = false;
@@ -22,7 +22,8 @@ internal sealed partial class CampaignWorld
             canRemainIdle = false;
             return null;
         }
-        if (FindMission(mission.Id) is not { } saved) return "New UFO escorts require craft retarget forecasts.";
+        var saved = creationMission ?? FindMission(mission.Id);
+        if (saved is null) return "New UFO escorts require craft retarget forecasts.";
         var rules = campaign.Content.RuntimeRules;
         List<SpawnArea>? possible = null;
         foreach (var earlier in DueWaveSteps(saved, missionRule))

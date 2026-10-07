@@ -27,7 +27,7 @@ internal sealed partial class CampaignWorld
         ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HuntMode : wave.HuntMode;
 
     private string? NewbornHuntingReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule missionRule,
-        CampaignTimeTrigger highest)
+        CampaignTimeTrigger highest, AlienMissionSnapshot? creationMission = null)
     {
         var wave = SpawnWave(mission, missionRule);
         if (wave.Ufo is not { } handle || wave.Trajectory is not { } trajectory ||
@@ -62,7 +62,7 @@ internal sealed partial class CampaignWorld
                 if (wave.Escort)
                 {
                     if (NewbornEscortOriginsReason(mission, missionRule, positions, ref _pass.HuntingForecastWork,
-                            out positions, out initializedEscort, out canRemainIdle) is { } escortReason) return escortReason;
+                            out positions, out initializedEscort, out canRemainIdle, creationMission) is { } escortReason) return escortReason;
                 }
                 if (NewbornRadarSeparationReason(positions, (int)radar, ref _pass.HuntingForecastWork, out var separated) is { } separationReason)
                     return separationReason;
