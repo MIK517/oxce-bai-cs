@@ -181,13 +181,37 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Reload(content, campaign, 81, "combined-hunter-markers.sav");
     }
 
-    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false, bool combined = false) =>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedHunterRaceStatsOverflowRefusesBeforeEitherCreationCaller(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = GeneratedHunterContent(cache, 0, hunting, radarBonus: int.MaxValue);
+        AssertTimeBlocked(CampaignState.Restore(GeneratedHunterSnapshot(content, hunting), content, new SplitMix64RandomSource(81)),
+            hunting ? "Alien base hunting mission fields exceed the supported range." :
+                "Immediate generated mission fields exceed the supported range.");
+    }
+
+    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false, bool combined = false, int radarBonus = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               - {type: GENERATED_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             ufos:
-              - {type: GENERATED_HUNTER, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: 150, hunterKillerPercentage: 100, huntMode: {{{mode}}}, noAlert: true, missionScore: 3}
+              - type: GENERATED_HUNTER
+                speedMax: 2200
+                damageMax: 50
+                radarRange: 300
+                huntSpeed: 150
+                hunterKillerPercentage: 100
+                huntMode: {{{mode}}}
+                noAlert: true
+                missionScore: 3
+                raceBonus:
+                  RACE_A: {radarRange: {{{radarBonus}}}}
             ufoTrajectories:
               - id: GENERATED_HUNTER_PATH
                 waypoints: [[4, 3, 100], [3, 2, 80], [0, 3, 50]]

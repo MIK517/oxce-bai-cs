@@ -130,6 +130,7 @@ internal sealed partial class CampaignWorld
             }
         }
         catch (InvalidDataException error) { return error.Message; }
+        catch (OverflowException) { return "Alien base hunting mission fields exceed the supported range."; }
         return null;
     }
 

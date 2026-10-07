@@ -248,3 +248,10 @@ modes, strict pursuit reloads and the last two identities in a combined midnight
 birth. Existing base-hunting eligibility tests use an immediate site objective
 for their unavailable-effect boundary; their strict snapshot/RNG assertions remain.
 Generated escorts and immediate objective/ground-release transitions stay guarded.
+
+The batch audit confirmed an uncaught race-stat overflow in hunting generation:
+the daily caller already refused it, but hunting exposed `OverflowException`.
+The separate fix converts consumed hunting field overflow into an explicit
+preflight refusal. Four fresh/cache malformed radar-bonus cases retain strict
+snapshot/RNG atomicity checks. The initial root batch passed all 3,280 cases;
+final validation includes this additional fix.
