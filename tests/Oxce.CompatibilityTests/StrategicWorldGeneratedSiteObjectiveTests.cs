@@ -177,8 +177,80 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedSiteAreaChoicesDoNotDuplicateAreaNeutralBirthAndTakeoffAwards(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var ground in new[] { false, true })
+            foreach (var areas in new[] { 2, 256 })
+            {
+                var content = GeneratedSiteObjectiveContent(cache, hunting, areaCount: areas, groundBirth: ground);
+                var score = (hunting ? 0 : ground ? 6 : 3) + (ground ? 7 : 0);
+                var initial = GeneratedSiteObjectiveSnapshot(content, hunting, 41);
+                initial = initial with
+                { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - score] }, .. initial.Regions.Skip(1)] };
+                var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+                AdvanceUnblocked(campaign, 1);
+                var after = campaign.Capture();
+                Assert.Single(after.World.Ufos);
+                Assert.Equal(int.MaxValue, after.Regions[0].ActivityAlien[^1]);
+                Reload(content, campaign, 41, "site-area-neutral-awards.sav");
+                if (score == 0) continue;
+                var limited = initial with
+                { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - score + 1] }, .. initial.Regions.Skip(1)] };
+                AssertTimeBlocked(CampaignState.Restore(limited, content, new SplitMix64RandomSource(41)),
+                    "UFO alien activity exceeds the supported range.");
+            }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSiteObjectiveValidatesSpawnZoneBeforeProjectingAreas(bool cache)
+    {
+        foreach (var hunting in new[] { false, true })
+            foreach (var zone in new[] { -1, 7 })
+            {
+                var content = GeneratedSiteObjectiveContent(cache, hunting, spawnZone: zone);
+                var initial = GeneratedSiteObjectiveSnapshot(content, hunting, 41);
+                AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)), hunting
+                    ? "Alien base hunting site mission has an invalid spawn zone."
+                    : "Alien base site mission has an invalid spawn zone.");
+            }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSiteActivityReservationsKeepDistinctSourcesAndBirthCounters(bool cache)
+    {
+        var content = GeneratedSiteObjectiveContent(cache, hunting: false, ufoCount: 2);
+        var initial = GeneratedSiteObjectiveSnapshot(content, hunting: false, seed: 41);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBases = [initial.World.AlienBases[0], new(3, "GENERATED_SITE_BASE", "RACE_A", 0.2, 0.1)],
+            },
+            Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 12] }, .. initial.Regions.Skip(1)],
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(4, campaign.Capture().World.Ufos.Count);
+        Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
+        Reload(content, campaign, 41, "site-distinct-activity.sav");
+        var limited = initial with
+        { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 11] }, .. initial.Regions.Skip(1)] };
+        AssertTimeBlocked(CampaignState.Restore(limited, content, new SplitMix64RandomSource(41)),
+            "UFO alien activity exceeds the supported range.");
+    }
+
     private static RuntimeContent GeneratedSiteObjectiveContent(bool cache, bool hunting, bool landing = false,
-        int? areaCount = null, int ufoCount = 1, bool selectedOrigin = false) =>
+        int? areaCount = null, int ufoCount = 1, bool selectedOrigin = false, bool groundBirth = false, int spawnZone = 1) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"], cache, $$$"""
             {{{(areaCount is null ? "" : GeneratedSiteAreas(areaCount.Value))}}}
             crafts:
@@ -186,6 +258,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             ufoTrajectories:
               - id: GENERATED_SITE_ORIGIN_PATH
                 waypoints: [[1, 3, 100], [4, 2, 80], [1, 0, 50], [6, 4, 100]]
+              - id: GENERATED_SITE_GROUND_PATH
+                groundTimer: 1
+                waypoints: [[4, 0, 100], [1, 2, 80], [6, 0, 50], [6, 4, 100]]
             alienDeployments:
               - type: GENERATED_SITE_BASE
                 markerName: STR_ALIEN_BASE
@@ -204,10 +279,11 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             alienMissions:
               - type: GENERATED_SITE_MISSION
                 objective: 3
-                spawnZone: 1
+                points: {{{(groundBirth ? 7 : 0)}}}
+                spawnZone: {{{spawnZone}}}
                 siteType: GENERATED_SITE_DEPLOY
                 {{{(areaCount is null ? "" : "regionWeights: {0: {GENERATED_SITE_REGION: 1}}")}}}
-                waves: [{ufo: UFO_SCOUT, count: {{{ufoCount}}}, trajectory: {{{(selectedOrigin ? "GENERATED_SITE_ORIGIN_PATH" : "SELECTED_SITE")}}}, timer: 0, objective: true, hunterKillerPercentage: {{{(selectedOrigin ? 100 : 0)}}}, objectiveOnTheLandingSite: {{{landing.ToString().ToLowerInvariant()}}}}]
+                waves: [{ufo: UFO_SCOUT, count: {{{ufoCount}}}, trajectory: {{{(selectedOrigin ? "GENERATED_SITE_ORIGIN_PATH" : groundBirth ? "GENERATED_SITE_GROUND_PATH" : "SELECTED_SITE")}}}, timer: 0, objective: true, hunterKillerPercentage: {{{(selectedOrigin ? 100 : 0)}}}, objectiveOnTheLandingSite: {{{landing.ToString().ToLowerInvariant()}}}}]
             """);
 
     private static string GeneratedSiteAreas(int count) => $$$"""

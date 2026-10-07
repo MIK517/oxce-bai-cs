@@ -220,15 +220,16 @@ internal sealed partial class CampaignWorld
         if (steps / 2 <= 1 && mission.Objective is (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
             ImmediateNoObjectReason(source, deployment, mission, ref work, HuntGenerationReason, regionName) is { } retaliationReason)
             return retaliationReason;
+        if (mission.Objective == RuntimeMissionObjective.Site &&
+            (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count))
+            return "Alien base hunting site mission has an invalid spawn zone.";
         if (collect)
         {
             if (CollectGeneratedWaveForecasts(source, deployment, mission, missionId, regionName, hunting: true, ref work) is { } waveReason)
                 return waveReason;
             (_pass.HuntingGeneratedWaveProofs ??= []).Add(proofKey);
         }
-        return mission.Objective == RuntimeMissionObjective.Site &&
-            (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count)
-            ? "Alien base hunting site mission has an invalid spawn zone." : null;
+        return null;
     }
 
     private string? HuntingRetaliationDiscoveryReason(RuntimeRegionRule region, CampaignTimeTrigger highest, ref long work)

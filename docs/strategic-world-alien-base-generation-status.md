@@ -380,3 +380,15 @@ reloads and refuse real exhaustion atomically. A selected-origin hunter case
 also proves that a safe first area cannot hide combat at the second area sharing
 candidate ID zero. All 338 focused generation/escort/newborn/selected-site cases
 pass. Later-branch boundaries remain intact.
+
+The batch audit confirmed two defects. Area-neutral objective births/lifts were
+awarded once per forecast area, refusing a valid final activity slot; hunting
+area projection indexed an invalid spawn zone before the established refusal.
+The separate fix deduplicates area-neutral awards by source, rule, region, race,
+wave/counter and caller, retaining area-dependent and escort alternatives. It
+also validates the hunting zone before collection. Fresh/cache two/256-area
+airborne/ground cases exercise the exact last activity value and real overflow,
+with distinct-source/counter acceptance and strict malformed-zone atomicity.
+All 386 focused cases pass. The initial root batch passed all 3,332 tests;
+final root validation follows the audit fix. Broader alternative activity
+uncertainty remains open rather than being claimed complete by this correction.
