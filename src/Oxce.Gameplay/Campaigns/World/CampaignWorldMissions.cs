@@ -64,10 +64,14 @@ internal sealed partial class CampaignWorld
                     sourceBaseWork += _alienBases.Count;
                     if (sourceBaseWork > MaximumAlienBaseChecks) return "Alien mission source base lookups exceed the supported work limit.";
                 }
-                if (CompletesInfiltration(step, rule, rule.Waves[step.NextWave]) &&
-                    InfiltrationReason(step, rule, highest, siteMarkerReservations ??= new(StringComparer.Ordinal),
-                        ref geometryWork) is { } infiltrationReason)
-                    return infiltrationReason;
+                if (CompletesInfiltration(step, rule, rule.Waves[step.NextWave]))
+                {
+                    if (forecast.Generated) (generatedBases ??= new()).Begin(mission, forecast.Hunting);
+                    if (InfiltrationReason(step, rule, highest, siteMarkerReservations ??= new(StringComparer.Ordinal),
+                            ref geometryWork, forecast.Generated ? generatedBases : null,
+                            forecast.Generated ? mission.AlienBase : null) is { } infiltrationReason)
+                        return infiltrationReason;
+                }
                 if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]))
                 {
                     if (forecast.Generated) (generatedBases ??= new()).Begin(mission, forecast.Hunting);

@@ -10,14 +10,16 @@ internal sealed partial class CampaignWorld
         mission.NextWave + 1 == rule.Waves.Count && (ulong)mission.NextUfoCounter + 1 >= wave.UfoCount;
 
     private string? InfiltrationReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work)
+        CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work,
+        GeneratedTargetReservations? generated = null, WorldTargetReference? source = null)
     {
-        try { return InfiltrationPreparationReason(mission, rule, highest, markers, ref work); }
+        try { return InfiltrationPreparationReason(mission, rule, highest, markers, ref work, generated, source); }
         catch (InvalidDataException error) { return error.Message; }
     }
 
     private string? InfiltrationPreparationReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work)
+        CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work,
+        GeneratedTargetReservations? generated, WorldTargetReference? source)
     {
         if (rule.EndlessInfiltration)
         {
@@ -32,7 +34,7 @@ internal sealed partial class CampaignWorld
         var eligible = campaign.CountryStates.Count(country => Eligible(country, region));
         if (eligible == 0) return null;
         if (rules.Campaign.BuildInfiltrationBaseCloseToTheCountry)
-            return CountryInfiltrationReason(mission, rule, region, highest, markers, ref work);
+            return CountryInfiltrationReason(mission, rule, region, highest, markers, ref work, generated, source);
         var areas = WorldGeometry.MissionAreas(region, rule.SpawnZone);
         long search = region.Areas.Count + 1L;
         foreach (var polygon in rules.Campaign.Globe.Polygons) search += 2L * polygon.Points.Count;
@@ -44,11 +46,12 @@ internal sealed partial class CampaignWorld
         if (work > MaximumAlienBaseChecks) return "Infiltration country search exceeds the supported work limit.";
         // Regional searches have the same possible birth regardless of country.
         // Only one country may sign per mission completion.
-        return ObjectiveBaseSpawnReason(mission, rule with { Points = 0 }, highest, markers, ref work);
+        return ObjectiveBaseSpawnReason(mission, rule with { Points = 0 }, highest, markers, ref work, generated, source);
     }
 
     private string? CountryInfiltrationReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        RuntimeRegionRule region, CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work)
+        RuntimeRegionRule region, CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work,
+        GeneratedTargetReservations? generated, WorldTargetReference? source)
     {
         var rules = campaign.Content.RuntimeRules;
         long geometry = 1;
@@ -73,7 +76,7 @@ internal sealed partial class CampaignWorld
             }
         }
         // One birth, but any eligible country's area may win after suppressed retries.
-        return ReserveObjectiveBase(rule with { Points = 0 }, areas, highest, markers, ref work);
+        return ReserveObjectiveBase(rule with { Points = 0 }, areas, highest, markers, ref work, generated: generated, source: source);
     }
 
     private bool Eligible(CampaignState.CountryState country, RuntimeRegionRule region) =>
