@@ -533,3 +533,10 @@ reproduce the uncharged advance, then refuse atomically; 500-region cases still
 advance and reload. All 246 focused generation/site-spawn/wave-chain cases pass.
 Reviewed source/caller grouping, optional negative headroom, distinct waves,
 terminal-arrival suppression and lazy allocation; no other defect was confirmed.
+
+Root validation passes all 3,400 tests without failures or skips, including
+native checksums, private corpus and populated allocation gates. Full formatting
+verification, code-map and diff checks pass; the pinned reference stays clean.
+No probes were generated, and the empty successful-format log was removed.
+Generated expiry-counter alternatives and broader immediate objectives remain
+4c work, alongside the final headless acceptance reconciliation.
