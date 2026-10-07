@@ -446,3 +446,15 @@ native checksums, private corpus and the unchanged allocation gates. Full
 formatting verification, regenerated code-map and diff checks pass; the pinned
 reference is clean. Useful evidence/logs remain and no disposable probes were
 created in this cycle.
+
+## Generated selected direct sites (2026-10-07)
+
+Daily site-objective missions now create direct deployment sites using their
+selected area. Pinned `GenerateSupplyMission` and `AlienMission::think/
+spawnMissionSite`, plus verified generation/site-spawn fixtures, establish the
+one-time area selection and reuse across immediate waves. Fresh/cache seeded
+cases cover single rectangle/point sites and mixed site/UFO/site chains, the
+last two marker IDs, retained mission area and before/birth/expiry reloads.
+All 212 focused generation/site-spawn/selected-waypoint cases pass. Hunting
+selected direct waves and alternative activity reservations remain subsequent
+slices; later-branch guards are unchanged.
