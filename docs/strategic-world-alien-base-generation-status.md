@@ -627,3 +627,9 @@ infiltration completion stops before the earlier prefix mutates state; native
 endless zero-timer inputs retain their work-limit rejection. All 320 affected
 generation/objective-base/site-spawn cases pass. Cross-objective alternatives
 and possible newborn hunting remain conservative rather than claimed complete.
+
+Root validation passes all 3,430 tests without failures or skips, including
+native checksums, private corpus and populated allocation gates. Full formatting
+verification, regenerated code-map and diff checks pass. The pinned reference
+remains clean, no native probe was generated, and the empty successful format
+log was removed. This closes the three-slice objective-opening cycle and audit.
