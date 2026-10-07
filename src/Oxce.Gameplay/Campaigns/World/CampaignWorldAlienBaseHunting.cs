@@ -125,7 +125,7 @@ internal sealed partial class CampaignWorld
                 if (!campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle))
                     return "Alien base hunting references an undefined mission.";
                 if (HuntingMissionReason(alienBase, deployment,
-                        campaign.Content.RuntimeRules.AlienMissions[handle].Value, highest, ref work) is { } reason) return reason;
+                        campaign.Content.RuntimeRules.AlienMissions[handle].Value, highest, ref work, missionId: choice.Key) is { } reason) return reason;
                 canGenerate = true;
             }
         }
@@ -170,7 +170,8 @@ internal sealed partial class CampaignWorld
     }
 
     private string? HuntingMissionReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
-        RuntimeAlienMissionRule mission, CampaignTimeTrigger highest, ref long work, bool newborn = false, string? sourceRegion = null)
+        RuntimeAlienMissionRule mission, CampaignTimeTrigger highest, ref long work, bool newborn = false, string? sourceRegion = null,
+        string missionId = "")
     {
         if (!Enum.IsDefined(mission.Objective) || !Enum.IsDefined(mission.OperationType) || mission.Waves.Count == 0)
             return "Alien base hunting requires a valid mission and first wave.";
@@ -178,9 +179,13 @@ internal sealed partial class CampaignWorld
         var steps = timer / 30;
         if (timer > int.MaxValue || (steps / 2 + steps) * 30 > int.MaxValue)
             return "Alien base hunting initial timer exceeds the supported range.";
-        // time30Minutes precedes baseHunting. Its new mission receives just the
-        // explicit immediate think pass, which must only subtract thirty minutes.
-        if (steps / 2 <= 1 && mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(source, deployment, mission, ref work,
+        var proofKey = (source.Id, source.DeploymentId, missionId);
+        var collect = _pass.CollectHuntingGeneratedWaves && !newborn && steps / 2 <= 1 &&
+            mission.Objective is (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply) &&
+            mission.Waves.Any(wave => wave.Ufo is not null) &&
+            _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true;
+        if (steps / 2 <= 1 && !collect && _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true &&
+            mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(source, deployment, mission, ref work,
                 HuntGenerationReason) is { } immediateReason) return immediateReason;
         if (!deployment.HuntMissionRaceFromAlienBase && mission.HasRaceWeights)
         {
@@ -209,6 +214,12 @@ internal sealed partial class CampaignWorld
         if (steps / 2 <= 1 && mission.Objective is (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
             ImmediateNoObjectReason(source, deployment, mission, ref work, HuntGenerationReason, regionName) is { } retaliationReason)
             return retaliationReason;
+        if (collect)
+        {
+            if (CollectGeneratedWaveForecasts(source, deployment, mission, missionId, regionName, hunting: true, ref work) is { } waveReason)
+                return waveReason;
+            (_pass.HuntingGeneratedWaveProofs ??= []).Add(proofKey);
+        }
         return mission.Objective == RuntimeMissionObjective.Site &&
             (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count)
             ? "Alien base hunting site mission has an invalid spawn zone." : null;
@@ -260,7 +271,9 @@ internal sealed partial class CampaignWorld
         var countdown = WorldTrajectory.SpawnCountdown(checked((int)rule.Waves[0].SpawnTimer), campaign.Random);
         var created = new AlienMissionSnapshot(id, missionName, regionId, race, 0, 0, countdown, 0, area)
         { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
-        _missions.Add(ThinkNoObjectMission(created, rule));
+        var index = _missions.Count;
+        _missions.Add(created);
+        _missions[index] = ThinkMission(created, rule, index);
     }
 }
 

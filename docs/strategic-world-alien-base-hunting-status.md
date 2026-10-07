@@ -47,3 +47,19 @@ new mission receives one immediate think countdown after the half-hour handler,
 including at midnight. First timers below 120 minutes retain an immediate-wave
 guard. Mission IDs/population are reserved together with daily base generation.
 Fresh/cache tests cover shortest supported delay, RNG ordering and transition reload.
+## Immediate airborne hunting creation (2026-10-07)
+
+Existing bases now preflight reachable ordinary score/supply waves at the actual
+ten-minute hunting caller. Eligible-craft forecasts and source/region/race proofs
+feed the common identity/population/wave checks before mutation. Pure birth
+candidates are excluded from earlier half-hour activity and detection. Execution
+shares the bounded mission think operation, appends the mission before thinking
+and updates its live counters at each immediate step. Initial ground states,
+hunters and unsupported immediate objectives retain a precise lifecycle guard.
+
+Reference: pinned `GeoscapeState::baseHunting/time10Minutes/time30Minutes`,
+`AlienMission::start/think/spawnUfo`; verified hunting-generation creation/countdown
+and world-wave fixtures. Fresh/cache tests cover ten-minute versus half-hour birth,
+no premature score/detection, source linkage, timer reset, transition reloads and
+atomic UFO-identity exhaustion. The prior eligibility/refusal regressions now use
+an explicit unsupported hunter rule; all 145 alien-base cases pass.

@@ -193,40 +193,9 @@ internal sealed partial class CampaignWorld
             var mission = _missions[index];
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
-            if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
-                mission.NextWave >= rule.Waves.Count)
-                continue;
-            if (mission.SpawnCountdown > 30)
-                _missions[index] = mission with { SpawnCountdown = mission.SpawnCountdown - 30 };
-            else
-            {
-                for (var work = 0; ; work++)
-                {
-                    if (work >= MaximumImmediateWaveSteps)
-                        throw new InvalidOperationException("Mission wave work changed after preflight.");
-                    var spawnsUfo = CanSpawnOrdinaryUfoWave(mission, rule);
-                    var spawnsSite = IsDirectSiteWave(mission, rule);
-                    if (!spawnsUfo && !spawnsSite && !CanAdvanceNoObjectWave(mission, rule))
-                        throw new InvalidOperationException("Alien mission wave changed after world preflight.");
-                    var wave = rule.Waves[mission.NextWave];
-                    if (InstantRetaliationWithoutTarget(mission, rule)) mission = mission with { Interrupted = true };
-                    if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
-                    if (spawnsSite) SpawnDirectSite(mission, rule);
-                    var completesBase = CompletesBaseObjective(mission, rule, wave);
-                    var completesInfiltration = CompletesInfiltration(mission, rule, wave);
-                    mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
-                    if (completesBase) CompleteBaseObjective(mission, rule);
-                    if (completesInfiltration)
-                    {
-                        CompleteInfiltration(mission, rule);
-                        if (rule.EndlessInfiltration) mission = WorldInfiltration.Restart(mission, rule, campaign.Random);
-                    }
-                    _missions[index] = mission;
-                    // Recursion tests the original timer, not the rounded countdown.
-                    if (mission.Interrupted || mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
-                }
-            }
+            _missions[index] = ThinkMission(mission, rule, index);
         }
+
         for (var index = _missions.Count - 1; index >= 0; index--)
         {
             var mission = _missions[index];
@@ -280,17 +249,37 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private AlienMissionSnapshot ThinkNoObjectMission(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    private AlienMissionSnapshot ThinkMission(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, int index)
     {
+        if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
+            mission.NextWave >= rule.Waves.Count) return mission;
         if (mission.SpawnCountdown > 30) return mission with { SpawnCountdown = mission.SpawnCountdown - 30 };
         for (var work = 0; ; work++)
         {
-            if (work >= MaximumImmediateWaveSteps || !CanAdvanceNoObjectWave(mission, rule))
-                throw new InvalidOperationException("Immediate no-object mission changed after preflight.");
+            if (work >= MaximumImmediateWaveSteps)
+                throw new InvalidOperationException("Mission wave work changed after preflight.");
+            var spawnsUfo = CanSpawnOrdinaryUfoWave(mission, rule);
+            var spawnsSite = IsDirectSiteWave(mission, rule);
+            if (!spawnsUfo && !spawnsSite && !CanAdvanceNoObjectWave(mission, rule))
+                throw new InvalidOperationException("Alien mission wave changed after world preflight.");
+            var wave = rule.Waves[mission.NextWave];
             if (InstantRetaliationWithoutTarget(mission, rule)) mission = mission with { Interrupted = true };
-            mission = AdvanceWaveCounters(mission, rule, spawnsUfo: false);
-            if (mission.Interrupted || mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) return mission;
+            if (spawnsUfo) _ufos.Add(SpawnOrdinaryUfo(mission, wave));
+            if (spawnsSite) SpawnDirectSite(mission, rule);
+            var completesBase = CompletesBaseObjective(mission, rule, wave);
+            var completesInfiltration = CompletesInfiltration(mission, rule, wave);
+            mission = AdvanceWaveCounters(mission, rule, spawnsUfo);
+            if (completesBase) CompleteBaseObjective(mission, rule);
+            if (completesInfiltration)
+            {
+                CompleteInfiltration(mission, rule);
+                if (rule.EndlessInfiltration) mission = WorldInfiltration.Restart(mission, rule, campaign.Random);
+            }
+            _missions[index] = mission;
+            // Recursion tests the original timer, not the rounded countdown.
+            if (mission.Interrupted || mission.NextWave == rule.Waves.Count || rule.Waves[mission.NextWave].SpawnTimer != 0) break;
         }
+        return mission;
     }
 
     private static bool IsOver(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule) =>

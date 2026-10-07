@@ -6,6 +6,24 @@ internal sealed partial class CampaignWorld
 {
     private const string GeneratedWaveBoundary = "Immediate generated mission waves require creation-tick lifecycle forecasts.";
 
+    private string? PrepareHuntingGeneratedWaveForecasts(CampaignTimeTrigger highest, IReadOnlySet<string>? research)
+    {
+        if (highest < CampaignTimeTrigger.TenMinutes) return null;
+        long work = 0;
+        _pass.CollectHuntingGeneratedWaves = true;
+        try
+        {
+            foreach (var source in _alienBases)
+            {
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (highest >= CampaignTimeTrigger.OneDay && BaseDestroyedAfterDailyResearch(source, research)) continue;
+                if (AlienBaseHuntingReason(source, AlienBaseRule(source), highest, ref work, out _) is { } reason) return reason;
+            }
+            return null;
+        }
+        finally { _pass.CollectHuntingGeneratedWaves = false; }
+    }
+
     private string? PrepareDailyGeneratedWaveForecasts(CampaignTimeTrigger highest, IReadOnlySet<string>? research)
     {
         if (highest < CampaignTimeTrigger.OneDay) return null;
