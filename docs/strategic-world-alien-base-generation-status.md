@@ -466,3 +466,13 @@ cities, shared final marker capacity and cleanup after the second hidden site's
 hourly discovery postponement. All 254 focused generation/site-spawn/base-hunting
 cases pass. This completes selected direct admission at both callers; activity
 uncertainty remains the third slice.
+
+Generated direct-site activity now unions the whole candidate chain per source,
+starting each mutually exclusive rule/region/race/area choice at the same ordered
+prefix. Real sources still add together, and optional negative births cannot
+provide headroom. All projection copying/merging is charged to the shared work
+limit. Four fresh/cache score/site-objective regressions first reproduce the
+old refusal, then accept exact last activity values, preserve reloads and retain
+atomic single/two-source overflow. All 280 focused generation/site-spawn/
+site-timer/base-hunting cases pass. Broader UFO activity and expiry-counter
+uncertainty remain separate work.
