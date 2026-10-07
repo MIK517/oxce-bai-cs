@@ -300,4 +300,9 @@ snapshot/RNG. Added initialized-speed tests cover hunt-speed zero/minus-one at
 both callers and retain strict combat refusal between nominal and escort reach.
 The existing escort-specific invalid-speed diagnostic remains intact; its strict
 regression caught the generic hunter reason during validation. The initial root
-batch passed all 3,302 tests; final validation follows the fixes.
+batch passed all 3,302 tests; final root validation passes all 3,306 tests without
+failures or skips, including native checksums, private corpus and unchanged
+allocation gates. All 310 focused generation/newborn/escort cases pass.
+Formatting, regenerated code-map and diff checks pass, and the pinned reference
+remains clean. Existing captures and diagnostic logs remain useful; this cycle
+created no disposable probes.
