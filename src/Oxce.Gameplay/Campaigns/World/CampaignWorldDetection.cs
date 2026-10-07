@@ -233,6 +233,9 @@ internal sealed partial class CampaignWorld
             }
         // Direct sites are appended during think, then processed after every existing
         // site. Their positive durations lose 1800 seconds and award deployment points.
+        WorldTargetReference? directSource = null;
+        ActivityRange[]? directRegionBaseline = null;
+        ActivityRange[]? directCountryBaseline = null;
         if (halfHour)
             foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch, includeHunting: false))
             {
@@ -241,11 +244,33 @@ internal sealed partial class CampaignWorld
                     campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
                 if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count ||
                     mission.SpawnCountdown > 30 || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra) continue;
+                var regions = regionTotals;
+                var countries = countryTotals;
+                if (forecast.Generated)
+                {
+                    // Collection keeps each source's alternatives together. Start
+                    // every candidate at the same prefix and union its outcomes.
+                    activityWork += 4L * (regions.Length + countries.Length);
+                    if (activityWork > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+                    if (directSource != mission.AlienBase)
+                    {
+                        directSource = mission.AlienBase;
+                        directRegionBaseline = (ActivityRange[])regions.Clone();
+                        directCountryBaseline = (ActivityRange[])countries.Clone();
+                    }
+                    regions = (ActivityRange[])directRegionBaseline!.Clone();
+                    countries = (ActivityRange[])directCountryBaseline!.Clone();
+                }
                 foreach (var step in DueWaveSteps(mission, rule))
                 {
                     if (!IsDirectSiteWave(step, rule)) continue;
-                    if (DirectSiteActivityReason(step, rule, regionTotals, countryTotals, ref activityWork,
+                    if (DirectSiteActivityReason(step, rule, regions, countries, ref activityWork,
                             guaranteedAward: !forecast.Generated) is { } reason) return reason;
+                }
+                if (forecast.Generated)
+                {
+                    for (var index = 0; index < regions.Length; index++) regionTotals[index].IncludeAlternative(regions[index]);
+                    for (var index = 0; index < countries.Length; index++) countryTotals[index].IncludeAlternative(countries[index]);
                 }
             }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
@@ -405,6 +430,12 @@ internal sealed partial class CampaignWorld
             _minimum += certain ? score : Math.Min(0, score);
             _maximum += certain ? score : Math.Max(0, score);
             return _minimum >= int.MinValue && _maximum <= int.MaxValue;
+        }
+
+        public void IncludeAlternative(ActivityRange other)
+        {
+            _minimum = Math.Min(_minimum, other._minimum);
+            _maximum = Math.Max(_maximum, other._maximum);
         }
     }
 

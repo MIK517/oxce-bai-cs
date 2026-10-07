@@ -239,6 +239,38 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(Enumerable.Range(0, 2), areas.Order());
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    public void GeneratedDirectActivityReservesExclusiveChoicesAndSeparateSources(bool cache, int objective)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        var content = GeneratedDirectSiteContent(cache, objective: objective, alternatives: true);
+        var initial = GeneratedDirectSiteSnapshot(content, 41);
+        initial = initial with { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 4] }, .. initial.Regions.Skip(1)] };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
+        Reload(content, campaign, 41, "generated-direct-exclusive-activity.sav");
+        AssertTimeBlocked(CampaignState.Restore(initial with
+        { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 3] }, .. initial.Regions.Skip(1)] },
+            content, new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
+        var twoSources = initial with
+        {
+            Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 8] }, .. initial.Regions.Skip(1)],
+            World = initial.World with { AlienBases = [initial.World.AlienBases[0], new(3, "GENERATED_DIRECT_BASE", "RACE_A", 0.6, 0.1)] },
+        };
+        campaign = CampaignState.Restore(twoSources, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(2, campaign.Capture().World.MissionSites.Count);
+        Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
+        AssertTimeBlocked(CampaignState.Restore(twoSources with
+        { Regions = [twoSources.Regions[0] with { ActivityAlien = [int.MaxValue - 7] }, .. twoSources.Regions.Skip(1)] },
+            content, new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
+    }
+
     private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
         int objective = 0, bool chain = false, bool alternatives = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
