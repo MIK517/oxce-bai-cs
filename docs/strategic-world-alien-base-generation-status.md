@@ -258,3 +258,17 @@ final root validation passes all 3,284 cases without failures or skips. Formatti
 regenerated code-map and diff checks pass, including native checksums, private
 corpus and unchanged allocation gates. The pinned reference remains clean;
 existing captures remain useful and this cycle created no disposable probes.
+
+## Generated escorts (2026-10-07)
+
+Both daily and hunting callers now admit grounded escort births whose timer
+keeps them landed through the creation tick. Native initialization may attach
+them to an earlier ordinary birth, relocating them and setting maximum speed
+before half-hour activity. Ground status still prevents both retarget passes;
+later takeoff restores trajectory speed without clearing escort linkage.
+Evidence: pinned `AlienMission::spawnUfo/ufoLifting`, `Ufo::think`,
+`Ufo::setEscortedUfo` and verified `strategic-hunting/spawnEscortRows` with
+grounded sources. Fresh/cache cases compare native flags/speed/status, no-leader
+and earlier-leader chains, caller scoring and reloads before/after birth and
+takeoff. The generation/escort focused suite passes 214 cases. Airborne generated
+escorts and same-tick ground release remain guarded pending their forecasts.
