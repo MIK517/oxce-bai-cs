@@ -440,3 +440,9 @@ old final-ID refusal, accept the exact remaining capacity through reload and
 retain atomic real exhaustion. All 184 focused generation/wave/site-spawn/
 site-timer cases pass. Alternative activity and expiry-counter uncertainty are
 still tracked as remaining work; this fix does not claim those complete.
+
+Final root validation passes all 3,366 tests without failures or skips, including
+native checksums, private corpus and the unchanged allocation gates. Full
+formatting verification, regenerated code-map and diff checks pass; the pinned
+reference is clean. Useful evidence/logs remain and no disposable probes were
+created in this cycle.
