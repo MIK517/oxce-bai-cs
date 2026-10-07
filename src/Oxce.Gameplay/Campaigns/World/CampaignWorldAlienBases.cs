@@ -71,6 +71,23 @@ internal sealed partial class CampaignWorld
             foreach (var mission in _missions)
                 if (mission.Id >= next && mission.Id < (long)next + possibleMissions)
                     return "Alien mission IDs or population exceed the supported limit.";
+            // Both generation callers precede the ten-minute retarget pass.
+            // Existing hunters then search the enlarged mission list; reserve
+            // that work even for delayed/no-object newly created missions.
+            work += _ufos.Count;
+            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            var retargetWork = Math.Max(_pass.HuntingForecastWork, _pass.HuntingRetargetWorkBound) +
+                (long)_pass.NewFlyingHunterBirths * possibleMissions;
+            var escortActors = _pass.EscortMissionLookupActors;
+            foreach (var saved in _ufos)
+            {
+                var projected = UfoForFlight(saved, highest);
+                if (projected.Status == UfoStatus.Flying && projected.HunterKiller) retargetWork += possibleMissions;
+                if (projected.Escorting) escortActors = Math.Max(escortActors, _ufos.Count);
+            }
+            retargetWork += escortActors * possibleMissions;
+            if (retargetWork > MaximumAlienBaseChecks)
+                return "UFO retargeting with generated missions exceeds the supported work limit.";
         }
         foreach (var owner in campaign.BaseStates)
         {

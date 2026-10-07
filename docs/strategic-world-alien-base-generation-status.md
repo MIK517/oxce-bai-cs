@@ -203,3 +203,13 @@ callers remain separate, so midnight daily-plus-hunting births add together.
 Fresh/cache seeded alternatives consume one or two identities at the allocator
 boundary and preserve the actual selected rule/race, live counts and reloads.
 All existing combined exhaustion regressions retain their strict refusal.
+
+The batch audit reproduced a post-mutation retarget work failure: 750 daily
+generated missions enlarge the lookup list for 1,400 saved airborne hunters.
+The earlier forecast counted only saved missions. The separate audit fix now
+reserves the enlarged list before the tick, including regular newly spawned
+airborne hunters and escort lookup actors, while retaining the existing craft,
+selection and follower work bounds. Pass-local reservations reset on every world
+preflight. Fresh/cache regressions cover both saved hunters and a 1,500-hunter
+saved-mission wave; all four cases refuse with unchanged snapshot and RNG state.
+All 56 focused generation cases pass. Full repository validation follows.

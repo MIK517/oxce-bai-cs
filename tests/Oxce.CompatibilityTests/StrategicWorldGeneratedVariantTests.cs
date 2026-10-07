@@ -95,6 +95,37 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.True(counts.SetEquals([1, 2]));
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedMissionsReserveFollowingSavedHunterMissionLookupsBeforeMutation(bool cache, bool born)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1}}");
+        var initial = VariantSnapshot(content, hunting: false);
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [owner with { Crafts = [], Soldiers = [] }],
+            World = new()
+            {
+                AlienBases = [.. Enumerable.Range(2, 750).Select(id => new AlienBaseSnapshot(id, "VARIANT_BASE", "RACE_A", 0.2, 0.1))],
+                Missions = [new(7, born ? "VARIANT_HUNTER_BIRTH" : "VARIANT_MISSION", "REGION", "RACE_A", born ? 0 : 1, 0, 0, born ? 0 : 1400, -1)],
+                Ufos = born ? [] : [.. Enumerable.Range(1, 1400).Select(id => new UfoSnapshot(id, "UFO_SCOUT", 7, "TRAJ_SPAWN_FIXED",
+                    0, 0, 0, UfoStatus.Flying, WorldAltitudes.High)
+                {
+                    HunterKiller = true,
+                    Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)),
+                })],
+            },
+        };
+        initial = initial.WithNextId("STR_UFO_UNIQUE", born ? 1 : 1401).WithNextId("ALIEN_MISSIONS", 8);
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+            "UFO retargeting with generated missions exceeds the supported work limit.");
+    }
+
     private static RuntimeContent GeneratedVariantContent(bool cache, string races, int targetOdds = 0, bool hunting = false, bool alternatives = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
             $$$"""
@@ -120,6 +151,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
               - type: VARIANT_OTHER
                 objective: 0
                 waves: [{ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
+              - type: VARIANT_HUNTER_BIRTH
+                objective: 0
+                waves: [{ufo: UFO_SCOUT, count: 1500, trajectory: TRAJ_SPAWN_FIXED, timer: 0, hunterKillerPercentage: 100}]
             """);
 
     private static CampaignSnapshot VariantSnapshot(RuntimeContent content, bool hunting) =>
