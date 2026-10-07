@@ -79,6 +79,12 @@ documents; entries here link to them instead of copying them.
   [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
 
 - Opening plan/scope commit: `b06cb39`.
+- 2026-10-07 generated site-objective cycle: both callers project selected
+  areas, conversion/expiry reloads and 72-hour activity; contact reservations
+  preserve mutually exclusive mission choices. See
+  [owned slices and batch audit](strategic-world-alien-base-generation-status.md#generated-site-objective-openings-2026-10-07).
+  Generated deployment-only objectives and broader uncertainty/closure work
+  remain open; later-branch guards and 4d are unchanged.
 - 2026-10-07 creation-tick ground-release cycle: daily, hunting and relocated
   escort births now use ordered takeoff activity reservations. See
   [owned slices and batch audit](strategic-world-alien-base-generation-status.md#creation-tick-ground-release-2026-10-07).

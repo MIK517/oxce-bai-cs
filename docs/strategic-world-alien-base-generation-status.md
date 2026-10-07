@@ -370,3 +370,13 @@ callers also compose for 72 hours with daily reloads through UFO deletion,
 mission cleanup and site expiry. All 196 focused generation/selected-site/
 base-hunting/conversion cases pass. Deployment-only generated objectives remain
 guarded; event payload, combat and campaign-month boundaries are unchanged.
+
+Generated daily contact and landing-marker reservations now take the largest
+possible chain per source, rather than summing mutually exclusive rule/race/
+region/area candidates. This follows native one-mission-per-source selection;
+late hunting contacts retain their separate caller reservation. Fresh/cache
+two/256-area cases use the last valid one/two-contact IDs, preserve strict
+reloads and refuse real exhaustion atomically. A selected-origin hunter case
+also proves that a safe first area cannot hide combat at the second area sharing
+candidate ID zero. All 338 focused generation/escort/newborn/selected-site cases
+pass. Later-branch boundaries remain intact.

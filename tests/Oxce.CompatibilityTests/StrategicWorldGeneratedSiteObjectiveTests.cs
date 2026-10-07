@@ -115,10 +115,77 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void GeneratedSiteAreasReserveOnePossibleMissionContactChain(bool cache, int count)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var areas in new[] { 2, 256 })
+        {
+            var content = GeneratedSiteObjectiveContent(cache, hunting: false, areaCount: areas, ufoCount: count);
+            var initial = GeneratedSiteObjectiveSnapshot(content, hunting: false, seed: 41)
+                .WithFacility("RADAR_TEST").WithNextId("STR_UFO", int.MaxValue - count);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(count, after.World.Ufos.Count);
+            Assert.All(after.World.Ufos, ufo => Assert.True(ufo.Detected));
+            Assert.Equal(Enumerable.Range(int.MaxValue - count, count), after.World.Ufos.Select(ufo => ufo.Id));
+            Assert.Equal(int.MaxValue, after.NextIds["STR_UFO"]);
+            Reload(content, campaign, 41, "site-last-contact-chain.sav");
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - count + 1),
+                content, new SplitMix64RandomSource(41)),
+                "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSiteHunterProofCannotLeakBetweenSelectedAreaOrigins(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var hunting in new[] { false, true })
+        {
+            var content = GeneratedSiteObjectiveContent(cache, hunting, selectedOrigin: true);
+            var initial = GeneratedSiteObjectiveSnapshot(content, hunting, 41);
+            var owner = initial.Bases[0];
+            initial = initial with
+            {
+                Bases = [owner with
+                {
+                    Crafts = [new("GENERATED_SITE_CRAFT", 1)
+                    {
+                        Logistics = CraftLogistics.LoadStarting(content.RuntimeRules.Crafts[
+                            content.RuntimeRules.Crafts.GetRequired("GENERATED_SITE_CRAFT")].Value, null) with
+                        {
+                            Status = "STR_OUT", Longitude = Degrees(12), Latitude = Degrees(-2),
+                            Fuel = 1000, Weapons = [],
+                        },
+                    }],
+                    Soldiers = [],
+                }],
+            };
+            // The first area is outside radar; the second starts on the craft.
+            // Both share the unallocated mission ID, rule, race and source.
+            AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        }
+    }
+
     private static RuntimeContent GeneratedSiteObjectiveContent(bool cache, bool hunting, bool landing = false,
-        int? areaCount = null) =>
+        int? areaCount = null, int ufoCount = 1, bool selectedOrigin = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"], cache, $$$"""
             {{{(areaCount is null ? "" : GeneratedSiteAreas(areaCount.Value))}}}
+            crafts:
+              - {type: GENERATED_SITE_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
+            ufoTrajectories:
+              - id: GENERATED_SITE_ORIGIN_PATH
+                waypoints: [[1, 3, 100], [4, 2, 80], [1, 0, 50], [6, 4, 100]]
             alienDeployments:
               - type: GENERATED_SITE_BASE
                 markerName: STR_ALIEN_BASE
@@ -140,7 +207,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 spawnZone: 1
                 siteType: GENERATED_SITE_DEPLOY
                 {{{(areaCount is null ? "" : "regionWeights: {0: {GENERATED_SITE_REGION: 1}}")}}}
-                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: SELECTED_SITE, timer: 0, objective: true, objectiveOnTheLandingSite: {{{landing.ToString().ToLowerInvariant()}}}}]
+                waves: [{ufo: UFO_SCOUT, count: {{{ufoCount}}}, trajectory: {{{(selectedOrigin ? "GENERATED_SITE_ORIGIN_PATH" : "SELECTED_SITE")}}}, timer: 0, objective: true, hunterKillerPercentage: {{{(selectedOrigin ? 100 : 0)}}}, objectiveOnTheLandingSite: {{{landing.ToString().ToLowerInvariant()}}}}]
             """);
 
     private static string GeneratedSiteAreas(int count) => $$$"""
