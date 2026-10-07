@@ -144,14 +144,22 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void HuntingInfiltrationCompletionStopsBeforeItsImmediatePrefix(bool cache)
+    public void HuntingInfiltrationCompletionRunsItsFiniteImmediatePrefix(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-infiltration");
         var content = GeneratedObjectiveOpeningContent(cache, 1, hunting: true, finalImmediate: true);
-        AssertTimeBlocked(CampaignState.Restore(GeneratedObjectiveOpeningSnapshot(content, hunting: true), content,
-            new SplitMix64RandomSource(41)), "Immediate generated objective completion requires objective birth forecasts.");
+        var campaign = CampaignState.Restore(GeneratedObjectiveOpeningSnapshot(content, hunting: true), content,
+            new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Single(after.Countries, country => country.NewPact);
+        Assert.Equal(2, after.World.AlienBases.Count);
+        Assert.Single(after.World.Ufos);
+        Assert.Equal((2, 1), (Assert.Single(after.World.Missions).NextWave, after.World.Missions[0].LiveUfos));
+        Reload(content, campaign, 41, "hunting-infiltration-immediate.sav");
     }
 
     [Theory]
@@ -250,24 +258,33 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void DailyGeneratedInfiltrationCreatesOnePendingPactAndLinkedBase(bool cache, bool countryBase, bool noObject)
+    [InlineData(false, false, false, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(false, true, false, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(false, false, true, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, true, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(false, false, false, true)]
+    [InlineData(true, false, false, true)]
+    [InlineData(false, true, false, true)]
+    [InlineData(true, true, false, true)]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, true, true, true)]
+    [InlineData(true, true, true, true)]
+    public void GeneratedInfiltrationCreatesOnePendingPactAndLinkedBase(bool cache, bool countryBase, bool noObject, bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-infiltration");
         TestFixtures.LoadVerifiedManifest(countryBase ? "strategic-infiltration-country" : "strategic-infiltration-region");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 1, prefix: false, raceAlternatives: true,
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        var content = GeneratedObjectiveOpeningContent(cache, 1, hunting: hunting, prefix: false, raceAlternatives: true,
             noObject: noObject, countryBase: countryBase);
         for (ulong seed = 1; seed <= 8; seed++)
         {
-            var initial = GeneratedObjectiveOpeningSnapshot(content) with { RandomState = seed };
+            var initial = GeneratedObjectiveOpeningSnapshot(content, hunting: hunting) with { RandomState = seed };
             initial = initial.WithNextId("STR_ALIEN_BASE", int.MaxValue - 1) with
             { Countries = initial.Countries.Select((country, index) => country with { Pact = index != 0 }).ToArray() };
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)),
@@ -278,7 +295,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             Assert.False(country.Pact);
             var born = Assert.Single(after.World.AlienBases, alienBase => alienBase.Id == int.MaxValue - 1);
             Assert.Equal(country.RuleId, born.PactCountryId);
-            Assert.Equal(noObject ? 0 : 3, after.Regions[0].ActivityAlien[^1] - initial.Regions[0].ActivityAlien[^1]);
+            Assert.Equal(noObject || hunting ? 0 : 3, after.Regions[0].ActivityAlien[^1] - initial.Regions[0].ActivityAlien[^1]);
             Assert.Equal(noObject ? 0 : 1, after.World.Ufos.Count);
             campaign = Reload(content, campaign, seed, "generated-infiltration-after.sav");
             Assert.Equal(country.RuleId, campaign.Capture().World.AlienBases[1].PactCountryId);
@@ -336,19 +353,25 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MultipleGeneratedInfiltrationSourcesReserveOnlyAvailableCountries(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void MultipleGeneratedInfiltrationSourcesReserveOnlyAvailableCountries(bool cache, bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-infiltration");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
-        var content = GeneratedObjectiveOpeningContent(cache, 1, prefix: false, noObject: true, raceAlternatives: true);
-        var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", int.MaxValue - 1);
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        var content = GeneratedObjectiveOpeningContent(cache, 1, hunting: hunting, prefix: false, noObject: true, raceAlternatives: true);
+        var initial = GeneratedObjectiveOpeningSnapshot(content, hunting: hunting).WithNextId("STR_ALIEN_BASE", int.MaxValue - 1);
         initial = initial with
         {
             Countries = initial.Countries.Select((country, index) => country with { Pact = index != 0 }).ToArray(),
             World = initial.World with
-            { AlienBases = [initial.World.AlienBases[0], new(3, "OBJECTIVE_OPENING_SOURCE", "RACE_A", 0.2, 0.1)] },
+            {
+                AlienBases = [initial.World.AlienBases[0], new(3, "OBJECTIVE_OPENING_SOURCE", "RACE_A", 0.2, 0.1)
+                { MinutesSinceLastHuntMissionGeneration = 5390 }]
+            },
         };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
             41, "shared-country-generation-before.sav");
@@ -399,6 +422,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 genMissionFreq: {{{(hunting ? 0 : 100)}}}
                 genMissionLimit: 1
                 genMissionRaceFromAlienBase: {{{!raceAlternatives}}}
+                huntMissionRaceFromAlienBase: {{{!raceAlternatives}}}
                 baseDetectionRange: {{{(hunting ? 100 : 0)}}}
                 baseDetectionChance: 100
                 huntMissionMaxFrequency: 5400

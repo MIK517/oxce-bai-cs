@@ -692,3 +692,16 @@ native fixture checksums, private corpus and populated allocation gates.
 Formatting verification, regenerated code-map and diff checks pass. The pinned
 reference is clean; useful native birth captures remain and the empty successful
 format log was removed. This closes the three-slice final-objective cycle and audit.
+
+## Late infiltration and generated retaliation (2026-10-08)
+
+Late hunting infiltration completion now uses the caller-specific base/marker
+and projected-country forecasts instead of its generic immediate-completion
+guard. Native `AlienMission::think`, country eligibility and the saved-end
+`baseHunting` capture define the same pending-pact transition after the
+half-hour site pass. Eight additional fresh/cache placement/wave cases exercise
+alternate races, final ID capacity, reloads and 72 hours through cleanup. The
+finite two-wave hunting chain now completes instead of stopping at its prefix;
+two further cases preserve single-country capacity across competing hunting
+sources. All 337 focused generation/infiltration/repeat/objective-base cases
+pass. Pact signing, event payloads and month rollover remain deferred.
