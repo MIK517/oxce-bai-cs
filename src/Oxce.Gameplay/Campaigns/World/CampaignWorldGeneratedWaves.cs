@@ -41,7 +41,7 @@ internal sealed partial class CampaignWorld
                     !campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle)) continue;
                 var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
                 if (rule.Waves.Count == 0 || rule.Waves[0].SpawnTimer / 30 / 2 > 1 ||
-                    rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply)) continue;
+                    rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site)) continue;
                 work += rule.Waves.Count;
                 if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (!rule.Waves.Any(wave => wave.Ufo is not null)) continue;
@@ -88,9 +88,12 @@ internal sealed partial class CampaignWorld
             foreach (var step in DueWaveSteps(candidate, rule))
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (CanAdvanceNoObjectWave(step, rule)) continue;
                 var wave = rule.Waves[step.NextWave];
-                if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply) ||
+                // Ordinary site-mission waves do not consume the chosen site area.
+                // Immediate objective waves need their site-effect forecasts first.
+                if (rule.Objective == RuntimeMissionObjective.Site && wave.Objective) return GeneratedWaveBoundary;
+                if (CanAdvanceNoObjectWave(step, rule)) continue;
+                if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) ||
                     wave.Ufo is not { } ufo || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
                 var ufoRule = campaign.Content.RuntimeRules.Ufos[ufo].Value;
                 var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;

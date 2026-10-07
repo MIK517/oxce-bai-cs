@@ -310,7 +310,75 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0) =>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedNonObjectiveSiteWavesComposeForSeventyTwoHoursWithReloads(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var ground in new[] { 0, 2 })
+        {
+            var content = GeneratedWaveContent(cache, 0, hunting: true, combined: true, groundTimer: ground, site: true);
+            var initial = HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 23, 59, 55));
+            initial = initial with
+            {
+                World = initial.World with
+                {
+                    AlienBases = [initial.World.AlienBases[0] with { MinutesSinceLastHuntMissionGeneration = 5390 }],
+                },
+            };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+                19, "ordinary-site-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(2, after.World.Missions.Count);
+            Assert.Equal(2, after.World.Ufos.Count);
+            Assert.Empty(after.World.MissionSites);
+            Assert.All(after.World.Missions, mission =>
+            {
+                Assert.InRange(mission.MissionSiteZoneArea, 0, 1);
+                Assert.Equal((1, 1), (mission.NextWave, mission.LiveUfos));
+                Assert.InRange(mission.SpawnCountdown, 4500, 13500);
+            });
+            Assert.Equal(initial.Regions[0].ActivityAlien[^1] + (ground == 0 ? 3 : 6), after.Regions[0].ActivityAlien[^1]);
+            Assert.False(after.World.Ufos[1].Detected);
+            campaign = Reload(content, campaign, 19, "ordinary-site-birth.sav");
+            for (var day = 0; day < 3; day++)
+            {
+                AdvanceUnblocked(campaign, 17_280);
+                campaign = Reload(content, campaign, 19, $"ordinary-site-day-{day}.sav");
+            }
+            var end = campaign.Capture();
+            Assert.Equal(5, end.Time.Day);
+            Assert.Empty(end.World.MissionSites);
+            Assert.Equal(2, end.World.Missions.Count);
+            Assert.All(end.World.Missions, mission => Assert.Equal(1, mission.NextWave));
+            Assert.Equal(1, end.World.AlienBases[0].GenMissionCount);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedSiteObjectiveFollowUpRetainsAnAtomicCreationBoundary(bool cache)
+    {
+        foreach (var hunting in new[] { false, true })
+        {
+            var content = GeneratedWaveContent(cache, 0, hunting, site: true, siteObjectiveTimer: 0);
+            var initial = hunting ? HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, 29, 55))
+                : GeneratedWaveSnapshot(content, 19);
+            if (hunting) initial = initial with
+            {
+                World = initial.World with { AlienBases = [initial.World.AlienBases[0] with { MinutesSinceLastHuntMissionGeneration = 5390 }] },
+            };
+            AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+                "Immediate generated mission waves require creation-tick lifecycle forecasts.");
+        }
+    }
+
+    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0, bool site = false, int siteObjectiveTimer = 9000) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
             $$$"""
             alienDeployments:
@@ -323,15 +391,16 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 genMissionRaceFromAlienBase: {{{(!chain).ToString().ToLowerInvariant()}}}
                 baseDetectionRange: {{{(hunting ? 100 : 0)}}}
                 baseDetectionChance: 100
-                huntMissionMaxFrequency: 60
+                huntMissionMaxFrequency: {{{(site ? 5400 : 60)}}}
                 huntMissionRaceFromAlienBase: {{{(!chain).ToString().ToLowerInvariant()}}}
                 huntMissionWeights: {0: {GENERATED_WAVE: 1}}
             alienMissions:
               - type: GENERATED_WAVE
-                objective: 0
+                objective: {{{(site ? 3 : 0)}}}
+                spawnZone: 1
                 interruptResearch: GEN_STOP
                 {{{(chain ? "regionWeights: {0: {REGION_SECOND: 1}}\n    raceWeights: {0: {RACE_A: 1, RACE_B: 1}}" : "")}}}
-                waves: {{{GeneratedWaves(timer, chain, groundTimer, hunterPercentage)}}}
+                waves: {{{GeneratedWaves(timer, chain, groundTimer, hunterPercentage, site, siteObjectiveTimer)}}}
             ufoTrajectories:
               - id: GENERATED_GROUND_PATH
                 groundTimer: {{{groundTimer}}}
@@ -341,7 +410,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 sightRange: 0
             """);
 
-    private static string GeneratedWaves(int timer, bool chain, int groundTimer, int hunterPercentage) => chain
+    private static string GeneratedWaves(int timer, bool chain, int groundTimer, int hunterPercentage, bool site, int siteObjectiveTimer) => site
+        ? $"[{{ufo: UFO_SCOUT, count: 1, trajectory: {(groundTimer != 0 ? "GENERATED_GROUND_PATH" : "TRAJ_SPAWN_FIXED")}, timer: {timer}}}, {{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: {siteObjectiveTimer}, objective: true}}]"
+        : chain
         ? "[{ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0}, {ufo: UFO_SCOUT, count: 3, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]"
         : $"[{{ufo: UFO_SCOUT, count: 1, trajectory: {(groundTimer != 0 ? "GENERATED_GROUND_PATH" : "TRAJ_SPAWN_FIXED")}, timer: {timer}, hunterKillerPercentage: {hunterPercentage}}}]";
 
