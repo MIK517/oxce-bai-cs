@@ -27,6 +27,9 @@ internal sealed partial class CampaignWorld
         public HashSet<(int Source, string Deployment, string Mission)>? DailyGeneratedWaveProofs;
         public HashSet<(int Source, string Deployment, string Mission)>? HuntingGeneratedWaveProofs;
         public bool CollectHuntingGeneratedWaves;
+        public int NewFlyingHunterBirths;
+        public long HuntingRetargetWorkBound;
+        public long EscortMissionLookupActors;
         public bool? NewHunterHasNoTarget;
         public CampaignTimeTrigger NewbornHighestTrigger;
         public List<CustomCounterChange>? SiteBirthIdChanges;
@@ -79,6 +82,9 @@ internal sealed partial class CampaignWorld
             DailyGeneratedWaveProofs = null;
             HuntingGeneratedWaveProofs = null;
             CollectHuntingGeneratedWaves = false;
+            NewFlyingHunterBirths = 0;
+            HuntingRetargetWorkBound = 0;
+            EscortMissionLookupActors = 0;
             NewHunterHasNoTarget = null;
             NewbornHighestTrigger = highest;
             SiteBirthIdChanges = null;

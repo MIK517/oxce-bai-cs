@@ -166,6 +166,9 @@ internal sealed partial class CampaignWorld
             return "New UFO escort selection exceeds the supported work limit.";
         if (2L * (savedMovingEscorts + newEscorts) * finalUfoCount > MaximumAlienBaseChecks)
             return "New UFO escort movement exceeds the supported work limit.";
+        _pass.EscortMissionLookupActors = savedMovingEscorts + newEscorts != 0 ? finalUfoCount : 0;
+        _pass.NewFlyingHunterBirths = newFlyingHunters;
+        _pass.HuntingRetargetWorkBound = _pass.HuntingForecastWork + escortWork + newbornFollowerWork;
         if (ufoSpawns != 0 && HasDestroyedUfoAfterTransitions(highest))
         {
             var terminal = 0;
@@ -177,10 +180,11 @@ internal sealed partial class CampaignWorld
         }
         if (newFlyingHunters != 0)
         {
-            var retargetWork = _pass.HuntingForecastWork + escortWork + newbornFollowerWork;
+            var retargetWork = _pass.HuntingRetargetWorkBound;
             if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref retargetWork, out var possibleCrafts) is { } populationReason)
                 return populationReason;
-            if (retargetWork + (possibleCrafts + campaign.BaseStates.Count + (long)_missions.Count) * newFlyingHunters > MaximumAlienBaseChecks)
+            _pass.HuntingRetargetWorkBound = retargetWork + (possibleCrafts + campaign.BaseStates.Count + (long)_missions.Count) * newFlyingHunters;
+            if (_pass.HuntingRetargetWorkBound > MaximumAlienBaseChecks)
                 return "New UFO retargeting exceeds the supported work limit.";
         }
         if ((long)_ufos.Count + ufoSpawns > 100_000) return "World UFO population exceeds the supported limit.";
