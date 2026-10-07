@@ -348,3 +348,16 @@ defer newborn takeoffs. Root validation passes all 3,316 tests without failures
 or skips, including native checksums, private corpus and unchanged allocation
 gates. Formatting, code-map and diff checks pass; the pinned reference remains
 clean. Existing evidence remains useful and no disposable probes were created.
+
+## Generated site-objective openings (2026-10-07)
+
+Daily site-objective UFO births now project every selectable site area before
+allocation. Ordinary opening waves still share an area-neutral candidate; due
+objective waves receive the exact selected index, and newborn hunter proofs
+include that index when consumed. Pinned `GenerateSupplyMission`,
+`AlienMission::getWaypoint/spawnUfo/ufoReachedWaypoint` and verified
+`strategic-world-lifecycle/selectedSiteRows` establish selection and landing
+semantics. Fresh/cache seeded cases cover both selected city areas and
+`objectiveOnTheLandingSite`, strict birth/conversion/expiry reloads and precise
+empty-zone/resource-limit refusals. All 198 focused generation/selected-site/
+newborn cases pass. Hunting openings remain guarded for the next slice.

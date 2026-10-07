@@ -5,11 +5,12 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private readonly record struct NewbornHuntingProof(int Mission, string Rule, string Region, string Race,
-        WorldTargetReference? Source, int Wave, int Counter, string Ufo, int Mode);
+        WorldTargetReference? Source, int Area, int Wave, int Counter, string Ufo, int Mode);
 
     private NewbornHuntingProof HuntingProof(AlienMissionSnapshot mission, RuntimeMissionWave wave, bool generated = false) =>
         new(generated ? 0 : mission.Id, mission.RuleId, mission.RegionId, mission.Race, mission.AlienBase,
-            mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave));
+            wave.Objective ? mission.MissionSiteZoneArea : -1, mission.NextWave, mission.NextUfoCounter,
+            wave.UfoType, NewbornHuntMode(wave));
 
     private bool HasHuntingProof(HashSet<NewbornHuntingProof> proofs, AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
         proofs.Contains(HuntingProof(mission, wave)) || mission.AlienBase is not null &&
