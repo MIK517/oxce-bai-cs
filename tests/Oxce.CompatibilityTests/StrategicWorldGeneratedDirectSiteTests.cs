@@ -375,12 +375,54 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HuntingDirectSiteIdsFollowEarlierSavedExpiryCounters(bool cache, bool decrease)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        var content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: decrease ? -1 : 1);
+        var shiftedId = decrease ? 4 : 6;
+        var initial = GeneratedDirectSiteSnapshot(content, 41, hunting: true).WithNextId("DIRECT_MARKER", 5);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                MissionSites = [new(3, "DIRECT_OVERRIDE", "GENERATED_EXPIRY_SHIFT", "RACE_A", 0.2, 0.1, 0) { Detected = true },
+                    new(shiftedId, "DIRECT_OVERRIDE", "DIRECT_DEPLOY", "RACE_A", 0.2, 0.1, 10_000) { Detected = true }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            "Mission site marker IDs are exhausted or collide with a saved target.");
+        foreach (var counter in decrease ? new[] { 1, 5 } : new[] { 5 })
+        {
+            var safe = initial.WithNextId("DIRECT_MARKER", counter) with
+            {
+                World = initial.World with
+                { MissionSites = [initial.World.MissionSites[0], initial.World.MissionSites[1] with { Id = 8 }] },
+            };
+            var campaign = Reload(content, CampaignState.Restore(safe, content, new SplitMix64RandomSource(41)),
+                41, "hunting-expiry-shift-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var site = Assert.Single(campaign.Capture().World.MissionSites, site => !site.Detected);
+            Assert.Equal(Math.Max(1, counter + (decrease ? -1 : 1)), site.Id);
+            Reload(content, campaign, 41, "hunting-expiry-shift-after.sav");
+        }
+    }
+
     private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
-        int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false, int directCount = 1) =>
+        int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false, int directCount = 1, int expiryShift = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_DIRECT_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             alienDeployments:
+              - type: GENERATED_EXPIRY_SHIFT
+                markerName: GENERATED_EXPIRY_MARKER
+                duration: [0, 0]
+                {{{(expiryShift > 0 ? "counterDespawn: DIRECT_MARKER" : expiryShift < 0 ? "decreaseCounterDespawn: DIRECT_MARKER" : "")}}}
               - type: GENERATED_DIRECT_BASE
                 markerName: STR_ALIEN_BASE
                 genMission: {GENERATED_DIRECT_MISSION: 1}

@@ -554,3 +554,13 @@ one/two-site regressions that reproduce the old refusal, accept exact custom and
 marker capacity through transition reloads, and reject real overflow and two-source
 composition atomically. All 246 generation/site-spawn cases pass. Projection
 work is charged and scratch state is private to one preflight pass.
+
+Late hunting direct-site IDs now include the preceding half-hour saved-site
+expiry counters and possible newborn expiry changes. The bounded prefix is
+computed once per pass and applies guaranteed saved changes in native order,
+retaining the one-based decrease floor. Daily births still precede site expiry;
+hunting births follow it, as in `GeoscapeState::time30Minutes/time10Minutes`.
+Four fresh/cache regressions first reproduce increment/decrement collisions
+with a surviving target, then stop atomically while safe shifted/floor IDs
+execute through before/after reloads. All 272 generation/site-spawn/site-timer
+cases pass. Same-tick daily/hunting birth composition is part of the batch audit.

@@ -181,7 +181,12 @@ internal sealed partial class CampaignWorld
             }
             if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } productionWork)
                 return productionWork;
-            var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest, includeProduction: true);
+            if (!processThisTick && PrepareBeforeHuntingSiteCounters(highest, ref work) is { } siteCounterReason)
+                return siteCounterReason;
+            work += !processThisTick ? _pass.BeforeHuntingSiteCounterForecast?.Count ?? 0 : 0;
+            if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+            var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest,
+                !processThisTick ? _pass.BeforeHuntingSiteCounterForecast : null, includeProduction: true);
             var end = range.Maximum + count;
             if (range.Minimum <= 0 || end > int.MaxValue ||
                 _sites.Any(site => MarkerName(site.DeploymentId) == marker && site.Id >= range.Minimum && site.Id < end) ||
