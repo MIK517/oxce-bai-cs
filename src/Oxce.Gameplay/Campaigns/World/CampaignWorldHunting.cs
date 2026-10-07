@@ -58,7 +58,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? ProjectHunting(UfoSnapshot ufo, CampaignTimeTrigger highest, bool due, bool forecastFuel,
-        ref long work, out UfoSnapshot projected, out bool alert)
+        ref long work, out UfoSnapshot projected, out bool alert, AlienMissionSnapshot? missionForecast = null)
     {
         projected = ufo;
         alert = false;
@@ -76,7 +76,7 @@ internal sealed partial class CampaignWorld
         var rule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         work += _missions.Count;
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-        var mission = FindMission(ufo.MissionId);
+        var mission = missionForecast ?? FindMission(ufo.MissionId);
         if (mission is null) return "UFO mission link requires world simulation.";
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum;
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;

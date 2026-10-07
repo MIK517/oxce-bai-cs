@@ -66,8 +66,8 @@ internal sealed partial class CampaignWorld
         public Dictionary<int, List<CampaignState.CraftState>>? HuntingCraftSources;
         public long? BaseHuntingCraftPopulationBound;
         public IReadOnlySet<string>? BaseHuntingCraftRemovalTypes;
-        public readonly HashSet<(int Mission, int Wave, int Counter, string Ufo, int Mode)> NewbornNoTargetProofs = [];
-        public readonly HashSet<(int Mission, int Wave, int Counter, string Ufo, int Mode)> NewbornSafeHuntingProofs = [];
+        public readonly HashSet<NewbornHuntingProof> NewbornNoTargetProofs = [];
+        public readonly HashSet<NewbornHuntingProof> NewbornSafeHuntingProofs = [];
         public List<WorldPosition>? EscortFlightPositions;
         public (UfoSnapshot? Source, UfoSnapshot? Projected)[]? EscortFlightTargets;
         public int EscortFlightEndIndex;

@@ -1,6 +1,7 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
+using Oxce.Mods.Rulesets.Content;
 using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
@@ -50,5 +51,136 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         exhausted = exhausted with { Bases = [exhausted.Bases[0] with { Crafts = [], Soldiers = [] }] };
         AssertTimeBlocked(CampaignState.Restore(exhausted.WithNextId("STR_UFO_UNIQUE", int.MaxValue), content,
             new SplitMix64RandomSource(19)), "UFO unique IDs are exhausted or collide with a saved UFO.");
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void DailyGeneratedHuntersSelectNativeCraftAndPersistTheirPursuit(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = GeneratedHunterContent(cache, mode);
+        var initial = GeneratedHunterSnapshot(content);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            81, "generated-pursuit-before.sav");
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        var born = Assert.Single(after.World.Ufos);
+        var selection = TestFixtures.Rows(oracle.RootElement, "selectionRows").Single(row =>
+            row[0].GetInt32() == born.HuntMode && row[1].GetInt32() == 0);
+        var transition = TestFixtures.Rows(oracle.RootElement, "retargetRows").Single(row => row[0].GetInt32() == 150);
+        Assert.True(born.HunterKiller);
+        Assert.True(born.Hunting);
+        Assert.True(born.Detected);
+        Assert.Equal(selection[2].GetInt32(), born.Destination!.Id);
+        Assert.Equal(transition[1].GetInt32(), born.Speed);
+        Assert.Equal(WorldPosition.Create(Degrees(362), Degrees(2)), born.OriginalWaypoint);
+        Assert.Equal(born.UniqueId, Assert.Single(result.Events.OfType<UfoStartedHunting>()).UniqueId);
+        Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 3, after.Regions[0].ActivityAlien[^1]);
+        Assert.Equal(1, Assert.Single(after.World.Missions).LiveUfos);
+        campaign = Reload(content, campaign, 81, "generated-pursuit-after.sav");
+        AdvanceUnblocked(campaign, 12);
+        Reload(content, campaign, 81, "generated-pursuit-following.sav");
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue), content,
+            new SplitMix64RandomSource(81)), "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [owner with { Crafts = [owner.Crafts[0] with
+        { Logistics = owner.Crafts[0].Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8) } }] }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedHunterProofsCannotLeakBetweenSourcesWithTheSameCandidateId(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = GeneratedHunterContent(cache, 0);
+        var initial = GeneratedHunterSnapshot(content);
+        var target = initial.Bases[0].Crafts[0].Logistics!;
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBases =
+            [new(2, "GENERATED_HUNTER_BASE", "RACE_A", 0.45, 0),
+             new(3, "GENERATED_HUNTER_BASE", "RACE_A", target.Longitude, target.Latitude)]
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+            crafts:
+              - {type: GENERATED_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
+              - {type: GENERATED_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
+            ufos:
+              - {type: GENERATED_HUNTER, speedMax: 2200, damageMax: 50, radarRange: 300, huntSpeed: 150, hunterKillerPercentage: 100, huntMode: {{{mode}}}, noAlert: true, missionScore: 3}
+            ufoTrajectories:
+              - id: GENERATED_HUNTER_PATH
+                waypoints: [[4, 3, 100], [3, 2, 80], [0, 3, 50]]
+            alienDeployments:
+              - type: GENERATED_HUNTER_BASE
+                markerName: STR_ALIEN_BASE
+                genMission: {GENERATED_HUNTER_MISSION: 1}
+                genMissionFreq: {{{(hunting ? 0 : 100)}}}
+                genMissionLimit: 1
+                baseDetectionRange: {{{(hunting ? 500 : 0)}}}
+                baseDetectionChance: 100
+                huntMissionMaxFrequency: 60
+                huntMissionWeights: {0: {GENERATED_HUNTER_MISSION: 1}}
+            alienMissions:
+              - type: GENERATED_HUNTER_MISSION
+                objective: 0
+                operationType: 1
+                waves: [{ufo: GENERATED_HUNTER, count: 1, trajectory: GENERATED_HUNTER_PATH, timer: 0}]
+            """);
+
+    private static CampaignSnapshot GeneratedHunterSnapshot(RuntimeContent content, bool hunting = false)
+    {
+        var initial = CreateSnapshot(content, "Generated hunting") with
+        { Time = hunting ? new(1, 1, 1, 1999, 0, 9, 55) : new(1, 1, 1, 1999, 23, 59, 55), RandomState = 81 };
+        var owner = initial.Bases[0];
+        var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+        CraftSnapshot Craft(int id, string rule) => template with
+        {
+            Id = id,
+            RuleId = rule,
+            Logistics = template.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 1000,
+                Damage = 0,
+                Weapons = [],
+                Speed = 0,
+                SpeedRadian = 0,
+                Longitude = Degrees(10) + WorldGeometry.Nautical(100),
+                Latitude = Degrees(8),
+                Destination = null,
+                LowFuel = false,
+                MissionComplete = false,
+                IsAutoPatrolling = false,
+            },
+        };
+        return initial with
+        {
+            Bases = [owner with { Crafts = [Craft(1, "GENERATED_SLOW"), Craft(2, "GENERATED_FAST")], Soldiers = [] }],
+            World = new()
+            {
+                AlienBases = [new(2, "GENERATED_HUNTER_BASE", "RACE_A", Degrees(10), Degrees(8))
+                { MinutesSinceLastHuntMissionGeneration = hunting ? 50 : 0 }]
+            },
+        };
     }
 }
