@@ -16,7 +16,9 @@ internal sealed partial class CampaignWorld
         {
             candidateRegions = regions;
             candidateCountries = countries;
-            work += 4L * (regions.Length + countries.Length);
+            // At a new source: two baseline copies, two candidate copies and
+            // the complete merge. Later choices consume no more than this.
+            work += 5L * (regions.Length + countries.Length);
             if (work > MaximumAlienBaseChecks) return workReason;
             var key = (source, hunting);
             if (_source != key)
