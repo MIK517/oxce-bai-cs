@@ -79,6 +79,8 @@ documents; entries here link to them instead of copying them.
   [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
 
 - Opening plan/scope commit: `b06cb39`.
+- 2026-10-07 initial ground/site cycle: safe daily ground births now use the
+  existing lifecycle forecasts. See [owned evidence](strategic-world-alien-base-generation-status.md#initial-ground-and-site-wave-creation-2026-10-07).
 - 2026-10-07 immediate generation cycle: daily airborne births join the existing
   wave forecasts, hunting uses its later caller, and composed zero-timer chains
   have transition acceptance. See [generation evidence](strategic-world-alien-base-generation-status.md#immediate-airborne-generation-2026-10-07)
