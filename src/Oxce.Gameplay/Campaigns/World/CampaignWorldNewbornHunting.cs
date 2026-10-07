@@ -37,8 +37,14 @@ internal sealed partial class CampaignWorld
         var rule = rules.Ufos[handle].Value;
         var path = rules.UfoTrajectories[trajectory].Value;
         if (path.Waypoints.Count == 0 || path.Altitude(0) == 0 ||
-            (wave.HunterKillerPercentage == -1 ? rule.HunterKillerPercentage : wave.HunterKillerPercentage) <= 0 ||
-            NoCraftCanBecomeHunterTarget()) return null;
+            (wave.HunterKillerPercentage == -1 ? rule.HunterKillerPercentage : wave.HunterKillerPercentage) <= 0) return null;
+        // Retargeting consumes these stats even with no selectable craft. A zero
+        // trajectory percentage must not hide an invalid maximum until after birth.
+        var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum;
+        var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
+        if (maximum is < 0 or > int.MaxValue || radar is < int.MinValue or > int.MaxValue)
+            return "UFO hunting stats exceed the supported range.";
+        if (NoCraftCanBecomeHunterTarget()) return null;
         var mode = NewbornHuntMode(wave);
         var key = HuntingProof(mission, wave);
         if (_pass.NewbornNoTargetProofs.Contains(key)) return null;
@@ -48,14 +54,12 @@ internal sealed partial class CampaignWorld
         var possibleHunt = false;
         var initializedEscort = false;
         var canRemainIdle = true;
-        var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
         if (radar > 0)
         {
             if (ForecastNewbornCraftCandidates(includeIgnored: false, ref _pass.HuntingForecastWork, out var candidate) is { } candidateReason)
                 return candidateReason;
             if (candidate)
             {
-                if (radar is < 0 or > int.MaxValue) return null;
                 var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
                 if (!TryOrdinarySpawnPositions(mission, missionRule, path, region, out var positions) || positions.Count == 0)
                     return null;

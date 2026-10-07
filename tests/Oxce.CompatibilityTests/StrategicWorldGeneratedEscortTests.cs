@@ -195,6 +195,37 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.Equal(4, outcomes.Count);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedEscortCombatProofRetainsInitializedSpeedWhenHuntDoesNotOverride(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var hunting in new[] { false, true })
+            foreach (var speed in new[] { 0, -1 })
+            {
+                Assert.Contains(TestFixtures.Rows(oracle.RootElement, "retargetRows"), row => row[0].GetInt32() == speed && row[1].GetInt32() == 900);
+                var content = GeneratedEscortContent(cache, hunting, ground: false, leader: true, radar: 300, huntSpeed: speed);
+                var origin = new WorldPosition(Degrees(8), Degrees(2));
+                var initial = TargetedGeneratedEscortSnapshot(content, hunting, origin);
+                var owner = initial.Bases[0];
+                var craft = owner.Crafts[0];
+                var close = initial with
+                {
+                    Bases = [owner with { Crafts = [craft with
+                { Logistics = craft.Logistics! with { Longitude = origin.Longitude + WorldGeometry.RadianSpeed(1000) } }] }]
+                };
+                AssertTimeBlocked(CampaignState.Restore(close, content, new SplitMix64RandomSource(81)),
+                    "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+                var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+                AdvanceUnblocked(campaign, 1);
+                var born = Assert.Single(campaign.Capture().World.Ufos, ufo => ufo.RuleId == "GENERATED_ESCORT");
+                Assert.True(born.Hunting);
+                Assert.Equal(2200, born.Speed);
+                Reload(content, campaign, 81, "generated-no-speed-override.sav");
+            }
+    }
+
     private static CampaignSnapshot TargetedGeneratedEscortSnapshot(RuntimeContent content, bool hunting, WorldPosition origin)
     {
         var initial = GeneratedEscortSnapshot(content, hunting);
@@ -217,7 +248,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     private static RuntimeContent GeneratedEscortContent(bool cache, bool hunting, bool ground, bool leader,
-        int radar = 0, int mode = 0, int percentage = 100, int count = 1) =>
+        int radar = 0, int mode = 0, int percentage = 100, int count = 1, int huntSpeed = 150) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_ESCORT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
@@ -227,7 +258,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 speedMax: 2200
                 damageMax: 50
                 radarRange: {{{radar}}}
-                huntSpeed: 150
+                huntSpeed: {{{huntSpeed}}}
                 huntMode: {{{mode}}}
                 hunterKillerPercentage: {{{percentage}}}
                 noAlert: true
