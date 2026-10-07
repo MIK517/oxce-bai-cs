@@ -337,8 +337,46 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void GeneratedExpiryCountersReserveCompleteChainsAcrossRaceAlternatives(bool cache, int count)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedDirectSiteContent(cache, deployment: "DIRECT_ZERO_COUNTERS", alternatives: true, directCount: count);
+        for (ulong seed = 1; seed <= 8; seed++)
+        {
+            var initial = GeneratedDirectSiteSnapshot(content, seed)
+                .WithNextId("shared", int.MaxValue - 2 * count)
+                .WithNextId("DIRECT_MARKER", int.MaxValue - 2 * count);
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)),
+                seed, "generated-expiry-capacity-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Empty(after.World.MissionSites);
+            Assert.Empty(after.World.Missions);
+            Assert.Equal(int.MaxValue, after.NextIds["shared"]);
+            Assert.Equal(int.MaxValue, after.NextIds["DIRECT_MARKER"]);
+            Reload(content, campaign, seed, "generated-expiry-capacity-after.sav");
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("shared", int.MaxValue - 2 * count + 1), content,
+                new SplitMix64RandomSource(seed)), "Mission site custom counter exceeds the supported range.");
+            var twoSources = initial with
+            {
+                World = initial.World with
+                {
+                    AlienBases = [initial.World.AlienBases[0], new(3, "GENERATED_DIRECT_BASE", "RACE_A", 0.6, 0.1)],
+                },
+            };
+            AssertTimeBlocked(CampaignState.Restore(twoSources.WithNextId("DIRECT_MARKER", 1), content,
+                new SplitMix64RandomSource(seed)), "Mission site custom counter exceeds the supported range.");
+        }
+    }
+
     private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
-        int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false) =>
+        int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false, int directCount = 1) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_DIRECT_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
@@ -370,7 +408,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 spawnZone: {{{(objective == 3 && chain ? 1 : 0)}}}
                 regionWeights: {{{(chain ? "{0: {REGION: 1}}" : "{0: {SITE_SPAWN_REGION: 1}}")}}}
                 waves:
-                  - {ufo: {{{deployment}}}, count: 1, trajectory: DIRECT_SITE, timer: 0, objective: {{{objective == 3}}}}
+                  - {ufo: {{{deployment}}}, count: {{{directCount}}}, trajectory: DIRECT_SITE, timer: 0, objective: {{{objective == 3}}}}
                   {{{(chain ? "- {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}\n      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}" : "")}}}
                   {{{(repeatSite ? "- {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}" : "")}}}
               - type: GENERATED_DIRECT_NEGATIVE_MISSION

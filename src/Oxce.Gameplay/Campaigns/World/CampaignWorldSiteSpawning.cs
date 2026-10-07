@@ -12,6 +12,8 @@ internal sealed partial class CampaignWorld
         private readonly Dictionary<(int Id, string Type, bool Hunting), int> _populations = [];
         private readonly Dictionary<(int Id, string Type, bool Hunting, string Marker), int> _markers = [];
         private readonly Dictionary<string, int> _candidateMarkers = new(StringComparer.Ordinal);
+        private readonly Dictionary<(int Id, string Type, bool Hunting, CustomCounterChange Change), int> _expiry = [];
+        private readonly Dictionary<CustomCounterChange, int> _candidateExpiry = [];
         private (int Id, string Type, bool Hunting) _source;
         private int _candidatePopulation;
 
@@ -20,6 +22,7 @@ internal sealed partial class CampaignWorld
             _source = (mission.AlienBase!.Id, mission.AlienBase.TypeId, hunting);
             _candidatePopulation = 0;
             _candidateMarkers.Clear();
+            _candidateExpiry.Clear();
         }
 
         public int ReservePopulation()
@@ -38,6 +41,17 @@ internal sealed partial class CampaignWorld
             var previous = _markers.GetValueOrDefault(key);
             var maximum = Math.Max(previous, count);
             _markers[key] = maximum;
+            return maximum - previous;
+        }
+
+        public int ReserveExpiry(CustomCounterChange change, int count)
+        {
+            count += _candidateExpiry.GetValueOrDefault(change);
+            _candidateExpiry[change] = count;
+            var key = (_source.Id, _source.Type, _source.Hunting, change);
+            var previous = _expiry.GetValueOrDefault(key);
+            var maximum = Math.Max(previous, count);
+            _expiry[key] = maximum;
             return maximum - previous;
         }
     }
@@ -128,8 +142,11 @@ internal sealed partial class CampaignWorld
         if (expiryChanges is not null)
             foreach (var (change, count) in expiryChanges)
             {
+                work += 2L + count;
+                if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+                var additional = generated?.ReserveExpiry(change, count) ?? count;
                 var changes = change.Increase ? _pass.SiteBirthExpiryIncreases ??= [] : _pass.SiteBirthExpiryDecreases ??= [];
-                for (var index = 0; index < count; index++) changes.Add(change);
+                for (var index = 0; index < additional; index++) changes.Add(change);
             }
         population += generated?.ReservePopulation() ?? 1;
         if ((long)_sites.Count + population > 100_000) return "World mission site population exceeds the supported limit.";
