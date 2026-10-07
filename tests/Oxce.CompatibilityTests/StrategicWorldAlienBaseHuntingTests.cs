@@ -84,7 +84,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     public void UnsafeHuntingBlocksBeforeTickMutation(string kind, bool cache)
     {
         var content = Load(cache);
-        var snapshot = Snapshot(content, deployment: kind == "future" ? "HUNT_FUTURE" : "HUNT_IMMEDIATE");
+        var snapshot = Snapshot(content, deployment: kind == "future" ? "HUNT_FUTURE" : "HUNT_UNSAFE");
         if (kind == "overflow") snapshot = snapshot with
         {
             World = snapshot.World with
@@ -94,7 +94,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         {
             "overflow" => "Alien base hunting timer exceeds the supported range.",
             "future" => "Alien base hunting timeline has no entry for the current month.",
-            _ => "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.",
+            _ => "Immediate generated mission waves require creation-tick lifecycle forecasts.",
         };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new MinimumChoices()), reason);
     }
@@ -105,14 +105,14 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     public void AutoPatrolRelaunchCannotEnterHuntingAfterMutatingEarlierHandlers(bool cache)
     {
         var content = Load(cache);
-        var snapshot = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+        var snapshot = Snapshot(content, "grounded", "HUNT_UNSAFE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
         snapshot = snapshot.WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
             { Status = "STR_REFUELLING", Fuel = 99, IsAutoPatrolling = true }
         });
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new MinimumChoices()),
-            "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+            "Immediate generated mission waves require creation-tick lifecycle forecasts.");
     }
 
     [Theory]
@@ -272,11 +272,11 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     public void GroundedAutoPatrolUsesActualServicingBeforeBaseHunting(bool cache)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
+        var content = Load(cache,
             "crafts: [{type: BASE_REFUEL, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var row in TestFixtures.Rows(oracle.RootElement, "maintenanceRows").Where(row => !row[0].GetBoolean() && !row[3].GetBoolean() && !row[4].GetBoolean()))
         {
-            var initial = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
+            var initial = Snapshot(content, "grounded", "HUNT_UNSAFE") with { Time = new(1, 1, 1, 1999, 0, 29, 55) };
             initial = initial.WithCraft("SHIP", craft => craft with
             {
                 RuleId = "BASE_REFUEL",
@@ -302,7 +302,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
             var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "base-refuel-before.sav");
             if (row[6].GetString() == "STR_OUT")
             {
-                AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+                AssertTimeBlocked(campaign, "Immediate generated mission waves require creation-tick lifecycle forecasts.");
                 continue;
             }
             AdvanceUnblocked(campaign, 1);
@@ -323,12 +323,12 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "incomingCraftRows"));
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
+        var content = Load(cache,
             "crafts: [{type: BASE_INCOMING, speedMax: 6000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true}]\n");
         foreach (var fuel in new[] { 0, 60, 100 })
             foreach (var hours in new[] { 1, 2 })
             {
-                var initial = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, 59, 55) };
+                var initial = Snapshot(content, "grounded", "HUNT_UNSAFE") with { Time = new(1, 1, 1, 1999, 0, 59, 55) };
                 var owner = initial.Bases[0];
                 var craft = owner.Crafts.Single(craft => craft.RuleId == "SHIP") with { RuleId = "BASE_INCOMING" };
                 craft = craft with
@@ -356,7 +356,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
                 var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "base-incoming-before.sav");
                 if (hours == 1 && fuel == 60)
                 {
-                    AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+                    AssertTimeBlocked(campaign, "Immediate generated mission waves require creation-tick lifecycle forecasts.");
                     continue;
                 }
                 AdvanceUnblocked(campaign, 1);
@@ -387,9 +387,9 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.Contains(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"), row => row[0].GetBoolean() && row[2].GetInt32() == 20 && !row[3].GetBoolean());
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
+        var content = Load(cache,
             "crafts: [{type: BASE_ESCORT, speedMax: 6000, damageMax: 100, fuelMax: 100}, {type: BASE_HIDDEN_LEADER, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, undetectable: true}]\n" + (consumed ? "manufacture: [{name: CONSUME_BASE_ESCORT, time: 1, requiredItems: {BASE_ESCORT: 0}, producedItems: {SUPPLY: 0}}]\nfacilities: [{type: CONSUME_ESCORT_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\n" : ""));
-        var initial = Snapshot(content, "grounded", "HUNT_IMMEDIATE") with { Time = new(1, 1, 1, 1999, 0, consumed ? 59 : 29, 55) };
+        var initial = Snapshot(content, "grounded", "HUNT_UNSAFE") with { Time = new(1, 1, 1, 1999, 0, consumed ? 59 : 29, 55) };
         var owner = initial.Bases[0];
         var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
         var leader = template with
@@ -435,7 +435,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
                 Productions = [new("CONSUME_BASE_ESCORT", 1, 0, 2, false, false, false, new Dictionary<string, int>())] }]
         };
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "base-escort-before.sav");
-        if (!consumed) AssertTimeBlocked(campaign, "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable.");
+        if (!consumed) AssertTimeBlocked(campaign, "Immediate generated mission waves require creation-tick lifecycle forecasts.");
         else
         {
             using var deleted = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -494,10 +494,28 @@ public sealed class StrategicWorldAlienBaseHuntingTests
         Reload(content, campaign, 17, "zero-chance-after.sav");
     }
 
-    private static RuntimeContent Load(bool cache)
+    private static RuntimeContent Load(bool cache, string extraRules = "")
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
-        return StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache);
+        // These guard cases require a creation-time hunter, whose target/lifecycle
+        // projection remains unavailable. Ordinary airborne births have separate acceptance.
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
+            """
+            alienMissions:
+              - type: HUNT_UNSAFE_WAVE
+                waves: [{ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 30, hunterKillerPercentage: 100}]
+            alienDeployments:
+              - type: HUNT_UNSAFE
+                alienBase: true
+                markerName: STR_ALIEN_BASE
+                baseDetectionRange: 100
+                baseDetectionChance: 100
+                huntMissionMaxFrequency: 60
+                huntMissionRaceFromAlienBase: true
+                huntMissionWeights: {0: {HUNT_UNSAFE_WAVE: 1}}
+            """ + "\n" + extraRules);
+        Assert.Equal(100, content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("HUNT_UNSAFE_WAVE")].Value.Waves[0].HunterKillerPercentage);
+        return content;
     }
 
     private static CampaignSnapshot Snapshot(RuntimeContent content, string name = "emptyChoice", string? deployment = null)

@@ -71,22 +71,85 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO unique IDs are exhausted or collide with a saved UFO.");
     }
 
-    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, string extraRules = "") =>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingGeneratedAirborneWavesReceiveOneThinkAfterHalfHourScoring(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+        var content = GeneratedWaveContent(cache, 0, hunting: true);
+        foreach (var time in new[] { new CampaignTime(1, 1, 1, 1999, 0, 9, 55), new(1, 1, 1, 1999, 0, 29, 55) })
+        {
+            var initial = HuntingGeneratedWaveSnapshot(content, time);
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+                19, "hunting-wave-before.sav");
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            var mission = Assert.Single(after.World.Missions);
+            var ufo = Assert.Single(after.World.Ufos);
+            Assert.Equal((1, 1), (mission.NextWave, mission.LiveUfos));
+            Assert.Equal(mission.Id, ufo.MissionId);
+            Assert.False(ufo.Detected);
+            Assert.False(ufo.HunterKiller);
+            Assert.Equal(initial.Regions[0].ActivityAlien, after.Regions[0].ActivityAlien);
+            Assert.Equal(0, after.World.AlienBases[0].MinutesSinceLastHuntMissionGeneration);
+            Assert.Equal(0, after.World.AlienBases[0].GenMissionCount);
+            Reload(content, campaign, 19, "hunting-wave-after.sav");
+        }
+        var exhausted = HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, 9, 55))
+            .WithNextId("STR_UFO_UNIQUE", int.MaxValue);
+        AssertTimeBlocked(CampaignState.Restore(exhausted, content, new SplitMix64RandomSource(19)),
+            "UFO unique IDs are exhausted or collide with a saved UFO.");
+    }
+
+    private static CampaignSnapshot HuntingGeneratedWaveSnapshot(RuntimeContent content, CampaignTime time) =>
+        (GeneratedWaveSnapshot(content, 19) with { Time = time }).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 100,
+                Damage = 0,
+                Longitude = 0.2,
+                Latitude = 0.1,
+                Speed = 0,
+                SpeedRadian = 0,
+                Destination = null,
+                LowFuel = false,
+                MissionComplete = false,
+            },
+        }) with
+        {
+            World = new()
+            {
+                AlienBases = [new(2, "GENERATED_WAVE_BASE", "RACE_A", 0.2, 0.1)
+                { MinutesSinceLastHuntMissionGeneration = 50 }]
+            },
+        };
+
+    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
-            $$"""
+            $$$"""
             alienDeployments:
               - type: GENERATED_WAVE_BASE
                 alienBase: true
                 markerName: STR_ALIEN_BASE
                 genMission: {GENERATED_WAVE: 1}
-                genMissionFreq: 100
+                genMissionFreq: {{{(hunting ? 0 : 100)}}}
                 genMissionLimit: 1
                 genMissionRaceFromAlienBase: true
+                baseDetectionRange: {{{(hunting ? 100 : 0)}}}
+                baseDetectionChance: 100
+                huntMissionMaxFrequency: 60
+                huntMissionWeights: {0: {GENERATED_WAVE: 1}}
             alienMissions:
               - type: GENERATED_WAVE
                 objective: 0
-                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: {{timer}}}]
-            {{extraRules}}
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: {{{timer}}}}]
+            crafts:
+              - type: SHIP
+                sightRange: 0
             """);
 
     private static CampaignSnapshot GeneratedWaveSnapshot(RuntimeContent content, ulong seed) =>
