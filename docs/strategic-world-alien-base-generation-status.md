@@ -686,3 +686,9 @@ mixed pact/ordinary base capacity. The cleanup and infiltration captures pin
 the native flag transition. All 327 focused generation/infiltration/repeat/
 objective-base cases pass. Region and cross-objective correlations remain
 conservative; there is no RNG or campaign mutation during preflight.
+
+Root validation passes all 3,454 tests without failures or skips, including
+native fixture checksums, private corpus and populated allocation gates.
+Formatting verification, regenerated code-map and diff checks pass. The pinned
+reference is clean; useful native birth captures remain and the empty successful
+format log was removed. This closes the three-slice final-objective cycle and audit.
