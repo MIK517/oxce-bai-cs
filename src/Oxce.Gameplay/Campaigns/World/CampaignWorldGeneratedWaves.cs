@@ -45,7 +45,7 @@ internal sealed partial class CampaignWorld
                         RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration)) continue;
                 work += rule.Waves.Count;
                 if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (!HasGeneratedObjectWave(rule)) continue;
+                if (!HasGeneratedCreationWave(rule)) continue;
                 try
                 {
                     if (AlienBaseGenerationReason(source, deployment, rule, ref work, choice.Key,
@@ -126,7 +126,8 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private bool HasGeneratedObjectWave(RuntimeAlienMissionRule rule) => rule.Waves.Any(wave => wave.Ufo is not null ||
+    private bool HasGeneratedCreationWave(RuntimeAlienMissionRule rule) => rule.Objective == RuntimeMissionObjective.Base ||
+        rule.Waves.Any(wave => wave.Ufo is not null ||
         rule.Objective == RuntimeMissionObjective.Site && wave.Objective || wave.Deployment is { } deployment &&
         campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.MarkerName.Length != 0);
 

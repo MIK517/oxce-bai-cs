@@ -157,8 +157,38 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyGeneratedNoObjectFinalBaseCreatesAndCleansItsMission(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedObjectiveOpeningContent(cache, 2, prefix: false, noObject: true, raceAlternatives: true);
+        for (ulong seed = 1; seed <= 8; seed++)
+        {
+            var initial = GeneratedObjectiveOpeningSnapshot(content) with { RandomState = seed };
+            initial = initial.WithNextId("STR_ALIEN_BASE", int.MaxValue - 1) with
+            { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 7] }, .. initial.Regions.Skip(1)] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)),
+                seed, "generated-no-object-base-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(2, after.World.AlienBases.Count);
+            Assert.Empty(after.World.Ufos);
+            Assert.Empty(after.World.Missions);
+            Assert.Equal(int.MaxValue, after.Regions[0].ActivityAlien[^1]);
+            Assert.Equal(int.MaxValue, after.NextIds["STR_ALIEN_BASE"]);
+            campaign = Reload(content, campaign, seed, "generated-no-object-base-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(2, campaign.Capture().World.AlienBases.Count);
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_ALIEN_BASE", int.MaxValue), content,
+                new SplitMix64RandomSource(seed)), "Base objective IDs are exhausted or collide.");
+        }
+    }
+
     private static RuntimeContent GeneratedObjectiveOpeningContent(bool cache, int objective, bool hunting = false,
-        int groundTimer = 0, bool prefix = true, bool raceAlternatives = false, bool finalImmediate = false) =>
+        int groundTimer = 0, bool prefix = true, bool raceAlternatives = false, bool finalImmediate = false, bool noObject = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             alienDeployments:
               - type: OBJECTIVE_OPENING_SOURCE
@@ -185,7 +215,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 regionWeights: {0: {REGION: 1}}
                 {{{(raceAlternatives ? "raceWeights: {0: {RACE_A: 1, RACE_B: 1}}" : "")}}}
                 waves:
-                  - {ufo: UFO_SCOUT, count: 1, trajectory: {{{(groundTimer == 0 ? "TRAJ_SPAWN_FIXED" : "OBJECTIVE_OPENING_GROUND")}}}, timer: 0}
+                  - {ufo: {{{(noObject ? "UNKNOWN_OBJECTIVE_FINAL" : "UFO_SCOUT")}}}, count: 1, trajectory: {{{(groundTimer == 0 ? "TRAJ_SPAWN_FIXED" : "OBJECTIVE_OPENING_GROUND")}}}, timer: 0}
                   {{{(prefix ? "- {ufo: UNKNOWN_OBJECTIVE_FINAL, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: " + (finalImmediate ? "0}" : "30000}") : "")}}}
             ufoTrajectories:
               - id: OBJECTIVE_OPENING_GROUND
