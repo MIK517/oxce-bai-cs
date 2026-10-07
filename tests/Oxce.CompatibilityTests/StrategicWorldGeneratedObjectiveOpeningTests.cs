@@ -52,6 +52,52 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Assert.All(after.Countries, country => Assert.False(country.NewPact));
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void DailyGeneratedFinalBaseWaveCreatesBaseBeforeUfoLifecycle(bool cache, int groundTimer)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var content = GeneratedObjectiveOpeningContent(cache, 2, groundTimer: groundTimer, prefix: false);
+        var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", 7);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            41, "generated-final-base-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var born = Assert.Single(after.World.AlienBases, alienBase => alienBase.Id == 7);
+        Assert.Equal("OBJECTIVE_OPENING_DESTINATION", born.DeploymentId);
+        Assert.Equal("RACE_A", born.Race);
+        Assert.Equal(8, after.NextIds["STR_ALIEN_BASE"]);
+        Assert.Equal(UfoStatus.Flying, Assert.Single(after.World.Ufos).Status);
+        Assert.Equal((1, 1), (Assert.Single(after.World.Missions).NextWave, after.World.Missions[0].LiveUfos));
+        var points = groundTimer == 0 ? 10 : 13; // Base completion plus creation-stage UFO activity; no base-mission takeoff award.
+        Assert.Equal(points, after.Regions[0].ActivityAlien[^1] - initial.Regions[0].ActivityAlien[^1]);
+        campaign = Reload(content, campaign, 41, "generated-final-base-born.sav");
+        for (var day = 0; day < 3; day++)
+        {
+            AdvanceUnblocked(campaign, 17_280);
+            campaign = Reload(content, campaign, 41, $"generated-final-base-day-{day}.sav");
+        }
+        Assert.Equal(2, campaign.Capture().World.AlienBases.Count);
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.Empty(campaign.Capture().World.Missions);
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_ALIEN_BASE", int.MaxValue), content,
+            new SplitMix64RandomSource(41)), "Base objective IDs are exhausted or collide.");
+        var atCapacity = initial with
+        { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - points] }, .. initial.Regions.Skip(1)] };
+        campaign = CampaignState.Restore(atCapacity, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
+        Reload(content, campaign, 41, "generated-final-base-score-capacity.sav");
+        AssertTimeBlocked(CampaignState.Restore(atCapacity with
+        { Regions = [atCapacity.Regions[0] with { ActivityAlien = [int.MaxValue - points + 1] }, .. atCapacity.Regions.Skip(1)] }, content,
+            new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
+    }
+
     private static RuntimeContent GeneratedObjectiveOpeningContent(bool cache, int objective, bool hunting = false,
         int groundTimer = 0, bool prefix = true) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
