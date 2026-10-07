@@ -22,6 +22,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     [InlineData(true, false, 5)]
     [InlineData(false, true, 5)]
     [InlineData(true, true, 5)]
+    [InlineData(false, false, 3)]
+    [InlineData(true, false, 3)]
     public void GeneratedDeploymentWavesCreateAndExpireSitesWithoutUfosAtBothCallers(bool cache, bool hunting, int objective)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
@@ -197,6 +199,41 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public void GeneratedSelectedDirectChainsKeepOneAreaAcrossWavesAndReload(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedDirectSiteContent(cache, hunting, objective: 3, chain: true);
+        HashSet<int> areas = [];
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var initial = GeneratedDirectSiteSnapshot(content, seed, hunting, chain: true)
+                .WithNextId("DIRECT_MARKER", int.MaxValue - 2);
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)),
+                seed, "selected-direct-chain-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var mission = Assert.Single(after.World.Missions);
+            areas.Add(mission.MissionSiteZoneArea);
+            Assert.Equal(2, after.World.MissionSites.Count);
+            Assert.All(after.World.MissionSites, site =>
+            {
+                Assert.Equal(mission.MissionSiteZoneArea == 0 ? "CITY_ALPHA" : "CITY_BETA", site.City);
+                Assert.Equal(Degrees(mission.MissionSiteZoneArea == 0 ? 8 : 12), site.Longitude);
+                Assert.Equal(Degrees(mission.MissionSiteZoneArea == 0 ? 2 : -2), site.Latitude);
+            });
+            campaign = Reload(content, campaign, seed, "selected-direct-chain-born.sav");
+            AdvanceUnblocked(campaign, 3000);
+            Reload(content, campaign, seed, "selected-direct-chain-expired.sav");
+            Assert.Empty(campaign.Capture().World.MissionSites);
+            Assert.Empty(campaign.Capture().World.Missions);
+        }
+        Assert.Equal(Enumerable.Range(0, 2), areas.Order());
+    }
+
     private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
         int objective = 0, bool chain = false, bool alternatives = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
@@ -227,10 +264,10 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
               - type: GENERATED_DIRECT_MISSION
                 objective: {{{objective}}}
                 {{{(alternatives ? "raceWeights: {0: {RACE_A: 1, RACE_B: 1}}" : "")}}}
-                spawnZone: 0
+                spawnZone: {{{(objective == 3 && chain ? 1 : 0)}}}
                 regionWeights: {{{(chain ? "{0: {REGION: 1}}" : "{0: {SITE_SPAWN_REGION: 1}}")}}}
                 waves:
-                  - {ufo: {{{deployment}}}, count: 1, trajectory: DIRECT_SITE, timer: 0}
+                  - {ufo: {{{deployment}}}, count: 1, trajectory: DIRECT_SITE, timer: 0, objective: {{{objective == 3}}}}
                   {{{(chain ? "- {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}\n      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}" : "")}}}
               - type: GENERATED_DIRECT_NEGATIVE_MISSION
                 objective: 0
