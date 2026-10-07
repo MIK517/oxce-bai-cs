@@ -390,5 +390,9 @@ also validates the hunting zone before collection. Fresh/cache two/256-area
 airborne/ground cases exercise the exact last activity value and real overflow,
 with distinct-source/counter acceptance and strict malformed-zone atomicity.
 All 386 focused cases pass. The initial root batch passed all 3,332 tests;
-final root validation follows the audit fix. Broader alternative activity
+final root validation passes all 3,340 tests without failures or skips, including
+native checksums, private corpus and unchanged allocation gates. Formatting,
+regenerated code-map and diff checks pass; the pinned reference remains clean.
+Existing evidence/logs remain useful and no disposable probes were created.
+Broader alternative activity
 uncertainty remains open rather than being claimed complete by this correction.
