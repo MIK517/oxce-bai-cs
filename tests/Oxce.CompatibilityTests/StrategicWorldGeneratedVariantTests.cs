@@ -134,7 +134,47 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO retargeting with generated missions exceeds the supported work limit.");
     }
 
-    private static RuntimeContent GeneratedVariantContent(bool cache, string races, int targetOdds = 0, bool hunting = false, bool alternatives = false) =>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedGroundTakeoffChoicesReserveOneCompleteChainPerCaller(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1, RACE_B: 1}}", hunting: hunting,
+            alternatives: !hunting, groundTimer: 1, missionPoints: 7);
+        var maximum = hunting ? 7 : 26;
+        HashSet<int> counts = [];
+        for (ulong seed = 1; seed <= 8; seed++)
+        {
+            var initial = VariantSnapshot(content, hunting) with { RandomState = seed };
+            initial = initial with
+            { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - maximum] }, .. initial.Regions.Skip(1)] };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)),
+                seed, "generated-lift-choices-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var count = after.World.Ufos.Count;
+            counts.Add(count);
+            Assert.All(after.World.Ufos, ufo => Assert.Equal((UfoStatus.Flying, 0), (ufo.Status, ufo.SecondsRemaining)));
+            Assert.Equal(int.MaxValue - maximum + count * (hunting ? 7 : 13), after.Regions[0].ActivityAlien[^1]);
+            campaign = Reload(content, campaign, seed, "generated-lift-choices-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, seed, "generated-lift-choices-next.sav");
+        }
+        Assert.True(counts.SetEquals(hunting ? [1] : [1, 2]));
+        var limited = VariantSnapshot(content, hunting);
+        limited = limited with
+        { Regions = [limited.Regions[0] with { ActivityAlien = [int.MaxValue - maximum + 1] }, .. limited.Regions.Skip(1)] };
+        AssertTimeBlocked(CampaignState.Restore(limited, content, new SplitMix64RandomSource(19)),
+            "UFO alien activity exceeds the supported range.");
+    }
+
+    private static RuntimeContent GeneratedVariantContent(bool cache, string races, int targetOdds = 0, bool hunting = false,
+        bool alternatives = false, int groundTimer = 0, int missionPoints = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
             $$$"""
             alienDeployments:
@@ -153,15 +193,21 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             alienMissions:
               - type: VARIANT_MISSION
                 objective: 0
+                points: {{{missionPoints}}}
                 targetBaseOdds: {{{targetOdds}}}
                 raceWeights: {{{races}}}
-                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: {{{(groundTimer == 0 ? "TRAJ_SPAWN_FIXED" : "VARIANT_GROUND_PATH")}}}, timer: 0}]
               - type: VARIANT_OTHER
                 objective: 0
-                waves: [{ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
+                points: {{{missionPoints}}}
+                waves: [{ufo: UFO_SCOUT, count: 2, trajectory: {{{(groundTimer == 0 ? "TRAJ_SPAWN_FIXED" : "VARIANT_GROUND_PATH")}}}, timer: 0}]
               - type: VARIANT_HUNTER_BIRTH
                 objective: 0
                 waves: [{ufo: UFO_SCOUT, count: 1500, trajectory: TRAJ_SPAWN_FIXED, timer: 0, hunterKillerPercentage: 100}]
+            ufoTrajectories:
+              - id: VARIANT_GROUND_PATH
+                groundTimer: {{{groundTimer}}}
+                waypoints: [[4, 0, 100], [5, 2, 80], [0, 3, 50]]
             """);
 
     private static CampaignSnapshot VariantSnapshot(RuntimeContent content, bool hunting) =>
