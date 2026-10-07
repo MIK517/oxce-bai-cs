@@ -458,3 +458,11 @@ last two marker IDs, retained mission area and before/birth/expiry reloads.
 All 212 focused generation/site-spawn/selected-waypoint cases pass. Hunting
 selected direct waves and alternative activity reservations remain subsequent
 slices; later-branch guards are unchanged.
+
+The later hunting caller now executes selected direct waves and mixed chains,
+retaining the selected mission area through reload while leaving new site timers
+untouched until the next half-hour pass. Seeded fresh/cache cases cover both
+cities, shared final marker capacity and cleanup after the second hidden site's
+hourly discovery postponement. All 254 focused generation/site-spawn/base-hunting
+cases pass. This completes selected direct admission at both callers; activity
+uncertainty remains the third slice.
