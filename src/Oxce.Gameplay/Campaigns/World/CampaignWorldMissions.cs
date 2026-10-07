@@ -360,7 +360,7 @@ internal sealed partial class CampaignWorld
             return false;
         if (requireHuntingForecast && hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
             (trajectory.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))) return false;
-        if (NewEscortSpawnReason(mission, rule) is not null) return false;
+        if (NewEscortSpawnReason(mission, rule, requireHuntingForecast) is not null) return false;
         var stats = ufoRule.StatsForRace(mission.Race);
         var speed = trajectory.Speed(0, stats.SpeedMaximum);
         if (trajectory.Altitude(0) == 0 &&
@@ -385,7 +385,7 @@ internal sealed partial class CampaignWorld
         (wave.HunterKillerPercentage == -1
             ? campaign.Content.RuntimeRules.Ufos[handle].Value.HunterKillerPercentage : wave.HunterKillerPercentage) > 0;
 
-    private string? NewEscortSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    private string? NewEscortSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, bool requireHuntingForecast = true)
     {
         var wave = SpawnWave(mission, rule);
         if (!NewEscortWave(rule, wave) || wave.Trajectory is not { } trajectory) return null;
@@ -393,7 +393,7 @@ internal sealed partial class CampaignWorld
         var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
         var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
         if (maximum is < 0 or > int.MaxValue) return "UFO escort speed exceeds the supported range.";
-        if (path.Waypoints.Count != 0 && path.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))
+        if (requireHuntingForecast && path.Waypoints.Count != 0 && path.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))
             return "New UFO escorts require craft retarget forecasts.";
         return null;
     }
