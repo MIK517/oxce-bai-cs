@@ -103,7 +103,7 @@ internal sealed partial class CampaignWorld
                 var hunter = !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
                     (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0;
                 if (path.Waypoints.Count == 0 || path.Altitude(0) == 0 && path.GroundTimer <= 1 ||
-                    hunter && (path.Altitude(0) != 0 || wave.Escort) ||
+                    hunter && (wave.Escort || path.Altitude(0) != 0 && !NoCraftCanBecomeHunterTarget()) ||
                     !CanSpawnOrdinaryUfoWave(step, rule)) return GeneratedWaveBoundary;
             }
             (_pass.GeneratedWaveMissions ??= []).Add((candidate, hunting));

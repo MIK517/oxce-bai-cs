@@ -218,3 +218,14 @@ corpus, endurance and unchanged allocation gates. Formatting, regenerated
 code-map and diff checks pass; the pinned reference remains clean. The audit
 fix is separate from the three implementation commits. Existing native captures
 and diagnostic outputs remain useful; this cycle created no compiled probes.
+
+## Generated airborne hunting (2026-10-07)
+
+Daily-generated airborne hunters now execute when no current or incoming craft
+can become a target. They retain their trajectory waypoint and native constructor
+state through both retarget callers. Pinned `AlienMission::spawnUfo`,
+`Ufo::Ufo` and `GeoscapeState::ufoHuntingAndEscorting` establish the behavior;
+verified `strategic-hunting/constructorRows` and generation/lifecycle fixtures
+back fresh/cache seeded 50/100-percent cases, scoring, strict transition reloads
+and atomic identity exhaustion. Target-dependent hunters and escorts still stop
+at the creation boundary pending their pure forecasts.
