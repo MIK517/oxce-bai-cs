@@ -81,3 +81,16 @@ one-based decrease floor. Site collision and exhaustion checks use that range;
 safe increments/decrements proceed. Projection work includes research counter and
 reward fields. Immediate research/payload guards and aggregate existing-site
 despawn limits have additional regressions.
+
+## Exclusive expiry counters (2026-10-08)
+
+Direct-site waves now reserve the largest per-counter multiplicity across
+mutually exclusive deployment/area choices, preserving aliases within the
+selected deployment. Optional decreases cannot supply overflow headroom.
+Pinned `GeoscapeState::processMissionSite` executes the six counter fields in
+order after one selected site's expiry; `AlienMission::spawnMissionSite` and
+the verified strategic-site-spawn capture establish the selection boundary.
+Two fresh/cache regressions first reproduce the summed-alternative refusal,
+then exercise both one/two-increment outcomes at exact capacity, strict reloads
+and atomic real overflow. All 46 site-spawn tests pass. Field comparisons are
+bounded and charged; generated mission alternatives remain the next slice.

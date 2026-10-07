@@ -83,6 +83,7 @@ internal sealed partial class CampaignWorld
         if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
         var markers = new HashSet<string>(StringComparer.Ordinal);
         HashSet<RuleHandle<AlienDeploymentRuleFamily>>? expiryCandidates = null;
+        Dictionary<CustomCounterChange, int>? expiryChanges = null;
         var rules = campaign.Content.RuntimeRules;
         foreach (var area in areas)
         {
@@ -111,20 +112,25 @@ internal sealed partial class CampaignWorld
                         return "Direct mission site counters share an unsupported UFO ID namespace.";
                     if ((expiryCandidates ??= []).Add(handle))
                     {
-                        _pass.SiteBirthExpiryIncreases ??= [];
-                        if (deployment.CounterDespawn.Length != 0) _pass.SiteBirthExpiryIncreases.Add(new(deployment.CounterDespawn, true));
-                        if (deployment.CounterFailure.Length != 0) _pass.SiteBirthExpiryIncreases.Add(new(deployment.CounterFailure, true));
-                        if (deployment.CounterAll.Length != 0) _pass.SiteBirthExpiryIncreases.Add(new(deployment.CounterAll, true));
-                        _pass.SiteBirthExpiryDecreases ??= [];
-                        if (deployment.DecreaseCounterDespawn.Length != 0) _pass.SiteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterDespawn, false));
-                        if (deployment.DecreaseCounterFailure.Length != 0) _pass.SiteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterFailure, false));
-                        if (deployment.DecreaseCounterAll.Length != 0) _pass.SiteBirthExpiryDecreases.Add(new(deployment.DecreaseCounterAll, false));
+                        work += 42; // At most six fields and their multiplicity comparisons.
+                        if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+                        var changes = new List<CustomCounterChange>(6);
+                        AddSiteCounterChanges(changes, deployment);
+                        expiryChanges ??= [];
+                        foreach (var change in changes.Distinct())
+                            expiryChanges[change] = Math.Max(expiryChanges.GetValueOrDefault(change), changes.Count(value => value == change));
                     }
                 }
                 markers.Add(deployment.MarkerName);
             }
         }
         if (markers.Count == 0) return null;
+        if (expiryChanges is not null)
+            foreach (var (change, count) in expiryChanges)
+            {
+                var changes = change.Increase ? _pass.SiteBirthExpiryIncreases ??= [] : _pass.SiteBirthExpiryDecreases ??= [];
+                for (var index = 0; index < count; index++) changes.Add(change);
+            }
         population += generated?.ReservePopulation() ?? 1;
         if ((long)_sites.Count + population > 100_000) return "World mission site population exceeds the supported limit.";
         foreach (var marker in markers)

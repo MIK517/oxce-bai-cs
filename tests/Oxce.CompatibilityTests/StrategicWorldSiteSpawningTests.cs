@@ -439,6 +439,42 @@ public sealed class StrategicWorldSiteSpawningTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void ExclusiveZeroHourDeploymentsReserveLargestCounterMultiplicity(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, """
+            globe:
+              textures:
+                - {id: 200, deployments: {EXPIRY_TWO: 1, EXPIRY_ONE: 1}}
+            regions:
+              - type: EXPIRY_REGION
+                missionZones: [[[11.459155902616464, 11.459155902616464, 5.7295779513082321, 5.7295779513082321, 200]]]
+            alienDeployments:
+              - {type: EXPIRY_TWO, markerName: EXPIRY_MARKER, duration: [0, 0], counterDespawn: shared, counterFailure: shared}
+              - {type: EXPIRY_ONE, markerName: EXPIRY_MARKER, duration: [0, 0], counterAll: shared}
+            """);
+        HashSet<int> increases = [];
+        for (ulong seed = 1; seed <= 16; seed++)
+        {
+            var initial = (Snapshot(content, "DIRECT_TERRAIN", region: "EXPIRY_REGION") with { RandomState = seed })
+                .WithNextId("shared", int.MaxValue - 2);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceOne(campaign);
+            var after = campaign.Capture();
+            Assert.Empty(after.World.MissionSites);
+            increases.Add(after.NextIds["shared"] - initial.NextIds["shared"]);
+            Reload(content, campaign, seed, "exclusive-expiry-counter.sav");
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("shared", int.MaxValue - 1), content,
+                new SplitMix64RandomSource(seed)), "Mission site custom counter exceeds the supported range.");
+        }
+        Assert.Equal(2, increases.Count);
+        Assert.Contains(1, increases);
+        Assert.Contains(2, increases);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void MixedDurationForecastReservesEitherExpiryPenaltyOrLivePoints(bool maximum)
     {
         var content = Load(false);
