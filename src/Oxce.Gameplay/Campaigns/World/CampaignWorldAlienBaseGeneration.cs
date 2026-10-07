@@ -67,6 +67,7 @@ internal sealed partial class CampaignWorld
         }
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         var rules = campaign.Content.RuntimeRules;
+        HashSet<string>? forecastRegions = forecastImmediate ? new(StringComparer.Ordinal) : null;
         foreach (var name in regions)
         {
             if (!rules.Regions.TryGet(name, out var handle))
@@ -87,7 +88,7 @@ internal sealed partial class CampaignWorld
             if (mission.Objective == RuntimeMissionObjective.Site &&
                 (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count))
                 return "Alien base site mission has an invalid spawn zone.";
-            if (forecastImmediate && CollectGeneratedWaveForecasts(alienBase, deployment, mission, missionId,
+            if (forecastImmediate && forecastRegions!.Add(regionId) && CollectGeneratedWaveForecasts(alienBase, deployment, mission, missionId,
                     regionId, hunting: false, ref work) is { } waveReason) return waveReason;
         }
         if (forecastImmediate) (_pass.DailyGeneratedWaveProofs ??= []).Add((alienBase.Id, alienBase.DeploymentId, missionId));

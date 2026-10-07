@@ -188,3 +188,10 @@ mod race, as `AlienMission::load` does. Verified generation `futureRace` rows an
 pinned `RuleAlienMission::generateRace` back fresh/cache daily/hunting tests,
 exact repaired-snapshot comparison and continued UFO persistence. No RNG is
 consumed during forecasting and no schema/cache revision changes are needed.
+
+Duplicate target-base regions now share one immediate-wave forecast after their
+single region remap. Live generation keeps every base entry and its native index
+roll, including duplicates. A fresh/cache 64-base regression previously rejected
+the final available UFO identity; it now creates one UFO, retains the `[0,63]`
+selection range and reloads successfully. Evidence: pinned
+`GeoscapeState::GenerateSupplyMission` and verified generation `target` rows.

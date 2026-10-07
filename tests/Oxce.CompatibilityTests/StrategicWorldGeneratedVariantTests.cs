@@ -44,6 +44,30 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DuplicateTargetBaseRegionsReserveOneBirthWithoutChangingNativeChoice(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1}}", targetOdds: 100);
+        var initial = VariantSnapshot(content, hunting: false);
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [.. Enumerable.Range(0, 64).Select(id => owner with
+            { Id = id, Longitude = 0.2, Latitude = 0.1, Crafts = [], Soldiers = [], Transfers = [] })],
+        };
+        initial = initial.WithNextId("STR_UFO_UNIQUE", int.MaxValue - 1);
+        var random = new VariantChoices(19);
+        var campaign = CampaignState.Restore(initial, content, random);
+        AdvanceUnblocked(campaign, 1);
+        Assert.Single(random.Calls, call => call == (0, 63));
+        Assert.Equal(int.MaxValue - 1, Assert.Single(campaign.Capture().World.Ufos).UniqueId);
+        Assert.Equal("REGION", Assert.Single(campaign.Capture().World.Missions).RegionId);
+        Reload(content, campaign, 19, "duplicate-region-birth.sav");
+    }
+
     private static RuntimeContent GeneratedVariantContent(bool cache, string races, int targetOdds = 0, bool hunting = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
             $$$"""
@@ -77,4 +101,23 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 { MinutesSinceLastHuntMissionGeneration = 50 }]
             },
         };
+
+    private sealed class VariantChoices(ulong seed) : IStatefulRandomSource
+    {
+        private readonly SplitMix64RandomSource _inner = new(seed);
+        public List<(int Minimum, int Maximum)> Calls { get; } = [];
+        public ulong State => _inner.State;
+        public void Restore(ulong state) => _inner.Restore(state);
+        public int NextInclusive(int minimum, int maximum)
+        {
+            Calls.Add((minimum, maximum));
+            return _inner.NextInclusive(minimum, maximum);
+        }
+        public int NextExclusive(int maximum)
+        {
+            Calls.Add((0, maximum - 1));
+            return _inner.NextExclusive(maximum);
+        }
+        public double NextUnit() => _inner.NextUnit();
+    }
 }
