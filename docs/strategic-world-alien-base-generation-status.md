@@ -278,5 +278,15 @@ spawn geometry immediately, deferring only the pure target proof until newborn
 preflight. Native saved-order leader attachment, backup waypoint and speed are
 retained, and later movement uses the moved leader's real position rather than
 forcing colocation. Fresh/cache cases cover both callers, absent/earlier leaders,
-activity and strict birth/pursuit reloads. Positive-radar craft selection and
-same-tick ground release still retain their creation restrictions.
+activity and strict birth/pursuit reloads.
+
+Positive-radar generated escorts now use the creation mission's initial wave
+state to enumerate earlier ordinary/stochastic birth origins. Each due step
+passes that immutable context explicitly; the saved-mission caller retains its
+existing lookup. Native first ordinary leader order, relocated hunting origin,
+backup waypoint and initialized speed remain intact. Fresh/cache daily/hunting
+cases cover all modes, selection, hidden-marker exhaustion, combat refusal at
+the earlier leader's position and all four two-birth 50-percent constructor
+outcomes through reloads. The combined generation/newborn/escort suite passes
+306 cases. Same-tick ground release and immediate site objective creation remain
+guarded; combat, deployment, payload and campaign-month boundaries are unchanged.

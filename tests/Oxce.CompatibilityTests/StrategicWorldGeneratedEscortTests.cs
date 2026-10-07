@@ -108,9 +108,120 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void GeneratedEscortHuntersUseEarlierBirthOriginsForSelectionAndCombatProofs(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var hunting in new[] { false, true })
+        {
+            var content = GeneratedEscortContent(cache, hunting, ground: false, leader: true, radar: 300, mode: mode);
+            var origin = new WorldPosition(Degrees(8), Degrees(2));
+            var initial = TargetedGeneratedEscortSnapshot(content, hunting, origin);
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "generated-escort-hunt-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var born = Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "GENERATED_ESCORT");
+            var selection = TestFixtures.Rows(oracle.RootElement, "selectionRows").Single(row =>
+                row[0].GetInt32() == born.HuntMode && row[1].GetInt32() == 0);
+            Assert.True(born.Escort);
+            Assert.True(born.Hunting);
+            Assert.False(born.Escorting);
+            Assert.True(born.Detected);
+            Assert.Equal(selection[2].GetInt32(), born.Destination!.Id);
+            Assert.Equal(3300, born.Speed);
+            Assert.Equal(WorldPosition.Create(Degrees(362), Degrees(2)), born.OriginalWaypoint);
+            var target = after.Bases[0].Crafts.Single(craft => craft.Id == born.Destination.Id).Logistics!;
+            Assert.Equal(WorldGeometry.Move(origin, new(target.Longitude, target.Latitude), WorldGeometry.RadianSpeed(3300)), born.Position);
+            Assert.Single(result.Events.OfType<UfoStartedHunting>());
+            Assert.Equal(initial.Regions[0].ActivityAlien[^1] + (hunting ? 0 : 6), after.Regions[0].ActivityAlien[^1]);
+            campaign = Reload(content, campaign, 81, "generated-escort-hunt-after.sav");
+            AdvanceUnblocked(campaign, 12);
+            Reload(content, campaign, 81, "generated-escort-hunt-following.sav");
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue), content,
+                new SplitMix64RandomSource(81)), "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+            var owner = initial.Bases[0];
+            initial = initial with
+            {
+                Bases = [owner with { Crafts = [owner.Crafts[0] with
+            { Logistics = owner.Crafts[0].Logistics! with { Longitude = origin.Longitude, Latitude = origin.Latitude } }] }]
+            };
+            AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedStochasticSameWaveEscortsKeepEveryConstructorOutcomeSafe(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = GeneratedEscortContent(cache, hunting, ground: false, leader: false, radar: 300,
+            mode: 2, percentage: 50, count: 2);
+        var initial = TargetedGeneratedEscortSnapshot(content, hunting, new(Degrees(10), Degrees(8)));
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - 1), content,
+            new SplitMix64RandomSource(81)), "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        HashSet<(bool First, bool Second)> outcomes = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var campaign = Reload(content, CampaignState.Restore(initial with { RandomState = seed }, content,
+                new SplitMix64RandomSource(seed)), seed, "generated-stochastic-escort-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(2, after.World.Ufos.Count);
+            outcomes.Add((after.World.Ufos[0].HunterKiller, after.World.Ufos[1].HunterKiller));
+            foreach (var born in after.World.Ufos)
+            {
+                Assert.Equal(born.HunterKiller, born.Hunting);
+                Assert.Equal(born.HunterKiller, born.Escort);
+                Assert.False(born.Escorting);
+                Assert.Equal(born.HunterKiller ? 3300 : 550, born.Speed);
+                if (born.HunterKiller) Assert.InRange(born.HuntMode, 0, 1);
+            }
+            campaign = Reload(content, campaign, seed, "generated-stochastic-escort-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Reload(content, campaign, seed, "generated-stochastic-escort-following.sav");
+        }
+        Assert.Equal(4, outcomes.Count);
+    }
+
+    private static CampaignSnapshot TargetedGeneratedEscortSnapshot(RuntimeContent content, bool hunting, WorldPosition origin)
+    {
+        var initial = GeneratedEscortSnapshot(content, hunting);
+        var owner = initial.Bases[0];
+        var template = owner.Crafts.Single(craft => craft.RuleId == "SHIP");
+        CraftSnapshot Craft(int id, string rule) => template with
+        {
+            Id = id,
+            RuleId = rule,
+            Logistics = template.Logistics! with
+            {
+                Fuel = 1000,
+                Weapons = [],
+                IsAutoPatrolling = false,
+                Longitude = origin.Longitude + WorldGeometry.Nautical(100),
+                Latitude = origin.Latitude,
+            },
+        };
+        return initial with { Bases = [owner with { Crafts = [Craft(1, "GENERATED_ESCORT_SLOW"), Craft(2, "GENERATED_ESCORT_FAST")], Soldiers = [] }] };
+    }
+
     private static RuntimeContent GeneratedEscortContent(bool cache, bool hunting, bool ground, bool leader,
         int radar = 0, int mode = 0, int percentage = 100, int count = 1) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+            crafts:
+              - {type: GENERATED_ESCORT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
+              - {type: GENERATED_ESCORT_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             ufos:
               - type: GENERATED_ESCORT
                 speedMax: 2200
