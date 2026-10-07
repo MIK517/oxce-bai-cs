@@ -98,8 +98,67 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedFinalBaseRaceAlternativesShareOneBirthReservation(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedObjectiveOpeningContent(cache, 2, prefix: false, raceAlternatives: true);
+        HashSet<string> races = [];
+        for (ulong seed = 1; seed <= 8; seed++)
+        {
+            var initial = GeneratedObjectiveOpeningSnapshot(content) with { RandomState = seed };
+            initial = initial.WithNextId("STR_ALIEN_BASE", int.MaxValue - 1) with
+            { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 10] }, .. initial.Regions.Skip(1)] };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var born = Assert.Single(campaign.Capture().World.AlienBases, alienBase => alienBase.Id == int.MaxValue - 1);
+            races.Add(born.Race);
+            Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
+            Assert.Equal(int.MaxValue, campaign.Capture().NextIds["STR_ALIEN_BASE"]);
+            Reload(content, campaign, seed, "generated-alternative-base-capacity.sav");
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_ALIEN_BASE", int.MaxValue), content,
+                new SplitMix64RandomSource(seed)), "Base objective IDs are exhausted or collide.");
+            var twoSources = initial.WithNextId("STR_ALIEN_BASE", 7) with
+            {
+                World = initial.World with
+                { AlienBases = [initial.World.AlienBases[0], new(3, "OBJECTIVE_OPENING_SOURCE", "RACE_A", 0.2, 0.1)] },
+            };
+            AssertTimeBlocked(CampaignState.Restore(twoSources, content, new SplitMix64RandomSource(seed)),
+                "UFO alien activity exceeds the supported range.");
+            twoSources = twoSources with
+            { Regions = [twoSources.Regions[0] with { ActivityAlien = [int.MaxValue - 20] }, .. twoSources.Regions.Skip(1)] };
+            campaign = CampaignState.Restore(twoSources, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(4, campaign.Capture().World.AlienBases.Count);
+            Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
+            Reload(content, campaign, seed, "generated-two-base-sources.sav");
+        }
+        Assert.Equal(2, races.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UnsupportedGeneratedFinalObjectivesStopBeforeTheirImmediatePrefixes(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        foreach (var hunting in new[] { false, true })
+            foreach (var objective in new[] { 1, 2 })
+            {
+                if (!hunting && objective == 2) continue;
+                var content = GeneratedObjectiveOpeningContent(cache, objective, hunting, finalImmediate: true);
+                AssertTimeBlocked(CampaignState.Restore(GeneratedObjectiveOpeningSnapshot(content, hunting), content,
+                    new SplitMix64RandomSource(41)), "Immediate generated objective completion requires objective birth forecasts.");
+            }
+    }
+
     private static RuntimeContent GeneratedObjectiveOpeningContent(bool cache, int objective, bool hunting = false,
-        int groundTimer = 0, bool prefix = true) =>
+        int groundTimer = 0, bool prefix = true, bool raceAlternatives = false, bool finalImmediate = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             alienDeployments:
               - type: OBJECTIVE_OPENING_SOURCE
@@ -108,6 +167,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 genMission: {OBJECTIVE_OPENING_MISSION: 1}
                 genMissionFreq: {{{(hunting ? 0 : 100)}}}
                 genMissionLimit: 1
+                genMissionRaceFromAlienBase: {{{!raceAlternatives}}}
                 baseDetectionRange: {{{(hunting ? 100 : 0)}}}
                 baseDetectionChance: 100
                 huntMissionMaxFrequency: 5400
@@ -118,13 +178,15 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             alienMissions:
               - type: OBJECTIVE_OPENING_MISSION
                 objective: {{{objective}}}
+                endlessInfiltration: false
                 points: 7
                 spawnZone: 1
                 siteType: OBJECTIVE_OPENING_DESTINATION
                 regionWeights: {0: {REGION: 1}}
+                {{{(raceAlternatives ? "raceWeights: {0: {RACE_A: 1, RACE_B: 1}}" : "")}}}
                 waves:
                   - {ufo: UFO_SCOUT, count: 1, trajectory: {{{(groundTimer == 0 ? "TRAJ_SPAWN_FIXED" : "OBJECTIVE_OPENING_GROUND")}}}, timer: 0}
-                  {{{(prefix ? "- {ufo: UNKNOWN_OBJECTIVE_FINAL, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 30000}" : "")}}}
+                  {{{(prefix ? "- {ufo: UNKNOWN_OBJECTIVE_FINAL, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: " + (finalImmediate ? "0}" : "30000}") : "")}}}
             ufoTrajectories:
               - id: OBJECTIVE_OPENING_GROUND
                 groundTimer: {{{groundTimer}}}

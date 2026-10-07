@@ -10,7 +10,8 @@ internal sealed partial class CampaignWorld
         mission.NextWave + 1 == rule.Waves.Count && (ulong)mission.NextUfoCounter + 1 >= wave.UfoCount;
 
     private string? ObjectiveBaseSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work)
+        CampaignTimeTrigger highest, Dictionary<string, int> markers, ref long work,
+        GeneratedTargetReservations? generated = null, WorldTargetReference? source = null)
     {
         try
         {
@@ -20,19 +21,24 @@ internal sealed partial class CampaignWorld
             long geometry = 1;
             foreach (var polygon in rules.Campaign.Globe.Polygons) geometry += polygon.Points.Count;
             work += 100L * (2 * geometry + region.Areas.Count + 1);
-            return ReserveObjectiveBase(rule, areas, highest, markers, ref work);
+            return ReserveObjectiveBase(rule, areas, highest, markers, ref work, generated: generated, source: source);
         }
         catch (InvalidDataException error) { return error.Message; }
     }
 
     private string? ReserveObjectiveBase(RuntimeAlienMissionRule rule, IReadOnlyList<MissionArea> areas,
-        CampaignTimeTrigger highest, Dictionary<string, int> reservations, ref long work, bool landing = false)
+        CampaignTimeTrigger highest, Dictionary<string, int> reservations, ref long work, bool landing = false,
+        GeneratedTargetReservations? generated = null, WorldTargetReference? source = null)
     {
-        if (++_pass.ObjectiveBaseBirths > 100_000 - _alienBases.Count)
+        if (generated is not null) work += 8;
+        if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
+        var additional = generated?.ReservePopulation() ?? 1;
+        _pass.ObjectiveBaseBirths += additional;
+        if (_pass.ObjectiveBaseBirths > 100_000 - _alienBases.Count)
             return "Base objective population exceeds the supported limit.";
         if (ulong.MaxValue - _alienBaseBirthSequence < (ulong)_pass.ObjectiveBaseBirths)
             return "Base objective birth sequence is exhausted.";
-        if (!landing) _pass.ObjectiveBasesBeforeHunting++;
+        if (!landing) _pass.ObjectiveBasesBeforeHunting += additional;
         var rules = campaign.Content.RuntimeRules;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         var positions = new List<SpawnArea>();
@@ -62,9 +68,12 @@ internal sealed partial class CampaignWorld
         if (canHunt) _pass.ObjectiveBaseHuntingMissions++;
         foreach (var marker in markers)
         {
+            if (generated is not null) work += 8;
+            if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
             if (ProductionCounterWorkReason(highest, ref work, "Base objective creation exceeds the supported work limit.") is { } productionWork)
                 return productionWork;
-            var count = reservations.GetValueOrDefault(marker) + 1;
+            var markerAdditional = generated?.ReserveMarker(marker) ?? 1;
+            var count = reservations.GetValueOrDefault(marker) + markerAdditional;
             reservations[marker] = count;
             work += _alienBases.Count + (long)_sites.Count;
             // ProductionCounterWorkReason already charges craft/transfer identity scans.
@@ -106,7 +115,7 @@ internal sealed partial class CampaignWorld
                 return "Base objective IDs are exhausted or collide.";
             if (!landing)
             {
-                (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
+                if (markerAdditional != 0) (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
                 (_pass.EarlyLiveWorldMarkers ??= new(StringComparer.Ordinal)).Add(marker);
             }
         }
@@ -117,7 +126,7 @@ internal sealed partial class CampaignWorld
         foreach (var state in campaign.CountryStates) scoreGeometry += rules.Countries[state.Rule].Value.Areas.Count;
         work += areas.Count * scoreGeometry;
         if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
-        (_pass.ObjectiveBaseScores ??= []).Add((positions, rule.Points));
+        (_pass.ObjectiveBaseScores ??= []).Add((positions, rule.Points, source));
         return null;
     }
 

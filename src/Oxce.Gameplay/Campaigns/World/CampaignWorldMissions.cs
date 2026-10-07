@@ -35,7 +35,8 @@ internal sealed partial class CampaignWorld
         long escortSelectionWork = 0;
         Dictionary<string, int>? siteMarkerReservations = null;
         var siteSpawns = 0;
-        GeneratedSiteReservations? generatedSites = null;
+        GeneratedTargetReservations? generatedSites = null;
+        GeneratedTargetReservations? generatedBases = null;
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             var mission = forecast.Mission;
@@ -69,8 +70,10 @@ internal sealed partial class CampaignWorld
                     return infiltrationReason;
                 if (CompletesBaseObjective(step, rule, rule.Waves[step.NextWave]))
                 {
+                    if (forecast.Generated) (generatedBases ??= new()).Begin(mission, forecast.Hunting);
                     siteMarkerReservations ??= new(StringComparer.Ordinal);
-                    if (ObjectiveBaseSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork) is { } baseReason)
+                    if (ObjectiveBaseSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork,
+                            forecast.Generated ? generatedBases : null, forecast.Generated ? mission.AlienBase : null) is { } baseReason)
                         return baseReason;
                 }
                 if (RetaliationWaveReason(step, rule, ref geometryWork) is { } retaliationReason) return retaliationReason;
