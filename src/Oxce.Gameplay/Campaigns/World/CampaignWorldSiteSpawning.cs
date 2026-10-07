@@ -29,7 +29,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? DirectSiteSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, CampaignTimeTrigger highest,
-        Dictionary<string, int> markerReservations, ref long work, ref int population)
+        Dictionary<string, int> markerReservations, ref long work, ref int population, bool processThisTick = true)
     {
         var wave = rule.Waves[mission.NextWave];
         if (wave.Trajectory is null || !CanAdvanceWaveCounters(mission, rule, wave))
@@ -62,7 +62,7 @@ internal sealed partial class CampaignWorld
                 if (deployment.DurationMinimum < 0 || deployment.DurationMaximum < deployment.DurationMinimum ||
                     deployment.DurationMaximum > int.MaxValue / 3600)
                     return "Direct mission site duration is outside the supported range.";
-                if (deployment.DurationMinimum == 0)
+                if (processThisTick && deployment.DurationMinimum == 0)
                 {
                     work += 6 + 2L * deployment.DespawnEvents.Count;
                     if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";

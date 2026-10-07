@@ -189,7 +189,7 @@ internal sealed partial class CampaignWorld
             work += mission.Waves.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         }
-        var collect = mayCollect && mission.Waves.Any(wave => wave.Ufo is not null);
+        var collect = mayCollect && HasGeneratedObjectWave(mission);
         if (steps / 2 <= 1 && !collect && _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true &&
             mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(source, deployment, mission, ref work,
                 HuntGenerationReason) is { } immediateReason) return immediateReason;
