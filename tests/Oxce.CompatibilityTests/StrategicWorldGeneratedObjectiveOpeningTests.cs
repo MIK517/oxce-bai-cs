@@ -1,4 +1,6 @@
 using Oxce.Core.Random;
+using System.Text.Json;
+using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -148,9 +150,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         foreach (var hunting in new[] { false, true })
-            foreach (var objective in new[] { 1, 2 })
+            foreach (var objective in new[] { 1 })
             {
-                if (!hunting && objective == 2) continue;
                 var content = GeneratedObjectiveOpeningContent(cache, objective, hunting, finalImmediate: true);
                 AssertTimeBlocked(CampaignState.Restore(GeneratedObjectiveOpeningSnapshot(content, hunting), content,
                     new SplitMix64RandomSource(41)), "Immediate generated objective completion requires objective birth forecasts.");
@@ -187,10 +188,79 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HuntingFinalBaseBirthMissesCurrentHuntingIteration(bool cache, bool detectable)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
+        var row = TestFixtures.Rows(oracle.RootElement, "birthRows").Single(row =>
+            row[0].GetString() == (detectable ? "appendLive" : "appendDisabled"));
+        var content = GeneratedObjectiveOpeningContent(cache, 2, hunting: true, prefix: false, noObject: true,
+            detectableDestination: detectable);
+        var initial = GeneratedObjectiveOpeningSnapshot(content, hunting: true).WithNextId("STR_ALIEN_BASE", 7);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            41, "hunting-final-base-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var born = Assert.Single(after.World.AlienBases, alienBase => alienBase.Id == 7);
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new[] { row[5].GetInt32(), row[6].GetInt32() })),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(new[] { born.MinutesSinceLastHuntMissionGeneration, after.World.AlienBases.Count })));
+        Assert.Equal(0, after.World.AlienBases[0].MinutesSinceLastHuntMissionGeneration);
+        Assert.Equal((1, 0), (Assert.Single(after.World.Missions).NextWave, after.World.Missions[0].LiveUfos));
+        Assert.Empty(after.World.Ufos);
+        Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 7, after.Regions[0].ActivityAlien[^1]);
+        campaign = Reload(content, campaign, 41, "hunting-final-base-born.sav");
+        AdvanceUnblocked(campaign, 360);
+        Assert.Empty(campaign.Capture().World.Missions);
+        Assert.Equal(detectable ? 90 : 60, campaign.Capture().World.AlienBases[1].MinutesSinceLastHuntMissionGeneration);
+        Reload(content, campaign, 41, "hunting-final-base-next-boundary.sav");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HuntingFinalBaseIdsFollowEarlierSiteExpiryCounters(bool cache, bool decrease)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
+        var content = GeneratedObjectiveOpeningContent(cache, 2, hunting: true, prefix: false, noObject: true,
+            expiryShift: decrease ? -1 : 1);
+        var shiftedId = decrease ? 6 : 8;
+        var initial = GeneratedObjectiveOpeningSnapshot(content, hunting: true).WithNextId("STR_ALIEN_BASE", 7);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBases = [initial.World.AlienBases[0], new(shiftedId, "OBJECTIVE_OPENING_DESTINATION", "RACE_A", 0.2, 0.1)],
+                MissionSites = [new(3, "STR_ALIEN_TERROR", "OBJECTIVE_EXPIRY_SHIFT", "RACE_A", 0.2, 0.1, 0) { Detected = true }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            "Base objective IDs are exhausted or collide.");
+        initial = initial with
+        { World = initial.World with { AlienBases = [initial.World.AlienBases[0], initial.World.AlienBases[1] with { Id = 9 }] } };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            41, "hunting-base-expiry-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Single(campaign.Capture().World.AlienBases, alienBase => alienBase.Id == shiftedId);
+        Assert.Empty(campaign.Capture().World.MissionSites);
+        Reload(content, campaign, 41, "hunting-base-expiry-after.sav");
+    }
+
     private static RuntimeContent GeneratedObjectiveOpeningContent(bool cache, int objective, bool hunting = false,
-        int groundTimer = 0, bool prefix = true, bool raceAlternatives = false, bool finalImmediate = false, bool noObject = false) =>
+        int groundTimer = 0, bool prefix = true, bool raceAlternatives = false, bool finalImmediate = false, bool noObject = false,
+        bool detectableDestination = false, int expiryShift = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             alienDeployments:
+              - type: OBJECTIVE_EXPIRY_SHIFT
+                markerName: OBJECTIVE_EXPIRY_MARKER
+                {{{(expiryShift > 0 ? "counterDespawn: STR_ALIEN_BASE" : expiryShift < 0 ? "decreaseCounterDespawn: STR_ALIEN_BASE" : "")}}}
               - type: OBJECTIVE_OPENING_SOURCE
                 alienBase: true
                 markerName: STR_ALIEN_BASE
@@ -205,6 +275,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
               - type: OBJECTIVE_OPENING_DESTINATION
                 alienBase: true
                 markerName: STR_ALIEN_BASE
+                baseDetectionRange: {{{(detectableDestination ? 100 : 0)}}}
+                baseDetectionChance: 0
+                huntMissionMaxFrequency: 60
             alienMissions:
               - type: OBJECTIVE_OPENING_MISSION
                 objective: {{{objective}}}

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-alien-base-hunt-generation",
-  "description": "Exact baseHunting creation and start/think countdown prefixes. Controlled mission/race/region collaborators; delayed waves only. Captures timer reset, craft-loop break, source linkage, site area and one immediate think.",
+  "description": "Exact baseHunting creation and start/think countdown prefixes, timer reset, source linkage and site area. Controlled no-object immediate waves and appended-base iteration traces with stable vector capacity.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_alien_base_hunt_generation_probe.cpp",
-      "size": 6665,
-      "sha256": "cab24569ceab72f8f476051e2200a61b2dc683a1a0de023ab58d1cbf8c76e668"
+      "size": 7618,
+      "sha256": "6fb506bbb8f857c7a851162b47fbd5f47e7cef6021c42d3d98839bb7a64002a7"
     },
     {
       "path": "tools/capture-strategic-alien-base-hunt-generation-reference.ps1",

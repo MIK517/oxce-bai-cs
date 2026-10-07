@@ -63,7 +63,7 @@ internal sealed partial class CampaignWorld
             {
                 var birthRegions = regionTotals;
                 var birthCountries = countryTotals;
-                if (birth.Source is { } source && (generatedBaseScores ??= new()).Begin(source, false,
+                if (birth.Source is { } source && (generatedBaseScores ??= new()).Begin(source, birth.Hunting,
                         regionTotals, countryTotals, ref activityWork, out birthRegions, out birthCountries) is { } choiceReason)
                     return choiceReason;
                 if (CheckPossibleActivity(birth.Positions, birth.Points, birthRegions, birthCountries, guaranteedAward: false) is { } reason)
