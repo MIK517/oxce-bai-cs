@@ -212,4 +212,9 @@ airborne hunters and escort lookup actors, while retaining the existing craft,
 selection and follower work bounds. Pass-local reservations reset on every world
 preflight. Fresh/cache regressions cover both saved hunters and a 1,500-hunter
 saved-mission wave; all four cases refuse with unchanged snapshot and RNG state.
-All 56 focused generation cases pass. Full repository validation follows.
+All 56 focused generation cases pass. Final root validation passes all 3,260
+tests without failures or skips, including native fixture checksums, private
+corpus, endurance and unchanged allocation gates. Formatting, regenerated
+code-map and diff checks pass; the pinned reference remains clean. The audit
+fix is separate from the three implementation commits. Existing native captures
+and diagnostic outputs remain useful; this cycle created no compiled probes.

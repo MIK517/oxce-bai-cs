@@ -79,8 +79,10 @@ documents; entries here link to them instead of copying them.
   [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
 
 - Opening plan/scope commit: `b06cb39`.
-- 2026-10-07 generation alternatives cycle: native empty-race creation is now
-  projected. See [owned evidence](strategic-world-alien-base-generation-status.md#alternative-generation-forecasts-2026-10-07).
+- 2026-10-07 generation alternatives cycle: native empty-race creation, duplicate
+  target regions and mutually exclusive birth reservations are projected. The
+  batch audit fix reserves enlarged mission lookups before hunter/escort mutation.
+  See [owned evidence and validation](strategic-world-alien-base-generation-status.md#alternative-generation-forecasts-2026-10-07).
 - 2026-10-07 initial ground/site cycle: safe daily ground births now use the
   existing lifecycle forecasts at both generation callers, and ordinary site
   openings have 72-hour acceptance. See [owned evidence](strategic-world-alien-base-generation-status.md#initial-ground-and-site-wave-creation-2026-10-07).
