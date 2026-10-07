@@ -42,7 +42,8 @@ internal sealed partial class CampaignWorld
                 var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
                 if (rule.Waves.Count == 0 || rule.Waves[0].SpawnTimer / 30 / 2 > 1 ||
                     rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site or
-                        RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration)) continue;
+                        RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration or RuntimeMissionObjective.Retaliation or
+                        RuntimeMissionObjective.InstantRetaliation)) continue;
                 work += rule.Waves.Count;
                 if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (!HasGeneratedCreationWave(rule)) continue;
@@ -107,7 +108,8 @@ internal sealed partial class CampaignWorld
                 foreach (var step in DueWaveSteps(candidate, rule))
                 {
                     if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                    var wave = rule.Waves[step.NextWave];
+                    if (RetaliationWaveReason(step, rule, ref work) is { } retaliationReason) return retaliationReason;
+                    var wave = SpawnWave(step, rule);
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
                     if (IsDirectSiteWave(step, rule))
                     {

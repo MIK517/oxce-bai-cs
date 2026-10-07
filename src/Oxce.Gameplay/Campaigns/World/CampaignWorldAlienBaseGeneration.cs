@@ -83,6 +83,7 @@ internal sealed partial class CampaignWorld
                 regionId = rules.Regions.GetExternalId(fallback);
             }
             if (steps / 2 <= 1 && mission.Objective is (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
+                !forecastImmediate && _pass.DailyGeneratedWaveProofs?.Contains((alienBase.Id, alienBase.DeploymentId, missionId)) != true &&
                 ImmediateNoObjectReason(alienBase, deployment, mission, ref work, BaseGenerationImmediateReason, regionId) is { } retaliationReason)
                 return retaliationReason;
             if (mission.Objective == RuntimeMissionObjective.Site &&
