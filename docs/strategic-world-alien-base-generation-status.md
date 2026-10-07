@@ -705,3 +705,15 @@ finite two-wave hunting chain now completes instead of stopping at its prefix;
 two further cases preserve single-country capacity across competing hunting
 sources. All 337 focused generation/infiltration/repeat/objective-base cases
 pass. Pact signing, event payloads and month rollover remain deferred.
+
+Daily generated retaliation now participates in complete creation forecasts,
+including ordinary scouting and safely airborne assault spawning. Collection
+uses the effective native spawn wave, preserving `spawnUfo` overrides and the
+`__RETALIATION_ASSAULT_RUN` identity from `UfoTrajectory.cpp`; it validates
+retaliation target selection before accepting a proof. Native `spawnUfo` and
+`selectXcomBase` traces back eight fresh/cache selection/override cases with
+source origins, target movement, scoring, capacity refusal and reloads. Two
+scouting scenarios run 72 hours through cleanup. Two instant-retaliation cases
+refuse targeted base defense atomically. All 284 generation/retaliation cases
+pass, followed by the ten-case endurance subset. No combat or defense effect
+is executed.
