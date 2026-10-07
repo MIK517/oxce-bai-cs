@@ -11,12 +11,13 @@ internal sealed partial class CampaignWorld
         private ActivityRange[]? _countries;
 
         public string? Begin(WorldTargetReference source, bool hunting, ActivityRange[] regions, ActivityRange[] countries,
-            ref long work, out ActivityRange[] candidateRegions, out ActivityRange[] candidateCountries)
+            ref long work, out ActivityRange[] candidateRegions, out ActivityRange[] candidateCountries,
+            string workReason = "Alien mission activity forecasts exceed the supported work limit.")
         {
             candidateRegions = regions;
             candidateCountries = countries;
             work += 4L * (regions.Length + countries.Length);
-            if (work > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
+            if (work > MaximumAlienBaseChecks) return workReason;
             var key = (source, hunting);
             if (_source != key)
             {

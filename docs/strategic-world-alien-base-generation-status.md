@@ -517,3 +517,11 @@ verified generation/hunting/lifecycle fixtures back four fresh/cache seeded
 one/two-UFO cases that first reproduce the old refusal, then accept exact
 capacity through before/after/following reloads and reject genuine overflow.
 All 231 focused generation/wave/landing/escort cases pass.
+
+Direct-site activity now shares the same bounded source/caller alternative
+operation as UFO birth/takeoff forecasts, retaining its existing work-limit
+diagnostic and lazy consumption. Four fresh/cache mixed race cases exercise
+score/site objectives at exact joint UFO/site capacity, strict transition reloads,
+genuine overflow and 72-hour cleanup with daily reloads at both callers.
+All 244 focused generation/site-spawn/wave-chain cases pass. This unifies stage
+ownership; correlations between different scoring stages remain conservative.
