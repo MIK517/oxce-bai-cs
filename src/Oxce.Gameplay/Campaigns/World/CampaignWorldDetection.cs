@@ -33,9 +33,9 @@ internal sealed partial class CampaignWorld
             }
         }
         var hasDueWave = false;
-        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch, includeHunting: false))
+        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
-            if (!halfHour) break;
+            if (!halfHour && !forecast.Hunting) continue;
             var mission = forecast.Mission;
             if (mission.Interrupted || mission.SpawnCountdown > 30) continue;
             hasDueWave = true;
@@ -101,13 +101,13 @@ internal sealed partial class CampaignWorld
                 LandingAllowed(ufo.Destination!.Position, rule))
                 possibleLandingIds++;
         }
-        // AlienMission::think runs before the scoring and detection pass. Check its
-        // possible UFOs using every candidate first point without drawing RNG in preflight.
+        // Ordinary mission think precedes scoring/detection; hunting births follow
+        // that pass but can lift later in time5Seconds. Both use pure birth positions.
         long activityWork = 0;
         List<(IReadOnlyList<SpawnArea> Positions, int Points)>? newbornTakeoffScores = null;
-        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch, includeHunting: false))
+        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
-            if (!halfHour) break;
+            if (!halfHour && !forecast.Hunting) continue;
             var mission = forecast.Mission;
             var rules = campaign.Content.RuntimeRules;
             var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
@@ -148,11 +148,14 @@ internal sealed partial class CampaignWorld
                 activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length) * 2;
                 if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
                 var grounded = trajectory.Altitude(0) == 0;
-                var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1,
-                    guaranteedAward: !forecast.Generated);
-                if (reason is not null) return reason;
-                if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
-                        ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
+                if (!forecast.Hunting)
+                {
+                    var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1,
+                        guaranteedAward: !forecast.Generated);
+                    if (reason is not null) return reason;
+                    if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
+                            ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
+                }
                 if (!certainLeader && leaderOrigins is not null && percentage < 100)
                 {
                     activityWork += ordinaryOrigins.Count;
@@ -160,7 +163,7 @@ internal sealed partial class CampaignWorld
                     leaderOrigins.AddRange(ordinaryOrigins);
                     certainLeader = percentage <= 0;
                 }
-                if (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert || NewbornCanRevealHunt(step, wave))
+                if (!forecast.Hunting && (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert || NewbornCanRevealHunt(step, wave)))
                 {
                     possibleMarkerIds++;
                     if (grounded) possibleLandingIds++;
