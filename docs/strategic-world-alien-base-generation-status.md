@@ -143,3 +143,15 @@ including the unchanged allocation gates, native checksums, private corpus and
 endurance cases. Formatting, code-map and diff checks pass; the reference checkout
 is clean. No unexpected access denial occurred. The iterator and identity fixes
 are committed separately from the three implementation slices.
+
+## Initial ground and site-wave creation (2026-10-07)
+
+Daily score missions now admit initial ground UFOs when their positive timer
+keeps them landed through the creation tick. They join the existing doubled
+half-hour activity/detection reservations, then decrement once at five seconds.
+The next tick uses the existing takeoff preflight and execution. Native
+`strategic-world-lifecycle/spawnPathRows` pins status, ten-second initial timer
+and speed; fresh/cache tests compare that trace and reload before birth, after
+birth and after takeoff. A one-step initial timer retains a precise guard.
+Reference: pinned `AlienMission::spawnUfo`, `Ufo::think/takeoff` and the daily,
+half-hour and five-second Geoscape caller positions.

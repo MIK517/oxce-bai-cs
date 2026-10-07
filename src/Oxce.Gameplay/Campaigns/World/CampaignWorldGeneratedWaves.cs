@@ -94,7 +94,7 @@ internal sealed partial class CampaignWorld
                     wave.Ufo is not { } ufo || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
                 var ufoRule = campaign.Content.RuntimeRules.Ufos[ufo].Value;
                 var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
-                if (path.Waypoints.Count == 0 || path.Altitude(0) == 0 ||
+                if (path.Waypoints.Count == 0 || path.Altitude(0) == 0 && (hunting || path.GroundTimer <= 1) ||
                     !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
                     (wave.HunterKillerPercentage == -1 ? ufoRule.HunterKillerPercentage : wave.HunterKillerPercentage) > 0 ||
                     !CanSpawnOrdinaryUfoWave(step, rule)) return GeneratedWaveBoundary;

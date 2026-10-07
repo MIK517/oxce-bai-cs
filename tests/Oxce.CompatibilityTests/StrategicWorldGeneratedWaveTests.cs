@@ -247,7 +247,37 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "Immediate generated mission source identity is ambiguous.");
     }
 
-    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false) =>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyGeneratedGroundUfoUsesNativeTimerScoringAndLaterTakeoff(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var row = TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Single(value =>
+            value[0].GetInt32() == 0 && value[1].GetInt32() == 1 && value[2].GetInt32() == 0);
+        var content = GeneratedWaveContent(cache, 0, groundTimer: 2);
+        var initial = GeneratedWaveSnapshot(content, 19);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+            19, "daily-ground-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var ufo = Assert.Single(after.World.Ufos);
+        var actual = new[] { (int)ufo.Status, ufo.SecondsRemaining + 5, ufo.Speed };
+        var expected = row.EnumerateArray().Skip(3).Take(3).Select(value => value.GetInt32()).ToArray();
+        Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)),
+            CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(actual)));
+        Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 6, after.Regions[0].ActivityAlien[^1]);
+        Assert.Equal(1, Assert.Single(after.World.Missions).LiveUfos);
+        campaign = Reload(content, campaign, 19, "daily-ground-after.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
+        Reload(content, campaign, 19, "daily-ground-takeoff.sav");
+        content = GeneratedWaveContent(cache, 0, groundTimer: 1);
+        AssertTimeBlocked(CampaignState.Restore(GeneratedWaveSnapshot(content, 19), content, new SplitMix64RandomSource(19)),
+            "Immediate generated mission waves require creation-tick lifecycle forecasts.");
+    }
+
+    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
             $$$"""
             alienDeployments:
@@ -268,11 +298,19 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 objective: 0
                 interruptResearch: GEN_STOP
                 {{{(chain ? "regionWeights: {0: {REGION_SECOND: 1}}\n    raceWeights: {0: {RACE_A: 1, RACE_B: 1}}" : "")}}}
-                waves: {{{(chain ? "[{ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0}, {ufo: UFO_SCOUT, count: 3, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]" : $"[{{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: {timer}}}]")}}}
+                waves: {{{GeneratedWaves(timer, chain, groundTimer, hunterPercentage)}}}
+            ufoTrajectories:
+              - id: GENERATED_GROUND_PATH
+                groundTimer: {{{groundTimer}}}
+                waypoints: [[4, 0, 100], [5, 2, 80], [0, 3, 50]]
             crafts:
               - type: SHIP
                 sightRange: 0
             """);
+
+    private static string GeneratedWaves(int timer, bool chain, int groundTimer, int hunterPercentage) => chain
+        ? "[{ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0}, {ufo: UFO_SCOUT, count: 3, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]"
+        : $"[{{ufo: UFO_SCOUT, count: 1, trajectory: {(groundTimer != 0 ? "GENERATED_GROUND_PATH" : "TRAJ_SPAWN_FIXED")}, timer: {timer}, hunterKillerPercentage: {hunterPercentage}}}]";
 
     private static CampaignSnapshot GeneratedWaveSnapshot(RuntimeContent content, ulong seed) =>
         Snapshot(content, "local") with
