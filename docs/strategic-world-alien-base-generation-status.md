@@ -476,3 +476,12 @@ old refusal, then accept exact last activity values, preserve reloads and retain
 atomic single/two-source overflow. All 280 focused generation/site-spawn/
 site-timer/base-hunting cases pass. Broader UFO activity and expiry-counter
 uncertainty remain separate work.
+
+The batch audit found unnecessary marker/activity projection allocations on
+generated UFO-only paths. The separate correction creates both reservation
+contexts only when a direct-site wave consumes them. Expanded fresh/cache cases
+retain whole two-site chain activity, separate sources, real overflow, unsafe
+durations and 72 hours of selected direct/UFO activity with daily reloads.
+All 292 focused generation/site-spawn/site-timer/base-hunting cases pass. Reviewed
+source grouping, selected-area reuse, deployment precedence, empty-zone refusal
+and late payload timing; no additional correctness defect was confirmed.

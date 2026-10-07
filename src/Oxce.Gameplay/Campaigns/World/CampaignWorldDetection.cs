@@ -246,28 +246,30 @@ internal sealed partial class CampaignWorld
                     mission.SpawnCountdown > 30 || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra) continue;
                 var regions = regionTotals;
                 var countries = countryTotals;
-                if (forecast.Generated)
-                {
-                    // Collection keeps each source's alternatives together. Start
-                    // every candidate at the same prefix and union its outcomes.
-                    activityWork += 4L * (regions.Length + countries.Length);
-                    if (activityWork > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
-                    if (directSource != mission.AlienBase)
-                    {
-                        directSource = mission.AlienBase;
-                        directRegionBaseline = (ActivityRange[])regions.Clone();
-                        directCountryBaseline = (ActivityRange[])countries.Clone();
-                    }
-                    regions = (ActivityRange[])directRegionBaseline!.Clone();
-                    countries = (ActivityRange[])directCountryBaseline!.Clone();
-                }
+                var directCandidate = false;
                 foreach (var step in DueWaveSteps(mission, rule))
                 {
                     if (!IsDirectSiteWave(step, rule)) continue;
+                    if (forecast.Generated && !directCandidate)
+                    {
+                        // Collection keeps each source's alternatives together.
+                        // Only direct-site chains consume these private ranges.
+                        activityWork += 4L * (regions.Length + countries.Length);
+                        if (activityWork > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
+                        if (directSource != mission.AlienBase)
+                        {
+                            directSource = mission.AlienBase;
+                            directRegionBaseline = (ActivityRange[])regions.Clone();
+                            directCountryBaseline = (ActivityRange[])countries.Clone();
+                        }
+                        regions = (ActivityRange[])directRegionBaseline!.Clone();
+                        countries = (ActivityRange[])directCountryBaseline!.Clone();
+                        directCandidate = true;
+                    }
                     if (DirectSiteActivityReason(step, rule, regions, countries, ref activityWork,
                             guaranteedAward: !forecast.Generated) is { } reason) return reason;
                 }
-                if (forecast.Generated)
+                if (directCandidate)
                 {
                     for (var index = 0; index < regions.Length; index++) regionTotals[index].IncludeAlternative(regions[index]);
                     for (var index = 0; index < countries.Length; index++) countryTotals[index].IncludeAlternative(countries[index]);

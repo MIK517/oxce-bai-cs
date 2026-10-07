@@ -39,7 +39,7 @@ internal sealed partial class CampaignWorld
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             var mission = forecast.Mission;
-            if (forecast.Generated) (generatedSites ??= new()).Begin(mission, forecast.Hunting);
+            var generatedSiteCandidate = false;
             var missionUfoSpawns = 0;
             var missionHuntContacts = 0;
             var rule = campaign.Content.RuntimeRules.AlienMissions[
@@ -76,6 +76,11 @@ internal sealed partial class CampaignWorld
                 if (RetaliationWaveReason(step, rule, ref geometryWork) is { } retaliationReason) return retaliationReason;
                 if (IsDirectSiteWave(step, rule))
                 {
+                    if (forecast.Generated && !generatedSiteCandidate)
+                    {
+                        (generatedSites ??= new()).Begin(mission, forecast.Hunting);
+                        generatedSiteCandidate = true;
+                    }
                     siteMarkerReservations ??= new(StringComparer.Ordinal);
                     if (DirectSiteSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork, ref siteSpawns,
                             processThisTick: !forecast.Hunting, generated: forecast.Generated ? generatedSites : null) is { } siteReason)

@@ -135,15 +135,19 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedSupplyDeploymentAndUfoChainsReserveTogetherAndCompose(bool cache, bool hunting)
+    [InlineData(false, false, 5)]
+    [InlineData(true, false, 5)]
+    [InlineData(false, true, 5)]
+    [InlineData(true, true, 5)]
+    [InlineData(false, false, 3)]
+    [InlineData(true, false, 3)]
+    [InlineData(false, true, 3)]
+    [InlineData(true, true, 3)]
+    public void GeneratedDeploymentAndUfoChainsReserveTogetherAndCompose(bool cache, bool hunting, int objective)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
-        var content = GeneratedDirectSiteContent(cache, hunting, objective: 5, chain: true);
+        var content = GeneratedDirectSiteContent(cache, hunting, objective: objective, chain: true);
         var initial = GeneratedDirectSiteSnapshot(content, 41, hunting, chain: true);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
             41, "generated-supply-chain-before.sav");
@@ -240,39 +244,61 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
-    [InlineData(false, 3)]
-    [InlineData(true, 3)]
-    public void GeneratedDirectActivityReservesExclusiveChoicesAndSeparateSources(bool cache, int objective)
+    [InlineData(false, 0, false)]
+    [InlineData(true, 0, false)]
+    [InlineData(false, 3, false)]
+    [InlineData(true, 3, false)]
+    [InlineData(false, 0, true)]
+    [InlineData(true, 0, true)]
+    [InlineData(false, 3, true)]
+    [InlineData(true, 3, true)]
+    public void GeneratedDirectActivityReservesExclusiveChoicesAndSeparateSources(bool cache, int objective, bool repeatSite)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
-        var content = GeneratedDirectSiteContent(cache, objective: objective, alternatives: true);
+        var content = GeneratedDirectSiteContent(cache, objective: objective, alternatives: true, repeatSite: repeatSite);
+        var count = repeatSite ? 2 : 1;
+        var points = count * 4;
         var initial = GeneratedDirectSiteSnapshot(content, 41);
-        initial = initial with { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 4] }, .. initial.Regions.Skip(1)] };
+        initial = initial with { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - points] }, .. initial.Regions.Skip(1)] };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
         Reload(content, campaign, 41, "generated-direct-exclusive-activity.sav");
         AssertTimeBlocked(CampaignState.Restore(initial with
-        { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 3] }, .. initial.Regions.Skip(1)] },
+        { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - points + 1] }, .. initial.Regions.Skip(1)] },
             content, new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
         var twoSources = initial with
         {
-            Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 8] }, .. initial.Regions.Skip(1)],
+            Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 2 * points] }, .. initial.Regions.Skip(1)],
             World = initial.World with { AlienBases = [initial.World.AlienBases[0], new(3, "GENERATED_DIRECT_BASE", "RACE_A", 0.6, 0.1)] },
         };
         campaign = CampaignState.Restore(twoSources, content, new SplitMix64RandomSource(41));
         AdvanceUnblocked(campaign, 1);
-        Assert.Equal(2, campaign.Capture().World.MissionSites.Count);
+        Assert.Equal(2 * count, campaign.Capture().World.MissionSites.Count);
         Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
         AssertTimeBlocked(CampaignState.Restore(twoSources with
-        { Regions = [twoSources.Regions[0] with { ActivityAlien = [int.MaxValue - 7] }, .. twoSources.Regions.Skip(1)] },
+        { Regions = [twoSources.Regions[0] with { ActivityAlien = [int.MaxValue - 2 * points + 1] }, .. twoSources.Regions.Skip(1)] },
             content, new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedSelectedDirectSitesRejectUnsafeDurationsBeforeMutation(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        foreach (var deployment in new[] { "DIRECT_NEGATIVE_DURATION", "DIRECT_OVERFLOW_DURATION" })
+        {
+            var content = GeneratedDirectSiteContent(cache, hunting, deployment, objective: 3);
+            AssertTimeBlocked(CampaignState.Restore(GeneratedDirectSiteSnapshot(content, 41, hunting), content,
+                new SplitMix64RandomSource(41)), "Direct mission site duration is outside the supported range.");
+        }
+    }
+
     private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
-        int objective = 0, bool chain = false, bool alternatives = false) =>
+        int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_DIRECT_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
@@ -306,6 +332,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 waves:
                   - {ufo: {{{deployment}}}, count: 1, trajectory: DIRECT_SITE, timer: 0, objective: {{{objective == 3}}}}
                   {{{(chain ? "- {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}\n      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}" : "")}}}
+                  {{{(repeatSite ? "- {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}" : "")}}}
               - type: GENERATED_DIRECT_NEGATIVE_MISSION
                 objective: 0
                 spawnZone: 1
