@@ -196,6 +196,57 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO alien activity exceeds the supported range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingBirthWaveClassificationChargesTheSharedWorkLimit(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
+            """
+            alienDeployments:
+              - type: GUARDED_BASE
+                markerName: STR_ALIEN_BASE
+                baseDetectionRange: 100
+                baseDetectionChance: 100
+                huntMissionMaxFrequency: 60
+                huntMissionWeights: {0: {GUARDED_WAVES: 1}}
+            alienMissions:
+              - type: GUARDED_WAVES
+                waves:
+                  - {count: 1, trajectory: TRAJ_PATROL, timer: 0}
+            """ + "\n" + string.Concat(Enumerable.Repeat("      - {count: 1, trajectory: TRAJ_PATROL, timer: 1}\n", 9000)));
+        var initial = HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, 9, 55));
+        var owner = initial.Bases[0];
+        var craft = owner.Crafts.Single(value => value.RuleId == "SHIP");
+        initial = initial with
+        {
+            Bases = [owner with { Soldiers = [], Crafts = [.. Enumerable.Range(1, 120).Select(id => craft with { Id = id })] }],
+            World = initial.World with { AlienBases = [initial.World.AlienBases[0] with { DeploymentId = "GUARDED_BASE" }] },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+            "Alien base activity and sight checks exceed the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyGeneratedWaveCannotResolveASharedSourceMarkerIdentity(bool cache)
+    {
+        var content = GeneratedWaveContent(cache, 0);
+        var initial = GeneratedWaveSnapshot(content, 19);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBases = [new(2, "GEN_BASE_exhausted", "RACE_A", 0.4, 0.1) { GenMissionCount = 3 },
+                    initial.World.AlienBases[0]],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+            "Immediate generated mission source identity is ambiguous.");
+    }
+
     private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
             $$$"""

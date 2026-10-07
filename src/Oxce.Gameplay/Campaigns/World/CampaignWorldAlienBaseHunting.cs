@@ -180,10 +180,15 @@ internal sealed partial class CampaignWorld
         if (timer > int.MaxValue || (steps / 2 + steps) * 30 > int.MaxValue)
             return "Alien base hunting initial timer exceeds the supported range.";
         var proofKey = (source.Id, source.DeploymentId, missionId);
-        var collect = _pass.CollectHuntingGeneratedWaves && !newborn && steps / 2 <= 1 &&
+        var mayCollect = _pass.CollectHuntingGeneratedWaves && !newborn && steps / 2 <= 1 &&
             mission.Objective is (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply) &&
-            mission.Waves.Any(wave => wave.Ufo is not null) &&
             _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true;
+        if (mayCollect)
+        {
+            work += mission.Waves.Count;
+            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        }
+        var collect = mayCollect && mission.Waves.Any(wave => wave.Ufo is not null);
         if (steps / 2 <= 1 && !collect && _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true &&
             mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(source, deployment, mission, ref work,
                 HuntGenerationReason) is { } immediateReason) return immediateReason;

@@ -129,3 +129,11 @@ mission/UFO order, live counters and reloads execute. Already completed
 interruption research does not retroactively affect either newborn mission.
 Combined identity and activity overflow reject before any tick mutation.
 The prior shared-execution broad check passed all 1,838 strategic-world cases.
+
+The batch audit confirmed three gaps: a heap iterator allocated on empty-world
+ticks, hunting wave classification did not charge its future-wave scan, and
+daily creation could resolve a duplicate marker/source ID to the wrong base.
+The additional fix uses stack traversal, reserves classification work before
+scanning, and refuses ambiguous source links before mutation. The original
+campaign allocation thresholds now pass all twelve foundation cases; fresh/cache
+large-wave and shared-marker regressions retain atomic snapshot/RNG assertions.

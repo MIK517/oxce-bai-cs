@@ -60,6 +60,12 @@ internal sealed partial class CampaignWorld
     private string? CollectGeneratedWaveForecasts(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
         RuntimeAlienMissionRule rule, string missionId, string region, bool hunting, ref long work)
     {
+        work += _alienBases.Count;
+        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        var matches = 0;
+        foreach (var other in _alienBases)
+            if (other.Id == source.Id && MarkerName(other.DeploymentId) == deployment.MarkerName) matches++;
+        if (matches != 1) return "Immediate generated mission source identity is ambiguous.";
         var fromBase = hunting ? deployment.HuntMissionRaceFromAlienBase : deployment.GenMissionRaceFromAlienBase;
         var races = new List<string>();
         if (fromBase || !rule.HasRaceWeights) races.Add(source.Race);
@@ -98,13 +104,40 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private IEnumerable<(AlienMissionSnapshot Mission, bool Generated)> MissionWaveForecasts(CampaignTimeTrigger highest,
-        IReadOnlySet<string>? research, bool includeHunting = true)
+    private MissionWaveForecastEnumerable MissionWaveForecasts(CampaignTimeTrigger highest,
+        IReadOnlySet<string>? research, bool includeHunting = true) => new(this, highest, research, includeHunting);
+
+    // This caller is reached by empty-world five-second ticks too. Keep the
+    // composite traversal on the stack rather than allocating a yield iterator.
+    private readonly struct MissionWaveForecastEnumerable(CampaignWorld world, CampaignTimeTrigger highest,
+        IReadOnlySet<string>? research, bool includeHunting)
     {
-        if (highest >= CampaignTimeTrigger.ThirtyMinutes)
-            foreach (var mission in _missions) yield return (MissionAfterDailyResearch(mission, research), false);
-        if (_pass.GeneratedWaveMissions is not null)
-            foreach (var birth in _pass.GeneratedWaveMissions)
-                if (includeHunting || !birth.Hunting) yield return (birth.Mission, true);
+        public Enumerator GetEnumerator() => new(world, highest, research, includeHunting);
+
+        public struct Enumerator(CampaignWorld world, CampaignTimeTrigger highest,
+            IReadOnlySet<string>? research, bool includeHunting)
+        {
+            private int _savedIndex = -1;
+            private int _birthIndex = -1;
+            public (AlienMissionSnapshot Mission, bool Generated) Current { get; private set; }
+
+            public bool MoveNext()
+            {
+                if (highest >= CampaignTimeTrigger.ThirtyMinutes && ++_savedIndex < world._missions.Count)
+                {
+                    Current = (world.MissionAfterDailyResearch(world._missions[_savedIndex], research), false);
+                    return true;
+                }
+                if (world._pass.GeneratedWaveMissions is not { } births) return false;
+                while (++_birthIndex < births.Count)
+                {
+                    var birth = births[_birthIndex];
+                    if (!includeHunting && birth.Hunting) continue;
+                    Current = (birth.Mission, true);
+                    return true;
+                }
+                return false;
+            }
+        }
     }
 }
