@@ -163,3 +163,11 @@ and 100-percent-hunter cases cover both callers, native timer countdown, no
 premature hunting/escort state, correct half-hour points and three reloads.
 Creation-time airborne hunters, ground escorts and same-tick ground releases
 retain the lifecycle restriction.
+
+Generated site missions now admit ordinary non-objective opening waves. Their
+selected site area is persisted but unconsumed until an objective wave; a due
+objective follow-up retains the creation boundary. Fresh/cache daily-plus-hunting
+cases run 72 hours from both airborne and ground openings, reloading every day,
+with native generation/site-area and lifecycle evidence. Future objective waves
+remain pending, avoiding unavailable payload/combat effects. Separate zero-timer
+objective cases verify rejection before even the first ordinary wave mutates state.

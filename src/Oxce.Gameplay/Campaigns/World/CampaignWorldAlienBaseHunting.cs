@@ -181,7 +181,7 @@ internal sealed partial class CampaignWorld
             return "Alien base hunting initial timer exceeds the supported range.";
         var proofKey = (source.Id, source.DeploymentId, missionId);
         var mayCollect = _pass.CollectHuntingGeneratedWaves && !newborn && steps / 2 <= 1 &&
-            mission.Objective is (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply) &&
+            mission.Objective is (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) &&
             _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true;
         if (mayCollect)
         {
