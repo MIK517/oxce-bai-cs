@@ -50,15 +50,28 @@ internal sealed partial class CampaignWorld
                 ? null : "UFO contact marker IDs are exhausted or collide with a saved UFO.";
         var regionTotals = campaign.RegionStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         var countryTotals = campaign.CountryStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
+        long activityWork = 0;
         if (dailyBases)
             foreach (var alienBase in _alienBases)
                 if (!BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch) && CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
                         regionTotals, countryTotals) is { } reason)
                     return reason;
         if (_pass.ObjectiveBaseScores is not null)
+        {
+            GeneratedActivityAlternatives? generatedBaseScores = null;
             foreach (var birth in _pass.ObjectiveBaseScores)
-                if (CheckPossibleActivity(birth.Positions, birth.Points, regionTotals, countryTotals, guaranteedAward: false) is { } reason)
+            {
+                var birthRegions = regionTotals;
+                var birthCountries = countryTotals;
+                if (birth.Source is { } source && (generatedBaseScores ??= new()).Begin(source, false,
+                        regionTotals, countryTotals, ref activityWork, out birthRegions, out birthCountries) is { } choiceReason)
+                    return choiceReason;
+                if (CheckPossibleActivity(birth.Positions, birth.Points, birthRegions, birthCountries, guaranteedAward: false) is { } reason)
                     return reason;
+                if (birth.Source is not null)
+                    GeneratedActivityAlternatives.Complete(regionTotals, countryTotals, birthRegions, birthCountries);
+            }
+        }
         // Marker capacity is reserved for every contact that could be made, whatever the
         // radar coverage: only exhausted ID ranges can block, and they never occur in play.
         var possibleMarkerIds = 0;
@@ -106,7 +119,6 @@ internal sealed partial class CampaignWorld
         }
         // Ordinary mission think precedes scoring/detection; hunting births follow
         // that pass but can lift later in time5Seconds. Both use pure birth positions.
-        long activityWork = 0;
         List<NewbornTakeoffForecast>? newbornTakeoffScores = null;
         Dictionary<(int Source, string Marker), (int Contacts, int Landings)>? generatedContacts = null;
         GeneratedActivityAlternatives? generatedBirthActivity = null;

@@ -7,7 +7,7 @@ internal sealed partial class CampaignWorld
 {
     // A source selects one generated mission per caller. Keep the largest
     // creation chain across its rule/region/race/area alternatives.
-    private sealed class GeneratedSiteReservations
+    private sealed class GeneratedTargetReservations
     {
         private readonly Dictionary<(int Id, string Type, bool Hunting), int> _populations = [];
         private readonly Dictionary<(int Id, string Type, bool Hunting, string Marker), int> _markers = [];
@@ -81,7 +81,7 @@ internal sealed partial class CampaignWorld
 
     private string? DirectSiteSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, CampaignTimeTrigger highest,
         Dictionary<string, int> markerReservations, ref long work, ref int population, bool processThisTick = true,
-        GeneratedSiteReservations? generated = null)
+        GeneratedTargetReservations? generated = null)
     {
         var wave = rule.Waves[mission.NextWave];
         if (wave.Trajectory is null || !CanAdvanceWaveCounters(mission, rule, wave))

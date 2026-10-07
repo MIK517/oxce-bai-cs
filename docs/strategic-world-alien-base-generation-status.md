@@ -614,3 +614,16 @@ daily reloads through UFO/mission cleanup. Base takeoff points remain suppressed
 as in `AlienMission::ufoLifting`; `addScore` likewise excludes infiltration.
 All 270 generation/objective-base cases pass. Hunting final completion,
 infiltration completion and generated no-object-only final bases remain guarded.
+
+The batch audit confirmed alternate races were incorrectly reserving multiple
+base populations, IDs and completion scores for one generated mission. The
+separate correction shares target reservations with direct sites and unions
+base completion activity per source, preserving separate actual sources and
+saved/landing behavior. Two fresh/cache seeded cases reproduce the old refusal,
+accept exact marker/score capacity with both races, preserve strict reloads,
+and retain atomic real/two-source overflow. Reservation and range work are
+charged. Finite immediate-chain guard regressions verify unsupported hunting/
+infiltration completion stops before the earlier prefix mutates state; native
+endless zero-timer inputs retain their work-limit rejection. All 320 affected
+generation/objective-base/site-spawn cases pass. Cross-objective alternatives
+and possible newborn hunting remain conservative rather than claimed complete.
