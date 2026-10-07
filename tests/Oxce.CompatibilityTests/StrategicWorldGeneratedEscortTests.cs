@@ -60,6 +60,54 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedZeroRadarAirborneEscortsPreserveLeaderOrderAndReload(bool cache, bool hunting)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var leader in new[] { false, true })
+        {
+            var expected = TestFixtures.Rows(oracle.RootElement, "spawnEscortRows").Single(row =>
+                row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetInt32() == (leader ? 3 : 0) &&
+                row[3].GetInt32() == 0 && row[12].GetInt32() == 0);
+            var content = GeneratedEscortContent(cache, hunting, ground: false, leader: leader);
+            var initial = GeneratedEscortSnapshot(content, hunting);
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "generated-air-escort-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var born = Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "GENERATED_ESCORT");
+            Assert.Equal(expected[4].GetBoolean(), born.Escort);
+            Assert.Equal(expected[5].GetBoolean(), born.Escorting);
+            Assert.Equal(expected[12].GetInt32(), (int)born.Status);
+            Assert.False(born.Hunting);
+            Assert.Equal(leader ? expected[9].GetInt32() : 550, born.Speed);
+            if (leader)
+            {
+                var first = after.World.Ufos[0];
+                Assert.Equal(first.UniqueId, born.Destination!.UniqueId);
+                // Native move compares the newly moved leader's distance with
+                // the step, even when rounding leaves it slightly above one step.
+                Assert.Equal(WorldGeometry.Move(new(Degrees(8), Degrees(2)), first.Position,
+                    WorldGeometry.RadianSpeed(2200)), born.Position);
+                Assert.Equal(WorldPosition.Create(Degrees(362), Degrees(2)), born.OriginalWaypoint);
+            }
+            else
+            {
+                Assert.Null(born.OriginalWaypoint);
+                Assert.Equal(WorldTargetKind.Waypoint, born.Destination!.Kind);
+            }
+            Assert.Equal(initial.Regions[0].ActivityAlien[^1] + (hunting ? 0 : leader ? 6 : 3), after.Regions[0].ActivityAlien[^1]);
+            Assert.Equal(leader ? 2 : 1, Assert.Single(after.World.Missions).LiveUfos);
+            campaign = Reload(content, campaign, 81, "generated-air-escort-after.sav");
+            AdvanceUnblocked(campaign, 12);
+            Reload(content, campaign, 81, "generated-air-escort-following.sav");
+        }
+    }
+
     private static RuntimeContent GeneratedEscortContent(bool cache, bool hunting, bool ground, bool leader,
         int radar = 0, int mode = 0, int percentage = 100, int count = 1) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""

@@ -270,5 +270,13 @@ Evidence: pinned `AlienMission::spawnUfo/ufoLifting`, `Ufo::think`,
 `Ufo::setEscortedUfo` and verified `strategic-hunting/spawnEscortRows` with
 grounded sources. Fresh/cache cases compare native flags/speed/status, no-leader
 and earlier-leader chains, caller scoring and reloads before/after birth and
-takeoff. The generation/escort focused suite passes 214 cases. Airborne generated
-escorts and same-tick ground release remain guarded pending their forecasts.
+takeoff. The generation/escort focused suite passes 214 cases.
+
+Airborne generated escorts now execute when no craft can be selected, including
+zero-radar births alongside active craft. Collection validates escort speed and
+spawn geometry immediately, deferring only the pure target proof until newborn
+preflight. Native saved-order leader attachment, backup waypoint and speed are
+retained, and later movement uses the moved leader's real position rather than
+forcing colocation. Fresh/cache cases cover both callers, absent/earlier leaders,
+activity and strict birth/pursuit reloads. Positive-radar craft selection and
+same-tick ground release still retain their creation restrictions.
