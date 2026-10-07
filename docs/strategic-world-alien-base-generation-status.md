@@ -430,3 +430,13 @@ of composed activity with daily reloads, cleanup and joint site/UFO ID exhaustio
 before mutation. All 154 focused generation/wave/site-spawn cases pass.
 Selected site-objective direct waves remain guarded pending reservations across
 their mutually exclusive selected areas.
+
+The three-slice audit confirmed that direct-site marker/population reservations
+summed mutually exclusive generated race choices. The separate fix reserves the
+largest chain per source and caller, including save-counter birth forecasts,
+while validating every candidate's fields and preserving separate real sources.
+Eight fresh/cache daily/hunting single/mixed-chain regressions reproduce the
+old final-ID refusal, accept the exact remaining capacity through reload and
+retain atomic real exhaustion. All 184 focused generation/wave/site-spawn/
+site-timer cases pass. Alternative activity and expiry-counter uncertainty are
+still tracked as remaining work; this fix does not claim those complete.
