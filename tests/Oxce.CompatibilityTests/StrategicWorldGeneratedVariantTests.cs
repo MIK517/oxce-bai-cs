@@ -68,14 +68,41 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         Reload(content, campaign, 19, "duplicate-region-birth.sav");
     }
 
-    private static RuntimeContent GeneratedVariantContent(bool cache, string races, int targetOdds = 0, bool hunting = false) =>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AlternativeRulesAndRacesReserveTheirLargestSingleBirth(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedVariantContent(cache, "{0: {RACE_A: 1, RACE_B: 1}}", alternatives: true);
+        var counts = new HashSet<int>();
+        for (ulong seed = 1; seed <= 8; seed++)
+        {
+            var initial = (VariantSnapshot(content, hunting: false) with { RandomState = seed })
+                .WithNextId("STR_UFO_UNIQUE", int.MaxValue - 2);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var mission = Assert.Single(after.World.Missions);
+            var expected = mission.RuleId == "VARIANT_OTHER" ? 2 : 1;
+            Assert.Equal(expected, after.World.Ufos.Count);
+            Assert.Equal(expected, mission.LiveUfos);
+            Assert.All(after.World.Ufos, ufo => Assert.Equal(mission.Id, ufo.MissionId));
+            Assert.Equal(int.MaxValue - 2 + expected, after.NextIds["STR_UFO_UNIQUE"]);
+            counts.Add(expected);
+            Reload(content, campaign, seed, "alternative-wave-birth.sav");
+        }
+        Assert.True(counts.SetEquals([1, 2]));
+    }
+
+    private static RuntimeContent GeneratedVariantContent(bool cache, string races, int targetOdds = 0, bool hunting = false, bool alternatives = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
             $$$"""
             alienDeployments:
               - type: VARIANT_BASE
                 alienBase: true
                 markerName: STR_ALIEN_BASE
-                genMission: {VARIANT_MISSION: 1}
+                genMission: {{{(alternatives ? "{VARIANT_MISSION: 1, VARIANT_OTHER: 1}" : "{VARIANT_MISSION: 1}")}}}
                 genMissionFreq: {{{(hunting ? 0 : 100)}}}
                 genMissionLimit: 1
                 genMissionRaceFromAlienBase: false
@@ -90,6 +117,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 targetBaseOdds: {{{targetOdds}}}
                 raceWeights: {{{races}}}
                 waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
+              - type: VARIANT_OTHER
+                objective: 0
+                waves: [{ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
             """);
 
     private static CampaignSnapshot VariantSnapshot(RuntimeContent content, bool hunting) =>

@@ -195,3 +195,11 @@ roll, including duplicates. A fresh/cache 64-base regression previously rejected
 the final available UFO identity; it now creates one UFO, retains the `[0,63]`
 selection range and reloads successfully. Evidence: pinned
 `GeoscapeState::GenerateSupplyMission` and verified generation `target` rows.
+
+UFO identity/population reservations now take the largest immediate chain for
+each unique source and daily/hunting caller. Different rules, regions and races
+are all validated but cannot create simultaneous missions at one caller. The
+callers remain separate, so midnight daily-plus-hunting births add together.
+Fresh/cache seeded alternatives consume one or two identities at the allocator
+boundary and preserve the actual selected rule/race, live counts and reloads.
+All existing combined exhaustion regressions retain their strict refusal.

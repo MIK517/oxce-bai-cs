@@ -22,6 +22,7 @@ internal sealed partial class CampaignWorld
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes && _pass.GeneratedWaveMissions is not { Count: > 0 }) return null;
         var ufoSpawns = 0;
+        Dictionary<(int Source, string Marker, bool Hunting), int>? generatedUfoSpawns = null;
         var newFlyingHunters = 0;
         var newEscorts = 0;
         HashSet<int>? possibleNewLeaderMissions = null;
@@ -36,6 +37,7 @@ internal sealed partial class CampaignWorld
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             var mission = forecast.Mission;
+            var missionUfoSpawns = 0;
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
@@ -107,7 +109,8 @@ internal sealed partial class CampaignWorld
                     TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
                     geometryWork += (long)origins.Count * destinations.Count;
                     if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
-                    ufoSpawns++;
+                    if (forecast.Generated) missionUfoSpawns++;
+                    else ufoSpawns++;
                     var wave = SpawnWave(step, rule);
                     var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
                     // Every non-hunter birth is an ordinary leader. A stochastic
@@ -125,7 +128,18 @@ internal sealed partial class CampaignWorld
                 }
                 return "Alien mission wave spawning requires world simulation.";
             }
+            if (forecast.Generated)
+            {
+                // One source creates at most one mission at each caller. Rules,
+                // regions and races are alternatives, not simultaneous births.
+                var source = mission.AlienBase!;
+                var key = (source.Id, source.TypeId, forecast.Hunting);
+                generatedUfoSpawns ??= [];
+                generatedUfoSpawns[key] = Math.Max(generatedUfoSpawns.GetValueOrDefault(key), missionUfoSpawns);
+            }
         }
+        if (generatedUfoSpawns is not null)
+            foreach (var count in generatedUfoSpawns.Values) ufoSpawns += count;
         long newbornFollowerWork = 0;
         var savedIdleEscorts = 0;
         var savedMovingEscorts = 0;
