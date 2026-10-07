@@ -319,3 +319,14 @@ back fresh/cache ordinary/hunter constructor cases, native restored speed,
 strict reloads before/after lift and atomic combined-score overflow refusal.
 All 139 focused generation/landing cases pass. Hunting and escort five-second
 births remain guarded pending their respective creation forecasts.
+
+Hunting-generated five-second ground timers now execute at both ten-minute and
+half-hour caller positions. Their births skip the earlier activity/detection
+pass, but reserve positive mission lift points alongside saved takeoffs and
+daily birth points. The pure composite traversal includes late births without
+running their detection scripts or reserving landing contacts. Pinned
+`GeoscapeState::time10Minutes/baseHunting/time5Seconds` and the same lifecycle
+fixture establish the order. Fresh/cache ordinary/hunter cases cover caller
+scoring, strict transition reloads, isolated overflow and combined midnight
+limits. All 183 focused generation/landing/base-hunting cases pass; five-second
+escort births still await relocation-aware lift acceptance.
