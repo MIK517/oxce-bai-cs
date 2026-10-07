@@ -108,8 +108,6 @@ internal sealed partial class CampaignWorld
                 {
                     if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                     var wave = rule.Waves[step.NextWave];
-                    if (hunting && CompletesInfiltration(step, rule, wave))
-                        return "Immediate generated objective completion requires objective birth forecasts.";
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
                     if (IsDirectSiteWave(step, rule))
                     {
