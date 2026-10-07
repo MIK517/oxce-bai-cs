@@ -248,7 +248,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     private static RuntimeContent GeneratedEscortContent(bool cache, bool hunting, bool ground, bool leader,
-        int radar = 0, int mode = 0, int percentage = 100, int count = 1, int huntSpeed = 150) =>
+        int radar = 0, int mode = 0, int percentage = 100, int count = 1, int huntSpeed = 150,
+        int groundTimer = 2, int missionPoints = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_ESCORT_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
@@ -267,7 +268,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
               - id: GENERATED_ESCORT_LEADER_PATH
                 waypoints: [[5, 3, 100], [3, 2, 80], [0, 3, 50]]
               - id: GENERATED_ESCORT_PATH
-                groundTimer: 2
+                groundTimer: {{{groundTimer}}}
                 waypoints: [[4, {{{(ground ? 0 : 3)}}}, 25], [3, 2, 80], [0, 3, 50]]
             alienDeployments:
               - type: GENERATED_ESCORT_BASE
@@ -282,6 +283,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             alienMissions:
               - type: GENERATED_ESCORT_MISSION
                 objective: 0
+                points: {{{missionPoints}}}
                 waves:
                   {{{(leader ? "- {ufo: UFO_SCOUT, count: 1, trajectory: GENERATED_ESCORT_LEADER_PATH, timer: 0}\n      " : "")}}}- {ufo: GENERATED_ESCORT, count: {{{count}}}, trajectory: GENERATED_ESCORT_PATH, timer: 0, escort: true}
             """);
