@@ -171,3 +171,10 @@ cases run 72 hours from both airborne and ground openings, reloading every day,
 with native generation/site-area and lifecycle evidence. Future objective waves
 remain pending, avoiding unavailable payload/combat effects. Separate zero-timer
 objective cases verify rejection before even the first ordinary wave mutates state.
+
+The ground/site batch audit found no additional confirmed defect. It checked
+native ground timers, constructor hunter state, both retarget caller positions,
+site-area consumption, half-hour scoring/detection, future objective boundaries,
+identity reservations and transition reloads. All 3,250 root tests pass without
+failures/skips, including private corpus, checksums and populated allocation gates.
+Formatting, regenerated code-map and diff checks pass; the reference is clean.
