@@ -582,3 +582,15 @@ native checksums, private corpus and populated allocation gates. Full formatting
 verification, regenerated fixture ownership map and diff checks pass. The pinned
 reference remains clean; no native probe was generated and the empty successful
 format log was removed. This closes the three-slice counter cycle and its audit.
+
+## Generated base and infiltration openings (2026-10-08)
+
+Daily generated base/infiltration missions now project finite creation-tick
+prefixes through the existing UFO/direct-site lifecycle handlers. Native
+`AlienMission::think` advances wave counters before testing final objective
+completion; nonfinal openings therefore do not build a base or sign a pact.
+Verified generation, lifecycle and objective-base captures back four fresh/cache
+regressions that first reproduce the old blanket generation guard, then advance
+ordinary UFO births and preserve the pending objective over 72 hours with daily
+reloads. All 212 generation cases pass. Creation-tick final completion keeps its
+specific forecast guard, and the hunting caller remains the next slice.

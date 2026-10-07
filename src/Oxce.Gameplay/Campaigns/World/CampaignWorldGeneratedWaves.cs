@@ -41,7 +41,8 @@ internal sealed partial class CampaignWorld
                     !campaign.Content.RuntimeRules.AlienMissions.TryGet(choice.Key, out var handle)) continue;
                 var rule = campaign.Content.RuntimeRules.AlienMissions[handle].Value;
                 if (rule.Waves.Count == 0 || rule.Waves[0].SpawnTimer / 30 / 2 > 1 ||
-                    rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site)) continue;
+                    rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site or
+                        RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration)) continue;
                 work += rule.Waves.Count;
                 if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (!HasGeneratedObjectWave(rule)) continue;
@@ -107,13 +108,14 @@ internal sealed partial class CampaignWorld
                 {
                     if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                     var wave = rule.Waves[step.NextWave];
+                    if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave))
+                        return "Immediate generated objective completion requires objective birth forecasts.";
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
                     if (IsDirectSiteWave(step, rule))
                     {
                         continue;
                     }
-                    if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) ||
-                        wave.Ufo is null || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
+                    if (wave.Ufo is null || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
                     var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
                     if (path.Waypoints.Count == 0 ||
                         !CanSpawnOrdinaryUfoWave(step, rule, requireHuntingForecast: false)) return GeneratedWaveBoundary;
