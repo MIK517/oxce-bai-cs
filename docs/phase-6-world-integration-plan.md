@@ -63,6 +63,12 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-08 objective-opening cycle: daily/hunting base/infiltration prefixes
+  and daily final-base creation now execute with bounded source alternatives.
+  See [slices, audit fix and acceptance](strategic-world-alien-base-generation-status.md#generated-base-and-infiltration-openings-2026-10-08).
+  Other generated final objectives, world-owned research and remaining
+  uncertainty/closure work keep 4c open; 4d is unchanged.
+
 - 2026-10-08 expiry-counter cycle: deployment/generated alternatives and late
   hunting counter order now have bounded forecasts and separate audit guards
   for decreased-counter newborn reuse. See [generation evidence and audit](strategic-world-alien-base-generation-status.md#generated-expiry-counter-alternatives-2026-10-08)
