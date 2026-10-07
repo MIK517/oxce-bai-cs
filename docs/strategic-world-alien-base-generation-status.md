@@ -540,3 +540,17 @@ verification, code-map and diff checks pass; the pinned reference stays clean.
 No probes were generated, and the empty successful-format log was removed.
 Generated expiry-counter alternatives and broader immediate objectives remain
 4c work, alongside the final headless acceptance reconciliation.
+
+## Generated expiry counter alternatives (2026-10-08)
+
+Generated direct-site forecasts now retain the largest complete expiry-counter
+chain per source/caller across mission/race/region/area alternatives. Every real
+wave and distinct source still accumulates; marker allocation and expiry aliases
+remain separate contributions, and uncertain decreases supply no headroom.
+Pinned `GenerateSupplyMission` selects one generated mission at each caller,
+while `GeoscapeState::processMissionSite` applies all six ordered fields to each
+actual expired site. Verified generation/site-spawn captures back four fresh/cache
+one/two-site regressions that reproduce the old refusal, accept exact custom and
+marker capacity through transition reloads, and reject real overflow and two-source
+composition atomically. All 246 generation/site-spawn cases pass. Projection
+work is charged and scratch state is private to one preflight pass.
