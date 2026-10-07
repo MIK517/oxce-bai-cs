@@ -494,3 +494,16 @@ successful-format logs were removed and reusable evidence remains. This closes
 the six-cycle timed run (18 implementation slices and six batch audits). Other
 immediate objectives, broader uncertainty forecasts and branch-wide headless
 acceptance still keep 4c open; no 4d work was started.
+
+## Generated activity alternatives (2026-10-08)
+
+Half-hour UFO birth scoring now unions each source's generated mission/race/
+region/area alternatives while accumulating every wave within a candidate.
+The bounded private projection remains lazy and does not execute RNG or scripts.
+Pinned `GenerateSupplyMission`, `GeoscapeState::time30Minutes` and verified
+generation/lifecycle fixtures establish one selected mission and per-UFO
+scoring. The fresh/cache weighted-rule regression reproduces the old activity
+refusal, accepts the exact remaining capacity, persists either one/two-UFO
+outcome and still refuses real overflow atomically. All 236 focused generation/
+wave-chain/site-spawn cases pass. Same-tick lift alternatives and joint direct
+site composition remain the following slices.

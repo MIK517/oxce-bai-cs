@@ -110,6 +110,7 @@ internal sealed partial class CampaignWorld
         List<(IReadOnlyList<SpawnArea> Positions, int Points)>? newbornTakeoffScores = null;
         Dictionary<(int Source, string Marker), (int Contacts, int Landings)>? generatedContacts = null;
         HashSet<GeneratedActivityKey>? generatedAwards = null;
+        GeneratedActivityAlternatives? generatedBirthActivity = null;
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             if (!halfHour && !forecast.Hunting) continue;
@@ -122,6 +123,9 @@ internal sealed partial class CampaignWorld
                 continue;
             var missionContacts = 0;
             var missionLandings = 0;
+            var birthRegions = regionTotals;
+            var birthCountries = countryTotals;
+            var birthCandidate = false;
             List<SpawnArea>? leaderOrigins = null;
             var certainLeader = false;
             if (missionRule.Waves.Any(wave => NewEscortWave(missionRule, wave)))
@@ -167,7 +171,13 @@ internal sealed partial class CampaignWorld
                 }
                 if (!forecast.Hunting)
                 {
-                    if (newAward && CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1,
+                    if (forecast.Generated && !birthCandidate)
+                    {
+                        if ((generatedBirthActivity ??= new()).Begin(mission.AlienBase!, false, regionTotals, countryTotals,
+                                ref activityWork, out birthRegions, out birthCountries) is { } choiceReason) return choiceReason;
+                        birthCandidate = true;
+                    }
+                    if (CheckSpawnActivity(wave.UfoType, positions, birthRegions, birthCountries, grounded ? 2 : 1,
                             guaranteedAward: !forecast.Generated) is { } reason) return reason;
                     if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
                             ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
@@ -188,6 +198,7 @@ internal sealed partial class CampaignWorld
                     missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration))
                     (newbornTakeoffScores ??= []).Add((positions, missionRule.Points));
             }
+            if (birthCandidate) GeneratedActivityAlternatives.Complete(regionTotals, countryTotals, birthRegions, birthCountries);
             if (forecast.Generated && (missionContacts != 0 || missionLandings != 0))
             {
                 // One source creates one daily mission. Its rule, race, region and
