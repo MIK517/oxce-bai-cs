@@ -63,6 +63,13 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-08 expiry-counter cycle: deployment/generated alternatives and late
+  hunting counter order now have bounded forecasts and separate audit guards
+  for decreased-counter newborn reuse. See [generation evidence and audit](strategic-world-alien-base-generation-status.md#generated-expiry-counter-alternatives-2026-10-08)
+  and [deployment choice evidence](strategic-world-site-spawning-status.md#exclusive-expiry-counters-2026-10-08).
+  Exact decreased-counter newborn composition, other immediate objectives and
+  branch-wide acceptance remain 4c work; 4d is unchanged.
+
 - 2026-10-08 generated activity cycle: three slices and a separate audit fix
   close source/caller alternatives across UFO births, takeoffs and direct sites.
   See [evidence and validation](strategic-world-alien-base-generation-status.md#generated-activity-alternatives-2026-10-08).
