@@ -126,13 +126,13 @@ internal sealed partial class CampaignWorld
         {
             private int _savedIndex = -1;
             private int _birthIndex = -1;
-            public (AlienMissionSnapshot Mission, bool Generated) Current { get; private set; }
+            public (AlienMissionSnapshot Mission, bool Generated, bool Hunting) Current { get; private set; }
 
             public bool MoveNext()
             {
                 if (highest >= CampaignTimeTrigger.ThirtyMinutes && ++_savedIndex < world._missions.Count)
                 {
-                    Current = (world.MissionAfterDailyResearch(world._missions[_savedIndex], research), false);
+                    Current = (world.MissionAfterDailyResearch(world._missions[_savedIndex], research), false, false);
                     return true;
                 }
                 if (world._pass.GeneratedWaveMissions is not { } births) return false;
@@ -140,7 +140,7 @@ internal sealed partial class CampaignWorld
                 {
                     var birth = births[_birthIndex];
                     if (!includeHunting && birth.Hunting) continue;
-                    Current = (birth.Mission, true);
+                    Current = (birth.Mission, true, birth.Hunting);
                     return true;
                 }
                 return false;
