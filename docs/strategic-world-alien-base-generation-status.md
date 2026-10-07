@@ -594,3 +594,12 @@ regressions that first reproduce the old blanket generation guard, then advance
 ordinary UFO births and preserve the pending objective over 72 hours with daily
 reloads. All 212 generation cases pass. Creation-tick final completion keeps its
 specific forecast guard, and the hunting caller remains the next slice.
+
+Late hunting now uses the same base/infiltration prefix projection, retaining
+its actual caller timing: newly generated UFOs miss half-hour scoring/detection,
+and the later objective remains pending. Four additional fresh/cache cases
+reproduce the old hunting guard and run 72 hours with daily reloads, checking
+stable mission/UFO linkage, cleanup and absence of premature pact/base effects.
+All 256 generation/base-hunting cases pass. Native baseHunting and
+`AlienMission::think`, plus verified hunting-generation/lifecycle captures,
+establish the caller order. Final objective completion retains its precise guard.
