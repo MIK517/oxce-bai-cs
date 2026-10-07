@@ -120,3 +120,12 @@ Evidence: pinned `GeoscapeState::GenerateSupplyMission/time1Day/time30Minutes`,
 initial timer rows and `strategic-world` ordinary-wave/scoring fixtures. Fresh/cache
 seeded tests cover zero/random timers, same-tick points, before/after reloads and
 atomic UFO-identity exhaustion. No persistence/cache schema changes are needed.
+
+Composed acceptance now compares both creation callers with the native
+`strategic-wave-chain` five-object zero-timer trace. Midnight produces daily
+UFOs first, scores/detects them, then creates the hunting chain; hunting births
+miss that earlier handler. Both weighted races, one region remap, allocated
+mission/UFO order, live counters and reloads execute. Already completed
+interruption research does not retroactively affect either newborn mission.
+Combined identity and activity overflow reject before any tick mutation.
+The prior shared-execution broad check passed all 1,838 strategic-world cases.

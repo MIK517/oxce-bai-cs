@@ -80,8 +80,10 @@ documents; entries here link to them instead of copying them.
 
 - Opening plan/scope commit: `b06cb39`.
 - 2026-10-07 immediate generation cycle: daily airborne births join the existing
-  wave forecasts; [generation evidence](strategic-world-alien-base-generation-status.md#immediate-airborne-generation-2026-10-07).
-  Hunting creation and composed acceptance follow in the same cycle.
+  wave forecasts, hunting uses its later caller, and composed zero-timer chains
+  have transition acceptance. See [generation evidence](strategic-world-alien-base-generation-status.md#immediate-airborne-generation-2026-10-07)
+  and [hunting evidence](strategic-world-alien-base-hunting-status.md#immediate-airborne-hunting-creation-2026-10-07).
+  Creation-time hunters, ground states and other immediate objectives remain guarded.
 - Event scheduling slice: runtime timer projections, transaction-owned research/manufacturing
   scheduling, generated history, countdowns/interrupted cleanup and due-payload guards.
   Extracted C++ fixture: `strategic-event`; public runtime/save tests:
