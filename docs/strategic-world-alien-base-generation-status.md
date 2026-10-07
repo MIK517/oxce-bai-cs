@@ -290,3 +290,12 @@ the earlier leader's position and all four two-birth 50-percent constructor
 outcomes through reloads. The combined generation/newborn/escort suite passes
 306 cases. Same-tick ground release and immediate site objective creation remain
 guarded; combat, deployment, payload and campaign-month boundaries are unchanged.
+
+The escort batch audit confirmed an adjacent idle-hunter atomicity defect:
+zero trajectory speed masked a negative maximum speed when no craft could be
+selected, and live retargeting threw after mission/UFO creation. The separate
+fix validates always-consumed hunter speed/radar sums before the no-target
+shortcut. Fresh/cache regressions assert a preflight refusal with unchanged
+snapshot/RNG. Added initialized-speed tests cover hunt-speed zero/minus-one at
+both callers and retain strict combat refusal between nominal and escort reach.
+The initial root batch passed all 3,302 tests; final validation follows the fix.

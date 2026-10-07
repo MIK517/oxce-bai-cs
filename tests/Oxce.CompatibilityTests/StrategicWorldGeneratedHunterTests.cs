@@ -195,14 +195,28 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 "Immediate generated mission fields exceed the supported range.");
     }
 
-    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false, bool combined = false, int radarBonus = 0) =>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedIdleHunterValidatesConsumedMaximumSpeedBeforeBirth(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = GeneratedHunterContent(cache, 0, speedMaximum: -1, spawnPercentage: 0);
+        var initial = GeneratedHunterSnapshot(content);
+        initial = initial with { Bases = [initial.Bases[0] with { Crafts = [], Soldiers = [] }] };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO hunting stats exceed the supported range.");
+    }
+
+    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false, bool combined = false,
+        int radarBonus = 0, int speedMaximum = 2200, int spawnPercentage = 100) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
               - {type: GENERATED_FAST, speedMax: 6000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             ufos:
               - type: GENERATED_HUNTER
-                speedMax: 2200
+                speedMax: {{{speedMaximum}}}
                 damageMax: 50
                 radarRange: 300
                 huntSpeed: 150
@@ -214,7 +228,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                   RACE_A: {radarRange: {{{radarBonus}}}}
             ufoTrajectories:
               - id: GENERATED_HUNTER_PATH
-                waypoints: [[4, 3, 100], [3, 2, 80], [0, 3, 50]]
+                waypoints: [[4, 3, {{{spawnPercentage}}}], [3, 2, 80], [0, 3, 50]]
             alienDeployments:
               - type: GENERATED_HUNTER_BASE
                 markerName: STR_ALIEN_BASE

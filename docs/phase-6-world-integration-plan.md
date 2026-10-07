@@ -79,10 +79,15 @@ documents; entries here link to them instead of copying them.
   [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
 
 - Opening plan/scope commit: `b06cb39`.
+- 2026-10-07 generated escorts cycle: ground, no-target airborne and prior-birth
+  hunting origins execute at both creation callers. See
+  [owned slices and batch audit](strategic-world-alien-base-generation-status.md#generated-escorts-2026-10-07).
+  Same-tick ground releases and immediate site objectives remain open alongside
+  broader uncertainty/closure work; later-branch guards and 4d are unchanged.
 - 2026-10-07 generated airborne hunters cycle: both creation callers now use
   scoped newborn target/reach proofs and shared contact reservations. See
   [owned slices and batch audit](strategic-world-alien-base-generation-status.md#generated-airborne-hunting-2026-10-07).
-  Generated escorts, same-tick ground releases and immediate site objectives
+  Same-tick ground releases and immediate site objectives
   remain open, together with broader uncertainty/closure work. Later-branch
   guards and branch 4d are unchanged.
 - 2026-10-07 generation alternatives cycle: native empty-race creation, duplicate
@@ -92,7 +97,7 @@ documents; entries here link to them instead of copying them.
 - 2026-10-07 initial ground/site cycle: safe daily ground births now use the
   existing lifecycle forecasts at both generation callers, and ordinary site
   openings have 72-hour acceptance. See [owned evidence](strategic-world-alien-base-generation-status.md#initial-ground-and-site-wave-creation-2026-10-07).
-  Ground escorts, same-tick ground release and immediate site
+  Same-tick ground release and immediate site
   objectives still need creation projections; later-branch guards remain intact.
 - 2026-10-07 immediate generation cycle: daily airborne births join the existing
   wave forecasts, hunting uses its later caller, and composed zero-timer chains
