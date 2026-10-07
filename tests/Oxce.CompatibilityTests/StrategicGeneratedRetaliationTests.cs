@@ -12,24 +12,33 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicGeneratedRetaliationTests
 {
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void DailyRetaliationBirthPreservesScoutingAndAssaultSelection(bool cache, bool targeted, bool replace)
+    [InlineData(false, false, false, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(false, true, false, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(false, false, true, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, true, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(false, false, false, true)]
+    [InlineData(true, false, false, true)]
+    [InlineData(false, true, false, true)]
+    [InlineData(true, true, false, true)]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, true, true, true)]
+    [InlineData(true, true, true, true)]
+    public void RetaliationBirthPreservesScoutingAndAssaultSelection(bool cache, bool targeted, bool replace, bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
         var row = TestFixtures.Rows(oracle.RootElement, "rows").Single(row =>
             row[0].GetInt32() == 4 && row[1].GetInt32() == 0 && row[2].GetInt32() == 0 &&
             row[3].GetInt32() == (targeted ? 1 : 0) && row[4].GetInt32() == 0 && row[5].GetInt32() == 1 &&
             row[6].GetInt32() == 0 && row[7].GetInt32() == (replace ? 1 : 0));
-        var content = Content(cache, false, replace);
-        var initial = Initial(content, false, targeted);
+        var content = Content(cache, hunting, replace);
+        var initial = Initial(content, hunting, targeted);
         var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             17, "daily-retaliation-before.sav");
         AdvanceUnblocked(campaign, 1);
@@ -40,7 +49,7 @@ public sealed class StrategicGeneratedRetaliationTests
         Assert.False(ufo.HunterKiller);
         Assert.False(ufo.Escorting);
         Assert.Equal((0, 0), (ufo.HuntMode, ufo.HuntBehavior));
-        Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
+        Assert.Equal(hunting ? 0 : 1, Assert.Single(after.World.AlienBases).GenMissionCount);
         var mission = Assert.Single(after.World.Missions);
         Assert.Equal((1, 1), (mission.NextWave, mission.LiveUfos));
         Assert.Equal(mission.Id, ufo.MissionId);
@@ -53,7 +62,7 @@ public sealed class StrategicGeneratedRetaliationTests
             Assert.Equal(moved.Longitude, ufo.Longitude, 12);
             Assert.Equal(moved.Latitude, ufo.Latitude, 12);
         }
-        Assert.Equal(targeted && replace ? 6 : 3, after.Regions[0].ActivityAlien[^1] - initial.Regions[0].ActivityAlien[^1]);
+        Assert.Equal(hunting ? 0 : targeted && replace ? 6 : 3, after.Regions[0].ActivityAlien[^1] - initial.Regions[0].ActivityAlien[^1]);
         campaign = Reload(content, campaign, 17, "daily-retaliation-after.sav");
         if (!targeted && !replace)
         {
@@ -70,14 +79,17 @@ public sealed class StrategicGeneratedRetaliationTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void DailyInstantRetaliationStopsAtBaseDefenseBeforeCreation(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void InstantRetaliationStopsAtBaseDefenseBeforeCreation(bool cache, bool hunting)
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         TestFixtures.LoadVerifiedManifest("strategic-retaliation-spawn");
-        var content = Content(cache, false, false, instant: true);
-        AssertTimeBlocked(CampaignState.Restore(Initial(content, false, true), content, new SplitMix64RandomSource(17)),
+        var content = Content(cache, hunting, false, instant: true);
+        AssertTimeBlocked(CampaignState.Restore(Initial(content, hunting, true), content, new SplitMix64RandomSource(17)),
             "Retaliation assault arrival requires base-defense simulation.");
     }
 

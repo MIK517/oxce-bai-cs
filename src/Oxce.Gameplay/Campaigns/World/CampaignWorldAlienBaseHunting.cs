@@ -186,7 +186,8 @@ internal sealed partial class CampaignWorld
         var proofKey = (source.Id, source.DeploymentId, missionId);
         var mayCollect = _pass.CollectHuntingGeneratedWaves && !newborn && steps / 2 <= 1 &&
             mission.Objective is (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site or
-                RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) &&
+                RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration or RuntimeMissionObjective.Retaliation or
+                RuntimeMissionObjective.InstantRetaliation) &&
             _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true;
         if (mayCollect)
         {
@@ -222,6 +223,7 @@ internal sealed partial class CampaignWorld
         if (steps / 2 <= 1 && mission.Objective == RuntimeMissionObjective.Retaliation && !mission.SkipScoutingPhase &&
             HuntingRetaliationDiscoveryReason(region, highest, ref work) is { } discoveryReason) return discoveryReason;
         if (steps / 2 <= 1 && mission.Objective is (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) &&
+            !collect && _pass.HuntingGeneratedWaveProofs?.Contains(proofKey) != true &&
             ImmediateNoObjectReason(source, deployment, mission, ref work, HuntGenerationReason, regionName) is { } retaliationReason)
             return retaliationReason;
         if (mission.Objective == RuntimeMissionObjective.Site &&
