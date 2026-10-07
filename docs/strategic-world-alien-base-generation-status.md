@@ -410,3 +410,14 @@ race/texture preservation, before/birth/expiry reloads and atomic ID/activity
 refusals. A 50-percent negative-source regression retains strict snapshot/RNG
 checks. All 208 focused generation/site-spawn/site-timer cases pass. Hunting
 and selected site-objective direct waves remain guarded for the next slices.
+
+The later hunting caller now creates explicit deployment sites too. Their
+timers and activity remain untouched until the next site-processing pass;
+completed no-UFO missions remain until the next half-hour cleanup. Preflight
+passes the real processing context into direct-site validation, so a late
+zero-duration site with an unavailable despawn event can be scheduled/persisted
+and refuses only before that payload is due. Its daily counterpart refuses
+before the creation tick. Native `baseHunting/AlienMission::think` and
+`GeoscapeState::processMissionSite` order back seeded fresh/cache caller cases,
+strict creation/expiry reloads and the zero-duration payload stopping horizon.
+All 252 focused generation/site-spawn/site-timer/base-hunting cases pass.
