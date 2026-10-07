@@ -717,3 +717,13 @@ scouting scenarios run 72 hours through cleanup. Two instant-retaliation cases
 refuse targeted base defense atomically. All 284 generation/retaliation cases
 pass, followed by the ten-case endurance subset. No combat or defense effect
 is executed.
+
+Late hunting retaliation uses the same effective-wave proofs after the native
+base-discovery caller. Existing uncertainty guards still stop scouting missions
+whose target classification could change during that earlier caller. Eight
+additional fresh/cache selection/override cases preserve late birth scoring
+order and generation counters, reload through spawning, and run 72-hour
+scouting cleanup. Two hunting instant-retaliation cases retain atomic defense
+refusal. All 294 focused generation/retaliation cases pass. The reference
+`baseHunting`/`generateHuntMission` and retaliation spawn captures establish
+caller order; this does not execute interception or base defense.
