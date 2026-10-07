@@ -33,10 +33,10 @@ internal sealed partial class CampaignWorld
             }
         }
         var hasDueWave = false;
-        foreach (var savedMission in _missions)
+        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch, includeHunting: false))
         {
             if (!halfHour) break;
-            var mission = MissionAfterDailyResearch(savedMission, guaranteedResearch);
+            var mission = forecast.Mission;
             if (mission.Interrupted || mission.SpawnCountdown > 30) continue;
             hasDueWave = true;
             break;
@@ -103,10 +103,10 @@ internal sealed partial class CampaignWorld
         // possible UFOs using every candidate first point without drawing RNG in preflight.
         long activityWork = 0;
         List<(IReadOnlyList<SpawnArea> Positions, int Points)>? newbornTakeoffScores = null;
-        foreach (var savedMission in _missions)
+        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch, includeHunting: false))
         {
             if (!halfHour) break;
-            var mission = MissionAfterDailyResearch(savedMission, guaranteedResearch);
+            var mission = forecast.Mission;
             var rules = campaign.Content.RuntimeRules;
             var missionRule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, missionRule) || mission.Interrupted ||
@@ -146,7 +146,8 @@ internal sealed partial class CampaignWorld
                 activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length) * 2;
                 if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
                 var grounded = trajectory.Altitude(0) == 0;
-                var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1);
+                var reason = CheckSpawnActivity(wave.UfoType, positions, regionTotals, countryTotals, grounded ? 2 : 1,
+                    guaranteedAward: !forecast.Generated);
                 if (reason is not null) return reason;
                 if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
                         ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
@@ -190,9 +191,9 @@ internal sealed partial class CampaignWorld
         // Direct sites are appended during think, then processed after every existing
         // site. Their positive durations lose 1800 seconds and award deployment points.
         if (halfHour)
-            foreach (var savedMission in _missions)
+            foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch, includeHunting: false))
             {
-                var mission = MissionAfterDailyResearch(savedMission, guaranteedResearch);
+                var mission = forecast.Mission;
                 var rule = campaign.Content.RuntimeRules.AlienMissions[
                     campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
                 if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count ||
@@ -364,13 +365,13 @@ internal sealed partial class CampaignWorld
     }
 
     private string? CheckSpawnActivity(string ruleId, IReadOnlyList<SpawnArea> positions,
-        ActivityRange[] regions, ActivityRange[] countries, int multiplier)
+        ActivityRange[] regions, ActivityRange[] countries, int multiplier, bool guaranteedAward = true)
     {
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Ufos[rules.Ufos.GetRequired(ruleId)].Value;
         var score = (long)rule.MissionScore * multiplier;
         if (score is < int.MinValue or > int.MaxValue) return "UFO alien activity exceeds the supported range.";
-        return CheckPossibleActivity(positions, (int)score, regions, countries);
+        return CheckPossibleActivity(positions, (int)score, regions, countries, guaranteedAward);
     }
 
     private string? CheckPossibleActivity(IReadOnlyList<SpawnArea> positions, int score,

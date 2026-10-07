@@ -105,3 +105,18 @@ regenerated code-map validation and `git diff --check` pass. The private fresh/c
 corpus retains nine executable saves through 360 ticks, two stopping at mission
 spawning (125 and 220 ticks), and eight active-battle preservation-only imports.
 These horizons establish bounded continuation, not branch 4c closure.
+## Immediate airborne generation (2026-10-07)
+
+Daily base-generated score/supply missions can now produce ordinary airborne UFOs
+in their creation tick. Pure candidate missions cover every reachable region and
+race without allocating identities or drawing RNG. The existing wave preflight
+reserves UFO identities/population and checks geometry, scoring and detection;
+optional candidates never contribute negative score headroom. New missions bypass
+the earlier daily interruption pass, as in the reference. Hunters, initial ground
+states and other immediate objectives retain a creation-lifecycle restriction.
+
+Evidence: pinned `GeoscapeState::GenerateSupplyMission/time1Day/time30Minutes`,
+`AlienMission::start/think/spawnUfo`, the verified `strategic-alien-base-generation`
+initial timer rows and `strategic-world` ordinary-wave/scoring fixtures. Fresh/cache
+seeded tests cover zero/random timers, same-tick points, before/after reloads and
+atomic UFO-identity exhaustion. No persistence/cache schema changes are needed.

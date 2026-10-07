@@ -23,6 +23,8 @@ internal sealed partial class CampaignWorld
         // depends on it, otherwise null; missions are projected through it after daily progress.
         public IReadOnlySet<string>? DailyResearchForecast;
         public Dictionary<int, AlienMissionSnapshot>? MissionCounterForecast;
+        public List<(AlienMissionSnapshot Mission, bool Hunting)>? GeneratedWaveMissions;
+        public HashSet<(int Source, string Deployment, string Mission)>? DailyGeneratedWaveProofs;
         public bool? NewHunterHasNoTarget;
         public CampaignTimeTrigger NewbornHighestTrigger;
         public List<CustomCounterChange>? SiteBirthIdChanges;
@@ -71,6 +73,8 @@ internal sealed partial class CampaignWorld
             UfoDestinationDistances.Clear();
             DailyResearchForecast = null;
             MissionCounterForecast = null;
+            GeneratedWaveMissions = null;
+            DailyGeneratedWaveProofs = null;
             NewHunterHasNoTarget = null;
             NewbornHighestTrigger = highest;
             SiteBirthIdChanges = null;

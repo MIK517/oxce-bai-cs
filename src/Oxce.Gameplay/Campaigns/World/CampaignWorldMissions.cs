@@ -20,7 +20,7 @@ internal sealed partial class CampaignWorld
 
     private string? MissionSchedulingReason(CampaignTimeTrigger highest, IReadOnlySet<string>? guaranteedResearch)
     {
-        if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
+        if (highest < CampaignTimeTrigger.ThirtyMinutes && _pass.GeneratedWaveMissions is not { Count: > 0 }) return null;
         var ufoSpawns = 0;
         var newFlyingHunters = 0;
         var newEscorts = 0;
@@ -33,9 +33,9 @@ internal sealed partial class CampaignWorld
         long escortSelectionWork = 0;
         Dictionary<string, int>? siteMarkerReservations = null;
         var siteSpawns = 0;
-        for (var index = 0; index < _missions.Count; index++)
+        foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
-            var mission = MissionAfterDailyResearch(_missions[index], guaranteedResearch);
+            var mission = forecast.Mission;
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
@@ -157,7 +157,7 @@ internal sealed partial class CampaignWorld
             var terminal = 0;
             foreach (var ufo in _ufos)
                 if (UfoDestroyedAfterTimers(ufo, highest)) terminal++;
-            if ((long)_missions.Count * finalUfoCount > MaximumAlienBaseChecks ||
+            if ((_missions.Count + (long)(_pass.GeneratedWaveMissions?.Count ?? 0)) * finalUfoCount > MaximumAlienBaseChecks ||
                 (long)terminal * finalUfoCount > MaximumAlienBaseChecks)
                 return "Destroyed UFO cleanup with new waves exceeds the supported work limit.";
         }

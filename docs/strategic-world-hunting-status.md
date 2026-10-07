@@ -37,7 +37,8 @@ items, and event weight scans before the common validator. All ten focused cases
 pass without changing state or RNG on rejection. Formatting/code-map/diff checks
 pass. The first root run passed 3,225 of 3,226 tests; its stationary patrol
 allocation case reported a 256-byte population differential and passed in an
-isolated rerun with its original threshold. A full root recheck is pending.
+isolated rerun with its original threshold. The unchanged full root recheck
+passed all 3,226 tests with no failures or skips.
 
 ## Future country activity prices (2026-10-07)
 

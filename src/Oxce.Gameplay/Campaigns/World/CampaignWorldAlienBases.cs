@@ -54,7 +54,7 @@ internal sealed partial class CampaignWorld
                     try
                     {
                         if (AlienBaseGenerationReason(alienBase, rule,
-                                campaign.Content.RuntimeRules.AlienMissions[mission].Value, ref work) is { } reason)
+                                campaign.Content.RuntimeRules.AlienMissions[mission].Value, ref work, choice.Key) is { } reason)
                             return reason;
                     }
                     catch (InvalidDataException error) { return error.Message; }

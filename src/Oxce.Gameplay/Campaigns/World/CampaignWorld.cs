@@ -457,6 +457,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
         if (destructionReason is not null) return destructionReason;
         _pass.DailyResearchForecast = guaranteedResearch;
+        if (PrepareDailyGeneratedWaveForecasts(highest, guaranteedResearch) is { } generationReason) return generationReason;
         if (PrepareMissionCounterForecasts(highest) is { } counterReason) return counterReason;
         if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
         if (SiteFollowerWorkReason(highest) is { } followerWorkReason) return followerWorkReason;
