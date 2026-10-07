@@ -102,4 +102,49 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         AssertTimeBlocked(CampaignState.Restore(limited, content, new SplitMix64RandomSource(19)),
             "UFO alien activity exceeds the supported range.");
     }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedGroundEscortReleaseRetainsRelocationAndRestoresTrajectorySpeed(bool cache, bool hunting)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var leader in new[] { false, true })
+        {
+            var native = TestFixtures.Rows(oracle.RootElement, "spawnEscortRows").Single(row =>
+                row[0].GetBoolean() && row[1].GetBoolean() && row[2].GetInt32() == (leader ? 3 : 0) &&
+                row[3].GetInt32() == 0 && row[12].GetInt32() == 1);
+            var content = GeneratedEscortContent(cache, hunting, ground: true, leader: leader,
+                groundTimer: 1, missionPoints: 7);
+            var initial = GeneratedEscortSnapshot(content, hunting);
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "escort-release-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var born = Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "GENERATED_ESCORT");
+            Assert.Equal(native[4].GetBoolean(), born.Escort);
+            Assert.Equal(native[5].GetBoolean(), born.Escorting);
+            Assert.Equal((UfoStatus.Flying, 0, 550), (born.Status, born.SecondsRemaining, born.Speed));
+            Assert.False(born.Hunting);
+            Assert.Equal(new WorldPosition(Degrees(leader ? 8 : 10), Degrees(leader ? 2 : 8)), born.Position);
+            var score = hunting ? 7 : leader ? 16 : 13;
+            Assert.Equal(initial.Regions[0].ActivityAlien[^1] + score, after.Regions[0].ActivityAlien[^1]);
+            if (leader)
+            {
+                Assert.Equal(after.World.Ufos[0].UniqueId, born.Destination!.UniqueId);
+                Assert.Equal(WorldPosition.Create(Degrees(362), Degrees(2)), born.OriginalWaypoint);
+            }
+            else Assert.Null(born.OriginalWaypoint);
+            campaign = Reload(content, campaign, 81, "escort-release-after.sav");
+            AdvanceUnblocked(campaign, 12);
+            Reload(content, campaign, 81, "escort-release-following.sav");
+            var limited = initial with
+            { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - score + 1] }, .. initial.Regions.Skip(1)] };
+            AssertTimeBlocked(CampaignState.Restore(limited, content, new SplitMix64RandomSource(81)),
+                "UFO alien activity exceeds the supported range.");
+        }
+    }
 }

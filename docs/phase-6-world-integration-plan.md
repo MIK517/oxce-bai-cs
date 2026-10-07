@@ -79,6 +79,11 @@ documents; entries here link to them instead of copying them.
   [three slices and audit fix](strategic-world-hunting-status.md#production-material-uncertainty-2026-10-07).
 
 - Opening plan/scope commit: `b06cb39`.
+- 2026-10-07 creation-tick ground-release cycle: daily, hunting and relocated
+  escort births now use ordered takeoff activity reservations. See
+  [owned slices and batch audit](strategic-world-alien-base-generation-status.md#creation-tick-ground-release-2026-10-07).
+  Immediate site objectives remain open alongside broader uncertainty/closure
+  work; later-branch guards and 4d are unchanged.
 - 2026-10-07 generated escorts cycle: ground, no-target airborne and prior-birth
   hunting origins execute at both creation callers. See
   [owned slices and batch audit](strategic-world-alien-base-generation-status.md#generated-escorts-2026-10-07).

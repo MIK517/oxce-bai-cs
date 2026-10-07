@@ -330,3 +330,14 @@ fixture establish the order. Fresh/cache ordinary/hunter cases cover caller
 scoring, strict transition reloads, isolated overflow and combined midnight
 limits. All 183 focused generation/landing/base-hunting cases pass; five-second
 escort births still await relocation-aware lift acceptance.
+
+Five-second escort births now execute at both callers. Native constructor
+attachment relocates a landed escort to the earlier ordinary leader; scoring
+and lift points use that position. Lift restores the trajectory percentage
+speed while retaining the leader link and original waypoint, and does not move
+the newly airborne escort again in that flight pass. Verified grounded
+`strategic-hunting/spawnEscortRows` and `AlienMission::ufoLifting` back fresh/cache
+leader/no-leader cases, caller-specific activity, strict birth/following reloads
+and combined-point overflow refusal. All 355 focused generation/newborn/escort/
+landing cases pass. The blanket generated ground-release restriction is removed;
+immediate site objectives and the established later-branch guards remain.
