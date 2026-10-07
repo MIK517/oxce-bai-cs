@@ -104,7 +104,11 @@ internal sealed partial class CampaignWorld
                 _sites.Any(existing => MarkerName(existing.DeploymentId) == marker && existing.Id >= range.Minimum && existing.Id < end) ||
                 CraftIdCollision(marker, range.Minimum, end))
                 return "Base objective IDs are exhausted or collide.";
-            if (!landing) (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
+            if (!landing)
+            {
+                (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
+                (_pass.EarlyLiveWorldMarkers ??= new(StringComparer.Ordinal)).Add(marker);
+            }
         }
         // Patrol discovery runs after these births, including delivered craft.
         foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;

@@ -413,11 +413,77 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LateHuntingCannotReuseSurvivingDailyBirthIdAfterExpiryDecreases(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        var content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: -1, bothCallers: true);
+        var initial = GeneratedDirectSiteSnapshot(content, 41, hunting: true).WithNextId("DIRECT_MARKER", 5) with
+        {
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+        };
+        initial = initial with
+        {
+            World = initial.World with
+            { MissionSites = [new(3, "DIRECT_OVERRIDE", "GENERATED_EXPIRY_SHIFT", "RACE_A", 0.2, 0.1, 0) { Detected = true }] },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            "Late hunting site allocation may reuse an earlier newborn marker ID after counter decreases.");
+        var safe = initial with { World = initial.World with { MissionSites = [] } };
+        var campaign = CampaignState.Restore(safe, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(2, campaign.Capture().World.MissionSites.Count);
+        Assert.Equal(5, campaign.Capture().World.MissionSites[0].Id);
+        Assert.Equal(6, campaign.Capture().World.MissionSites[1].Id);
+        Reload(content, campaign, 41, "daily-and-hunting-site-ids.sav");
+        content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: -1, bothCallers: true,
+            deployment: "DIRECT_ZERO_COUNTERS");
+        campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(6, Assert.Single(campaign.Capture().World.MissionSites).Id);
+        Reload(content, campaign, 41, "expired-daily-and-hunting-site-ids.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LateHuntingCannotReuseProducedCraftIdAfterExpiryDecreases(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-research-production");
+        var content = GeneratedDirectSiteContent(cache, hunting: true, expiryShift: -1, produceMarkerCraft: true);
+        var initial = GeneratedDirectSiteSnapshot(content, 41, hunting: true).WithNextId("DIRECT_MARKER", 5) with
+        { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+            {
+                Facilities = [.. initial.Bases[0].Facilities, new("GENERATED_MARKER_WORKSHOP", 5, 5, 0, 0, false, false, false)],
+                Productions = [new("GENERATED_MARKER_PRODUCT", 1, 0, 1, false, false, false, new Dictionary<string, int>())],
+            }],
+            World = initial.World with
+            { MissionSites = [new(3, "DIRECT_OVERRIDE", "GENERATED_EXPIRY_SHIFT", "RACE_A", 0.2, 0.1, 0) { Detected = true }] },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            "Late hunting site allocation shares decreased marker counters with same-tick craft production.");
+        var safe = initial with { World = initial.World with { MissionSites = [] } };
+        var campaign = CampaignState.Restore(safe, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Equal(5, Assert.Single(campaign.Capture().Bases[0].Crafts, craft => craft.RuleId == "DIRECT_MARKER").Id);
+        Assert.Equal(6, Assert.Single(campaign.Capture().World.MissionSites).Id);
+        Reload(content, campaign, 41, "produced-craft-and-hunting-site.sav");
+    }
+
     private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
-        int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false, int directCount = 1, int expiryShift = 0) =>
+        int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false, int directCount = 1, int expiryShift = 0,
+        bool bothCallers = false, bool produceMarkerCraft = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_DIRECT_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
+              {{{(produceMarkerCraft ? "- {type: DIRECT_MARKER, damageMax: 100, fuelMax: 0, allowLanding: false}" : "")}}}
             alienDeployments:
               - type: GENERATED_EXPIRY_SHIFT
                 markerName: GENERATED_EXPIRY_MARKER
@@ -426,7 +492,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
               - type: GENERATED_DIRECT_BASE
                 markerName: STR_ALIEN_BASE
                 genMission: {GENERATED_DIRECT_MISSION: 1}
-                genMissionFreq: {{{(hunting ? 0 : 100)}}}
+                genMissionFreq: {{{(hunting && !bothCallers ? 0 : 100)}}}
                 genMissionLimit: 1
                 genMissionRaceFromAlienBase: {{{!alternatives}}}
                 huntMissionRaceFromAlienBase: {{{!alternatives}}}
@@ -458,6 +524,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 spawnZone: 1
                 regionWeights: {0: {REGION: 1}}
                 waves: [{ufo: DIRECT_NEGATIVE, count: 1, trajectory: DIRECT_SITE, timer: 0}]
+            {{{(produceMarkerCraft ? "facilities: [{type: GENERATED_MARKER_WORKSHOP, mapName: LOGISTICS, workshops: 1}]\nmanufacture: [{name: GENERATED_MARKER_PRODUCT, category: STR_CRAFT, time: 1, producedItems: {DIRECT_MARKER: 1}}]" : "")}}}
             """);
 
     private static CampaignSnapshot GeneratedDirectSiteSnapshot(RuntimeContent content, ulong seed, bool hunting = false, bool chain = false)

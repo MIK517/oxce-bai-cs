@@ -203,6 +203,7 @@ internal sealed partial class CampaignWorld
         if (highest >= CampaignTimeTrigger.ThirtyMinutes)
         {
             long followers = _ufos.Count + 1L;
+            work += campaign.BaseStates.Count;
             foreach (var owner in campaign.BaseStates) followers += owner.Crafts.Count + 1L;
             work += followers * _sites.Count;
             if (work > MaximumAlienBaseChecks) return reason;
@@ -210,7 +211,7 @@ internal sealed partial class CampaignWorld
             foreach (var site in _sites)
             {
                 if (!SiteExpiresThisTick(site, highest)) continue;
-                work += 6;
+                work += 12; // Six fields plus their ordered forecast copies.
                 if (work > MaximumAlienBaseChecks) return reason;
                 changes.Clear();
                 var rules = campaign.Content.RuntimeRules;

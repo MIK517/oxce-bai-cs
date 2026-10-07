@@ -564,3 +564,15 @@ Four fresh/cache regressions first reproduce increment/decrement collisions
 with a surviving target, then stop atomically while safe shifted/floor IDs
 execute through before/after reloads. All 272 generation/site-spawn/site-timer
 cases pass. Same-tick daily/hunting birth composition is part of the batch audit.
+
+The batch audit reproduced late hunting ID reuse after a preceding expiry
+decrease, both with a surviving daily newborn and with hourly craft production.
+The separate fix refuses those specific shared-namespace compositions before
+mutation, tracking possible surviving early world markers and production-owned
+identity forecasts. Expired zero-hour daily sites do not trigger the live-world
+guard. Four fresh/cache regressions reproduce the old unsafe advance, retain
+atomic refusal and reload safe daily/hunting/production allocations. Prefix
+work now includes field copies, base scans and both subsequent counter scans.
+All 288 affected generation/site-spawn/site-timer/production/base cases pass.
+Exact projection of decreased counters across surviving newborn identities
+remains 4c work; these precise guards do not claim that composition complete.

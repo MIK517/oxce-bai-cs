@@ -136,6 +136,8 @@ internal sealed partial class CampaignWorld
                     }
                 }
                 markers.Add(deployment.MarkerName);
+                if (processThisTick && deployment.DurationMaximum > 0)
+                    (_pass.EarlyLiveWorldMarkers ??= new(StringComparer.Ordinal)).Add(deployment.MarkerName);
             }
         }
         if (markers.Count == 0) return null;
@@ -183,8 +185,18 @@ internal sealed partial class CampaignWorld
                 return productionWork;
             if (!processThisTick && PrepareBeforeHuntingSiteCounters(highest, ref work) is { } siteCounterReason)
                 return siteCounterReason;
-            work += !processThisTick ? _pass.BeforeHuntingSiteCounterForecast?.Count ?? 0 : 0;
+            work += !processThisTick ? 2L * (_pass.BeforeHuntingSiteCounterForecast?.Count ?? 0) : 0;
             if (work > MaximumAlienBaseChecks) return "Mission site marker forecasts exceed the supported work limit.";
+            if (!processThisTick && _pass.BeforeHuntingSiteCounterForecast?.Any(
+                    forecast => forecast.Change.Name == marker && !forecast.Change.Increase) == true)
+            {
+                if (_pass.EarlyLiveWorldMarkers?.Contains(marker) == true)
+                    return "Late hunting site allocation may reuse an earlier newborn marker ID after counter decreases.";
+                if (ProductionCounterWorkReason(highest, ref work, "Mission site marker forecasts exceed the supported work limit.") is { } decreaseWork)
+                    return decreaseWork;
+                if (campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1)
+                    return "Late hunting site allocation shares decreased marker counters with same-tick craft production.";
+            }
             var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest,
                 !processThisTick ? _pass.BeforeHuntingSiteCounterForecast : null, includeProduction: true);
             var end = range.Maximum + count;
