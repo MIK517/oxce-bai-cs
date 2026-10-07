@@ -12,7 +12,7 @@ using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
 
 namespace Oxce.CompatibilityTests;
 
-public sealed class StrategicWorldAlienBaseGenerationTests
+public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
     [Theory]
     [InlineData(false)]
@@ -193,7 +193,7 @@ public sealed class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData("GEN_IMMEDIATE_UFO", "Alien base mission can spawn during its creation tick; immediate generated waves require world simulation.")]
+    [InlineData("GEN_IMMEDIATE_UFO", "Immediate generated mission waves require creation-tick lifecycle forecasts.")]
     [InlineData("GEN_FUTURE_REGION", "Alien base mission region timeline has no entry for the current month.")]
     [InlineData("GEN_INVALID_ZONE", "Alien base site mission has an invalid spawn zone.")]
     [InlineData("GEN_WEIGHT_OVERFLOW", "Alien base mission weights exceed the supported range.")]

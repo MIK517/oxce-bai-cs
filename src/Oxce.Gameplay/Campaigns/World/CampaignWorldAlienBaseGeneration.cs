@@ -8,7 +8,7 @@ internal sealed partial class CampaignWorld
         "Alien base mission can spawn during its creation tick; immediate generated waves require world simulation.";
 
     private string? AlienBaseGenerationReason(AlienBaseSnapshot alienBase, RuntimeAlienDeploymentRule deployment,
-        RuntimeAlienMissionRule mission, ref long work)
+        RuntimeAlienMissionRule mission, ref long work, string missionId = "", bool forecastImmediate = false)
     {
         if (alienBase.GenMissionCount == int.MaxValue)
             return "Alien base generation counter is exhausted.";
@@ -18,10 +18,9 @@ internal sealed partial class CampaignWorld
         var steps = timer / 30;
         if (timer > int.MaxValue || (steps / 2 + steps) * 30 > int.MaxValue)
             return "Alien base mission initial timer exceeds the supported range.";
-        // time1Day falls through to AlienMission::think in this very tick. Until
-        // creation candidates join all wave/scoring/detection forecasts, reserve
-        // only timers guaranteed to count down without spawning in that pass.
-        if (steps / 2 <= 1 && mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(alienBase, deployment, mission, ref work,
+        if (steps / 2 <= 1 && !forecastImmediate &&
+            _pass.DailyGeneratedWaveProofs?.Contains((alienBase.Id, alienBase.DeploymentId, missionId)) != true &&
+            mission.Objective is not (RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation) && ImmediateNoObjectReason(alienBase, deployment, mission, ref work,
                 BaseGenerationImmediateReason) is { } immediateReason) return immediateReason;
         if (!deployment.GenMissionRaceFromAlienBase && mission.HasRaceWeights)
         {
@@ -88,7 +87,10 @@ internal sealed partial class CampaignWorld
             if (mission.Objective == RuntimeMissionObjective.Site &&
                 (mission.SpawnZone < 0 || mission.SpawnZone >= region.MissionZones.Count))
                 return "Alien base site mission has an invalid spawn zone.";
+            if (forecastImmediate && CollectGeneratedWaveForecasts(alienBase, deployment, mission, missionId,
+                    regionId, hunting: false, ref work) is { } waveReason) return waveReason;
         }
+        if (forecastImmediate) (_pass.DailyGeneratedWaveProofs ??= []).Add((alienBase.Id, alienBase.DeploymentId, missionId));
         return null;
     }
 
