@@ -306,3 +306,16 @@ allocation gates. All 310 focused generation/newborn/escort cases pass.
 Formatting, regenerated code-map and diff checks pass, and the pinned reference
 remains clean. Existing captures and diagnostic logs remain useful; this cycle
 created no disposable probes.
+
+## Creation-tick ground release (2026-10-07)
+
+Daily generated UFOs with a five-second initial ground timer now lift during
+their creation tick. The existing shared activity forecast reserves doubled
+landed UFO points before half-hour detection, then positive mission takeoff
+points after site processing and earlier UFO movement. Pinned
+`GeoscapeState::time5Seconds/time30Minutes`, `Ufo::think` and
+`AlienMission::ufoLifting` establish that order. Verified lifecycle spawn rows
+back fresh/cache ordinary/hunter constructor cases, native restored speed,
+strict reloads before/after lift and atomic combined-score overflow refusal.
+All 139 focused generation/landing cases pass. Hunting and escort five-second
+births remain guarded pending their respective creation forecasts.
