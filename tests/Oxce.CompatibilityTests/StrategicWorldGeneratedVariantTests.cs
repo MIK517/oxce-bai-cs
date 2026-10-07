@@ -80,6 +80,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         {
             var initial = (VariantSnapshot(content, hunting: false) with { RandomState = seed })
                 .WithNextId("STR_UFO_UNIQUE", int.MaxValue - 2);
+            initial = initial with
+            { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - 6] }, .. initial.Regions.Skip(1)] };
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
@@ -89,10 +91,16 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             Assert.Equal(expected, mission.LiveUfos);
             Assert.All(after.World.Ufos, ufo => Assert.Equal(mission.Id, ufo.MissionId));
             Assert.Equal(int.MaxValue - 2 + expected, after.NextIds["STR_UFO_UNIQUE"]);
+            Assert.Equal(int.MaxValue - 6 + 3 * expected, after.Regions[0].ActivityAlien[^1]);
             counts.Add(expected);
             Reload(content, campaign, seed, "alternative-wave-birth.sav");
         }
         Assert.True(counts.SetEquals([1, 2]));
+        var limited = VariantSnapshot(content, hunting: false);
+        limited = limited with
+        { Regions = [limited.Regions[0] with { ActivityAlien = [int.MaxValue - 5] }, .. limited.Regions.Skip(1)] };
+        AssertTimeBlocked(CampaignState.Restore(limited, content, new SplitMix64RandomSource(19)),
+            "UFO alien activity exceeds the supported range.");
     }
 
     [Theory]
