@@ -298,19 +298,104 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedInfiltrationSeesDailyPactBaseDestructionBeforeAllocatingIds(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-infiltration");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedObjectiveOpeningContent(cache, 1, prefix: false, noObject: true, destroyedPact: true);
+        var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", 7) with
+        {
+            CompletedResearch = ["OBJECTIVE_PACT_END"],
+        };
+        initial = initial with
+        {
+            Countries = initial.Countries.Select(country => country with { Pact = true, CancelPact = false }).ToArray(),
+            World = initial.World with
+            {
+                AlienBases = [initial.World.AlienBases[0], new(9, "OBJECTIVE_OLD_PACT", "RACE_A", 0.2, 0.1)
+                    { PactCountryId = initial.Countries[0].RuleId }, new(7, "OBJECTIVE_OPENING_DESTINATION", "RACE_A", 0.2, 0.1)],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            "Base objective IDs are exhausted or collide.");
+        var safe = initial with
+        { World = initial.World with { AlienBases = [initial.World.AlienBases[0], initial.World.AlienBases[1], initial.World.AlienBases[2] with { Id = 10 }] } };
+        var campaign = Reload(content, CampaignState.Restore(safe, content, new SplitMix64RandomSource(41)),
+            41, "cancelled-pact-generation-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var country = Assert.Single(campaign.Capture().Countries, country => country.NewPact);
+        Assert.True(country.Pact);
+        Assert.False(country.CancelPact);
+        Assert.DoesNotContain(campaign.Capture().World.AlienBases, alienBase => alienBase.Id == 9);
+        Assert.Equal(country.RuleId, Assert.Single(campaign.Capture().World.AlienBases, alienBase => alienBase.Id == 7).PactCountryId);
+        Reload(content, campaign, 41, "cancelled-pact-generation-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MultipleGeneratedInfiltrationSourcesReserveOnlyAvailableCountries(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-infiltration");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedObjectiveOpeningContent(cache, 1, prefix: false, noObject: true, raceAlternatives: true);
+        var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", int.MaxValue - 1);
+        initial = initial with
+        {
+            Countries = initial.Countries.Select((country, index) => country with { Pact = index != 0 }).ToArray(),
+            World = initial.World with
+            { AlienBases = [initial.World.AlienBases[0], new(3, "OBJECTIVE_OPENING_SOURCE", "RACE_A", 0.2, 0.1)] },
+        };
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            41, "shared-country-generation-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Single(campaign.Capture().Countries, country => country.NewPact);
+        Assert.Equal(3, campaign.Capture().World.AlienBases.Count);
+        Assert.Equal(int.MaxValue, campaign.Capture().NextIds["STR_ALIEN_BASE"]);
+        Reload(content, campaign, 41, "shared-country-generation-after.sav");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MixedGeneratedPactAndOrdinaryBasesReserveIndependentBirths(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-infiltration");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = GeneratedObjectiveOpeningContent(cache, 1, prefix: false, noObject: true, mixedObjectives: true);
+        var initial = GeneratedObjectiveOpeningSnapshot(content).WithNextId("STR_ALIEN_BASE", int.MaxValue - 1);
+        initial = initial with
+        {
+            Countries = initial.Countries.Select((country, index) => country with { Pact = index != 0 }).ToArray(),
+            World = initial.World with
+            { AlienBases = [initial.World.AlienBases[0], new(3, "OBJECTIVE_OPENING_SOURCE", "RACE_A", 0.2, 0.1)] },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            "Base objective IDs are exhausted or collide.");
+    }
+
     private static RuntimeContent GeneratedObjectiveOpeningContent(bool cache, int objective, bool hunting = false,
         int groundTimer = 0, bool prefix = true, bool raceAlternatives = false, bool finalImmediate = false, bool noObject = false,
-        bool detectableDestination = false, int expiryShift = 0, bool countryBase = false) =>
+        bool detectableDestination = false, int expiryShift = 0, bool countryBase = false, bool destroyedPact = false,
+        bool mixedObjectives = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             buildInfiltrationBaseCloseToTheCountry: {{{countryBase}}}
+            allowCountriesToCancelAlienPact: {{{destroyedPact}}}
             alienDeployments:
+              - type: OBJECTIVE_OLD_PACT
+                markerName: STR_ALIEN_BASE
+                baseSelfDestructCode: OBJECTIVE_PACT_END
               - type: OBJECTIVE_EXPIRY_SHIFT
                 markerName: OBJECTIVE_EXPIRY_MARKER
                 {{{(expiryShift > 0 ? "counterDespawn: STR_ALIEN_BASE" : expiryShift < 0 ? "decreaseCounterDespawn: STR_ALIEN_BASE" : "")}}}
               - type: OBJECTIVE_OPENING_SOURCE
                 alienBase: true
                 markerName: STR_ALIEN_BASE
-                genMission: {OBJECTIVE_OPENING_MISSION: 1}
+                genMission: {{{(mixedObjectives ? "{OBJECTIVE_OPENING_MISSION: 1, OBJECTIVE_MIXED_BASE: 1}" : "{OBJECTIVE_OPENING_MISSION: 1}")}}}
                 genMissionFreq: {{{(hunting ? 0 : 100)}}}
                 genMissionLimit: 1
                 genMissionRaceFromAlienBase: {{{!raceAlternatives}}}
@@ -336,10 +421,18 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 waves:
                   - {ufo: {{{(noObject ? "UNKNOWN_OBJECTIVE_FINAL" : "UFO_SCOUT")}}}, count: 1, trajectory: {{{(groundTimer == 0 ? "TRAJ_SPAWN_FIXED" : "OBJECTIVE_OPENING_GROUND")}}}, timer: 0}
                   {{{(prefix ? "- {ufo: UNKNOWN_OBJECTIVE_FINAL, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: " + (finalImmediate ? "0}" : "30000}") : "")}}}
+              - type: OBJECTIVE_MIXED_BASE
+                objective: 2
+                points: 0
+                spawnZone: 1
+                siteType: OBJECTIVE_OPENING_DESTINATION
+                regionWeights: {0: {REGION: 1}}
+                waves: [{ufo: UNKNOWN_OBJECTIVE_FINAL, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
             ufoTrajectories:
               - id: OBJECTIVE_OPENING_GROUND
                 groundTimer: {{{groundTimer}}}
                 waypoints: [[4, 0, 100], [5, 2, 80], [0, 3, 50]]
+            research: [{name: OBJECTIVE_PACT_END, cost: 1}]
             """);
 
     private static CampaignSnapshot GeneratedObjectiveOpeningSnapshot(RuntimeContent content, bool hunting = false) =>
