@@ -137,3 +137,9 @@ The additional fix uses stack traversal, reserves classification work before
 scanning, and refuses ambiguous source links before mutation. The original
 campaign allocation thresholds now pass all twelve foundation cases; fresh/cache
 large-wave and shared-marker regressions retain atomic snapshot/RNG assertions.
+
+Final batch validation: all 3,240 root tests pass without failures or skips,
+including the unchanged allocation gates, native checksums, private corpus and
+endurance cases. Formatting, code-map and diff checks pass; the reference checkout
+is clean. No unexpected access denial occurred. The iterator and identity fixes
+are committed separately from the three implementation slices.
