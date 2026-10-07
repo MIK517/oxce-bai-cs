@@ -254,4 +254,7 @@ the daily caller already refused it, but hunting exposed `OverflowException`.
 The separate fix converts consumed hunting field overflow into an explicit
 preflight refusal. Four fresh/cache malformed radar-bonus cases retain strict
 snapshot/RNG atomicity checks. The initial root batch passed all 3,280 cases;
-final validation includes this additional fix.
+final root validation passes all 3,284 cases without failures or skips. Formatting,
+regenerated code-map and diff checks pass, including native checksums, private
+corpus and unchanged allocation gates. The pinned reference remains clean;
+existing captures remain useful and this cycle created no disposable probes.
