@@ -105,6 +105,7 @@ internal sealed partial class CampaignWorld
         // that pass but can lift later in time5Seconds. Both use pure birth positions.
         long activityWork = 0;
         List<(IReadOnlyList<SpawnArea> Positions, int Points)>? newbornTakeoffScores = null;
+        Dictionary<(int Source, string Marker), (int Contacts, int Landings)>? generatedContacts = null;
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             if (!halfHour && !forecast.Hunting) continue;
@@ -115,6 +116,8 @@ internal sealed partial class CampaignWorld
                 mission.MultiUfoRetaliationInProgress && !missionRule.MultiUfoRetaliationExtra ||
                 mission.NextWave >= missionRule.Waves.Count || mission.SpawnCountdown > 30)
                 continue;
+            var missionContacts = 0;
+            var missionLandings = 0;
             List<SpawnArea>? leaderOrigins = null;
             var certainLeader = false;
             if (missionRule.Waves.Any(wave => NewEscortWave(missionRule, wave)))
@@ -165,14 +168,36 @@ internal sealed partial class CampaignWorld
                 }
                 if (!forecast.Hunting && (!rules.Ufos[wave.Ufo!.Value].Value.NoAlert || NewbornCanRevealHunt(step, wave)))
                 {
-                    possibleMarkerIds++;
-                    if (grounded) possibleLandingIds++;
+                    missionContacts++;
+                    if (grounded) missionLandings++;
                 }
                 if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
                     missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration))
                     (newbornTakeoffScores ??= []).Add((positions, missionRule.Points));
             }
+            if (forecast.Generated && (missionContacts != 0 || missionLandings != 0))
+            {
+                // One source creates one daily mission. Its rule, race, region and
+                // area choices are alternatives; reserve the largest contact chain.
+                var source = mission.AlienBase!;
+                generatedContacts ??= [];
+                var key = (source.Id, source.TypeId);
+                var previous = generatedContacts.GetValueOrDefault(key);
+                generatedContacts[key] = (Math.Max(previous.Contacts, missionContacts),
+                    Math.Max(previous.Landings, missionLandings));
+            }
+            else
+            {
+                possibleMarkerIds += missionContacts;
+                possibleLandingIds += missionLandings;
+            }
         }
+        if (generatedContacts is not null)
+            foreach (var count in generatedContacts.Values)
+            {
+                possibleMarkerIds += count.Contacts;
+                possibleLandingIds += count.Landings;
+            }
         // processMissionSite follows UFO detection in the same half-hour handler.
         // Every site scores, including one whose timer remains above zero or whose
         // expiry is held by followers.
