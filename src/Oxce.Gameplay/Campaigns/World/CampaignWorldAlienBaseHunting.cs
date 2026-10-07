@@ -136,7 +136,10 @@ internal sealed partial class CampaignWorld
 
     private void AdvanceAlienBaseHunting(CampaignState.TimeEffects _)
     {
-        for (var index = 0; index < _alienBases.Count; index++)
+        // The native range-for retains its original end: bases appended by a
+        // generated mission are first considered by the next hunting caller.
+        var count = _alienBases.Count;
+        for (var index = 0; index < count; index++)
         {
             var alienBase = _alienBases[index];
             var deployment = AlienBaseRule(alienBase);

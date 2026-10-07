@@ -36,7 +36,7 @@ internal sealed partial class CampaignWorld
         public int ObjectiveBaseBirths;
         public int ObjectiveBasesBeforeHunting;
         public int ObjectiveBaseHuntingMissions;
-        public List<(IReadOnlyList<SpawnArea> Positions, int Points, WorldTargetReference? Source)>? ObjectiveBaseScores;
+        public List<(IReadOnlyList<SpawnArea> Positions, int Points, WorldTargetReference? Source, bool Hunting)>? ObjectiveBaseScores;
         public List<CustomCounterChange>? SiteBirthExpiryIncreases;
         public List<CustomCounterChange>? SiteBirthExpiryDecreases;
         public List<CustomCounterForecast>? SiteConversionCounterForecast;

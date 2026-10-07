@@ -645,3 +645,18 @@ create exactly one base at final marker/score capacity, reload around creation
 and cleanup, and reject real ID overflow atomically. All 316 generation/
 objective-base/base-hunting cases pass. Hunting final-base and infiltration
 completion remain the following slices.
+
+Late hunting final-base waves now execute with caller-specific population,
+marker and completion-score projections. Newly appended bases are excluded
+from the current hunting iteration and begin hunting at the next caller;
+daily-born bases retain their earlier caller position. The expanded native
+baseHunting capture pins its saved end with stable vector capacity, avoiding
+undefined iterator behavior after reallocation; its prior rows are unchanged.
+Four fresh/cache tests canonically compare appended live/disabled base timers,
+then reload through the next half-hour cleanup. Four more first reproduce
+increment/decrement expiry-counter collisions with saved bases, then preserve
+atomic refusal and safe shifted IDs. Late base/site allocation shares the
+bounded prefix and precise decreased-counter newborn/production guards.
+All 370 generation/objective-base/base-hunting/site-spawn cases pass. The
+obsolete native object was removed; captures, executable and extracted source
+remain useful. Generated infiltration completion remains the next slice.

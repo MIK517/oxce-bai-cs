@@ -229,6 +229,22 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
+    private string? LateHuntingMarkerReason(string marker, CampaignTimeTrigger highest, ref long work, bool baseAllocation = false)
+    {
+        const string workReason = "Mission site marker forecasts exceed the supported work limit.";
+        if (PrepareBeforeHuntingSiteCounters(highest, ref work) is { } reason) return reason;
+        work += 2L * _pass.BeforeHuntingSiteCounterForecast!.Count;
+        if (work > MaximumAlienBaseChecks) return workReason;
+        if (!_pass.BeforeHuntingSiteCounterForecast.Any(forecast => forecast.Change.Name == marker && !forecast.Change.Increase))
+            return null;
+        var target = baseAllocation ? "base" : "site";
+        if (_pass.EarlyLiveWorldMarkers?.Contains(marker) == true)
+            return $"Late hunting {target} allocation may reuse an earlier newborn marker ID after counter decreases.";
+        if (ProductionCounterWorkReason(highest, ref work, workReason) is { } decreaseWork) return decreaseWork;
+        return campaign.ProductionPreflight.CraftCounter(marker, highest, (1, 1)).Maximum > 1
+            ? $"Late hunting {target} allocation shares decreased marker counters with same-tick craft production." : null;
+    }
+
     private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest)
     {
         var rules = campaign.Content.RuntimeRules;

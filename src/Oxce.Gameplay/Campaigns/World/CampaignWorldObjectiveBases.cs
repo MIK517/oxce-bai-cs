@@ -38,7 +38,8 @@ internal sealed partial class CampaignWorld
             return "Base objective population exceeds the supported limit.";
         if (ulong.MaxValue - _alienBaseBirthSequence < (ulong)_pass.ObjectiveBaseBirths)
             return "Base objective birth sequence is exhausted.";
-        if (!landing) _pass.ObjectiveBasesBeforeHunting += additional;
+        var hunting = generated?.Hunting == true;
+        if (!landing && !hunting) _pass.ObjectiveBasesBeforeHunting += additional;
         var rules = campaign.Content.RuntimeRules;
         var markers = new HashSet<string>(StringComparer.Ordinal);
         var positions = new List<SpawnArea>();
@@ -56,7 +57,7 @@ internal sealed partial class CampaignWorld
                 var deployment = rules.AlienDeployments[candidate].Value;
                 if (deployment.HuntMissionMaxFrequency < 0)
                     return "Base objective hunting timer cannot be negative.";
-                if (!landing && NewObjectiveBaseHuntingReason(rules.AlienDeployments.GetExternalId(candidate), deployment, area, position, highest, ref work, ref canHunt) is { } huntingReason)
+                if (!landing && !hunting && NewObjectiveBaseHuntingReason(rules.AlienDeployments.GetExternalId(candidate), deployment, area, position, highest, ref work, ref canHunt) is { } huntingReason)
                     return huntingReason;
                 var marker = deployment.MarkerName;
                 if (string.IsNullOrWhiteSpace(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
@@ -96,8 +97,10 @@ internal sealed partial class CampaignWorld
             if (landing && _pass.SiteBirthIdChanges?.Any(change => change.Name == marker) == true &&
                 _pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
                 return "Landing base creation shares decreased marker counters with same-tick world births.";
+            if (hunting && LateHuntingMarkerReason(marker, highest, ref work, baseAllocation: true) is { } huntingMarkerReason)
+                return huntingMarkerReason;
             var range = campaign.CustomCounters.BeforeWorldCreation(marker, highest,
-                landing ? _pass.SiteConversionCounterForecast : null, includeProduction: true);
+                landing ? _pass.SiteConversionCounterForecast : hunting ? _pass.BeforeHuntingSiteCounterForecast : null, includeProduction: true);
             if (landing && _pass.SiteConversionCounterForecast?.Any(change => change.Change.Name == marker && !change.Change.Increase) == true)
             {
                 // A later decrease may reuse the ID of a craft born this hour.
@@ -116,7 +119,7 @@ internal sealed partial class CampaignWorld
             if (!landing)
             {
                 if (markerAdditional != 0) (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
-                (_pass.EarlyLiveWorldMarkers ??= new(StringComparer.Ordinal)).Add(marker);
+                if (!hunting) (_pass.EarlyLiveWorldMarkers ??= new(StringComparer.Ordinal)).Add(marker);
             }
         }
         // Patrol discovery runs after these births, including delivered craft.
@@ -126,7 +129,7 @@ internal sealed partial class CampaignWorld
         foreach (var state in campaign.CountryStates) scoreGeometry += rules.Countries[state.Rule].Value.Areas.Count;
         work += areas.Count * scoreGeometry;
         if (work > MaximumAlienBaseChecks) return "Base objective creation exceeds the supported work limit.";
-        (_pass.ObjectiveBaseScores ??= []).Add((positions, rule.Points, source));
+        (_pass.ObjectiveBaseScores ??= []).Add((positions, rule.Points, source, hunting));
         return null;
     }
 
