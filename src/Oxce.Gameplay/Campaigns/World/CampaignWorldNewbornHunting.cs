@@ -4,13 +4,24 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
+    private readonly record struct NewbornHuntingProof(int Mission, string Rule, string Region, string Race,
+        WorldTargetReference? Source, int Wave, int Counter, string Ufo, int Mode);
+
+    private NewbornHuntingProof HuntingProof(AlienMissionSnapshot mission, RuntimeMissionWave wave, bool generated = false) =>
+        new(generated ? 0 : mission.Id, mission.RuleId, mission.RegionId, mission.Race, mission.AlienBase,
+            mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave));
+
+    private bool HasHuntingProof(HashSet<NewbornHuntingProof> proofs, AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
+        proofs.Contains(HuntingProof(mission, wave)) || mission.AlienBase is not null &&
+        proofs.Contains(HuntingProof(mission, wave, generated: true));
+
     private bool NewbornHuntingIsForecast(AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
-        _pass.NewbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave))) ||
-        _pass.NewbornNoTargetProofs.Contains((mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave))) ||
+        HasHuntingProof(_pass.NewbornSafeHuntingProofs, mission, wave) ||
+        HasHuntingProof(_pass.NewbornNoTargetProofs, mission, wave) ||
         NoCraftCanBecomeHunterTarget();
 
     private bool NewbornCanRevealHunt(AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
-        _pass.NewbornSafeHuntingProofs.Contains((mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, NewbornHuntMode(wave)));
+        HasHuntingProof(_pass.NewbornSafeHuntingProofs, mission, wave);
 
     private int NewbornHuntMode(RuntimeMissionWave wave) => wave.HuntMode == -1
         ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HuntMode : wave.HuntMode;
@@ -29,7 +40,7 @@ internal sealed partial class CampaignWorld
             (wave.HunterKillerPercentage == -1 ? rule.HunterKillerPercentage : wave.HunterKillerPercentage) <= 0 ||
             NoCraftCanBecomeHunterTarget()) return null;
         var mode = NewbornHuntMode(wave);
-        var key = (mission.Id, mission.NextWave, mission.NextUfoCounter, wave.UfoType, mode);
+        var key = HuntingProof(mission, wave);
         if (_pass.NewbornNoTargetProofs.Contains(key)) return null;
         if (_pass.HuntingCraftForecast is null && ForecastHuntingCrafts(highest, ref _pass.HuntingForecastWork) is { } reason)
             return reason;
@@ -79,7 +90,7 @@ internal sealed partial class CampaignWorld
                 Destination = new(WorldTargetKind.Waypoint, WorldTargetReference.WaypointType, 0, 1, 0.6),
             };
             if (ProjectHunting(hypothetical, highest, due: true, forecastFuel: true,
-                ref _pass.HuntingForecastWork, out _, out _) is { } candidateReason) return candidateReason;
+                ref _pass.HuntingForecastWork, out _, out _, missionForecast: mission) is { } candidateReason) return candidateReason;
         }
         if (possibleHunt) _pass.NewbornSafeHuntingProofs.Add(key);
         else _pass.NewbornNoTargetProofs.Add(key);

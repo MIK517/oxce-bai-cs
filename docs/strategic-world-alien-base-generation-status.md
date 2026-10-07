@@ -227,5 +227,15 @@ state through both retarget callers. Pinned `AlienMission::spawnUfo`,
 `Ufo::Ufo` and `GeoscapeState::ufoHuntingAndEscorting` establish the behavior;
 verified `strategic-hunting/constructorRows` and generation/lifecycle fixtures
 back fresh/cache seeded 50/100-percent cases, scoring, strict transition reloads
-and atomic identity exhaustion. Target-dependent hunters and escorts still stop
-at the creation boundary pending their pure forecasts.
+and atomic identity exhaustion.
+
+Daily target-dependent hunters now use the ordinary newborn reach/attraction
+forecasts with an explicit, unallocated mission context for race stats. Proofs
+include rule, region, race and source alongside wave/counter/mode, then apply to
+the same allocated mission after creation. They cannot leak between candidates
+sharing the private ID zero. Fresh/cache native selection/retarget rows cover
+all three constructor modes, backup waypoints, notifications, pursuit reloads,
+hidden-contact marker exhaustion and atomic interception refusal. A separate
+two-source regression proves that a safe first origin cannot hide combat at the
+second source. The focused generation/newborn suite passes 146 cases. Hunting
+caller births and escorts retain their creation restrictions pending coordination.

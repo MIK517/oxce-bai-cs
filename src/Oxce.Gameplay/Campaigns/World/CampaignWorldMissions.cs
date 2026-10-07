@@ -328,7 +328,7 @@ internal sealed partial class CampaignWorld
         rule.Objective == RuntimeMissionObjective.Supply &&
         (wave.Ufo is null ? wave.Deployment is null : wave.Objective && MissionSourceBase(mission) is null);
 
-    private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
+    private bool CanSpawnOrdinaryUfoWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, bool requireHuntingForecast = true)
     {
         if (rule.Objective == RuntimeMissionObjective.InstantRetaliation || mission.LiveUfos == int.MaxValue)
             return false;
@@ -345,7 +345,7 @@ internal sealed partial class CampaignWorld
             trajectory.Altitude(0) != 0 && !IsAirborne(trajectory.Altitude(0)) ||
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)))
             return false;
-        if (hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+        if (requireHuntingForecast && hunterKillerPercentage > 0 && !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
             (trajectory.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))) return false;
         if (NewEscortSpawnReason(mission, rule) is not null) return false;
         var stats = ufoRule.StatsForRace(mission.Race);
