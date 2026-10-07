@@ -44,7 +44,7 @@ internal sealed partial class CampaignWorld
                     rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site)) continue;
                 work += rule.Waves.Count;
                 if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (!rule.Waves.Any(wave => wave.Ufo is not null)) continue;
+                if (!HasGeneratedObjectWave(rule)) continue;
                 try
                 {
                     if (AlienBaseGenerationReason(source, deployment, rule, ref work, choice.Key,
@@ -108,6 +108,11 @@ internal sealed partial class CampaignWorld
                     if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                     var wave = rule.Waves[step.NextWave];
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
+                    if (IsDirectSiteWave(step, rule))
+                    {
+                        if (hunting || rule.Objective != RuntimeMissionObjective.Score) return GeneratedWaveBoundary;
+                        continue;
+                    }
                     if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) ||
                         wave.Ufo is null || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
                     var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
@@ -119,6 +124,10 @@ internal sealed partial class CampaignWorld
         }
         return null;
     }
+
+    private bool HasGeneratedObjectWave(RuntimeAlienMissionRule rule) => rule.Waves.Any(wave => wave.Ufo is not null ||
+        rule.Objective == RuntimeMissionObjective.Site && wave.Objective || wave.Deployment is { } deployment &&
+        campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.MarkerName.Length != 0);
 
     private MissionWaveForecastEnumerable MissionWaveForecasts(CampaignTimeTrigger highest,
         IReadOnlySet<string>? research, bool includeHunting = true) => new(this, highest, research, includeHunting);

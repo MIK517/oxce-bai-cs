@@ -396,3 +396,17 @@ regenerated code-map and diff checks pass; the pinned reference remains clean.
 Existing evidence/logs remain useful and no disposable probes were created.
 Broader alternative activity
 uncertainty remains open rather than being claimed complete by this correction.
+
+## Generated deployment-only waves (2026-10-07)
+
+Daily score missions can now create explicit deployment sites during their
+creation tick without a UFO. Collection recognizes executable deployment
+waves, then the shared mission/site capabilities validate and execute them.
+Generated site scoring keeps birth uncertainty instead of crediting an optional
+negative award as overflow headroom. Pinned `GenerateSupplyMission`,
+`AlienMission::think/spawnMissionSite` and verified `strategic-site-spawn`
+creation cases back fresh/cache seeded rectangle/point choices, marker/timer/
+race/texture preservation, before/birth/expiry reloads and atomic ID/activity
+refusals. A 50-percent negative-source regression retains strict snapshot/RNG
+checks. All 208 focused generation/site-spawn/site-timer cases pass. Hunting
+and selected site-objective direct waves remain guarded for the next slices.

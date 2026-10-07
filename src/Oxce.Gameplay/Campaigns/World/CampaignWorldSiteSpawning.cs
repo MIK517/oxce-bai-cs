@@ -213,7 +213,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? DirectSiteActivityReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        ActivityRange[] regions, ActivityRange[] countries, ref long work)
+        ActivityRange[] regions, ActivityRange[] countries, ref long work, bool guaranteedAward = true)
     {
         var wave = rule.Waves[mission.NextWave];
         var positions = new List<SpawnArea>();
@@ -264,7 +264,7 @@ internal sealed partial class CampaignWorld
         work += (long)positions.Count * (regions.Length + countries.Length) * 2;
         if (work > MaximumAlienBaseChecks) return "Mission site activity forecasts exceed the supported work limit.";
         if (positions.Count == 0) return null;
-        if (!suppressed && minimum == maximum) return CheckPossibleActivity(positions, maximum, regions, countries);
+        if (!suppressed && minimum == maximum) return CheckPossibleActivity(positions, maximum, regions, countries, guaranteedAward);
         if (maximum > 0 && CheckPossibleActivity(positions, maximum, regions, countries, false) is { } reason) return reason;
         return minimum < 0 ? CheckPossibleActivity(positions, minimum, regions, countries, false) : null;
     }
