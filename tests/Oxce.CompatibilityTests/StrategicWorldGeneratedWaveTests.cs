@@ -277,6 +277,39 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "Immediate generated mission waves require creation-tick lifecycle forecasts.");
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 100)]
+    [InlineData(true, 100)]
+    public void GroundHuntingBirthsStayInactiveUntilTheirLaterTakeoff(bool cache, int percentage)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var hunting in new[] { false, true })
+        {
+            var content = GeneratedWaveContent(cache, 0, hunting, groundTimer: 2, hunterPercentage: percentage);
+            var initial = hunting ? HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, 29, 55))
+                : GeneratedWaveSnapshot(content, 19);
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(19)),
+                19, "ground-hunter-before.sav");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            Assert.Equal(UfoStatus.Landed, ufo.Status);
+            Assert.Equal(5, ufo.SecondsRemaining);
+            Assert.Equal(percentage > 0, ufo.HunterKiller);
+            Assert.False(ufo.Hunting);
+            Assert.False(ufo.Escorting);
+            Assert.Equal(initial.Regions[0].ActivityAlien[^1] + (hunting ? 0 : 6), after.Regions[0].ActivityAlien[^1]);
+            if (hunting) Assert.False(ufo.Detected);
+            campaign = Reload(content, campaign, 19, "ground-hunter-after.sav");
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
+            Reload(content, campaign, 19, "ground-hunter-takeoff.sav");
+        }
+    }
+
     private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
             $$$"""
