@@ -40,6 +40,7 @@ internal sealed partial class CampaignWorld
         public List<CustomCounterChange>? SiteBirthExpiryIncreases;
         public List<CustomCounterChange>? SiteBirthExpiryDecreases;
         public List<CustomCounterForecast>? SiteConversionCounterForecast;
+        public List<CustomCounterForecast>? BeforeHuntingSiteCounterForecast;
         // Research known to be complete after this tick's daily progress. One pure projection per
         // pass, shared by every daily check of both world and craft-movement preflights.
         public IReadOnlySet<string>? GuaranteedDailyResearch;
@@ -95,6 +96,7 @@ internal sealed partial class CampaignWorld
             SiteBirthExpiryIncreases = null;
             SiteBirthExpiryDecreases = null;
             SiteConversionCounterForecast = null;
+            BeforeHuntingSiteCounterForecast = null;
             GuaranteedDailyResearch = null;
             SuppressedUfoSites = null;
         }

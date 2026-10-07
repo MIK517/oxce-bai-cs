@@ -195,6 +195,39 @@ internal sealed partial class CampaignWorld
         return rule.DespawnEvenIfTargeted || !SiteHasFollowers(site);
     }
 
+    private string? PrepareBeforeHuntingSiteCounters(CampaignTimeTrigger highest, ref long work)
+    {
+        if (_pass.BeforeHuntingSiteCounterForecast is not null) return null;
+        const string reason = "Mission site marker forecasts exceed the supported work limit.";
+        var forecasts = new List<CustomCounterForecast>();
+        if (highest >= CampaignTimeTrigger.ThirtyMinutes)
+        {
+            long followers = _ufos.Count + 1L;
+            foreach (var owner in campaign.BaseStates) followers += owner.Crafts.Count + 1L;
+            work += followers * _sites.Count;
+            if (work > MaximumAlienBaseChecks) return reason;
+            var changes = new List<CustomCounterChange>(6);
+            foreach (var site in _sites)
+            {
+                if (!SiteExpiresThisTick(site, highest)) continue;
+                work += 6;
+                if (work > MaximumAlienBaseChecks) return reason;
+                changes.Clear();
+                var rules = campaign.Content.RuntimeRules;
+                AddSiteCounterChanges(changes, rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value);
+                foreach (var change in changes) forecasts.Add(new(change, true));
+            }
+            work += (_pass.SiteBirthExpiryIncreases?.Count ?? 0) + (long)(_pass.SiteBirthExpiryDecreases?.Count ?? 0);
+            if (work > MaximumAlienBaseChecks) return reason;
+            if (_pass.SiteBirthExpiryIncreases is not null)
+                foreach (var change in _pass.SiteBirthExpiryIncreases) forecasts.Add(new(change, false));
+            if (_pass.SiteBirthExpiryDecreases is not null)
+                foreach (var change in _pass.SiteBirthExpiryDecreases) forecasts.Add(new(change, false));
+        }
+        _pass.BeforeHuntingSiteCounterForecast = forecasts;
+        return null;
+    }
+
     private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest)
     {
         var rules = campaign.Content.RuntimeRules;
