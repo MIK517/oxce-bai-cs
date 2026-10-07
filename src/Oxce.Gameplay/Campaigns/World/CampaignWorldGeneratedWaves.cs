@@ -77,7 +77,10 @@ internal sealed partial class CampaignWorld
             foreach (var choice in weights)
                 if (choice.Value != 0) races.Add(choice.Key);
         }
-        if (races.Count == 0) return "Immediate generated missions require a nonempty race forecast.";
+        // generateRace returns the empty string before its first timeline entry
+        // (or for an empty weighted set). The UFO uses unmodified base stats;
+        // AlienMission::load applies the reference interruption/race repair later.
+        if (races.Count == 0) races.Add(string.Empty);
         foreach (var race in races)
         {
             if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;

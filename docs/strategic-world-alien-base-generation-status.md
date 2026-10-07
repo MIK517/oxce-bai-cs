@@ -178,3 +178,13 @@ site-area consumption, half-hour scoring/detection, future objective boundaries,
 identity reservations and transition reloads. All 3,250 root tests pass without
 failures/skips, including private corpus, checksums and populated allocation gates.
 Formatting, regenerated code-map and diff checks pass; the reference is clean.
+
+## Alternative generation forecasts (2026-10-07)
+
+An immediate generated mission before its first race timeline now retains the
+native empty race instead of stopping at a forecast restriction. UFOs use default
+stats; subsequent save loading interrupts the mission and substitutes the first
+mod race, as `AlienMission::load` does. Verified generation `futureRace` rows and
+pinned `RuleAlienMission::generateRace` back fresh/cache daily/hunting tests,
+exact repaired-snapshot comparison and continued UFO persistence. No RNG is
+consumed during forecasting and no schema/cache revision changes are needed.
