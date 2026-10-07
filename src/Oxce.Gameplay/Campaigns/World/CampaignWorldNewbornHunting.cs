@@ -42,7 +42,9 @@ internal sealed partial class CampaignWorld
         // trajectory percentage must not hide an invalid maximum until after birth.
         var maximum = (long)rule.Stats.SpeedMaximum + rule.RaceBonus(mission.Race).SpeedMaximum;
         var radar = (long)rule.Stats.RadarRange + rule.RaceBonus(mission.Race).RadarRange;
-        if (maximum is < 0 or > int.MaxValue || radar is < int.MinValue or > int.MaxValue)
+        if (maximum is < 0 or > int.MaxValue)
+            return wave.Escort ? "UFO escort speed exceeds the supported range." : "UFO hunting stats exceed the supported range.";
+        if (radar is < int.MinValue or > int.MaxValue)
             return "UFO hunting stats exceed the supported range.";
         if (NoCraftCanBecomeHunterTarget()) return null;
         var mode = NewbornHuntMode(wave);

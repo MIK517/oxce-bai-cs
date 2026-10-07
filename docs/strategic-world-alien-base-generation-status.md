@@ -298,4 +298,6 @@ fix validates always-consumed hunter speed/radar sums before the no-target
 shortcut. Fresh/cache regressions assert a preflight refusal with unchanged
 snapshot/RNG. Added initialized-speed tests cover hunt-speed zero/minus-one at
 both callers and retain strict combat refusal between nominal and escort reach.
-The initial root batch passed all 3,302 tests; final validation follows the fix.
+The existing escort-specific invalid-speed diagnostic remains intact; its strict
+regression caught the generic hunter reason during validation. The initial root
+batch passed all 3,302 tests; final validation follows the fixes.
