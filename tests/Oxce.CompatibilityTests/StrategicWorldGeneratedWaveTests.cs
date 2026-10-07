@@ -272,9 +272,6 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         AdvanceUnblocked(campaign, 1);
         Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
         Reload(content, campaign, 19, "daily-ground-takeoff.sav");
-        content = GeneratedWaveContent(cache, 0, groundTimer: 1);
-        AssertTimeBlocked(CampaignState.Restore(GeneratedWaveSnapshot(content, 19), content, new SplitMix64RandomSource(19)),
-            "Immediate generated mission waves require creation-tick lifecycle forecasts.");
     }
 
     [Theory]
@@ -378,7 +375,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0, bool site = false, int siteObjectiveTimer = 9000) =>
+    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0, bool site = false, int siteObjectiveTimer = 9000, int missionPoints = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
             $$$"""
             alienDeployments:
@@ -397,6 +394,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             alienMissions:
               - type: GENERATED_WAVE
                 objective: {{{(site ? 3 : 0)}}}
+                points: {{{missionPoints}}}
                 spawnZone: 1
                 interruptResearch: GEN_STOP
                 {{{(chain ? "regionWeights: {0: {REGION_SECOND: 1}}\n    raceWeights: {0: {RACE_A: 1, RACE_B: 1}}" : "")}}}
