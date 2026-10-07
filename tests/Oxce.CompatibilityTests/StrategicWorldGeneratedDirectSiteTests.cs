@@ -297,6 +297,46 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedMixedRaceChoicesShareActivityAcrossUfosAndSites(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        foreach (var objective in new[] { 0, 3 })
+        {
+            var content = GeneratedDirectSiteContent(cache, hunting, objective: objective, chain: true, alternatives: true);
+            var initial = GeneratedDirectSiteSnapshot(content, 41, hunting, chain: true);
+            var points = hunting ? 0 : 11;
+            var limited = initial with
+            { Regions = [initial.Regions[0] with { ActivityAlien = [int.MaxValue - points] }, .. initial.Regions.Skip(1)] };
+            var campaign = CampaignState.Restore(limited, content, new SplitMix64RandomSource(41));
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(int.MaxValue, campaign.Capture().Regions[0].ActivityAlien[^1]);
+            Assert.Equal(2, campaign.Capture().World.MissionSites.Count);
+            Assert.Single(campaign.Capture().World.Ufos);
+            campaign = Reload(content, campaign, 41, "mixed-race-activity-at-capacity.sav");
+            AdvanceUnblocked(campaign, 1);
+            if (!hunting)
+                AssertTimeBlocked(CampaignState.Restore(limited with
+                { Regions = [limited.Regions[0] with { ActivityAlien = [int.MaxValue - points + 1] }, .. limited.Regions.Skip(1)] },
+                    content, new SplitMix64RandomSource(41)), "UFO alien activity exceeds the supported range.");
+            campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+            AdvanceUnblocked(campaign, 1);
+            for (var day = 0; day < 3; day++)
+            {
+                AdvanceUnblocked(campaign, 17_280);
+                campaign = Reload(content, campaign, 41, $"mixed-race-activity-day-{day}.sav");
+            }
+            Assert.Empty(campaign.Capture().World.MissionSites);
+            Assert.Empty(campaign.Capture().World.Ufos);
+            Assert.Empty(campaign.Capture().World.Missions);
+        }
+    }
+
     private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
         int objective = 0, bool chain = false, bool alternatives = false, bool repeatSite = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
