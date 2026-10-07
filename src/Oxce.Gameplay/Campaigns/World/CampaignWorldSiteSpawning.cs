@@ -5,6 +5,43 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
+    // A source selects one generated mission per caller. Keep the largest
+    // creation chain across its rule/region/race/area alternatives.
+    private sealed class GeneratedSiteReservations
+    {
+        private readonly Dictionary<(int Id, string Type, bool Hunting), int> _populations = [];
+        private readonly Dictionary<(int Id, string Type, bool Hunting, string Marker), int> _markers = [];
+        private readonly Dictionary<string, int> _candidateMarkers = new(StringComparer.Ordinal);
+        private (int Id, string Type, bool Hunting) _source;
+        private int _candidatePopulation;
+
+        public void Begin(AlienMissionSnapshot mission, bool hunting)
+        {
+            _source = (mission.AlienBase!.Id, mission.AlienBase.TypeId, hunting);
+            _candidatePopulation = 0;
+            _candidateMarkers.Clear();
+        }
+
+        public int ReservePopulation()
+        {
+            var previous = _populations.GetValueOrDefault(_source);
+            var maximum = Math.Max(previous, ++_candidatePopulation);
+            _populations[_source] = maximum;
+            return maximum - previous;
+        }
+
+        public int ReserveMarker(string marker)
+        {
+            var count = _candidateMarkers.GetValueOrDefault(marker) + 1;
+            _candidateMarkers[marker] = count;
+            var key = (_source.Id, _source.Type, _source.Hunting, marker);
+            var previous = _markers.GetValueOrDefault(key);
+            var maximum = Math.Max(previous, count);
+            _markers[key] = maximum;
+            return maximum - previous;
+        }
+    }
+
     private bool IsDirectSiteWave(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule)
     {
         var wave = rule.Waves[mission.NextWave];
@@ -29,7 +66,8 @@ internal sealed partial class CampaignWorld
     }
 
     private string? DirectSiteSpawnReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, CampaignTimeTrigger highest,
-        Dictionary<string, int> markerReservations, ref long work, ref int population, bool processThisTick = true)
+        Dictionary<string, int> markerReservations, ref long work, ref int population, bool processThisTick = true,
+        GeneratedSiteReservations? generated = null)
     {
         var wave = rule.Waves[mission.NextWave];
         if (wave.Trajectory is null || !CanAdvanceWaveCounters(mission, rule, wave))
@@ -87,7 +125,8 @@ internal sealed partial class CampaignWorld
             }
         }
         if (markers.Count == 0) return null;
-        if ((long)_sites.Count + ++population > 100_000) return "World mission site population exceeds the supported limit.";
+        population += generated?.ReservePopulation() ?? 1;
+        if ((long)_sites.Count + population > 100_000) return "World mission site population exceeds the supported limit.";
         foreach (var marker in markers)
         {
             if (string.IsNullOrWhiteSpace(marker))
@@ -96,9 +135,10 @@ internal sealed partial class CampaignWorld
             if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
             if (marker is "STR_UFO_UNIQUE" or "STR_UFO" or "STR_LANDING_SITE" or "STR_CRASH_SITE")
                 return "Mission site and UFO creation share an unsupported ID namespace.";
-            var count = markerReservations.GetValueOrDefault(marker) + 1;
+            var additional = generated?.ReserveMarker(marker) ?? 1;
+            var count = markerReservations.GetValueOrDefault(marker) + additional;
             markerReservations[marker] = count;
-            (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
+            if (additional != 0) (_pass.SiteBirthIdChanges ??= []).Add(new(marker, true));
             if (highest >= CampaignTimeTrigger.OneDay)
             {
                 work += (long)rules.Research.Count * campaign.BaseStates.Count;

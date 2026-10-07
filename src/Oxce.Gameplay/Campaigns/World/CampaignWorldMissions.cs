@@ -35,9 +35,11 @@ internal sealed partial class CampaignWorld
         long escortSelectionWork = 0;
         Dictionary<string, int>? siteMarkerReservations = null;
         var siteSpawns = 0;
+        GeneratedSiteReservations? generatedSites = null;
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
             var mission = forecast.Mission;
+            if (forecast.Generated) (generatedSites ??= new()).Begin(mission, forecast.Hunting);
             var missionUfoSpawns = 0;
             var missionHuntContacts = 0;
             var rule = campaign.Content.RuntimeRules.AlienMissions[
@@ -76,7 +78,7 @@ internal sealed partial class CampaignWorld
                 {
                     siteMarkerReservations ??= new(StringComparer.Ordinal);
                     if (DirectSiteSpawnReason(step, rule, highest, siteMarkerReservations, ref geometryWork, ref siteSpawns,
-                            processThisTick: !forecast.Hunting) is { } siteReason)
+                            processThisTick: !forecast.Hunting, generated: forecast.Generated ? generatedSites : null) is { } siteReason)
                         return siteReason;
                     var finishes = step.NextWave + 1 == rule.Waves.Count &&
                         (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount;
