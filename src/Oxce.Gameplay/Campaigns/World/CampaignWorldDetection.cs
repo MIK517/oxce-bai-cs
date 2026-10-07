@@ -244,7 +244,8 @@ internal sealed partial class CampaignWorld
                 foreach (var step in DueWaveSteps(mission, rule))
                 {
                     if (!IsDirectSiteWave(step, rule)) continue;
-                    if (DirectSiteActivityReason(step, rule, regionTotals, countryTotals, ref activityWork) is { } reason) return reason;
+                    if (DirectSiteActivityReason(step, rule, regionTotals, countryTotals, ref activityWork,
+                            guaranteedAward: !forecast.Generated) is { } reason) return reason;
                 }
             }
         // time5Seconds applies takeoff mission points AFTER all half-hour scoring.
