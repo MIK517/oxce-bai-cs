@@ -23,6 +23,7 @@ internal sealed partial class CampaignWorld
         if (highest < CampaignTimeTrigger.ThirtyMinutes && _pass.GeneratedWaveMissions is not { Count: > 0 }) return null;
         var ufoSpawns = 0;
         Dictionary<(int Source, string Marker, bool Hunting), int>? generatedUfoSpawns = null;
+        Dictionary<(int Source, string Marker), int>? huntingContactSpawns = null;
         var newFlyingHunters = 0;
         var newEscorts = 0;
         HashSet<int>? possibleNewLeaderMissions = null;
@@ -38,6 +39,7 @@ internal sealed partial class CampaignWorld
         {
             var mission = forecast.Mission;
             var missionUfoSpawns = 0;
+            var missionHuntContacts = 0;
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (IsOver(mission, rule))
@@ -112,6 +114,7 @@ internal sealed partial class CampaignWorld
                     if (forecast.Generated) missionUfoSpawns++;
                     else ufoSpawns++;
                     var wave = SpawnWave(step, rule);
+                    if (forecast.Hunting && NewbornCanRevealHunt(step, wave)) missionHuntContacts++;
                     var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
                     // Every non-hunter birth is an ordinary leader. A stochastic
                     // hunter constructor may produce either outcome; no RNG is forecast.
@@ -136,10 +139,20 @@ internal sealed partial class CampaignWorld
                 var key = (source.Id, source.TypeId, forecast.Hunting);
                 generatedUfoSpawns ??= [];
                 generatedUfoSpawns[key] = Math.Max(generatedUfoSpawns.GetValueOrDefault(key), missionUfoSpawns);
+                if (forecast.Hunting && missionHuntContacts != 0)
+                {
+                    // These births miss half-hour detection but can reveal themselves
+                    // in the later hunting caller. Alternatives consume one source slot.
+                    huntingContactSpawns ??= [];
+                    var contactKey = (source.Id, source.TypeId);
+                    huntingContactSpawns[contactKey] = Math.Max(huntingContactSpawns.GetValueOrDefault(contactKey), missionHuntContacts);
+                }
             }
         }
         if (generatedUfoSpawns is not null)
             foreach (var count in generatedUfoSpawns.Values) ufoSpawns += count;
+        if (huntingContactSpawns is not null)
+            foreach (var count in huntingContactSpawns.Values) _pass.PossibleHuntMarkerIds += count;
         long newbornFollowerWork = 0;
         var savedIdleEscorts = 0;
         var savedMovingEscorts = 0;

@@ -237,5 +237,14 @@ sharing the private ID zero. Fresh/cache native selection/retarget rows cover
 all three constructor modes, backup waypoints, notifications, pursuit reloads,
 hidden-contact marker exhaustion and atomic interception refusal. A separate
 two-source regression proves that a safe first origin cannot hide combat at the
-second source. The focused generation/newborn suite passes 146 cases. Hunting
-caller births and escorts retain their creation restrictions pending coordination.
+second source. The focused generation/newborn suite passes 146 cases.
+
+The later base-hunting caller now admits airborne hunter births too. Their
+possible hunt contacts reserve the largest reachable chain per source before
+mutation, even on ten-minute ticks with no half-hour detection work. Daily
+detection and later hunting contacts share the contact allocator reservation.
+Fresh/cache tests cover both ten-minute/half-hour caller positions, all constructor
+modes, strict pursuit reloads and the last two identities in a combined midnight
+birth. Existing base-hunting eligibility tests use an immediate site objective
+for their unavailable-effect boundary; their strict snapshot/RNG assertions remain.
+Generated escorts and immediate objective/ground-release transitions stay guarded.

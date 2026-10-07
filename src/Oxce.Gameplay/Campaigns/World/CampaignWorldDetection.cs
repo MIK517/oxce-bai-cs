@@ -42,7 +42,9 @@ internal sealed partial class CampaignWorld
             break;
         }
         var dailyBases = highest >= CampaignTimeTrigger.OneDay && _alienBases.Count != 0;
-        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases && _pass.ObjectiveBaseScores is not { Count: > 0 }) return null;
+        if (!hasUfoWork && !hasDueWave && !(halfHour && _sites.Count != 0) && !dailyBases && _pass.ObjectiveBaseScores is not { Count: > 0 })
+            return CanAllocateUfoMarkerIds(_pass.PossibleHuntMarkerIds)
+                ? null : "UFO contact marker IDs are exhausted or collide with a saved UFO.";
         var regionTotals = campaign.RegionStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         var countryTotals = campaign.CountryStates.Select(static state => new ActivityRange(state.ActivityAlien[^1])).ToArray();
         if (dailyBases)

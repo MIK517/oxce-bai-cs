@@ -120,7 +120,68 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
-    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false) =>
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void HuntingGeneratedHuntersJoinLaterRetargetWithoutEarlierHalfHourActivity(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        foreach (var minute in new[] { 9, 29 })
+        {
+            var content = GeneratedHunterContent(cache, mode, hunting: true);
+            var initial = GeneratedHunterSnapshot(content, hunting: true) with { Time = new(1, 1, 1, 1999, 0, minute, 55) };
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+                81, "hunting-generated-target-before.sav");
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var born = Assert.Single(after.World.Ufos);
+            var selection = TestFixtures.Rows(oracle.RootElement, "selectionRows").Single(row =>
+                row[0].GetInt32() == born.HuntMode && row[1].GetInt32() == 0);
+            Assert.True(born.Hunting);
+            Assert.True(born.Detected);
+            Assert.True(born.Id > 0);
+            Assert.Equal(selection[2].GetInt32(), born.Destination!.Id);
+            Assert.Single(result.Events.OfType<UfoStartedHunting>());
+            Assert.Equal(initial.Regions[0].ActivityAlien, after.Regions[0].ActivityAlien);
+            Assert.Equal(0, after.World.AlienBases[0].MinutesSinceLastHuntMissionGeneration);
+            Assert.Equal(0, after.World.AlienBases[0].GenMissionCount);
+            campaign = Reload(content, campaign, 81, "hunting-generated-target-after.sav");
+            AdvanceUnblocked(campaign, 12);
+            Reload(content, campaign, 81, "hunting-generated-target-following.sav");
+            AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue), content,
+                new SplitMix64RandomSource(81)), "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyAndHuntingHunterBirthsReserveBothHiddenContactMarkers(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = GeneratedHunterContent(cache, 2, hunting: true, combined: true);
+        var initial = GeneratedHunterSnapshot(content, hunting: true) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - 1), content,
+            new SplitMix64RandomSource(81)), "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        var campaign = CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue - 2), content, new SplitMix64RandomSource(81));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        Assert.Equal(2, after.World.Ufos.Count);
+        Assert.Equal(2, result.Events.OfType<UfoStartedHunting>().Count());
+        Assert.Equal(new[] { int.MaxValue - 2, int.MaxValue - 1 }, after.World.Ufos.Select(ufo => ufo.Id));
+        Assert.Equal(2, after.World.Missions.Count);
+        Assert.All(after.World.Ufos, ufo => Assert.True(ufo.Hunting));
+        Assert.Equal(initial.Regions[0].ActivityAlien[^1] + 3, after.Regions[0].ActivityAlien[^1]);
+        Reload(content, campaign, 81, "combined-hunter-markers.sav");
+    }
+
+    private static RuntimeContent GeneratedHunterContent(bool cache, int mode, bool hunting = false, bool combined = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_SLOW, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
@@ -134,7 +195,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
               - type: GENERATED_HUNTER_BASE
                 markerName: STR_ALIEN_BASE
                 genMission: {GENERATED_HUNTER_MISSION: 1}
-                genMissionFreq: {{{(hunting ? 0 : 100)}}}
+                genMissionFreq: {{{(hunting && !combined ? 0 : 100)}}}
                 genMissionLimit: 1
                 baseDetectionRange: {{{(hunting ? 500 : 0)}}}
                 baseDetectionChance: 100
