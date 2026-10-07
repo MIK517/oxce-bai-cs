@@ -633,3 +633,15 @@ native checksums, private corpus and populated allocation gates. Full formatting
 verification, regenerated code-map and diff checks pass. The pinned reference
 remains clean, no native probe was generated, and the empty successful format
 log was removed. This closes the three-slice objective-opening cycle and audit.
+
+## Generated final objective waves (2026-10-08)
+
+Daily no-object-only base missions now receive creation forecasts even without
+a UFO or direct-site wave. Native `AlienMission::think` tests base completion
+after counter advancement regardless of the spawned object, then cleans up the
+finished mission with no live UFOs. Verified objective-base/generation captures
+back two fresh/cache seeded alternate-race cases that reproduce the old guard,
+create exactly one base at final marker/score capacity, reload around creation
+and cleanup, and reject real ID overflow atomically. All 316 generation/
+objective-base/base-hunting cases pass. Hunting final-base and infiltration
+completion remain the following slices.
