@@ -63,6 +63,12 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-08 generated activity cycle: three slices and a separate audit fix
+  close source/caller alternatives across UFO births, takeoffs and direct sites.
+  See [evidence and validation](strategic-world-alien-base-generation-status.md#generated-activity-alternatives-2026-10-08).
+  Expiry-counter uncertainty, wider immediate objectives and final headless
+  acceptance still keep 4c open; later-branch guards and 4d are unchanged.
+
 - 2026-10-07 hunting performance cycle: three slices and their batch audit close
   the candidate/fact reuse and populated selection acceptance work. See
   [evidence and validation](strategic-world-hunting-status.md#candidate-storage-and-craft-fact-reuse-2026-10-07).
