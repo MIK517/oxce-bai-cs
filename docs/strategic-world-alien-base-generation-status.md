@@ -576,3 +576,9 @@ work now includes field copies, base scans and both subsequent counter scans.
 All 288 affected generation/site-spawn/site-timer/production/base cases pass.
 Exact projection of decreased counters across surviving newborn identities
 remains 4c work; these precise guards do not claim that composition complete.
+
+Root validation passes all 3,414 tests without failures or skips, including
+native checksums, private corpus and populated allocation gates. Full formatting
+verification, regenerated fixture ownership map and diff checks pass. The pinned
+reference remains clean; no native probe was generated and the empty successful
+format log was removed. This closes the three-slice counter cycle and its audit.
