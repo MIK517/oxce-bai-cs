@@ -660,3 +660,15 @@ bounded prefix and precise decreased-counter newborn/production guards.
 All 370 generation/objective-base/base-hunting/site-spawn cases pass. The
 obsolete native object was removed; captures, executable and extracted source
 remain useful. Generated infiltration completion remains the next slice.
+
+Daily final infiltration waves now use the existing regional/country base search
+and pending-pact handler, sharing source alternatives across generated birth
+reservations. Native `AlienMission::think` sets a pending pact only after a base
+can be created, links that base to its country, and leaves pact signing/score
+to the monthly boundary. Verified infiltration option/eligibility/region/country
+and generation captures back eight fresh/cache cases across both placement modes,
+airborne/no-object final waves and alternate races. They reload around creation,
+run 72 hours through UFO/mission cleanup, preserve one pending pact and reject
+real marker overflow atomically. All 271 generation/infiltration/repeat cases pass.
+Late hunting infiltration completion retains its specific forecast boundary;
+cross-source eligibility and daily pact-base destruction are part of the audit.
