@@ -8,8 +8,8 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
-    private readonly record struct GeneratedActivityKey(WorldTargetReference Source, string Rule, string Region,
-        string Race, int Area, int Wave, int Counter, bool Hunting);
+    private readonly record struct NewbornTakeoffForecast(WorldTargetReference? Source, bool Hunting,
+        IReadOnlyList<(IReadOnlyList<SpawnArea> Positions, int Points)> Scores);
 
     private void RegisterUfoDetection(CampaignCapabilityRegistry registry)
     {
@@ -107,9 +107,8 @@ internal sealed partial class CampaignWorld
         // Ordinary mission think precedes scoring/detection; hunting births follow
         // that pass but can lift later in time5Seconds. Both use pure birth positions.
         long activityWork = 0;
-        List<(IReadOnlyList<SpawnArea> Positions, int Points)>? newbornTakeoffScores = null;
+        List<NewbornTakeoffForecast>? newbornTakeoffScores = null;
         Dictionary<(int Source, string Marker), (int Contacts, int Landings)>? generatedContacts = null;
-        HashSet<GeneratedActivityKey>? generatedAwards = null;
         GeneratedActivityAlternatives? generatedBirthActivity = null;
         foreach (var forecast in MissionWaveForecasts(highest, guaranteedResearch))
         {
@@ -126,6 +125,7 @@ internal sealed partial class CampaignWorld
             var birthRegions = regionTotals;
             var birthCountries = countryTotals;
             var birthCandidate = false;
+            List<(IReadOnlyList<SpawnArea> Positions, int Points)>? takeoffScores = null;
             List<SpawnArea>? leaderOrigins = null;
             var certainLeader = false;
             if (missionRule.Waves.Any(wave => NewEscortWave(missionRule, wave)))
@@ -159,16 +159,6 @@ internal sealed partial class CampaignWorld
                 activityWork += (long)positions.Count * (regionTotals.Length + countryTotals.Length) * 2;
                 if (activityWork > MaximumAlienBaseChecks) return "Alien mission activity forecasts exceed the supported work limit.";
                 var grounded = trajectory.Altitude(0) == 0;
-                var newAward = true;
-                if (forecast.Generated)
-                {
-                    // Area alternatives have the same birth/lift positions unless
-                    // the origin selects that area or an escort can relocate there.
-                    var area = NewEscortWave(missionRule, wave) || wave.Objective && trajectory.Zone(0) == missionRule.SpawnZone
-                        ? mission.MissionSiteZoneArea : -1;
-                    newAward = (generatedAwards ??= []).Add(new(mission.AlienBase!, mission.RuleId, mission.RegionId,
-                        mission.Race, area, step.NextWave, step.NextUfoCounter, forecast.Hunting));
-                }
                 if (!forecast.Hunting)
                 {
                     if (forecast.Generated && !birthCandidate)
@@ -194,11 +184,13 @@ internal sealed partial class CampaignWorld
                     missionContacts++;
                     if (grounded) missionLandings++;
                 }
-                if (newAward && grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
+                if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
                     missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration))
-                    (newbornTakeoffScores ??= []).Add((positions, missionRule.Points));
+                    (takeoffScores ??= []).Add((positions, missionRule.Points));
             }
             if (birthCandidate) GeneratedActivityAlternatives.Complete(regionTotals, countryTotals, birthRegions, birthCountries);
+            if (takeoffScores is not null)
+                (newbornTakeoffScores ??= []).Add(new(forecast.Generated ? mission.AlienBase : null, forecast.Hunting, takeoffScores));
             if (forecast.Generated && (missionContacts != 0 || missionLandings != 0))
             {
                 // One source creates one daily mission. Its rule, race, region and
@@ -311,10 +303,21 @@ internal sealed partial class CampaignWorld
         }
         // Newborn UFOs are appended after the saved actors. Their landed
         // takeoffs follow site processing and every earlier UFO's movement.
+        GeneratedActivityAlternatives? generatedTakeoffActivity = null;
         if (!terminalArrival && newbornTakeoffScores is not null)
             foreach (var takeoff in newbornTakeoffScores)
-                if (CheckPossibleActivity(takeoff.Positions, takeoff.Points, regionTotals, countryTotals) is { } liftReason)
-                    return liftReason;
+            {
+                var liftRegions = regionTotals;
+                var liftCountries = countryTotals;
+                if (takeoff.Source is { } source && (generatedTakeoffActivity ??= new()).Begin(source, takeoff.Hunting,
+                        regionTotals, countryTotals, ref activityWork, out liftRegions, out liftCountries) is { } choiceReason)
+                    return choiceReason;
+                foreach (var score in takeoff.Scores)
+                    if (CheckPossibleActivity(score.Positions, score.Points, liftRegions, liftCountries,
+                            guaranteedAward: takeoff.Source is null) is { } liftReason) return liftReason;
+                if (takeoff.Source is not null)
+                    GeneratedActivityAlternatives.Complete(regionTotals, countryTotals, liftRegions, liftCountries);
+            }
         if (!CanAllocateUfoMarkerIds(possibleMarkerIds + _pass.PossibleHuntMarkerIds))
             return "UFO contact marker IDs are exhausted or collide with a saved UFO.";
         return CanAllocateUfoMarkerIds(possibleLandingIds, landing: true)

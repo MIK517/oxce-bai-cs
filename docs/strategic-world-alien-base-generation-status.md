@@ -507,3 +507,13 @@ refusal, accepts the exact remaining capacity, persists either one/two-UFO
 outcome and still refuses real overflow atomically. All 236 focused generation/
 wave-chain/site-spawn cases pass. Same-tick lift alternatives and joint direct
 site composition remain the following slices.
+
+Creation-tick grounded takeoffs now retain each forecast candidate's complete
+ordered score chain and union alternatives per source/caller. Daily birth and
+late hunting phases remain distinct; an earlier saved terminal arrival still
+suppresses every newborn takeoff. Optional generation does not turn positive
+points into guaranteed score headroom. Pinned `AlienMission::ufoLifting` and
+verified generation/hunting/lifecycle fixtures back four fresh/cache seeded
+one/two-UFO cases that first reproduce the old refusal, then accept exact
+capacity through before/after/following reloads and reject genuine overflow.
+All 231 focused generation/wave/landing/escort cases pass.
