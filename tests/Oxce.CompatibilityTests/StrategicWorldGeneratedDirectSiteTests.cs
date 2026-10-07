@@ -14,18 +14,22 @@ namespace Oxce.CompatibilityTests;
 public sealed partial class StrategicWorldAlienBaseGenerationTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void GeneratedDeploymentWavesCreateAndExpireSitesWithoutUfosAtBothCallers(bool cache, bool hunting)
+    [InlineData(false, false, 0)]
+    [InlineData(true, false, 0)]
+    [InlineData(false, true, 0)]
+    [InlineData(true, true, 0)]
+    [InlineData(false, false, 5)]
+    [InlineData(true, false, 5)]
+    [InlineData(false, true, 5)]
+    [InlineData(true, true, 5)]
+    public void GeneratedDeploymentWavesCreateAndExpireSitesWithoutUfosAtBothCallers(bool cache, bool hunting, int objective)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-site-spawn");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
         var native = TestFixtures.Rows(oracle.RootElement, "cases").Single(row => row.GetProperty("name").GetString() == "selected")
             .GetProperty("site");
-        var content = GeneratedDirectSiteContent(cache, hunting);
+        var content = GeneratedDirectSiteContent(cache, hunting, objective: objective);
         HashSet<string> cities = [];
         for (ulong seed = 1; seed <= 12; seed++)
         {
@@ -126,7 +130,42 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             new SplitMix64RandomSource(41)), "Mission site despawn requires research or event payloads.");
     }
 
-    private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY") =>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedSupplyDeploymentAndUfoChainsReserveTogetherAndCompose(bool cache, bool hunting)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        var content = GeneratedDirectSiteContent(cache, hunting, objective: 5, chain: true);
+        var initial = GeneratedDirectSiteSnapshot(content, 41, hunting, chain: true);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(41)),
+            41, "generated-supply-chain-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(2, after.World.MissionSites.Count);
+        Assert.Single(after.World.Ufos);
+        Assert.Equal((3, 1), (Assert.Single(after.World.Missions).NextWave, after.World.Missions[0].LiveUfos));
+        Assert.Equal(initial.Regions[0].ActivityAlien[^1] + (hunting ? 0 : 11), after.Regions[0].ActivityAlien[^1]);
+        campaign = Reload(content, campaign, 41, "generated-supply-chain-born.sav");
+        for (var day = 0; day < 3; day++)
+        {
+            AdvanceUnblocked(campaign, 17_280);
+            campaign = Reload(content, campaign, 41, $"generated-supply-chain-day-{day}.sav");
+        }
+        Assert.Empty(campaign.Capture().World.Ufos);
+        Assert.Empty(campaign.Capture().World.Missions);
+        Assert.Empty(campaign.Capture().World.MissionSites);
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("DIRECT_MARKER", int.MaxValue - 1), content,
+            new SplitMix64RandomSource(41)), "Mission site marker IDs are exhausted or collide with a saved target.");
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO_UNIQUE", int.MaxValue), content,
+            new SplitMix64RandomSource(41)), "UFO unique IDs are exhausted or collide with a saved UFO.");
+    }
+
+    private static RuntimeContent GeneratedDirectSiteContent(bool cache, bool hunting = false, string deployment = "DIRECT_DEPLOY",
+        int objective = 0, bool chain = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
             crafts:
               - {type: GENERATED_DIRECT_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
@@ -151,10 +190,12 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 genMissionLimit: 1
             alienMissions:
               - type: GENERATED_DIRECT_MISSION
-                objective: 0
+                objective: {{{objective}}}
                 spawnZone: 0
-                regionWeights: {0: {SITE_SPAWN_REGION: 1}}
-                waves: [{ufo: {{{deployment}}}, count: 1, trajectory: DIRECT_SITE, timer: 0}]
+                regionWeights: {{{(chain ? "{0: {REGION: 1}}" : "{0: {SITE_SPAWN_REGION: 1}}")}}}
+                waves:
+                  - {ufo: {{{deployment}}}, count: 1, trajectory: DIRECT_SITE, timer: 0}
+                  {{{(chain ? "- {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}\n      - {ufo: DIRECT_DEPLOY, count: 1, trajectory: DIRECT_SITE, timer: 0}" : "")}}}
               - type: GENERATED_DIRECT_NEGATIVE_MISSION
                 objective: 0
                 spawnZone: 1
@@ -162,7 +203,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 waves: [{ufo: DIRECT_NEGATIVE, count: 1, trajectory: DIRECT_SITE, timer: 0}]
             """);
 
-    private static CampaignSnapshot GeneratedDirectSiteSnapshot(RuntimeContent content, ulong seed, bool hunting = false)
+    private static CampaignSnapshot GeneratedDirectSiteSnapshot(RuntimeContent content, ulong seed, bool hunting = false, bool chain = false)
     {
         var initial = CreateSnapshot(content, "Generated deployment sites") with
         {
@@ -170,7 +211,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             Time = hunting ? new(1, 1, 1, 1999, 0, 29, 55) : new(1, 1, 1, 1999, 23, 59, 55),
             World = new()
             {
-                AlienBases = [new(2, "GENERATED_DIRECT_BASE", "RACE_A", 0.6, 0.1)
+                AlienBases = [new(2, "GENERATED_DIRECT_BASE", "RACE_A", chain ? 0.2 : 0.6, 0.1)
                 { MinutesSinceLastHuntMissionGeneration = hunting ? 5390 : 0 }]
             },
         };
@@ -185,7 +226,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                     Logistics = CraftLogistics.LoadStarting(content.RuntimeRules.Crafts[
                         content.RuntimeRules.Crafts.GetRequired("GENERATED_DIRECT_CRAFT")].Value, null) with
                     {
-                        Status = "STR_OUT", Longitude = 0.6, Latitude = 0.1, Fuel = 1000, Weapons = [],
+                        Status = "STR_OUT", Longitude = chain ? 0.2 : 0.6, Latitude = 0.1, Fuel = 1000, Weapons = [],
                     },
                 }],
                 Soldiers = [],

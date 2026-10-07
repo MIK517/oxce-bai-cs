@@ -421,3 +421,12 @@ before the creation tick. Native `baseHunting/AlienMission::think` and
 `GeoscapeState::processMissionSite` order back seeded fresh/cache caller cases,
 strict creation/expiry reloads and the zero-duration payload stopping horizon.
 All 252 focused generation/site-spawn/site-timer/base-hunting cases pass.
+
+Supply missions now create explicit deployment sites at both generation callers,
+including finite zero-timer site/UFO/site chains. Pinned `AlienMission::think`
+and verified `strategic-site-spawn`/`strategic-wave-chain` establish the shared
+creation semantics. Fresh/cache cases cover rectangle/point creation, 72 hours
+of composed activity with daily reloads, cleanup and joint site/UFO ID exhaustion
+before mutation. All 154 focused generation/wave/site-spawn cases pass.
+Selected site-objective direct waves remain guarded pending reservations across
+their mutually exclusive selected areas.
