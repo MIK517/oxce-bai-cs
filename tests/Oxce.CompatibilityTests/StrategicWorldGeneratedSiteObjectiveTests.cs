@@ -249,10 +249,37 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
             "UFO alien activity exceeds the supported range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GeneratedActivityProjectionWorkIncludesCandidateCopiesAndMerges(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var count in new[] { 500, 600 })
+        {
+            var content = GeneratedSiteObjectiveContent(cache, hunting: false, areaCount: 256, extraRegions: count);
+            var initial = GeneratedSiteObjectiveSnapshot(content, hunting: false, seed: 41);
+            initial = initial with
+            { Regions = [.. initial.Regions, .. Enumerable.Range(0, count).Select(index => new RegionSnapshot($"GENERATED_ACTIVITY_REGION_{index}", [0], [0]))] };
+            Assert.Equal(count + 2, initial.Regions.Count);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+            if (count == 600)
+                AssertTimeBlocked(campaign, "Alien mission activity forecasts exceed the supported work limit.");
+            else
+            {
+                AdvanceUnblocked(campaign, 1);
+                Assert.Single(campaign.Capture().World.Ufos);
+                Reload(content, campaign, 41, "generated-activity-bounded-regions.sav");
+            }
+        }
+    }
+
     private static RuntimeContent GeneratedSiteObjectiveContent(bool cache, bool hunting, bool landing = false,
-        int? areaCount = null, int ufoCount = 1, bool selectedOrigin = false, bool groundBirth = false, int spawnZone = 1) =>
+        int? areaCount = null, int ufoCount = 1, bool selectedOrigin = false, bool groundBirth = false, int spawnZone = 1,
+        int extraRegions = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-selected-site-waypoints.rul"], cache, $$$"""
-            {{{(areaCount is null ? "" : GeneratedSiteAreas(areaCount.Value))}}}
+            {{{(areaCount is null ? "" : GeneratedSiteAreas(areaCount.Value) + string.Concat(Enumerable.Range(0, extraRegions)
+                .Select(index => $"\n  - type: GENERATED_ACTIVITY_REGION_{index}\n    cost: 0\n")))}}}
             crafts:
               - {type: GENERATED_SITE_CRAFT, speedMax: 2000, damageMax: 100, fuelMax: 1000, soldiers: 0, allowLanding: false, patrolWithoutFuel: true}
             ufoTrajectories:

@@ -525,3 +525,11 @@ score/site objectives at exact joint UFO/site capacity, strict transition reload
 genuine overflow and 72-hour cleanup with daily reloads at both callers.
 All 244 focused generation/site-spawn/wave-chain cases pass. This unifies stage
 ownership; correlations between different scoring stages remain conservative.
+
+The batch audit confirmed a missing merge-work charge in the shared range
+operation. Its separate correction bounds two baseline copies, two candidate
+copies and the complete merge. Fresh/cache 600-region/256-area cases first
+reproduce the uncharged advance, then refuse atomically; 500-region cases still
+advance and reload. All 246 focused generation/site-spawn/wave-chain cases pass.
+Reviewed source/caller grouping, optional negative headroom, distinct waves,
+terminal-arrival suppression and lazy allocation; no other defect was confirmed.
