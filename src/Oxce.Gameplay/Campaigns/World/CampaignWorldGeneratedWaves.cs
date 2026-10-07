@@ -86,23 +86,37 @@ internal sealed partial class CampaignWorld
             if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
             // Zero is a private candidate identity, never allocated or persisted.
             // Generated missions have not existed during daily interruption.
-            var candidate = new AlienMissionSnapshot(0, missionId, region, race, 0, 0, 30, 0, -1)
+            var initial = new AlienMissionSnapshot(0, missionId, region, race, 0, 0, 30, 0, -1)
             { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
-            foreach (var step in DueWaveSteps(candidate, rule))
+            var consumesArea = false;
+            foreach (var step in DueWaveSteps(initial, rule))
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 var wave = rule.Waves[step.NextWave];
-                // Ordinary site-mission waves do not consume the chosen site area.
-                // Immediate objective waves need their site-effect forecasts first.
-                if (rule.Objective == RuntimeMissionObjective.Site && wave.Objective) return GeneratedWaveBoundary;
-                if (CanAdvanceNoObjectWave(step, rule)) continue;
-                if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) ||
-                    wave.Ufo is null || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
-                var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
-                if (path.Waypoints.Count == 0 ||
-                    !CanSpawnOrdinaryUfoWave(step, rule, requireHuntingForecast: false)) return GeneratedWaveBoundary;
+                if (rule.Objective != RuntimeMissionObjective.Site || !wave.Objective) continue;
+                if (hunting) return GeneratedWaveBoundary;
+                consumesArea = true;
             }
-            (_pass.GeneratedWaveMissions ??= []).Add((candidate, hunting));
+            var areaCount = consumesArea
+                ? campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(region)]
+                    .Value.MissionZones[rule.SpawnZone].Areas.Count : 0;
+            if (areaCount > 256) return "Immediate generated site areas exceed the supported limit.";
+            for (var area = 0; area < Math.Max(1, areaCount); area++)
+            {
+                var candidate = initial with { MissionSiteZoneArea = areaCount == 0 ? -1 : area };
+                foreach (var step in DueWaveSteps(candidate, rule))
+                {
+                    if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                    var wave = rule.Waves[step.NextWave];
+                    if (CanAdvanceNoObjectWave(step, rule)) continue;
+                    if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or RuntimeMissionObjective.Site) ||
+                        wave.Ufo is null || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
+                    var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
+                    if (path.Waypoints.Count == 0 ||
+                        !CanSpawnOrdinaryUfoWave(step, rule, requireHuntingForecast: false)) return GeneratedWaveBoundary;
+                }
+                (_pass.GeneratedWaveMissions ??= []).Add((candidate, hunting));
+            }
         }
         return null;
     }
