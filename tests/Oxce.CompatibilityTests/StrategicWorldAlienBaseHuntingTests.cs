@@ -497,13 +497,15 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     private static RuntimeContent Load(bool cache, string extraRules = "")
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
-        // These guard cases require a creation-time hunter, whose target/lifecycle
-        // projection remains unavailable. Ordinary airborne births have separate acceptance.
+        // These eligibility guards require an immediate site objective, whose
+        // creation effects remain unavailable. Airborne hunters have separate acceptance.
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
             """
             alienMissions:
               - type: HUNT_UNSAFE_WAVE
-                waves: [{ufo: UFO_SPAWN, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 30, hunterKillerPercentage: 100}]
+                objective: 3
+                spawnZone: 1
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: 30, objective: true}]
             alienDeployments:
               - type: HUNT_UNSAFE
                 alienBase: true
@@ -514,7 +516,7 @@ public sealed class StrategicWorldAlienBaseHuntingTests
                 huntMissionRaceFromAlienBase: true
                 huntMissionWeights: {0: {HUNT_UNSAFE_WAVE: 1}}
             """ + "\n" + extraRules);
-        Assert.Equal(100, content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("HUNT_UNSAFE_WAVE")].Value.Waves[0].HunterKillerPercentage);
+        Assert.True(content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("HUNT_UNSAFE_WAVE")].Value.Waves[0].Objective);
         return content;
     }
 
