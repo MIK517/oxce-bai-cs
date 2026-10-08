@@ -552,3 +552,19 @@ verification and regenerated code-map validation pass. The audit reviewed
 saved removal proofs, daily and hunting caller order, final objective guards,
 mission scan reservations and 72-hour reload equivalence. No additional
 confirmed defect was found.
+
+## Saved ordinary UFO births before site research (2026-10-08)
+
+Saved airborne ordinary waves now compose before expiring-site grants when the
+existing spawn geometry proves the newborn cannot reach its destination in the
+current tick. Hunter/escort creation and final base/infiltration effects retain
+their precise composition boundaries. Source, Cartesian geometry and land
+selection work are reserved before the birth proof; no point or RNG outcome is
+selected by preflight. Completed wave counters no longer imply removal when a
+new UFO keeps its mission alive for the later interruption scan.
+Reference: AlienMission::think/spawnUfo, GeoscapeState::time30Minutes mission
+cleanup/detection before processMissionSite, and SavedGame's explicit research
+interruption. Existing verified spawnPathRows and diary captures back fresh/cache
+birth position, timer/draw order, completed-wave survival, malformed surviving
+links, interruption and three save rewrites. All 30 affected birth/objective/spawn
+path tests pass; the new six cases first failed at the previous composition guard.
