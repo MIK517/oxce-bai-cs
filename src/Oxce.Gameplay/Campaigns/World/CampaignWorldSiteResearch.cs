@@ -330,7 +330,14 @@ internal sealed partial class CampaignWorld
                 var projected = ProjectFlightTarget(UfoForFlight(ufo, highest), highest);
                 if (!projected.Hunting && !projected.Escorting && projected.Status == UfoStatus.Flying && projected.Destination is not null &&
                     UfoDestinationDistance(projected) <= WorldGeometry.RadianSpeed(projected.Speed))
-                    return "UFO mission interruption depends on uncertain site research outcomes.";
+                {
+                    var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
+                        campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(projected.TrajectoryId)].Value;
+                    // Native arrival destroys at the final point regardless of
+                    // interruption. Both research branches share that flight result.
+                    if (projected.TrajectoryPoint + 1 < trajectory.Waypoints.Count)
+                        return "UFO mission interruption depends on uncertain site research outcomes.";
+                }
             }
         }
         return null;

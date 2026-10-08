@@ -1061,3 +1061,11 @@ missing first slots and common later slots, exact marker/diary/site timers and
 reload. Common later research suppresses its due event in every outcome; a
 missing path's topic cannot suppress its event. Verified wave-chain, site-spawn
 and timer evidence backs the ordering. The blanket equal-sequence guard is gone.
+
+Uncertain explicit research now permits an ordinary arrival at the trajectory's
+last point: interrupted and uninterrupted native `ufoReachedWaypoint` branches
+both destroy that actor. Nonterminal arrivals retain their separate uncertainty
+boundary. Verified lifecycle/diary fixtures back fresh/cache 32-seed reward
+selection, identical UFO/RNG controls, exact selected interruption, three
+rewrites and next-tick removal/live-UFO repair. The path/slot/terminal slices
+are ready for the combined audit.
