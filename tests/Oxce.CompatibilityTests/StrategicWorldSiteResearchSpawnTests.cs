@@ -227,13 +227,24 @@ public sealed class StrategicWorldSiteResearchSpawnTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NewHuntersStillRequireTheirResearchCompositionForecast(bool cache)
+    public void NewHuntersStillStopBeforeCombatWithSiteResearch(bool cache)
     {
         var content = Content(cache, "PATH_0_0", ufo: "UFO_HUNTER");
         var initial = Snapshot(content).WithCraft("SHIP", craft => craft with
-        { Logistics = craft.Logistics! with { Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0, Destination = null } });
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 0,
+                Destination = null,
+                Longitude = Degrees(10),
+                Latitude = Degrees(8)
+            }
+        });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Mission site research requires mission-wave composition forecasts.");
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
     internal static RuntimeContent Content(bool cache, string trajectory, bool final = false, string interrupt = "CORE", string extra = "", string ufo = "UFO_SCOUT") =>

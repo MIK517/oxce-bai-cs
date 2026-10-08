@@ -701,3 +701,20 @@ skips, including checksum, private-corpus and allocation checks. Full formatting
 regenerated code-map and diff verification pass. Existing captures remain useful;
 no generated native objects were added. This closes the sixth daytime cycle,
 not the remaining 4c research-composition and headless acceptance work.
+
+## Targetable newborn hunting across site research (2026-10-08)
+
+Saved non-escort airborne hunter births now reserve their geometry and counters
+before the site-grant forecast, then defer target-selection proof to the existing
+mission preflight after that forecast. Every phase still validates before tick
+mutation. GeoscapeState::time30Minutes spawns before processMissionSite;
+time10Minutes/ufoHuntingAndEscorting retarget after sites without inspecting
+mission interruption. AlienMission::spawnUfo and Ufo::Ufo retain their existing
+constructor and waypoint semantics. Combat remains a precise branch 5 boundary.
+
+Verified strategic-hunting constructor/retarget rows, world-lifecycle spawning
+and research-diary execution back six fresh/cache fixed/random-mode scenarios.
+No-site controls compare identical UFO/RNG outcomes; grants interrupt surviving
+missions, pursuit continues after reload, and nearby targets refuse the whole
+tick before grants or birth. All 116 affected spawning/newborn-hunting tests pass.
+Generated targetable hunters and escorts remain the next caller slices.
