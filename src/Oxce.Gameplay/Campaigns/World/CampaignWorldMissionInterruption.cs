@@ -4,8 +4,12 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld : ICampaignMissionResearchInterruption
 {
-    string? ICampaignMissionResearchInterruption.ValidationReason()
+    string? ICampaignMissionResearchInterruption.ValidationReason(ref long work)
     {
+        // Each real grant checks links, then visits missions again to interrupt
+        // its explicit topics. Ordered forecasts reserve both passes per grant.
+        work += 2L * _missions.Count;
+        if (work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
         var rules = campaign.Content.RuntimeRules;
         foreach (var mission in _missions)
         {
