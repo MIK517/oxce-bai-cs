@@ -488,3 +488,11 @@ links atomically. These rules use independent identities because native reverse
 file ordering overwrites a seeded wave override with the later fixture wave.
 Reference: GeoscapeState::time30Minutes finished-mission deletion before
 processMissionSite; SavedGame::handleResearchUnlockedByMissions active-list scan.
+
+Final generation-cycle acceptance passes all 3,684 root tests with no failures
+or skips, including native checksums, private corpus and allocation checks.
+Full formatting verification, regenerated code-map and diff checks pass.
+The audit reviewed caller order, counter/timer alternatives, survivor link
+validation, enlarged research scans, mission ID reservations and later event
+guards. No further confirmed defect was found; generated captures remain
+useful and no new native objects were produced.

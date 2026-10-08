@@ -71,7 +71,9 @@ documents; entries here link to them instead of copying them.
   ordinary/dormant UFO flight, hunter selection/pursuit and ordered escorts now
   compose with those grants. Deterministic daily research, timed item eligibility
   and counter-only score waves now compose as well; their batch audit passes
-  all 3,657 root tests. Base generation, actor/objective waves, newborn-site phase
+  all 3,657 root tests. Daily/late hunting delayed and counter-only generation
+  now composes too; the separate audit fix and all 3,684 root tests pass.
+  Actor/objective generation and waves, newborn-site phase
   composition, remaining uncertainty and final closure keep 4c open;
   4d is unchanged.
 
