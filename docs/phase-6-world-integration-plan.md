@@ -69,8 +69,10 @@ documents; entries here link to them instead of copying them.
   See [research evidence and acceptance](strategic-world-research-status.md).
   Craft return/patrol, quiet bases, daily completed-facility eligibility and
   ordinary/dormant UFO flight, hunter selection/pursuit and ordered escorts now
-  compose with those grants. Base generation, due waves, daily project/item and
-  newborn-site phase composition, remaining uncertainty and final closure keep 4c open;
+  compose with those grants. Deterministic daily research, timed item eligibility
+  and counter-only score waves now compose as well; their batch audit passes
+  all 3,657 root tests. Base generation, actor/objective waves, newborn-site phase
+  composition, remaining uncertainty and final closure keep 4c open;
   4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion

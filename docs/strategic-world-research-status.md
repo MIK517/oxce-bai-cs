@@ -434,3 +434,11 @@ fresh/cache first-call counter and RNG comparisons for all five no-object chain
 shapes, later explicit interruption, completed mission removal, repeated reloads
 and unchanged intentional excessive-chain rejection. All 141 wave/site cases
 pass. The following batch audit covers this and the daily/item slices together.
+
+The daily/item/counter-wave batch audit found no confirmed defect. It reviewed
+daily project cleanup and disable ordering, post-maintenance item presence,
+private forecast state, wave overrides, RNG ownership, event interruption and
+combined diary/score/work limits. Root `dotnet test` passes all 3,657 tests with
+zero failures/skips; full formatting verification passes. Existing save and
+native-checksum tests are included. Actor births, other objectives, generation
+and uncertain daily rewards remain explicit composition work; 4d is untouched.
