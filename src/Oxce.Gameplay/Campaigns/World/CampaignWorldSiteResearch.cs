@@ -2,7 +2,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private const string SiteResearchUfoReason = "Mission site research requires UFO phase forecasts.";
     private const string SiteResearchGenerationReason = "Mission site research requires alien-base generation phase forecasts.";
     private const string SiteResearchWaveReason = "Mission site research requires mission-wave composition forecasts.";
 
@@ -26,7 +25,6 @@ internal sealed partial class CampaignWorld
         if (!found) return null;
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
-        if (_ufos.Any(ufo => ufo.Escort || ufo.Escorting)) return SiteResearchUfoReason;
         if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
         foreach (var owner in campaign.BaseStates)
         {

@@ -360,3 +360,15 @@ ufoHuntingAndEscorting; Craft::returnToBase/consumeFuel. Native site-timer,
 hunting and mission-research captures back fresh/cache low-fuel target loss,
 continued pursuit, three rewrites and an atomic branch-5 combat refusal. All
 485 focused hunting/site cases pass. Escort composition is the next slice.
+
+## Site research with UFO escorts (2026-10-08)
+
+Saved escorts no longer use the generic UFO/research composition guard.
+GeoscapeState::ufoHuntingAndEscorting selects leaders without consulting mission
+interruption; time5Seconds moves escorts but applies interruption to ordinary
+arrivals. Existing ordered flight projections therefore remain authoritative.
+Fresh/cache cases compare chain, ring, self-target and terminal-leader positions
+against every captured strategic-world escort trace after the site grants CORE.
+They also verify idle selection, stale unique identity repair, next-tick terminal
+cleanup and repeated rewrites. All six composed escort cases pass. Due/newborn
+waves, base generation and daily/item research composition remain explicit work.
