@@ -27,7 +27,7 @@ internal sealed partial class CampaignWorld
         if (!found) return null;
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
-        if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
+        if (SiteResearchBaseGenerationReason(highest, out var missionBirths, out var generationWork) is { } baseReason) return baseReason;
         DailyResearchStockForecast? dailyResearch = null;
         if (highest >= CampaignTimeTrigger.OneDay)
         {
@@ -52,7 +52,7 @@ internal sealed partial class CampaignWorld
             }
         }
         IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null;
-        long itemWork = dailyResearch?.Work ?? 0;
+        long itemWork = (dailyResearch?.Work ?? 0) + generationWork;
         if (rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.NeedItem))
         {
             var items = new SiteResearchItemForecast(dailyResearch);
@@ -72,7 +72,7 @@ internal sealed partial class CampaignWorld
                     return "Mission site research item eligibility depends on stochastic maintenance outcomes.";
             }
         }
-        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork);
+        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork, missionBirths);
         var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
         foreach (var site in _sites)
         {
@@ -123,9 +123,10 @@ internal sealed partial class CampaignWorld
         public Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> Uncertainty = [];
     }
 
-    private string? SiteResearchBaseGenerationReason(CampaignTimeTrigger highest)
+    private string? SiteResearchBaseGenerationReason(CampaignTimeTrigger highest, out int precedingMissionBirths, out long work)
     {
-        long work = _alienBases.Count;
+        precedingMissionBirths = 0;
+        work = _alienBases.Count;
         foreach (var alienBase in _alienBases)
         {
             // Daily cleanup has already run when site research executes. A grant
@@ -134,8 +135,24 @@ internal sealed partial class CampaignWorld
             var rule = AlienBaseRule(alienBase);
             work += rule.GenMission.Count + (long)rule.HuntMissions.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-            if (highest >= CampaignTimeTrigger.OneDay && rule.GenMissionFrequency > 0 && alienBase.GenMissionCount < rule.GenMissionLimit &&
-                rule.GenMission.Any(choice => choice.Key.Length != 0 && choice.Value != 0)) return SiteResearchGenerationReason;
+            if (highest >= CampaignTimeTrigger.OneDay && rule.GenMissionFrequency > 0 && alienBase.GenMissionCount < rule.GenMissionLimit)
+            {
+                var canGenerate = false;
+                var missions = campaign.Content.RuntimeRules.AlienMissions;
+                foreach (var choice in rule.GenMission)
+                {
+                    if (choice.Key.Length == 0 || choice.Value == 0) continue;
+                    if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
+                    var mission = missions[handle].Value;
+                    if (mission.Waves.Count == 0 || mission.Waves[0].SpawnTimer / 30 / 2 <= 1) return SiteResearchGenerationReason;
+                    // The native site caller resolves every active mission's
+                    // interruption rule, including newly created delayed missions.
+                    if (mission.InterruptResearchId.Length != 0 && mission.InterruptResearch is null)
+                        return "Alien mission interruption references undefined research.";
+                    canGenerate = true;
+                }
+                if (canGenerate) precedingMissionBirths++;
+            }
             if (rule.BaseDetectionRange <= 0 || rule.BaseDetectionChance <= 0 ||
                 (long)alienBase.MinutesSinceLastHuntMissionGeneration + 10 < rule.HuntMissionMaxFrequency) continue;
             IReadOnlyDictionary<string, ulong> choices;

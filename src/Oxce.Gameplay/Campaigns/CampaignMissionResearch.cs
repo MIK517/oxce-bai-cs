@@ -9,7 +9,8 @@ internal interface ICampaignMissionResearch
     bool Grant(string id, string deploymentId);
     CampaignState.MissionResearchForecast CreateForecast(CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds,
         DailyResearchStockForecast? precedingResearch = null,
-        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0);
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0,
+        int precedingMissionBirths = 0);
 }
 
 /// <summary>The world owns immediate interruption for the explicit mission-source grants.</summary>
@@ -68,7 +69,8 @@ public sealed partial class CampaignState : ICampaignMissionResearch
     }
 
     MissionResearchForecast ICampaignMissionResearch.CreateForecast(CampaignTimeTrigger highest, DailyResearchStockForecast? precedingResearch,
-        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems, long precedingWork) => new(this, highest, precedingResearch, firstBaseItems, precedingWork);
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems, long precedingWork,
+        int precedingMissionBirths) => new(this, highest, precedingResearch, firstBaseItems, precedingWork, precedingMissionBirths);
 
     bool ICampaignMissionResearch.Grant(string id, string deploymentId)
     {
