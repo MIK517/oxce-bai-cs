@@ -545,3 +545,10 @@ daily survivors retain their enlarged-scan reservation. Surviving malformed
 prefixes still stop atomically. All 57 affected research/generation cases pass.
 Reference: GeoscapeState::time30Minutes cleanup and SavedGame's active-mission
 scan in handleResearchUnlockedByMissions. No event/combat/month boundary changes.
+
+The objective-prefix batch acceptance passes all 3,714 root tests, including
+private corpus and checksum checks, with no failures or skips. Full formatting
+verification and regenerated code-map validation pass. The audit reviewed
+saved removal proofs, daily and hunting caller order, final objective guards,
+mission scan reservations and 72-hour reload equivalence. No additional
+confirmed defect was found.
