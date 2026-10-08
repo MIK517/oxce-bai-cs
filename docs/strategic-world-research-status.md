@@ -947,3 +947,18 @@ cannot suppress a due event, and excessive alternative chains stop atomically.
 Kernel checks preserve campaign/RNG state and distinguish conditional from
 guaranteed research. Malformed duration and selected-choice regressions remain
 strict. Optional generation and divergent research choices are the next slices.
+
+Optional daily generation now forecasts its whole ordered grant sequence or no
+generation, retaining correlation between births from one source. Conditional
+newborn event proofs are created inside the generated branch; final summaries
+include the skipped branch for subsequent events/flight. A single selected
+mission with an always-due initial timer can use this projection. Multiple mission
+choices and uncertain initial timer sequences retain their precise boundaries.
+
+All 410 affected tests pass. Native generation/spawn evidence backs 32-seed
+fresh/cache generated/skipped outcomes, two different ordered topics, a second
+site event requiring the first grant, exact marker/diary presence and three
+rewrites. Another 32-seed scenario combines optional generation with random
+duration and verifies actual grants/interruption/reload. Pure kernel checks keep
+campaign/RNG unchanged. Due events cannot rely on optional generation. Divergent
+deployment topics remain the third slice before the batch audit.

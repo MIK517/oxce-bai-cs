@@ -144,11 +144,16 @@ public sealed class StrategicWorldNewbornSiteResearchTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void DailyImmediateBirthsRetainGenerationUncertaintyAndUnavailableEventBoundaries(bool cache)
+    public void DailyOptionalGenerationCannotGuaranteeInterruptionOfDueEvents(bool cache)
     {
-        var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true, frequency: 50);
-        AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
-            "Immediate generated site research requires deterministic generation outcomes.");
+        var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true, frequency: 50, eventInterrupt: "BONUS");
+        var initial = StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content);
+        AssertTimeBlocked(CampaignState.Restore(initial with
+        {
+            World = initial.World with
+            { Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)] }
+        }, content, new SplitMix64RandomSource(17)),
+            "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
         content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true, eventInterrupt: "BONUS");
         var campaign = CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);

@@ -125,6 +125,18 @@ public sealed partial class CampaignState
             var reason = Advance(id);
             whenGranted = _guaranteedResearch;
             if (reason is not null || _campaign._bases.Count == 0 || !_rules.Research.TryGet(id, out _)) return reason;
+            return IncludeSkipped(skipped);
+        }
+
+        public string? AdvanceOptionalSequence(Func<string?> advance)
+        {
+            var skipped = _outcomes;
+            if (advance() is { } reason) return reason;
+            return ReferenceEquals(skipped, _outcomes) ? _reason : IncludeSkipped(skipped);
+        }
+
+        private string? IncludeSkipped(List<Outcome> skipped)
+        {
             if (_outcomes.Count + skipped.Count > 256)
                 return _reason = "Mission research exceeds the supported outcome limit.";
             List<Outcome> combined = [.. _outcomes, .. skipped];

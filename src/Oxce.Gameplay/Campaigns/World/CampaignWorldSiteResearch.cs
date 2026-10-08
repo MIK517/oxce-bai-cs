@@ -6,7 +6,8 @@ internal sealed partial class CampaignWorld
 {
     private const string SiteResearchGenerationReason = "Mission site research requires alien-base generation phase forecasts.";
     private const string SiteResearchWaveReason = "Mission site research requires mission-wave composition forecasts.";
-    private readonly record struct SiteResearchBirth(AlienMissionSnapshot Mission, RuleHandle<AlienDeploymentRuleFamily> Deployment, bool Optional);
+    private readonly record struct SiteResearchBirth(AlienMissionSnapshot Mission, RuleHandle<AlienDeploymentRuleFamily> Deployment,
+        bool Optional, bool GenerationOptional = false);
 
     private string? PrepareSiteResearch(CampaignTimeTrigger highest)
     {
@@ -126,27 +127,38 @@ internal sealed partial class CampaignWorld
         }
         // Saved missions think before the appended daily missions. Alternatives
         // of one generated birth share one grant slot, never execute all branches.
-        Dictionary<(string Source, int Id, string Mission, int Wave, int Counter), IReadOnlySet<string>> dailySlots = [];
-        foreach (var birth in dailyImmediateBirths)
+        foreach (var group in dailyImmediateBirths.GroupBy(birth =>
+            (birth.Mission.AlienBase!.TypeId, birth.Mission.AlienBase.Id, birth.Mission.RuleId)))
         {
-            var mission = birth.Mission;
-            var key = (mission.AlienBase!.TypeId, mission.AlienBase.Id, mission.RuleId, mission.NextWave, mission.NextUfoCounter);
-            if (!dailySlots.TryGetValue(key, out var research))
+            string? AdvanceBirths()
             {
-                var deployment = rules.AlienDeployments[birth.Deployment].Value;
-                if (birth.Optional)
+                Dictionary<(int Wave, int Counter), IReadOnlySet<string>> slots = [];
+                foreach (var birth in group)
                 {
-                    if (forecast.AdvanceOptional(deployment.UnlockedResearchOnDespawnId, out research) is { } reason) return reason;
+                    var mission = birth.Mission;
+                    var key = (mission.NextWave, mission.NextUfoCounter);
+                    if (!slots.TryGetValue(key, out var research))
+                    {
+                        var deployment = rules.AlienDeployments[birth.Deployment].Value;
+                        if (birth.Optional)
+                        {
+                            if (forecast.AdvanceOptional(deployment.UnlockedResearchOnDespawnId, out research) is { } reason) return reason;
+                        }
+                        else
+                        {
+                            if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
+                            research = forecast.GuaranteedResearch;
+                        }
+                        slots.Add(key, research);
+                        if (SiteDespawnReason(deployment, highest, research) is { } eventReason) return eventReason;
+                    }
+                    (_pass.SiteResearchAfterBirth ??= []).TryAdd(mission, research);
                 }
-                else
-                {
-                    if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
-                    research = forecast.GuaranteedResearch;
-                }
-                dailySlots.Add(key, research);
-                if (SiteDespawnReason(deployment, highest, research) is { } eventReason) return eventReason;
+                return null;
             }
-            (_pass.SiteResearchAfterBirth ??= []).TryAdd(mission, research);
+            var reason = group.Any(birth => birth.GenerationOptional)
+                ? forecast.AdvanceOptionalSequence(AdvanceBirths) : AdvanceBirths();
+            if (reason is not null) return reason;
         }
         _pass.SiteResearchForecast = forecast;
         return null;
@@ -399,10 +411,15 @@ internal sealed partial class CampaignWorld
                         if (!dailyBirthsProved && SiteResearchDailyBirthReason(source, mission, missionId, ref work, out survivingUfos,
                                 dailyImmediateBirths) is { } reason)
                             return reason;
-                        if (dailyImmediateBirths.Count != priorBirths && (deployment.GenMissionFrequency < 100 ||
-                            deployment.GenMission.Any(choice => choice.Value != 0 && choice.Key != missionId) ||
-                            mission.Waves[0].SpawnTimer / 30 / 2 + mission.Waves[0].SpawnTimer / 30 > 1))
-                            return "Immediate generated site research requires deterministic generation outcomes.";
+                        if (dailyImmediateBirths.Count != priorBirths)
+                        {
+                            if (deployment.GenMission.Any(choice => choice.Value != 0 && choice.Key != missionId) ||
+                                mission.Waves[0].SpawnTimer / 30 / 2 + mission.Waves[0].SpawnTimer / 30 > 1)
+                                return "Immediate generated site research requires deterministic generation outcomes.";
+                            if (deployment.GenMissionFrequency < 100)
+                                for (var index = priorBirths; index < dailyImmediateBirths.Count; index++)
+                                    dailyImmediateBirths[index] = dailyImmediateBirths[index] with { GenerationOptional = true };
+                        }
                         dailyBirthsProved = true;
                     }
                     // Hunting creates after the grants. It cannot enlarge an earlier
