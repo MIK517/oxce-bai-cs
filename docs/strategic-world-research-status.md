@@ -219,3 +219,19 @@ forced expiry grants once, repairs the destination and uses return speed for
 fuel consumption. All 37 focused site/craft/timer tests pass. Timed item
 eligibility, UFOs, actual base generation and newborn sites remain separate
 composition boundaries.
+
+## Site research and quiet alien bases (2026-10-08)
+
+Site research now admits alien bases without possible daily or hunting mission
+generation on the affected tick. The proof bounds deployment/timeline scans;
+zero daily frequency, exhausted generation limits, disabled detection and
+hunting cooldowns can establish safety. Positive nonempty eligible generation
+choices retain the named composition boundary. Existing base proofs still own
+malformed timers, weights, activity, discovery and deletion.
+
+`GeoscapeState::time1Day` performs base self-destruction/activity/supply before
+`processMissionSite` grants research. Fresh/cache cases preserve that ordering:
+a new site grant cannot destroy today's base; the next daily pass deletes it.
+Native activity, cleanup, hunting-timer and mission research captures back the
+composed cases, including three rewrites and atomic generation refusal. All
+101 focused site/base and existing activity/cleanup/hunting tests pass.
