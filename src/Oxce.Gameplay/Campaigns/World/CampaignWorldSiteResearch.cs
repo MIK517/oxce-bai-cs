@@ -27,7 +27,7 @@ internal sealed partial class CampaignWorld
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
         if (_ufos.Count != 0) return SiteResearchUfoReason;
-        if (_alienBases.Count != 0) return SiteResearchGenerationReason;
+        if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
         foreach (var owner in campaign.BaseStates)
         {
             if (highest >= CampaignTimeTrigger.OneDay && owner.Research.Count != 0)
@@ -67,4 +67,29 @@ internal sealed partial class CampaignWorld
 
     private IReadOnlySet<string>? SiteResearchAfter(MissionSiteSnapshot site) =>
         _pass.SiteResearchAfterSite?.GetValueOrDefault((site.DeploymentId, site.Id));
+
+    private string? SiteResearchBaseGenerationReason(CampaignTimeTrigger highest)
+    {
+        long work = _alienBases.Count;
+        foreach (var alienBase in _alienBases)
+        {
+            // Daily cleanup has already run when site research executes. A grant
+            // here cannot destroy today's base or cancel its earlier generation.
+            if (highest >= CampaignTimeTrigger.OneDay && BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast)) continue;
+            var rule = AlienBaseRule(alienBase);
+            work += rule.GenMission.Count + (long)rule.HuntMissions.Count;
+            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (highest >= CampaignTimeTrigger.OneDay && rule.GenMissionFrequency > 0 && alienBase.GenMissionCount < rule.GenMissionLimit &&
+                rule.GenMission.Any(choice => choice.Key.Length != 0 && choice.Value != 0)) return SiteResearchGenerationReason;
+            if (rule.BaseDetectionRange <= 0 || rule.BaseDetectionChance <= 0 ||
+                (long)alienBase.MinutesSinceLastHuntMissionGeneration + 10 < rule.HuntMissionMaxFrequency) continue;
+            IReadOnlyDictionary<string, ulong> choices;
+            try { choices = WorldAlienBaseHunting.Weights(rule.HuntMissions, unchecked((ulong)campaign.MonthsPassed)); }
+            catch (InvalidDataException error) { return error.Message; }
+            work += choices.Count;
+            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (choices.Any(choice => choice.Key.Length != 0 && choice.Value != 0)) return SiteResearchGenerationReason;
+        }
+        return null;
+    }
 }
