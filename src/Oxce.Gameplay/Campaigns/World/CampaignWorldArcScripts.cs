@@ -141,7 +141,8 @@ internal sealed partial class CampaignWorld : ICampaignWorldArcScripts
         }
         changedResearch?.UnionWith(priorGrants);
         changedResearch?.UnionWith(priorDisables);
-        return grantSlots.Count != 0 && !research.ScoreCapacityFits(grantSlots)
-            ? "Arc research score exceeds the supported range." : null;
+        if (grantSlots.Count != 0 && !research.ScoreCapacityFits(grantSlots)) return "Arc research score exceeds the supported range.";
+        return grantSlots.Count != 0 && !research.DiaryCapacityFits(grantSlots)
+            ? "Arc research diary exceeds its supported population or identity range." : null;
     }
 }

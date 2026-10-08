@@ -38,6 +38,7 @@ internal interface ICampaignArcResearch
     string? GrantReason(string id);
     string Grant(string id);
     bool ScoreCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots);
+    bool DiaryCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots);
     IReadOnlySet<string> PossibleDisables(string id);
     IReadOnlySet<string> PossibleAutomaticResearch();
     string? Lookup(string id);
@@ -160,6 +161,23 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         }
         var score = (long)_researchScores[^1];
         return positive <= int.MaxValue - score && negative >= int.MinValue - score;
+    }
+
+    bool ICampaignArcResearch.DiaryCapacityFits(IReadOnlyList<IReadOnlySet<string>> possibleGrantSlots)
+    {
+        var automatic = (long)_content.RuntimeRules.Research.Rules.Count(entry => entry.Value.Cost == 0);
+        long additions = 0;
+        foreach (var slot in possibleGrantSlots)
+        {
+            long slotAdditions = 0;
+            foreach (var id in slot)
+            {
+                var rule = _content.RuntimeRules.Research[_content.RuntimeRules.Research.GetRequired(id)].Value;
+                slotAdditions = Math.Max(slotAdditions, automatic * (rule.Lookup.Length == 0 ? 1 : 2));
+            }
+            additions += slotAdditions;
+        }
+        return ResearchDiaryCapacityFits(additions);
     }
 
     IReadOnlySet<string> ICampaignResearchPreflight.GuaranteedResearchAfterDailyProgress()
@@ -457,6 +475,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
                         return "Research progress exceeds the supported range.";
             if (ReserveDailyResearchScores(ref scoreCapacity, ref work) is { } scoreReason) return scoreReason;
+            if (PreflightDailyResearchDiary(ref work) is { } diaryReason) return diaryReason;
             if (PreflightResearchRecovery(ref work) is { } recoveryReason) return recoveryReason;
             if (PreflightDailyResearchCounters(ref work) is { } counterReason) return counterReason;
         }
@@ -582,12 +601,15 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         BaseState owner, string id, RuntimeResearchRule rule, List<string> sideEffects)
     {
         var discoveries = new List<string>();
+        // Native time1Day records both core topics before selecting or granting the reward.
+        RecordResearchDiary(id, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
+        RecordResearchDiary(rule.Lookup, ResearchDiscoverySource.Base, owner.Name, considerDebug: true);
         var bonus = SelectResearchReward(rule);
         if (bonus is not null)
         {
             if (_content.RuntimeRules.Research.TryGet(bonus, out var bonusHandle))
                 CompleteResearchTopic(owner, bonus, _content.RuntimeRules.Research[bonusHandle].Value,
-                    discoveries, sideEffects);
+                    discoveries, sideEffects, id);
             else
                 AddFinishedResearch(owner, bonus, discoveries);
         }
@@ -596,10 +618,18 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
     }
 
     private void CompleteResearchTopic(
-        BaseState owner, string id, RuntimeResearchRule rule, List<string> discoveries, List<string> sideEffects)
+        BaseState owner, string id, RuntimeResearchRule rule, List<string> discoveries, List<string> sideEffects,
+        string? bonusSource = null)
     {
+        if (bonusSource is not null)
+            RecordResearchDiary(id, ResearchDiscoverySource.FreeFrom, bonusSource, considerDebug: true);
         AddFinishedResearch(owner, id, discoveries);
-        if (rule.Lookup.Length != 0) AddFinishedResearch(owner, rule.Lookup, discoveries);
+        if (rule.Lookup.Length != 0)
+        {
+            if (bonusSource is not null)
+                RecordResearchDiary(rule.Lookup, ResearchDiscoverySource.FreeFrom, bonusSource, considerDebug: true);
+            AddFinishedResearch(owner, rule.Lookup, discoveries);
+        }
         sideEffects.Add(id);
     }
 
@@ -617,6 +647,9 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         }, (id, points, markDiscovered) =>
         {
             if (markDiscovered) discoveries.Add(id);
+            // The callback runs only for new discoveries, after marking them complete.
+            // Automatic entries retain the initial grant as their source, including repeatable grants.
+            if (id != initial) AppendResearchDiary(id, ResearchDiscoverySource.FreeAfter, initial);
             _researchScores[^1] = checked(_researchScores[^1] + points);
         }, ref work, long.MaxValue);
     }

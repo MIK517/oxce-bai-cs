@@ -45,3 +45,32 @@ code-map and diff checks pass. The reference checkout remains clean and the
 empty successful format log was removed. This closes the persistence slice
 and its interim audit; the two execution slices and full cycle audit resume
 after refreshed quota. World-owned research execution remains guarded.
+
+## Daily and automatic diary execution (2026-10-08)
+
+The shared `addFinishedResearch` transition now appends FREE_AFTER entries for
+new automatic discoveries, retaining the initial grant as their source even
+through nested queues and repeatable grants. Daily completion records core and
+lookup BASE entries before reward selection, then FREE_FROM reward/lookup
+entries at their respective native grant positions. Daily source entries honor
+debug mode; automatic entries use actual completion state. Arc grants add only
+their automatic entries, as in the reference caller.
+
+`strategic-research-diary-execution` inserts the native diary structs, daily
+helper and grant blocks, automatic diary block and complete mission research
+caller. Explicit queue/reward collaborators isolate 16 ordering, debug,
+disabled-core, repeatable-core and automatic-lookup cases; they do not claim a
+full native eligibility implementation. Daily fresh/cache comparisons preserve
+the captured ordering through three reloads. Additional cases cover nested
+sources and repeatable automatic occurrences.
+
+Daily preflight uses the shared pure stock/discovery forecast to count entries
+without RNG use. Ambiguous rewards reserve bounded direct/lookup/automatic
+chains. Arc slot forecasts reserve automatic diary capacity separately from
+score bounds. Population and identity exhaustion stop before the whole tick,
+while debug completions requiring no diary entries can proceed with an exhausted
+identity sequence. World mission-source grants and their call-site integration
+remain the next execution slice.
+
+Reference callers: `GeoscapeState::time1Day`, `SavedGame::addFinishedResearch`,
+and `GeoscapeState::processArcScript`.
