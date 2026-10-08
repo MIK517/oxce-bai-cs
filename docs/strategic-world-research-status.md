@@ -465,3 +465,13 @@ and draws, and oversized chains stop before any daily mutation. The native
 generation and wave-chain captures back fresh/cache timer alternatives, five
 immediate steps, cleanup, interruption and reload cases. All 21 generation/base
 research tests pass. Hunting generation and actor/objective births remain open.
+
+Late hunting generation now shares the delayed/counter-only creation proof.
+It remains after site grants and therefore neither inherits their earlier
+explicit interruption nor enlarges their earlier research scans. Native
+GeoscapeState::baseHunting/start/think and the hunt-generation capture back
+fresh/cache delayed, short and immediate timers, completed-mission cleanup,
+exact draws and repeated reloads. A combined midnight case verifies daily and
+hunting births from one source on opposite sides of the same site grant.
+All 71 affected generation/base/hunting tests pass. Immediate actor/objective
+generation and newborn-site grant ordering remain explicit work.
