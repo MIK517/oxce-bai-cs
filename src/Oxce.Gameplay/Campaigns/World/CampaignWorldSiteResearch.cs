@@ -311,40 +311,14 @@ internal sealed partial class CampaignWorld
             campaign.Content.RuntimeRules.UfoTrajectories[path].Value.Waypoints.Count >= 2;
     }
 
-    private string? SiteResearchFlightReason(CampaignTimeTrigger highest)
+    private string? SiteResearchUfoWorkReason(CampaignTimeTrigger highest)
     {
-        if (_pass.SiteResearchForecast is not { } forecast) return null;
+        if (_pass.SiteResearchForecast is null) return null;
         if ((long)_ufos.Count * (_missions.Count + (highest >= CampaignTimeTrigger.OneDay ? (long)_alienBases.Count : 0)) > MaximumAlienBaseChecks)
             return "Mission site research UFO link checks exceed the supported work limit.";
-        foreach (var ufo in _ufos)
-        {
-            // Earlier daily interruption/deletion is permanent for this tick even
-            // if a later site disables or reenables its research prerequisite.
-            var mission = ForecastMission(ufo.MissionId, highest);
-            var rule = MissionRule(mission);
-            if (!mission.Interrupted && forecast.PossibleExplicitTopics.Contains(rule.InterruptResearchId) &&
-                !forecast.GuaranteedExplicitTopics.Contains(rule.InterruptResearchId))
-            {
-                // Interruption is consulted at an ordinary waypoint arrival, not
-                // during transit, landed countdown or takeoff. A safe transit can
-                // commit its selected outcome before a later tick forecasts arrival.
-                var projected = ProjectFlightTarget(UfoForFlight(ufo, highest), highest);
-                if (!projected.Hunting && !projected.Escorting && projected.Status == UfoStatus.Flying && projected.Destination is not null &&
-                    UfoDestinationDistance(projected) <= WorldGeometry.RadianSpeed(projected.Speed))
-                {
-                    var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
-                        campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(projected.TrajectoryId)].Value;
-                    // Native arrival destroys at the final point regardless of
-                    // interruption. Both research branches share that flight result.
-                    // An ordinary next waypoint uses the normal owning arrival
-                    // proof. Interruption only destroys and ends the flight pass,
-                    // skipping subsequent actors already proved for continuation.
-                    if (projected.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
-                        CreatesLandingBase(projected, mission, trajectory))
-                        return "UFO mission interruption depends on uncertain site research outcomes.";
-                }
-            }
-        }
+        // Continuing arrivals use the ordinary waypoint, conversion and landing-
+        // base owners' proofs. Selected interruption destroys before those effects
+        // and ends the flight pass; retain the shared mission/base link work bound.
         return null;
     }
 
