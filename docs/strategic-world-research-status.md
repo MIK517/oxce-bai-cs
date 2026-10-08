@@ -1244,3 +1244,13 @@ Three loaded rewrites conserve unknown fields on a surviving base and remove
 its deleted sidecar permanently. Ambiguous markers and each remaining effect
 stop before the tick mutates. All 607 affected tests pass; targeted formatting,
 code-map and diff checks pass. The three daily slices are ready for batch audit.
+
+The daily mission/wave/base batch audit confirms interruption and deletion before
+activity, generation and flight, mission-think-only revelation, and anonymous
+loaded UFO destinations. No additional defect was confirmed. Optional linked
+cleanup, generation and pact changes retain their precise guards. All 4,049 root
+tests pass with zero failures/skips, including private corpus, fixture checksums
+and unchanged populated allocation budgets. Full formatting verification,
+code-map and diff checks pass; the pinned reference remains clean. Ordered daily
+research/site alternatives, linked deletion, newborn arrival/pursuit composition
+and final headless reconciliation remain open; 4d is untouched.
