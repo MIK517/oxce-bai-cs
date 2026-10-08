@@ -26,6 +26,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         ArgumentNullException.ThrowIfNull(registry);
         registry.Query<ICampaignWorldQuery>(this);
         registry.Operation<ICampaignWorldActivityPreflight>(this);
+        registry.Operation<ICampaignMissionResearchInterruption>(this);
         registry.Capture(CaptureWorldState);
         registry.Restore(Restore);
         registry.Validate(Validate);

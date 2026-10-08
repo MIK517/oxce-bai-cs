@@ -74,3 +74,34 @@ remain the next execution slice.
 
 Reference callers: `GeoscapeState::time1Day`, `SavedGame::addFinishedResearch`,
 and `GeoscapeState::processArcScript`.
+
+## Mission-source research operation (2026-10-08)
+
+Registered research/world operations execute
+`SavedGame::handleResearchUnlockedByMissions` semantics: first-base eligibility,
+core then lookup grants, reward selection after those grants, reward/lookup
+FREE_FROM sources, and immediate interruption for the explicit grant vector.
+Disabled or previously completed explicit topics still interrupt matching
+missions. Automatic discoveries do not join that vector. Mission diary checks
+ignore debug mode. The operation leaves laboratory projects, primary item/event
+effects and custom counters untouched.
+
+The shared caller sequence drives both execution and a pure proof over cloned
+research/status sets. Score prefixes, diary identities/population and bounded
+discovery work are checked before mutation. Geography/function list sizes are
+charged to automatic eligibility work. Ambiguous random rewards retain a
+specific uncertainty guard until bounded outcome forecasts are available.
+Missing linked research is a native no-op; the existing campaign contract still
+rejects snapshots with no player base.
+
+Fresh/cache tests compare all eight mission rows in the native execution oracle,
+including diary order and the interruption vector, through three reloads.
+Focused tests cover protected rewards exposed by the core grant, absence of
+primary effects, disabled-topic interruption, atomic capacity/uncertainty guards
+and overflowing score prefixes that later rewards would cancel. Site expiry
+still stops before research while its multi-site/later-handler forecasts are
+not yet connected. This kernel does not claim call-site closure.
+
+Reference methods: `SavedGame::handleResearchUnlockedByMissions`,
+`selectGetOneFree`, `addFinishedResearch`, and the caller in
+`GeoscapeState::processMissionSite`.
