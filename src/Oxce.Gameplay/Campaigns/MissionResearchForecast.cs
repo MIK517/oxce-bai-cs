@@ -18,6 +18,7 @@ public sealed partial class CampaignState
         private long _work;
         private readonly long _functionWork;
         private readonly int _precedingMissionBirths;
+        private readonly IReadOnlySet<int>? _precedingMissionRemovals;
         private string? _reason;
         private IReadOnlySet<string> _guaranteedResearch;
         private IReadOnlySet<string> _possibleResearch;
@@ -27,19 +28,21 @@ public sealed partial class CampaignState
         internal MissionResearchForecast(CampaignState campaign, CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds,
             DailyResearchStockForecast? precedingResearch = null,
             IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0,
-            int precedingMissionBirths = 0)
+            int precedingMissionBirths = 0, IReadOnlySet<int>? precedingMissionRemovals = null)
         {
             _campaign = campaign;
             _rules = campaign.Content.RuntimeRules;
             _precedingResearch = precedingResearch;
             _firstBaseItems = firstBaseItems;
             _precedingMissionBirths = precedingMissionBirths;
+            _precedingMissionRemovals = precedingMissionRemovals;
             // Construction decrements positive timers before the daily research
             // and world callers. The real GrantReason runs after that transition.
             _completedBuildTime = highest >= CampaignTimeTrigger.OneDay ? 1 : 0;
             var completed = precedingResearch?.CompletedResearch ?? campaign._completedResearch;
             var statuses = precedingResearch?.ResearchStatuses ?? campaign._researchRuleStatus;
-            _work = Math.Max(precedingResearch?.Work ?? 0, precedingWork) + completed.Count + (long)statuses.Count + (firstBaseItems?.Count ?? 0);
+            _work = Math.Max(precedingResearch?.Work ?? 0, precedingWork) + completed.Count + (long)statuses.Count +
+                (firstBaseItems?.Count ?? 0) + (precedingMissionRemovals?.Count ?? 0);
             _outcomes = [new(new(completed, StringComparer.Ordinal),
                 new(statuses, StringComparer.Ordinal), campaign._researchScores[^1] + (precedingResearch?.ScoreChange ?? 0),
                 precedingResearch?.DiaryEntries ?? 0, new(StringComparer.Ordinal))];
@@ -74,7 +77,7 @@ public sealed partial class CampaignState
             // Daily generation precedes every site grant. Reserve validation and
             // explicit interruption of the enlarged mission list on each call.
             _work += 2L * _precedingMissionBirths;
-            if (_campaign._handlers.Operation<ICampaignMissionResearchInterruption>().ValidationReason(ref _work) is { } invalid)
+            if (_campaign._handlers.Operation<ICampaignMissionResearchInterruption>().ValidationReason(ref _work, _precedingMissionRemovals) is { } invalid)
                 return _reason = invalid;
             List<Outcome> next = [];
             foreach (var prior in _outcomes)

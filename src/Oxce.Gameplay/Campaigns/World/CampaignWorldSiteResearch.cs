@@ -37,10 +37,13 @@ internal sealed partial class CampaignWorld
             dailyResearch = daily;
         }
         var waveWork = 0;
+        HashSet<int>? missionRemovals = null;
         foreach (var saved in _missions)
         {
             var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
             var rule = MissionRule(mission);
+            var afterThink = _pass.MissionCounterForecast?.GetValueOrDefault(saved.Id) ?? mission;
+            if (IsOver(afterThink, rule)) (missionRemovals ??= []).Add(saved.Id);
             if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
             // Counter-only objective prefixes have no research-dependent actor birth or
             // objective transition. Preserve their native immediate chain before sites.
@@ -74,7 +77,7 @@ internal sealed partial class CampaignWorld
                     return "Mission site research item eligibility depends on stochastic maintenance outcomes.";
             }
         }
-        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork, missionBirths);
+        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork, missionBirths, missionRemovals);
         var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
         foreach (var site in _sites)
         {
