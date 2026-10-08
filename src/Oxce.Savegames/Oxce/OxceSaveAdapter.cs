@@ -217,6 +217,8 @@ public static partial class OxceSaveAdapter
             CompletedResearch = Array.AsReadOnly(Sequence(body, "discovered").Select(YamlValueReader.ReadString)
                 .Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray()),
             ResearchRuleStatus = ReadIntMap(body, "researchRuleStatus"),
+            ResearchDiary = ReadResearchDiary(body, content),
+            ResearchDiarySequence = ULong(body, "oxcePortResearchDiarySequence", 0),
             ManufactureRuleStatus = ReadIntMap(body, "manufactureRuleStatus"),
             MonthlyPurchaseLog = ReadIntMap(body, "monthlyPurchaseLimitLog"),
             DebugMode = Boolean(body, "debug", false),
@@ -496,6 +498,8 @@ public static partial class OxceSaveAdapter
             Pair("discovered", snapshot.CompletedResearch.Count == 0 ? null : Sequence(snapshot.CompletedResearch.Select(Scalar))),
             Pair("researchRuleStatus", snapshot.ResearchRuleStatus.Count == 0 ? null :
                 IntMapping(snapshot.ResearchRuleStatus)),
+            Pair("researchDiary", WriteResearchDiary(snapshot.ResearchDiary, source?.Body)),
+            Pair("oxcePortResearchDiarySequence", snapshot.ResearchDiarySequence == 0 ? null : ULong(snapshot.ResearchDiarySequence)),
             Pair("manufactureRuleStatus", snapshot.ManufactureRuleStatus.Count == 0 ? null :
                 IntMapping(snapshot.ManufactureRuleStatus)),
             Pair("monthlyPurchaseLimitLog", snapshot.MonthlyPurchaseLog.Count == 0 ? null : IntMapping(snapshot.MonthlyPurchaseLog)),

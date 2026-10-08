@@ -67,6 +67,10 @@ monthly caller runs this phase after event scheduling. See
 
 ## Implemented prerequisites
 
+World-owned research consequences and shared diary persistence belong to 4c.
+The `strategic-research-diary` native capture and ordered save/reload tests are
+recorded in [world research status](strategic-world-research-status.md).
+
 `StrategicTimeFixtureTests` matches all 18 extracted-loop traces. Dispatcher unit tests
 cover pause fallthrough, preflight without partial mutation, batching equivalence and
 the empty million-tick allocation bound. `CampaignSaveRegressionFixtureTests` covers

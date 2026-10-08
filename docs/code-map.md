@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 157 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 158 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
-| [Oxce.Savegames](#oxcesavegames) | 4 | Core, Formats, Gameplay, Mods |
+| [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 174 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 175 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 92 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -292,7 +292,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 157 files.
+`src/Oxce.Gameplay` - 158 files.
 
 ### `Oxce.Gameplay`
 
@@ -392,6 +392,9 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `CampaignState` (class) [CampaignReadinessQueries.cs](../src/Oxce.Gameplay/Campaigns/CampaignReadinessQueries.cs)
 - `CampaignState` (class) [CampaignRecruitment.cs](../src/Oxce.Gameplay/Campaigns/CampaignRecruitment.cs)
 - `CampaignState` (class) [CampaignResearchCounterPreflight.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchCounterPreflight.cs)
+- `ResearchDiscoverySource` (enum) [CampaignResearchDiary.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchDiary.cs) - Native ResearchDiary.h source codes; saves also retain unrecognized byte values.
+- `ResearchDiaryEntrySnapshot` (record) [CampaignResearchDiary.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchDiary.cs) - One ordered discovery occurrence, including repeatable research.
+- `CampaignState` (class) [CampaignResearchDiary.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchDiary.cs)
 - `ConfigureResearchProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
 - `ConfigureProductionProject` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
 - `CampaignResearchChanged` (record) [CampaignResearchProduction.cs](../src/Oxce.Gameplay/Campaigns/CampaignResearchProduction.cs)
@@ -907,7 +910,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Savegames
 
-`src/Oxce.Savegames` - 4 files.
+`src/Oxce.Savegames` - 5 files.
 
 ### `Oxce.Savegames`
 
@@ -915,6 +918,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ### `Oxce.Savegames.Oxce`
 
+- `OxceSaveAdapter` (class) [OxceResearchDiarySave.cs](../src/Oxce.Savegames/Oxce/OxceResearchDiarySave.cs)
 - `OxceSaveAdapter` (class) [OxceSaveAdapter.cs](../src/Oxce.Savegames/Oxce/OxceSaveAdapter.cs) - Reads and writes the strategic subset of the two-document OXCE save stream.
 - `OxceSaveLoadOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
 - `OxceSaveWriteOptions` (record) [OxceSaveContracts.cs](../src/Oxce.Savegames/Oxce/OxceSaveContracts.cs)
@@ -1047,14 +1051,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 174 files.
+`tests/Oxce.CompatibilityTests` - 175 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>172 test classes</summary>
+<details><summary>173 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1138,6 +1142,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicProductionSiteCounterTests` ([StrategicProductionSiteCounterTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionSiteCounterTests.cs))
 - `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs))
 - `StrategicReadinessRegressionTests` ([StrategicReadinessRegressionTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessRegressionTests.cs))
+- `StrategicResearchDiaryTests` ([StrategicResearchDiaryTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchDiaryTests.cs))
 - `StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))
 - `StrategicRetaliationGenerationTests` ([StrategicRetaliationGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationGenerationTests.cs))
 - `StrategicRetaliationSpawnTests` ([StrategicRetaliationSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationSpawnTests.cs))
@@ -1497,6 +1502,7 @@ A test is listed when it names the manifest id or its expected file.
 | [strategic-objective-base-spawn](../fixtures/manifests/strategic-objective-base-spawn.json) | cpp-reference | `savegames/strategic-objective-base-spawn.expected.json` | `StrategicObjectiveBaseSpawnTests` ([StrategicObjectiveBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicObjectiveBaseSpawnTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedObjectiveOpeningTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedObjectiveOpeningTests.cs)) |
 | [strategic-operation-base-spawn](../fixtures/manifests/strategic-operation-base-spawn.json) | cpp-reference | `savegames/strategic-operation-base-spawn.expected.json` | `StrategicOperationBaseSpawnTests` ([StrategicOperationBaseSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicOperationBaseSpawnTests.cs)) |
 | [strategic-readiness](../fixtures/manifests/strategic-readiness.json) | cpp-reference | `savegames/strategic-readiness.expected.json` | `StrategicReadinessFixtureTests` ([StrategicReadinessFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessFixtureTests.cs)) |
+| [strategic-research-diary](../fixtures/manifests/strategic-research-diary.json) | cpp-reference | `savegames/strategic-research-diary.expected.json` | `StrategicResearchDiaryTests` ([StrategicResearchDiaryTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchDiaryTests.cs)) |
 | [strategic-research-production](../fixtures/manifests/strategic-research-production.json) | cpp-reference | `savegames/strategic-research-production.expected.json` | `StrategicProductionCounterForecastTests` ([StrategicProductionCounterForecastTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionCounterForecastTests.cs))<br>`StrategicProductionSiteCounterTests` ([StrategicProductionSiteCounterTests.cs](../tests/Oxce.CompatibilityTests/StrategicProductionSiteCounterTests.cs))<br>`StrategicResearchProductionFixtureTests` ([StrategicResearchProductionFixtureTests.cs](../tests/Oxce.CompatibilityTests/StrategicResearchProductionFixtureTests.cs))<br>`StrategicWorldAlienBaseGenerationTests` ([StrategicWorldGeneratedDirectSiteTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldGeneratedDirectSiteTests.cs)) |
 | [strategic-retaliation-cleanup](../fixtures/manifests/strategic-retaliation-cleanup.json) | cpp-reference | `savegames/strategic-retaliation-cleanup.expected.json` | `StrategicWorldRetaliationCleanupTests` ([StrategicWorldRetaliationCleanupTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldRetaliationCleanupTests.cs)) |
 | [strategic-retaliation-spawn](../fixtures/manifests/strategic-retaliation-spawn.json) | cpp-reference | `savegames/strategic-retaliation-spawn.expected.json` | `StrategicGeneratedRetaliationTests` ([StrategicGeneratedRetaliationTests.cs](../tests/Oxce.CompatibilityTests/StrategicGeneratedRetaliationTests.cs))<br>`StrategicRetaliationGenerationTests` ([StrategicRetaliationGenerationTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationGenerationTests.cs))<br>`StrategicRetaliationSpawnTests` ([StrategicRetaliationSpawnTests.cs](../tests/Oxce.CompatibilityTests/StrategicRetaliationSpawnTests.cs)) |

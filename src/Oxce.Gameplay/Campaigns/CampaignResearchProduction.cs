@@ -69,6 +69,8 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         registry.Capture(snapshot => snapshot with
         {
             CompletedResearch = CampaignSnapshot.ReadOnly(_completedResearch.Order(StringComparer.Ordinal)),
+            ResearchDiary = CampaignSnapshot.ReadOnly(_researchDiary),
+            ResearchDiarySequence = _researchDiarySequence,
             ResearchRuleStatus = CampaignSnapshot.ReadOnlyIds(_researchRuleStatus),
             ManufactureRuleStatus = CampaignSnapshot.ReadOnlyIds(_manufactureRuleStatus),
         });
@@ -77,6 +79,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
             _completedResearch = snapshot.CompletedResearch.ToHashSet(StringComparer.Ordinal);
             _researchRuleStatus = new Dictionary<string, int>(snapshot.ResearchRuleStatus, StringComparer.Ordinal);
             _manufactureRuleStatus = new Dictionary<string, int>(snapshot.ManufactureRuleStatus, StringComparer.Ordinal);
+            RestoreResearchDiary(snapshot);
         });
     }
 
