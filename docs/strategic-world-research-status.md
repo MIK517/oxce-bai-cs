@@ -962,3 +962,19 @@ rewrites. Another 32-seed scenario combines optional generation with random
 duration and verifies actual grants/interruption/reload. Pure kernel checks keep
 campaign/RNG unchanged. Due events cannot rely on optional generation. Divergent
 deployment topics remain the third slice before the batch audit.
+
+Divergent immediate deployment topics now use bounded selected-grant branches,
+including a skipped branch for suppressed or surviving sites. The kernel restores
+the same prior state for each choice, including missing-topic no-ops, and publishes
+combined summaries afterward. Per-mission/deployment conditional proofs prevent
+one choice's research from suppressing another choice's event. Daily alternatives
+must retain equal topic sets and ordered grant slots, with source-generation
+correlation preserved around the whole sequence.
+
+All 422 affected tests pass. Fresh/cache saved/daily 32-seed scenarios preserve
+selected topic/diary presence, marker counts, own-event suppression, exact RNG
+controls and three rewrites. Suppressed no-site choices retain no grant, and due
+events cannot depend on an unchosen topic. Pure kernel tests verify conditional
+topic separation, missing-choice state restoration and unchanged campaign/RNG.
+Positive-duration/null deployment alternatives use the same skipped projection.
+The three uncertainty slices are ready for their batch audit.

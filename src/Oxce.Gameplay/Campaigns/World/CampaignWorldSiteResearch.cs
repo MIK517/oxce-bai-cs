@@ -6,7 +6,7 @@ internal sealed partial class CampaignWorld
 {
     private const string SiteResearchGenerationReason = "Mission site research requires alien-base generation phase forecasts.";
     private const string SiteResearchWaveReason = "Mission site research requires mission-wave composition forecasts.";
-    private readonly record struct SiteResearchBirth(AlienMissionSnapshot Mission, RuleHandle<AlienDeploymentRuleFamily> Deployment,
+    private readonly record struct SiteResearchBirth(AlienMissionSnapshot Mission, IReadOnlyList<RuleHandle<AlienDeploymentRuleFamily>> Deployments,
         bool Optional, bool GenerationOptional = false);
 
     private string? PrepareSiteResearch(CampaignTimeTrigger highest)
@@ -111,19 +111,7 @@ internal sealed partial class CampaignWorld
         _pass.SiteResearchAfterSite = afterSites;
         foreach (var birth in immediateBirths)
         {
-            var deployment = rules.AlienDeployments[birth.Deployment].Value;
-            IReadOnlySet<string> research;
-            if (birth.Optional)
-            {
-                if (forecast.AdvanceOptional(deployment.UnlockedResearchOnDespawnId, out research) is { } reason) return reason;
-            }
-            else
-            {
-                if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
-                research = forecast.GuaranteedResearch;
-            }
-            (_pass.SiteResearchAfterBirth ??= []).Add(birth.Mission, research);
-            if (SiteDespawnReason(deployment, highest, research) is { } eventReason) return eventReason;
+            if (AdvanceBirthResearch(birth, forecast, highest, out _) is { } reason) return reason;
         }
         // Saved missions think before the appended daily missions. Alternatives
         // of one generated birth share one grant slot, never execute all branches.
@@ -132,27 +120,17 @@ internal sealed partial class CampaignWorld
         {
             string? AdvanceBirths()
             {
-                Dictionary<(int Wave, int Counter), IReadOnlySet<string>> slots = [];
+                Dictionary<(int Wave, int Counter), IReadOnlyDictionary<string, IReadOnlySet<string>>> slots = [];
                 foreach (var birth in group)
                 {
                     var mission = birth.Mission;
                     var key = (mission.NextWave, mission.NextUfoCounter);
-                    if (!slots.TryGetValue(key, out var research))
+                    if (!slots.TryGetValue(key, out var conditional))
                     {
-                        var deployment = rules.AlienDeployments[birth.Deployment].Value;
-                        if (birth.Optional)
-                        {
-                            if (forecast.AdvanceOptional(deployment.UnlockedResearchOnDespawnId, out research) is { } reason) return reason;
-                        }
-                        else
-                        {
-                            if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
-                            research = forecast.GuaranteedResearch;
-                        }
-                        slots.Add(key, research);
-                        if (SiteDespawnReason(deployment, highest, research) is { } eventReason) return eventReason;
+                        if (AdvanceBirthResearch(birth, forecast, highest, out conditional) is { } reason) return reason;
+                        slots.Add(key, conditional);
                     }
-                    (_pass.SiteResearchAfterBirth ??= []).TryAdd(mission, research);
+                    else if (RecordBirthResearch(birth, conditional, highest) is { } reason) return reason;
                 }
                 return null;
             }
@@ -161,6 +139,29 @@ internal sealed partial class CampaignWorld
             if (reason is not null) return reason;
         }
         _pass.SiteResearchForecast = forecast;
+        return null;
+    }
+
+    private string? AdvanceBirthResearch(SiteResearchBirth birth, CampaignState.MissionResearchForecast forecast,
+        CampaignTimeTrigger highest, out IReadOnlyDictionary<string, IReadOnlySet<string>> conditional)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        if (forecast.AdvanceChoices(birth.Deployments.Select(handle => rules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId),
+                birth.Optional, out conditional) is { } reason) return reason;
+        return RecordBirthResearch(birth, conditional, highest);
+    }
+
+    private string? RecordBirthResearch(SiteResearchBirth birth, IReadOnlyDictionary<string, IReadOnlySet<string>> conditional,
+        CampaignTimeTrigger highest)
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var handle in birth.Deployments)
+        {
+            var deployment = rules.AlienDeployments[handle].Value;
+            var research = conditional[deployment.UnlockedResearchOnDespawnId];
+            (_pass.SiteResearchAfterBirth ??= []).TryAdd((birth.Mission, handle), research);
+            if (SiteDespawnReason(deployment, highest, research) is { } reason) return reason;
+        }
         return null;
     }
 
@@ -244,7 +245,8 @@ internal sealed partial class CampaignWorld
         }
         var areas = DirectSiteAreas(mission, rule);
         work += areas.Count;
-        RuleHandle<AlienDeploymentRuleFamily>? immediate = null;
+        List<RuleHandle<AlienDeploymentRuleFamily>> immediate = [];
+        HashSet<RuleHandle<AlienDeploymentRuleFamily>> seen = [];
         var deterministic = areas.Count != 0;
         var anyPositive = false;
         var optional = false;
@@ -264,20 +266,17 @@ internal sealed partial class CampaignWorld
                     return "Direct mission site duration is outside the supported range.";
                 if (deployment.DurationMinimum == 0)
                 {
-                    if (immediate is { } prior &&
-                        campaign.Content.RuntimeRules.AlienDeployments[prior].Value.UnlockedResearchOnDespawnId != deployment.UnlockedResearchOnDespawnId)
-                        return "Newborn mission site research requires ordered expiry forecasts.";
                     optional |= deployment.DurationMaximum != 0;
-                    immediate = candidate;
+                    if (seen.Add(candidate)) immediate.Add(candidate);
                 }
                 else anyPositive = true;
             }
         }
-        if (immediate is { } expiring)
+        if (immediate.Count != 0)
         {
-            if (!deterministic || anyPositive || immediateBirths is null)
+            if (immediateBirths is null)
                 return "Newborn mission site research requires ordered expiry forecasts.";
-            immediateBirths.Add(new(mission, expiring, optional));
+            immediateBirths.Add(new(mission, immediate, optional || anyPositive || !deterministic));
         }
         // Positive timers add no grant. Deterministic immediate births append
         // their grants after saved sites; the site owner still validates geometry.
@@ -469,12 +468,23 @@ internal sealed partial class CampaignWorld
                     return reason == SiteResearchWaveReason ? SiteResearchGenerationReason : reason;
                 survivingUfos = true;
             }
-            if (first is not null && (first.Count != candidateBirths.Count ||
-                !first.Select(item => (item.Mission.NextWave, item.Mission.NextUfoCounter, item.Optional,
-                        campaign.Content.RuntimeRules.AlienDeployments[item.Deployment].Value.UnlockedResearchOnDespawnId))
-                    .SequenceEqual(candidateBirths.Select(item => (item.Mission.NextWave, item.Mission.NextUfoCounter, item.Optional,
-                        campaign.Content.RuntimeRules.AlienDeployments[item.Deployment].Value.UnlockedResearchOnDespawnId)))))
-                return "Immediate generated site research requires identical birth grant sequences.";
+            if (first is not null)
+            {
+                if (first.Count != candidateBirths.Count) return "Immediate generated site research requires identical birth grant sequences.";
+                for (var index = 0; index < first.Count; index++)
+                {
+                    var left = first[index];
+                    var right = candidateBirths[index];
+                    work += left.Deployments.Count + (long)right.Deployments.Count;
+                    if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                    HashSet<string> topics = new(left.Deployments.Select(handle =>
+                        campaign.Content.RuntimeRules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId), StringComparer.Ordinal);
+                    if (left.Mission.NextWave != right.Mission.NextWave || left.Mission.NextUfoCounter != right.Mission.NextUfoCounter ||
+                        left.Optional != right.Optional || !topics.SetEquals(right.Deployments.Select(handle =>
+                            campaign.Content.RuntimeRules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId)))
+                        return "Immediate generated site research requires identical birth grant sequences.";
+                }
+            }
             first ??= candidateBirths;
             immediateBirths.AddRange(candidateBirths);
         }
