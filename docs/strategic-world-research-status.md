@@ -728,3 +728,16 @@ constructor-backed hunting, source and craft identities, no-site UFO/RNG control
 outcomes, grant history and transition reloads. Pursuit runs only to a horizon
 before its expected interception. All 56 affected tests pass. Escorts remain
 guarded pending their separate leader-origin composition slice.
+
+Saved and generated escorts now pass the same early shape/geometry reservation;
+their existing later preflight validates leader origins, initialized escort speed,
+craft alternatives, identities and bounded selection/movement work. Native
+AlienMission::spawnUfo relocates to the first ordinary same-mission UFO before
+the later retarget caller; site interruption does not cancel that caller.
+Twelve fresh/cache fixed/random-mode saved scenarios and four generated cases
+compare native selection rows, original-waypoint backup, no-site UFO/RNG controls,
+grant interruption and pursuit reloads. The obsolete generation refusal fixture
+now supplies noncolliding mission IDs and an eligible hunting craft, so it tests
+actual acceptance rather than failing an unrelated precondition. The other 482
+affected tests pass, and all 14 base/research fixture tests pass after correction.
+The three slices are ready for their joint audit; no combat boundary is removed.

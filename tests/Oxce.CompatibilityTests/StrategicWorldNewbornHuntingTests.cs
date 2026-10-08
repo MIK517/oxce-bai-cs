@@ -13,6 +13,64 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornHuntingTests
 {
     [Theory]
+    [InlineData(false, 0, false)]
+    [InlineData(true, 0, false)]
+    [InlineData(false, 1, false)]
+    [InlineData(true, 1, false)]
+    [InlineData(false, 2, false)]
+    [InlineData(true, 2, false)]
+    [InlineData(false, 0, true)]
+    [InlineData(true, 0, true)]
+    [InlineData(false, 1, true)]
+    [InlineData(true, 1, true)]
+    [InlineData(false, 2, true)]
+    [InlineData(true, 2, true)]
+    public void NewbornEscortsUseOwnedLeaderOriginsAcrossSiteResearch(bool cache, int mode, bool leader)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
+        var content = RetargetContent(cache, mode, escort: true, siteResearch: true);
+        var initial = RetargetSnapshot(content, escort: leader);
+        initial = initial with
+        {
+            World = initial.World with { MissionSites = StrategicWorldSiteResearchTests.Snapshot(content).World.MissionSites },
+        };
+        if (leader)
+        {
+            var origin = initial.World.Ufos[0].Position;
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with
+            { Crafts = [.. initial.Bases[0].Crafts.Select(craft => craft with
+            { Logistics = craft.Logistics! with { Longitude = origin.Longitude + WorldGeometry.Nautical(100), Latitude = origin.Latitude } })] }]
+            };
+        }
+        var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(81));
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), 81, "escort-site-before.sav");
+        AdvanceUnblocked(control, 1);
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        var born = Assert.Single(after.World.Ufos, ufo => ufo.RuleId == "BIRTH_RETARGET");
+        Assert.True(born.Escort);
+        Assert.True(born.Hunting);
+        Assert.False(born.Escorting);
+        var selection = Assert.Single(TestFixtures.Rows(oracle.RootElement, "selectionRows"),
+            row => row[0].GetInt32() == born.HuntMode && row[1].GetInt32() == 0);
+        Assert.Equal(selection[2].GetInt32(), born.Destination!.Id);
+        Assert.NotNull(born.OriginalWaypoint);
+        Assert.Equal(born.UniqueId, Assert.Single(result.Events.OfType<UfoStartedHunting>()).UniqueId);
+        Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
+        Assert.Equal(control.Capture().RandomState, after.RandomState);
+        Assert.True(Assert.Single(after.World.Missions).Interrupted);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        Assert.Equivalent(after, Reload(content, campaign, 81, "escort-site-after.sav").Capture(), strict: true);
+        AdvanceUnblocked(campaign, 12);
+        Assert.True(campaign.Capture().World.Ufos.Single(ufo => ufo.UniqueId == born.UniqueId).Hunting);
+        Reload(content, campaign, 81, "escort-site-following.sav");
+    }
+
+    [Theory]
     [InlineData(false, 0)]
     [InlineData(true, 0)]
     [InlineData(false, 1)]
@@ -248,7 +306,7 @@ public sealed class StrategicWorldNewbornHuntingTests
 
     private static RuntimeContent RetargetContent(bool cache, int mode, bool escort = false, bool noAlert = false,
         int huntSpeed = 150, bool slowStart = false, int count = 1, bool immediate = false, int hunterPercentage = 100,
-        bool priorLeader = false, bool regional = false)
+        bool priorLeader = false, bool regional = false, bool siteResearch = false)
     {
         var waves = (priorLeader ? "- {ufo: UFO_SCOUT, count: 1, trajectory: BIRTH_PRIOR_PATH, timer: 9000}\n      " : "") +
             $"- {{ufo: BIRTH_RETARGET, count: {count}, trajectory: BIRTH_RETARGET_PATH, timer: {(immediate || priorLeader ? 0 : 9000)}, escort: {escort.ToString().ToLowerInvariant()}}}";
@@ -268,9 +326,10 @@ public sealed class StrategicWorldNewbornHuntingTests
             alienMissions:
               - type: BIRTH_RETARGET_MISSION
                 objective: 0
+                interruptResearch: {{(siteResearch ? "CORE" : "")}}
                 waves:
                   {{waves}}
-            """);
+            """ + (siteResearch ? "\nresearch: [{name: CORE, cost: 1}, {name: UNLOCK, cost: 1}]\n" + StrategicWorldSiteResearchTests.Deployment : ""));
     }
 
     private static CampaignSnapshot RetargetSnapshot(RuntimeContent content, bool escort = false)
