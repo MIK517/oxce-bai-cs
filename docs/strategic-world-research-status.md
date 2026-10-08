@@ -1142,3 +1142,21 @@ and the subsequently changed pursuit assertion's formatting pass; code-map and
 diff checks pass, and the pinned reference remains clean. Conversion/base flight
 alternatives, daily research/stock uncertainty, newborn flight/pursuit composition
 and final headless reconciliation keep 4c open; 4d is untouched.
+
+## Conversion and landing-base alternatives (2026-10-08)
+
+Uncertain site research now permits an ordinary objective site conversion when
+the existing continuing-branch proofs succeed. Native
+`AlienMission::ufoReachedWaypoint` destroys an interrupted UFO before conversion;
+normal `GeoscapeState::time5Seconds` preserves conversion, follower transfer and
+the terminal return. Dormant respawn UFOs continue the flight pass, while a
+destroyed conversion actor defers later UFO and craft movement until the next tick.
+
+Verified site-spawn, lifecycle and diary fixtures back fresh/cache 32-seed cases
+with respawn enabled/disabled and craft followers with/without units. Selected
+site IDs, timers, dormant links, notifications and follower destinations match
+independent deterministic interruption controls, including the full snapshot and
+RNG. Three rewrites and next-tick live-UFO cleanup retain the selected outcome.
+Possible conversion marker exhaustion still blocks before reward selection.
+Landing-base creation retains its separate research guard for the next slice.
+All 448 affected tests pass; targeted formatting, code-map and diff checks pass.
