@@ -247,7 +247,7 @@ internal sealed partial class CampaignWorld
                     // Hunting creates after the grants. It cannot enlarge an earlier
                     // interruption scan; the later generated-wave owner validates all
                     // region/race alternatives and geometry before any tick mutation.
-                    if (!SiteResearchOrdinaryWave(SpawnWave(step, mission), allowHunters: true)) return SiteResearchGenerationReason;
+                    if (!SiteResearchOrdinaryWave(SpawnWave(step, mission), allowHunters: true, deferRetargeting: true)) return SiteResearchGenerationReason;
                 }
                 completes = (ulong)step.NextUfoCounter + 1 >= mission.Waves[step.NextWave].UfoCount &&
                     step.NextWave + 1 == mission.Waves.Count;
@@ -277,7 +277,7 @@ internal sealed partial class CampaignWorld
                 var wave = rule.Waves[step.NextWave];
                 if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchGenerationReason;
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
-                if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork, allowHunters: true) is { } reason)
+                if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork, allowHunters: true, deferRetargeting: true) is { } reason)
                     return reason == SiteResearchWaveReason ? SiteResearchGenerationReason : reason;
             }
         }
