@@ -91,9 +91,10 @@ documents; entries here link to them instead of copying them.
   immediate expiry and equal-topic deployment choices now compose as well;
   their suppression/resource audit fixes and all 3,870 root tests pass. Random
   duration and optional-generation/selected-topic forecasts now compose too;
-  their allocation audit fix and all 3,898 root tests pass. Initial timer and
-  source-choice alternatives, generated-retaliation research and remaining
-  uncertainty and final closure keep 4c open;
+  their allocation audit fix and all 3,898 root tests pass. Initial timer/source
+  choices and generated-retaliation research now compose too; their combined
+  audit and all 3,920 root tests pass. Generated region/area sequences, remaining
+  stock/flight uncertainty and final closure keep 4c open;
   4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion

@@ -1035,3 +1035,12 @@ missing interruption link after daily cleanup; retained daily missions validate
 their link. Player-base movement in the no-target hunting test preserves ample
 patrol return fuel so it exercises actual creation, with the reset timer checked.
 The timer/source/retaliation slices are ready for the combined audit.
+
+The combined audit finds no additional confirmed defect. It checks native timer
+rounding and recursive wave order, sequence summary restoration, null/delayed
+choices, source alias isolation, early no-target cleanup, retained interruption
+links and later hunting ownership. All 3,920 root tests pass with zero failures
+or skips, including private corpus, fixture checksums and original allocation
+budgets. Full formatting, code-map and diff checks pass; the reference is clean.
+Distinct generated region/area grant sequences, stock eligibility uncertainty,
+nonterminal flight uncertainty and final headless reconciliation remain open.
