@@ -78,7 +78,13 @@ internal sealed partial class CampaignWorld : ICampaignEventScheduling
             if (scheduled.Over || scheduled.SpawnCountdown <= 30)
             {
                 if (rule.InterruptResearch.Length == 0) return EventPayloadReason;
-                if (highest >= CampaignTimeTrigger.OneDay)
+                if (_pass.SiteResearchForecast is { } sites)
+                {
+                    // Countdown payloads follow every site. A grant can also disable
+                    // earlier research, so never fall back to its pre-site completion.
+                    if (!sites.GuaranteedResearch.Contains(rule.InterruptResearch)) return EventPayloadReason;
+                }
+                else if (highest >= CampaignTimeTrigger.OneDay)
                 {
                     if (!GuaranteedDailyResearch().Contains(rule.InterruptResearch)) return EventPayloadReason;
                 }
