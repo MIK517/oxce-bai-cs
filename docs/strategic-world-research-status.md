@@ -654,3 +654,16 @@ order and later event/combat/objective guards. No runtime defect was confirmed.
 Full generated-birth acceptance passes all 3,754 root tests, with no failures
 or skips, plus full formatting and regenerated code-map verification. Existing
 captures and ignored validation logs remain useful; no native objects were added.
+
+## Newborn hunters and site research (2026-10-08)
+
+Saved non-escort hunter births now compose when the existing bounded craft
+eligibility proof establishes that no craft can become a target this tick.
+The ordinary spawn predicate still proves strict destination separation;
+targetable births retain the research composition boundary. Reference:
+Ufo::Ufo constructor selection, AlienMission::spawnUfo and GeoscapeState's
+ten-minute hunter retargeting. Verified constructorRows/spawnPathRows back
+fresh/cache fixed and random hunt modes, native draw/timer order, waypoint
+movement, later explicit mission interruption and three rewrites. All 106
+affected birth/hunting tests pass; six new cases first failed at the prior
+wave composition boundary. Generated hunters remain the next caller slice.
