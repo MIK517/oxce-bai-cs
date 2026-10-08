@@ -142,3 +142,27 @@ seeds per row. Unsafe score alternatives and a second 32-way grant exceeding
 the outcome cap are refused before owned state changes. All 22 focused mission
 and daily execution cases pass. This closes the operation's random-reward guard;
 site and later-handler integration remain separate slices.
+
+## Ordered saved-site research expiry (2026-10-08)
+
+Saved mission sites now execute mission-source research before their despawn
+counters and instant-event suppression checks, matching
+`GeoscapeState::processMissionSite`. One ordered alternative forecast covers
+all expiring sites and their combined score/diary capacity. Each site's event
+uses its own post-grant guaranteed research; a later site's grant cannot
+authorize an earlier unavailable payload. Held sites grant nothing. Actual
+grants preserve first-base eligibility, laboratory projects and immediate
+explicit-topic interruption. Reloading an expired site cannot repeat effects.
+
+Fresh/cache composed cases compare all eight mission diary/interruption rows
+from the native research capture at the real site caller and use the native
+site timer evidence. Tests cover three reloads, shared two-site identity
+exhaustion, interrupted versus unavailable instant events, and earlier-event
+ordering. All 44 focused site-timer/site-research/mission-research cases pass.
+
+This slice admits worlds without live UFOs, airborne craft, alien-base
+generation or due mission waves. Those combinations retain named phase
+forecast guards. Daily projects/construction and timed item-dependent automatic
+eligibility also retain explicit guards. Newly generated research-bearing sites
+require ordered birth/expiry forecasts. Scheduled-event countdown composition
+is the next slice; unavailable payloads still stop before the entire tick.
