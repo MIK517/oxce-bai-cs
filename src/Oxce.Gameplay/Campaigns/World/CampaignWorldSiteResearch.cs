@@ -99,7 +99,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? SiteResearchOrdinaryBirthReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        ref long work, ref long landWork)
+        ref long work, ref long landWork, bool allowGround = true)
     {
         var wave = SpawnWave(mission, rule);
         if (wave.Ufo is not { } ufo || wave.Trajectory is not { } path) return SiteResearchWaveReason;
@@ -108,7 +108,7 @@ internal sealed partial class CampaignWorld
         var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
         // Ordinary lifting does not inspect mission interruption. A one-tick
         // ground start may therefore lift after sites through the owned handler.
-        if (trajectory.Waypoints.Count < 2 || hunterChance > 0 || wave.Escort)
+        if (trajectory.Waypoints.Count < 2 || !allowGround && trajectory.Altitude(0) == 0 || hunterChance > 0 || wave.Escort)
             return SiteResearchWaveReason;
         // Reserve bounded geometry and source lookups before the spawn predicate's
         // Cartesian distance checks. This proof does not select a point or draw RNG.
@@ -181,7 +181,7 @@ internal sealed partial class CampaignWorld
                     if (choice.Key.Length == 0 || choice.Value == 0) continue;
                     if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
                     var mission = missions[handle].Value;
-                    if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, ref work, out var removed) is { } reason) return reason;
+                    if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, choice.Key, hunting: false, ref work, out var removed) is { } reason) return reason;
                     // The native site caller resolves every active mission's
                     // interruption rule, including newly created delayed missions.
                     if (!removed && mission.InterruptResearchId.Length != 0 && mission.InterruptResearch is null)
@@ -203,7 +203,7 @@ internal sealed partial class CampaignWorld
                 var missions = campaign.Content.RuntimeRules.AlienMissions;
                 if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
                 var mission = missions[handle].Value;
-                if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, ref work, out _) is { } reason) return reason;
+                if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, choice.Key, hunting: true, ref work, out _) is { } reason) return reason;
                 // Hunting generation follows sites. Its new mission cannot receive
                 // an earlier explicit grant or enlarge that grant's validation scan.
             }
@@ -212,7 +212,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? SiteResearchGeneratedMissionReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
-        RuntimeAlienMissionRule mission, ref long work, out bool removedBeforeSiteResearch)
+        RuntimeAlienMissionRule mission, string missionId, bool hunting, ref long work, out bool removedBeforeSiteResearch)
     {
         removedBeforeSiteResearch = false;
         if (mission.Waves.Count == 0) return SiteResearchGenerationReason;
@@ -231,7 +231,8 @@ internal sealed partial class CampaignWorld
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 var wave = mission.Waves[step.NextWave];
                 if (CompletesBaseObjective(step, mission, wave) || CompletesInfiltration(step, mission, wave)) return SiteResearchGenerationReason;
-                if (!CanAdvanceNoObjectWave(step, mission)) return SiteResearchGenerationReason;
+                if (!CanAdvanceNoObjectWave(step, mission))
+                    return hunting ? SiteResearchGenerationReason : SiteResearchDailyBirthReason(source, mission, missionId, ref work);
                 completes = (ulong)step.NextUfoCounter + 1 >= mission.Waves[step.NextWave].UfoCount &&
                     step.NextWave + 1 == mission.Waves.Count;
             }
@@ -242,5 +243,30 @@ internal sealed partial class CampaignWorld
             return null;
         }
         catch (InvalidDataException error) { return error.Message; }
+    }
+
+    private string? SiteResearchDailyBirthReason(AlienBaseSnapshot source, RuntimeAlienMissionRule rule, string missionId, ref long work)
+    {
+        if (_pass.GeneratedWaveMissions is not { } candidates) return SiteResearchGenerationReason;
+        var found = false;
+        long landWork = 0;
+        foreach (var birth in candidates)
+        {
+            if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (birth.Hunting || birth.Mission.RuleId != missionId || !FollowsAlienBase(birth.Mission.AlienBase, source)) continue;
+            found = true;
+            foreach (var step in DueWaveSteps(birth.Mission, rule))
+            {
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                var wave = rule.Waves[step.NextWave];
+                if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchGenerationReason;
+                if (CanAdvanceNoObjectWave(step, rule)) continue;
+                if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork, allowGround: false) is { } reason)
+                    return reason == SiteResearchWaveReason ? SiteResearchGenerationReason : reason;
+            }
+        }
+        // Prepared candidates retain every reachable region/race/area alternative.
+        // A real ordinary birth survives cleanup and enlarges the later grant scan.
+        return found ? null : SiteResearchGenerationReason;
     }
 }
