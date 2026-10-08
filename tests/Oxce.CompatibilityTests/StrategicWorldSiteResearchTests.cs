@@ -11,7 +11,7 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldSiteResearchTests
 {
-    private const string Deployment = """
+    internal const string Deployment = """
         alienDeployments:
           - type: DEPLOY_DIARY
             markerName: DIARY_SITE

@@ -166,3 +166,21 @@ forecast guards. Daily projects/construction and timed item-dependent automatic
 eligibility also retain explicit guards. Newly generated research-bearing sites
 require ordered birth/expiry forecasts. Scheduled-event countdown composition
 is the next slice; unavailable payloads still stop before the entire tick.
+
+## Site research and scheduled-event countdowns (2026-10-08)
+
+Due and already-over scheduled events now use guaranteed research after every
+saved-site grant. This matches `GeoscapeState::time30Minutes`'s sites-before-events
+order and avoids reusing pre-site completion when a grant disables research.
+Repeated interrupted instances are removed independently; generated history is
+retained. Future events still count down when their payload remains unavailable,
+then stop before the tick that would execute it.
+
+Fresh/cache composed cases cover core and automatic interruption, repeated
+instances, already-over timers and three rewrites. Disabled/repeatable cores
+cannot authorize a payload. A grant that removes an existing interruption
+blocks the entire tick; a 60-minute event remains allowed for one countdown and
+blocks at its later horizon after reload. Native `strategic-event` timer evidence
+and the research execution capture back these cases. All 33 focused site/event
+cases pass. This does not execute event effects or remove other named research
+phase guards.
