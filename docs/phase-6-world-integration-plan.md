@@ -98,8 +98,11 @@ documents; entries here link to them instead of copying them.
   root tests pass. Stock eligibility and ordinary nonterminal flight now compose;
   their contact-loss audit correction and all 3,968 root tests pass. Conversion/
   landing-base flight alternatives and 72-hour arrival scenarios now compose;
-  their batch audit and all 3,988 root tests pass. Daily research/stock uncertainty, newborn flight/
-  pursuit composition and final closure keep 4c open; 4d is unchanged.
+  their batch audit and all 3,988 root tests pass. Daily mission/wave interruption,
+  mission-think revelation and quiet base deletion alternatives now compose;
+  their batch audit and all 4,049 root tests pass. Ordered daily research/site
+  alternatives, linked deletion, newborn flight/pursuit composition and final
+  closure keep 4c open; 4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
   and both retaliation creation callers use bounded effective-wave forecasts.
