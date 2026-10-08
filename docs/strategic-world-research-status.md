@@ -197,4 +197,8 @@ guard reasons. The dormant-UFO payload precedence was fixed. The generated-site
 test now expects the intentional precise research-birth guard for its research
 case and retains the payload guard for its event case; whole-tick state/RNG
 assertions remain unchanged. All 102 audit regression cases pass. Full
-formatting passed before the correction; final root/format acceptance follows.
+formatting passed before the correction. Final root acceptance passes all
+3,537 tests, with full formatting and code-map verification passing. One
+intermediate root run exceeded the patrol allocation assertion; the identical
+assertion passed in isolation, in all 23 craft regressions and in the complete
+root recheck without changes to the test or allocation code.

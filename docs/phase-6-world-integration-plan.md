@@ -63,12 +63,13 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
-- 2026-10-08 research-cycle checkpoint: ordered diary persistence, daily/automatic
-  execution and the mission research operation are committed with their batch
-  audit correction. See [research evidence and acceptance](strategic-world-research-status.md).
-  Site caller integration, bounded research outcomes, world-owned research,
-  newborn generation/uncertainty composition and final headless closure keep
-  4c open; 4d is unchanged.
+- 2026-10-08 research-cycle checkpoint: ordered diary persistence/execution,
+  bounded mission research alternatives, saved-site grants and later event
+  countdown composition are committed with their batch audit corrections.
+  See [research evidence and acceptance](strategic-world-research-status.md).
+  Craft/UFO/base-generation, daily eligibility and newborn-site phase
+  composition, remaining uncertainty and final headless closure keep 4c open;
+  4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
   and both retaliation creation callers use bounded effective-wave forecasts.
