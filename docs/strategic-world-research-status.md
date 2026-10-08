@@ -883,3 +883,17 @@ mission links remain guarded. Precommit review also excludes finished missions
 with surviving UFOs from the new birth scan, with a focused regression. All 362
 affected tests pass. Daily immediate births and stochastic deployment/expiry
 alternatives remain the next slices.
+
+Daily deterministic immediate births now append after saved-mission births and
+all saved sites. Prepared region/race/area alternatives must have identical
+deployment and wave/counter grant slots; each selected birth is forecast once,
+with an exact proof for every candidate. Generation must be certain and its
+initial timer always due. Optional generation and divergent grant sequences
+retain precise boundaries until their alternative forecasts are owned.
+
+Fresh/cache final/prefix and site-objective cases cover with/without saved grants,
+missing unused links after cleanup, retained interruption, generation counters,
+three rewrites and next-boundary cleanup without duplicate diary entries.
+Own-grant event suppression passes; unavailable events and optional generation
+stop atomically. All affected research tests pass. Broader deployment/expiry
+alternatives remain the third slice and next compatibility boundary.
