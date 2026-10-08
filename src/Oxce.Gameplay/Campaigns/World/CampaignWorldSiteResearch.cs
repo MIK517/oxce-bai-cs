@@ -273,16 +273,23 @@ internal sealed partial class CampaignWorld
             var candidate = new AlienMissionSnapshot(-1, string.Empty, string.Empty, source.Race, 0, 0, 30, 0, -1)
             { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
             var completes = false;
+            var dailyBirthsProved = false;
+            var survivingUfos = false;
             foreach (var step in DueWaveSteps(candidate, mission))
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (!CanAdvanceNoObjectWave(step, mission))
                 {
-                    if (!hunting) return SiteResearchDailyBirthReason(source, mission, missionId, ref work);
+                    if (!hunting)
+                    {
+                        if (!dailyBirthsProved && SiteResearchDailyBirthReason(source, mission, missionId, ref work, out survivingUfos) is { } reason)
+                            return reason;
+                        dailyBirthsProved = true;
+                    }
                     // Hunting creates after the grants. It cannot enlarge an earlier
                     // interruption scan; the later generated-wave owner validates all
                     // region/race alternatives and geometry before any tick mutation.
-                    if (!SiteResearchOrdinaryWave(SpawnWave(step, mission))) return SiteResearchGenerationReason;
+                    else if (!SiteResearchOrdinaryWave(SpawnWave(step, mission))) return SiteResearchGenerationReason;
                 }
                 completes = (ulong)step.NextUfoCounter + 1 >= mission.Waves[step.NextWave].UfoCount &&
                     step.NextWave + 1 == mission.Waves.Count;
@@ -290,7 +297,7 @@ internal sealed partial class CampaignWorld
             // Native half-hour cleanup precedes site grants. Resolve interruption
             // links only for missions that can still exist at that caller.
             var steps = mission.Waves[0].SpawnTimer / 30;
-            removedBeforeSiteResearch = completes &&
+            removedBeforeSiteResearch = completes && !survivingUfos &&
                 !(mission.Objective == RuntimeMissionObjective.Infiltration && mission.EndlessInfiltration) &&
                 steps / 2 + steps <= 1;
             return null;
@@ -298,8 +305,10 @@ internal sealed partial class CampaignWorld
         catch (InvalidDataException error) { return error.Message; }
     }
 
-    private string? SiteResearchDailyBirthReason(AlienBaseSnapshot source, RuntimeAlienMissionRule rule, string missionId, ref long work)
+    private string? SiteResearchDailyBirthReason(AlienBaseSnapshot source, RuntimeAlienMissionRule rule, string missionId, ref long work,
+        out bool survivingUfos)
     {
+        survivingUfos = false;
         if (_pass.GeneratedWaveMissions is not { } candidates) return SiteResearchGenerationReason;
         var found = false;
         long landWork = 0;
@@ -312,8 +321,14 @@ internal sealed partial class CampaignWorld
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
+                if (IsDirectSiteWave(step, rule))
+                {
+                    if (SiteResearchDirectBirthReason(step, rule, ref work) is { } directReason) return directReason;
+                    continue;
+                }
                 if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork) is { } reason)
                     return reason == SiteResearchWaveReason ? SiteResearchGenerationReason : reason;
+                survivingUfos = true;
             }
         }
         // Prepared candidates retain every reachable region/race/area alternative.
