@@ -26,7 +26,12 @@ internal sealed partial class CampaignWorld
         if (!found) return null;
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
-        if (_ufos.Any(ufo => ufo.HunterKiller || ufo.Escort || ufo.Hunting || ufo.Escorting)) return SiteResearchUfoReason;
+        if (_ufos.Any(ufo => ufo.Escort || ufo.Hunting || ufo.Escorting)) return SiteResearchUfoReason;
+        if (_ufos.Any(ufo => ufo.HunterKiller))
+            foreach (var owner in campaign.BaseStates)
+                foreach (var craft in owner.Crafts)
+                    if (craft.Logistics?.Destination is { Kind: WorldTargetKind.MissionSite } target && ReturnsFromSiteBeforeMovement(target, highest))
+                        return "Site research hunting requires forced follower return forecasts.";
         if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
         foreach (var owner in campaign.BaseStates)
         {
@@ -60,6 +65,12 @@ internal sealed partial class CampaignWorld
         }
         _pass.SiteResearchAfterSite = afterSites;
         _pass.SiteResearchForecast = forecast;
+        return null;
+    }
+
+    private string? SiteResearchFlightReason(CampaignTimeTrigger highest)
+    {
+        if (_pass.SiteResearchForecast is not { } forecast) return null;
         if ((long)_ufos.Count * (_missions.Count + (highest >= CampaignTimeTrigger.OneDay ? (long)_alienBases.Count : 0)) > MaximumAlienBaseChecks)
             return "Mission site research UFO link checks exceed the supported work limit.";
         foreach (var ufo in _ufos)
@@ -74,8 +85,8 @@ internal sealed partial class CampaignWorld
                 // Interruption is consulted at an ordinary waypoint arrival, not
                 // during transit, landed countdown or takeoff. A safe transit can
                 // commit its selected outcome before a later tick forecasts arrival.
-                var projected = UfoAfterTimedTransitions(ufo, highest);
-                if (projected.Status == UfoStatus.Flying && projected.Destination is not null &&
+                var projected = ProjectFlightTarget(UfoForFlight(ufo, highest), highest);
+                if (!projected.Hunting && !projected.Escorting && projected.Status == UfoStatus.Flying && projected.Destination is not null &&
                     UfoDestinationDistance(projected) <= WorldGeometry.RadianSpeed(projected.Speed))
                     return "UFO mission interruption depends on uncertain site research outcomes.";
             }

@@ -335,3 +335,16 @@ link work. Reset regressions also exercise dispatch adding a follower after a
 blocked tick and patrol removing one before the same later trigger. All 100
 focused audit cases pass; full formatting passes. Root acceptance follows.
 Final UFO/research cycle acceptance: all 3,587 root tests, full formatting and code-map verification pass. The reference checkout is unchanged; no unexpected access denials occurred.
+
+## Site research before idle hunter selection (2026-10-08)
+
+Idle hunter-killers can now select craft after site grants. The uncertain flight
+check runs after the existing hunting/target projection, so a hunter redirected
+away from its original waypoint does not falsely require an ordinary arrival
+outcome. `GeoscapeState::time10Minutes` retargeting follows sites and fuel;
+`AlienMission::ufoReachedWaypoint` applies only to the ordinary arrival path.
+Native hunting and mission research captures back deterministic and uncertain
+fresh/cache cases, three rewrites, continued hunting after interruption and
+retargeted speed/destination. All 20 focused hunting/site/arrival cases pass.
+Active hunts, escorts and forced site-return fuel projection remain the next
+parts of this cycle; combat boundaries stay in branch 5.

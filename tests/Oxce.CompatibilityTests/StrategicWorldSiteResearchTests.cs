@@ -118,7 +118,17 @@ public sealed class StrategicWorldSiteResearchTests
     {
         var content = Content(false, 0, Deployment);
         var existing = CreateUfoTransitCampaign(content, new(2, 2, 1, 1999, 0, 29, 55)).Capture();
-        existing = existing with { World = existing.World with { Ufos = [existing.World.Ufos[0] with { HunterKiller = true }] } };
+        existing = existing with
+        {
+            World = existing.World with
+            {
+                Ufos = [existing.World.Ufos[0] with
+        {
+            HunterKiller = true, Hunting = true, OriginalWaypoint = new(1, 0.6),
+            Destination = new(WorldTargetKind.Craft, "SHIP", 1, 0.4, 0.2),
+        }]
+            }
+        };
         var snapshot = existing with { World = existing.World with { MissionSites = Snapshot(content).World.MissionSites } };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
             "Mission site research requires UFO phase forecasts.");
