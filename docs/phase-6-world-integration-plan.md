@@ -77,6 +77,8 @@ documents; entries here link to them instead of copying them.
   all 3,714 root tests and full formatting verification pass.
   Saved ordinary airborne/grounded births and immediate takeoff now compose
   too; their batch audit passes all 3,736 root tests and real VM caller checks.
+  Daily/late ordinary generated births and ground timers now compose too;
+  their same-source/72-hour audit and all 3,754 root tests pass.
   Actor/objective generation and waves, newborn-site phase
   composition, remaining uncertainty and final closure keep 4c open;
   4d is unchanged.
