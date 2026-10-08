@@ -95,6 +95,16 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
         Assert.Empty(after.World.MissionSites);
         Assert.Equivalent(after, Reload(content, campaign, 17, "site-research-ground-hunter.sav").Capture(), strict: true);
+        if (path == "PATH_SHORT")
+        {
+            var combat = (after with { Time = new(2, 2, 1, 1999, 0, 39, 55) }).WithCraft("SHIP", craft => craft with
+            {
+                Logistics = craft.Logistics! with
+                { Longitude = ufo.Longitude, Latitude = ufo.Latitude, Speed = 0, Takeoff = 0, Destination = null },
+            });
+            AssertTimeBlocked(CampaignState.Restore(combat, content, new SplitMix64RandomSource(17)),
+                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+        }
     }
 
     internal static RuntimeContent Content(bool cache, int mode = 0, string path = "PATH_0_0") =>
