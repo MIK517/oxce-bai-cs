@@ -113,9 +113,20 @@ internal sealed partial class CampaignWorld
         {
             if (AdvanceBirthResearch(birth, forecast, highest, out _) is { } reason) return reason;
         }
+        if (dailyImmediateBirths.Count != 0 && AdvanceDailyBirthResearch(dailyImmediateBirths, forecast, highest) is { } dailyReason)
+            return dailyReason;
+        _pass.SiteResearchForecast = forecast;
+        return null;
+    }
+
+    // Keep captured callbacks outside the per-tick entry point: C# allocates their
+    // shared closure before even an early return from the enclosing method.
+    private string? AdvanceDailyBirthResearch(IReadOnlyList<SiteResearchBirth> births,
+        CampaignState.MissionResearchForecast forecast, CampaignTimeTrigger highest)
+    {
         // Saved missions think before the appended daily missions. Alternatives
         // of one generated birth share one grant slot, never execute all branches.
-        foreach (var group in dailyImmediateBirths.GroupBy(birth =>
+        foreach (var group in births.GroupBy(birth =>
             (birth.Mission.AlienBase!.TypeId, birth.Mission.AlienBase.Id, birth.Mission.RuleId)))
         {
             string? AdvanceBirths()
@@ -138,7 +149,6 @@ internal sealed partial class CampaignWorld
                 ? forecast.AdvanceOptionalSequence(AdvanceBirths) : AdvanceBirths();
             if (reason is not null) return reason;
         }
-        _pass.SiteResearchForecast = forecast;
         return null;
     }
 
