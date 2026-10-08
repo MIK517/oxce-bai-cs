@@ -113,13 +113,22 @@ public sealed class StrategicWorldMissionInterruptionTests
     [Theory]
     [InlineData("GEN_REWARD", false)]
     [InlineData("GEN_DISABLE", true)]
-    public void UncertainRewardsOrDisablersBlockBeforeResearchAndRandomness(string research, bool completed)
+    public void SingleRewardOrDirectDisablerSelectsDailyInterruptionAndPersists(string research, bool completed)
     {
         var content = Load();
-        var snapshot = Existing(content, "GEN_STOP_TOPIC") with { CompletedResearch = completed ? ["GEN_STOP"] : [] };
-        snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Research = [new(research, 1, 0, 1)] }] };
-        AssertTimeBlocked(Restore(content, snapshot),
-            "Alien mission interruption depends on uncertain daily research outcomes.");
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var snapshot = Existing(content, "GEN_STOP_TOPIC") with { CompletedResearch = completed ? ["GEN_STOP"] : [], RandomState = seed };
+            snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Research = [new(research, 1, 0, 1)] }] };
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var interrupted = after.CompletedResearch.Contains("GEN_STOP");
+            Assert.Equal(!completed, interrupted);
+            Assert.Equal(interrupted, after.World.Missions.Count == 0);
+            if (!interrupted) Assert.Equal(8970, Assert.Single(after.World.Missions).SpawnCountdown);
+            for (var pass = 0; pass < 3; pass++) campaign = Reload(content, campaign, seed, "daily-reward-interruption.sav");
+        }
     }
 
     [Theory]

@@ -102,6 +102,7 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
         guaranteedResearch = null;
         if (highest < CampaignTimeTrigger.OneDay) return null;
         IReadOnlySet<string>? possibleResearch = null;
+        long cleanupWork = 0;
         var rules = campaign.Content.RuntimeRules;
         foreach (var mission in _missions)
         {
@@ -112,11 +113,15 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
                 return "Alien mission interruption references undefined research.";
             if (mission.Interrupted) continue;
             guaranteedResearch ??= GuaranteedDailyResearch();
-            possibleResearch ??= campaign.ResearchPreflight.PossibleResearchAfterDailyProgress();
-            if (!possibleResearch.Contains(id)) continue;
-            if (!guaranteedResearch.Contains(id))
-                return "Alien mission interruption depends on uncertain daily research outcomes.";
-
+            // Possible-only interruption skips mission think and later ordinary
+            // arrival effects. The continuing branch retains their owning proofs;
+            // same-day site grants still require their ordered research forecasts.
+            if (mission.LiveUfos == 0 && !guaranteedResearch.Contains(id))
+            {
+                possibleResearch ??= campaign.ResearchPreflight.PossibleResearchAfterDailyProgress();
+                if (possibleResearch.Contains(id) && MissionExpiryReason(mission, rule, ref cleanupWork) is { } cleanupReason)
+                    return cleanupReason;
+            }
         }
         return null;
     }

@@ -1194,3 +1194,25 @@ corpus, fixture checksums and unchanged populated allocation budgets. Full
 formatting, code-map and diff checks pass; the pinned reference remains clean.
 Daily research/stock alternatives, newborn arrival/pursuit composition and final
 headless reconciliation remain open; 4d is untouched.
+
+## Daily mission and base research alternatives (2026-10-09)
+
+Daily mission interruption now accepts possible-only research outcomes through
+the existing continuing-branch proofs. Native `GeoscapeState::time1Day` finishes
+research before setting mission flags, followed by half-hour mission think and
+later flight. Guaranteed daily topics still project permanent interruption;
+same-day site grants retain their separate ordered daily research requirements.
+
+Pinned generation, lifecycle, site-spawn and objective-base evidence backs
+fresh/cache 32-seed transit, airborne, ordinary ground, conversion, dormant
+respawn, landing-base and terminal arrivals. Full snapshots/RNG match selected
+deterministic controls, with three rewrites and later movement/live-UFO repair.
+Possible marker exhaustion and interception remain atomic. Earlier single-free-
+reward and direct-disabler fixtures now require their exact native outcomes.
+
+Review before committing reproduced an omitted cleanup alternative: an imported
+mission with no saved live UFOs can still have a UFO or invalid retaliation link,
+and possible daily interruption can make it expire before flight. The daily
+preflight now reserves the existing bounded expiry/link validation for that
+alternative. Fresh/cache regressions refuse before any research or RNG mutation.
+All 564 affected tests pass; targeted formatting, code-map and diff checks pass.
