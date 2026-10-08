@@ -230,7 +230,9 @@ public sealed class StrategicWorldSiteResearchSpawnTests
     public void NewHuntersStillRequireTheirResearchCompositionForecast(bool cache)
     {
         var content = Content(cache, "PATH_0_0", ufo: "UFO_HUNTER");
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17)),
+        var initial = Snapshot(content).WithCraft("SHIP", craft => craft with
+        { Logistics = craft.Logistics! with { Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0, Destination = null } });
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Mission site research requires mission-wave composition forecasts.");
     }
 

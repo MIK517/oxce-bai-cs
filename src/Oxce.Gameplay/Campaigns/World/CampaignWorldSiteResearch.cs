@@ -54,7 +54,7 @@ internal sealed partial class CampaignWorld
                     var wave = rule.Waves[step.NextWave];
                     if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchWaveReason;
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
-                    if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork) is { } birthReason) return birthReason;
+                    if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork, allowHunters: true) is { } birthReason) return birthReason;
                     births = true;
                 }
             }
@@ -99,7 +99,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? SiteResearchOrdinaryBirthReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        ref long work, ref long landWork)
+        ref long work, ref long landWork, bool allowHunters = false)
     {
         var wave = SpawnWave(mission, rule);
         if (wave.Trajectory is not { } path) return SiteResearchWaveReason;
@@ -107,7 +107,7 @@ internal sealed partial class CampaignWorld
         var trajectory = rules.UfoTrajectories[path].Value;
         // Ordinary lifting does not inspect mission interruption. A one-tick
         // ground start may therefore lift after sites through the owned handler.
-        if (!SiteResearchOrdinaryWave(wave)) return SiteResearchWaveReason;
+        if (!SiteResearchOrdinaryWave(wave, allowHunters)) return SiteResearchWaveReason;
         // Reserve bounded geometry and source lookups before the spawn predicate's
         // Cartesian distance checks. This proof does not select a point or draw RNG.
         work += 8L * _alienBases.Count;
@@ -122,13 +122,14 @@ internal sealed partial class CampaignWorld
         return CanSpawnOrdinaryUfoWave(mission, rule) ? null : SiteResearchWaveReason;
     }
 
-    private bool SiteResearchOrdinaryWave(RuntimeMissionWave wave)
+    private bool SiteResearchOrdinaryWave(RuntimeMissionWave wave, bool allowHunters = false)
     {
         if (wave.Ufo is not { } ufo || wave.Trajectory is not { } path) return false;
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[path].Value;
         var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
-        return trajectory.Waypoints.Count >= 2 && hunterChance <= 0 && !wave.Escort;
+        return trajectory.Waypoints.Count >= 2 && !wave.Escort &&
+            (hunterChance <= 0 || allowHunters && NoCraftCanBecomeHunterTarget());
     }
 
     private string? SiteResearchFlightReason(CampaignTimeTrigger highest)
