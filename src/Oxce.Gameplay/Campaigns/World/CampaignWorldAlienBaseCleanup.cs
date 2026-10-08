@@ -19,8 +19,6 @@ internal sealed partial class CampaignWorld
             guaranteedResearch ??= GuaranteedDailyResearch();
             possible ??= campaign.ResearchPreflight.PossibleResearchAfterDailyProgress();
             if (!possible.Contains(rule.BaseSelfDestructCodeId)) continue;
-            if (!guaranteedResearch.Contains(rule.BaseSelfDestructCodeId))
-                return "Alien base self-destruction depends on uncertain daily research outcomes.";
             work += _missions.Count + (long)campaign.CountryStates.Count + _alienBases.Count;
             foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
@@ -28,10 +26,47 @@ internal sealed partial class CampaignWorld
             foreach (var other in _alienBases)
                 if (!ReferenceEquals(other, alienBase) && other.Id == alienBase.Id && MarkerName(other.DeploymentId) == marker)
                     return "Alien base self-destruction cannot resolve an ambiguous marker identity.";
-
+            if (!guaranteedResearch.Contains(rule.BaseSelfDestructCodeId) &&
+                UncertainBaseDeletionReason(alienBase, rule, ref work) is { } uncertainReason) return uncertainReason;
         }
         if (guaranteedResearch is not null && (long)_alienBases.Count *
             _missions.Count(mission => mission.AlienBase is not null) > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        return null;
+    }
+
+    private string? UncertainBaseDeletionReason(AlienBaseSnapshot alienBase, RuntimeAlienDeploymentRule rule, ref long work)
+    {
+        // The surviving branch owns activity, timers and discovery proofs. A quiet
+        // unlinked deletion only removes that actor; generation, link repair and
+        // pact eligibility need their own earlier/later caller alternatives.
+        work += _missions.Count + (long)rule.GenMission.Count + campaign.BaseStates.Count + campaign.CountryStates.Count;
+        foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
+        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        foreach (var mission in _missions)
+            if (FollowsAlienBase(mission.AlienBase, alienBase))
+                return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+        // Ordinary UFO destinations restore as anonymous waypoints. Their source
+        // links are owned by missions; they do not follow an alien-base pointer.
+        foreach (var owner in campaign.BaseStates)
+        {
+            foreach (var craft in owner.Crafts)
+                if (FollowsAlienBase(craft.Logistics?.Destination, alienBase))
+                    return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+            foreach (var transfer in owner.Transfers)
+                if (FollowsAlienBase(transfer.Craft?.Logistics?.Destination, alienBase))
+                    return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+        }
+        if (rule.GenMissionFrequency > 0 && alienBase.GenMissionCount < rule.GenMissionLimit &&
+            rule.GenMission.Any(static choice => choice.Key.Length != 0 && choice.Value != 0))
+            return "Alien base self-destruction requires optional mission-generation forecasts.";
+        if (rule.BaseDetectionRange > 0 && rule.BaseDetectionChance > 0 &&
+            rule.HuntMissions.Count != 0 && (long)alienBase.MinutesSinceLastHuntMissionGeneration + 10 >= rule.HuntMissionMaxFrequency)
+            return "Alien base self-destruction requires optional hunting-generation forecasts.";
+        if (campaign.Content.RuntimeRules.Campaign.AllowCountriesToCancelAlienPact && alienBase.PactCountryId.Length != 0)
+            foreach (var country in campaign.CountryStates)
+                if (campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule) == alienBase.PactCountryId &&
+                    (country.NewPact || country.CancelPact != country.Pact))
+                    return "Alien base self-destruction requires uncertain pact-cancellation forecasts.";
         return null;
     }
 
