@@ -109,7 +109,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
     [InlineData(true)]
     public void DailyGeneratedDirectSitesPreserveImmediateExpiryAndMarkerBoundaries(bool cache)
     {
-        var content = Content(cache, generated: true, duration: 0);
+        var content = Content(cache, generated: true, duration: 0, maximumDuration: 1);
         AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
             "Newborn mission site research requires ordered expiry forecasts.");
         content = Content(cache, generated: true);
@@ -177,7 +177,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
     }
 
     internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false, bool hunting = false,
-        int objective = 0, string interrupt = "CORE", int? maximumDuration = null, string eventInterrupt = "") =>
+        int objective = 0, string interrupt = "CORE", int? maximumDuration = null, string eventInterrupt = "", int frequency = 100) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -203,7 +203,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
           - type: RESEARCH_DIRECT_BASE
             markerName: RESEARCH_DIRECT_BASE_MARKER
             genMission: {RESEARCH_DIRECT_CHAIN: 1}
-            genMissionFreq: {{{(generated ? 100 : 0)}}}
+            genMissionFreq: {{{(generated ? frequency : 0)}}}
             genMissionLimit: 1
             baseDetectionRange: {{{(hunting ? 100 : 0)}}}
             baseDetectionChance: 100

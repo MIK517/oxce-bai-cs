@@ -102,4 +102,58 @@ public sealed class StrategicWorldNewbornSiteResearchTests
         AdvanceUnblocked(campaign, 1);
         Assert.Single(campaign.Capture().World.Ufos);
     }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DailyImmediateBirthsGrantAfterSavedSitesAndPreserveRemovedMissionLinks(bool cache, bool final)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        for (var objective = 0; objective <= 3; objective += 3)
+        {
+            var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, final, duration: 0, generated: true,
+                objective: objective, interrupt: final ? "MISSING_RESEARCH" : "BONUS");
+            var initial = StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content);
+            for (var savedIndex = 0; savedIndex <= 1; savedIndex++)
+            {
+                var snapshot = initial with { World = initial.World with { MissionSites = savedIndex == 0 ? [] : initial.World.MissionSites } };
+                var campaign = Reload(content, CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)), 17, "daily-immediate-before.sav");
+                AdvanceUnblocked(campaign, 1);
+                var after = campaign.Capture();
+                Assert.Empty(after.World.MissionSites);
+                Assert.Equal(savedIndex == 0 ? BornTopics : SavedThenBornTopics, after.ResearchDiary.Select(entry => entry.RuleId));
+                Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
+                if (final) Assert.Empty(after.World.Missions);
+                else Assert.True(Assert.Single(after.World.Missions).Interrupted);
+                for (var pass = 0; pass < 3; pass++)
+                {
+                    campaign = Reload(content, campaign, 17, "daily-immediate-after.sav");
+                    Assert.Equivalent(after, campaign.Capture(), strict: true);
+                }
+                AdvanceUnblocked(campaign, 360);
+                Assert.Empty(campaign.Capture().World.Missions);
+                Assert.Equal(after.ResearchDiary, campaign.Capture().ResearchDiary);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyImmediateBirthsRetainGenerationUncertaintyAndUnavailableEventBoundaries(bool cache)
+    {
+        var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true, frequency: 50);
+        AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
+            "Immediate generated site research requires deterministic generation outcomes.");
+        content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true, eventInterrupt: "BONUS");
+        var campaign = CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.Empty(campaign.Capture().World.Events);
+        content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true, eventInterrupt: "UNLOCK");
+        AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
+            "Mission site despawn requires research or event payloads.");
+    }
 }
