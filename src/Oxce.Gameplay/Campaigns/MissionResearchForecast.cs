@@ -13,6 +13,7 @@ public sealed partial class CampaignState
         private readonly RuntimeRuleCatalog _rules;
         private readonly int _completedBuildTime;
         private readonly DailyResearchStockForecast? _precedingResearch;
+        private readonly IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? _firstBaseItems;
         private List<Outcome> _outcomes;
         private long _work;
         private readonly long _functionWork;
@@ -23,17 +24,19 @@ public sealed partial class CampaignState
         private IReadOnlySet<string> _possibleExplicitTopics = new HashSet<string>(StringComparer.Ordinal);
 
         internal MissionResearchForecast(CampaignState campaign, CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds,
-            DailyResearchStockForecast? precedingResearch = null)
+            DailyResearchStockForecast? precedingResearch = null,
+            IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0)
         {
             _campaign = campaign;
             _rules = campaign.Content.RuntimeRules;
             _precedingResearch = precedingResearch;
+            _firstBaseItems = firstBaseItems;
             // Construction decrements positive timers before the daily research
             // and world callers. The real GrantReason runs after that transition.
             _completedBuildTime = highest >= CampaignTimeTrigger.OneDay ? 1 : 0;
             var completed = precedingResearch?.CompletedResearch ?? campaign._completedResearch;
             var statuses = precedingResearch?.ResearchStatuses ?? campaign._researchRuleStatus;
-            _work = (precedingResearch?.Work ?? 0) + completed.Count + (long)statuses.Count;
+            _work = Math.Max(precedingResearch?.Work ?? 0, precedingWork) + completed.Count + (long)statuses.Count + (firstBaseItems?.Count ?? 0);
             _outcomes = [new(new(completed, StringComparer.Ordinal),
                 new(statuses, StringComparer.Ordinal), campaign._researchScores[^1] + (precedingResearch?.ScoreChange ?? 0),
                 precedingResearch?.DiaryEntries ?? 0, new(StringComparer.Ordinal))];
@@ -150,7 +153,8 @@ public sealed partial class CampaignState
                 var addedItems = _precedingResearch?.StockChanges.GetValueOrDefault(owner.Id)?.GetValueOrDefault(candidate.NeededItem ?? "") ?? 0;
                 return (!active &&
                     (!candidate.NeedItem || candidate.NeededItem is { } needed && _rules.Items.TryGet(needed, out var item) &&
-                        (long)owner.Items.GetValueOrDefault(item) + addedItems != 0) && _campaign.HasFunctions(owner, candidate.RequiredBaseFunctions, _completedBuildTime), eligibilityWork);
+                        (_firstBaseItems is not null ? _firstBaseItems.GetValueOrDefault(item) :
+                            (long)owner.Items.GetValueOrDefault(item) + addedItems) != 0) && _campaign.HasFunctions(owner, candidate.RequiredBaseFunctions, _completedBuildTime), eligibilityWork);
             }, (discovered, points, _) =>
             {
                 outcome.Score += points;

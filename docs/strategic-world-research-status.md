@@ -405,3 +405,19 @@ combined overflow, prefix-versus-execution and three-rewrite cases. All 20
 focused cases and the preceding affected site/diary suite pass. Timed item
 eligibility, generated actors and later event payloads retain their boundaries.
 The pending prior-cycle full acceptance also passes all 3,611 root tests.
+
+## Timed item eligibility at site research (2026-10-08)
+
+Automatic mission-source research now reads first-base item stocks after earlier
+hourly maintenance, transfers, production and half-hour refuelling. The existing
+bounded craft/production stock proof has a site-caller endpoint before follower
+return, fuel and hunter retargeting; normal hunting callers retain their endpoint.
+Daily refunds and removed projects flow through the same prefix. Item-presence
+proofs accept positive stock in every ammunition-saving outcome and refuse a
+zero-versus-positive ambiguity without choosing RNG. Unavailable production or
+maintenance effects retain their existing precise boundaries.
+Reference: GeoscapeState::time1Hour/time30Minutes/processMissionSite,
+Craft::rearm/refuel, CraftWeapon::rearm, Base::removeResearch and
+SavedGame::handleResearchUnlockedByMissions. Native hunting/mission captures
+back 20 fresh/cache stock and ammunition-saving cases with three rewrites.
+All 40 daily/item cases and all 599 shared hunting/site regressions pass.
