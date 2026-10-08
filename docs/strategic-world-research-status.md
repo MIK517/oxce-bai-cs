@@ -718,3 +718,13 @@ No-site controls compare identical UFO/RNG outcomes; grants interrupt surviving
 missions, pursuit continues after reload, and nearby targets refuse the whole
 tick before grants or birth. All 116 affected spawning/newborn-hunting tests pass.
 Generated targetable hunters and escorts remain the next caller slices.
+
+Daily and late base-hunting generation now use the same deferred retarget proof
+for airborne hunters. Daily alternatives validate geometry before site grants;
+late alternatives retain their later creation preflight. Native
+GenerateSupplyMission/baseHunting/time10Minutes ordering preserves interruption
+of daily missions only. Eight fresh/cache final/nonfinal scenarios compare
+constructor-backed hunting, source and craft identities, no-site UFO/RNG control
+outcomes, grant history and transition reloads. Pursuit runs only to a horizon
+before its expected interception. All 56 affected tests pass. Escorts remain
+guarded pending their separate leader-origin composition slice.

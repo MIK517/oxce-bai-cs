@@ -11,6 +11,65 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
 {
     [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public void GeneratedAirborneHuntersRetargetAfterSiteGrantAtBothCallers(bool cache, bool hunting, bool final)
+    {
+        TestFixtures.LoadVerifiedManifest(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(oracle.RootElement, "constructorRows"), row =>
+            row[0].GetInt32() == 100 && row[1].GetInt32() == 1 && row[4].GetBoolean());
+        var content = Content(cache, hunting, final, ufo: "UFO_HUNTER");
+        var initial = Snapshot(content, hunting);
+        var source = Assert.Single(initial.World.AlienBases);
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 0,
+                Longitude = source.Longitude + WorldGeometry.Nautical(50),
+                Latitude = source.Latitude,
+                Destination = WorldTargetReference.ForWaypoint(1, new(1, 0.6)),
+            },
+        }) with
+        { World = initial.World with { Waypoints = [new(1, 1, 0.6)] } };
+        var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "generated-hunter-research-before.sav");
+        AdvanceUnblocked(control, 1);
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        var born = Assert.Single(after.World.Ufos);
+        Assert.True(born.Hunting);
+        Assert.True(born.Detected);
+        Assert.Equal(WorldTargetKind.Craft, born.Destination!.Kind);
+        Assert.Equal(1, born.Destination.Id);
+        Assert.NotNull(born.OriginalWaypoint);
+        Assert.Equal(born.UniqueId, Assert.Single(result.Events.OfType<UfoStartedHunting>()).UniqueId);
+        Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
+        Assert.Equal(control.Capture().RandomState, after.RandomState);
+        var mission = Assert.Single(after.World.Missions);
+        Assert.Equal(!hunting, mission.Interrupted);
+        Assert.Equal(1, mission.LiveUfos);
+        Assert.Equal(source.Id, mission.AlienBase!.Id);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equivalent(after, Reload(content, campaign, 17, "generated-hunter-research-after.sav").Capture(), strict: true);
+        AdvanceUnblocked(campaign, 3);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Hunting);
+        Reload(content, campaign, 17, "generated-hunter-research-following.sav");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
