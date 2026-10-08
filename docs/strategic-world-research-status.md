@@ -864,3 +864,22 @@ formatting, code-map and diff verification pass. The reference remains clean at
 the pin; useful captures remain and no native objects were generated. Immediate
 appended-site research, generated retaliation and uncertainty reconciliation
 still keep the headless gate open.
+
+## Ordered newborn site research (2026-10-08)
+
+Saved deterministic zero-duration births now append their grant forecasts after
+all saved-site grants, in mission/wave order. A per-birth proof supplies the exact
+post-grant state to direct-site event validation; later flight consumes the final
+research forecast. Births can initiate this proof even without a saved site.
+This follows AlienMission::spawnMissionSite's append and
+GeoscapeState::processMissionSite's grant-before-counters/event/removal order.
+No RNG or allocated target identity is used by the proof.
+
+Fresh/cache final/prefix chains cover two births, with/without saved grants,
+explicit interruption, three rewrites and no duplicate diary effects. The former
+zero-hour research refusal now checks execution, counters and reload; unavailable
+instant payloads still stop atomically. Diary/marker exhaustion and invalid active
+mission links remain guarded. Precommit review also excludes finished missions
+with surviving UFOs from the new birth scan, with a focused regression. All 362
+affected tests pass. Daily immediate births and stochastic deployment/expiry
+alternatives remain the next slices.

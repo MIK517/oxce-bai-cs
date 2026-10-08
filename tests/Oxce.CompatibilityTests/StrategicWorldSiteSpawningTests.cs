@@ -549,15 +549,26 @@ public sealed class StrategicWorldSiteSpawningTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void NewZeroHourSiteStopsBeforeUnavailableResearchOrInstantPayload(bool research)
+    public void NewZeroHourSiteGrantsOwnedResearchAndStopsBeforeUnavailableInstantPayload(bool research)
     {
         var overlay = "alienDeployments:\n  - type: DIRECT_ZERO_COUNTERS\n    " +
             (research ? "unlockedResearchOnDespawn: UNLOCK\n" : "despawnEvents: {INSTANT: 1}\n");
         var content = StrategicReadinessTestContent.Load(
             ["strategic-world.rul", "strategic-site-expiry.rul", "strategic-site-spawn.rul"], extraRules: overlay);
-        var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_ZERO_COUNTERS"), content, new QuarterChoices());
-        AssertTimeBlocked(campaign, research
-            ? "Generated mission site research requires ordered expiry forecasts."
-            : "Mission site despawn requires research or event payloads.");
+        var initial = Snapshot(content, "DIRECT_ZERO_COUNTERS");
+        var campaign = CampaignState.Restore(initial, content, new QuarterChoices());
+        if (!research)
+        {
+            AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+            return;
+        }
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Contains("UNLOCK", after.CompletedResearch);
+        Assert.Equal("UNLOCK", Assert.Single(after.ResearchDiary).RuleId);
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal(initial.NextIds.GetValueOrDefault("shared", 1) + 2, after.NextIds["shared"]);
+        Assert.Equal(initial.NextIds.GetValueOrDefault("DIRECT_MARKER", 1) + 2, after.NextIds["DIRECT_MARKER"]);
+        Assert.Equivalent(after, Reload(content, campaign, 17, "newborn-research-counters.sav").Capture(), strict: true);
     }
 }
