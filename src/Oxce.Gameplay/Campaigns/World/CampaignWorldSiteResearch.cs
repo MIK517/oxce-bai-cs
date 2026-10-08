@@ -144,20 +144,7 @@ internal sealed partial class CampaignWorld
                     if (choice.Key.Length == 0 || choice.Value == 0) continue;
                     if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
                     var mission = missions[handle].Value;
-                    if (mission.Waves.Count == 0) return SiteResearchGenerationReason;
-                    if (mission.Waves[0].SpawnTimer / 30 / 2 <= 1)
-                    {
-                        // Only counter transitions can compose without a new actor
-                        // or objective-state prefix at the later research caller.
-                        if (mission.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply))
-                            return SiteResearchGenerationReason;
-                        try
-                        {
-                            if (ImmediateNoObjectReason(alienBase, rule, mission, ref work, SiteResearchGenerationReason) is { } reason)
-                                return reason;
-                        }
-                        catch (InvalidDataException error) { return error.Message; }
-                    }
+                    if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, ref work) is { } reason) return reason;
                     // The native site caller resolves every active mission's
                     // interruption rule, including newly created delayed missions.
                     if (mission.InterruptResearchId.Length != 0 && mission.InterruptResearch is null)
@@ -173,8 +160,29 @@ internal sealed partial class CampaignWorld
             catch (InvalidDataException error) { return error.Message; }
             work += choices.Count;
             if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-            if (choices.Any(choice => choice.Key.Length != 0 && choice.Value != 0)) return SiteResearchGenerationReason;
+            foreach (var choice in choices)
+            {
+                if (choice.Key.Length == 0 || choice.Value == 0) continue;
+                var missions = campaign.Content.RuntimeRules.AlienMissions;
+                if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
+                if (SiteResearchGeneratedMissionReason(alienBase, rule, missions[handle].Value, ref work) is { } reason) return reason;
+                // Hunting generation follows sites. Its new mission cannot receive
+                // an earlier explicit grant or enlarge that grant's validation scan.
+            }
         }
         return null;
+    }
+
+    private string? SiteResearchGeneratedMissionReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
+        RuntimeAlienMissionRule mission, ref long work)
+    {
+        if (mission.Waves.Count == 0) return SiteResearchGenerationReason;
+        if (mission.Waves[0].SpawnTimer / 30 / 2 > 1) return null;
+        // Only counter transitions can compose without a new actor or objective
+        // prefix. The owning generator still validates all other creation fields.
+        if (mission.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply))
+            return SiteResearchGenerationReason;
+        try { return ImmediateNoObjectReason(source, deployment, mission, ref work, SiteResearchGenerationReason); }
+        catch (InvalidDataException error) { return error.Message; }
     }
 }
