@@ -340,7 +340,7 @@ internal sealed partial class CampaignWorld
                     // proof. Interruption only destroys and ends the flight pass,
                     // skipping subsequent actors already proved for continuation.
                     if (projected.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
-                        (IsSiteConversion(projected, mission, trajectory) || CreatesLandingBase(projected, mission, trajectory)))
+                        CreatesLandingBase(projected, mission, trajectory))
                         return "UFO mission interruption depends on uncertain site research outcomes.";
                 }
             }

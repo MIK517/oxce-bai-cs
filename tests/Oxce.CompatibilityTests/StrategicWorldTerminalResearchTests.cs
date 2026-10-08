@@ -61,20 +61,20 @@ public sealed class StrategicWorldTerminalResearchTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SiteConversionStillRequiresBothResearchFlightOutcomesToBeProved(bool cache)
+    public void PossibleConversionStillRequiresMarkerCapacityBeforeResearchSelection(bool cache)
     {
         var content = Content(cache);
         var rule = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("MISSION_CONVERSION")].Value;
         Assert.Equal(5, rule.SpawnZone);
         Assert.True(Assert.Single(rule.Waves).Objective);
-        var initial = StrategicWorldSiteResearchUfoTests.Arrival(content);
+        var initial = StrategicWorldSiteResearchUfoTests.Arrival(content).WithNextId("STR_TERROR_SITE", int.MaxValue);
         initial = initial with
         {
             World = initial.World with
             { Missions = [initial.World.Missions[0] with { RuleId = "MISSION_CONVERSION", MissionSiteZoneArea = 0 }] }
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "UFO mission interruption depends on uncertain site research outcomes.");
+            "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
     private static RuntimeContent Content(bool cache, string interrupt = "BONUS") =>
