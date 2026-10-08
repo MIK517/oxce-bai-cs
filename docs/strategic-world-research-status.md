@@ -1120,3 +1120,25 @@ including RNG, diaries, landing alerts and later UFO/craft fallthrough. Three
 rewrites and subsequent timer/takeoff or destroyed-UFO cleanup are checked.
 Reference: `AlienMission::ufoReachedWaypoint`, native lifecycle/site-spawn and
 diary captures. The stock/airborne/ground slices are ready for their batch audit.
+
+The initial batch passes all 3,954 root tests without failures or skips. Review
+also identified a missing immediate contact-loss alert: native
+`GeoscapeState::time5Seconds` reports a detected UFO's loss to its followers
+before returning from an interrupted or terminal arrival. Pursuit repair is
+correctly deferred to the next tick, but that earlier alert was absent. A
+separate audit correction now reports one `UfoContactLost` before the terminal
+return, with both craft and UFO followers included as native `MovingTarget`
+destinations require. Preflight reserves one bounded scan including incoming/
+produced craft and the supported same-tick UFO population. Eight fresh/cache
+32-seed regressions reproduced the missing alert before the fix and now pass
+with three rewrites, deferred movement and next-tick repair. Hidden and
+unfollowed terminal contacts remain silent. The legacy terminal pursuit test now
+requires the exact advance-plus-loss event sequence and retains its deferred
+movement and cleanup checks.
+
+All 3,968 root tests pass with zero failures/skips, including private corpus,
+fixture checksums and unchanged populated allocation budgets. Full formatting
+and the subsequently changed pursuit assertion's formatting pass; code-map and
+diff checks pass, and the pinned reference remains clean. Conversion/base flight
+alternatives, daily research/stock uncertainty, newborn flight/pursuit composition
+and final headless reconciliation keep 4c open; 4d is untouched.

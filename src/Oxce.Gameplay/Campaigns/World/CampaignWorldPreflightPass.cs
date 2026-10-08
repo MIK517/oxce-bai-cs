@@ -72,6 +72,7 @@ internal sealed partial class CampaignWorld
             new(ReferenceEqualityComparer.Instance);
         public Dictionary<int, UfoSnapshot>? NewLeaderFlightForecast;
         public int PossibleHuntMarkerIds;
+        public bool ArrivalLossFollowerScanRequired;
         public long HuntingForecastWork;
         public Dictionary<(string TypeId, int Id), CraftLogisticsState>? HuntingCraftForecast;
         public Dictionary<int, List<CampaignState.CraftState>>? HuntingCraftSources;
@@ -86,6 +87,7 @@ internal sealed partial class CampaignWorld
         /// <summary>Starts a world preflight pass.</summary>
         public void BeginWorld(CampaignTimeTrigger highest)
         {
+            ArrivalLossFollowerScanRequired = false;
             UfoDestinationDistances.Clear();
             DailyResearchForecast = null;
             MissionCounterForecast = null;
