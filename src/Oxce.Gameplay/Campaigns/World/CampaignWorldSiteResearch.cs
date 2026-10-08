@@ -144,12 +144,12 @@ internal sealed partial class CampaignWorld
                     if (choice.Key.Length == 0 || choice.Value == 0) continue;
                     if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
                     var mission = missions[handle].Value;
-                    if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, ref work) is { } reason) return reason;
+                    if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, ref work, out var removed) is { } reason) return reason;
                     // The native site caller resolves every active mission's
                     // interruption rule, including newly created delayed missions.
-                    if (mission.InterruptResearchId.Length != 0 && mission.InterruptResearch is null)
+                    if (!removed && mission.InterruptResearchId.Length != 0 && mission.InterruptResearch is null)
                         return "Alien mission interruption references undefined research.";
-                    canGenerate = true;
+                    canGenerate |= !removed;
                 }
                 if (canGenerate) precedingMissionBirths++;
             }
@@ -165,7 +165,7 @@ internal sealed partial class CampaignWorld
                 if (choice.Key.Length == 0 || choice.Value == 0) continue;
                 var missions = campaign.Content.RuntimeRules.AlienMissions;
                 if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
-                if (SiteResearchGeneratedMissionReason(alienBase, rule, missions[handle].Value, ref work) is { } reason) return reason;
+                if (SiteResearchGeneratedMissionReason(alienBase, rule, missions[handle].Value, ref work, out _) is { } reason) return reason;
                 // Hunting generation follows sites. Its new mission cannot receive
                 // an earlier explicit grant or enlarge that grant's validation scan.
             }
@@ -174,15 +174,33 @@ internal sealed partial class CampaignWorld
     }
 
     private string? SiteResearchGeneratedMissionReason(AlienBaseSnapshot source, RuntimeAlienDeploymentRule deployment,
-        RuntimeAlienMissionRule mission, ref long work)
+        RuntimeAlienMissionRule mission, ref long work, out bool removedBeforeSiteResearch)
     {
+        removedBeforeSiteResearch = false;
         if (mission.Waves.Count == 0) return SiteResearchGenerationReason;
         if (mission.Waves[0].SpawnTimer / 30 / 2 > 1) return null;
         // Only counter transitions can compose without a new actor or objective
         // prefix. The owning generator still validates all other creation fields.
         if (mission.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply))
             return SiteResearchGenerationReason;
-        try { return ImmediateNoObjectReason(source, deployment, mission, ref work, SiteResearchGenerationReason); }
+        try
+        {
+            var candidate = new AlienMissionSnapshot(-1, string.Empty, string.Empty, source.Race, 0, 0, 30, 0, -1)
+            { AlienBase = new(WorldTargetKind.AlienBase, deployment.MarkerName, source.Id, source.Longitude, source.Latitude) };
+            var completes = false;
+            foreach (var step in DueWaveSteps(candidate, mission))
+            {
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (!CanAdvanceNoObjectWave(step, mission)) return SiteResearchGenerationReason;
+                completes = (ulong)step.NextUfoCounter + 1 >= mission.Waves[step.NextWave].UfoCount &&
+                    step.NextWave + 1 == mission.Waves.Count;
+            }
+            // Native half-hour cleanup precedes site grants. Resolve interruption
+            // links only for missions that can still exist at that caller.
+            var steps = mission.Waves[0].SpawnTimer / 30;
+            removedBeforeSiteResearch = completes && steps / 2 + steps <= 1;
+            return null;
+        }
         catch (InvalidDataException error) { return error.Message; }
     }
 }

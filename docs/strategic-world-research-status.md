@@ -475,3 +475,16 @@ exact draws and repeated reloads. A combined midnight case verifies daily and
 hunting births from one source on opposite sides of the same site grant.
 All 71 affected generation/base/hunting tests pass. Immediate actor/objective
 generation and newborn-site grant ordering remain explicit work.
+
+The generation batch audit confirmed one consumed-link over-restriction:
+immediate counter-only missions that are guaranteed to finish and be removed
+before site grants were still resolving unused interruption research. Two
+fresh/cache regressions failed before the fix. The shared proof now retains
+the final counter result and the maximum initial timer, resolving links and
+reserving new-mission scans only when a daily birth can survive to the site
+caller. Late hunting births remain after that caller. Four additional cases
+verify that incomplete counters or timer alternatives still resolve malformed
+links atomically. These rules use independent identities because native reverse
+file ordering overwrites a seeded wave override with the later fixture wave.
+Reference: GeoscapeState::time30Minutes finished-mission deletion before
+processMissionSite; SavedGame::handleResearchUnlockedByMissions active-list scan.
