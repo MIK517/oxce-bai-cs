@@ -457,3 +457,11 @@ and diary captures back fresh/cache creation-before-interruption, exact draw
 counts, repeated rewrites, next-pass cleanup, invalid links and exhausted-work
 regressions. The older generation refusal case now explicitly creates an
 immediate actor; it continues to assert whole-tick atomic refusal.
+
+Daily counter-only score/supply creation now uses the existing bounded immediate
+chain proof before site research. Every reachable wave must advance without
+an actor or objective transition; finite zero-timer chains retain native order
+and draws, and oversized chains stop before any daily mutation. The native
+generation and wave-chain captures back fresh/cache timer alternatives, five
+immediate steps, cleanup, interruption and reload cases. All 21 generation/base
+research tests pass. Hunting generation and actor/objective births remain open.
