@@ -179,6 +179,8 @@ public sealed record CampaignSnapshot(
 {
     public IReadOnlyList<CampaignRestriction> Restrictions { get; init; } = [];
     public IReadOnlyList<string> CompletedResearch { get; init; } = [];
+    public IReadOnlyList<ResearchDiaryEntrySnapshot> ResearchDiary { get; init; } = [];
+    public ulong ResearchDiarySequence { get; init; }
     public IReadOnlyDictionary<string, int> ResearchRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> ManufactureRuleStatus { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
     public IReadOnlyDictionary<string, int> MonthlyPurchaseLog { get; init; } = new ReadOnlyDictionary<string, int>(new Dictionary<string, int>());
