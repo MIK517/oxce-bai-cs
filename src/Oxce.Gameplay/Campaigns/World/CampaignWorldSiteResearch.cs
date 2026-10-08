@@ -24,7 +24,12 @@ internal sealed partial class CampaignWorld
                 if (pair.Value != 0 && rules.Events.TryGet(pair.Key, out var handle) &&
                     rules.Events[handle].Value.InterruptResearch.Length == 0) return SiteDespawnBoundary;
         }
-        if (!found && !HasImmediateSiteResearch(highest)) return null;
+        if (!found)
+        {
+            try { if (!HasImmediateSiteResearch(highest)) return null; }
+            catch (InvalidDataException error) when (error.Message is WaveWorkReason or "Direct mission site creation exceeds the supported work limit.")
+            { return error.Message; }
+        }
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
         List<(AlienMissionSnapshot Mission, RuleHandle<AlienDeploymentRuleFamily> Deployment)> dailyImmediateBirths = [];
@@ -47,7 +52,8 @@ internal sealed partial class CampaignWorld
             var rule = MissionRule(mission);
             var afterThink = _pass.MissionCounterForecast?.GetValueOrDefault(saved.Id) ?? mission;
             var births = false;
-            if (!mission.Interrupted && !IsOver(mission, rule) && mission.NextWave < rule.Waves.Count && mission.SpawnCountdown <= 30)
+            if (!mission.Interrupted && !(mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra) &&
+                !IsOver(mission, rule) && mission.NextWave < rule.Waves.Count && mission.SpawnCountdown <= 30)
             {
                 foreach (var step in DueWaveSteps(mission, rule))
                 {
@@ -164,7 +170,8 @@ internal sealed partial class CampaignWorld
         {
             var mission = birth.Mission;
             var rule = MissionRule(mission);
-            if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
+            if (mission.Interrupted || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra ||
+                IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
             foreach (var step in DueWaveSteps(mission, rule))
             {
                 if (++work > MaximumImmediateWaveSteps) throw new InvalidDataException(WaveWorkReason);

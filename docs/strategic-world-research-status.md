@@ -905,10 +905,28 @@ alternative against that slot's exact post-grant research. Texture-selected
 births can initiate the proof without a saved site; their preliminary selection
 scan reserves source/area/weight work and never selects or draws RNG.
 
-All 376 affected tests pass. Fresh/cache saved and daily cases use 16 fixed seeds,
+The broader run passed 375 of 376 affected tests; the preliminary selection scan
+threw on its work limit instead of returning the owned atomic refusal. The batch
+audit corrects that failure path. Fresh/cache saved and daily cases use 16 fixed seeds,
 exact no-site RNG/identity controls, separate saved-site counter consequences,
 selected deployment counters and three rewrites. Every reachable unavailable
 event, divergent grant and mixed immediate/positive duration still stops before
 mutation. Verified site-spawn selection and daily-generation evidence backs the
 composition. Optional generation and divergent grant/expiry sequences remain
 precise forecast boundaries. The three immediate-site slices are ready for audit.
+
+The immediate-site batch audit confirms grant/cleanup order, candidate-slot
+identity, conditional event state, alias reuse, bounded work and repeated rewrites.
+It corrects two confirmed defects: preliminary work-limit failures now return the
+owned atomic refusal while malformed texture/weight errors retain their exception
+contract; both saved-birth scans honor AlienMission::think's multi-UFO suppression.
+The latter was reproduced with a phantom grant incorrectly permitting a due event
+to reach unavailable payload execution. Fresh/cache regressions now refuse that
+tick before mutation, with/without an earlier saved-site grant.
+
+All 378 affected tests pass, followed by all 3,870 root tests with zero failures
+or skips. Full formatting, code-map and diff verification pass, including native
+checksums, private corpus and populated allocation gates. The reference remains
+clean at the pin; useful captures remain and no native objects were generated.
+Random immediate/surviving durations, optional generation, divergent grant
+sequences and generated retaliation remain explicit research composition work.

@@ -1,5 +1,6 @@
 using Oxce.Core.Random;
 using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
 using Oxce.TestSupport;
 using Xunit;
 using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
@@ -155,5 +156,28 @@ public sealed class StrategicWorldNewbornSiteResearchTests
         content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, generated: true, eventInterrupt: "UNLOCK");
         AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchDirectBirthTests.GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
             "Mission site despawn requires research or event payloads.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SuppressedMissionBirthCannotInventResearchToBypassDueEventBoundary(bool cache)
+    {
+        var content = StrategicWorldSiteResearchDirectBirthTests.Content(cache, duration: 0, eventInterrupt: "BONUS");
+        var initial = StrategicWorldSiteResearchDirectBirthTests.Snapshot(content);
+        for (var savedIndex = 0; savedIndex <= 1; savedIndex++)
+        {
+            var snapshot = initial with
+            {
+                World = initial.World with
+                {
+                    Missions = [initial.World.Missions[0] with { MultiUfoRetaliationInProgress = true }],
+                    MissionSites = savedIndex == 0 ? [] : initial.World.MissionSites,
+                    Events = [new GeoscapeEventSnapshot("NEWBORN_EVENT", 30)],
+                },
+            };
+            AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
+                "Strategic event consequences require campaign event execution (Phase 6 branch 6).");
+        }
     }
 }
