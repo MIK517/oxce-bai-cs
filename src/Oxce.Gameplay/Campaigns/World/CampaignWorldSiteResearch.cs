@@ -238,7 +238,7 @@ internal sealed partial class CampaignWorld
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 var wave = mission.Waves[step.NextWave];
-                if (CompletesBaseObjective(step, mission, wave) || CompletesInfiltration(step, mission, wave)) return SiteResearchGenerationReason;
+                if (hunting && (CompletesBaseObjective(step, mission, wave) || CompletesInfiltration(step, mission, wave))) return SiteResearchGenerationReason;
                 if (!CanAdvanceNoObjectWave(step, mission))
                 {
                     if (!hunting) return SiteResearchDailyBirthReason(source, mission, missionId, ref work);
@@ -253,7 +253,9 @@ internal sealed partial class CampaignWorld
             // Native half-hour cleanup precedes site grants. Resolve interruption
             // links only for missions that can still exist at that caller.
             var steps = mission.Waves[0].SpawnTimer / 30;
-            removedBeforeSiteResearch = completes && steps / 2 + steps <= 1;
+            removedBeforeSiteResearch = completes &&
+                !(mission.Objective == RuntimeMissionObjective.Infiltration && mission.EndlessInfiltration) &&
+                steps / 2 + steps <= 1;
             return null;
         }
         catch (InvalidDataException error) { return error.Message; }
@@ -272,8 +274,6 @@ internal sealed partial class CampaignWorld
             foreach (var step in DueWaveSteps(birth.Mission, rule))
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                var wave = rule.Waves[step.NextWave];
-                if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchGenerationReason;
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
                 if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork) is { } reason)
                     return reason == SiteResearchWaveReason ? SiteResearchGenerationReason : reason;

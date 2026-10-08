@@ -772,3 +772,17 @@ interruption links and atomic marker exhaustion. Site activity penalties are
 checked separately from pact flags. All 75 affected tests pass, followed by all
 24 expanded objective/research boundary tests. Generated completions remain
 the next two caller slices; event payloads and combat/month guards are unchanged.
+
+Daily generated final base/infiltration completions now compose before the grants
+with their owned candidate/geometry reservations. Native GenerateSupplyMission
+and the following time30Minutes think/cleanup callers preserve source counters,
+new base/pact state and unused interruption-link filtering. Fresh/cache controls,
+three rewrites and marker-limit refusals cover both objectives.
+
+Precommit review reproduced an endless-infiltration survivor error: completion
+restarts the mission, so excluding it from the later grant scan allowed an invalid
+link to throw during execution. The removal proof now excludes endless restart.
+Verified infiltration-repeat regressions require atomic missing-link refusal and
+valid restart/interruption/reload/next-half-hour cleanup. All 45 affected generated
+objective, generation and infiltration-repeat tests pass. Late completions remain
+the third caller slice; no event payload or later-branch transition is enabled.
