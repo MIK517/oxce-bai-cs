@@ -55,6 +55,65 @@ public sealed class StrategicWorldSiteResearchGenerationTests
             "Alien mission interruption references undefined research.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RemovedImmediateMissionDoesNotResolveAnUnusedInterruptionRule(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = Content(cache, "MISSING_RESEARCH");
+        var initial = Snapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            { AlienBases = [initial.World.AlienBases[0] with { DeploymentId = "GEN_BASE_immediateZero" }] }
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.Missions);
+        Assert.Empty(after.World.MissionSites);
+        Assert.Contains("CORE", after.CompletedResearch);
+        Assert.Equivalent(after, Reload(content, campaign, 17, "removed-generated-interruption.sav").Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData(false, 29, 2)]
+    [InlineData(true, 29, 2)]
+    [InlineData(false, 90, 1)]
+    [InlineData(true, 90, 1)]
+    public void PotentiallySurvivingImmediateMissionStillValidatesItsInterruption(bool cache, int timer, int count)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+            research:
+              - {name: UNLOCK, cost: 1}
+              - {name: CORE, cost: 1}
+            alienMissions:
+              - type: SURVIVING_COUNTER
+                interruptResearch: MISSING_RESEARCH
+                waves: [{count: {{count}}, trajectory: TRAJ_PATROL, timer: {{timer}}}]
+            """ + "\n" + StrategicWorldSiteResearchTests.Deployment + """
+
+              - type: SURVIVING_COUNTER_BASE
+                markerName: SURVIVING
+                genMission: {SURVIVING_COUNTER: 1}
+                genMissionFreq: 100
+                genMissionLimit: 1
+            """);
+        var missionRule = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("SURVIVING_COUNTER")].Value;
+        Assert.Equal((ulong)timer, missionRule.Waves[0].SpawnTimer);
+        Assert.Equal((ulong)count, missionRule.Waves[0].UfoCount);
+        Assert.Equal("MISSING_RESEARCH", missionRule.InterruptResearchId);
+        var initial = Snapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            { AlienBases = [initial.World.AlienBases[0] with { DeploymentId = "SURVIVING_COUNTER_BASE" }] }
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Alien mission interruption references undefined research.");
+    }
+
     [Fact]
     public void DailyMissionBirthsConsumeResearchValidationWorkBeforeMutation()
     {
@@ -165,8 +224,8 @@ public sealed class StrategicWorldSiteResearchGenerationTests
           - {name: CORE, cost: 1}
         alienMissions:
           - {type: GEN_local, interruptResearch: {{interrupt}}}
-          - {type: GEN_immediate, interruptResearch: CORE}
-          - {type: GEN_immediateZero, interruptResearch: CORE}
+          - {type: GEN_immediate, interruptResearch: {{interrupt}}}
+          - {type: GEN_immediateZero, interruptResearch: {{interrupt}}}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)
