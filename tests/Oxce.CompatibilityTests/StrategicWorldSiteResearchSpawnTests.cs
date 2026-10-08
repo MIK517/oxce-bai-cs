@@ -67,6 +67,63 @@ public sealed class StrategicWorldSiteResearchSpawnTests
             "Alien mission interruption references undefined research.");
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GroundedBirthsKeepTheirTimerAndLandingIdentityAcrossSiteGrants(bool cache, bool final)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "spawnPathRows").Where(row => row[0].GetInt32() == 0 && row[1].GetInt32() == 1))
+        {
+            var content = Content(cache, $"PATH_1_{row[2].GetInt32()}", final);
+            var initial = Snapshot(content);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            Assert.Equal((UfoStatus.Landed, 5), (ufo.Status, ufo.SecondsRemaining));
+            Assert.InRange(WorldGeometry.Distance(Position(row, 6), ufo.Position), 0, 1e-8);
+            Assert.InRange(WorldGeometry.Distance(Position(row, 8), ufo.Destination!.Position), 0, 1e-7);
+            // The native half-hour caller assigns a landing marker only after detection.
+            Assert.False(ufo.Detected);
+            Assert.Equal(0, ufo.LandId);
+            Assert.True(Assert.Single(after.World.Missions).Interrupted);
+            Assert.Equal(1, after.World.Missions[0].LiveUfos);
+            Assert.Equal(6 + 7, after.Regions[0].ActivityAlien[0]); // grounded activity plus site despawn penalty
+            Assert.Empty(after.World.MissionSites);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            var random = new SplitMix64RandomSource(initial.RandomState);
+            for (var draw = 0; draw < row[10].GetInt32(); draw++) random.NextInclusive(0, 0);
+            if (!final) WorldTrajectory.SpawnCountdown(9000, random);
+            random.NextInclusive(0, 99);
+            Assert.Equal(random.State, after.RandomState);
+            for (var pass = 0; pass < 3; pass++)
+            {
+                campaign = Reload(content, campaign, 17, "site-research-ground-birth.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 1);
+            var lifted = Assert.Single(campaign.Capture().World.Ufos);
+            Assert.Equal((UfoStatus.Flying, WorldAltitudes.VeryLow, 0, ufo.LandId),
+                (lifted.Status, lifted.Altitude, lifted.SecondsRemaining, lifted.LandId));
+            Assert.True(campaign.Capture().World.Missions[0].Interrupted);
+            Assert.Equivalent(campaign.Capture(), Reload(content, campaign, 17, "site-research-ground-lift.sav").Capture(), strict: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GroundedBirthsRetainAtomicLandingMarkerLimits(bool cache)
+    {
+        var content = Content(cache, "PATH_1_0");
+        AssertTimeBlocked(CampaignState.Restore(Snapshot(content).WithNextId("STR_LANDING_SITE", int.MaxValue),
+            content, new SplitMix64RandomSource(17)), "UFO landing marker IDs are exhausted or collide with a saved UFO.");
+    }
+
     internal static RuntimeContent Content(bool cache, string trajectory, bool final = false, string interrupt = "CORE", string extra = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], cache, $$$"""
         research:
