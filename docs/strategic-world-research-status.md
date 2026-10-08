@@ -1160,3 +1160,17 @@ RNG. Three rewrites and next-tick live-UFO cleanup retain the selected outcome.
 Possible conversion marker exhaustion still blocks before reward selection.
 Landing-base creation retains its separate research guard for the next slice.
 All 448 affected tests pass; targeted formatting, code-map and diff checks pass.
+
+Landing-base creation now uses the same continuing-branch proof rather than a
+generic research-outcome refusal. The obsolete flight branch scan is removed;
+the shared mission/base link-work bound remains. Native
+`AlienMission::ufoReachedWaypoint` creates at the actual landing position with
+the default deployment texture; `GeoscapeState::time30Minutes` only applies
+`showAlienBase` to bases born during mission think. Landing births remain hidden.
+
+Pinned objective-base, lifecycle and diary evidence backs fresh/cache 32-seed
+interrupted/continuing cases, both show flags, full control snapshots/RNG,
+three rewrites and next-tick cleanup. Base markers, generated preservation keys,
+birth sequence, race, month and activity are checked. Possible marker, birth
+sequence and score overflow remain whole-tick refusals before research selection.
+All 504 affected tests pass; targeted formatting, code-map and diff checks pass.

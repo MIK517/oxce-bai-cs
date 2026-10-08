@@ -127,7 +127,7 @@ public sealed class StrategicWorldConversionResearchTests
           - {name: OTHER, cost: 1}
         alienMissions:
           - type: MISSION_ARRIVAL_RESEARCH
-            objective: {{{(baseLanding ? 1 : 3)}}}
+            objective: {{{(baseLanding ? 2 : 3)}}}
             points: 5
             siteType: {{{(baseLanding ? "DEPLOY_ARRIVAL_BASE" : "DEPLOY_ARRIVAL_SITE")}}}
             spawnZone: 5
