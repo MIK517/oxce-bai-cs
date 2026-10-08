@@ -95,4 +95,34 @@ public sealed class StrategicWorldSiteResearchFacilityTests
             Reload(content, campaign, 17, "facility-interrupted-event.sav");
         }
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompletingFacilityCannotExposeScoreOrDiaryOverflowAfterConstructionMutates(bool diary)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+            facilities:
+              - {type: STORES, provideBaseFunc: [SCIENCE]}
+            research:
+              - {name: UNLOCK, cost: 1}
+              - {name: CORE, cost: 1, points: 5}
+              - {name: AUTO, cost: 0, dependencies: [CORE], requiresBaseFunc: [SCIENCE], points: 13}
+            """ + "\n" + Deployment);
+        var snapshot = Snapshot(content);
+        var owner = snapshot.Bases[0];
+        snapshot = snapshot with
+        {
+            Time = new(1, 1, 1, 1999, 23, 59, 55),
+            ResearchScores = [diary ? 0 : int.MaxValue - 10],
+            ResearchDiarySequence = diary ? ulong.MaxValue - 1 : 0,
+            Bases = [owner with { Research = [], Facilities = owner.Facilities.Select(facility => facility with { BuildTime = 1 }).ToArray() }],
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        // A current-state operation can fit; the world must reserve the automatic
+        // discovery that becomes eligible only after today's construction.
+        Assert.Null(campaign.MissionResearch.GrantReason("CORE"));
+        AssertTimeBlocked(campaign, diary ? "Mission research diary exceeds its supported population or identity range." :
+            "Mission research score exceeds the supported range.");
+    }
 }

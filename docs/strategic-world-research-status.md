@@ -255,3 +255,13 @@ automatic research is eligible; otherwise the whole tick remains untouched.
 All 34 focused facility/mission-research/event cases pass, including the existing
 bounded geography and alternative-outcome cases. Active daily research projects
 and timed item eligibility retain their separate composition guards.
+
+The craft/base/facility batch audit found no confirmed gameplay defect in these
+three slices. Additional regressions prove that facility-enabled automatic
+research score and diary overflow stop before construction, even when a
+current-state grant alone would fit. The 159 focused regressions and all 3,567
+root tests pass. Full formatting passes after normalizing the new base test's
+line endings; the initial focused invocation used an invalid wildcard and was
+rerun with valid filters. Code-map verification passes and the reference tree
+remains unchanged. Generated native captures remain useful; empty successful
+format logs were removed.
