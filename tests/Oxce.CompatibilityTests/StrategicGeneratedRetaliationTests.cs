@@ -128,9 +128,11 @@ public sealed class StrategicGeneratedRetaliationTests
             new SplitMix64RandomSource(17)), "UFO unique IDs are exhausted or collide with a saved UFO.");
     }
 
-    private static RuntimeContent Content(bool cache, bool hunting, bool replace, bool instant = false,
-        bool noOriginalUfo = false, bool immediateChain = false) =>
+    internal static RuntimeContent Content(bool cache, bool hunting, bool replace, bool instant = false,
+        bool noOriginalUfo = false, bool immediateChain = false, string interrupt = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+            research:
+              - {name: CORE, cost: 1}
             ufos:
               - type: GENERATED_RETAL_UFO
                 speedMax: 100
@@ -147,6 +149,7 @@ public sealed class StrategicGeneratedRetaliationTests
               - id: __RETALIATION_ASSAULT_RUN
                 waypoints: [[0, 3, 100], [5, 0, 100]]
             alienDeployments:
+              - {type: DEPLOY_DIARY, markerName: DIARY_SITE, unlockedResearchOnDespawn: CORE}
               - type: GENERATED_RETAL_BASE
                 alienBase: true
                 markerName: STR_ALIEN_BASE
@@ -160,6 +163,7 @@ public sealed class StrategicGeneratedRetaliationTests
             alienMissions:
               - type: GENERATED_RETAL_MISSION
                 objective: {{{(instant ? 6 : 4)}}}
+                interruptResearch: {{{interrupt}}}
                 operationType: 1
                 {{{(replace ? "spawnUfo: GENERATED_RETAL_OVERRIDE" : "")}}}
                 regionWeights: {0: {REGION: 1}}
@@ -168,7 +172,7 @@ public sealed class StrategicGeneratedRetaliationTests
                   {{{(immediateChain ? "- {ufo: UNDEFINED, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}" : "")}}}
             """);
 
-    private static CampaignSnapshot Initial(RuntimeContent content, bool hunting, bool targeted)
+    internal static CampaignSnapshot Initial(RuntimeContent content, bool hunting, bool targeted)
     {
         var initial = CreateSnapshot(content, "Generated retaliation completion");
         initial = initial with
