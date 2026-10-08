@@ -568,3 +568,13 @@ interruption. Existing verified spawnPathRows and diary captures back fresh/cach
 birth position, timer/draw order, completed-wave survival, malformed surviving
 links, interruption and three save rewrites. All 30 affected birth/objective/spawn
 path tests pass; the new six cases first failed at the previous composition guard.
+
+Grounded ordinary births whose ground timer extends beyond this tick now use
+that same proof. Site grants can interrupt their surviving mission without
+consuming the newborn's timer or allocating a marker for an undetected ship.
+The next five-second tick lifts the ship through the existing owned operation.
+Reference: AlienMission::spawnUfo/ufoLifting and GeoscapeState's half-hour
+detection before site expiry and subsequent five-second UFO handling. Verified
+spawnPathRows, diary and timer captures cover both destination altitudes, final
+and prefix wave counters, native activity plus despawn penalty, timer/marker
+rewrites and atomic exhausted-marker refusal. All 29 affected tests pass.
