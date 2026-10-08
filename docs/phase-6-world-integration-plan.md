@@ -93,8 +93,9 @@ documents; entries here link to them instead of copying them.
   duration and optional-generation/selected-topic forecasts now compose too;
   their allocation audit fix and all 3,898 root tests pass. Initial timer/source
   choices and generated-retaliation research now compose too; their combined
-  audit and all 3,920 root tests pass. Generated region/area sequences, remaining
-  stock/flight uncertainty and final closure keep 4c open;
+  audit and all 3,920 root tests pass. Generated region/area grant sequences and
+  uncertain terminal arrivals now compose too; their batch audit and all 3,936
+  root tests pass. Stock/nonterminal flight uncertainty and final closure keep 4c open;
   4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
