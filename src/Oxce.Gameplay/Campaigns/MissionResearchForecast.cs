@@ -12,6 +12,7 @@ public sealed partial class CampaignState
         private readonly CampaignState _campaign;
         private readonly RuntimeRuleCatalog _rules;
         private readonly int _completedBuildTime;
+        private readonly DailyResearchStockForecast? _precedingResearch;
         private List<Outcome> _outcomes;
         private long _work;
         private readonly long _functionWork;
@@ -21,16 +22,21 @@ public sealed partial class CampaignState
         private IReadOnlySet<string> _guaranteedExplicitTopics = new HashSet<string>(StringComparer.Ordinal);
         private IReadOnlySet<string> _possibleExplicitTopics = new HashSet<string>(StringComparer.Ordinal);
 
-        internal MissionResearchForecast(CampaignState campaign, CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds)
+        internal MissionResearchForecast(CampaignState campaign, CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds,
+            DailyResearchStockForecast? precedingResearch = null)
         {
             _campaign = campaign;
             _rules = campaign.Content.RuntimeRules;
+            _precedingResearch = precedingResearch;
             // Construction decrements positive timers before the daily research
             // and world callers. The real GrantReason runs after that transition.
             _completedBuildTime = highest >= CampaignTimeTrigger.OneDay ? 1 : 0;
-            _work = campaign._completedResearch.Count + (long)campaign._researchRuleStatus.Count;
-            _outcomes = [new(new(campaign._completedResearch, StringComparer.Ordinal),
-                new(campaign._researchRuleStatus, StringComparer.Ordinal), campaign._researchScores[^1], 0, new(StringComparer.Ordinal))];
+            var completed = precedingResearch?.CompletedResearch ?? campaign._completedResearch;
+            var statuses = precedingResearch?.ResearchStatuses ?? campaign._researchRuleStatus;
+            _work = (precedingResearch?.Work ?? 0) + completed.Count + (long)statuses.Count;
+            _outcomes = [new(new(completed, StringComparer.Ordinal),
+                new(statuses, StringComparer.Ordinal), campaign._researchScores[^1] + (precedingResearch?.ScoreChange ?? 0),
+                precedingResearch?.DiaryEntries ?? 0, new(StringComparer.Ordinal))];
             _guaranteedResearch = _possibleResearch = _outcomes[0].Completed;
             if (campaign._bases.Count == 0) return;
             var owner = campaign._bases[0];
@@ -139,9 +145,12 @@ public sealed partial class CampaignState
                     (candidate.RequiredBaseFunctions.Count == 0 ? 0 : _functionWork) + 1;
                 if (eligibilityWork > MaximumWork - _work) return (false, eligibilityWork);
                 var candidateHandle = _rules.Research.GetRequired(candidateId);
-                return (!owner.Research.Any(project => project.Rule == candidateHandle) &&
+                var active = _precedingResearch?.ActiveResearch?.GetValueOrDefault(owner.Id)?.Contains(candidateId) ??
+                    owner.Research.Any(project => project.Rule == candidateHandle);
+                var addedItems = _precedingResearch?.StockChanges.GetValueOrDefault(owner.Id)?.GetValueOrDefault(candidate.NeededItem ?? "") ?? 0;
+                return (!active &&
                     (!candidate.NeedItem || candidate.NeededItem is { } needed && _rules.Items.TryGet(needed, out var item) &&
-                        owner.Items.GetValueOrDefault(item) != 0) && _campaign.HasFunctions(owner, candidate.RequiredBaseFunctions, _completedBuildTime), eligibilityWork);
+                        (long)owner.Items.GetValueOrDefault(item) + addedItems != 0) && _campaign.HasFunctions(owner, candidate.RequiredBaseFunctions, _completedBuildTime), eligibilityWork);
             }, (discovered, points, _) =>
             {
                 outcome.Score += points;

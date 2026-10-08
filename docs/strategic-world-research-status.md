@@ -388,3 +388,20 @@ apply the return before testing airborne status and consume fuel only in STR_OUT
 All 44 immediate audit-fix cases pass. Final affected-subsystem checks are
 recorded below; a full root rerun after this late fix remains the next checkpoint.
 Final audit fix acceptance: all 209 affected compatibility tests pass; full formatting and regenerated code-map verification pass. The filtered root invocation selected zero unit tests (exit 8), so the clean affected-subsystem run uses the compatibility project explicitly. A full root rerun after the fix is pending at the 07:30 cutoff.
+
+## Deterministic daily research before site grants (2026-10-08)
+
+The shared daily research proof now publishes immutable post-daily statuses,
+remaining project identities, score change and work alongside discoveries,
+stock changes and diary count. Later site grants start from that complete
+prefix, preserving daily disables/reenables and active-project exclusion and
+reserving combined score and diary capacity before the tick mutates.
+Ambiguous daily rewards keep a precise deterministic-prefix boundary.
+Reference: GeoscapeState::time1Day construction/research/project cleanup before
+processMissionSite; SavedGame::addFinishedResearch and
+handleResearchUnlockedByMissions. Existing native daily, mission and hunting
+captures back fresh/cache unfinished/completed projects, disable/reenable,
+combined overflow, prefix-versus-execution and three-rewrite cases. All 20
+focused cases and the preceding affected site/diary suite pass. Timed item
+eligibility, generated actors and later event payloads retain their boundaries.
+The pending prior-cycle full acceptance also passes all 3,611 root tests.

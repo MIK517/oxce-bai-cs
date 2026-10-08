@@ -26,10 +26,13 @@ internal sealed partial class CampaignWorld
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
         if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
-        foreach (var owner in campaign.BaseStates)
+        DailyResearchStockForecast? dailyResearch = null;
+        if (highest >= CampaignTimeTrigger.OneDay)
         {
-            if (highest >= CampaignTimeTrigger.OneDay && owner.Research.Count != 0)
-                return "Mission site research requires daily project phase forecasts.";
+            long work = 0;
+            if (!campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var daily, includeDiscoveries: true))
+                return daily.UnavailableReason ?? "Mission site research requires deterministic daily research phase forecasts.";
+            dailyResearch = daily;
         }
         foreach (var saved in _missions)
         {
@@ -46,7 +49,7 @@ internal sealed partial class CampaignWorld
                     craft.Logistics is { Status: "STR_REFUELLING" })))
                 return "Mission site research requires timed item eligibility forecasts.";
         }
-        var forecast = campaign.MissionResearch.CreateForecast(highest);
+        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch);
         var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
         foreach (var site in _sites)
         {

@@ -12,6 +12,10 @@ internal sealed record DailyResearchStockForecast(
     public int? NextTransferId { get; init; }
     public IReadOnlyList<CustomCounterChange> CounterChanges { get; init; } = [];
     public IReadOnlySet<string>? CompletedResearch { get; init; }
+    public IReadOnlyDictionary<string, int>? ResearchStatuses { get; init; }
+    public IReadOnlyDictionary<int, IReadOnlySet<string>>? ActiveResearch { get; init; }
+    public long ScoreChange { get; init; }
+    public long Work { get; init; }
     public long DiaryEntries { get; init; }
 }
 
@@ -36,6 +40,7 @@ public sealed partial class CampaignState
         Dictionary<int, List<KeyValuePair<string, int>>> arrivals = [];
         List<CustomCounterChange>? counters = null;
         long diaryEntries = 0;
+        long scoreChange = 0;
         foreach (var owner in _bases)
         {
             work += owner.Research.Count;
@@ -130,7 +135,11 @@ public sealed partial class CampaignState
                         (long)owner.Items.GetValueOrDefault(item) + changes[owner.Id].GetValueOrDefault(needed) != 0;
                     return (!active && availableItem && candidate.RequiredBaseFunctions.All(provided.Contains),
                         local.Count + (long)candidate.RequiredBaseFunctions.Count + 1);
-                }, (discoveredId, _, _) => { if (discoveredId != id) diaryEntries++; }, ref localWork, 1_000_000 - projectionWork);
+                }, (discoveredId, points, _) =>
+                {
+                    scoreChange += points;
+                    if (discoveredId != id) diaryEntries++;
+                }, ref localWork, 1_000_000 - projectionWork);
                 projectionWork += localWork;
                 return supported;
             }
@@ -198,7 +207,7 @@ public sealed partial class CampaignState
         }
         if (includeDiscoveries)
         {
-            work += completed.Count;
+            work += completed.Count + (long)statuses.Count + projects.Values.Sum(local => (long)local.Count) + projects.Count;
             if (work > 1_000_000) return false;
         }
         forecast = new(new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(changes.ToDictionary(
@@ -209,6 +218,12 @@ public sealed partial class CampaignState
             NextTransferId = nextTransfer,
             CounterChanges = counters?.AsReadOnly() ?? (IReadOnlyList<CustomCounterChange>)[],
             CompletedResearch = includeDiscoveries ? completed.ToFrozenSet(StringComparer.Ordinal) : null,
+            ResearchStatuses = includeDiscoveries ? statuses.ToFrozenDictionary(StringComparer.Ordinal) : null,
+            ActiveResearch = includeDiscoveries ? projects.ToFrozenDictionary(pair => pair.Key, pair =>
+                (IReadOnlySet<string>)pair.Value.Select(project => rules.Research.GetExternalId(project.Rule))
+                    .Where(id => statuses.GetValueOrDefault(id) != 2).ToFrozenSet(StringComparer.Ordinal)) : null,
+            ScoreChange = scoreChange,
+            Work = work,
             DiaryEntries = diaryEntries,
         };
         return true;
