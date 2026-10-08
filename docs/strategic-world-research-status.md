@@ -739,5 +739,20 @@ compare native selection rows, original-waypoint backup, no-site UFO/RNG control
 grant interruption and pursuit reloads. The obsolete generation refusal fixture
 now supplies noncolliding mission IDs and an eligible hunting craft, so it tests
 actual acceptance rather than failing an unrelated precondition. The other 482
-affected tests pass, and all 14 base/research fixture tests pass after correction.
+affected tests pass, and all 10 base/research fixture tests pass after correction.
 The three slices are ready for their joint audit; no combat boundary is removed.
+
+The targetable-hunter/escort batch audit confirms native birth/grant/retarget
+ordering, deferred proof consumption, saved and newborn leader alternatives,
+marker reservations and retained objective/event/combat guards. Four added
+fresh/cache audit cases cover all four constructor combinations over 32 fixed
+seeds, same-wave leader reuse, exact no-site RNG/UFO comparisons and reloads,
+plus atomic leader-origin combat and marker exhaustion refusals. All 488 affected
+tests pass. No additional runtime defect was confirmed.
+
+The committed implementation passes all 3,798 root tests with zero failures or
+skips, including checksum, private-corpus and populated allocation gates. Full
+formatting verification passes; added audit tests pass after focused formatting.
+Code-map and diff checks pass. Existing captures remain useful, no native objects
+were added and the pinned reference remains read-only. Objective/newborn-site
+composition, remaining uncertainty and final headless closure keep 4c open.

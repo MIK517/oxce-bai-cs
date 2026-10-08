@@ -13,6 +13,71 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornHuntingTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SiteResearchPreservesEveryProbabilisticImmediateEscortOutcome(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = RetargetContent(cache, 2, escort: true, huntSpeed: 0, slowStart: true,
+            count: 2, immediate: true, hunterPercentage: 50, noAlert: true, siteResearch: true);
+        var initial = RetargetSnapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            { MissionSites = StrategicWorldSiteResearchTests.Snapshot(content).World.MissionSites }
+        };
+        HashSet<(bool First, bool Second)> outcomes = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var snapshot = initial with { RandomState = seed };
+            var control = CampaignState.Restore(snapshot with { World = snapshot.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(seed));
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(control, 1);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(2, after.World.Ufos.Count);
+            outcomes.Add((after.World.Ufos[0].HunterKiller, after.World.Ufos[1].HunterKiller));
+            Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
+            Assert.Equal(control.Capture().RandomState, after.RandomState);
+            Assert.True(Assert.Single(after.World.Missions).Interrupted);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            Assert.Equivalent(after, Reload(content, campaign, seed, "probabilistic-escort-site.sav").Capture(), strict: true);
+        }
+        Assert.Equal(4, outcomes.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SiteResearchCannotHideEscortLeaderCombatOrMarkerExhaustion(bool cache)
+    {
+        var content = RetargetContent(cache, 0, escort: true, noAlert: true, siteResearch: true);
+        var initial = RetargetSnapshot(content, escort: true);
+        initial = initial with
+        {
+            World = initial.World with
+            { MissionSites = StrategicWorldSiteResearchTests.Snapshot(content).World.MissionSites }
+        };
+        var origin = initial.World.Ufos[0].Position;
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        { Crafts = [.. initial.Bases[0].Crafts.Select(craft => craft with
+        { Logistics = craft.Logistics! with { Longitude = origin.Longitude + WorldGeometry.Nautical(100), Latitude = origin.Latitude } })] }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO", int.MaxValue), content, new SplitMix64RandomSource(81)),
+            "UFO contact marker IDs are exhausted or collide with a saved UFO.");
+        initial = initial with
+        {
+            Bases = [initial.Bases[0] with
+        { Crafts = [.. initial.Bases[0].Crafts.Select(craft => craft with
+        { Logistics = craft.Logistics! with { Longitude = origin.Longitude, Latitude = origin.Latitude } })] }]
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    [Theory]
     [InlineData(false, 0, false)]
     [InlineData(true, 0, false)]
     [InlineData(false, 1, false)]
