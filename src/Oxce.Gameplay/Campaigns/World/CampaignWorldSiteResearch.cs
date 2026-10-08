@@ -425,7 +425,18 @@ internal sealed partial class CampaignWorld
         // Counter prefixes can use a source-only candidate. Actor geometry needs
         // the daily alternatives or the owning later hunting preflight instead.
         if (mission.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
-            return SiteResearchGenerationReason;
+        {
+            // Hunting follows site grants; its owning later preflight proves
+            // effective assault/scouting waves before any tick mutation.
+            if (hunting) return null;
+            var firstBirth = dailyImmediateBirths!.Count;
+            if (SiteResearchDailyBirthReason(source, mission, missionId, ref work, out _, out var removed,
+                    dailyImmediateBirths) is { } reason) return reason;
+            MarkOptionalGeneratedBirths(deployment, mission, dailyImmediateBirths, firstBirth);
+            var initialSteps = mission.Waves[0].SpawnTimer / 30;
+            removedBeforeSiteResearch = removed && initialSteps / 2 + initialSteps <= 1;
+            return null;
+        }
         try
         {
             var candidate = new AlienMissionSnapshot(-1, string.Empty, string.Empty, source.Race, 0, 0, 30, 0, -1)
@@ -441,17 +452,12 @@ internal sealed partial class CampaignWorld
                     if (!hunting)
                     {
                         var priorBirths = dailyImmediateBirths!.Count;
-                        if (!dailyBirthsProved && SiteResearchDailyBirthReason(source, mission, missionId, ref work, out survivingUfos,
+                        if (!dailyBirthsProved && SiteResearchDailyBirthReason(source, mission, missionId, ref work, out survivingUfos, out _,
                                 dailyImmediateBirths) is { } reason)
                             return reason;
                         if (dailyImmediateBirths.Count != priorBirths)
                         {
-                            // Native start chooses (steps / 2 + random[0, steps]) * 30.
-                            // A delayed initial timer skips this whole birth sequence.
-                            var initialSteps = mission.Waves[0].SpawnTimer / 30;
-                            if (deployment.GenMissionFrequency < 100 || initialSteps / 2 + initialSteps > 1)
-                                for (var index = priorBirths; index < dailyImmediateBirths.Count; index++)
-                                    dailyImmediateBirths[index] = dailyImmediateBirths[index] with { GenerationOptional = true };
+                            MarkOptionalGeneratedBirths(deployment, mission, dailyImmediateBirths, priorBirths);
                         }
                         dailyBirthsProved = true;
                     }
@@ -475,10 +481,22 @@ internal sealed partial class CampaignWorld
         catch (InvalidDataException error) { return error.Message; }
     }
 
+    private static void MarkOptionalGeneratedBirths(RuntimeAlienDeploymentRule deployment, RuntimeAlienMissionRule mission,
+        List<SiteResearchBirth> births, int first)
+    {
+        // Native start chooses (steps / 2 + random[0, steps]) * 30.
+        // A delayed initial timer skips this whole birth sequence.
+        var steps = mission.Waves[0].SpawnTimer / 30;
+        if (deployment.GenMissionFrequency < 100 || steps / 2 + steps > 1)
+            for (var index = first; index < births.Count; index++)
+                births[index] = births[index] with { GenerationOptional = true };
+    }
+
     private string? SiteResearchDailyBirthReason(AlienBaseSnapshot source, RuntimeAlienMissionRule rule, string missionId, ref long work,
-        out bool survivingUfos, List<SiteResearchBirth> immediateBirths)
+        out bool survivingUfos, out bool allRemoved, List<SiteResearchBirth> immediateBirths)
     {
         survivingUfos = false;
+        allRemoved = true;
         if (_pass.GeneratedWaveMissions is not { } candidates) return SiteResearchGenerationReason;
         var found = false;
         long landWork = 0;
@@ -489,9 +507,14 @@ internal sealed partial class CampaignWorld
             if (birth.Hunting || birth.Mission.RuleId != missionId || !FollowsAlienBase(birth.Mission.AlienBase, source)) continue;
             found = true;
             List<SiteResearchBirth> candidateBirths = [];
+            var completed = false;
+            var surviving = false;
             foreach (var step in DueWaveSteps(birth.Mission, rule))
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (RetaliationWaveReason(step, rule, ref work) is { } retaliationReason) return retaliationReason;
+                completed = InstantRetaliationWithoutTarget(step, rule) ||
+                    (ulong)step.NextUfoCounter + 1 >= rule.Waves[step.NextWave].UfoCount && step.NextWave + 1 == rule.Waves.Count;
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
                 if (IsDirectSiteWave(step, rule))
                 {
@@ -501,7 +524,9 @@ internal sealed partial class CampaignWorld
                 if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork) is { } reason)
                     return reason == SiteResearchWaveReason ? SiteResearchGenerationReason : reason;
                 survivingUfos = true;
+                surviving = true;
             }
+            allRemoved &= completed && !surviving;
             if (first is not null)
             {
                 if (first.Count != candidateBirths.Count) return "Immediate generated site research requires identical birth grant sequences.";

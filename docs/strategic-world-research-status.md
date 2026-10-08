@@ -1020,3 +1020,18 @@ choices, selected markers/diaries/counters, conditional event suppression and
 three rewrites. A due event cannot depend on an unchosen grant. Pure sequence
 tests preserve campaign/RNG state and reject more than 256 outcomes intentionally.
 The timer and source slices await their combined audit after retaliation research.
+
+Generated retaliation now composes with site grants through the daily prepared
+region/race candidates and effective scouting/assault waves. No-target instant
+missions are recognized as removed before the research caller even with unfinished
+wave counters. Surviving daily missions receive later interruption; hunting
+missions defer to their later owning preflight and cannot receive an earlier grant.
+Targeted instant retaliation still stops atomically at the base-defense boundary.
+
+Native retaliation-spawn, generation and hunting fixtures back fresh/cache
+scouting, assault overrides including absent original UFOs, immediate chains,
+three rewrites and exact UFO/RNG controls. No-target instant chains skip an unused
+missing interruption link after daily cleanup; retained daily missions validate
+their link. Player-base movement in the no-target hunting test preserves ample
+patrol return fuel so it exercises actual creation, with the reset timer checked.
+The timer/source/retaliation slices are ready for the combined audit.
