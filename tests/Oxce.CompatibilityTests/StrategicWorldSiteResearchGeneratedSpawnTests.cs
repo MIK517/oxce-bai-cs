@@ -36,6 +36,61 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
             "Alien mission interruption references undefined research.");
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedGroundTimersAndImmediateLiftsPreserveTheirCallerOrder(bool cache, bool hunting)
+    {
+        using var generation = TestFixtures.ReadVerifiedExpected(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
+        using var lifecycle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        var generationRow = TestFixtures.Rows(generation.RootElement, "rows").Single(row => row[0].GetString() == (hunting ? "delayed" : "local"));
+        var spawnRow = Assert.Single(TestFixtures.Rows(lifecycle.RootElement, "spawnPathRows"), row =>
+            row[0].GetInt32() == 0 && row[1].GetInt32() == 1 && row[2].GetInt32() == 0);
+        var liftRow = Assert.Single(TestFixtures.Rows(lifecycle.RootElement, "normalLiftRows"), row => row[0].GetInt32() == 0 && row[1].GetInt32() == 0);
+        foreach (var path in new[] { "PATH_1_0", "PATH_SHORT" })
+        {
+            var shortTimer = path == "PATH_SHORT";
+            var content = Content(cache, hunting, trajectory: path);
+            var initial = Snapshot(content, hunting);
+            var random = new SplitMix64RandomSource(initial.RandomState);
+            var calls = generationRow[hunting ? 2 : 4].EnumerateArray().ToArray();
+            foreach (var call in calls.Take(calls.Length - 1)) random.NextInclusive(call[0].GetInt32(), call[1].GetInt32());
+            random.NextInclusive(0, 0);
+            for (var draw = 0; draw < spawnRow[10].GetInt32(); draw++) random.NextInclusive(0, 0);
+            var countdown = WorldTrajectory.SpawnCountdown(9000, random);
+            if (!hunting) random.NextInclusive(0, 99);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            Assert.Equal(shortTimer ? UfoStatus.Flying : UfoStatus.Landed, ufo.Status);
+            Assert.Equal(shortTimer ? WorldAltitudes.VeryLow : WorldAltitudes.Ground, ufo.Altitude);
+            Assert.Equal(shortTimer ? 0 : spawnRow[4].GetInt32() - 5, ufo.SecondsRemaining);
+            Assert.Equal(initial.World.AlienBases[0].Position, ufo.Position);
+            Assert.False(ufo.Detected);
+            Assert.Equal(0, ufo.LandId);
+            var mission = Assert.Single(after.World.Missions);
+            Assert.Equal(!hunting, mission.Interrupted);
+            Assert.Equal((1, 0, 1, countdown), (mission.NextWave, mission.NextUfoCounter, mission.LiveUfos, mission.SpawnCountdown));
+            Assert.Equal(mission.Id, ufo.MissionId);
+            Assert.Equal(7 + (hunting ? 0 : 6) + (shortTimer ? liftRow[6].GetInt32() : 0), after.Regions[0].ActivityAlien[0]);
+            Assert.Equal(random.State, after.RandomState);
+            Assert.Empty(after.World.MissionSites);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            for (var pass = 0; pass < 3; pass++)
+            {
+                campaign = Reload(content, campaign, 17, "site-generated-ground-timer.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equal(UfoStatus.Flying, Assert.Single(campaign.Capture().World.Ufos).Status);
+            Assert.Equal(0, campaign.Capture().World.Ufos[0].SecondsRemaining);
+            Assert.Single(campaign.Capture().ResearchDiary);
+        }
+    }
+
     private static void AssertBirth(bool cache, bool final, bool hunting)
     {
         using var generation = TestFixtures.ReadVerifiedExpected(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");

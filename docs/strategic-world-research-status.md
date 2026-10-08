@@ -630,3 +630,14 @@ and AlienMission::start/think/spawnUfo. Verified hunting generation calls and
 spawn/diary captures back fresh/cache birth movement, native RNG order, final
 and prefix counters, source links and three rewrites. All 30 affected tests
 pass; the four new late-birth cases first failed at the previous boundary.
+
+Daily and late generated ordinary ground starts now share the owned birth/lift
+proof. Native ground timers extending past this tick persist before later
+takeoff; one-tick starts lift after site processing without consulting mission
+interruption. Half-hour birth activity/detection applies only to daily births;
+late births still receive any five-second lift award. Reference:
+AlienMission::spawnUfo/ufoLifting and the two GeoscapeState generation callers.
+Verified generation, spawnPathRows and normalLiftRows cover both timers and
+callers, source coordinates, native draw order, interruption, combined activity,
+next-tick lift and three rewrites. All 46 affected birth/base research tests
+pass; four new grounded cases first failed at the previous composition guard.
