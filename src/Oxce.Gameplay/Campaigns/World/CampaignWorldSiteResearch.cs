@@ -36,12 +36,20 @@ internal sealed partial class CampaignWorld
                 return daily.UnavailableReason ?? "Mission site research requires deterministic daily research phase forecasts.";
             dailyResearch = daily;
         }
+        var waveWork = 0;
         foreach (var saved in _missions)
         {
             var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
             var rule = MissionRule(mission);
-            if (!mission.Interrupted && !IsOver(mission, rule) && mission.NextWave < rule.Waves.Count && mission.SpawnCountdown <= 30)
-                return SiteResearchWaveReason;
+            if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
+            // Counter-only score waves have no research-dependent actor birth or
+            // objective transition. Preserve their native immediate chain before sites.
+            if (rule.Objective != RuntimeMissionObjective.Score) return SiteResearchWaveReason;
+            foreach (var step in DueWaveSteps(mission, rule))
+            {
+                if (++waveWork > MaximumImmediateWaveSteps) return WaveWorkReason;
+                if (!CanAdvanceNoObjectWave(step, rule)) return SiteResearchWaveReason;
+            }
         }
         IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null;
         long itemWork = dailyResearch?.Work ?? 0;
