@@ -168,11 +168,6 @@ internal sealed partial class CampaignWorld
                 var missions = campaign.Content.RuntimeRules.AlienMissions;
                 if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
                 var mission = missions[handle].Value;
-                // Generated non-score/supply hunting prefixes still need their
-                // late caller acceptance before sharing the daily proof.
-                if (mission.Waves.Count != 0 && mission.Waves[0].SpawnTimer / 30 / 2 <= 1 &&
-                    mission.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply))
-                    return SiteResearchGenerationReason;
                 if (SiteResearchGeneratedMissionReason(alienBase, rule, mission, ref work, out _) is { } reason) return reason;
                 // Hunting generation follows sites. Its new mission cannot receive
                 // an earlier explicit grant or enlarge that grant's validation scan.
