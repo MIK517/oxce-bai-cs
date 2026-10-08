@@ -811,3 +811,20 @@ verification pass. The reference remains clean at the pin; useful captures remai
 and no native objects were generated. Newborn-site and generated-retaliation
 research composition, remaining uncertainty and final headless closure keep 4c
 open. Branch 4d and later-branch transitions are unchanged.
+
+## Direct site births across research (2026-10-08)
+
+Saved direct-site wave chains with positive minimum duration now compose before
+the saved-site grants. AlienMission::think/spawnMissionSite appends the sites
+before GeoscapeState::time30Minutes processes them; their positive timers prevent
+a birth-tick grant. The composition proof bounds reachable deployment lookups
+without drawing RNG; the owning site preflight retains geometry, marker,
+population and duration validation. Final direct-only missions leave the later
+interruption scan after cleanup; unfinished chains receive the saved-site grant.
+
+Verified site-spawn, site-timer and diary evidence backs fresh/cache controls,
+three rewrites, final/prefix chains, atomic immediate-expiry and marker-capacity
+refusals, and later grants. The longer scenario checks native hourly discovery's
+staggered expiry postponement and exactly one diary entry per topic. All 340
+affected tests pass. Daily and late generated direct births are the next slices;
+immediate appended-site research still needs an ordered expiry forecast.
