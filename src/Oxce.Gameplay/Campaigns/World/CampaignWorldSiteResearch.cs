@@ -159,6 +159,7 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var work = 0;
+        long selectionWork = 0;
         foreach (var birth in MissionWaveForecasts(highest, _pass.DailyResearchForecast, includeHunting: false))
         {
             var mission = birth.Mission;
@@ -169,10 +170,26 @@ internal sealed partial class CampaignWorld
                 if (++work > MaximumImmediateWaveSteps) throw new InvalidDataException(WaveWorkReason);
                 if (!IsDirectSiteWave(step, rule)) continue;
                 var wave = rule.Waves[step.NextWave];
-                var deployment = wave.Deployment;
-                if (deployment is null && rules.AlienDeployments.TryGet(rule.SiteTypeId, out var siteType)) deployment = siteType;
-                if (deployment is { } handle && rules.AlienDeployments[handle].Value.DurationMinimum == 0 &&
-                    rules.Research.TryGet(rules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId, out _)) return true;
+                if (wave.Trajectory is null) continue;
+                if (wave.ObjectiveOnXcomBase)
+                {
+                    selectionWork += DirectSiteBaseWork(step);
+                    if (selectionWork > MaximumAlienBaseChecks) throw new InvalidDataException("Direct mission site creation exceeds the supported work limit.");
+                    if (DirectSiteBases(step).Count == 0) continue;
+                }
+                var areas = DirectSiteAreas(step, rule);
+                selectionWork += areas.Count;
+                foreach (var area in areas)
+                {
+                    selectionWork += SiteDeploymentSelectionWork(wave, rule, area);
+                    if (selectionWork > MaximumAlienBaseChecks) throw new InvalidDataException("Direct mission site creation exceeds the supported work limit.");
+                    var candidates = SiteDeploymentCandidates(wave, rule, area);
+                    selectionWork += candidates.Count;
+                    if (selectionWork > MaximumAlienBaseChecks) throw new InvalidDataException("Direct mission site creation exceeds the supported work limit.");
+                    foreach (var handle in candidates)
+                        if (rules.AlienDeployments[handle].Value.DurationMinimum == 0 &&
+                            rules.Research.TryGet(rules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId, out _)) return true;
+                }
             }
         }
         return false;
@@ -201,7 +218,7 @@ internal sealed partial class CampaignWorld
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
             if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
-            deterministic &= candidates.Count == 1 && !SiteDeploymentMayBeSuppressed(wave, rule, area);
+            deterministic &= candidates.Count != 0 && !SiteDeploymentMayBeSuppressed(wave, rule, area);
             foreach (var candidate in candidates)
             {
                 var deployment = campaign.Content.RuntimeRules.AlienDeployments[candidate].Value;
@@ -210,7 +227,8 @@ internal sealed partial class CampaignWorld
                     return "Direct mission site duration is outside the supported range.";
                 if (deployment.DurationMinimum == 0)
                 {
-                    if (deployment.DurationMaximum != 0 || immediate is { } prior && prior != candidate)
+                    if (deployment.DurationMaximum != 0 || immediate is { } prior &&
+                        campaign.Content.RuntimeRules.AlienDeployments[prior].Value.UnlockedResearchOnDespawnId != deployment.UnlockedResearchOnDespawnId)
                         return "Newborn mission site research requires ordered expiry forecasts.";
                     immediate = candidate;
                 }
@@ -409,8 +427,10 @@ internal sealed partial class CampaignWorld
                 survivingUfos = true;
             }
             if (first is not null && (first.Count != candidateBirths.Count ||
-                !first.Select(item => (item.Mission.NextWave, item.Mission.NextUfoCounter, item.Deployment))
-                    .SequenceEqual(candidateBirths.Select(item => (item.Mission.NextWave, item.Mission.NextUfoCounter, item.Deployment)))))
+                !first.Select(item => (item.Mission.NextWave, item.Mission.NextUfoCounter,
+                        campaign.Content.RuntimeRules.AlienDeployments[item.Deployment].Value.UnlockedResearchOnDespawnId))
+                    .SequenceEqual(candidateBirths.Select(item => (item.Mission.NextWave, item.Mission.NextUfoCounter,
+                        campaign.Content.RuntimeRules.AlienDeployments[item.Deployment].Value.UnlockedResearchOnDespawnId)))))
                 return "Immediate generated site research requires identical birth grant sequences.";
             first ??= candidateBirths;
             immediateBirths.AddRange(candidateBirths);
