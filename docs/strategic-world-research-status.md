@@ -496,3 +496,18 @@ The audit reviewed caller order, counter/timer alternatives, survivor link
 validation, enlarged research scans, mission ID reservations and later event
 guards. No further confirmed defect was found; generated captures remain
 useful and no new native objects were produced.
+
+## Counter-only objective prefixes before site research (2026-10-08)
+
+Saved mission waves now compose across every objective when their due chain
+changes only counters or no-target retaliation termination. Final base and
+infiltration transitions and actor births retain the wave boundary; instant
+retaliation with a player target retains the branch 5 defense boundary.
+Retaliation candidate/cleanup work is reserved before classification.
+Reference: AlienMission::think/spawnUfo objective completion and no-target
+termination; GeoscapeState::time30Minutes mission cleanup before site grants.
+Existing native wave-chain/diary fixtures back fresh/cache checks for all seven
+objectives, timer draws, subsequent explicit interruption, no pact/base birth,
+three reloads and next-pass removal. Finite infiltration is selected explicitly
+so final-transition tests do not instead exercise the endless-zero-chain limit.
+All 41 affected objective/wave/generation research tests pass.
