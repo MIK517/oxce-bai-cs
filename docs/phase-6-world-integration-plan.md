@@ -95,8 +95,10 @@ documents; entries here link to them instead of copying them.
   choices and generated-retaliation research now compose too; their combined
   audit and all 3,920 root tests pass. Generated region/area grant sequences and
   uncertain terminal arrivals now compose too; their batch audit and all 3,936
-  root tests pass. Stock/nonterminal flight uncertainty and final closure keep 4c open;
-  4d is unchanged.
+  root tests pass. Stock eligibility and ordinary nonterminal flight now compose;
+  their contact-loss audit correction and all 3,968 root tests pass. Conversion/
+  base flight alternatives, daily research/stock uncertainty, newborn flight/
+  pursuit composition and final closure keep 4c open; 4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
   and both retaliation creation callers use bounded effective-wave forecasts.

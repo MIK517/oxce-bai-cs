@@ -471,6 +471,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (ufoReason is not null) return ufoReason;
         var missionReason = MissionSchedulingReason(highest, guaranteedResearch);
         if (missionReason is not null) return missionReason;
+        if (ArrivalContactLossReason(highest) is { } arrivalLossReason) return arrivalLossReason;
         var alienBaseReason = AlienBaseActivityReason(highest, guaranteedResearch);
         if (alienBaseReason is not null) return alienBaseReason;
         var baseDetectionReason = UfoBaseDetectionReason(highest);

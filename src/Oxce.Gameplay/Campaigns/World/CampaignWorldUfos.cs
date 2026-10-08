@@ -154,6 +154,7 @@ internal sealed partial class CampaignWorld
             // not greater than one step, including the reference's NaN fallback.
             if (!(UfoDestinationDistance(ufo) > speedRadian))
             {
+                _pass.ArrivalLossFollowerScanRequired = true;
                 if (FindMission(ufo.MissionId) is null) return "UFO mission link requires world simulation.";
                 var mission = ForecastMission(ufo.MissionId, highest);
                 var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[
@@ -245,6 +246,8 @@ internal sealed partial class CampaignWorld
                 }
                 // Ufo::think stops at the waypoint; AlienMission::ufoReachedWaypoint
                 // destroys an interrupted UFO or one at the trajectory's last point.
+                if (ufo.Detected && HasArrivalContactFollowers(ufo))
+                    effects.Notify(new UfoContactLost(ufo.UniqueId));
                 _ufos[index] = ufo with
                 {
                     Longitude = moved.Longitude,
@@ -270,6 +273,29 @@ internal sealed partial class CampaignWorld
                 Direction = WorldAltitudes.Direction(vector.Longitude, vector.Latitude),
             });
         }
+    }
+
+    private string? ArrivalContactLossReason(CampaignTimeTrigger highest)
+    {
+        if (!_pass.ArrivalLossFollowerScanRequired) return null;
+        // Destruction returns from the entire flight pass, so at most one loss
+        // scan can execute. Mission preflight has already bounded saved/new UFOs.
+        var maximumUfos = highest >= CampaignTimeTrigger.ThirtyMinutes || _pass.GeneratedWaveMissions is { Count: > 0 }
+            ? 100_000L : _ufos.Count;
+        long work = campaign.BaseStates.Count + maximumUfos;
+        if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref work, out var crafts) is { } reason) return reason;
+        return work + crafts > MaximumAlienBaseChecks ? "UFO arrival follower checks exceed the supported work limit." : null;
+    }
+
+    private bool HasArrivalContactFollowers(UfoSnapshot ufo)
+    {
+        // MovingTarget::setDestination registers both UFO and craft followers.
+        foreach (var follower in _ufos)
+            if (FollowsUfo(follower.Destination, ufo)) return true;
+        foreach (var owner in campaign.BaseStates)
+            foreach (var craft in owner.Crafts)
+                if (FollowsUfo(craft.Logistics?.Destination, ufo)) return true;
+        return false;
     }
 
     private bool CanAdvanceOrdinaryWaypoint(
