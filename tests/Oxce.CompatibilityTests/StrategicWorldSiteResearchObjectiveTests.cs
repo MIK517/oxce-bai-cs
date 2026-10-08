@@ -54,11 +54,32 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
     [InlineData(true, 1)]
     [InlineData(false, 2)]
     [InlineData(true, 2)]
-    public void FinalObjectiveTransitionsKeepTheirCompositionBoundary(bool cache, int objective)
+    public void FinalObjectiveTransitionsCompleteBeforeSiteResearchAndCleanup(bool cache, int objective)
     {
+        TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-infiltration-region");
         var content = Content(cache, objective, prefix: false);
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, objective), content, new SplitMix64RandomSource(66)),
-            "Mission site research requires mission-wave composition forecasts.");
+        var initial = Snapshot(content, objective);
+        var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(66));
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(66)), 66, "objective-research-before.sav");
+        AdvanceUnblocked(control, 1);
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Single(after.World.AlienBases);
+        Assert.Equivalent(control.Capture().World.AlienBases, after.World.AlienBases, strict: true);
+        Assert.Equal(control.Capture().Countries.Select(country => (country.Pact, country.NewPact, country.CancelPact)),
+            after.Countries.Select(country => (country.Pact, country.NewPact, country.CancelPact)));
+        Assert.Equal(control.Capture().RandomState, after.RandomState);
+        Assert.Equal(objective == 1, after.Countries.Any(country => country.NewPact));
+        Assert.Empty(after.World.Missions);
+        Assert.Empty(after.World.Ufos);
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        for (var pass = 0; pass < 3; pass++)
+        {
+            campaign = Reload(content, campaign, 66, "objective-research-after.sav");
+            Assert.Equivalent(after, campaign.Capture(), strict: true);
+        }
     }
 
     [Theory]
@@ -76,6 +97,10 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
     [Theory]
     [InlineData(false, 0)]
     [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
     [InlineData(false, 3)]
     [InlineData(true, 3)]
     [InlineData(false, 5)]
@@ -90,7 +115,16 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
         var after = campaign.Capture();
         Assert.Empty(after.World.Missions);
         Assert.Empty(after.World.MissionSites);
-        Assert.Equal(initial.RandomState, after.RandomState);
+        if (objective is 1 or 2)
+        {
+            TestFixtures.LoadVerifiedManifest("strategic-objective-base-spawn");
+            var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(66));
+            AdvanceUnblocked(control, 1);
+            Assert.Equal(control.Capture().RandomState, after.RandomState);
+            Assert.Single(after.World.AlienBases);
+            Assert.Equivalent(control.Capture().World.AlienBases, after.World.AlienBases, strict: true);
+        }
+        else Assert.Equal(initial.RandomState, after.RandomState);
         Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
         Assert.Equivalent(after, Reload(content, campaign, 66, "removed-saved-research-link.sav").Capture(), strict: true);
     }
@@ -103,6 +137,19 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
         var content = Content(cache, 3, interrupt: "MISSING_RESEARCH");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 3), content, new SplitMix64RandomSource(66)),
             "Alien mission interruption references undefined research.");
+    }
+
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void FinalObjectiveMarkerExhaustionStopsBeforeBasePactAndSiteGrant(bool cache, int objective)
+    {
+        var content = Content(cache, objective, prefix: false);
+        var initial = Snapshot(content, objective).WithNextId("STR_ALIEN_BASE", int.MaxValue);
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(66)),
+            "Base objective IDs are exhausted or collide.");
     }
 
     internal static RuntimeContent Content(bool cache, int objective, bool prefix = true, string interrupt = "CORE") => StrategicReadinessTestContent.Load(

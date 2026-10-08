@@ -51,8 +51,8 @@ internal sealed partial class CampaignWorld
                 {
                     if (++waveWork > MaximumImmediateWaveSteps) return WaveWorkReason;
                     if (RetaliationWaveReason(step, rule, ref generationWork) is { } retaliationReason) return retaliationReason;
-                    var wave = rule.Waves[step.NextWave];
-                    if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchWaveReason;
+                    // Final objectives execute before sites. Their owning later
+                    // preflight reserves base/pact effects before the tick mutates.
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
                     if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork) is { } birthReason) return birthReason;
                     births = true;

@@ -756,3 +756,19 @@ formatting verification passes; added audit tests pass after focused formatting.
 Code-map and diff checks pass. Existing captures remain useful, no native objects
 were added and the pinned reference remains read-only. Objective/newborn-site
 composition, remaining uncertainty and final headless closure keep 4c open.
+
+## Final objectives across site research (2026-10-08)
+
+Saved final base/infiltration waves now pass the early research composition
+scan; existing mission preflight reserves all base/pact effects before mutation.
+Native AlienMission::think completes the objective after advancing counters,
+and GeoscapeState::time30Minutes removes finished missions before processing
+sites. Removed missions therefore do not receive the later explicit grant or
+consume interruption-rule links. New bases and pending pacts persist normally.
+
+Verified objective-base-spawn, infiltration-region and wave-chain evidence backs
+fresh/cache before/after reloads, no-site base/pact/RNG controls, unused missing
+interruption links and atomic marker exhaustion. Site activity penalties are
+checked separately from pact flags. All 75 affected tests pass, followed by all
+24 expanded objective/research boundary tests. Generated completions remain
+the next two caller slices; event payloads and combat/month guards are unchanged.
