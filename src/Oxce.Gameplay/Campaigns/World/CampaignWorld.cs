@@ -463,6 +463,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (SiteDiscoveryReason(highest) is { } discoveryReason) return discoveryReason;
         if (SiteFollowerWorkReason(highest) is { } followerWorkReason) return followerWorkReason;
         if (SiteUfoRepairReason(highest) is { } repairReason) return repairReason;
+        if (PrepareSiteResearch(highest) is { } siteResearchReason) return siteResearchReason;
         if (HuntingReason(highest, speed) is { } huntingReason) return huntingReason;
         if (PrepareHuntingGeneratedWaveForecasts(highest, guaranteedResearch) is { } huntBirthReason) return huntBirthReason;
         var ufoReason = UfoMovementReason(highest);

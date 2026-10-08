@@ -117,7 +117,7 @@ internal sealed partial class CampaignWorld
             {
                 despawnWork += 6 + 2L * deployment.DespawnEvents.Count;
                 if (despawnWork > MaximumAlienBaseChecks) return "Mission site despawn checks exceed the supported work limit.";
-                if (SiteDespawnReason(deployment, highest) is { } despawnReason) return despawnReason;
+                if (SiteDespawnReason(deployment, highest, SiteResearchAfter(site)) is { } despawnReason) return despawnReason;
             }
             if (transition.Remove)
             {
@@ -164,6 +164,7 @@ internal sealed partial class CampaignWorld
             }
             if (transition.Remove)
             {
+                campaign.MissionResearch.Grant(deployment.UnlockedResearchOnDespawnId, site.DeploymentId);
                 counterChanges.Clear();
                 AddSiteCounterChanges(counterChanges, deployment);
                 foreach (var change in counterChanges) campaign.CustomCounters.Apply(change);
@@ -245,17 +246,23 @@ internal sealed partial class CampaignWorld
             ? $"Late hunting {target} allocation shares decreased marker counters with same-tick craft production." : null;
     }
 
-    private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest)
+    private string? SiteDespawnReason(RuntimeAlienDeploymentRule deployment, CampaignTimeTrigger highest,
+        IReadOnlySet<string>? researchAfterGrant = null)
     {
         var rules = campaign.Content.RuntimeRules;
-        if (campaign.BaseStates.Count != 0 && rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _))
-            return SiteDespawnBoundary;
+        if (researchAfterGrant is null && campaign.BaseStates.Count != 0 && rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _))
+            return "Generated mission site research requires ordered expiry forecasts.";
         _ = WorldAlienMissionGeneration.Total(deployment.DespawnEvents);
         foreach (var pair in deployment.DespawnEvents)
         {
             if (pair.Value == 0 || !rules.Events.TryGet(pair.Key, out var handle)) continue;
             var rule = rules.Events[handle].Value;
             if (rule.InterruptResearch.Length == 0) return SiteDespawnBoundary;
+            if (researchAfterGrant is not null)
+            {
+                if (!researchAfterGrant.Contains(rule.InterruptResearch)) return SiteDespawnBoundary;
+                continue;
+            }
             if (highest >= CampaignTimeTrigger.OneDay)
             {
                 if (!GuaranteedDailyResearch().Contains(rule.InterruptResearch)) return SiteDespawnBoundary;

@@ -1,0 +1,68 @@
+using Oxce.Mods.Rulesets.Runtime;
+
+namespace Oxce.Gameplay.Campaigns.World;
+
+internal sealed partial class CampaignWorld
+{
+    private const string SiteResearchUfoReason = "Mission site research requires UFO phase forecasts.";
+    private const string SiteResearchCraftReason = "Mission site research requires airborne craft phase forecasts.";
+    private const string SiteResearchGenerationReason = "Mission site research requires alien-base generation phase forecasts.";
+    private const string SiteResearchWaveReason = "Mission site research requires mission-wave composition forecasts.";
+
+    private string? PrepareSiteResearch(CampaignTimeTrigger highest)
+    {
+        if (highest < CampaignTimeTrigger.ThirtyMinutes) return null;
+        var rules = campaign.Content.RuntimeRules;
+        var found = false;
+        foreach (var site in _sites)
+        {
+            if (!SiteExpiresThisTick(site, highest)) continue;
+            var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+            if (rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _)) { found = true; break; }
+        }
+        if (!found) return null;
+        // These boundaries name the still-unprojected caller phases. Research-only
+        // worlds can execute without pretending that future actors already changed.
+        if (_ufos.Count != 0) return SiteResearchUfoReason;
+        if (_alienBases.Count != 0) return SiteResearchGenerationReason;
+        foreach (var owner in campaign.BaseStates)
+        {
+            if (owner.Crafts.Any(craft => craft.Logistics is { Status: "STR_OUT" })) return SiteResearchCraftReason;
+            if (highest >= CampaignTimeTrigger.OneDay && owner.Research.Count != 0)
+                return "Mission site research requires daily project phase forecasts.";
+            if (highest >= CampaignTimeTrigger.OneDay && owner.Facilities.Any(facility => facility.BuildTime == 1))
+                return "Mission site research requires completed-facility eligibility forecasts.";
+        }
+        foreach (var saved in _missions)
+        {
+            var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
+            var rule = MissionRule(mission);
+            if (!mission.Interrupted && !IsOver(mission, rule) && mission.NextWave < rule.Waves.Count && mission.SpawnCountdown <= 30)
+                return SiteResearchWaveReason;
+        }
+        // Half-hour refuelling and higher-trigger arrivals/production precede sites.
+        // Their item-dependent automatic discoveries need a separate stock projection.
+        if (rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.NeedItem))
+        {
+            if (highest >= CampaignTimeTrigger.OneHour || campaign.BaseStates.Any(owner => owner.Crafts.Any(craft =>
+                    craft.Logistics is { Status: "STR_REFUELLING" })))
+                return "Mission site research requires timed item eligibility forecasts.";
+        }
+        var forecast = campaign.MissionResearch.CreateForecast();
+        var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
+        foreach (var site in _sites)
+        {
+            if (!SiteExpiresThisTick(site, highest)) continue;
+            var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
+            if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
+            afterSites.Add((site.DeploymentId, site.Id), forecast.GuaranteedResearch);
+            if (SiteDespawnReason(deployment, highest, forecast.GuaranteedResearch) is { } eventReason) return eventReason;
+        }
+        _pass.SiteResearchAfterSite = afterSites;
+        _pass.SiteResearchForecast = forecast;
+        return null;
+    }
+
+    private IReadOnlySet<string>? SiteResearchAfter(MissionSiteSnapshot site) =>
+        _pass.SiteResearchAfterSite?.GetValueOrDefault((site.DeploymentId, site.Id));
+}
