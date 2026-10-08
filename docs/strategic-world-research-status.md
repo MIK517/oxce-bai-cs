@@ -1093,3 +1093,15 @@ remains, unchanged craft/RNG controls and three rewrites. Kernel fixtures cover
 repeated grants, duplicate inputs, 256 outcomes, intentional outcome/work refusal
 and unchanged campaign state. Possible-only automatic research cannot suppress
 unavailable site or due event effects; guaranteed explicit research still can.
+
+Uncertain explicit interruption now allows a nonterminal airborne waypoint when
+the ordinary arrival proof succeeds. Native `AlienMission::ufoReachedWaypoint`
+destroys an interrupted actor before selecting its next waypoint; the surrounding
+flight pass then skips later UFOs and craft. The uninterrupted branch retains
+the existing waypoint, resource and interception proofs. Ground arrivals retain
+their separate boundary for the next slice.
+
+Verified lifecycle/diary evidence backs fresh/cache 32-seed reward selection,
+both flight outcomes, later UFO and craft fallthrough, exact control RNG and
+world state, three rewrites and next-tick live-UFO cleanup. Unsafe waypoint
+speed and a possible interception still stop the whole tick without mutation.
