@@ -578,3 +578,14 @@ detection before site expiry and subsequent five-second UFO handling. Verified
 spawnPathRows, diary and timer captures cover both destination altitudes, final
 and prefix wave counters, native activity plus despawn penalty, timer/marker
 rewrites and atomic exhausted-marker refusal. All 29 affected tests pass.
+
+One-tick ordinary ground starts now compose too: detection runs before the site
+grant, then the owned lifting handler runs after it. AlienMission::ufoLifting
+does not inspect interruption, so an explicitly interrupted newborn may still
+lift safely in this tick. Native normalLiftRows/spawnPathRows and
+UfoDetectedState's contact/landing ID allocation back immediate lift activity,
+timer and marker persistence. A real detectUfoFromBase VM program sees CORE
+absent at birth detection, then present at the next half-hour after save/reload.
+All 28 affected birth/detection/spawn-path tests pass; the six new cases first
+failed at the prior composition guard. Hunters, escorts and objective effects
+remain separately guarded, without changing event or combat boundaries.

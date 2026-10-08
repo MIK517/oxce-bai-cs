@@ -106,7 +106,9 @@ internal sealed partial class CampaignWorld
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[path].Value;
         var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
-        if (trajectory.Waypoints.Count < 2 || trajectory.Altitude(0) == 0 && trajectory.GroundTimer <= 1 || hunterChance > 0 || wave.Escort)
+        // Ordinary lifting does not inspect mission interruption. A one-tick
+        // ground start may therefore lift after sites through the owned handler.
+        if (trajectory.Waypoints.Count < 2 || hunterChance > 0 || wave.Escort)
             return SiteResearchWaveReason;
         // Reserve bounded geometry and source lookups before the spawn predicate's
         // Cartesian distance checks. This proof does not select a point or draw RNG.

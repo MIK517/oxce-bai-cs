@@ -124,7 +124,76 @@ public sealed class StrategicWorldSiteResearchSpawnTests
             content, new SplitMix64RandomSource(17)), "UFO landing marker IDs are exhausted or collide with a saved UFO.");
     }
 
-    internal static RuntimeContent Content(bool cache, string trajectory, bool final = false, string interrupt = "CORE", string extra = "") =>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ImmediateNewbornTakeoffPreservesDetectionBeforeResearchAndLiftAfterIt(bool cache, bool final)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-world-lifecycle");
+        TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
+        var lift = Assert.Single(TestFixtures.Rows(oracle.RootElement, "normalLiftRows"), row => row[0].GetInt32() == 0 && row[1].GetInt32() == 0);
+        var content = Content(cache, "PATH_SHORT", final);
+        var initial = Snapshot(content).WithFacility("RADAR_HYPER_TEST");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Single(result.Events.OfType<UfoContactDetected>());
+        var after = campaign.Capture();
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.Equal((UfoStatus.Flying, WorldAltitudes.VeryLow, 0), (ufo.Status, ufo.Altitude, ufo.SecondsRemaining));
+        Assert.True(ufo.Detected);
+        Assert.True(ufo.LandId > 0);
+        Assert.True(ufo.Id > 0);
+        Assert.True(Assert.Single(after.World.Missions).Interrupted);
+        Assert.Equal(1, after.World.Missions[0].LiveUfos);
+        Assert.Equal(6 + 7 + lift[6].GetInt32(), after.Regions[0].ActivityAlien[0]);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        Assert.Equivalent(after, Reload(content, campaign, 17, "site-research-immediate-lift.sav").Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ActualNewbornDetectionScriptReadsResearchBeforeSiteGrantThenAfterReload(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-detection-scripts");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var content = Content(cache, "PATH_SHORT", extra: """
+            facilities:
+              - {type: STORES, radarRange: 5000, radarChance: 100}
+            ufos:
+              - type: UFO_RESEARCH_BIRTH
+                speedMax: 20
+                damageMax: 50
+                scripts:
+                  detectUfoFromBase: |
+                    var ptr RuleResearch topic;
+                    var int completed;
+                    rules.getRuleResearch topic "CORE";
+                    geoscape_game.isResearched completed topic;
+                    if eq completed 1; return DETECTION_RADAR 100; end;
+                    return DETECTION_NONE 0;
+            """, ufo: "UFO_RESEARCH_BIRTH");
+        var campaign = CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Contains("CORE", after.CompletedResearch);
+        Assert.True(Assert.Single(after.World.Missions).Interrupted);
+        Assert.False(Assert.Single(after.World.Ufos).Detected);
+        Assert.Equal((UfoStatus.Flying, 0), (after.World.Ufos[0].Status, after.World.Ufos[0].LandId));
+        campaign = Reload(content, campaign, 17, "newborn-detection-pre-site.sav");
+        Assert.Equivalent(after, campaign.Capture(), strict: true);
+        AdvanceUnblocked(campaign, 360);
+        var detected = Assert.Single(campaign.Capture().World.Ufos);
+        Assert.True(detected.Detected);
+        Assert.True(detected.Id > 0);
+        Assert.Single(campaign.Capture().ResearchDiary);
+        Assert.Equivalent(campaign.Capture(), Reload(content, campaign, 17, "newborn-detection-post-site.sav").Capture(), strict: true);
+    }
+
+    internal static RuntimeContent Content(bool cache, string trajectory, bool final = false, string interrupt = "CORE", string extra = "", string ufo = "UFO_SCOUT") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -134,7 +203,7 @@ public sealed class StrategicWorldSiteResearchSpawnTests
             interruptResearch: {{{interrupt}}}
             points: 7
             waves:
-              - {ufo: UFO_SCOUT, count: 1, trajectory: {{{trajectory}}}, timer: 0}
+              - {ufo: {{{ufo}}}, count: 1, trajectory: {{{trajectory}}}, timer: 0}
         {{{(final ? "" : "      - {count: 1, trajectory: TRAJ_PATROL, timer: 9000}")}}}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment + "\n" + extra);
 
