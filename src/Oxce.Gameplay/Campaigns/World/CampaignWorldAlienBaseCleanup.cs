@@ -72,7 +72,7 @@ internal sealed partial class CampaignWorld
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value,
                     state.Weapons, rules, out var speed))
                     throw new InvalidOperationException("Deleted base follower speed changed after preflight.");
-                owner.Crafts[index] = craft with { Logistics = SetDestination(state, speed, BaseReference(owner)) };
+                owner.Crafts[index] = craft with { Logistics = SetDestination(state, speed, BaseReference(owner)) with { Status = state.Status } };
             }
     }
 

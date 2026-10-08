@@ -372,3 +372,19 @@ against every captured strategic-world escort trace after the site grants CORE.
 They also verify idle selection, stale unique identity repair, next-tick terminal
 cleanup and repeated rewrites. All six composed escort cases pass. Due/newborn
 waves, base generation and daily/item research composition remain explicit work.
+
+The hunting/escort batch audit reviewed native phase order, existing combat
+refusal, selected-speed retargeting, saved craft order, target identity repair,
+terminal fallthrough and bounded follower/escort scans. Six added fresh/cache
+regressions verify that a ten-minute tick cannot
+apply future half-hour expiry, and that earlier daily base deletion returns
+followers before fuel and hunter eligibility. All ten focused return cases pass.
+The initial root run passes all 3,607 tests. A subsequent native-source check and
+four failing fresh/cache regressions confirmed that grounded followers were
+incorrectly launched after base deletion, or rejected before forced site expiry.
+Craft::returnToBase/setDestination preserves status while setting speed and the
+takeoff timer. Both return handlers now preserve that status; hunting forecasts
+apply the return before testing airborne status and consume fuel only in STR_OUT.
+All 44 immediate audit-fix cases pass. Final affected-subsystem checks are
+recorded below; a full root rerun after this late fix remains the next checkpoint.
+Final audit fix acceptance: all 209 affected compatibility tests pass; full formatting and regenerated code-map verification pass. The filtered root invocation selected zero unit tests (exit 8), so the clean affected-subsystem run uses the compatibility project explicitly. A full root rerun after the fix is pending at the 07:30 cutoff.
