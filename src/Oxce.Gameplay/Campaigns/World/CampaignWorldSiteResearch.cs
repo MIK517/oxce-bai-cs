@@ -37,24 +37,30 @@ internal sealed partial class CampaignWorld
             dailyResearch = daily;
         }
         var waveWork = 0;
+        long landWork = 0;
         HashSet<int>? missionRemovals = null;
         foreach (var saved in _missions)
         {
             var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
             var rule = MissionRule(mission);
             var afterThink = _pass.MissionCounterForecast?.GetValueOrDefault(saved.Id) ?? mission;
-            if (IsOver(afterThink, rule)) (missionRemovals ??= []).Add(saved.Id);
-            if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
-            // Counter-only objective prefixes have no research-dependent actor birth or
-            // objective transition. Preserve their native immediate chain before sites.
-            foreach (var step in DueWaveSteps(mission, rule))
+            var births = false;
+            if (!mission.Interrupted && !IsOver(mission, rule) && mission.NextWave < rule.Waves.Count && mission.SpawnCountdown <= 30)
             {
-                if (++waveWork > MaximumImmediateWaveSteps) return WaveWorkReason;
-                if (RetaliationWaveReason(step, rule, ref generationWork) is { } retaliationReason) return retaliationReason;
-                var wave = rule.Waves[step.NextWave];
-                if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchWaveReason;
-                if (!CanAdvanceNoObjectWave(step, rule)) return SiteResearchWaveReason;
+                foreach (var step in DueWaveSteps(mission, rule))
+                {
+                    if (++waveWork > MaximumImmediateWaveSteps) return WaveWorkReason;
+                    if (RetaliationWaveReason(step, rule, ref generationWork) is { } retaliationReason) return retaliationReason;
+                    var wave = rule.Waves[step.NextWave];
+                    if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchWaveReason;
+                    if (CanAdvanceNoObjectWave(step, rule)) continue;
+                    if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork) is { } birthReason) return birthReason;
+                    births = true;
+                }
             }
+            // Counter forecasts intentionally omit actor births. A completed wave
+            // with a surviving newborn still participates in the later research scan.
+            if (!births && IsOver(afterThink, rule)) (missionRemovals ??= []).Add(saved.Id);
         }
         IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null;
         long itemWork = (dailyResearch?.Work ?? 0) + generationWork;
@@ -90,6 +96,30 @@ internal sealed partial class CampaignWorld
         _pass.SiteResearchAfterSite = afterSites;
         _pass.SiteResearchForecast = forecast;
         return null;
+    }
+
+    private string? SiteResearchOrdinaryBirthReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        ref long work, ref long landWork)
+    {
+        var wave = SpawnWave(mission, rule);
+        if (wave.Ufo is not { } ufo || wave.Trajectory is not { } path) return SiteResearchWaveReason;
+        var rules = campaign.Content.RuntimeRules;
+        var trajectory = rules.UfoTrajectories[path].Value;
+        var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
+        if (trajectory.Waypoints.Count < 2 || trajectory.Altitude(0) == 0 || hunterChance > 0 || wave.Escort)
+            return SiteResearchWaveReason;
+        // Reserve bounded geometry and source lookups before the spawn predicate's
+        // Cartesian distance checks. This proof does not select a point or draw RNG.
+        work += 8L * _alienBases.Count;
+        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var origins) ||
+            !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations)) return SiteResearchWaveReason;
+        work += (long)origins.Count * destinations.Count + origins.Count + destinations.Count;
+        if (work > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+        landWork += SpawnOriginLandWork(mission, rule, trajectory, region);
+        if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
+        return CanSpawnOrdinaryUfoWave(mission, rule) ? null : SiteResearchWaveReason;
     }
 
     private string? SiteResearchFlightReason(CampaignTimeTrigger highest)
