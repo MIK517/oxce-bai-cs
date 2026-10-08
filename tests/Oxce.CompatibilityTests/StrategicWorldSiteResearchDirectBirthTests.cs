@@ -178,7 +178,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
 
     internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false, bool hunting = false,
         int objective = 0, string interrupt = "CORE", int? maximumDuration = null, string eventInterrupt = "", int frequency = 100,
-        int count = 2) =>
+        int count = 2, int firstTimer = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -191,7 +191,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             siteType: RESEARCH_BORN_SITE
             interruptResearch: {{{interrupt}}}
             waves:
-              - {ufo: RESEARCH_BORN_SITE, count: {{{count}}}, trajectory: TRAJ_PATROL, timer: 0}
+              - {ufo: RESEARCH_BORN_SITE, count: {{{count}}}, trajectory: TRAJ_PATROL, timer: {{{firstTimer}}}}
         {{{(final ? "" : "      - {count: 1, trajectory: TRAJ_PATROL, timer: 9000}")}}}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment + $$$"""
 

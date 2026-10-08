@@ -422,10 +422,12 @@ internal sealed partial class CampaignWorld
                             return reason;
                         if (dailyImmediateBirths.Count != priorBirths)
                         {
-                            if (deployment.GenMission.Any(choice => choice.Value != 0 && choice.Key != missionId) ||
-                                mission.Waves[0].SpawnTimer / 30 / 2 + mission.Waves[0].SpawnTimer / 30 > 1)
+                            if (deployment.GenMission.Any(choice => choice.Value != 0 && choice.Key != missionId))
                                 return "Immediate generated site research requires deterministic generation outcomes.";
-                            if (deployment.GenMissionFrequency < 100)
+                            // Native start chooses (steps / 2 + random[0, steps]) * 30.
+                            // A delayed initial timer skips this whole birth sequence.
+                            var initialSteps = mission.Waves[0].SpawnTimer / 30;
+                            if (deployment.GenMissionFrequency < 100 || initialSteps / 2 + initialSteps > 1)
                                 for (var index = priorBirths; index < dailyImmediateBirths.Count; index++)
                                     dailyImmediateBirths[index] = dailyImmediateBirths[index] with { GenerationOptional = true };
                         }
