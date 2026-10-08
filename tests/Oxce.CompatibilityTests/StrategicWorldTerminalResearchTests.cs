@@ -61,10 +61,19 @@ public sealed class StrategicWorldTerminalResearchTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NonterminalArrivalStillRequiresBothResearchFlightOutcomesToBeProved(bool cache)
+    public void SiteConversionStillRequiresBothResearchFlightOutcomesToBeProved(bool cache)
     {
         var content = Content(cache);
-        AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchUfoTests.Arrival(content), content, new SplitMix64RandomSource(17)),
+        var rule = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired("MISSION_CONVERSION")].Value;
+        Assert.Equal(5, rule.SpawnZone);
+        Assert.True(Assert.Single(rule.Waves).Objective);
+        var initial = StrategicWorldSiteResearchUfoTests.Arrival(content);
+        initial = initial with
+        {
+            World = initial.World with
+            { Missions = [initial.World.Missions[0] with { RuleId = "MISSION_CONVERSION", MissionSiteZoneArea = 0 }] }
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "UFO mission interruption depends on uncertain site research outcomes.");
     }
 
@@ -76,6 +85,12 @@ public sealed class StrategicWorldTerminalResearchTests
           - {name: BONUS, cost: 1}
           - {name: OTHER, cost: 1}
         alienMissions:
-          - {type: MISSION_SCOUT, interruptResearch: {{{interrupt}}}}
+          - type: MISSION_SCOUT
+            interruptResearch: {{{interrupt}}}
+          - type: MISSION_CONVERSION
+            interruptResearch: {{{interrupt}}}
+            spawnZone: 5
+            waves:
+              - {ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_LANDING, timer: 9000, objective: true}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment);
 }

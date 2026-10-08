@@ -71,7 +71,7 @@ public sealed class StrategicWorldSiteResearchUfoTests
     }
 
     [Fact]
-    public void UncertainExplicitInterruptionStopsBeforeChoosingResearchRewardOrMovingUfo()
+    public void PossibleUninterruptedLandingStillRejectsAnInvalidGroundTimer()
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
             research:
@@ -82,8 +82,14 @@ public sealed class StrategicWorldSiteResearchUfoTests
             alienMissions:
               - {type: MISSION_SCOUT, interruptResearch: BONUS}
             """ + "\n" + Deployment);
-        AssertTimeBlocked(CampaignState.Restore(Arrival(content), content, new SplitMix64RandomSource(17)),
-            "UFO mission interruption depends on uncertain site research outcomes.");
+        var initial = Arrival(content);
+        initial = initial with
+        {
+            World = initial.World with
+            { Ufos = [initial.World.Ufos[0] with { TrajectoryId = "TRAJ_LANDING_ZERO", TrajectoryPoint = 0 }] }
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "UFO waypoint arrival requires mission simulation.");
     }
 
     [Theory]
