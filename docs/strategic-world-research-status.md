@@ -897,3 +897,18 @@ three rewrites and next-boundary cleanup without duplicate diary entries.
 Own-grant event suppression passes; unavailable events and optional generation
 stop atomically. All affected research tests pass. Broader deployment/expiry
 alternatives remain the third slice and next compatibility boundary.
+
+Different reachable zero-duration deployments now share one grant slot when
+their research topics are equal. Selected deployment identity, RNG, counters,
+events and geometry still belong to the site owner, which checks every reachable
+alternative against that slot's exact post-grant research. Texture-selected
+births can initiate the proof without a saved site; their preliminary selection
+scan reserves source/area/weight work and never selects or draws RNG.
+
+All 376 affected tests pass. Fresh/cache saved and daily cases use 16 fixed seeds,
+exact no-site RNG/identity controls, separate saved-site counter consequences,
+selected deployment counters and three rewrites. Every reachable unavailable
+event, divergent grant and mixed immediate/positive duration still stops before
+mutation. Verified site-spawn selection and daily-generation evidence backs the
+composition. Optional generation and divergent grant/expiry sequences remain
+precise forecast boundaries. The three immediate-site slices are ready for audit.
