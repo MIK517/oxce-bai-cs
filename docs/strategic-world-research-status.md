@@ -688,3 +688,16 @@ captures and no-site controls cover caller-specific UFO/RNG outcomes, timers,
 source links and reloads. All 42 affected tests pass; four new generated-hunter
 cases first failed at the prior boundary. The old remaining-generation fixture
 now explicitly covers escorts; targetable airborne hunters remain guarded.
+
+The safe-hunter batch audit passes all 462 affected research/birth/hunting/
+escort tests. A later retarget regression confirms that a permitted grounded
+birth still stops atomically before combat after lifting. Review covered native
+constructor order, no-target proof reuse, landed-versus-flying retarget phases,
+source/race alternatives, first-destination separation, persisted mission links
+and deferred event/objective effects. No implementation defect was confirmed.
+
+Final safe-hunter acceptance passes all 3,768 root tests with no failures or
+skips, including checksum, private-corpus and allocation checks. Full formatting,
+regenerated code-map and diff verification pass. Existing captures remain useful;
+no generated native objects were added. This closes the sixth daytime cycle,
+not the remaining 4c research-composition and headless acceptance work.

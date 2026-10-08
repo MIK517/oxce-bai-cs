@@ -79,8 +79,10 @@ documents; entries here link to them instead of copying them.
   too; their batch audit passes all 3,736 root tests and real VM caller checks.
   Daily/late ordinary generated births and ground timers now compose too;
   their same-source/72-hour audit and all 3,754 root tests pass.
-  Actor/objective generation and waves, newborn-site phase
-  composition, remaining uncertainty and final closure keep 4c open;
+  Safe saved/generated hunter births now compose through no-target or landed
+  phase proofs; the later combat regression and all 3,768 root tests pass.
+  Targetable hunter/escort births, research-dependent objective transitions,
+  newborn-site phase composition, remaining uncertainty and final closure keep 4c open;
   4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
