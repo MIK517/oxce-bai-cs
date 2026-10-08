@@ -132,10 +132,10 @@ internal sealed partial class CampaignWorld
             var choices = source.GroupBy(birth => birth.Mission.RuleId).ToArray();
             string? AdvanceChoice(IGrouping<string, SiteResearchBirth> group)
             {
-                string? AdvanceBirths()
+                string? AdvancePath(IGrouping<(string RegionId, string Race, int MissionSiteZoneArea), SiteResearchBirth> path)
                 {
                     Dictionary<(int Wave, int Counter), IReadOnlyDictionary<string, IReadOnlySet<string>>> slots = [];
-                    foreach (var birth in group)
+                    foreach (var birth in path)
                     {
                         var mission = birth.Mission;
                         var key = (mission.NextWave, mission.NextUfoCounter);
@@ -148,6 +148,9 @@ internal sealed partial class CampaignWorld
                     }
                     return null;
                 }
+                var paths = group.GroupBy(birth => (birth.Mission.RegionId, birth.Mission.Race, birth.Mission.MissionSiteZoneArea)).ToArray();
+                string? AdvanceBirths() => paths.Length == 1 ? AdvancePath(paths[0]) :
+                    forecast.AdvanceSequenceChoices(paths.Select(path => (Func<string?>)(() => AdvancePath(path))));
                 return group.Any(birth => birth.GenerationOptional)
                     ? forecast.AdvanceOptionalSequence(AdvanceBirths) : AdvanceBirths();
             }
@@ -536,11 +539,8 @@ internal sealed partial class CampaignWorld
                     var right = candidateBirths[index];
                     work += left.Deployments.Count + (long)right.Deployments.Count;
                     if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                    HashSet<string> topics = new(left.Deployments.Select(handle =>
-                        campaign.Content.RuntimeRules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId), StringComparer.Ordinal);
                     if (left.Mission.NextWave != right.Mission.NextWave || left.Mission.NextUfoCounter != right.Mission.NextUfoCounter ||
-                        left.Optional != right.Optional || !topics.SetEquals(right.Deployments.Select(handle =>
-                            campaign.Content.RuntimeRules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId)))
+                        left.Optional != right.Optional)
                         return "Immediate generated site research requires identical birth grant sequences.";
                 }
             }
