@@ -511,3 +511,14 @@ objectives, timer draws, subsequent explicit interruption, no pact/base birth,
 three reloads and next-pass removal. Finite infiltration is selected explicitly
 so final-transition tests do not instead exercise the endless-zero-chain limit.
 All 41 affected objective/wave/generation research tests pass.
+
+Daily generated base, infiltration and site objectives now share the same
+counter-only prefix proof. It explicitly rejects final base/infiltration
+transitions and actor/direct-site births. Site objectives still select their
+initial area at native creation, even when the opening wave has no objective
+flag; that identity and its draw persist across reloads. Reference:
+GeoscapeState::GenerateSupplyMission and AlienMission::start/think. Native
+generation/wave captures back fresh/cache counter/timer, selected area, source
+link, later interruption, no pact/base birth and three-rewrite checks. All 41
+affected objective/generation research tests pass; late non-score/supply
+prefixes and generated retaliation retain their explicit boundaries.
