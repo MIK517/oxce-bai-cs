@@ -978,3 +978,18 @@ events cannot depend on an unchosen topic. Pure kernel tests verify conditional
 topic separation, missing-choice state restoration and unchanged campaign/RNG.
 Positive-duration/null deployment alternatives use the same skipped projection.
 The three uncertainty slices are ready for their batch audit.
+
+The uncertainty batch audit confirms skipped/selected branch isolation, prior
+state restoration, missing-topic no-ops, conditional per-deployment event proofs,
+source-generation correlation and outcome/work limits. Root acceptance reproduced
+one allocation regression: a captured local callback caused a closure allocation
+at the per-tick entry point even before its early return. The callback now lives
+in a separate method called only for actual daily birth forecasts. Both original
+campaign allocation budgets pass unchanged, along with all 12 foundation tests.
+
+All 3,898 root tests pass with zero failures/skips after the fix, including native
+checksums, private corpus and populated allocation gates. Full formatting,
+code-map and diff verification pass. The reference remains clean at the pin;
+useful captures and the failure log remain, with no new native objects. Initial
+timer uncertainty, multiple source mission choices, generated retaliation and
+remaining stock/flight reconciliation keep the headless gate open.
