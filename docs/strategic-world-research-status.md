@@ -1077,3 +1077,19 @@ tests pass with zero failures/skips, including original allocation budgets,
 private corpus and checksum gates. Full format/map/diff checks pass and the
 reference remains clean. Stochastic maintenance stock eligibility, nonterminal
 flight alternatives and final headless reconciliation still keep 4c open.
+
+## Stock presence and nonterminal flight (2026-10-08)
+
+Mission research now retains bounded immutable stock-presence alternatives for
+automatic topics whose needed item may be exhausted by earlier maintenance.
+The same item outcome survives every ordered grant; duplicate item references
+do not create more branches. Native `SavedGame::getAvailableResearchProjects`
+checks quantity against zero, and `addFinishedResearch` does not consume stock
+for automatic discovery. The real maintenance caller still selects its result.
+
+All 428 affected tests pass. Pinned hunting/diary evidence backs fresh/cache
+32-seed bullet-saving cases with automatic research exactly when ammunition
+remains, unchanged craft/RNG controls and three rewrites. Kernel fixtures cover
+repeated grants, duplicate inputs, 256 outcomes, intentional outcome/work refusal
+and unchanged campaign state. Possible-only automatic research cannot suppress
+unavailable site or due event effects; guaranteed explicit research still can.

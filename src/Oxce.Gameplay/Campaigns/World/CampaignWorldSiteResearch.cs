@@ -78,6 +78,7 @@ internal sealed partial class CampaignWorld
             if (!births && IsOver(afterThink, rule)) (missionRemovals ??= []).Add(saved.Id);
         }
         IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null;
+        List<RuleHandle<ItemRuleFamily>>? uncertainItems = null;
         long itemWork = (dailyResearch?.Work ?? 0) + generationWork;
         if (rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.NeedItem))
         {
@@ -95,10 +96,10 @@ internal sealed partial class CampaignWorld
                 var lower = upper - (uncertainty?.GetValueOrDefault(item) ?? 0);
                 if (lower < 0) return "Mission site research item stocks exceed the supported range.";
                 if (lower == 0 && upper != 0)
-                    return "Mission site research item eligibility depends on stochastic maintenance outcomes.";
+                    (uncertainItems ??= []).Add(item);
             }
         }
-        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork, missionBirths, missionRemovals);
+        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork, missionBirths, missionRemovals, uncertainItems);
         var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
         foreach (var site in _sites)
         {
