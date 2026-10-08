@@ -191,9 +191,15 @@ internal sealed partial class CampaignWorld
     {
         if (highest < CampaignTimeTrigger.ThirtyMinutes || site.SecondsRemaining >= 30 * 60 ||
             highest >= CampaignTimeTrigger.OneHour && !site.Detected) return false;
+        var key = (site.DeploymentId, site.Id, highest);
+        if (_pass.SiteExpiryForecast.TryGetValue(key, out var expires)) return expires;
         var rule = campaign.Content.RuntimeRules.AlienMissions[
             campaign.Content.RuntimeRules.AlienMissions.GetRequired(site.MissionRuleId)].Value;
-        return rule.DespawnEvenIfTargeted || !SiteHasFollowers(site);
+        // SiteFollowerWorkReason reserves one site/follower pass. Dormant UFO
+        // projections revisit sites, so reuse that proof within this preflight.
+        expires = rule.DespawnEvenIfTargeted || !SiteHasFollowers(site);
+        _pass.SiteExpiryForecast.Add(key, expires);
+        return expires;
     }
 
     private string? PrepareBeforeHuntingSiteCounters(CampaignTimeTrigger highest, ref long work)

@@ -67,8 +67,9 @@ documents; entries here link to them instead of copying them.
   bounded mission research alternatives, saved-site grants and later event
   countdown composition are committed with their batch audit corrections.
   See [research evidence and acceptance](strategic-world-research-status.md).
-  Craft return/patrol, quiet bases and daily completed-facility eligibility now
-  compose with those grants. UFO/base-generation, daily project/item and
+  Craft return/patrol, quiet bases, daily completed-facility eligibility and
+  ordinary/dormant UFO flight now compose with those grants. Hunting/escort,
+  base generation, daily project/item and
   newborn-site phase composition, remaining uncertainty and final closure keep 4c open;
   4d is unchanged.
 

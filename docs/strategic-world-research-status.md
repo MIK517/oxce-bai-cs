@@ -317,3 +317,21 @@ A combined nine-point site/lift overflow and an unconditional instant event both
 stop before the research grant or reactivation. All 38 focused site/reactivation
 and arrival regressions pass. Hunter/escort, generated actors and daily project/
 item eligibility still retain separate composition boundaries.
+
+The UFO/transit/reactivation batch audit found two corrections. Repeated
+post-site UFO forecasts rescanned each site's followers, allowing cubic work
+behind a limit that reserved only one site/follower pass. Expiry eligibility is
+now cached by site identity and trigger for one preflight pass, then cleared on
+every retry/tick. No handler consumes the cache. Populated 8/32/128 cases verify
+successful grants/reactivation and bounded allocation growth; the allocation
+assertion also passed before the cache, so it is not evidence of an allocation
+regression. The correction removes the repeated follower work.
+
+A fresh/cache regression reproduced a false uncertainty guard after guaranteed
+daily interruption. A later site can disable/reenable the prerequisite and
+randomly grant it again; the earlier mission interruption remains permanent.
+The arrival check now uses the ordered mission forecast and reserves its base
+link work. Reset regressions also exercise dispatch adding a follower after a
+blocked tick and patrol removing one before the same later trigger. All 100
+focused audit cases pass; full formatting passes. Root acceptance follows.
+Final UFO/research cycle acceptance: all 3,587 root tests, full formatting and code-map verification pass. The reference checkout is unchanged; no unexpected access denials occurred.
