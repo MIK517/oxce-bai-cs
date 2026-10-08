@@ -1052,3 +1052,12 @@ The native generation and site-spawn fixtures back fresh/cache 32-seed region
 and fixed-area choices with distinct topics, markers, diaries, own-event
 suppression and three rewrites. A due event cannot rely on an unchosen path.
 Differing slot shapes and no-grant candidate paths retain their next-slice guard.
+
+Each candidate path can now have its own ordered grant slots. Positive-duration
+or suppressed paths with no immediate grant add a skipped outcome; paths with
+later common grants retain those grants without requiring an earlier slot.
+Fresh/cache 32-seed fixed-area scenarios cover surviving/suppressed births,
+missing first slots and common later slots, exact marker/diary/site timers and
+reload. Common later research suppresses its due event in every outcome; a
+missing path's topic cannot suppress its event. Verified wave-chain, site-spawn
+and timer evidence backs the ordering. The blanket equal-sequence guard is gone.

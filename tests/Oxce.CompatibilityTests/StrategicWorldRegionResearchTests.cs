@@ -73,7 +73,7 @@ public sealed class StrategicWorldRegionResearchTests
         };
     }
 
-    internal static RuntimeContent Content(bool cache, bool areas, int secondDuration = 0, bool suppressed = false) =>
+    internal static RuntimeContent Content(bool cache, bool areas, int secondDuration = 0, bool suppressed = false, bool common = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -96,10 +96,12 @@ public sealed class StrategicWorldRegionResearchTests
             spawnZone: 0
             regionWeights: {0: {{{(areas ? "{PATH_A_REGION: 1}" : "{PATH_A_REGION: 1, PATH_B_REGION: 1}")}}}}
             waves:
-              - {count: 2, trajectory: TRAJ_PATROL, objective: true, timer: 0}
+              - {count: {{{(common ? 1 : 2)}}}, trajectory: TRAJ_PATROL, objective: true, timer: 0}
+        {{{(common ? "      - {ufo: PATH_COMMON_SITE, count: 1, trajectory: TRAJ_PATROL, timer: 0}" : "")}}}
         alienDeployments:
           - {type: PATH_A_SITE, markerName: PATH_A_MARKER, duration: [0, 0], unlockedResearchOnDespawn: CORE, despawnEvents: {PATH_A_EVENT: 1}}
           - {type: PATH_B_SITE, markerName: PATH_B_MARKER, duration: [{{{secondDuration}}}, {{{secondDuration}}}], unlockedResearchOnDespawn: BONUS, despawnEvents: {PATH_B_EVENT: 1}}
+          - {type: PATH_COMMON_SITE, markerName: PATH_COMMON_MARKER, duration: [0, 0], unlockedResearchOnDespawn: BONUS, despawnEvents: {PATH_B_EVENT: 1}}
           - type: PATH_BASE
             markerName: PATH_BASE_MARKER
             genMission: {PATH_MISSION: 1}
