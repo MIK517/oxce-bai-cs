@@ -31,3 +31,12 @@ research and unavailable event payloads retain their existing guards.
 
 Reference methods: `ResearchDiaryEntry::load/save/setDate`,
 `SavedGame::load`'s research-diary topic filter and `addResearchDiaryEntry`.
+
+The interim diary audit reproduced a removed-topic filtering-order defect:
+an optional port key was read before the native topic filter. Removed records
+with malformed optional keys now skip that payload on both load and rewrite,
+while original slot indices and surviving occurrence identities remain stable.
+The existing fresh/cache native comparison adds this case and passes three
+rewrites; all 28 focused diary/world-persistence cases pass. The prior root
+checkpoint passed 3,499 tests with no failures/skips. Final acceptance follows
+the audit correction before the quota pause.
