@@ -3,7 +3,6 @@ namespace Oxce.Gameplay.Campaigns.World;
 internal sealed partial class CampaignWorld
 {
     private const string SiteResearchUfoReason = "Mission site research requires UFO phase forecasts.";
-    private const string SiteResearchCraftReason = "Mission site research requires airborne craft phase forecasts.";
     private const string SiteResearchGenerationReason = "Mission site research requires alien-base generation phase forecasts.";
     private const string SiteResearchWaveReason = "Mission site research requires mission-wave composition forecasts.";
 
@@ -31,7 +30,6 @@ internal sealed partial class CampaignWorld
         if (_alienBases.Count != 0) return SiteResearchGenerationReason;
         foreach (var owner in campaign.BaseStates)
         {
-            if (owner.Crafts.Any(craft => craft.Logistics is { Status: "STR_OUT" })) return SiteResearchCraftReason;
             if (highest >= CampaignTimeTrigger.OneDay && owner.Research.Count != 0)
                 return "Mission site research requires daily project phase forecasts.";
             if (highest >= CampaignTimeTrigger.OneDay && owner.Facilities.Any(facility => facility.BuildTime == 1))

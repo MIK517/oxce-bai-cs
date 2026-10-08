@@ -202,3 +202,20 @@ formatting passed before the correction. Final root acceptance passes all
 intermediate root run exceeded the patrol allocation assertion; the identical
 assertion passed in isolation, in all 23 craft regressions and in the complete
 root recheck without changes to the test or allocation code.
+
+## Site research and airborne craft (2026-10-08)
+
+Saved-site research now composes with existing craft movement and fuel proofs.
+`GeoscapeState::processMissionSite` returns forced-expiry followers before the
+mission research caller; `time10Minutes` consumes fuel afterward. Neither
+`Craft::setDestination/consumeFuel/think` nor their registered port transitions
+consult research eligibility. The existing follower return, fuel, escort and
+landing forecasts therefore remain the owners of those transitions.
+
+Native site-timer and research execution captures back fresh/cache follower
+cases, three rewrites, independent atomic landing guards and 72 hours of patrol
+with daily reloads. Ordinary followers hold the site without granting research;
+forced expiry grants once, repairs the destination and uses return speed for
+fuel consumption. All 37 focused site/craft/timer tests pass. Timed item
+eligibility, UFOs, actual base generation and newborn sites remain separate
+composition boundaries.
