@@ -1184,3 +1184,13 @@ UFOs and missions do not return. Repeated future events retain distinct
 preservation keys, ordered timers and history for removed rules. Due payloads
 and integrated month rollover still block atomically. All six scenarios pass;
 these three arrival slices are ready for their batch audit.
+
+The conversion/base/endurance batch audit confirms native interruption,
+notification, follower and terminal-return order. No additional defect was
+confirmed. The remaining link-work check still bounds the ordinary owners'
+mission/base scans; unsafe continuations retain their own capacity and combat
+proofs. All 3,988 root tests pass with zero failures/skips, including private
+corpus, fixture checksums and unchanged populated allocation budgets. Full
+formatting, code-map and diff checks pass; the pinned reference remains clean.
+Daily research/stock alternatives, newborn arrival/pursuit composition and final
+headless reconciliation remain open; 4d is untouched.
