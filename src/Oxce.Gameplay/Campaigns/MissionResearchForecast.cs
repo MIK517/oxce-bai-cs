@@ -17,6 +17,7 @@ public sealed partial class CampaignState
         private List<Outcome> _outcomes;
         private long _work;
         private readonly long _functionWork;
+        private readonly int _precedingMissionBirths;
         private string? _reason;
         private IReadOnlySet<string> _guaranteedResearch;
         private IReadOnlySet<string> _possibleResearch;
@@ -25,12 +26,14 @@ public sealed partial class CampaignState
 
         internal MissionResearchForecast(CampaignState campaign, CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds,
             DailyResearchStockForecast? precedingResearch = null,
-            IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0)
+            IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0,
+            int precedingMissionBirths = 0)
         {
             _campaign = campaign;
             _rules = campaign.Content.RuntimeRules;
             _precedingResearch = precedingResearch;
             _firstBaseItems = firstBaseItems;
+            _precedingMissionBirths = precedingMissionBirths;
             // Construction decrements positive timers before the daily research
             // and world callers. The real GrantReason runs after that transition.
             _completedBuildTime = highest >= CampaignTimeTrigger.OneDay ? 1 : 0;
@@ -68,6 +71,9 @@ public sealed partial class CampaignState
         {
             if (_reason is not null) return _reason;
             if (_campaign._bases.Count == 0 || !_rules.Research.TryGet(id, out var handle)) return null;
+            // Daily generation precedes every site grant. Reserve validation and
+            // explicit interruption of the enlarged mission list on each call.
+            _work += 2L * _precedingMissionBirths;
             if (_campaign._handlers.Operation<ICampaignMissionResearchInterruption>().ValidationReason(ref _work) is { } invalid)
                 return _reason = invalid;
             List<Outcome> next = [];

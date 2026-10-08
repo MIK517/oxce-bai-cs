@@ -96,20 +96,21 @@ public sealed class StrategicWorldSiteResearchBaseTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void PossibleDailyOrHuntingGenerationRemainsAtomic(bool hunting)
+    public void ImmediateActorGenerationRemainsAtomic(bool hunting)
     {
-        var content = Content(false, 0, Deployment + "\n" + (hunting ? """
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules:
+            "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" + Deployment + "\n" + (hunting ? """
               - type: GENERATING_BASE
                 baseDetectionRange: 100
                 baseDetectionChance: 100
                 huntMissionMaxFrequency: 0
-                huntMissionWeights: {0: {MISSION_SUPPLY: 1}}
+                huntMissionWeights: {0: {GENERATING_ACTOR: 1}}
             """ : """
               - type: GENERATING_BASE
-                genMission: {MISSION_SUPPLY: 1}
+                genMission: {GENERATING_ACTOR: 1}
                 genMissionFreq: 100
                 genMissionLimit: 1
-            """));
+            """) + "\nalienMissions:\n  - type: GENERATING_ACTOR\n    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]\n");
         var snapshot = Snapshot(content);
         snapshot = snapshot with
         {
