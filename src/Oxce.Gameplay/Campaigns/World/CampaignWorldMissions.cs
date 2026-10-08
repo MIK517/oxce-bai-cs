@@ -731,12 +731,13 @@ internal sealed partial class CampaignWorld
             if (nextWave == rule.Waves.Count && rule.Objective == RuntimeMissionObjective.Infiltration && rule.EndlessInfiltration)
                 nextWave = 0;
             if (nextWave == rule.Waves.Count || rule.Waves[nextWave].SpawnTimer != 0) yield break;
+            var spawned = SpawnWave(mission, rule);
             mission = mission with
             {
                 NextWave = nextWave,
                 NextUfoCounter = checked((int)counter),
                 SpawnCountdown = 0,
-                LiveUfos = wave.Ufo is not null && !SuppressedSupplyWave(mission, rule, wave)
+                LiveUfos = spawned.Ufo is not null && !SuppressedSupplyWave(mission, rule, spawned)
                     ? checked(mission.LiveUfos + 1) : mission.LiveUfos
             };
         }

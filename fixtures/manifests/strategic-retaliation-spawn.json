@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "strategic-retaliation-spawn",
-  "description": "Retaliation assault/scouting and instant termination decisions, target order, source override, default constructor and movement setup.",
+  "description": "Retaliation assault/scouting and instant termination decisions, target order, source override, default constructor and movement setup. Includes missing original UFO rules with explicit assault overrides, retaining prior traces.",
   "reference": {
     "kind": "cpp-reference",
     "repository": "oxce-bai",
@@ -15,8 +15,8 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_retaliation_spawn_probe.cpp",
-      "size": 4139,
-      "sha256": "8f477fa5e0b2c7c9719385c43f6b95457646c324b8123835b94387f0a7e308b2"
+      "size": 5000,
+      "sha256": "7dc61f72d9ead147cca4b34d7a61e13baa63760861a00ab83da80ef7525d9ae5"
     },
     {
       "path": "tools/capture-strategic-retaliation-spawn-reference.ps1",

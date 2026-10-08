@@ -127,7 +127,8 @@ internal sealed partial class CampaignWorld
     }
 
     private bool HasGeneratedCreationWave(RuntimeAlienMissionRule rule) =>
-        rule.Objective is RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration ||
+        rule.Objective is RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration or
+            RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation ||
         rule.Waves.Any(wave => wave.Ufo is not null ||
         rule.Objective == RuntimeMissionObjective.Site && wave.Objective || wave.Deployment is { } deployment &&
         campaign.Content.RuntimeRules.AlienDeployments[deployment].Value.MarkerName.Length != 0);

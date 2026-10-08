@@ -75,9 +75,9 @@ public sealed class StrategicRetaliationGenerationTests
                     var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
                     if (targeted)
                     {
-                        AssertTimeBlocked(campaign, hunting
-                            ? "Alien base hunting can create a mission; immediate hunting mission simulation is unavailable."
-                            : "Alien base mission can spawn during its creation tick; immediate generated waves require world simulation.");
+                        AssertTimeBlocked(campaign, objective == 6
+                            ? "Retaliation assault arrival requires base-defense simulation."
+                            : "Retaliation assault spawning requires a UFO rule.");
                         continue;
                     }
                     AdvanceUnblocked(campaign, 1);
