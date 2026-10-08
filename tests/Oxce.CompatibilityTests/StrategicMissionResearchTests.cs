@@ -167,4 +167,39 @@ public sealed class StrategicMissionResearchTests
         Assert.Throws<InvalidOperationException>(() => campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY"));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
+
+    [Theory]
+    [InlineData(50, false)]
+    [InlineData(100, true)]
+    public void MissionEligibilityChargesGeographyListsBeforeExpensiveQueries(int candidates, bool blocked)
+    {
+        var functions = string.Join(", ", Enumerable.Range(0, 120).Select(index => "DIARY_FUNCTION_" + index));
+        var areas = string.Join(", ", Enumerable.Repeat("[180, 181, 20, 21]", 256));
+        var extra = "regions:\n" + string.Concat(Enumerable.Range(0, 32).Select(index =>
+            $"  - {{type: DIARY_REGION_{index}, areas: [{areas}], provideBaseFunc: [{functions}]}}\n")) +
+            "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" +
+            string.Concat(Enumerable.Range(0, candidates).Select(index =>
+                $"  - {{name: AUTO_{index}, cost: 0, dependencies: [CORE], requiresBaseFunc: [DIARY_MISSING]}}\n"));
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, extra);
+        var snapshot = CreateSnapshot(content, "Mission function work");
+        var campaign = CampaignState.Restore(snapshot with
+        {
+            Countries = [],
+            Regions = snapshot.Regions.Where(region => region.RuleId.StartsWith("DIARY_REGION_", StringComparison.Ordinal)).ToArray(),
+        }, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        var reason = campaign.MissionResearch.GrantReason("CORE");
+        if (blocked)
+        {
+            Assert.Equal("Mission research exceeds the supported discovery work limit.", reason);
+            Assert.Throws<InvalidOperationException>(() => campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY"));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+        }
+        else
+        {
+            Assert.Null(reason);
+            campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY");
+            Assert.Equal("CORE", Assert.Single(campaign.Capture().ResearchDiary).RuleId);
+        }
+    }
 }

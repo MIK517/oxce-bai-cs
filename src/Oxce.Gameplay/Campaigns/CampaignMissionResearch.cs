@@ -88,12 +88,16 @@ public sealed partial class CampaignState : ICampaignMissionResearch
             if (reason is not null) return;
             var supported = progress.Advance(topic, (candidateId, candidate) =>
             {
+                var eligibilityWork = owner.Research.Count + (long)candidate.RequiredBaseFunctions.Count +
+                    (candidate.RequiredBaseFunctions.Count == 0 ? 0 : functionWork) + 1;
+                // Reject before HasFunctions can walk a large geography or allocate
+                // its union. Advance then charges this rejected query and stops.
+                if (eligibilityWork > 1_000_000 - work) return (false, eligibilityWork);
                 var handle = rules.Research.GetRequired(candidateId);
                 return (!owner.Research.Any(project => project.Rule == handle) &&
                     (!candidate.NeedItem || candidate.NeededItem is { } needed && rules.Items.TryGet(needed, out var item) &&
                         owner.Items.GetValueOrDefault(item) != 0) && HasFunctions(owner, candidate.RequiredBaseFunctions),
-                    owner.Research.Count + (long)candidate.RequiredBaseFunctions.Count +
-                        (candidate.RequiredBaseFunctions.Count == 0 ? 0 : functionWork) + 1);
+                    eligibilityWork);
             }, (discovered, points, _) =>
             {
                 score += points;
