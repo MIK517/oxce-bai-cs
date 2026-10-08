@@ -54,7 +54,7 @@ internal sealed partial class CampaignWorld
                     var wave = rule.Waves[step.NextWave];
                     if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchWaveReason;
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
-                    if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork, allowHunters: true, deferRetargeting: true) is { } birthReason) return birthReason;
+                    if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork) is { } birthReason) return birthReason;
                     births = true;
                 }
             }
@@ -99,7 +99,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? SiteResearchOrdinaryBirthReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        ref long work, ref long landWork, bool allowHunters = false, bool deferRetargeting = false)
+        ref long work, ref long landWork)
     {
         var wave = SpawnWave(mission, rule);
         if (wave.Trajectory is not { } path) return SiteResearchWaveReason;
@@ -107,7 +107,7 @@ internal sealed partial class CampaignWorld
         var trajectory = rules.UfoTrajectories[path].Value;
         // Ordinary lifting does not inspect mission interruption. A one-tick
         // ground start may therefore lift after sites through the owned handler.
-        if (!SiteResearchOrdinaryWave(wave, allowHunters, deferRetargeting)) return SiteResearchWaveReason;
+        if (!SiteResearchOrdinaryWave(wave)) return SiteResearchWaveReason;
         // Reserve bounded geometry and source lookups before the spawn predicate's
         // Cartesian distance checks. This proof does not select a point or draw RNG.
         work += 8L * _alienBases.Count;
@@ -121,17 +121,15 @@ internal sealed partial class CampaignWorld
         if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
         // The owning mission preflight proves retargeting after site research has
         // populated its forecast, still before the transaction mutates anything.
-        return CanSpawnOrdinaryUfoWave(mission, rule, requireHuntingForecast: !deferRetargeting) ? null : SiteResearchWaveReason;
+        return CanSpawnOrdinaryUfoWave(mission, rule, requireHuntingForecast: false) ? null : SiteResearchWaveReason;
     }
 
-    private bool SiteResearchOrdinaryWave(RuntimeMissionWave wave, bool allowHunters = false, bool deferRetargeting = false)
+    private bool SiteResearchOrdinaryWave(RuntimeMissionWave wave)
     {
-        if (wave.Ufo is not { } ufo || wave.Trajectory is not { } path) return false;
-        var rules = campaign.Content.RuntimeRules;
-        var trajectory = rules.UfoTrajectories[path].Value;
-        var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
-        return trajectory.Waypoints.Count >= 2 && !wave.Escort &&
-            (hunterChance <= 0 || allowHunters && (deferRetargeting || trajectory.Altitude(0) == 0 || NoCraftCanBecomeHunterTarget()));
+        // The later owning preflight validates hunter/escort target alternatives,
+        // including relocation to a leader's origin and initialized escort speed.
+        return wave.Ufo is not null && wave.Trajectory is { } path &&
+            campaign.Content.RuntimeRules.UfoTrajectories[path].Value.Waypoints.Count >= 2;
     }
 
     private string? SiteResearchFlightReason(CampaignTimeTrigger highest)
@@ -247,7 +245,7 @@ internal sealed partial class CampaignWorld
                     // Hunting creates after the grants. It cannot enlarge an earlier
                     // interruption scan; the later generated-wave owner validates all
                     // region/race alternatives and geometry before any tick mutation.
-                    if (!SiteResearchOrdinaryWave(SpawnWave(step, mission), allowHunters: true, deferRetargeting: true)) return SiteResearchGenerationReason;
+                    if (!SiteResearchOrdinaryWave(SpawnWave(step, mission))) return SiteResearchGenerationReason;
                 }
                 completes = (ulong)step.NextUfoCounter + 1 >= mission.Waves[step.NextWave].UfoCount &&
                     step.NextWave + 1 == mission.Waves.Count;
@@ -277,7 +275,7 @@ internal sealed partial class CampaignWorld
                 var wave = rule.Waves[step.NextWave];
                 if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchGenerationReason;
                 if (CanAdvanceNoObjectWave(step, rule)) continue;
-                if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork, allowHunters: true, deferRetargeting: true) is { } reason)
+                if (SiteResearchOrdinaryBirthReason(step, rule, ref work, ref landWork) is { } reason)
                     return reason == SiteResearchWaveReason ? SiteResearchGenerationReason : reason;
             }
         }

@@ -96,7 +96,7 @@ public sealed class StrategicWorldSiteResearchBaseTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ImmediateEscortGenerationRemainsAtomic(bool hunting)
+    public void ImmediateEscortGenerationComposesWithSiteResearch(bool hunting)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules:
             "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" + Deployment + "\n" + (hunting ? """
@@ -118,7 +118,27 @@ public sealed class StrategicWorldSiteResearchBaseTests
             Bases = [snapshot.Bases[0] with { Research = [] }],
             World = snapshot.World with { AlienBases = [new(2, "GENERATING_BASE", "RACE_A", 0.2, 0.1)] },
         };
-        AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
-            "Mission site research requires alien-base generation phase forecasts.");
+        snapshot = snapshot.WithNextId("ALIEN_MISSIONS", 100);
+        if (hunting) snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 0,
+                Longitude = 0.2,
+                Latitude = 0.1,
+                Destination = WorldTargetReference.ForWaypoint(1, new(1, 0.6))
+            },
+        }) with
+        { World = snapshot.World with { Waypoints = [new(1, 1, 0.6)] } };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.True(Assert.Single(after.World.Ufos).Escort);
+        Assert.Contains("CORE", after.CompletedResearch);
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equivalent(after, Reload(content, campaign, 17, "generated-escort-site.sav").Capture(), strict: true);
     }
 }
