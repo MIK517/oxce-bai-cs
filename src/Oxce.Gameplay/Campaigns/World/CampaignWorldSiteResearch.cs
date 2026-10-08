@@ -70,7 +70,15 @@ internal sealed partial class CampaignWorld
             var rule = MissionRule(mission);
             if (!mission.Interrupted && forecast.PossibleExplicitTopics.Contains(rule.InterruptResearchId) &&
                 !forecast.GuaranteedExplicitTopics.Contains(rule.InterruptResearchId))
-                return "UFO mission interruption depends on uncertain site research outcomes.";
+            {
+                // Interruption is consulted at an ordinary waypoint arrival, not
+                // during transit, landed countdown or takeoff. A safe transit can
+                // commit its selected outcome before a later tick forecasts arrival.
+                var projected = UfoAfterTimedTransitions(ufo, highest);
+                if (projected.Status == UfoStatus.Flying && projected.Destination is not null &&
+                    UfoDestinationDistance(projected) <= WorldGeometry.RadianSpeed(projected.Speed))
+                    return "UFO mission interruption depends on uncertain site research outcomes.";
+            }
         }
         return null;
     }

@@ -283,3 +283,20 @@ mission-research captures back fresh/cache arrival cases, including disabled
 cores, automatic research exclusion, three rewrites, delayed UFO cleanup and
 uncertain reward refusal before RNG/state changes. All 16 focused site/UFO and
 native lifecycle trace regressions pass.
+
+## Safe uncertain transit and detection caller order (2026-10-08)
+
+Random mission research may execute while an ordinary UFO cannot reach its
+waypoint in the affected flight pass. `AlienMission::ufoReachedWaypoint` reads
+interruption at arrival; transit and `ufoLifting` do not. The bounded proof now
+checks post-site timed UFO state before retaining the uncertain-arrival guard.
+After committing a safe transit's selected outcome, later ticks project its
+actual saved mission state normally.
+
+Actual detection VM cases use `SavedGame::isResearchedScript` through
+`detectUfoFromBase`: the same-tick half-hour pass sees pre-site research, and the
+next detection pass sees the committed grant. Eight explicit saved RNG seeds
+exercise both reward/interruption outcomes in fresh/cache content with reloads.
+Native detection, mission research and lifecycle captures back these composed
+cases. All 17 focused transit/arrival/research-detection tests pass; uncertain
+arrivals still stop before RNG or campaign mutation.
