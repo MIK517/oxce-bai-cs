@@ -96,7 +96,7 @@ public sealed class StrategicWorldAlienBaseCleanupTests
         var content = Load();
         var snapshot = Snapshot(content).WithFacility("CLEANUP_LAB");
         snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Research = [new("CLEANUP_REWARD", 1, 0, 1)] }] };
-        AssertTimeBlocked(Restore(content, snapshot), "Alien base self-destruction depends on uncertain daily research outcomes.");
+        AssertTimeBlocked(Restore(content, snapshot), "Alien base self-destruction requires linked-target alternatives for uncertain research.");
         AssertTimeBlocked(Restore(content, Snapshot(content, "CLEANUP_MISSING_RESEARCH")),
             "Alien base self-destruction references undefined research.");
     }

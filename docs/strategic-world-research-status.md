@@ -1227,3 +1227,20 @@ infiltration retains its intentional work refusal; finite fixtures disable the
 native endless option explicitly. Mission-think revelation was found and
 implemented alongside these cases; its captured evidence is recorded in
 [mission-think base revelation](strategic-mission-script-status.md#mission-think-base-revelation-2026-10-09).
+
+Possible daily research now permits quiet, unlinked base self-destruction through
+the surviving actor's activity/timer/discovery proofs. Empty generation choices
+and pact fields that deletion leaves unchanged add no unavailable effect.
+Native `GeoscapeState::time1Day` and `SavedGame::clearLinksForAlienBase` place
+deletion before daily activity and later generation. Linked missions/craft,
+incoming follower craft, active generation/hunting and changed pact eligibility
+retain precise alternative-forecast checks. Ordinary loaded UFO coordinates
+remain anonymous waypoints, as `Ufo::finishLoading` requires.
+
+Pinned cleanup/activity captures back fresh/cache 32-seed deletion/survival,
+visible/hidden targets, empty generation and unchanged pact cases. Full selected
+control snapshots/RNG, activity, stable birth identity and counters are checked.
+Three loaded rewrites conserve unknown fields on a surviving base and remove
+its deleted sidecar permanently. Ambiguous markers and each remaining effect
+stop before the tick mutates. All 607 affected tests pass; targeted formatting,
+code-map and diff checks pass. The three daily slices are ready for batch audit.
