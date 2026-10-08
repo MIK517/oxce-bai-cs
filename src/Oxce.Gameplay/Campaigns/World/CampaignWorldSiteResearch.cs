@@ -54,6 +54,11 @@ internal sealed partial class CampaignWorld
                     // Final objectives execute before sites. Their owning later
                     // preflight reserves base/pact effects before the tick mutates.
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
+                    if (IsDirectSiteWave(step, rule))
+                    {
+                        if (SiteResearchDirectBirthReason(step, rule, ref generationWork) is { } directReason) return directReason;
+                        continue;
+                    }
                     if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork) is { } birthReason) return birthReason;
                     births = true;
                 }
@@ -122,6 +127,40 @@ internal sealed partial class CampaignWorld
         // The owning mission preflight proves retargeting after site research has
         // populated its forecast, still before the transaction mutates anything.
         return CanSpawnOrdinaryUfoWave(mission, rule, requireHuntingForecast: false) ? null : SiteResearchWaveReason;
+    }
+
+    private string? SiteResearchDirectBirthReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, ref long work)
+    {
+        var wave = rule.Waves[mission.NextWave];
+        if (wave.Trajectory is null) return SiteResearchWaveReason;
+        if (wave.ObjectiveOnXcomBase)
+        {
+            work += DirectSiteBaseWork(mission);
+            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            if (DirectSiteBases(mission).Count == 0) return null;
+        }
+        var areas = DirectSiteAreas(mission, rule);
+        work += areas.Count;
+        foreach (var area in areas)
+        {
+            work += SiteDeploymentSelectionWork(wave, rule, area);
+            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            var candidates = SiteDeploymentCandidates(wave, rule, area);
+            work += candidates.Count;
+            if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            foreach (var candidate in candidates)
+            {
+                var deployment = campaign.Content.RuntimeRules.AlienDeployments[candidate].Value;
+                if (deployment.DurationMinimum < 0 || deployment.DurationMaximum < deployment.DurationMinimum ||
+                    deployment.DurationMaximum > int.MaxValue / 3600)
+                    return "Direct mission site duration is outside the supported range.";
+                if (deployment.DurationMinimum == 0)
+                    return "Newborn mission site research requires ordered expiry forecasts.";
+            }
+        }
+        // These appended sites cannot expire in their birth tick, so they do not
+        // add a grant. The later site owner validates counters and geometry.
+        return null;
     }
 
     private bool SiteResearchOrdinaryWave(RuntimeMissionWave wave)
