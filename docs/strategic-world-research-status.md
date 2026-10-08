@@ -930,3 +930,20 @@ checksums, private corpus and populated allocation gates. The reference remains
 clean at the pin; useful captures remain and no native objects were generated.
 Random immediate/surviving durations, optional generation, divergent grant
 sequences and generated retaliation remain explicit research composition work.
+
+## Optional immediate research (2026-10-08)
+
+Saved and deterministic daily births with random zero/positive duration now use
+bounded grant-or-no-grant alternatives. The research kernel retains skipped
+outcomes, publishes guaranteed/possible research and explicit interruption sets,
+and separately exposes the post-grant state conditional on expiry. Direct-site
+events use that conditional state; later countdown events and flight use the
+combined outcomes. Native duration selection still occurs only during creation.
+
+All 404 affected tests pass. Verified spawn/timer/generation evidence backs
+fresh/cache 32-seed controls, actual expiry/diary/interruption decisions, event
+suppression, three rewrites and exact RNG/site comparisons. A possible grant
+cannot suppress a due event, and excessive alternative chains stop atomically.
+Kernel checks preserve campaign/RNG state and distinguish conditional from
+guaranteed research. Malformed duration and selected-choice regressions remain
+strict. Optional generation and divergent research choices are the next slices.

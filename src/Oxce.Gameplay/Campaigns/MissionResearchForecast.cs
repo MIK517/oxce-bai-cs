@@ -116,6 +116,23 @@ public sealed partial class CampaignState
                     next.Add(primary);
                 }
             }
+            return Publish(next);
+        }
+
+        public string? AdvanceOptional(string id, out IReadOnlySet<string> whenGranted)
+        {
+            var skipped = _outcomes;
+            var reason = Advance(id);
+            whenGranted = _guaranteedResearch;
+            if (reason is not null || _campaign._bases.Count == 0 || !_rules.Research.TryGet(id, out _)) return reason;
+            if (_outcomes.Count + skipped.Count > 256)
+                return _reason = "Mission research exceeds the supported outcome limit.";
+            List<Outcome> combined = [.. _outcomes, .. skipped];
+            return Publish(combined);
+        }
+
+        private string? Publish(List<Outcome> next)
+        {
             if (_reason is null)
             {
                 // Cache summaries once, charging copying, union and intersection work.
