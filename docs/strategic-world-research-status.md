@@ -1174,3 +1174,13 @@ three rewrites and next-tick cleanup. Base markers, generated preservation keys,
 birth sequence, race, month and activity are checked. Possible marker, birth
 sequence and score overflow remain whole-tick refusals before research selection.
 All 504 affected tests pass; targeted formatting, code-map and diff checks pass.
+
+Six fresh/cache endurance cases now compose both selected research outcomes
+through 72 hours of conversion (with/without dormant respawn) or landing-base
+activity. Single-tick, hourly and daily batches match the entire snapshot at
+each day boundary, including RNG, craft maintenance, stocks and research diary.
+Transition/day/final rewrites retain only surviving targets; deleted sites,
+UFOs and missions do not return. Repeated future events retain distinct
+preservation keys, ordered timers and history for removed rules. Due payloads
+and integrated month rollover still block atomically. All six scenarios pass;
+these three arrival slices are ready for their batch audit.
