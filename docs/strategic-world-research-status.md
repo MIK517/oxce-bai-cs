@@ -797,3 +797,17 @@ Fresh/cache native generation/objective/infiltration-repeat evidence backs
 no-site base/RNG controls, three rewrites, next-boundary deletion, unused earlier
 grant links and atomic marker/birth-sequence exhaustion. All 62 affected tests
 pass. The three objective slices are ready for their joint audit.
+
+The final-objective batch audit confirms completion/restart counters, earlier
+cleanup versus late persistence, consumed interruption links, newborn base/pact
+reservations and later hunting capacity. Existing restore normalization clears
+stale craft destinations before newborn identities can be created. No additional
+runtime defect was confirmed. The precommit endless-survivor correction is covered
+by both missing-link atomicity and valid restart/cleanup regressions.
+
+All 3,826 root tests pass with zero failures/skips, including native checksums,
+private corpus and populated allocation gates. Full formatting, code-map and diff
+verification pass. The reference remains clean at the pin; useful captures remain
+and no native objects were generated. Newborn-site and generated-retaliation
+research composition, remaining uncertainty and final headless closure keep 4c
+open. Branch 4d and later-branch transitions are unchanged.
