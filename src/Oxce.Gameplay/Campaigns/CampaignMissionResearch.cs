@@ -13,7 +13,7 @@ internal interface ICampaignMissionResearch
 /// <summary>The world owns immediate interruption for the explicit mission-source grants.</summary>
 internal interface ICampaignMissionResearchInterruption
 {
-    string? ValidationReason();
+    string? ValidationReason(ref long work);
     void Interrupt(IReadOnlyList<string> explicitTopics);
 }
 

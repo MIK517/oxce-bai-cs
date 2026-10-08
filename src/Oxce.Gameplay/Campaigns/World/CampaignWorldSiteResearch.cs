@@ -1,5 +1,3 @@
-using Oxce.Mods.Rulesets.Runtime;
-
 namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
@@ -18,7 +16,13 @@ internal sealed partial class CampaignWorld
         {
             if (!SiteExpiresThisTick(site, highest)) continue;
             var deployment = rules.AlienDeployments[rules.AlienDeployments.GetRequired(site.DeploymentId)].Value;
-            if (rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _)) { found = true; break; }
+            if (!rules.Research.TryGet(deployment.UnlockedResearchOnDespawnId, out _)) continue;
+            found = true;
+            // An unconditional unavailable payload cannot be made safe by any
+            // research outcome. Keep that boundary ahead of composition guards.
+            foreach (var pair in deployment.DespawnEvents)
+                if (pair.Value != 0 && rules.Events.TryGet(pair.Key, out var handle) &&
+                    rules.Events[handle].Value.InterruptResearch.Length == 0) return SiteDespawnBoundary;
         }
         if (!found) return null;
         // These boundaries name the still-unprojected caller phases. Research-only

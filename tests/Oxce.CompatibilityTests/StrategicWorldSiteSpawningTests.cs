@@ -556,6 +556,8 @@ public sealed class StrategicWorldSiteSpawningTests
         var content = StrategicReadinessTestContent.Load(
             ["strategic-world.rul", "strategic-site-expiry.rul", "strategic-site-spawn.rul"], extraRules: overlay);
         var campaign = CampaignState.Restore(Snapshot(content, "DIRECT_ZERO_COUNTERS"), content, new QuarterChoices());
-        AssertTimeBlocked(campaign, "Mission site despawn requires research or event payloads.");
+        AssertTimeBlocked(campaign, research
+            ? "Generated mission site research requires ordered expiry forecasts."
+            : "Mission site despawn requires research or event payloads.");
     }
 }

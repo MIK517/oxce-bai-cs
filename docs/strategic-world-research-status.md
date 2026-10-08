@@ -184,3 +184,17 @@ blocks at its later horizon after reload. Native `strategic-event` timer evidenc
 and the research execution capture back these cases. All 33 focused site/event
 cases pass. This does not execute event effects or remove other named research
 phase guards.
+
+The three-slice audit confirmed two resource/guard details. Unconditional
+instant-event payloads now retain precedence over research/UFO composition
+guards, preserving the dormant-UFO atomic boundary. Ordered projections charge
+each grant's repeated mission-link validation/interruption passes and its
+per-grant snapshot proof. A 1,001-mission case permits 100 no-op repeat grants
+and refuses further work before the shared budget can be exceeded.
+
+The initial root run passed 3,534 of 3,536 tests; both failures concerned exact
+guard reasons. The dormant-UFO payload precedence was fixed. The generated-site
+test now expects the intentional precise research-birth guard for its research
+case and retains the payload guard for its event case; whole-tick state/RNG
+assertions remain unchanged. All 102 audit regression cases pass. Full
+formatting passed before the correction; final root/format acceptance follows.

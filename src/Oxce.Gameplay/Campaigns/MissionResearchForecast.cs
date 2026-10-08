@@ -55,11 +55,14 @@ public sealed partial class CampaignState
         {
             if (_reason is not null) return _reason;
             if (_campaign._bases.Count == 0 || !_rules.Research.TryGet(id, out var handle)) return null;
-            if (_campaign._handlers.Operation<ICampaignMissionResearchInterruption>().ValidationReason() is { } invalid)
+            if (_campaign._handlers.Operation<ICampaignMissionResearchInterruption>().ValidationReason(ref _work) is { } invalid)
                 return _reason = invalid;
             List<Outcome> next = [];
             foreach (var prior in _outcomes)
             {
+                // Real per-site GrantReason also starts a fresh snapshot proof.
+                // Reserve that repeated copy, even though this ordered proof reuses its context.
+                _work += prior.Completed.Count + (long)prior.Statuses.Count;
                 var primary = Clone(prior);
                 if (_reason is not null) break;
                 MissionResearchSequence.Primary(_rules, id, (topic, _) => Grant(primary, topic));

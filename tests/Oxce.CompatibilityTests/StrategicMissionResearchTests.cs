@@ -286,4 +286,31 @@ public sealed class StrategicMissionResearchTests
             }
         }
     }
+
+    [Fact]
+    public void OrderedGrantsReserveRepeatedMissionValidationAndInterruptionPasses()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+            research:
+              - {name: UNLOCK, cost: 1}
+              - {name: CORE, cost: 1}
+            """);
+        var initial = CreateSnapshot(content, "Repeated mission-link work");
+        var snapshot = initial with
+        {
+            World = initial.World with
+            {
+                Missions = Enumerable.Range(1, 1001).Select(id =>
+                    new AlienMissionSnapshot(id, "MISSION_SCOUT", "REGION", "RACE_A", 0, 0, 9000, 0, -1)).ToArray(),
+            },
+        };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        var forecast = campaign.MissionResearch.CreateForecast();
+        for (var index = 0; index < 100; index++) Assert.Null(forecast.Advance("CORE"));
+        string? reason = null;
+        for (var index = 100; index < 600 && reason is null; index++) reason = forecast.Advance("CORE");
+        Assert.Equal("Mission research exceeds the supported discovery work limit.", reason);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
 }
