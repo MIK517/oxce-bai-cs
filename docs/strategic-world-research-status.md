@@ -38,5 +38,10 @@ with malformed optional keys now skip that payload on both load and rewrite,
 while original slot indices and surviving occurrence identities remain stable.
 The existing fresh/cache native comparison adds this case and passes three
 rewrites; all 28 focused diary/world-persistence cases pass. The prior root
-checkpoint passed 3,499 tests with no failures/skips. Final acceptance follows
-the audit correction before the quota pause.
+checkpoint passed 3,499 tests with no failures/skips. Final acceptance after
+the correction also passes all 3,499 root tests, including native checksums,
+private corpus and populated allocation gates. Full formatting verification,
+code-map and diff checks pass. The reference checkout remains clean and the
+empty successful format log was removed. This closes the persistence slice
+and its interim audit; the two execution slices and full cycle audit resume
+after refreshed quota. World-owned research execution remains guarded.
