@@ -24,7 +24,8 @@ public sealed class StrategicResearchDiaryTests
         var rows = TestFixtures.Rows(oracle.RootElement, "rows").ToArray();
         var yaml = OxceSaveAdapter.EmitNewCampaign(snapshot) + "researchDiary:\n" +
             string.Join("\n", rows.Select(row => "  - " + row.GetRawText())) + "\n" +
-            "  - {name: REMOVED_TOPIC, date: invalid, sourceType: invalid, sourceName: invalid, oxcePortEntityKey: 'research-diary:legacy:0'}\n";
+            "  - {name: REMOVED_TOPIC, date: invalid, sourceType: invalid, sourceName: invalid, oxcePortEntityKey: 'research-diary:legacy:0'}\n" +
+            "  - {name: REMOVED_TOPIC, oxcePortEntityKey: {future: ignored}}\n";
         var loaded = TestFixtures.LoadLogisticsSave(yaml, content, 17, "research-diary.sav");
         Assert.True(oracle.RootElement.GetProperty("skippedUndefined").GetBoolean());
         for (var pass = 0; pass < 3; pass++)
