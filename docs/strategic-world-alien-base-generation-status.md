@@ -742,3 +742,10 @@ All 377 focused generation/retaliation/infiltration/repeat/objective-base cases
 pass. Native captures remain useful; the obsolete object was removed. No
 additional confirmed defect was found in target discovery, caller timing,
 country reservations or save ownership during this batch audit.
+
+Root validation passes all 3,488 tests without failures or skips, including
+native fixture checksums, private corpus and populated allocation gates.
+Full formatting verification, regenerated code-map and diff checks pass.
+The reference checkout is clean. Useful captures remain, the native object
+and empty successful formatting log were removed, and the three-slice
+late-infiltration/retaliation cycle and batch audit are closed.
