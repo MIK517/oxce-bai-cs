@@ -235,3 +235,23 @@ a new site grant cannot destroy today's base; the next daily pass deletes it.
 Native activity, cleanup, hunting-timer and mission research captures back the
 composed cases, including three rewrites and atomic generation refusal. All
 101 focused site/base and existing activity/cleanup/hunting tests pass.
+
+## Site research after daily facility completion (2026-10-08)
+
+The mission research projection receives the highest tick trigger explicitly.
+At a daily boundary it includes first-base facilities with one day remaining;
+other callers use completed facilities only. It shares the existing ordered
+country/region and facility function check, including disabled facilities, and
+retains its geography/list work reservation before eligibility scans. Actual
+grants validate the state after construction, using the default current-state
+context.
+
+Reference: `GeoscapeState::time1Day` construction before research/world handlers,
+`Base::getProvidedBaseFunc` and `SavedGame::addFinishedResearch` eligibility.
+Native research production/execution captures back fresh/cache cases for zero,
+one and two-day construction, non-daily exclusion, unchanged forecast state,
+score/diary results and three rewrites. A due event is interrupted only when the
+automatic research is eligible; otherwise the whole tick remains untouched.
+All 34 focused facility/mission-research/event cases pass, including the existing
+bounded geography and alternative-outcome cases. Active daily research projects
+and timed item eligibility retain their separate composition guards.

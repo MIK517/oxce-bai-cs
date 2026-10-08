@@ -32,8 +32,6 @@ internal sealed partial class CampaignWorld
         {
             if (highest >= CampaignTimeTrigger.OneDay && owner.Research.Count != 0)
                 return "Mission site research requires daily project phase forecasts.";
-            if (highest >= CampaignTimeTrigger.OneDay && owner.Facilities.Any(facility => facility.BuildTime == 1))
-                return "Mission site research requires completed-facility eligibility forecasts.";
         }
         foreach (var saved in _missions)
         {
@@ -50,7 +48,7 @@ internal sealed partial class CampaignWorld
                     craft.Logistics is { Status: "STR_REFUELLING" })))
                 return "Mission site research requires timed item eligibility forecasts.";
         }
-        var forecast = campaign.MissionResearch.CreateForecast();
+        var forecast = campaign.MissionResearch.CreateForecast(highest);
         var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
         foreach (var site in _sites)
         {

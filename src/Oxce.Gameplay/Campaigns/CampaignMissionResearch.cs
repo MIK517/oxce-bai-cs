@@ -7,7 +7,7 @@ internal interface ICampaignMissionResearch
 {
     string? GrantReason(string id);
     bool Grant(string id, string deploymentId);
-    CampaignState.MissionResearchForecast CreateForecast();
+    CampaignState.MissionResearchForecast CreateForecast(CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds);
 }
 
 /// <summary>The world owns immediate interruption for the explicit mission-source grants.</summary>
@@ -65,7 +65,7 @@ public sealed partial class CampaignState : ICampaignMissionResearch
         return MissionResearch.CreateForecast().Advance(id);
     }
 
-    MissionResearchForecast ICampaignMissionResearch.CreateForecast() => new(this);
+    MissionResearchForecast ICampaignMissionResearch.CreateForecast(CampaignTimeTrigger highest) => new(this, highest);
 
     bool ICampaignMissionResearch.Grant(string id, string deploymentId)
     {

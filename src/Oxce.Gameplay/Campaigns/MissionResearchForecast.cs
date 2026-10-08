@@ -11,6 +11,7 @@ public sealed partial class CampaignState
         private const string WorkReason = "Mission research exceeds the supported discovery work limit.";
         private readonly CampaignState _campaign;
         private readonly RuntimeRuleCatalog _rules;
+        private readonly int _completedBuildTime;
         private List<Outcome> _outcomes;
         private long _work;
         private readonly long _functionWork;
@@ -20,10 +21,13 @@ public sealed partial class CampaignState
         private IReadOnlySet<string> _guaranteedExplicitTopics = new HashSet<string>(StringComparer.Ordinal);
         private IReadOnlySet<string> _possibleExplicitTopics = new HashSet<string>(StringComparer.Ordinal);
 
-        internal MissionResearchForecast(CampaignState campaign)
+        internal MissionResearchForecast(CampaignState campaign, CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds)
         {
             _campaign = campaign;
             _rules = campaign.Content.RuntimeRules;
+            // Construction decrements positive timers before the daily research
+            // and world callers. The real GrantReason runs after that transition.
+            _completedBuildTime = highest >= CampaignTimeTrigger.OneDay ? 1 : 0;
             _work = campaign._completedResearch.Count + (long)campaign._researchRuleStatus.Count;
             _outcomes = [new(new(campaign._completedResearch, StringComparer.Ordinal),
                 new(campaign._researchRuleStatus, StringComparer.Ordinal), campaign._researchScores[^1], 0, new(StringComparer.Ordinal))];
@@ -137,7 +141,7 @@ public sealed partial class CampaignState
                 var candidateHandle = _rules.Research.GetRequired(candidateId);
                 return (!owner.Research.Any(project => project.Rule == candidateHandle) &&
                     (!candidate.NeedItem || candidate.NeededItem is { } needed && _rules.Items.TryGet(needed, out var item) &&
-                        owner.Items.GetValueOrDefault(item) != 0) && _campaign.HasFunctions(owner, candidate.RequiredBaseFunctions), eligibilityWork);
+                        owner.Items.GetValueOrDefault(item) != 0) && _campaign.HasFunctions(owner, candidate.RequiredBaseFunctions, _completedBuildTime), eligibilityWork);
             }, (discovered, points, _) =>
             {
                 outcome.Score += points;
