@@ -26,12 +26,7 @@ internal sealed partial class CampaignWorld
         if (!found) return null;
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
-        if (_ufos.Any(ufo => ufo.Escort || ufo.Hunting || ufo.Escorting)) return SiteResearchUfoReason;
-        if (_ufos.Any(ufo => ufo.HunterKiller))
-            foreach (var owner in campaign.BaseStates)
-                foreach (var craft in owner.Crafts)
-                    if (craft.Logistics?.Destination is { Kind: WorldTargetKind.MissionSite } target && ReturnsFromSiteBeforeMovement(target, highest))
-                        return "Site research hunting requires forced follower return forecasts.";
+        if (_ufos.Any(ufo => ufo.Escort || ufo.Escorting)) return SiteResearchUfoReason;
         if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
         foreach (var owner in campaign.BaseStates)
         {

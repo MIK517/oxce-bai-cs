@@ -114,7 +114,7 @@ public sealed class StrategicWorldSiteResearchTests
     }
 
     [Fact]
-    public void UnprojectedHunterPhaseStopsBeforeSiteResearchAndCounterChanges()
+    public void SiteResearchCannotBypassAnActiveHunterCombatBoundary()
     {
         var content = Content(false, 0, Deployment);
         var existing = CreateUfoTransitCampaign(content, new(2, 2, 1, 1999, 0, 29, 55)).Capture();
@@ -129,9 +129,14 @@ public sealed class StrategicWorldSiteResearchTests
         }]
             }
         };
+        existing = existing.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            { Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0, Longitude = 0.4, Latitude = 0.2, Destination = null }
+        });
         var snapshot = existing with { World = existing.World with { MissionSites = Snapshot(content).World.MissionSites } };
         AssertTimeBlocked(CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17)),
-            "Mission site research requires UFO phase forecasts.");
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)
