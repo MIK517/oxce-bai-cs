@@ -87,8 +87,10 @@ documents; entries here link to them instead of copying them.
   Saved/daily/late final base and infiltration objectives now compose too,
   including endless survivors; their batch audit and all 3,826 root tests pass.
   Saved/daily positive-duration direct births and late direct births now compose
-  too; their batch audit and all 3,844 root tests pass. Earlier immediate site
-  expiry, generated-retaliation research and remaining
+  too; their batch audit and all 3,844 root tests pass. Saved/daily deterministic
+  immediate expiry and equal-topic deployment choices now compose as well;
+  their suppression/resource audit fixes and all 3,870 root tests pass. Random
+  expiry/generation, divergent grants, generated-retaliation research and remaining
   uncertainty and final closure keep 4c open;
   4d is unchanged.
 
