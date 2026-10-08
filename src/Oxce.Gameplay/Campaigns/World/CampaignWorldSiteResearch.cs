@@ -503,7 +503,8 @@ internal sealed partial class CampaignWorld
         if (_pass.GeneratedWaveMissions is not { } candidates) return SiteResearchGenerationReason;
         var found = false;
         long landWork = 0;
-        List<SiteResearchBirth>? first = null;
+        var firstBirth = immediateBirths.Count;
+        var skippedPath = false;
         foreach (var birth in candidates)
         {
             if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
@@ -530,23 +531,15 @@ internal sealed partial class CampaignWorld
                 surviving = true;
             }
             allRemoved &= completed && !surviving;
-            if (first is not null)
-            {
-                if (first.Count != candidateBirths.Count) return "Immediate generated site research requires identical birth grant sequences.";
-                for (var index = 0; index < first.Count; index++)
-                {
-                    var left = first[index];
-                    var right = candidateBirths[index];
-                    work += left.Deployments.Count + (long)right.Deployments.Count;
-                    if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                    if (left.Mission.NextWave != right.Mission.NextWave || left.Mission.NextUfoCounter != right.Mission.NextUfoCounter ||
-                        left.Optional != right.Optional)
-                        return "Immediate generated site research requires identical birth grant sequences.";
-                }
-            }
-            first ??= candidateBirths;
+            skippedPath |= candidateBirths.Count == 0;
             immediateBirths.AddRange(candidateBirths);
         }
+        if (skippedPath)
+            for (var index = firstBirth; index < immediateBirths.Count; index++)
+            {
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                immediateBirths[index] = immediateBirths[index] with { GenerationOptional = true };
+            }
         // Prepared candidates retain every reachable region/race/area alternative.
         // A real ordinary birth survives cleanup and enlarges the later grant scan.
         return found ? null : SiteResearchGenerationReason;
