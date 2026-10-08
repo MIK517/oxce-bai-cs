@@ -12,6 +12,7 @@ internal sealed record DailyResearchStockForecast(
     public int? NextTransferId { get; init; }
     public IReadOnlyList<CustomCounterChange> CounterChanges { get; init; } = [];
     public IReadOnlySet<string>? CompletedResearch { get; init; }
+    public long DiaryEntries { get; init; }
 }
 
 public sealed partial class CampaignState
@@ -34,6 +35,7 @@ public sealed partial class CampaignState
         Dictionary<int, Dictionary<string, int>> changes = [];
         Dictionary<int, List<KeyValuePair<string, int>>> arrivals = [];
         List<CustomCounterChange>? counters = null;
+        long diaryEntries = 0;
         foreach (var owner in _bases)
         {
             work += owner.Research.Count;
@@ -90,6 +92,8 @@ public sealed partial class CampaignState
                 work += local.Count;
                 if (work > 1_000_000) return false;
                 local.Remove(project);
+                RecordDiary(rules.Research.GetExternalId(project.Rule));
+                RecordDiary(rule.Lookup);
                 work += rule.GetOneFree.Count;
                 foreach (var group in rule.GetOneFreeProtected) work += 1L + group.Topics.Count;
                 if (work > 1_000_000) return false;
@@ -100,7 +104,13 @@ public sealed partial class CampaignState
                 if (candidates.Count != 0 && rules.Research.TryGet(candidates[0], out var bonus))
                 {
                     var reward = rules.Research[bonus];
-                    if (!Discover(reward.Id, ref work) || reward.Value.Lookup.Length != 0 && !Discover(reward.Value.Lookup, ref work)) return false;
+                    RecordDiary(reward.Id);
+                    if (!Discover(reward.Id, ref work)) return false;
+                    if (reward.Value.Lookup.Length != 0)
+                    {
+                        RecordDiary(reward.Value.Lookup);
+                        if (!Discover(reward.Value.Lookup, ref work)) return false;
+                    }
                     sideEffects.Add(bonus);
                 }
                 var id = rules.Research.GetExternalId(project.Rule);
@@ -120,9 +130,15 @@ public sealed partial class CampaignState
                         (long)owner.Items.GetValueOrDefault(item) + changes[owner.Id].GetValueOrDefault(needed) != 0;
                     return (!active && availableItem && candidate.RequiredBaseFunctions.All(provided.Contains),
                         local.Count + (long)candidate.RequiredBaseFunctions.Count + 1);
-                }, null, ref localWork, 1_000_000 - projectionWork);
+                }, (discoveredId, _, _) => { if (discoveredId != id) diaryEntries++; }, ref localWork, 1_000_000 - projectionWork);
                 projectionWork += localWork;
                 return supported;
+            }
+
+            void RecordDiary(string id)
+            {
+                if (!_debugMode && rules.Research.TryGet(id, out _) && !completed.Contains(id) && statuses.GetValueOrDefault(id) != 2)
+                    diaryEntries++;
             }
             work += rules.Research.Count;
             if (work > 1_000_000) return false;
@@ -193,6 +209,7 @@ public sealed partial class CampaignState
             NextTransferId = nextTransfer,
             CounterChanges = counters?.AsReadOnly() ?? (IReadOnlyList<CustomCounterChange>)[],
             CompletedResearch = includeDiscoveries ? completed.ToFrozenSet(StringComparer.Ordinal) : null,
+            DiaryEntries = diaryEntries,
         };
         return true;
 
