@@ -348,3 +348,15 @@ fresh/cache cases, three rewrites, continued hunting after interruption and
 retargeted speed/destination. All 20 focused hunting/site/arrival cases pass.
 Active hunts, escorts and forced site-return fuel projection remain the next
 parts of this cycle; combat boundaries stay in branch 5.
+
+## Site research during active hunting (2026-10-08)
+
+Active hunts now compose with saved-site research. Craft forecasts return forced
+site followers, and followers of bases removed by earlier daily research, before
+ten-minute fuel consumption and hunter selection. The projection preserves
+saved craft order and charges the target scans against the hunting work budget.
+Reference: GeoscapeState::processMissionSite, time10Minutes and
+ufoHuntingAndEscorting; Craft::returnToBase/consumeFuel. Native site-timer,
+hunting and mission-research captures back fresh/cache low-fuel target loss,
+continued pursuit, three rewrites and an atomic branch-5 combat refusal. All
+485 focused hunting/site cases pass. Escort composition is the next slice.

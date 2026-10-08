@@ -51,8 +51,8 @@ public sealed class StrategicWorldSiteResearchHuntingTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool uncertain = false, string extraRules = "") =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
+    internal static RuntimeContent Content(bool cache, bool uncertain = false, string extraRules = "", string[]? ruleFiles = null) =>
+        StrategicReadinessTestContent.Load(ruleFiles ?? ["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1{{(uncertain ? ", getOneFree: [BONUS, OTHER]" : "")}}}

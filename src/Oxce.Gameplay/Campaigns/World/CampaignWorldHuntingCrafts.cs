@@ -101,8 +101,25 @@ internal sealed partial class CampaignWorld
                 if (state.Status != "STR_OUT") continue;
                 if (!owner.IsPlaced || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
                     return "Airborne craft coordinates require a placed base and normalized positions.";
-                if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out _))
+                if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var maximum))
                     return SpeedRangeReason;
+                // Daily base removal and half-hour site expiry return followers
+                // before the ten-minute fuel and hunter target-selection callers.
+                if (state.Destination is { Kind: WorldTargetKind.MissionSite } siteTarget && highest >= CampaignTimeTrigger.ThirtyMinutes)
+                {
+                    work += _sites.Count;
+                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (ReturnsFromSiteBeforeMovement(siteTarget, highest))
+                        state = SetDestination(state, maximum, BaseReference(owner));
+                }
+                if (state.Destination is { Kind: WorldTargetKind.AlienBase } baseTarget && highest >= CampaignTimeTrigger.OneDay)
+                {
+                    work += _alienBases.Count;
+                    if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                    if (_alienBases.Any(alienBase => FollowsAlienBase(baseTarget, alienBase) &&
+                            BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast)))
+                        state = SetDestination(state, maximum, BaseReference(owner));
+                }
                 _pass.HuntingCraftForecast[key] = AdvanceCraftFuel(owner, craft, state, _pass.HuntingCraftForecast);
             }
         return null;
