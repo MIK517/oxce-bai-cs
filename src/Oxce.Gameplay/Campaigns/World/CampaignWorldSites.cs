@@ -98,7 +98,7 @@ internal sealed partial class CampaignWorld
                     foreach (var craft in owner.Crafts)
                     {
                         if (!FollowsSite(craft.Logistics?.Destination, site)) continue;
-                        if (craft.Logistics is not { Status: "STR_OUT" } state || !owner.IsPlaced)
+                        if (craft.Logistics is not { } state || !owner.IsPlaced)
                             return "A mission site follower craft cannot return to its base.";
                         if (!CraftLogistics.TryEffectiveSpeedMaximum(
                                 rules.Crafts[craft.Rule].Value, state.Weapons, rules, out _))
@@ -367,7 +367,7 @@ internal sealed partial class CampaignWorld
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value,
                         state.Weapons, rules, out var speed))
                     throw new InvalidOperationException("Mission site follower speed changed after world preflight.");
-                owner.Crafts[index] = craft with { Logistics = SetDestination(state, speed, BaseReference(owner)) };
+                owner.Crafts[index] = craft with { Logistics = SetDestination(state, speed, BaseReference(owner)) with { Status = state.Status } };
             }
     }
 }

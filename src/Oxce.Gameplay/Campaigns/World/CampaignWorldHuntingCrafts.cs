@@ -98,29 +98,30 @@ internal sealed partial class CampaignWorld
                 if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 var key = (rules.Crafts.GetExternalId(craft.Rule), craft.Id);
                 var state = _pass.HuntingCraftForecast[key];
-                if (state.Status != "STR_OUT") continue;
-                if (!owner.IsPlaced || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
-                    return "Airborne craft coordinates require a placed base and normalized positions.";
-                if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var maximum))
-                    return SpeedRangeReason;
+                var returnHome = false;
                 // Daily base removal and half-hour site expiry return followers
                 // before the ten-minute fuel and hunter target-selection callers.
                 if (state.Destination is { Kind: WorldTargetKind.MissionSite } siteTarget && highest >= CampaignTimeTrigger.ThirtyMinutes)
                 {
                     work += _sites.Count;
                     if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    if (ReturnsFromSiteBeforeMovement(siteTarget, highest))
-                        state = SetDestination(state, maximum, BaseReference(owner));
+                    returnHome = ReturnsFromSiteBeforeMovement(siteTarget, highest);
                 }
                 if (state.Destination is { Kind: WorldTargetKind.AlienBase } baseTarget && highest >= CampaignTimeTrigger.OneDay)
                 {
                     work += _alienBases.Count;
                     if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
-                    if (_alienBases.Any(alienBase => FollowsAlienBase(baseTarget, alienBase) &&
-                            BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast)))
-                        state = SetDestination(state, maximum, BaseReference(owner));
+                    returnHome = _alienBases.Any(alienBase => FollowsAlienBase(baseTarget, alienBase) &&
+                        BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast));
                 }
-                _pass.HuntingCraftForecast[key] = AdvanceCraftFuel(owner, craft, state, _pass.HuntingCraftForecast);
+                if (state.Status != "STR_OUT" && !returnHome) continue;
+                if (!owner.IsPlaced || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
+                    return "Airborne craft coordinates require a placed base and normalized positions.";
+                if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var maximum))
+                    return SpeedRangeReason;
+                if (returnHome) state = SetDestination(state, maximum, BaseReference(owner)) with { Status = state.Status };
+                _pass.HuntingCraftForecast[key] = state.Status == "STR_OUT"
+                    ? AdvanceCraftFuel(owner, craft, state, _pass.HuntingCraftForecast) : state;
             }
         return null;
     }
