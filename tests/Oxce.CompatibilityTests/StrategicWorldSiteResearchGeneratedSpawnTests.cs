@@ -19,6 +19,14 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         AssertBirth(cache, final, hunting: false);
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HuntingGeneratedBirthFollowsSiteGrantAndMissesEarlierInterruption(bool cache, bool final) =>
+        AssertBirth(cache, final, hunting: true);
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void FinalDailyGeneratedUfoKeepsItsInvalidInterruptionLinkReachable(bool cache)

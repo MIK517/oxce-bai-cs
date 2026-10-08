@@ -105,11 +105,9 @@ internal sealed partial class CampaignWorld
         if (wave.Ufo is not { } ufo || wave.Trajectory is not { } path) return SiteResearchWaveReason;
         var rules = campaign.Content.RuntimeRules;
         var trajectory = rules.UfoTrajectories[path].Value;
-        var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
         // Ordinary lifting does not inspect mission interruption. A one-tick
         // ground start may therefore lift after sites through the owned handler.
-        if (trajectory.Waypoints.Count < 2 || !allowGround && trajectory.Altitude(0) == 0 || hunterChance > 0 || wave.Escort)
-            return SiteResearchWaveReason;
+        if (!SiteResearchOrdinaryWave(wave, allowGround)) return SiteResearchWaveReason;
         // Reserve bounded geometry and source lookups before the spawn predicate's
         // Cartesian distance checks. This proof does not select a point or draw RNG.
         work += 8L * _alienBases.Count;
@@ -122,6 +120,15 @@ internal sealed partial class CampaignWorld
         landWork += SpawnOriginLandWork(mission, rule, trajectory, region);
         if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
         return CanSpawnOrdinaryUfoWave(mission, rule) ? null : SiteResearchWaveReason;
+    }
+
+    private bool SiteResearchOrdinaryWave(RuntimeMissionWave wave, bool allowGround)
+    {
+        if (wave.Ufo is not { } ufo || wave.Trajectory is not { } path) return false;
+        var rules = campaign.Content.RuntimeRules;
+        var trajectory = rules.UfoTrajectories[path].Value;
+        var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
+        return trajectory.Waypoints.Count >= 2 && (allowGround || trajectory.Altitude(0) != 0) && hunterChance <= 0 && !wave.Escort;
     }
 
     private string? SiteResearchFlightReason(CampaignTimeTrigger highest)
@@ -232,7 +239,13 @@ internal sealed partial class CampaignWorld
                 var wave = mission.Waves[step.NextWave];
                 if (CompletesBaseObjective(step, mission, wave) || CompletesInfiltration(step, mission, wave)) return SiteResearchGenerationReason;
                 if (!CanAdvanceNoObjectWave(step, mission))
-                    return hunting ? SiteResearchGenerationReason : SiteResearchDailyBirthReason(source, mission, missionId, ref work);
+                {
+                    if (!hunting) return SiteResearchDailyBirthReason(source, mission, missionId, ref work);
+                    // Hunting creates after the grants. It cannot enlarge an earlier
+                    // interruption scan; the later generated-wave owner validates all
+                    // region/race alternatives and geometry before any tick mutation.
+                    if (!SiteResearchOrdinaryWave(SpawnWave(step, mission), allowGround: false)) return SiteResearchGenerationReason;
+                }
                 completes = (ulong)step.NextUfoCounter + 1 >= mission.Waves[step.NextWave].UfoCount &&
                     step.NextWave + 1 == mission.Waves.Count;
             }

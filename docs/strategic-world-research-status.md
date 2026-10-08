@@ -619,3 +619,14 @@ Verified generation call traces, spawnPathRows and diary captures back fresh/cac
 initial/next timer draws, source linkage, birth movement, interruption and three
 rewrites. All 47 affected generation/objective/base research tests pass; the six
 new birth cases first failed at the previous generation composition boundary.
+
+Late hunting-generated ordinary airborne births now compose with saved-site
+grants. Their shape excludes hunters/escorts and final objective effects; the
+owning later generated-wave preflight still validates every reachable region,
+race, area and first-destination geometry before mutation. Since this caller
+follows site grants, these new missions neither receive the earlier explicit
+interruption nor enlarge its link scan. Reference: GeoscapeState::baseHunting
+and AlienMission::start/think/spawnUfo. Verified hunting generation calls and
+spawn/diary captures back fresh/cache birth movement, native RNG order, final
+and prefix counters, source links and three rewrites. All 30 affected tests
+pass; the four new late-birth cases first failed at the previous boundary.
