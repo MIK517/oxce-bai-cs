@@ -133,7 +133,8 @@ public sealed class StrategicResearchDiaryExecutionTests
         Reload(content, campaign, 17, "nested-diary.sav");
     }
 
-    internal static RuntimeContent Content(bool cache, int scenario, string extraRules = "") => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(bool cache, int scenario, string extraRules = "", string[]? ruleFiles = null) =>
+        StrategicReadinessTestContent.Load(ruleFiles ?? ["strategic-world.rul"], cache, $$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, lookup: LOOKUP, getOneFree: [BONUS], sequentialGetOneFree: true, repeatable: {{(scenario == 2 ? "true" : "false")}}}
