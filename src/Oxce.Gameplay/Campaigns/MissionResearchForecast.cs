@@ -28,7 +28,8 @@ public sealed partial class CampaignState
         internal MissionResearchForecast(CampaignState campaign, CampaignTimeTrigger highest = CampaignTimeTrigger.FiveSeconds,
             DailyResearchStockForecast? precedingResearch = null,
             IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0,
-            int precedingMissionBirths = 0, IReadOnlySet<int>? precedingMissionRemovals = null)
+            int precedingMissionBirths = 0, IReadOnlySet<int>? precedingMissionRemovals = null,
+            IReadOnlyList<RuleHandle<ItemRuleFamily>>? uncertainFirstBaseItems = null)
         {
             _campaign = campaign;
             _rules = campaign.Content.RuntimeRules;
@@ -48,6 +49,7 @@ public sealed partial class CampaignState
                 precedingResearch?.DiaryEntries ?? 0, new(StringComparer.Ordinal))];
             _guaranteedResearch = _possibleResearch = _outcomes[0].Completed;
             if (campaign._bases.Count == 0) return;
+            if (uncertainFirstBaseItems is not null) PrepareItemAlternatives(uncertainFirstBaseItems);
             var owner = campaign._bases[0];
             _functionWork = owner.Facilities.Count + campaign._countries.Count + (long)campaign._regions.Count;
             foreach (var facility in owner.Facilities) _functionWork += _rules.Facilities[facility.Rule].Value.ProvidedBaseFunctions.Count;
@@ -69,6 +71,30 @@ public sealed partial class CampaignState
         public IReadOnlySet<string> PossibleResearch => _possibleResearch;
         public IReadOnlySet<string> GuaranteedExplicitTopics => _guaranteedExplicitTopics;
         public IReadOnlySet<string> PossibleExplicitTopics => _possibleExplicitTopics;
+
+        private void PrepareItemAlternatives(IReadOnlyList<RuleHandle<ItemRuleFamily>> items)
+        {
+            HashSet<RuleHandle<ItemRuleFamily>> seen = [];
+            foreach (var item in items)
+            {
+                if (++_work > MaximumWork) { _reason = WorkReason; return; }
+                if (!seen.Add(item)) continue;
+                if (_outcomes.Count > 128) { _reason = "Mission research exceeds the supported outcome limit."; return; }
+                List<Outcome> next = [];
+                foreach (var prior in _outcomes)
+                {
+                    _work += 1L + (prior.AbsentItems?.Count ?? 0);
+                    if (_work > MaximumWork) { _reason = WorkReason; return; }
+                    // Initial research sets are shared only before grants, which
+                    // always clone them. Item masks stay immutable across grants.
+                    HashSet<RuleHandle<ItemRuleFamily>> absent = prior.AbsentItems is { } earlier ? new(earlier) : [];
+                    absent.Add(item);
+                    next.Add(prior);
+                    next.Add(new(prior.Completed, prior.Statuses, prior.Score, prior.DiaryEntries, prior.ExplicitTopics, absent));
+                }
+                _outcomes = next;
+            }
+        }
 
         public string? Advance(string id)
         {
@@ -243,7 +269,7 @@ public sealed partial class CampaignState
             if (_work > MaximumWork) _reason = WorkReason;
             return _reason is not null ? outcome : new(new(outcome.Completed, StringComparer.Ordinal),
                 new(outcome.Statuses, StringComparer.Ordinal), outcome.Score, outcome.DiaryEntries,
-                new(outcome.ExplicitTopics, StringComparer.Ordinal));
+                new(outcome.ExplicitTopics, StringComparer.Ordinal), outcome.AbsentItems);
         }
 
         private ResearchDiscoveryProgress Progress(Outcome outcome) => new(_rules, outcome.Completed, outcome.Statuses);
@@ -265,6 +291,7 @@ public sealed partial class CampaignState
                 var addedItems = _precedingResearch?.StockChanges.GetValueOrDefault(owner.Id)?.GetValueOrDefault(candidate.NeededItem ?? "") ?? 0;
                 return (!active &&
                     (!candidate.NeedItem || candidate.NeededItem is { } needed && _rules.Items.TryGet(needed, out var item) &&
+                        outcome.AbsentItems?.Contains(item) != true &&
                         (_firstBaseItems is not null ? _firstBaseItems.GetValueOrDefault(item) :
                             (long)owner.Items.GetValueOrDefault(item) + addedItems) != 0) && _campaign.HasFunctions(owner, candidate.RequiredBaseFunctions, _completedBuildTime), eligibilityWork);
             }, (discovered, points, _) =>
@@ -293,11 +320,12 @@ public sealed partial class CampaignState
         }
 
         private sealed class Outcome(HashSet<string> completed, Dictionary<string, int> statuses, long score,
-            long diaryEntries, HashSet<string> explicitTopics)
+            long diaryEntries, HashSet<string> explicitTopics, IReadOnlySet<RuleHandle<ItemRuleFamily>>? absentItems = null)
         {
             public HashSet<string> Completed { get; } = completed;
             public Dictionary<string, int> Statuses { get; } = statuses;
             public HashSet<string> ExplicitTopics { get; } = explicitTopics;
+            public IReadOnlySet<RuleHandle<ItemRuleFamily>>? AbsentItems { get; } = absentItems;
             public long Score { get; set; } = score;
             public long DiaryEntries { get; set; } = diaryEntries;
         }
