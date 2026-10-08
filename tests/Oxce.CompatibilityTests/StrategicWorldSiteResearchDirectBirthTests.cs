@@ -117,7 +117,66 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false,
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void LateGeneratedDirectSitesDeferTheirExpiryAndResearchUntilTheNextCaller(bool cache, int duration)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-site-timer");
+        for (var finalIndex = 0; finalIndex <= 1; finalIndex++)
+        {
+            var final = finalIndex == 1;
+            var content = Content(cache, final, duration, hunting: true, interrupt: final ? "MISSING_RESEARCH" : "CORE");
+            var initial = GeneratedSnapshot(content, hunting: true);
+            var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "late-direct-before.sav");
+            AdvanceUnblocked(control, 1);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(2, after.World.MissionSites.Count);
+            Assert.All(after.World.MissionSites, site => Assert.Equal(duration * 3600, site.SecondsRemaining));
+            Assert.Equivalent(control.Capture().World.MissionSites, after.World.MissionSites, strict: true);
+            Assert.Equal(control.Capture().RandomState, after.RandomState);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            Assert.False(Assert.Single(after.World.Missions).Interrupted);
+            for (var pass = 0; pass < 3; pass++)
+            {
+                campaign = Reload(content, campaign, 17, "late-direct-after.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 360);
+            var later = campaign.Capture();
+            if (duration == 0)
+            {
+                Assert.Empty(later.World.MissionSites);
+                Assert.Equal(DiaryTopics, later.ResearchDiary.Select(entry => entry.RuleId));
+            }
+            else
+            {
+                Assert.Equal(2, later.World.MissionSites.Count);
+                Assert.All(later.World.MissionSites, site => Assert.Equal(1800, site.SecondsRemaining));
+                Assert.Single(later.ResearchDiary);
+            }
+            if (final) Assert.Empty(later.World.Missions);
+            else Assert.False(Assert.Single(later.World.Missions).Interrupted);
+            Assert.Equivalent(later, Reload(content, campaign, 17, "late-direct-next-caller.sav").Capture(), strict: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void LateGeneratedDirectSitesRetainBirthTickCapacityBoundaries(bool cache)
+    {
+        var content = Content(cache, hunting: true, duration: 0);
+        AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content, hunting: true).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
+            "Mission site marker IDs are exhausted or collide with a saved target.");
+    }
+
+    internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false, bool hunting = false,
         int objective = 0, string interrupt = "CORE") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
         research:
@@ -145,15 +204,23 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             genMission: {RESEARCH_DIRECT_CHAIN: 1}
             genMissionFreq: {{{(generated ? 100 : 0)}}}
             genMissionLimit: 1
+            baseDetectionRange: {{{(hunting ? 100 : 0)}}}
+            baseDetectionChance: 100
+            huntMissionMaxFrequency: 9000
+            huntMissionWeights: {0: {RESEARCH_DIRECT_CHAIN: 1}}
         """);
 
-    internal static CampaignSnapshot GeneratedSnapshot(RuntimeContent content)
+    internal static CampaignSnapshot GeneratedSnapshot(RuntimeContent content, bool hunting = false)
     {
-        var initial = StrategicWorldSiteResearchGenerationTests.Snapshot(content);
+        var initial = StrategicWorldSiteResearchGeneratedObjectiveTests.Snapshot(content, hunting);
+        if (hunting) initial = initial with { Time = new(1, 1, 1, 1999, 0, 59, 55) };
         return initial with
         {
             World = initial.World with
-            { AlienBases = [new(2, "RESEARCH_DIRECT_BASE", "RACE_A", 0.2, 0.1) { Discovered = true }] }
+            {
+                AlienBases = [new(2, "RESEARCH_DIRECT_BASE", "RACE_A", 0.2, 0.1)
+            { Discovered = true, MinutesSinceLastHuntMissionGeneration = hunting ? 8990 : 0 }]
+            }
         };
     }
 
