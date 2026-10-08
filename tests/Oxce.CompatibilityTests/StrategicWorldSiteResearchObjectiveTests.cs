@@ -73,7 +73,39 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
             "Retaliation assault arrival requires base-defense simulation.");
     }
 
-    internal static RuntimeContent Content(bool cache, int objective, bool prefix = true) => StrategicReadinessTestContent.Load(
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    [InlineData(false, 5)]
+    [InlineData(true, 5)]
+    public void SavedCompletedCounterMissionDoesNotResolveALinkAfterItsRemoval(bool cache, int objective)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        var content = Content(cache, objective, prefix: false, interrupt: "MISSING_RESEARCH");
+        var initial = Snapshot(content, objective);
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(66));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Empty(after.World.Missions);
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal(initial.RandomState, after.RandomState);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        Assert.Equivalent(after, Reload(content, campaign, 66, "removed-saved-research-link.sav").Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SavedSurvivingPrefixStillResolvesItsInterruptionLink(bool cache)
+    {
+        var content = Content(cache, 3, interrupt: "MISSING_RESEARCH");
+        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 3), content, new SplitMix64RandomSource(66)),
+            "Alien mission interruption references undefined research.");
+    }
+
+    internal static RuntimeContent Content(bool cache, int objective, bool prefix = true, string interrupt = "CORE") => StrategicReadinessTestContent.Load(
         ["strategic-world.rul"], cache, $$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -84,7 +116,7 @@ public sealed class StrategicWorldSiteResearchObjectiveTests
           - type: OWNED_COUNTER_PREFIX
             objective: {{objective}}
             endlessInfiltration: false
-            interruptResearch: CORE
+            interruptResearch: {{interrupt}}
             spawnZone: 1
             siteType: ALIEN_BASE_DEPLOY
             waves:

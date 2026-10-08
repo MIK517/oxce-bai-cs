@@ -4,7 +4,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld : ICampaignMissionResearchInterruption
 {
-    string? ICampaignMissionResearchInterruption.ValidationReason(ref long work)
+    string? ICampaignMissionResearchInterruption.ValidationReason(ref long work, IReadOnlySet<int>? precedingMissionRemovals)
     {
         // Each real grant checks links, then visits missions again to interrupt
         // its explicit topics. Ordered forecasts reserve both passes per grant.
@@ -13,6 +13,7 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
         var rules = campaign.Content.RuntimeRules;
         foreach (var mission in _missions)
         {
+            if (precedingMissionRemovals?.Contains(mission.Id) == true) continue;
             var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
             if (rule.InterruptResearchId.Length != 0 && rule.InterruptResearch is null)
                 return "Alien mission interruption references undefined research.";

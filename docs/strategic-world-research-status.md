@@ -534,3 +534,14 @@ effects. Craft destinations use a real persisted waypoint so unrelated patrol
 discovery does not add RNG to the caller comparison. All 49 affected
 objective/generation research tests pass. Reference: GeoscapeState::baseHunting,
 AlienMission::start/think and daily interruption before generation.
+
+The objective-prefix batch audit confirmed the saved-mission counterpart of
+the consumed-link issue. Six failing fresh/cache score/site/supply cases showed
+that research validation was still inspecting missions removed by the preceding
+half-hour cleanup. The world now supplies proven saved removals to the research
+capability; default immediate callers still validate their actual mission list.
+Proof work includes removal membership and original list traversal, while new
+daily survivors retain their enlarged-scan reservation. Surviving malformed
+prefixes still stop atomically. All 57 affected research/generation cases pass.
+Reference: GeoscapeState::time30Minutes cleanup and SavedGame's active-mission
+scan in handleResearchUnlockedByMissions. No event/combat/month boundary changes.
