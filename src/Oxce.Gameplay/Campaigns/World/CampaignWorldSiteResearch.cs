@@ -237,8 +237,6 @@ internal sealed partial class CampaignWorld
             foreach (var step in DueWaveSteps(candidate, mission))
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                var wave = mission.Waves[step.NextWave];
-                if (hunting && (CompletesBaseObjective(step, mission, wave) || CompletesInfiltration(step, mission, wave))) return SiteResearchGenerationReason;
                 if (!CanAdvanceNoObjectWave(step, mission))
                 {
                     if (!hunting) return SiteResearchDailyBirthReason(source, mission, missionId, ref work);

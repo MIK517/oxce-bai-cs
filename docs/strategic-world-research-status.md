@@ -786,3 +786,14 @@ Verified infiltration-repeat regressions require atomic missing-link refusal and
 valid restart/interruption/reload/next-half-hour cleanup. All 45 affected generated
 objective, generation and infiltration-repeat tests pass. Late completions remain
 the third caller slice; no event payload or later-branch transition is enabled.
+
+Late base-hunting final objectives now compose after the saved-site grants.
+GeoscapeState::baseHunting appends and thinks the mission after processMissionSite;
+it does not run the earlier half-hour cleanup again. New finished missions retain
+their un-interrupted state until the next cleanup, and endless infiltration
+restarts without receiving the earlier explicit grant. The later objective owner
+still proves marker/population/birth-sequence capacity before tick mutation.
+Fresh/cache native generation/objective/infiltration-repeat evidence backs
+no-site base/RNG controls, three rewrites, next-boundary deletion, unused earlier
+grant links and atomic marker/birth-sequence exhaustion. All 62 affected tests
+pass. The three objective slices are ready for their joint audit.
