@@ -81,7 +81,10 @@ documents; entries here link to them instead of copying them.
   their same-source/72-hour audit and all 3,754 root tests pass.
   Safe saved/generated hunter births now compose through no-target or landed
   phase proofs; the later combat regression and all 3,768 root tests pass.
-  Targetable hunter/escort births, research-dependent objective transitions,
+  Targetable saved/generated hunter and escort births now compose through
+  the existing later retarget proofs; their batch audit passes all 3,798 root
+  tests and 488 affected tests including probabilistic immediate escorts.
+  Research-dependent objective transitions,
   newborn-site phase composition, remaining uncertainty and final closure keep 4c open;
   4d is unchanged.
 
