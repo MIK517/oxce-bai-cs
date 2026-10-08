@@ -265,3 +265,21 @@ line endings; the initial focused invocation used an invalid wildcard and was
 rerun with valid filters. Code-map verification passes and the reference tree
 remains unchanged. Generated native captures remain useful; empty successful
 format logs were removed.
+
+## Site research before ordinary UFO flight (2026-10-08)
+
+Ordinary UFO flight now uses guaranteed explicit mission-source interruption
+after the site pass. Earlier mission think and detection retain their native
+pre-site state. Disabled explicit topics still interrupt their matching
+missions; automatic discoveries do not enter that immediate topic vector.
+Uncertain explicit interruption retains a named whole-tick boundary, and
+hunter/escort and dormant reactivation composition remain separate guards.
+UFO/mission lookup work is bounded before visiting links.
+
+Reference: `SavedGame::handleResearchUnlockedByMissions`'s explicit vector,
+`AlienMission::ufoReachedWaypoint`'s interruption-first branch and
+`GeoscapeState::time30Minutes/time5Seconds` caller order. Native lifecycle and
+mission-research captures back fresh/cache arrival cases, including disabled
+cores, automatic research exclusion, three rewrites, delayed UFO cleanup and
+uncertain reward refusal before RNG/state changes. All 16 focused site/UFO and
+native lifecycle trace regressions pass.
