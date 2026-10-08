@@ -144,7 +144,20 @@ internal sealed partial class CampaignWorld
                     if (choice.Key.Length == 0 || choice.Value == 0) continue;
                     if (!missions.TryGet(choice.Key, out var handle)) return SiteResearchGenerationReason;
                     var mission = missions[handle].Value;
-                    if (mission.Waves.Count == 0 || mission.Waves[0].SpawnTimer / 30 / 2 <= 1) return SiteResearchGenerationReason;
+                    if (mission.Waves.Count == 0) return SiteResearchGenerationReason;
+                    if (mission.Waves[0].SpawnTimer / 30 / 2 <= 1)
+                    {
+                        // Only counter transitions can compose without a new actor
+                        // or objective-state prefix at the later research caller.
+                        if (mission.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply))
+                            return SiteResearchGenerationReason;
+                        try
+                        {
+                            if (ImmediateNoObjectReason(alienBase, rule, mission, ref work, SiteResearchGenerationReason) is { } reason)
+                                return reason;
+                        }
+                        catch (InvalidDataException error) { return error.Message; }
+                    }
                     // The native site caller resolves every active mission's
                     // interruption rule, including newly created delayed missions.
                     if (mission.InterruptResearchId.Length != 0 && mission.InterruptResearch is null)

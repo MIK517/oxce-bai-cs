@@ -66,6 +66,98 @@ public sealed class StrategicWorldSiteResearchGenerationTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyCounterOnlyCreationRunsBeforeSiteResearchWithoutActorBirths(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-alien-base-generation");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "immediateRows"))
+        {
+            var name = row[0].GetString()!;
+            var content = Content(cache);
+            var initial = Snapshot(content);
+            initial = initial with
+            {
+                World = initial.World with
+                { AlienBases = [initial.World.AlienBases[0] with { DeploymentId = "GEN_BASE_" + name }] }
+            };
+            var random = new SplitMix64RandomSource(initial.RandomState);
+            foreach (var call in row[4].EnumerateArray()) random.NextInclusive(call[0].GetInt32(), call[1].GetInt32());
+            // The real initial timer draw is the last captured call, not an
+            // additional draw. Replay it from the preceding generator state.
+            var timerRandom = new SplitMix64RandomSource(initial.RandomState);
+            foreach (var call in row[4].EnumerateArray().Take(row[4].GetArrayLength() - 1))
+                timerRandom.NextInclusive(call[0].GetInt32(), call[1].GetInt32());
+            var countdown = WorldTrajectory.SpawnCountdown(name == "immediate" ? 90 : 0, timerRandom);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Empty(after.World.Ufos);
+            Assert.Empty(after.World.MissionSites);
+            Assert.Equal(random.State, after.RandomState);
+            Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            if (countdown <= 30) Assert.Empty(after.World.Missions);
+            else
+            {
+                var mission = Assert.Single(after.World.Missions);
+                Assert.True(mission.Interrupted);
+                Assert.Equal((0, countdown - 30), (mission.NextWave, mission.SpawnCountdown));
+            }
+            Assert.Equivalent(after, Reload(content, campaign, 17, "site-research-generated-counter.sav").Capture(), strict: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedZeroTimerChainsComposeWithinTheirExistingWorkLimit(bool cache, bool excessive)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-wave-chain");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache,
+            "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" +
+            StrategicWorldSiteResearchTests.Deployment + $$"""
+
+              - type: GENERATED_CHAIN_BASE
+                markerName: CHAIN_BASE
+                genMission: {CHAIN_{{(excessive ? "excessive" : "zero")}}: 1}
+                genMissionFreq: 100
+                genMissionLimit: 1
+            """);
+        var initial = Snapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            { AlienBases = [initial.World.AlienBases[0] with { DeploymentId = "GENERATED_CHAIN_BASE" }] }
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        if (excessive)
+            AssertTimeBlocked(campaign, "Immediate mission waves exceed the supported work limit.");
+        else
+        {
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Empty(after.World.Missions);
+            Assert.Empty(after.World.MissionSites);
+            Assert.Empty(after.World.Ufos);
+            Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
+            var random = new SplitMix64RandomSource(initial.RandomState);
+            random.NextInclusive(1, 1);
+            random.NextInclusive(0, 99);
+            random.NextInclusive(0, 99);
+            random.NextInclusive(0, 0); // Initial start timer.
+            var row = TestFixtures.Rows(oracle.RootElement, "cases").Single(row => row.GetProperty("name").GetString() == "zero");
+            var draws = TestFixtures.Rows(row, "rows").First()[4].GetInt32();
+            for (var draw = 0; draw < draws; draw++) random.NextInclusive(0, 0);
+            Assert.Equal(random.State, after.RandomState);
+            Assert.Equivalent(after, Reload(content, campaign, 17, "generated-research-chain.sav").Capture(), strict: true);
+        }
+    }
+
     internal static RuntimeContent Content(bool cache, string interrupt = "CORE") => StrategicReadinessTestContent.Load(
         ["strategic-world.rul", "strategic-alien-base-generation.rul"], cache, $$"""
         research:
@@ -73,6 +165,8 @@ public sealed class StrategicWorldSiteResearchGenerationTests
           - {name: CORE, cost: 1}
         alienMissions:
           - {type: GEN_local, interruptResearch: {{interrupt}}}
+          - {type: GEN_immediate, interruptResearch: CORE}
+          - {type: GEN_immediateZero, interruptResearch: CORE}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)
