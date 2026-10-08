@@ -17,6 +17,63 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
     [InlineData(true, 1)]
     [InlineData(false, 2)]
     [InlineData(true, 2)]
+    public void SavedHuntersSelectCraftAfterSiteResearchAndPersistPursuit(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
+        var content = Content(cache, mode);
+        var initial = TargetSnapshot(StrategicWorldSiteResearchSpawnTests.Snapshot(content));
+        var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "research-hunter-before.sav");
+        AdvanceUnblocked(control, 1);
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        var after = campaign.Capture();
+        var born = Assert.Single(after.World.Ufos);
+        Assert.True(born.Hunting);
+        Assert.True(born.Detected);
+        Assert.Equal(WorldTargetKind.Craft, born.Destination!.Kind);
+        Assert.Equal(initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Id, born.Destination.Id);
+        var transition = Assert.Single(TestFixtures.Rows(oracle.RootElement, "retargetRows"), row => row[0].GetInt32() == 150);
+        Assert.Equal(transition[1].GetInt32(), born.Speed);
+        Assert.NotNull(born.OriginalWaypoint);
+        Assert.Equal(born.UniqueId, Assert.Single(result.Events.OfType<UfoStartedHunting>()).UniqueId);
+        Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
+        Assert.Equal(control.Capture().RandomState, after.RandomState);
+        Assert.True(Assert.Single(after.World.Missions).Interrupted);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        Assert.Equivalent(after, Reload(content, campaign, 17, "research-hunter-after.sav").Capture(), strict: true);
+        AdvanceUnblocked(campaign, 12);
+        Assert.True(Assert.Single(campaign.Capture().World.Ufos).Hunting);
+        Reload(content, campaign, 17, "research-hunter-following.sav");
+        var combat = initial.WithCraft("SHIP", craft => craft with
+        { Logistics = craft.Logistics! with { Longitude = Degrees(10), Latitude = Degrees(8) } });
+        AssertTimeBlocked(CampaignState.Restore(combat, content, new SplitMix64RandomSource(17)),
+            "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
+    }
+
+    internal static CampaignSnapshot TargetSnapshot(CampaignSnapshot initial) => initial.WithCraft("SHIP", craft => craft with
+    {
+        Logistics = craft.Logistics! with
+        {
+            Status = "STR_OUT",
+            Takeoff = 0,
+            Fuel = 300,
+            Speed = 0,
+            Destination = null,
+            Longitude = Degrees(10) + WorldGeometry.Nautical(100),
+            Latitude = Degrees(8),
+        },
+    });
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
     public void SavedTargetlessHuntersComposeBeforeSiteInterruption(bool cache, int mode)
     {
         using var hunting = TestFixtures.ReadVerifiedExpected("strategic-hunting");
@@ -117,6 +174,7 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
             noAlert: true
             hunterKillerPercentage: 100
             huntMode: {{mode}}
+            huntSpeed: 150
             huntBehavior: 0
         """, ufo: "SITE_RESEARCH_HUNTER");
 }
