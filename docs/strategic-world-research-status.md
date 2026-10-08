@@ -300,3 +300,20 @@ exercise both reward/interruption outcomes in fresh/cache content with reloads.
 Native detection, mission research and lifecycle captures back these composed
 cases. All 17 focused transit/arrival/research-detection tests pass; uncertain
 arrivals still stop before RNG or campaign mutation.
+
+## Research-bearing dormant site reactivation (2026-10-08)
+
+Research-bearing sites now use the existing ordered dormant UFO lift forecasts.
+`processMissionSite` grants research, updates counters/events/activity and then
+calls `AlienMission::ufoLifting`; interruption affects the later waypoint arrival
+rather than preventing the lift. Dormant contacts still miss the earlier radar
+pass. Existing lift-speed, follower repair, shield and combined activity checks
+remain authoritative before the tick mutates.
+
+Native site-lift/lifecycle and mission-research captures back fresh/cache cases
+for lift-plus-transit and lift-plus-interrupted departure, three rewrites,
+retained ground timer/landing identity, shield initialization and later cleanup.
+A combined nine-point site/lift overflow and an unconditional instant event both
+stop before the research grant or reactivation. All 38 focused site/reactivation
+and arrival regressions pass. Hunter/escort, generated actors and daily project/
+item eligibility still retain separate composition boundaries.
