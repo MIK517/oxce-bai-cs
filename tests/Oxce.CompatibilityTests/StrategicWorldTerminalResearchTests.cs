@@ -1,0 +1,81 @@
+using Oxce.Core.Random;
+using Oxce.Gameplay.Campaigns;
+using Oxce.Gameplay.Campaigns.World;
+using Oxce.Mods.Rulesets.Content;
+using Oxce.TestSupport;
+using Xunit;
+using static Oxce.CompatibilityTests.StrategicWorldTestSupport;
+
+namespace Oxce.CompatibilityTests;
+
+public sealed class StrategicWorldTerminalResearchTests
+{
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TerminalArrivalHasTheSameCleanupForBothExplicitResearchOutcomes(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
+        var content = Content(cache);
+        var controlContent = Content(cache, interrupt: "");
+        var interruptedSeen = false;
+        var uninterruptedSeen = false;
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = StrategicWorldSiteResearchUfoTests.Arrival(content) with { RandomState = seed };
+            var trajectory = content.RuntimeRules.UfoTrajectories[content.RuntimeRules.UfoTrajectories.GetRequired(initial.World.Ufos[0].TrajectoryId)].Value;
+            initial = initial with
+            {
+                World = initial.World with
+                { Ufos = [initial.World.Ufos[0] with { TrajectoryPoint = trajectory.Waypoints.Count - 1 }] }
+            };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            var control = CampaignState.Restore(initial, controlContent, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            AdvanceUnblocked(control, 1);
+            var after = campaign.Capture();
+            var mission = Assert.Single(after.World.Missions);
+            Assert.Equal(after.CompletedResearch.Contains("BONUS"), mission.Interrupted);
+            Assert.Equal(UfoStatus.Destroyed, Assert.Single(after.World.Ufos).Status);
+            Assert.Equal(1, mission.LiveUfos);
+            Assert.Empty(after.World.MissionSites);
+            Assert.Equal(control.Capture().RandomState, after.RandomState);
+            Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
+            interruptedSeen |= mission.Interrupted;
+            uninterruptedSeen |= !mission.Interrupted;
+            for (var pass = 0; pass < 3; pass++)
+            {
+                campaign = Reload(content, campaign, seed, "terminal-research-arrival.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 1);
+            Assert.Empty(campaign.Capture().World.Ufos);
+            Assert.All(campaign.Capture().World.Missions, retained => Assert.Equal(0, retained.LiveUfos));
+            Reload(content, campaign, seed, "terminal-research-cleanup.sav");
+        }
+        Assert.True(interruptedSeen);
+        Assert.True(uninterruptedSeen);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NonterminalArrivalStillRequiresBothResearchFlightOutcomesToBeProved(bool cache)
+    {
+        var content = Content(cache);
+        AssertTimeBlocked(CampaignState.Restore(StrategicWorldSiteResearchUfoTests.Arrival(content), content, new SplitMix64RandomSource(17)),
+            "UFO mission interruption depends on uncertain site research outcomes.");
+    }
+
+    private static RuntimeContent Content(bool cache, string interrupt = "BONUS") =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        research:
+          - {name: UNLOCK, cost: 1}
+          - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
+          - {name: BONUS, cost: 1}
+          - {name: OTHER, cost: 1}
+        alienMissions:
+          - {type: MISSION_SCOUT, interruptResearch: {{{interrupt}}}}
+        """ + "\n" + StrategicWorldSiteResearchTests.Deployment);
+}
