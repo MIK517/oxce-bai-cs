@@ -641,3 +641,16 @@ Verified generation, spawnPathRows and normalLiftRows cover both timers and
 callers, source coordinates, native draw order, interruption, combined activity,
 next-tick lift and three rewrites. All 46 affected birth/base research tests
 pass; four new grounded cases first failed at the previous composition guard.
+
+The generated-birth batch audit passes all 370 affected research/spawn/escort
+tests. Same-source daily and hunting births retain separate mission/UFO
+identities and opposite interruption states through repeated rewrites. Two
+72-hour fresh/cache scenarios compare daily batches with hourly advancement
+and daily reloads, including later interruption, cleanup, bounded populations
+and intact UFO-to-mission links. Review covered all prepared alternatives,
+consumed-only link validation, source matching and work limits, native caller
+order and later event/combat/objective guards. No runtime defect was confirmed.
+
+Full generated-birth acceptance passes all 3,754 root tests, with no failures
+or skips, plus full formatting and regenerated code-map verification. Existing
+captures and ignored validation logs remain useful; no native objects were added.

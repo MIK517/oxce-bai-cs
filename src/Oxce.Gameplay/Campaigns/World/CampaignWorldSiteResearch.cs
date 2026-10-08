@@ -224,8 +224,8 @@ internal sealed partial class CampaignWorld
         removedBeforeSiteResearch = false;
         if (mission.Waves.Count == 0) return SiteResearchGenerationReason;
         if (mission.Waves[0].SpawnTimer / 30 / 2 > 1) return null;
-        // Only counter transitions can compose without a new actor or objective
-        // prefix. The owning generator still validates all other creation fields.
+        // Counter prefixes can use a source-only candidate. Actor geometry needs
+        // the daily alternatives or the owning later hunting preflight instead.
         if (mission.Objective is RuntimeMissionObjective.Retaliation or RuntimeMissionObjective.InstantRetaliation)
             return SiteResearchGenerationReason;
         try

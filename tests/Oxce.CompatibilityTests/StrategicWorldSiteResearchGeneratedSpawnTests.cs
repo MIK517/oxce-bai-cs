@@ -91,6 +91,63 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SameSourceBirthsStraddleSiteResearchAndRemainDistinctAfterReload(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        var content = Content(cache, hunting: true, bothCallers: true);
+        var initial = Snapshot(content, hunting: true) with { Time = new(1, 1, 1, 1999, 23, 59, 55) };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(2, after.World.Ufos.Count);
+        Assert.Collection(after.World.Missions,
+            mission => { Assert.Equal(1, mission.Id); Assert.True(mission.Interrupted); Assert.Equal(1, mission.LiveUfos); },
+            mission => { Assert.Equal(2, mission.Id); Assert.False(mission.Interrupted); Assert.Equal(1, mission.LiveUfos); });
+        Assert.Equal(2, after.World.Ufos.Select(ufo => ufo.UniqueId).Distinct().Count());
+        Assert.All(after.World.Ufos, ufo => Assert.Single(after.World.Missions, mission => mission.Id == ufo.MissionId));
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        for (var pass = 0; pass < 3; pass++)
+        {
+            campaign = Reload(content, campaign, 17, "site-research-both-birth-callers.sav");
+            Assert.Equivalent(after, campaign.Capture(), strict: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SeventyTwoHoursPreserveGeneratedUfosThroughDailyInterruptionAndReloads(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var content = Content(cache, hunting: true);
+        var initial = Snapshot(content, hunting: true);
+        var batched = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var reloaded = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(batched, 1);
+        AdvanceUnblocked(reloaded, 1);
+        Assert.Single(batched.Capture().World.Ufos);
+        for (var day = 0; day < 3; day++)
+        {
+            AdvanceUnblocked(batched, 17_280);
+            for (var hour = 0; hour < 24; hour++) AdvanceUnblocked(reloaded, 720);
+            reloaded = Reload(content, reloaded, 17, "generated-ufo-research-endurance.sav");
+            Assert.Equivalent(batched.Capture(), reloaded.Capture(), strict: true);
+            var after = batched.Capture();
+            Assert.InRange(after.World.Missions.Count, 0, 24);
+            Assert.InRange(after.World.Ufos.Count, 0, 24);
+            Assert.All(after.World.Ufos, ufo => Assert.Single(after.World.Missions, mission => mission.Id == ufo.MissionId));
+            Assert.Empty(after.World.MissionSites);
+            Assert.Single(after.World.AlienBases);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        }
+    }
+
     private static void AssertBirth(bool cache, bool final, bool hunting)
     {
         using var generation = TestFixtures.ReadVerifiedExpected(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
@@ -132,7 +189,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool hunting, bool final = false, string interrupt = "CORE", string trajectory = "PATH_0_0") =>
+    internal static RuntimeContent Content(bool cache, bool hunting, bool final = false, string interrupt = "CORE", string trajectory = "PATH_0_0", bool bothCallers = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -150,7 +207,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
           - type: GENERATED_RESEARCH_BIRTH_BASE
             markerName: RESEARCH_BIRTH_BASE
             genMission: {GENERATED_RESEARCH_BIRTH: 1}
-            genMissionFreq: {{{(hunting ? 0 : 100)}}}
+            genMissionFreq: {{{(hunting && !bothCallers ? 0 : 100)}}}
             genMissionLimit: 1
             baseDetectionRange: {{{(hunting ? 100 : 0)}}}
             baseDetectionChance: 100
