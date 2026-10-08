@@ -667,3 +667,12 @@ fresh/cache fixed and random hunt modes, native draw/timer order, waypoint
 movement, later explicit mission interruption and three rewrites. All 106
 affected birth/hunting tests pass; six new cases first failed at the prior
 wave composition boundary. Generated hunters remain the next caller slice.
+
+Saved grounded non-escort hunters now compose even with selectable craft.
+GeoscapeState::time10Minutes skips landed UFOs, and lifting follows sites and
+retargeting through the owned five-second handler. Both extended and one-tick
+ground timers preserve constructor state and waypoint identity; no hunt starts
+at birth. Verified hunting/lifecycle captures and a no-site control confirm
+unchanged UFO/RNG outcomes except for the later mission interruption and grant.
+Fresh/cache reload checks and retained airborne targetable refusals pass all 38
+affected tests; four new cases first failed at the old composition boundary.

@@ -62,6 +62,41 @@ public sealed class StrategicWorldSiteResearchNewbornHunterTests
         }
     }
 
+    [Theory]
+    [InlineData(false, "PATH_1_0")]
+    [InlineData(true, "PATH_1_0")]
+    [InlineData(false, "PATH_SHORT")]
+    [InlineData(true, "PATH_SHORT")]
+    public void GroundedHunterBirthDefersRetargetingUntilAfterItsOwnedLift(bool cache, string path)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var content = Content(cache, path: path);
+        var initial = StrategicWorldSiteResearchSpawnTests.Snapshot(content).WithCraft("SHIP", craft => craft with
+        { Logistics = craft.Logistics! with { Status = "STR_OUT", Takeoff = 0, Fuel = 300, Speed = 0, Destination = null } });
+        var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(control, 1);
+        var result = campaign.Execute(new AdvanceCampaignTime(1));
+        Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+        Assert.Empty(result.Events.OfType<UfoStartedHunting>());
+        var after = campaign.Capture();
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.True(ufo.HunterKiller);
+        Assert.False(ufo.Hunting);
+        Assert.False(ufo.Escorting);
+        Assert.Equal(WorldTargetKind.Waypoint, ufo.Destination!.Kind);
+        Assert.Equal(path == "PATH_SHORT" ? UfoStatus.Flying : UfoStatus.Landed, ufo.Status);
+        Assert.Equal(path == "PATH_SHORT" ? 0 : 5, ufo.SecondsRemaining);
+        Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
+        Assert.Equal(control.Capture().RandomState, after.RandomState);
+        Assert.True(Assert.Single(after.World.Missions).Interrupted);
+        Assert.False(Assert.Single(control.Capture().World.Missions).Interrupted);
+        Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+        Assert.Empty(after.World.MissionSites);
+        Assert.Equivalent(after, Reload(content, campaign, 17, "site-research-ground-hunter.sav").Capture(), strict: true);
+    }
+
     internal static RuntimeContent Content(bool cache, int mode = 0, string path = "PATH_0_0") =>
         StrategicWorldSiteResearchSpawnTests.Content(cache, path, extra: $$"""
         ufos:
