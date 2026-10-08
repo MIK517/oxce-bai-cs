@@ -1007,3 +1007,16 @@ Verified generation/spawn fixtures and fresh/cache 32-seed cases cover timers
 59, 60, 90 and 120, actual interruption/diary decisions, retained wave counters,
 exact RNG controls and save/reload. A due event is suppressible only with an
 always-due grant. The C++ reference remains unchanged at the pinned commit.
+
+Daily source mission choices now forecast exclusive ordered sequences from the
+same prior research state. Source/mission aliases share grant slots within each
+choice; different choices do not execute together. Null, delayed and non-site
+choices retain a no-immediate-grant outcome. The kernel restores all research
+and explicit-topic summaries before each sequence and bounds combined outcomes.
+
+All 378 affected tests pass. Native `GenerateSupplyMission`, `AlienMission::start`
+and site-spawn evidence backs fresh/cache 32-seed two-sequence, delayed and null
+choices, selected markers/diaries/counters, conditional event suppression and
+three rewrites. A due event cannot depend on an unchosen grant. Pure sequence
+tests preserve campaign/RNG state and reject more than 256 outcomes intentionally.
+The timer and source slices await their combined audit after retaliation research.
