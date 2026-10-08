@@ -828,3 +828,16 @@ refusals, and later grants. The longer scenario checks native hourly discovery's
 staggered expiry postponement and exactly one diary entry per topic. All 340
 affected tests pass. Daily and late generated direct births are the next slices;
 immediate appended-site research still needs an ordered expiry forecast.
+
+Daily generated direct births now use every prepared region/race/area alternative
+to prove the same positive-duration boundary. GenerateSupplyMission runs before
+the half-hour think, cleanup and site caller. The proof now distinguishes UFO
+survivors from direct sites, so a completed direct-only mission does not consume
+an unused interruption link, while a retained prefix or actual UFO birth still
+participates in the grant scan. No random selection occurs during this proof.
+
+All 76 affected tests pass. Fresh/cache cases cover deployment overrides and site
+objectives, two-site immediate chains, final cleanup with undefined unused links,
+retained-prefix interruption, exact no-site site/RNG controls, generation counters,
+three rewrites and atomic immediate-expiry/marker-limit refusals. Late hunting
+births remain the third caller slice.

@@ -69,7 +69,56 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             "Mission site marker IDs are exhausted or collide with a saved target.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1) =>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DailyGeneratedDirectSitesComposeBeforeResearchAndRetainCleanupOrdering(bool cache, bool final)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        for (var objective = 0; objective <= 3; objective += 3)
+        {
+            var content = Content(cache, final, generated: true, objective: objective,
+                interrupt: final ? "MISSING_RESEARCH" : "CORE");
+            var initial = GeneratedSnapshot(content);
+            var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
+            var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), 17, "daily-direct-before.sav");
+            AdvanceUnblocked(control, 1);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Equal(2, after.World.MissionSites.Count);
+            Assert.All(after.World.MissionSites, site => Assert.Equal(1800, site.SecondsRemaining));
+            Assert.Equivalent(control.Capture().World.MissionSites, after.World.MissionSites, strict: true);
+            Assert.Equal(control.Capture().RandomState, after.RandomState);
+            Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            if (final) Assert.Empty(after.World.Missions);
+            else Assert.True(Assert.Single(after.World.Missions).Interrupted);
+            for (var pass = 0; pass < 3; pass++)
+            {
+                campaign = Reload(content, campaign, 17, "daily-direct-after.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DailyGeneratedDirectSitesPreserveImmediateExpiryAndMarkerBoundaries(bool cache)
+    {
+        var content = Content(cache, generated: true, duration: 0);
+        AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
+            "Newborn mission site research requires ordered expiry forecasts.");
+        content = Content(cache, generated: true);
+        AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
+            "Mission site marker IDs are exhausted or collide with a saved target.");
+    }
+
+    internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false,
+        int objective = 0, string interrupt = "CORE") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -77,7 +126,10 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
           - {name: BONUS, cost: 1}
         alienMissions:
           - type: RESEARCH_DIRECT_CHAIN
-            interruptResearch: CORE
+            objective: {{{objective}}}
+            spawnZone: 0
+            siteType: RESEARCH_BORN_SITE
+            interruptResearch: {{{interrupt}}}
             waves:
               - {ufo: RESEARCH_BORN_SITE, count: 2, trajectory: TRAJ_PATROL, timer: 0}
         {{{(final ? "" : "      - {count: 1, trajectory: TRAJ_PATROL, timer: 9000}")}}}
@@ -88,7 +140,22 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             duration: [{{{duration}}}, {{{duration}}}]
             unlockedResearchOnDespawn: BONUS
             points: 4
+          - type: RESEARCH_DIRECT_BASE
+            markerName: RESEARCH_DIRECT_BASE_MARKER
+            genMission: {RESEARCH_DIRECT_CHAIN: 1}
+            genMissionFreq: {{{(generated ? 100 : 0)}}}
+            genMissionLimit: 1
         """);
+
+    internal static CampaignSnapshot GeneratedSnapshot(RuntimeContent content)
+    {
+        var initial = StrategicWorldSiteResearchGenerationTests.Snapshot(content);
+        return initial with
+        {
+            World = initial.World with
+            { AlienBases = [new(2, "RESEARCH_DIRECT_BASE", "RACE_A", 0.2, 0.1) { Discovered = true }] }
+        };
+    }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)
     {
