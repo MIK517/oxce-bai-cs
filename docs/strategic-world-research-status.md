@@ -841,3 +841,16 @@ objectives, two-site immediate chains, final cleanup with undefined unused links
 retained-prefix interruption, exact no-site site/RNG controls, generation counters,
 three rewrites and atomic immediate-expiry/marker-limit refusals. Late hunting
 births remain the third caller slice.
+
+Late hunting direct births now pass the research composition scan, including
+zero-duration sites. Native GeoscapeState::baseHunting thinks and appends them
+after processMissionSite, so they retain the full initial timer and do not grant
+research in the birth tick. The later generated-wave/site owner still validates
+all geometry, duration and capacity alternatives before mutation.
+
+All 48 affected tests pass. Fresh/cache cases compare exact site/RNG state with
+no-site controls, keep completed late missions until next cleanup, verify that
+retained prefixes do not receive the earlier grant, persist three rewrites and
+check the next half-hour's positive countdown or zero-duration grant/removal.
+Marker exhaustion remains atomic. These three direct-site slices are ready for
+their joint audit; earlier zero-duration grant composition remains unavailable.
