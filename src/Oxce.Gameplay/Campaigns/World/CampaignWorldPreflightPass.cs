@@ -1,3 +1,5 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
@@ -25,7 +27,7 @@ internal sealed partial class CampaignWorld
         public Dictionary<int, AlienMissionSnapshot>? MissionCounterForecast;
         public CampaignState.MissionResearchForecast? SiteResearchForecast;
         public Dictionary<(string Deployment, int Id), IReadOnlySet<string>>? SiteResearchAfterSite;
-        public Dictionary<AlienMissionSnapshot, IReadOnlySet<string>>? SiteResearchAfterBirth;
+        public Dictionary<(AlienMissionSnapshot Mission, RuleHandle<AlienDeploymentRuleFamily> Deployment), IReadOnlySet<string>>? SiteResearchAfterBirth;
         public readonly Dictionary<(string Deployment, int Id, CampaignTimeTrigger Trigger), bool> SiteExpiryForecast = [];
         public List<(AlienMissionSnapshot Mission, bool Hunting)>? GeneratedWaveMissions;
         public HashSet<(int Source, string Deployment, string Mission)>? DailyGeneratedWaveProofs;

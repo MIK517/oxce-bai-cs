@@ -135,6 +135,57 @@ public sealed partial class CampaignState
             return ReferenceEquals(skipped, _outcomes) ? _reason : IncludeSkipped(skipped);
         }
 
+        public string? AdvanceChoices(IEnumerable<string> ids, bool optional,
+            out IReadOnlyDictionary<string, IReadOnlySet<string>> whenGranted)
+        {
+            Dictionary<string, IReadOnlySet<string>> conditional = new(StringComparer.Ordinal);
+            whenGranted = conditional;
+            List<string> choices = [];
+            HashSet<string> seen = new(StringComparer.Ordinal);
+            foreach (var id in ids)
+            {
+                if (++_work > MaximumWork) return _reason = WorkReason;
+                if (!seen.Add(id)) continue;
+                if (choices.Count == 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                choices.Add(id);
+            }
+            if (choices.Count == 0) return _reason;
+            if (choices.Count == 1)
+            {
+                IReadOnlySet<string> research;
+                string? reason;
+                if (optional) reason = AdvanceOptional(choices[0], out research);
+                else { reason = Advance(choices[0]); research = _guaranteedResearch; }
+                if (reason is not null) return reason;
+                conditional.Add(choices[0], research);
+                return null;
+            }
+            var prior = _outcomes;
+            var guaranteed = _guaranteedResearch;
+            var possible = _possibleResearch;
+            var guaranteedExplicit = _guaranteedExplicitTopics;
+            var possibleExplicit = _possibleExplicitTopics;
+            List<Outcome> combined = [];
+            foreach (var id in choices)
+            {
+                _outcomes = prior;
+                _guaranteedResearch = guaranteed;
+                _possibleResearch = possible;
+                _guaranteedExplicitTopics = guaranteedExplicit;
+                _possibleExplicitTopics = possibleExplicit;
+                if (Advance(id) is { } reason) return reason;
+                conditional.Add(id, _guaranteedResearch);
+                if (combined.Count + _outcomes.Count > 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                combined.AddRange(_outcomes);
+            }
+            if (optional)
+            {
+                if (combined.Count + prior.Count > 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                combined.AddRange(prior);
+            }
+            return Publish(combined);
+        }
+
         private string? IncludeSkipped(List<Outcome> skipped)
         {
             if (_outcomes.Count + skipped.Count > 256)

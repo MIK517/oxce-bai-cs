@@ -63,8 +63,12 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
     public void EveryReachableDeploymentRetainsResearchDurationAndEventBoundaries(bool cache, bool generated)
     {
         var content = Content(cache, generated, differentGrant: true);
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
-            "Newborn mission site research requires ordered expiry forecasts.");
+        var choices = CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(choices, 1);
+        var selected = choices.Capture();
+        Assert.Equal(selected.NextIds.GetValueOrDefault("CHOICE_A_MARKER", 1) != 1, selected.CompletedResearch.Contains("BONUS"));
+        Assert.Empty(selected.World.MissionSites);
+        Assert.Equivalent(selected, Reload(content, choices, 17, "choice-different-grants.sav").Capture(), strict: true);
         content = Content(cache, generated, mixedDuration: true);
         var campaign = CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17));
         AdvanceUnblocked(campaign, 1);
@@ -78,14 +82,14 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
     }
 
     internal static RuntimeContent Content(bool cache, bool generated, bool differentGrant = false, bool mixedDuration = false,
-        bool eventPayload = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        bool eventPayload = false, bool ownEvents = false, bool nullChoice = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1}
           - {name: BONUS, cost: 1}
         globe:
           textures:
-            - {id: 900, deployments: {CHOICE_A: 1, CHOICE_B: 3}}
+            - {id: 900, deployments: {{{(nullChoice ? "{CHOICE_A: 1, CHOICE_B: 0, \"\": 3}" : "{CHOICE_A: 1, CHOICE_B: 3}")}}}}
         regions:
           - type: CHOICE_REGION
             missionZones:
@@ -104,12 +108,13 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
             duration: [0, 0]
             unlockedResearchOnDespawn: BONUS
             counterAll: CHOICE_A_COUNTER
+        {{{(ownEvents ? "    despawnEvents: {OWN_A: 1}" : "")}}}
           - type: CHOICE_B
             markerName: CHOICE_B_MARKER
             duration: [0, {{{(mixedDuration ? 1 : 0)}}}]
             unlockedResearchOnDespawn: {{{(differentGrant ? "CORE" : "BONUS")}}}
             counterAll: CHOICE_B_COUNTER
-        {{{(eventPayload ? "    despawnEvents: {CHOICE_EVENT: 1}" : "")}}}
+        {{{(eventPayload ? "    despawnEvents: {CHOICE_EVENT: 1}" : ownEvents ? "    despawnEvents: {OWN_B: 1}" : "")}}}
           - type: RESEARCH_DIRECT_BASE
             markerName: RESEARCH_DIRECT_BASE_MARKER
             genMission: {CHOICE_RESEARCH_MISSION: 1}
@@ -117,6 +122,8 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
             genMissionLimit: 1
         events:
           - {name: CHOICE_EVENT, interruptResearch: UNLOCK}
+          - {name: OWN_A, interruptResearch: BONUS}
+          - {name: OWN_B, interruptResearch: {{{(differentGrant ? "CORE" : "BONUS")}}}}
         """);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, bool generated)
