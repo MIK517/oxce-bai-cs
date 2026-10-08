@@ -105,3 +105,19 @@ not yet connected. This kernel does not claim call-site closure.
 Reference methods: `SavedGame::handleResearchUnlockedByMissions`,
 `selectGetOneFree`, `addFinishedResearch`, and the caller in
 `GeoscapeState::processMissionSite`.
+
+The cycle audit confirmed that mission eligibility charged geography/function
+work only after evaluating the expensive query. It now refuses a query before
+that scan/union when the remaining budget cannot cover it. Cases with 32
+regions, 256 areas each and 120 shared provided names allow 50 automatic
+candidates and atomically refuse 100.
+The daily ambiguous-reward bound also charges empty protected-group containers.
+The initial batch acceptance passed all 3,515 root tests and full formatting;
+final validation of the audit correction is recorded below.
+
+All 18 focused mission/daily execution cases pass after the correction,
+including both geography resource bounds. The resource fixture respects the
+native 128-distinct-base-function limit. Changed-file formatting, code-map
+and diff checks pass; the reference checkout remains clean. All three research
+slices and their batch audit are committed separately. Site caller integration
+and broader uncertainty composition remain open 4c work.

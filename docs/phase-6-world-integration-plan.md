@@ -63,11 +63,10 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
-- 2026-10-08 research-cycle checkpoint: ordered diary persistence and its
-  interim filtering audit are committed and validated. See
-  [research evidence and acceptance](strategic-world-research-status.md#research-diary-persistence-2026-10-08).
-  The remaining two execution slices and batch audit are saved for quota-reset
-  continuation within the current 07:30 local cutoff. World-owned research,
+- 2026-10-08 research-cycle checkpoint: ordered diary persistence, daily/automatic
+  execution and the mission research operation are committed with their batch
+  audit correction. See [research evidence and acceptance](strategic-world-research-status.md).
+  Site caller integration, bounded research outcomes, world-owned research,
   newborn generation/uncertainty composition and final headless closure keep
   4c open; 4d is unchanged.
 

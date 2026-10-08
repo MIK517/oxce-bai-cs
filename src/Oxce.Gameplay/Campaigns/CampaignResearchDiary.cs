@@ -70,6 +70,8 @@ public sealed partial class CampaignState
                     var rule = _content.RuntimeRules.Research[project.Rule].Value;
                     var calls = 1 + (rule.Lookup.Length == 0 ? 0 : 1);
                     var bonusCalls = 0;
+                    work += rule.GetOneFreeProtected.Count;
+                    if (work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
                     foreach (var id in rule.GetOneFree.Concat(rule.GetOneFreeProtected.SelectMany(group => group.Topics)))
                     {
                         if (++work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
