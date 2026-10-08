@@ -84,8 +84,10 @@ documents; entries here link to them instead of copying them.
   Targetable saved/generated hunter and escort births now compose through
   the existing later retarget proofs; their batch audit passes all 3,798 root
   tests and 488 affected tests including probabilistic immediate escorts.
-  Research-dependent objective transitions,
-  newborn-site phase composition, remaining uncertainty and final closure keep 4c open;
+  Saved/daily/late final base and infiltration objectives now compose too,
+  including endless survivors; their batch audit and all 3,826 root tests pass.
+  Generated-retaliation research and newborn-site phase composition, remaining
+  uncertainty and final closure keep 4c open;
   4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
