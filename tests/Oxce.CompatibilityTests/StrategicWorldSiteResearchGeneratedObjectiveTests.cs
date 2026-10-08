@@ -21,6 +21,60 @@ public sealed class StrategicWorldSiteResearchGeneratedObjectiveTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HuntingGeneratedCounterPrefixesRunAfterSiteResearch(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        for (var objective = 1; objective <= 3; objective++) AssertPrefix(cache, objective, hunting: true);
+    }
+
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void HuntingFinalObjectivesKeepTheResearchCompositionBoundary(bool cache, int objective)
+    {
+        var content = Content(cache, objective, hunting: true, prefix: false);
+        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, hunting: true), content, new SplitMix64RandomSource(17)),
+            "Mission site research requires alien-base generation phase forecasts.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SeventyTwoHoursComposeSiteResearchHuntingGenerationAndDailyInterruption(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        for (var objective = 1; objective <= 3; objective++)
+        {
+            var content = Content(cache, objective, hunting: true);
+            var initial = Snapshot(content, hunting: true);
+            var batched = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            var reloaded = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(batched, 1);
+            AdvanceUnblocked(reloaded, 1);
+            for (var day = 0; day < 3; day++)
+            {
+                AdvanceUnblocked(batched, 17_280);
+                for (var hour = 0; hour < 24; hour++) AdvanceUnblocked(reloaded, 720);
+                reloaded = Reload(content, reloaded, 17, "research-objective-endurance.sav");
+                Assert.Equivalent(batched.Capture(), reloaded.Capture(), strict: true);
+                var after = batched.Capture();
+                Assert.Empty(after.World.Ufos);
+                Assert.Empty(after.World.MissionSites);
+                Assert.Single(after.World.AlienBases);
+                Assert.InRange(after.World.Missions.Count, 1, 24);
+                Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+                Assert.All(after.Countries, country => Assert.False(country.NewPact));
+            }
+        }
+    }
+
+    [Theory]
     [InlineData(false, 1)]
     [InlineData(true, 1)]
     [InlineData(false, 2)]
@@ -110,13 +164,14 @@ public sealed class StrategicWorldSiteResearchGeneratedObjectiveTests
         if (hunting) initial = initial.WithCraft("SHIP", craft => craft with
         {
             Logistics = craft.Logistics! with
-            { Status = "STR_OUT", Fuel = 300, Speed = 0, Longitude = 0.2, Latitude = 0.1, Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) }
+            { Status = "STR_OUT", Fuel = 300, Speed = 0, Longitude = 0.2, Latitude = 0.1, Destination = WorldTargetReference.ForWaypoint(1, new(1, 0.6)) }
         });
         return initial with
         {
             Time = hunting ? new(1, 1, 1, 1999, 0, 29, 55) : initial.Time,
             World = initial.World with
             {
+                Waypoints = hunting ? [new(1, 1, 0.6)] : [],
                 AlienBases = [new(2, "GENERATED_OBJECTIVE_BASE", "RACE_A", 0.2, 0.1)
             { Discovered = true, MinutesSinceLastHuntMissionGeneration = hunting ? 50 : 0 }]
             },

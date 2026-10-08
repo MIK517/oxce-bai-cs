@@ -522,3 +522,15 @@ generation/wave captures back fresh/cache counter/timer, selected area, source
 link, later interruption, no pact/base birth and three-rewrite checks. All 41
 affected objective/generation research tests pass; late non-score/supply
 prefixes and generated retaliation retain their explicit boundaries.
+
+Late hunting-generated base/infiltration/site prefixes now use that same proof,
+with their own caller acceptance. They remain uninterrupted by the preceding
+site grant and retain selected areas and source links after reload. Final
+objective effects still stop atomically. Six 72-hour fresh/cache scenarios
+compare day-sized advancement with hourly advancement and daily rewrites;
+repeated hunting births, later daily interruption and cleanup remain identical,
+with bounded mission populations and no duplicate diary, pact, base or UFO
+effects. Craft destinations use a real persisted waypoint so unrelated patrol
+discovery does not add RNG to the caller comparison. All 49 affected
+objective/generation research tests pass. Reference: GeoscapeState::baseHunting,
+AlienMission::start/think and daily interruption before generation.
