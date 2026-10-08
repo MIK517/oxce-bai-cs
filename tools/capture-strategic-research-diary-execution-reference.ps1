@@ -36,6 +36,7 @@ $template = $template.Replace('// BASE_HELPER', (Block $geo 'auto addResearchDia
 $template = $template.Replace('// DAILY_BONUS', (Between $geo 'addResearchDiaryEntryForBase(research, DiscoverySourceType::BASE' '// 3d. determine'))
 $template = $template.Replace('// DAILY_CORE', (Between $geo 'saveGame->addFinishedResearch(research, mod, xbase);' '// 3e. handle cutscene'))
 $template = $template.Replace('// MISSION_RESEARCH', (Block $save 'bool SavedGame::handleResearchUnlockedByMissions'))
+$template = $template.Replace('// SELECT_REWARD', (Block $save 'const RuleResearch* SavedGame::selectGetOneFree'))
 $work = Join-Path $repository 'artifacts/reference-strategic-research-diary-execution'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe = Join-Path $work 'strategic_research_diary_execution_probe.cpp'

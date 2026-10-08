@@ -12,9 +12,14 @@ using Uint32=std::uint32_t;
 using Exception=std::runtime_error;
 struct RuleResearch {
  std::string name; const RuleResearch *lookup=nullptr,*bonus=nullptr,*automatic=nullptr;
+ const RuleResearch *other=nullptr,*protectedTopic=nullptr;
  bool repeatable=false; const std::string& getName() const{return name;}
  const RuleResearch* getLookup()const{return lookup;}
+ std::vector<const RuleResearch*> getGetOneFree()const{if(other)return {bonus,other,bonus};return bonus?std::vector<const RuleResearch*>{bonus}:std::vector<const RuleResearch*>{};}
+ std::vector<std::pair<const RuleResearch*,std::vector<const RuleResearch*>>> getGetOneFreeProtected()const{return protectedTopic?std::vector<std::pair<const RuleResearch*,std::vector<const RuleResearch*>>>{{this,{protectedTopic}}}:std::vector<std::pair<const RuleResearch*,std::vector<const RuleResearch*>>>{};}
+ bool sequentialGetOneFree()const{return false;}
 };
+struct RNG {static inline int pick=0;static int generate(int low,int high){return std::clamp(pick,low,high);}};
 struct RuleEvent {};
 struct AlienDeployment {const std::string& getType()const{static const std::string type="DEPLOY_DIARY";return type;}};
 struct Mod {
@@ -50,7 +55,7 @@ struct SavedGame {
  bool isResearched(const RuleResearch* research,bool considerDebug=true){return research&&(completed.contains(research->name)||(considerDebug&&debug));}
  bool isResearchRuleStatusDisabled(const std::string&id){return disabled.contains(id);}
  void addResearchDiaryEntry(ResearchDiaryEntry*entry){diary.push_back(entry);}
- const RuleResearch* selectGetOneFree(const RuleResearch*r){return r->bonus&&!isResearched(r->bonus,false)&&!disabled.contains(r->bonus->name)?r->bonus:nullptr;}
+ const RuleResearch* selectGetOneFree(const RuleResearch*);
  // Queue eligibility is a collaborator: these scenarios contain one explicit automatic link.
  // The diary block itself is inserted verbatim from SavedGame::addFinishedResearch.
  void addFinishedResearch(const RuleResearch*research,const Mod*,Base*,bool=true){
@@ -71,6 +76,7 @@ struct SavedGame {
  }
 };
 // MISSION_RESEARCH
+// SELECT_REWARD
 int main(){
  bool first=true;std::cout<<"{\"executionRows\":[";
  for(bool mission:{false,true})for(bool debug:{false,true})for(int scenario=0;scenario<4;scenario++){
@@ -88,6 +94,18 @@ int main(){
   bool firstEntry=true;for(auto*entry:saved.diary){if(!firstEntry)std::cout<<',';firstEntry=false;
    std::cout<<"{\"name\":"<<std::quoted(entry->research->name)<<",\"date\":["<<entry->year<<','<<entry->month<<','<<entry->day<<"],\"sourceType\":"<<unsigned(entry->source.type)<<",\"sourceName\":"<<std::quoted(entry->source.name)<<'}';}
   std::cout<<"],\"interrupted\":["<<(coreMission.interrupted?"true":"false")<<','<<(bonusMission.interrupted?"true":"false")<<','<<(autoMission.interrupted?"true":"false")<<"]}";
+ }
+ std::cout<<"],\"randomRows\":[";
+ for(int scenario=0;scenario<4;scenario++){
+  RuleResearch core{"CORE"},bonus{"BONUS"},other{"OTHER"},protectedTopic{"PROTECTED"};
+  core.bonus=&bonus;core.other=&other;core.protectedTopic=&protectedTopic;core.repeatable=scenario==3;
+  Mod mod{{&core,&bonus,&other,&protectedTopic}};Base base;SavedGame saved;
+  if(scenario==1)saved.disabled.insert("BONUS");if(scenario==2)saved.completed.insert("BONUS");
+  saved.addFinishedResearch(&core,&mod,&base);
+  if(scenario)std::cout<<',';std::cout<<"{\"scenario\":"<<scenario<<",\"choices\":[";
+  const int count=scenario==1||scenario==2?2:scenario==3?3:4;
+  for(int pick=0;pick<count;pick++){RNG::pick=pick;auto*choice=saved.selectGetOneFree(&core);if(pick)std::cout<<',';std::cout<<std::quoted(choice->name);}
+  std::cout<<"]}";
  }
  std::cout<<"]}\n";
 }

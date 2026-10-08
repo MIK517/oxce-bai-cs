@@ -121,3 +121,24 @@ native 128-distinct-base-function limit. Changed-file formatting, code-map
 and diff checks pass; the reference checkout remains clean. All three research
 slices and their batch audit are committed separately. Site caller integration
 and broader uncertainty composition remain open 4c work.
+
+## Bounded mission research alternatives (2026-10-08)
+
+Mission grants now admit random rewards when every outcome has a bounded
+proof. Ordered projections retain separate completed/status sets, score
+prefixes, diary multiplicities and explicit interruption topics across grants.
+They cap alternatives at 256 and shared work at one million; all copying and
+summary unions/intersections are charged. Cached guaranteed/possible summaries
+support later phase consumers without repeated scans. Forecasts neither draw
+nor restore RNG. Real grants still select from the original ordered list,
+including duplicate entries and protected groups.
+
+The execution capture additionally inserts the complete native
+`SavedGame::selectGetOneFree` method with controlled selection indices. Four
+rows cover duplicate choices, disabled/discovered rewards, protected topics
+and a repeatable core. The previous 16 caller rows remain identical. Fresh/cache
+tests compare possible explicit topics and reload real grants from eight fixed
+seeds per row. Unsafe score alternatives and a second 32-way grant exceeding
+the outcome cap are refused before owned state changes. All 22 focused mission
+and daily execution cases pass. This closes the operation's random-reward guard;
+site and later-handler integration remain separate slices.

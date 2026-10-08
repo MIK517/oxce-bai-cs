@@ -7,7 +7,7 @@
     "repository": "oxce-bai",
     "commit": "4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15",
     "buildOptions": {
-      "sources": "Verbatim ResearchDiary structs, daily diary helper/grant blocks, automatic diary block and SavedGame::handleResearchUnlockedByMissions; explicit queue eligibility and reward collaborators",
+      "sources": "Verbatim ResearchDiary structs, daily diary helper/grant blocks, automatic diary block and SavedGame::handleResearchUnlockedByMissions; explicit queue eligibility and reward collaborators; verbatim selectGetOneFree with controlled RNG indices",
       "capture": "tools/capture-strategic-research-diary-execution-reference.ps1",
       "compiler": "MSVC x64 /std:c++20"
     }
@@ -15,13 +15,13 @@
   "inputs": [
     {
       "path": "fixtures/reference-probes/savegames/strategic_research_diary_execution_probe.cpp",
-      "size": 5280,
-      "sha256": "4ac99807c1e70d2912549270d9b32d5502465dd7efd61a2091532613f97d9641"
+      "size": 6722,
+      "sha256": "4338ccccccc0f9e04638c419d03672512fef30fa65f1ce0e0b4aaadbc6247404"
     },
     {
       "path": "tools/capture-strategic-research-diary-execution-reference.ps1",
-      "size": 4096,
-      "sha256": "717a19f63b329f6ef561e48f5caaf2d3027eac14fed9a70fcfd7d882a1735d4b"
+      "size": 4211,
+      "sha256": "a7224a44baf1512a765419434167287b7861f60a350ebfefc6253613e72ab833"
     }
   ],
   "normalization": [

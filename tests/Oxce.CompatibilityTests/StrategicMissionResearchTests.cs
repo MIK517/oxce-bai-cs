@@ -113,7 +113,7 @@ public sealed class StrategicMissionResearchTests
     }
 
     [Fact]
-    public void MissionCapacityAndUncertainRewardsAreReadOnlyAndGuardActualGrant()
+    public void MissionCapacityAndRandomRewardForecastsAreReadOnly()
     {
         var content = Content(false, 0);
         var snapshot = DailySnapshot(content) with { ResearchDiarySequence = ulong.MaxValue - 3 };
@@ -132,9 +132,17 @@ public sealed class StrategicMissionResearchTests
             """);
         campaign = CampaignState.Restore(CreateSnapshot(content, "Uncertain mission research"), content, new SplitMix64RandomSource(17));
         before = campaign.Capture();
-        Assert.Equal("Mission research depends on uncertain reward outcomes.", campaign.MissionResearch.GrantReason("CORE"));
-        Assert.Throws<InvalidOperationException>(() => campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY"));
+        Assert.Null(campaign.MissionResearch.GrantReason("CORE"));
+        var forecast = campaign.MissionResearch.CreateForecast();
+        Assert.Null(forecast.Advance("CORE"));
+        Assert.Equal(["CORE"], forecast.GuaranteedResearch.Order(StringComparer.Ordinal));
+        Assert.Equal(["BONUS", "CORE", "OTHER"], forecast.PossibleResearch.Order(StringComparer.Ordinal));
+        Assert.Equal(["CORE"], forecast.GuaranteedExplicitTopics.Order(StringComparer.Ordinal));
+        Assert.Equal(["BONUS", "CORE", "OTHER"], forecast.PossibleExplicitTopics.Order(StringComparer.Ordinal));
         Assert.Equivalent(before, campaign.Capture(), strict: true);
+        campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY");
+        Assert.Equal(2, campaign.Capture().ResearchDiary.Count);
+        Reload(content, campaign, 17, "random-mission-reward.sav");
     }
 
     [Fact]
@@ -200,6 +208,82 @@ public sealed class StrategicMissionResearchTests
             Assert.Null(reason);
             campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY");
             Assert.Equal("CORE", Assert.Single(campaign.Capture().ResearchDiary).RuleId);
+        }
+    }
+
+    [Fact]
+    public void OrderedRandomGrantOutcomesBoundPopulationAndScoreBeforeAnySelection()
+    {
+        var rewards = string.Join(", ", Enumerable.Range(0, 32).Select(index => "REWARD_" + index));
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false,
+            $"research:\n  - {{name: UNLOCK, cost: 1}}\n  - {{name: CORE, cost: 1, getOneFree: [{rewards}]}}\n" +
+            string.Concat(Enumerable.Range(0, 32).Select(index => $"  - {{name: REWARD_{index}, cost: 1}}\n")));
+        var campaign = CampaignState.Restore(CreateSnapshot(content, "Bounded research alternatives"), content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        var forecast = campaign.MissionResearch.CreateForecast();
+        Assert.Null(forecast.Advance("CORE"));
+        Assert.Equal("Mission research exceeds the supported outcome limit.", forecast.Advance("CORE"));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+        Assert.Equal(["CORE"], forecast.GuaranteedResearch.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void UnsafeRandomRewardAlternativeBlocksEvenWhenOtherChoiceFits()
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], false, """
+            research:
+              - {name: UNLOCK, cost: 1}
+              - {name: CORE, cost: 1, getOneFree: [SAFE, OVERFLOW]}
+              - {name: SAFE, cost: 1, points: 0}
+              - {name: OVERFLOW, cost: 1, points: 1}
+            """);
+        var snapshot = CreateSnapshot(content, "Unsafe research outcome") with { ResearchScores = [int.MaxValue] };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        var before = campaign.Capture();
+        Assert.Equal("Mission research score exceeds the supported range.", campaign.MissionResearch.GrantReason("CORE"));
+        Assert.Throws<InvalidOperationException>(() => campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY"));
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void RandomAlternativesMatchNativeDuplicateProtectedAndDisabledCandidateSelection(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
+        foreach (var row in TestFixtures.Rows(oracle.RootElement, "randomRows"))
+        {
+            var scenario = row.GetProperty("scenario").GetInt32();
+            var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+                research:
+                  - {name: UNLOCK, cost: 1}
+                  - {name: CORE, cost: 1, repeatable: {{{(scenario == 3 ? "true" : "false")}}}, getOneFree: [BONUS, OTHER, BONUS], getOneFreeProtected: {CORE: [PROTECTED]}}
+                  - {name: BONUS, cost: 1}
+                  - {name: OTHER, cost: 1}
+                  - {name: PROTECTED, cost: 1}
+                """);
+            var initial = CreateSnapshot(content, "Native random research choices");
+            var snapshot = initial with
+            {
+                CompletedResearch = scenario == 2 ? ["BONUS"] : [],
+                ResearchRuleStatus = scenario == 1 ? new Dictionary<string, int> { ["BONUS"] = 2 } : new Dictionary<string, int>(),
+            };
+            var choices = row.GetProperty("choices").EnumerateArray().Select(value => value.GetString()!).ToArray();
+            var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+            var before = campaign.Capture();
+            var forecast = campaign.MissionResearch.CreateForecast();
+            Assert.Null(forecast.Advance("CORE"));
+            Assert.Equal(choices.Append("CORE").Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal),
+                forecast.PossibleExplicitTopics.Order(StringComparer.Ordinal));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            for (ulong seed = 0; seed < 8; seed++)
+            {
+                campaign = CampaignState.Restore(snapshot with { RandomState = seed }, content, new SplitMix64RandomSource(seed));
+                campaign.MissionResearch.Grant("CORE", "DEPLOY_DIARY");
+                var reward = Assert.Single(campaign.Capture().ResearchDiary, entry => entry.SourceType == (byte)ResearchDiscoverySource.FreeFrom);
+                Assert.Contains(reward.RuleId, choices);
+                Reload(content, campaign, seed, "native-random-research.sav");
+            }
         }
     }
 }
