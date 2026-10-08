@@ -422,6 +422,8 @@ Recorded in [`strategic-mission-script-status.md`](strategic-mission-script-stat
   and accepted landing creation now execute through registered world handlers,
   with persistent birth identity, score/marker/population/work reservations and
   fresh/cache transition reloads. Operation-base creation shares the birth helper.
+  The objective-base capture now includes the 24 native post-think revelation
+  rows; see [caller and option evidence](strategic-mission-script-status.md#mission-think-base-revelation-2026-10-09).
 - Batch audit confirmed omitted counter-forecast scans, combined patrol-discovery
   work and creation-tick newborn-base hunting capacity. Deterministic regressions
   fail before the fixes. The hunting reproduction overflowed after mutation;

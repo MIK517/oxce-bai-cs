@@ -23,6 +23,7 @@ $template=$template.Replace('// LANDING',(StatementBlock $mission 'if (_rule.get
 $template=$template.Replace('// CHOOSE' ,(StatementBlock $mission 'AlienDeployment *AlienMission::chooseAlienBaseType('))
 $texture=[IO.File]::ReadAllText((Join-Path $reference 'src/Mod/Texture.cpp'))
 $template=$template.Replace('// TEXTURE',(StatementBlock $texture 'std::string Texture::getRandomDeployment('))
+$template=$template.Replace('// REVEAL',(StatementBlock $geoscape 'if (abCount < _game->getSavedGame()->getAlienBases()->size())'))
 $work=Join-Path $repository 'artifacts/reference-strategic-objective-base-spawn'
 [IO.Directory]::CreateDirectory($work) | Out-Null
 $probe=Join-Path $work 'strategic_objective_base_spawn_probe.cpp'
