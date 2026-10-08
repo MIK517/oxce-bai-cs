@@ -63,6 +63,12 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
+  and both retaliation creation callers use bounded effective-wave forecasts.
+  See [slices, override audit fix and acceptance](strategic-world-alien-base-generation-status.md#late-infiltration-and-generated-retaliation-2026-10-08).
+  World-owned research, newborn generation/uncertainty composition and final
+  headless reconciliation keep 4c open; 4d and later-branch effects are unchanged.
+
 - 2026-10-08 final-objective cycle: daily no-object base completion, late hunting
   base completion and daily infiltration completion execute with native caller
   order. See [slices, audit fixes and acceptance](strategic-world-alien-base-generation-status.md#generated-final-objective-waves-2026-10-08).
