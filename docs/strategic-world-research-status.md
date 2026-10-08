@@ -1069,3 +1069,11 @@ boundary. Verified lifecycle/diary fixtures back fresh/cache 32-seed reward
 selection, identical UFO/RNG controls, exact selected interruption, three
 rewrites and next-tick removal/live-UFO repair. The path/slot/terminal slices
 are ready for the combined audit.
+
+The path/slot/terminal batch audit confirms exclusive source and path ordering,
+skipped no-grant alternatives, per-path event proofs, terminal fallthrough and
+next-tick live-UFO cleanup. No additional defect was confirmed. All 3,936 root
+tests pass with zero failures/skips, including original allocation budgets,
+private corpus and checksum gates. Full format/map/diff checks pass and the
+reference remains clean. Stochastic maintenance stock eligibility, nonterminal
+flight alternatives and final headless reconciliation still keep 4c open.
