@@ -66,8 +66,12 @@ public sealed class StrategicWorldNewbornSiteChoiceResearchTests
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
             "Newborn mission site research requires ordered expiry forecasts.");
         content = Content(cache, generated, mixedDuration: true);
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
-            "Newborn mission site research requires ordered expiry forecasts.");
+        var campaign = CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.All(after.World.MissionSites, site => Assert.Equal(1800, site.SecondsRemaining));
+        Assert.Equal(after.World.MissionSites.Count != 2, after.CompletedResearch.Contains("BONUS"));
+        Assert.Equivalent(after, Reload(content, campaign, 17, "choice-mixed-duration.sav").Capture(), strict: true);
         content = Content(cache, generated, eventPayload: true);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, generated), content, new SplitMix64RandomSource(17)),
             "Mission site despawn requires research or event payloads.");

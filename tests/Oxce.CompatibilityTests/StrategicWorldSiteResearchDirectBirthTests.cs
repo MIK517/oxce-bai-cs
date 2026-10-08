@@ -59,11 +59,11 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void SavedDirectSitesRetainImmediateResearchAndIdentityBoundaries(bool cache)
+    public void SavedDirectSitesRetainDurationAndIdentityBoundaries(bool cache)
     {
-        var content = Content(cache, duration: 0, maximumDuration: 1);
+        var content = Content(cache, duration: -1);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17)),
-            "Newborn mission site research requires ordered expiry forecasts.");
+            "Direct mission site duration is outside the supported range.");
         content = Content(cache);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
@@ -107,11 +107,11 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void DailyGeneratedDirectSitesPreserveImmediateExpiryAndMarkerBoundaries(bool cache)
+    public void DailyGeneratedDirectSitesPreserveDurationAndMarkerBoundaries(bool cache)
     {
-        var content = Content(cache, generated: true, duration: 0, maximumDuration: 1);
+        var content = Content(cache, generated: true, duration: -1);
         AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content), content, new SplitMix64RandomSource(17)),
-            "Newborn mission site research requires ordered expiry forecasts.");
+            "Direct mission site duration is outside the supported range.");
         content = Content(cache, generated: true);
         AssertTimeBlocked(CampaignState.Restore(GeneratedSnapshot(content).WithNextId("RESEARCH_BORN_MARKER", int.MaxValue - 1), content, new SplitMix64RandomSource(17)),
             "Mission site marker IDs are exhausted or collide with a saved target.");
@@ -177,7 +177,8 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
     }
 
     internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false, bool hunting = false,
-        int objective = 0, string interrupt = "CORE", int? maximumDuration = null, string eventInterrupt = "", int frequency = 100) =>
+        int objective = 0, string interrupt = "CORE", int? maximumDuration = null, string eventInterrupt = "", int frequency = 100,
+        int count = 2) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -190,7 +191,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             siteType: RESEARCH_BORN_SITE
             interruptResearch: {{{interrupt}}}
             waves:
-              - {ufo: RESEARCH_BORN_SITE, count: 2, trajectory: TRAJ_PATROL, timer: 0}
+              - {ufo: RESEARCH_BORN_SITE, count: {{{count}}}, trajectory: TRAJ_PATROL, timer: 0}
         {{{(final ? "" : "      - {count: 1, trajectory: TRAJ_PATROL, timer: 9000}")}}}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment + $$$"""
 
