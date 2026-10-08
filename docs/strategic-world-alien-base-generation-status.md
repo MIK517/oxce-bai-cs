@@ -727,3 +727,18 @@ scouting cleanup. Two hunting instant-retaliation cases retain atomic defense
 refusal. All 294 focused generation/retaliation cases pass. The reference
 `baseHunting`/`generateHuntMission` and retaliation spawn captures establish
 caller order; this does not execute interception or base defense.
+
+The batch audit reproduced an override-only retaliation gap: a missing wave
+UFO can still produce an assault UFO through the mission's `spawnUfo` rule.
+Candidate collection now includes no-object retaliation rules, and finite
+chain counters count the effective overridden UFO. The existing malformed
+targeted-wave tests now require precise missing-UFO or base-defense refusals,
+replacing their generic generated-world boundary. The native spawn capture
+adds 16 missing-original/override cases and uses the exact assault identity;
+all 512 earlier traces are unchanged. Four fresh/cache daily/hunting regressions
+canonically compare the constructor outcomes, execute two-wave override chains,
+reload at final unique-ID capacity and reject actual exhaustion atomically.
+All 377 focused generation/retaliation/infiltration/repeat/objective-base cases
+pass. Native captures remain useful; the obsolete object was removed. No
+additional confirmed defect was found in target discovery, caller timing,
+country reservations or save ownership during this batch audit.

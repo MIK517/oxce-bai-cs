@@ -1,4 +1,6 @@
 using Oxce.Core.Random;
+using System.Text.Json;
+using Oxce.FixtureSupport;
 using Oxce.Gameplay.Campaigns;
 using Oxce.Gameplay.Campaigns.World;
 using Oxce.Mods.Rulesets.Content;
@@ -93,7 +95,41 @@ public sealed class StrategicGeneratedRetaliationTests
             "Retaliation assault arrival requires base-defense simulation.");
     }
 
-    private static RuntimeContent Content(bool cache, bool hunting, bool replace, bool instant = false) =>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void OverrideOnlyImmediateRetaliationChainReservesEveryActualUfo(bool cache, bool hunting)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-retaliation-spawn");
+        var row = TestFixtures.Rows(oracle.RootElement, "overrideRows").Single(row =>
+            row[0].GetInt32() == 4 && row[1].GetInt32() == 1 && row[2].GetInt32() == 0 && row[3].GetInt32() == 1);
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        var content = Content(cache, hunting, true, noOriginalUfo: true, immediateChain: true);
+        var initial = Initial(content, hunting, true).WithNextId("STR_UFO_UNIQUE", int.MaxValue - 2);
+        var campaign = Reload(content, CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            17, "override-only-retaliation-before.sav");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(2, after.World.Ufos.Count);
+        Assert.All(after.World.Ufos, ufo => Assert.Equal("GENERATED_RETAL_OVERRIDE", ufo.RuleId));
+        foreach (var ufo in after.World.Ufos)
+        {
+            var expected = JsonSerializer.SerializeToUtf8Bytes(Enumerable.Range(4, 4).Select(index => row[index].GetInt32()).ToArray());
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new[] { 1, after.World.Missions[0].Interrupted ? 1 : 0, 0, ufo.Speed });
+            Assert.Equal(CanonicalJson.Normalize(expected), CanonicalJson.Normalize(actual));
+        }
+        Assert.Equal((2, 2), (Assert.Single(after.World.Missions).NextWave, after.World.Missions[0].LiveUfos));
+        Assert.Equal(int.MaxValue, after.NextIds["STR_UFO_UNIQUE"]);
+        Assert.Equal(hunting ? 0 : 12, after.Regions[0].ActivityAlien[^1] - initial.Regions[0].ActivityAlien[^1]);
+        Reload(content, campaign, 17, "override-only-retaliation-after.sav");
+        AssertTimeBlocked(CampaignState.Restore(initial.WithNextId("STR_UFO_UNIQUE", int.MaxValue - 1), content,
+            new SplitMix64RandomSource(17)), "UFO unique IDs are exhausted or collide with a saved UFO.");
+    }
+
+    private static RuntimeContent Content(bool cache, bool hunting, bool replace, bool instant = false,
+        bool noOriginalUfo = false, bool immediateChain = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             ufos:
               - type: GENERATED_RETAL_UFO
@@ -127,7 +163,9 @@ public sealed class StrategicGeneratedRetaliationTests
                 operationType: 1
                 {{{(replace ? "spawnUfo: GENERATED_RETAL_OVERRIDE" : "")}}}
                 regionWeights: {0: {REGION: 1}}
-                waves: [{ufo: GENERATED_RETAL_UFO, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]
+                waves:
+                  - {ufo: {{{(noOriginalUfo ? "UNDEFINED" : "GENERATED_RETAL_UFO")}}}, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}
+                  {{{(immediateChain ? "- {ufo: UNDEFINED, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}" : "")}}}
             """);
 
     private static CampaignSnapshot Initial(RuntimeContent content, bool hunting, bool targeted)
