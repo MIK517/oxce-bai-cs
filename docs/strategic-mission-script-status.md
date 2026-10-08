@@ -853,3 +853,18 @@ findings were fixed separately; all twelve requested slices and four audits are
 complete. Useful native captures remain available; the obsolete counter-probe
 object file was removed. The reference remains clean at the pinned commit.
 The revised 4c headless acceptance gate remains open; 4d is untouched.
+
+## Mission-think base revelation (2026-10-09)
+
+`showAlienBase` now executes at native `GeoscapeState::time30Minutes`'s wrapper
+around each `AlienMission::think`. If that call adds bases, only its last new
+base is revealed and notified, unless already discovered. Daily generated
+missions use this wrapper; late hunting and UFO landing callers do not.
+The option consumes no RNG and notifications retain current-tick fallthrough.
+
+The pinned objective-base probe now inserts that caller block verbatim. Its
+24 revelation rows cover no growth, multiple births, the show flag and existing
+discovery. The previous search/landing arrays are unchanged. Saved final-base
+tests reproduced missing revelation before implementation; daily/late generated
+caller controls and three rewrites cover its visibility, alert and persistence.
+All 152 affected tests pass; targeted formatting, code-map and diff checks pass.

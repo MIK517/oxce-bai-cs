@@ -41,12 +41,16 @@ struct Mod {
 };
 struct RuleAlienMission {
  std::string site;
+ bool show=false;
+ bool showAlienBase()const{return show;}
  int objective=OBJECTIVE_BASE,zone=0;
  int getObjective()const{return objective;} int getWaveCount()const{return 1;}
  int getSpawnZone()const{return zone;} const std::string& getSiteType()const{return site;}
  std::string getType()const{return "BASE_MISSION";}
 };
-struct Game { Mod mod; int births=0; std::string selected; };
+struct AlienBase { bool discovered=false; bool isDiscovered()const{return discovered;} void setDiscovered(bool value){discovered=value;} };
+struct SavedGame { std::vector<AlienBase*> bases; auto* getAlienBases(){return &bases;} };
+struct Game { Mod mod; int births=0; std::string selected; SavedGame save; auto* getSavedGame(){return &save;} };
 struct Globe { int successAt=1; bool fake=false; mutable int landCalls=0;
  bool insideLand(double,double)const{return ++landCalls>=successAt && successAt!=0;}
  bool insideFakeUnderwaterTexture(double,double)const{return fake;}
@@ -56,6 +60,7 @@ struct Ufo { double getLongitude()const{return 0.2;} double getLatitude()const{r
 struct Trajectory { int zone; size_t getZone(int)const{return zone;} };
 struct AlienMission {
  RuleAlienMission _rule; std::string _region="REGION"; int _nextWave=1;
+ const auto& getRules()const{return _rule;}
  AlienDeployment* chooseAlienBaseType(const Mod&,const MissionArea&);
  void complete(Game& engine,const Globe& globe){const Mod& mod=engine.mod;Wave wave;
  // OBJECTIVE
@@ -70,6 +75,14 @@ struct AlienMission {
 };
 // CHOOSE
 // TEXTURE
+struct AlienBaseState { AlienBaseState(AlienBase*,void*){} };
+struct GeoscapeState {
+ Game* _game; int alerts=0;
+ void popup(AlienBaseState* state){++alerts;delete state;}
+ void afterThink(AlienMission* am,size_t abCount){
+ // REVEAL
+ }
+};
 int main(){std::cout<<"{\"rows\":[";bool first=true;
  for(int success:{1,99,0})for(int geometry:{0,1,2})for(int kind:{0,1,2,3,4,5})for(int chance:{0,100})for(bool fake:{false,true})for(bool allow:{false,true}){
  if(!first)std::cout<<',';first=false;RNG::integerCalls=RNG::unitCalls=0;
@@ -93,4 +106,13 @@ int main(){std::cout<<"{\"rows\":[";bool first=true;
  if(kind==1)game.mod.globe.texture._deployments={{"TEXTURE",2},{"Z_UNUSED",3}};
  mission.land(game,allowed,conversion,landing,waveObjective,current);
  std::cout<<'['<<objective<<','<<landing<<','<<waveObjective<<','<<current<<','<<spawn<<','<<allowed<<','<<conversion<<','<<kind<<','<<game.births<<','<<RNG::integerCalls<<','<<RNG::unitCalls<<",\""<<game.selected<<"\"]";
+ }std::cout<<"],\"revelationRows\":[";first=true;
+ for(int initial:{0,1})for(int births:{0,1,2})for(bool discovered:{false,true})for(bool show:{false,true}){
+ if(!first)std::cout<<',';first=false;Game game;AlienMission mission;mission._rule.show=show;
+ std::vector<AlienBase> bases(initial+births);
+ for(auto& base:bases){base.discovered=discovered;game.save.bases.push_back(&base);}
+ GeoscapeState state{&game};state.afterThink(&mission,initial);
+ std::cout<<'['<<initial<<','<<births<<','<<discovered<<','<<show<<','<<state.alerts<<",[";
+ bool firstBase=true;for(const auto& base:bases){if(!firstBase)std::cout<<',';firstBase=false;std::cout<<base.discovered;}
+ std::cout<<"]]";
  }std::cout<<"]}\n";}

@@ -1216,3 +1216,14 @@ and possible daily interruption can make it expire before flight. The daily
 preflight now reserves the existing bounded expiry/link validation for that
 alternative. Fresh/cache regressions refuse before any research or RNG mutation.
 All 564 affected tests pass; targeted formatting, code-map and diff checks pass.
+
+Daily interruption now has fresh/cache 32-seed scheduling acceptance for delayed
+missions, ordinary UFO births, immediate no-object prefixes, final base and
+infiltration objectives, and positive-duration direct sites. Selected results
+match full deterministic control snapshots/RNG; three rewrites and the next
+tick preserve counters, IDs, live counts and pact state. Possible base/site
+marker exhaustion still blocks before research selection. Infinite zero-timer
+infiltration retains its intentional work refusal; finite fixtures disable the
+native endless option explicitly. Mission-think revelation was found and
+implemented alongside these cases; its captured evidence is recorded in
+[mission-think base revelation](strategic-mission-script-status.md#mission-think-base-revelation-2026-10-09).

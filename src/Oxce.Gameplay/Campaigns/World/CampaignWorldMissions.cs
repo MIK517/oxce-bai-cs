@@ -233,14 +233,25 @@ internal sealed partial class CampaignWorld
             ? "A non-retaliation mission cannot expire while a base links it as retaliation." : null;
     }
 
-    private void AdvanceMissionCountdowns(CampaignState.TimeEffects _)
+    private void AdvanceMissionCountdowns(CampaignState.TimeEffects effects)
     {
         for (var index = 0; index < _missions.Count; index++)
         {
             var mission = _missions[index];
             var rule = campaign.Content.RuntimeRules.AlienMissions[
                 campaign.Content.RuntimeRules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            var previousBaseCount = _alienBases.Count;
             _missions[index] = ThinkMission(mission, rule, index);
+            // GeoscapeState::time30Minutes only reveals the last base born during
+            // this mission's think. Direct late hunting and UFO landing callers
+            // intentionally do not apply showAlienBase.
+            if (_alienBases.Count > previousBaseCount &&
+                WorldObjectiveBaseSpawn.RevealAfterMissionThink(true, _alienBases[^1].Discovered, rule.ShowAlienBase))
+            {
+                var alienBase = _alienBases[^1] with { Discovered = true };
+                _alienBases[^1] = alienBase;
+                effects.Notify(new AlienBaseDiscovered(alienBase.Id, alienBase.DeploymentId));
+            }
         }
 
         for (var index = _missions.Count - 1; index >= 0; index--)

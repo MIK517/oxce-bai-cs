@@ -273,7 +273,8 @@ public sealed class StrategicWorldSiteResearchGeneratedObjectiveTests
         Assert.Empty(campaign.Capture().World.Missions);
     }
 
-    internal static RuntimeContent Content(bool cache, int objective, bool hunting, bool prefix = true, string interrupt = "CORE", bool endless = false, int firstTimer = 0) => StrategicReadinessTestContent.Load(
+    internal static RuntimeContent Content(bool cache, int objective, bool hunting, bool prefix = true, string interrupt = "CORE", bool endless = false, int firstTimer = 0,
+        bool showBase = false) => StrategicReadinessTestContent.Load(
         ["strategic-world.rul"], cache, $$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -282,6 +283,7 @@ public sealed class StrategicWorldSiteResearchGeneratedObjectiveTests
           - type: GENERATED_OBJECTIVE_PREFIX
             objective: {{objective}}
             endlessInfiltration: {{endless.ToString().ToLowerInvariant()}}
+            showAlienBase: {{showBase.ToString().ToLowerInvariant()}}
             interruptResearch: {{interrupt}}
             spawnZone: 1
             siteType: ALIEN_BASE_DEPLOY
