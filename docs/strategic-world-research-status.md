@@ -1105,3 +1105,18 @@ Verified lifecycle/diary evidence backs fresh/cache 32-seed reward selection,
 both flight outcomes, later UFO and craft fallthrough, exact control RNG and
 world state, three rewrites and next-tick live-UFO cleanup. Unsafe waypoint
 speed and a possible interception still stop the whole tick without mutation.
+
+Ordinary ground arrivals now use the same continuing-branch proof. Selected
+interruption destroys before landing; continuation retains native land/fake-water
+eligibility, ground timers, marker allocation, alerts and later-actor movement.
+Site conversion and landing-base creation still require their separate research
+alternatives to be proved. The unsafe-ground-timer regression now reaches its
+owning waypoint guard, while an objective conversion retains its uncertainty
+guard before reward selection or movement.
+
+Fresh/cache 32-seed dry-land, accepted/rejected fake-water and ocean scenarios
+compare the full selected snapshot with deterministic interruption controls,
+including RNG, diaries, landing alerts and later UFO/craft fallthrough. Three
+rewrites and subsequent timer/takeoff or destroyed-UFO cleanup are checked.
+Reference: `AlienMission::ufoReachedWaypoint`, native lifecycle/site-spawn and
+diary captures. The stock/airborne/ground slices are ready for their batch audit.

@@ -336,11 +336,11 @@ internal sealed partial class CampaignWorld
                         campaign.Content.RuntimeRules.UfoTrajectories.GetRequired(projected.TrajectoryId)].Value;
                     // Native arrival destroys at the final point regardless of
                     // interruption. Both research branches share that flight result.
-                    // An airborne next waypoint uses the normal owning arrival
+                    // An ordinary next waypoint uses the normal owning arrival
                     // proof. Interruption only destroys and ends the flight pass,
                     // skipping subsequent actors already proved for continuation.
                     if (projected.TrajectoryPoint + 1 < trajectory.Waypoints.Count &&
-                        trajectory.Altitude(projected.TrajectoryPoint + 1) == 0)
+                        (IsSiteConversion(projected, mission, trajectory) || CreatesLandingBase(projected, mission, trajectory)))
                         return "UFO mission interruption depends on uncertain site research outcomes.";
                 }
             }
