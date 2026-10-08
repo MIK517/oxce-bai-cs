@@ -674,5 +674,17 @@ retargeting through the owned five-second handler. Both extended and one-tick
 ground timers preserve constructor state and waypoint identity; no hunt starts
 at birth. Verified hunting/lifecycle captures and a no-site control confirm
 unchanged UFO/RNG outcomes except for the later mission interruption and grant.
-Fresh/cache reload checks and retained airborne targetable refusals pass all 38
+Fresh/cache reload checks and retained airborne targetable refusals pass all 36
 affected tests; four new cases first failed at the old composition boundary.
+
+Both generation callers now accept those same safe non-escort hunter shapes:
+daily targetless airborne births and daily/late grounded starts. Daily births
+still receive the later explicit site interruption; late births do not.
+The owning generated-wave and hunting preflights retain race/stat, geometry,
+target selection and combat checks before mutation. Reference:
+GeoscapeState::GenerateSupplyMission/baseHunting/time10Minutes and
+Ufo::Ufo/AlienMission::spawnUfo. Verified constructor/generation/lifecycle
+captures and no-site controls cover caller-specific UFO/RNG outcomes, timers,
+source links and reloads. All 42 affected tests pass; four new generated-hunter
+cases first failed at the prior boundary. The old remaining-generation fixture
+now explicitly covers escorts; targetable airborne hunters remain guarded.
