@@ -35,8 +35,12 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
     private AlienMissionSnapshot ForecastMission(int id, CampaignTimeTrigger highest)
     {
         var mission = FindMission(id) ?? throw new InvalidDataException("UFO forecast requires a mission link.");
-        if (highest >= CampaignTimeTrigger.ThirtyMinutes && _pass.MissionCounterForecast?.TryGetValue(id, out var counters) == true) return counters;
-        return highest >= CampaignTimeTrigger.OneDay ? MissionAfterDailyResearch(mission, _pass.DailyResearchForecast) : mission;
+        if (highest >= CampaignTimeTrigger.ThirtyMinutes && _pass.MissionCounterForecast?.TryGetValue(id, out var counters) == true) mission = counters;
+        else if (highest >= CampaignTimeTrigger.OneDay) mission = MissionAfterDailyResearch(mission, _pass.DailyResearchForecast);
+        // Mission think/detection precede sites; this operation projects the later
+        // flight callers. Explicit mission-source topics interrupt even when disabled.
+        return !mission.Interrupted && _pass.SiteResearchForecast?.GuaranteedExplicitTopics.Contains(MissionRule(mission).InterruptResearchId) == true
+            ? mission with { Interrupted = true } : mission;
     }
 
     private string? PrepareMissionCounterForecasts(CampaignTimeTrigger highest)

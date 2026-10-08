@@ -26,7 +26,9 @@ internal sealed partial class CampaignWorld
         if (!found) return null;
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
-        if (_ufos.Count != 0) return SiteResearchUfoReason;
+        if (_ufos.Any(ufo => ufo.HunterKiller || ufo.Escort || ufo.Hunting || ufo.Escorting)) return SiteResearchUfoReason;
+        if (_ufos.Any(ufo => ufo.Status == UfoStatus.IgnoreMe))
+            return "Mission site research requires dormant UFO reactivation forecasts.";
         if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
         foreach (var owner in campaign.BaseStates)
         {
@@ -60,6 +62,16 @@ internal sealed partial class CampaignWorld
         }
         _pass.SiteResearchAfterSite = afterSites;
         _pass.SiteResearchForecast = forecast;
+        if ((long)_ufos.Count * _missions.Count > MaximumAlienBaseChecks)
+            return "Mission site research UFO link checks exceed the supported work limit.";
+        foreach (var ufo in _ufos)
+        {
+            var mission = FindMission(ufo.MissionId) ?? throw new InvalidDataException("UFO forecast requires a mission link.");
+            var rule = MissionRule(mission);
+            if (!mission.Interrupted && forecast.PossibleExplicitTopics.Contains(rule.InterruptResearchId) &&
+                !forecast.GuaranteedExplicitTopics.Contains(rule.InterruptResearchId))
+                return "UFO mission interruption depends on uncertain site research outcomes.";
+        }
         return null;
     }
 
