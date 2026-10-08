@@ -419,10 +419,10 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private bool HasFunctions(BaseState state, IReadOnlyList<string> required)
+    private bool HasFunctions(BaseState state, IReadOnlyList<string> required, int completedBuildTime = 0)
     {
         if (required.Count == 0) return true;
-        var provided = state.Facilities.Where(f => f.BuildTime <= 0).SelectMany(f => _content.RuntimeRules.Facilities[f.Rule].Value.ProvidedBaseFunctions).ToHashSet(StringComparer.Ordinal);
+        var provided = state.Facilities.Where(f => f.BuildTime <= completedBuildTime).SelectMany(f => _content.RuntimeRules.Facilities[f.Rule].Value.ProvidedBaseFunctions).ToHashSet(StringComparer.Ordinal);
         // Base location services are added by their containing country/region.
         foreach (var country in _countries)
         {
