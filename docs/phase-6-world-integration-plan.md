@@ -86,7 +86,9 @@ documents; entries here link to them instead of copying them.
   tests and 488 affected tests including probabilistic immediate escorts.
   Saved/daily/late final base and infiltration objectives now compose too,
   including endless survivors; their batch audit and all 3,826 root tests pass.
-  Generated-retaliation research and newborn-site phase composition, remaining
+  Saved/daily positive-duration direct births and late direct births now compose
+  too; their batch audit and all 3,844 root tests pass. Earlier immediate site
+  expiry, generated-retaliation research and remaining
   uncertainty and final closure keep 4c open;
   4d is unchanged.
 

@@ -854,3 +854,13 @@ retained prefixes do not receive the earlier grant, persist three rewrites and
 check the next half-hour's positive countdown or zero-duration grant/removal.
 Marker exhaustion remains atomic. These three direct-site slices are ready for
 their joint audit; earlier zero-duration grant composition remains unavailable.
+
+The direct-site batch audit confirms duration units, before/after-site caller
+order, daily removal versus UFO survival, deferred validation consumption,
+unknown interruption links and birth/expiry identity reservations. No additional
+runtime defect was confirmed. All 3,844 root tests pass with zero failures/skips,
+including checksums, private corpus and populated allocation gates. Full
+formatting, code-map and diff verification pass. The reference remains clean at
+the pin; useful captures remain and no native objects were generated. Immediate
+appended-site research, generated retaliation and uncertainty reconciliation
+still keep the headless gate open.
