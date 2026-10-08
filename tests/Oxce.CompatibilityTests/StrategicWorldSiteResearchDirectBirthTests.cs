@@ -61,7 +61,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
     [InlineData(true)]
     public void SavedDirectSitesRetainImmediateResearchAndIdentityBoundaries(bool cache)
     {
-        var content = Content(cache, duration: 0);
+        var content = Content(cache, duration: 0, maximumDuration: 1);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17)),
             "Newborn mission site research requires ordered expiry forecasts.");
         content = Content(cache);
@@ -177,7 +177,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
     }
 
     internal static RuntimeContent Content(bool cache, bool final = false, int duration = 1, bool generated = false, bool hunting = false,
-        int objective = 0, string interrupt = "CORE") =>
+        int objective = 0, string interrupt = "CORE", int? maximumDuration = null, string eventInterrupt = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -196,9 +196,10 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
 
           - type: RESEARCH_BORN_SITE
             markerName: RESEARCH_BORN_MARKER
-            duration: [{{{duration}}}, {{{duration}}}]
+            duration: [{{{duration}}}, {{{maximumDuration ?? duration}}}]
             unlockedResearchOnDespawn: BONUS
             points: 4
+        {{{(eventInterrupt.Length == 0 ? "" : "    despawnEvents: {NEWBORN_EVENT: 1}")}}}
           - type: RESEARCH_DIRECT_BASE
             markerName: RESEARCH_DIRECT_BASE_MARKER
             genMission: {RESEARCH_DIRECT_CHAIN: 1}
@@ -208,7 +209,7 @@ public sealed class StrategicWorldSiteResearchDirectBirthTests
             baseDetectionChance: 100
             huntMissionMaxFrequency: 9000
             huntMissionWeights: {0: {RESEARCH_DIRECT_CHAIN: 1}}
-        """);
+        """ + (eventInterrupt.Length == 0 ? "" : "\nevents:\n  - {name: NEWBORN_EVENT, interruptResearch: " + eventInterrupt + "}\n"));
 
     internal static CampaignSnapshot GeneratedSnapshot(RuntimeContent content, bool hunting = false)
     {

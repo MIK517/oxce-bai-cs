@@ -120,7 +120,8 @@ internal sealed partial class CampaignWorld
                 {
                     work += 6 + 2L * deployment.DespawnEvents.Count;
                     if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
-                    if (SiteDespawnReason(deployment, highest) is { } despawnReason) return despawnReason;
+                    if (SiteDespawnReason(deployment, highest, _pass.SiteResearchAfterBirth?.GetValueOrDefault(mission)) is { } despawnReason)
+                        return despawnReason;
                     if (IsUfoIdNamespace(deployment.CounterDespawn) || IsUfoIdNamespace(deployment.CounterFailure) ||
                         IsUfoIdNamespace(deployment.CounterAll) || IsUfoIdNamespace(deployment.DecreaseCounterDespawn) ||
                         IsUfoIdNamespace(deployment.DecreaseCounterFailure) || IsUfoIdNamespace(deployment.DecreaseCounterAll))

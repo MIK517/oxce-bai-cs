@@ -24,7 +24,7 @@ internal sealed partial class CampaignWorld
                 if (pair.Value != 0 && rules.Events.TryGet(pair.Key, out var handle) &&
                     rules.Events[handle].Value.InterruptResearch.Length == 0) return SiteDespawnBoundary;
         }
-        if (!found) return null;
+        if (!found && !HasSavedImmediateSiteResearch()) return null;
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
         if (SiteResearchBaseGenerationReason(highest, out var missionBirths, out var generationWork) is { } baseReason) return baseReason;
@@ -39,6 +39,7 @@ internal sealed partial class CampaignWorld
         var waveWork = 0;
         long landWork = 0;
         HashSet<int>? missionRemovals = null;
+        List<(AlienMissionSnapshot Mission, RuleHandle<AlienDeploymentRuleFamily> Deployment)> immediateBirths = [];
         foreach (var saved in _missions)
         {
             var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
@@ -56,7 +57,7 @@ internal sealed partial class CampaignWorld
                     if (CanAdvanceNoObjectWave(step, rule)) continue;
                     if (IsDirectSiteWave(step, rule))
                     {
-                        if (SiteResearchDirectBirthReason(step, rule, ref generationWork) is { } directReason) return directReason;
+                        if (SiteResearchDirectBirthReason(step, rule, ref generationWork, immediateBirths) is { } directReason) return directReason;
                         continue;
                     }
                     if (SiteResearchOrdinaryBirthReason(step, rule, ref generationWork, ref landWork) is { } birthReason) return birthReason;
@@ -99,6 +100,13 @@ internal sealed partial class CampaignWorld
             if (SiteDespawnReason(deployment, highest, forecast.GuaranteedResearch) is { } eventReason) return eventReason;
         }
         _pass.SiteResearchAfterSite = afterSites;
+        foreach (var birth in immediateBirths)
+        {
+            var deployment = rules.AlienDeployments[birth.Deployment].Value;
+            if (forecast.Advance(deployment.UnlockedResearchOnDespawnId) is { } reason) return reason;
+            (_pass.SiteResearchAfterBirth ??= []).Add(birth.Mission, forecast.GuaranteedResearch);
+            if (SiteDespawnReason(deployment, highest, forecast.GuaranteedResearch) is { } eventReason) return eventReason;
+        }
         _pass.SiteResearchForecast = forecast;
         return null;
     }
@@ -129,7 +137,31 @@ internal sealed partial class CampaignWorld
         return CanSpawnOrdinaryUfoWave(mission, rule, requireHuntingForecast: false) ? null : SiteResearchWaveReason;
     }
 
-    private string? SiteResearchDirectBirthReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, ref long work)
+    private bool HasSavedImmediateSiteResearch()
+    {
+        var rules = campaign.Content.RuntimeRules;
+        var work = 0;
+        foreach (var saved in _missions)
+        {
+            var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
+            var rule = MissionRule(mission);
+            if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
+            foreach (var step in DueWaveSteps(mission, rule))
+            {
+                if (++work > MaximumImmediateWaveSteps) throw new InvalidDataException(WaveWorkReason);
+                if (!IsDirectSiteWave(step, rule)) continue;
+                var wave = rule.Waves[step.NextWave];
+                var deployment = wave.Deployment;
+                if (deployment is null && rules.AlienDeployments.TryGet(rule.SiteTypeId, out var siteType)) deployment = siteType;
+                if (deployment is { } handle && rules.AlienDeployments[handle].Value.DurationMinimum == 0 &&
+                    rules.Research.TryGet(rules.AlienDeployments[handle].Value.UnlockedResearchOnDespawnId, out _)) return true;
+            }
+        }
+        return false;
+    }
+
+    private string? SiteResearchDirectBirthReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, ref long work,
+        List<(AlienMissionSnapshot Mission, RuleHandle<AlienDeploymentRuleFamily> Deployment)>? immediateBirths = null)
     {
         var wave = rule.Waves[mission.NextWave];
         if (wave.Trajectory is null) return SiteResearchWaveReason;
@@ -141,6 +173,9 @@ internal sealed partial class CampaignWorld
         }
         var areas = DirectSiteAreas(mission, rule);
         work += areas.Count;
+        RuleHandle<AlienDeploymentRuleFamily>? immediate = null;
+        var deterministic = areas.Count != 0;
+        var anyPositive = false;
         foreach (var area in areas)
         {
             work += SiteDeploymentSelectionWork(wave, rule, area);
@@ -148,6 +183,7 @@ internal sealed partial class CampaignWorld
             var candidates = SiteDeploymentCandidates(wave, rule, area);
             work += candidates.Count;
             if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";
+            deterministic &= candidates.Count == 1 && !SiteDeploymentMayBeSuppressed(wave, rule, area);
             foreach (var candidate in candidates)
             {
                 var deployment = campaign.Content.RuntimeRules.AlienDeployments[candidate].Value;
@@ -155,11 +191,22 @@ internal sealed partial class CampaignWorld
                     deployment.DurationMaximum > int.MaxValue / 3600)
                     return "Direct mission site duration is outside the supported range.";
                 if (deployment.DurationMinimum == 0)
-                    return "Newborn mission site research requires ordered expiry forecasts.";
+                {
+                    if (deployment.DurationMaximum != 0 || immediate is { } prior && prior != candidate)
+                        return "Newborn mission site research requires ordered expiry forecasts.";
+                    immediate = candidate;
+                }
+                else anyPositive = true;
             }
         }
-        // These appended sites cannot expire in their birth tick, so they do not
-        // add a grant. The later site owner validates counters and geometry.
+        if (immediate is { } expiring)
+        {
+            if (!deterministic || anyPositive || immediateBirths is null)
+                return "Newborn mission site research requires ordered expiry forecasts.";
+            immediateBirths.Add((mission, expiring));
+        }
+        // Positive timers add no grant. Deterministic immediate births append
+        // their grants after saved sites; the site owner still validates geometry.
         return null;
     }
 
