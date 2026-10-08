@@ -129,7 +129,7 @@ internal sealed partial class CampaignWorld
         var trajectory = rules.UfoTrajectories[path].Value;
         var hunterChance = wave.HunterKillerPercentage == -1 ? rules.Ufos[ufo].Value.HunterKillerPercentage : wave.HunterKillerPercentage;
         return trajectory.Waypoints.Count >= 2 && !wave.Escort &&
-            (hunterChance <= 0 || allowHunters && NoCraftCanBecomeHunterTarget());
+            (hunterChance <= 0 || allowHunters && (trajectory.Altitude(0) == 0 || NoCraftCanBecomeHunterTarget()));
     }
 
     private string? SiteResearchFlightReason(CampaignTimeTrigger highest)
