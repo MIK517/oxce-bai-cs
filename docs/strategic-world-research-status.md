@@ -1044,3 +1044,11 @@ or skips, including private corpus, fixture checksums and original allocation
 budgets. Full formatting, code-map and diff checks pass; the reference is clean.
 Distinct generated region/area grant sequences, stock eligibility uncertainty,
 nonterminal flight uncertainty and final headless reconciliation remain open.
+
+Generated region/race/area candidates now retain exclusive research paths inside
+each selected source mission. Shared wave slots remain local to their path; a
+topic from another candidate cannot enter its conditional newborn event proof.
+The native generation and site-spawn fixtures back fresh/cache 32-seed region
+and fixed-area choices with distinct topics, markers, diaries, own-event
+suppression and three rewrites. A due event cannot rely on an unchosen path.
+Differing slot shapes and no-grant candidate paths retain their next-slice guard.
