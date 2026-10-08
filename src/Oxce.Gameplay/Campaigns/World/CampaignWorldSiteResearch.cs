@@ -27,8 +27,6 @@ internal sealed partial class CampaignWorld
         // These boundaries name the still-unprojected caller phases. Research-only
         // worlds can execute without pretending that future actors already changed.
         if (_ufos.Any(ufo => ufo.HunterKiller || ufo.Escort || ufo.Hunting || ufo.Escorting)) return SiteResearchUfoReason;
-        if (_ufos.Any(ufo => ufo.Status == UfoStatus.IgnoreMe))
-            return "Mission site research requires dormant UFO reactivation forecasts.";
         if (SiteResearchBaseGenerationReason(highest) is { } baseReason) return baseReason;
         foreach (var owner in campaign.BaseStates)
         {
