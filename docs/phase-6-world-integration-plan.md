@@ -100,9 +100,11 @@ documents; entries here link to them instead of copying them.
   landing-base flight alternatives and 72-hour arrival scenarios now compose;
   their batch audit and all 3,988 root tests pass. Daily mission/wave interruption,
   mission-think revelation and quiet base deletion alternatives now compose;
-  their batch audit and all 4,049 root tests pass. Ordered daily research/site
-  alternatives, linked deletion, newborn flight/pursuit composition and final
-  closure keep 4c open; 4d is unchanged.
+  their batch audit and all 4,049 root tests pass. Exact daily discovery now feeds
+  world interruption proofs with all 4,077 root tests passing; its three-slice
+  batch remains in progress. Ordered daily research/site alternatives, linked
+  deletion, newborn flight/pursuit composition and final closure keep 4c open;
+  4d is unchanged.
 
 - 2026-10-08 late-infiltration/retaliation cycle: late pending-pact completion
   and both retaliation creation callers use bounded effective-wave forecasts.
