@@ -96,7 +96,7 @@ public sealed class StrategicWorldSiteResearchBaseTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ImmediateActorGenerationRemainsAtomic(bool hunting)
+    public void ImmediateHunterGenerationRemainsAtomic(bool hunting)
     {
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], extraRules:
             "research:\n  - {name: UNLOCK, cost: 1}\n  - {name: CORE, cost: 1}\n" + Deployment + "\n" + (hunting ? """
@@ -110,7 +110,7 @@ public sealed class StrategicWorldSiteResearchBaseTests
                 genMission: {GENERATING_ACTOR: 1}
                 genMissionFreq: 100
                 genMissionLimit: 1
-            """) + "\nalienMissions:\n  - type: GENERATING_ACTOR\n    waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]\n");
+            """) + "\nalienMissions:\n  - type: GENERATING_ACTOR\n    waves: [{ufo: UFO_HUNTER, count: 1, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]\n");
         var snapshot = Snapshot(content);
         snapshot = snapshot with
         {

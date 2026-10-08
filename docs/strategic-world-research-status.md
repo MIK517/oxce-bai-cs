@@ -603,3 +603,19 @@ Full batch acceptance passes all 3,736 root tests with no failures or skips,
 including checksums, private corpus and allocation coverage. Formatting,
 regenerated code-map validation and diff checks pass. No new native artifacts
 were produced; existing captures and ignored validation logs remain useful.
+
+## Generated ordinary births and site research (2026-10-08)
+
+Daily generated airborne ordinary waves now compose with site grants through
+the existing prepared region/race/area alternatives. The research proof checks
+every reachable candidate with bounded scans and birth geometry, preserves
+final base/infiltration guards and reserves surviving generated missions in the
+later interruption scan. A final-wave UFO keeps an invalid interruption link
+reachable, so the whole tick still stops before creation. The old actor refusal
+fixture now names the remaining hunter boundary explicitly.
+Reference: GeoscapeState::GenerateSupplyMission/time30Minutes and
+AlienMission::start/think/spawnUfo, including the Earth-operation source override.
+Verified generation call traces, spawnPathRows and diary captures back fresh/cache
+initial/next timer draws, source linkage, birth movement, interruption and three
+rewrites. All 47 affected generation/objective/base research tests pass; the six
+new birth cases first failed at the previous generation composition boundary.
