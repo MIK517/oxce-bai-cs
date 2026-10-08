@@ -993,3 +993,17 @@ code-map and diff verification pass. The reference remains clean at the pin;
 useful captures and the failure log remain, with no new native objects. Initial
 timer uncertainty, multiple source mission choices, generated retaliation and
 remaining stock/flight reconciliation keep the headless gate open.
+
+## Generated timer and source alternatives (2026-10-08)
+
+Native `AlienMission::start` chooses `(steps / 2 + random[0, steps]) * 30`,
+where `steps = firstWave.spawnTimer / 30`. Daily generation can now forecast
+the whole immediate birth sequence or a delayed start, preserving its conditional
+newborn event proofs and withholding uncertain research from later due events.
+The cleanup proof still retains any mission whose initial timer may be delayed.
+Source mission-choice alternatives remain a separate boundary for the next slice.
+
+Verified generation/spawn fixtures and fresh/cache 32-seed cases cover timers
+59, 60, 90 and 120, actual interruption/diary decisions, retained wave counters,
+exact RNG controls and save/reload. A due event is suppressible only with an
+always-due grant. The C++ reference remains unchanged at the pinned commit.
