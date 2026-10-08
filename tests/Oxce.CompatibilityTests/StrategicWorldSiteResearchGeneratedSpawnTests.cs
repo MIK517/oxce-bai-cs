@@ -148,6 +148,51 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void GeneratedSafeHuntersPreserveTheirCreationCallerAndRetargetPhase(bool cache, bool hunting)
+    {
+        using var native = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.Contains(TestFixtures.Rows(native.RootElement, "constructorRows"), row =>
+            row[0].GetInt32() == 100 && row[1].GetInt32() == 1 && row[2].GetInt32() == 0 && row[4].GetBoolean() && row[5].GetInt32() == 1);
+        TestFixtures.LoadVerifiedManifest(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        foreach (var path in hunting ? new[] { "PATH_1_0", "PATH_SHORT" } : new[] { "PATH_0_0", "PATH_1_0", "PATH_SHORT" })
+        {
+            var content = Content(cache, hunting, trajectory: path, ufo: "UFO_HUNTER");
+            var initial = Snapshot(content, hunting);
+            var control = CampaignState.Restore(initial with { World = initial.World with { MissionSites = [] } }, content, new SplitMix64RandomSource(17));
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+            AdvanceUnblocked(control, 1);
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            Assert.Empty(result.Events.OfType<UfoStartedHunting>());
+            var after = campaign.Capture();
+            var ufo = Assert.Single(after.World.Ufos);
+            Assert.True(ufo.HunterKiller);
+            Assert.False(ufo.Hunting);
+            Assert.False(ufo.Escorting);
+            Assert.Equal(1, ufo.HuntMode);
+            Assert.Equal(path == "PATH_1_0" ? UfoStatus.Landed : UfoStatus.Flying, ufo.Status);
+            Assert.Equal(path == "PATH_1_0" ? 5 : 0, ufo.SecondsRemaining);
+            Assert.Equal(WorldTargetKind.Waypoint, ufo.Destination!.Kind);
+            Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
+            Assert.Equal(control.Capture().RandomState, after.RandomState);
+            var mission = Assert.Single(after.World.Missions);
+            Assert.Equal(!hunting, mission.Interrupted);
+            Assert.False(Assert.Single(control.Capture().World.Missions).Interrupted);
+            Assert.Equal(1, mission.LiveUfos);
+            Assert.Equal(mission.Id, ufo.MissionId);
+            Assert.Equal(2, mission.AlienBase!.Id);
+            Assert.Empty(after.World.MissionSites);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            Assert.Equivalent(after, Reload(content, campaign, 17, "site-research-generated-safe-hunter.sav").Capture(), strict: true);
+        }
+    }
+
     private static void AssertBirth(bool cache, bool final, bool hunting)
     {
         using var generation = TestFixtures.ReadVerifiedExpected(hunting ? "strategic-alien-base-hunt-generation" : "strategic-alien-base-generation");
@@ -189,7 +234,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool hunting, bool final = false, string interrupt = "CORE", string trajectory = "PATH_0_0", bool bothCallers = false) =>
+    internal static RuntimeContent Content(bool cache, bool hunting, bool final = false, string interrupt = "CORE", string trajectory = "PATH_0_0", bool bothCallers = false, string ufo = "UFO_SCOUT") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
@@ -200,7 +245,7 @@ public sealed class StrategicWorldSiteResearchGeneratedSpawnTests
             interruptResearch: {{{interrupt}}}
             points: 7
             waves:
-              - {ufo: UFO_SCOUT, count: 1, trajectory: {{{trajectory}}}, timer: 0}
+              - {ufo: {{{ufo}}}, count: 1, trajectory: {{{trajectory}}}, timer: 0}
         {{{(final ? "" : "      - {count: 1, trajectory: TRAJ_PATROL, timer: 9000}")}}}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment + $$$"""
 
