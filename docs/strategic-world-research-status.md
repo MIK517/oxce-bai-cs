@@ -421,3 +421,16 @@ Craft::rearm/refuel, CraftWeapon::rearm, Base::removeResearch and
 SavedGame::handleResearchUnlockedByMissions. Native hunting/mission captures
 back 20 fresh/cache stock and ammunition-saving cases with three rewrites.
 All 40 daily/item cases and all 599 shared hunting/site regressions pass.
+
+## Counter-only waves before site research (2026-10-08)
+
+Bounded no-object score waves now advance before saved-site research instead of
+using the blanket due-wave composition boundary. Every immediate step is checked
+through the existing counter-only capability and aggregate chain limit. Actor
+births and other objective transitions retain the precise wave boundary.
+Reference: AlienMission::think/spawnUfo and GeoscapeState::time30Minutes mission
+think/cleanup before processMissionSite. The strategic-wave-chain capture backs
+fresh/cache first-call counter and RNG comparisons for all five no-object chain
+shapes, later explicit interruption, completed mission removal, repeated reloads
+and unchanged intentional excessive-chain rejection. All 141 wave/site cases
+pass. The following batch audit covers this and the daily/item slices together.
