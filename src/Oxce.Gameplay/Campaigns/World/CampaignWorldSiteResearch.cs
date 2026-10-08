@@ -60,11 +60,13 @@ internal sealed partial class CampaignWorld
         }
         _pass.SiteResearchAfterSite = afterSites;
         _pass.SiteResearchForecast = forecast;
-        if ((long)_ufos.Count * _missions.Count > MaximumAlienBaseChecks)
+        if ((long)_ufos.Count * (_missions.Count + (highest >= CampaignTimeTrigger.OneDay ? (long)_alienBases.Count : 0)) > MaximumAlienBaseChecks)
             return "Mission site research UFO link checks exceed the supported work limit.";
         foreach (var ufo in _ufos)
         {
-            var mission = FindMission(ufo.MissionId) ?? throw new InvalidDataException("UFO forecast requires a mission link.");
+            // Earlier daily interruption/deletion is permanent for this tick even
+            // if a later site disables or reenables its research prerequisite.
+            var mission = ForecastMission(ufo.MissionId, highest);
             var rule = MissionRule(mission);
             if (!mission.Interrupted && forecast.PossibleExplicitTopics.Contains(rule.InterruptResearchId) &&
                 !forecast.GuaranteedExplicitTopics.Contains(rule.InterruptResearchId))

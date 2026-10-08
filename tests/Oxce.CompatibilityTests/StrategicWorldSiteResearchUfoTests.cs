@@ -86,6 +86,31 @@ public sealed class StrategicWorldSiteResearchUfoTests
             "UFO mission interruption depends on uncertain site research outcomes.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EarlierDailyInterruptionSurvivesUncertainSiteDisablingAndReenabling(bool cache)
+    {
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
+            research:
+              - {name: UNLOCK, cost: 1}
+              - {name: CORE, cost: 1, disables: [BONUS], reenables: [BONUS], getOneFree: [BONUS, OTHER]}
+              - {name: BONUS, cost: 1}
+              - {name: OTHER, cost: 1}
+            alienMissions:
+              - {type: MISSION_SCOUT, interruptResearch: BONUS}
+            """ + "\n" + Deployment);
+        var snapshot = Arrival(content) with { Time = new(1, 1, 1, 1999, 23, 59, 55), CompletedResearch = ["BONUS"] };
+        var campaign = CampaignState.Restore(snapshot, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.True(Assert.Single(after.World.Missions).Interrupted);
+        Assert.Equal(UfoStatus.Destroyed, Assert.Single(after.World.Ufos).Status);
+        Assert.Equal(2, after.ResearchDiary.Count);
+        Assert.Empty(after.World.MissionSites);
+        Reload(content, campaign, 17, "daily-interruption-before-site-reward.sav");
+    }
+
     internal static CampaignSnapshot Arrival(Oxce.Mods.Rulesets.Content.RuntimeContent content)
     {
         var snapshot = CreateUfoTransitCampaign(content, new(2, 2, 1, 1999, 0, 29, 55), "UFO_SCOUT", 2200,
