@@ -126,27 +126,33 @@ internal sealed partial class CampaignWorld
     {
         // Saved missions think before the appended daily missions. Alternatives
         // of one generated birth share one grant slot, never execute all branches.
-        foreach (var group in births.GroupBy(birth =>
-            (birth.Mission.AlienBase!.TypeId, birth.Mission.AlienBase.Id, birth.Mission.RuleId)))
+        foreach (var source in births.GroupBy(birth =>
+            (birth.Mission.AlienBase!.TypeId, birth.Mission.AlienBase.Id)))
         {
-            string? AdvanceBirths()
+            var choices = source.GroupBy(birth => birth.Mission.RuleId).ToArray();
+            string? AdvanceChoice(IGrouping<string, SiteResearchBirth> group)
             {
-                Dictionary<(int Wave, int Counter), IReadOnlyDictionary<string, IReadOnlySet<string>>> slots = [];
-                foreach (var birth in group)
+                string? AdvanceBirths()
                 {
-                    var mission = birth.Mission;
-                    var key = (mission.NextWave, mission.NextUfoCounter);
-                    if (!slots.TryGetValue(key, out var conditional))
+                    Dictionary<(int Wave, int Counter), IReadOnlyDictionary<string, IReadOnlySet<string>>> slots = [];
+                    foreach (var birth in group)
                     {
-                        if (AdvanceBirthResearch(birth, forecast, highest, out conditional) is { } reason) return reason;
-                        slots.Add(key, conditional);
+                        var mission = birth.Mission;
+                        var key = (mission.NextWave, mission.NextUfoCounter);
+                        if (!slots.TryGetValue(key, out var conditional))
+                        {
+                            if (AdvanceBirthResearch(birth, forecast, highest, out conditional) is { } reason) return reason;
+                            slots.Add(key, conditional);
+                        }
+                        else if (RecordBirthResearch(birth, conditional, highest) is { } reason) return reason;
                     }
-                    else if (RecordBirthResearch(birth, conditional, highest) is { } reason) return reason;
+                    return null;
                 }
-                return null;
+                return group.Any(birth => birth.GenerationOptional)
+                    ? forecast.AdvanceOptionalSequence(AdvanceBirths) : AdvanceBirths();
             }
-            var reason = group.Any(birth => birth.GenerationOptional)
-                ? forecast.AdvanceOptionalSequence(AdvanceBirths) : AdvanceBirths();
+            var reason = choices.Length == 1 ? AdvanceChoice(choices[0]) :
+                forecast.AdvanceSequenceChoices(choices.Select(group => (Func<string?>)(() => AdvanceChoice(group))));
             if (reason is not null) return reason;
         }
         return null;
@@ -354,6 +360,7 @@ internal sealed partial class CampaignWorld
             if (highest >= CampaignTimeTrigger.OneDay && rule.GenMissionFrequency > 0 && alienBase.GenMissionCount < rule.GenMissionLimit)
             {
                 var canGenerate = false;
+                var firstBirth = dailyImmediateBirths.Count;
                 var missions = campaign.Content.RuntimeRules.AlienMissions;
                 foreach (var choice in rule.GenMission)
                 {
@@ -367,6 +374,23 @@ internal sealed partial class CampaignWorld
                     if (!removed && mission.InterruptResearchId.Length != 0 && mission.InterruptResearch is null)
                         return "Alien mission interruption references undefined research.";
                     canGenerate |= !removed;
+                }
+                // A selected null, delayed or non-site mission contributes no
+                // immediate grant, even when other choices do produce sites.
+                if (dailyImmediateBirths.Count != firstBirth)
+                {
+                    HashSet<string> grantingChoices = new(StringComparer.Ordinal);
+                    for (var index = firstBirth; index < dailyImmediateBirths.Count; index++)
+                    {
+                        if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                        grantingChoices.Add(dailyImmediateBirths[index].Mission.RuleId);
+                    }
+                    if (rule.GenMission.Any(choice => choice.Value != 0 && !grantingChoices.Contains(choice.Key)))
+                        for (var index = firstBirth; index < dailyImmediateBirths.Count; index++)
+                        {
+                            if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                            dailyImmediateBirths[index] = dailyImmediateBirths[index] with { GenerationOptional = true };
+                        }
                 }
                 if (canGenerate) precedingMissionBirths++;
             }
@@ -422,8 +446,6 @@ internal sealed partial class CampaignWorld
                             return reason;
                         if (dailyImmediateBirths.Count != priorBirths)
                         {
-                            if (deployment.GenMission.Any(choice => choice.Value != 0 && choice.Key != missionId))
-                                return "Immediate generated site research requires deterministic generation outcomes.";
                             // Native start chooses (steps / 2 + random[0, steps]) * 30.
                             // A delayed initial timer skips this whole birth sequence.
                             var initialSteps = mission.Waves[0].SpawnTimer / 30;

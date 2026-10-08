@@ -186,6 +186,29 @@ public sealed partial class CampaignState
             return Publish(combined);
         }
 
+        public string? AdvanceSequenceChoices(IEnumerable<Func<string?>> advances)
+        {
+            var prior = _outcomes;
+            var guaranteed = _guaranteedResearch;
+            var possible = _possibleResearch;
+            var guaranteedExplicit = _guaranteedExplicitTopics;
+            var possibleExplicit = _possibleExplicitTopics;
+            List<Outcome> combined = [];
+            foreach (var advance in advances)
+            {
+                if (++_work > MaximumWork) return _reason = WorkReason;
+                _outcomes = prior;
+                _guaranteedResearch = guaranteed;
+                _possibleResearch = possible;
+                _guaranteedExplicitTopics = guaranteedExplicit;
+                _possibleExplicitTopics = possibleExplicit;
+                if (advance() is { } reason) return reason;
+                if (combined.Count + _outcomes.Count > 256) return _reason = "Mission research exceeds the supported outcome limit.";
+                combined.AddRange(_outcomes);
+            }
+            return combined.Count == 0 ? _reason : Publish(combined);
+        }
+
         private string? IncludeSkipped(List<Outcome> skipped)
         {
             if (_outcomes.Count + skipped.Count > 256)
