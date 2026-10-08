@@ -1,3 +1,5 @@
+using Oxce.Mods.Rulesets.Runtime;
+
 namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
@@ -41,15 +43,28 @@ internal sealed partial class CampaignWorld
             if (!mission.Interrupted && !IsOver(mission, rule) && mission.NextWave < rule.Waves.Count && mission.SpawnCountdown <= 30)
                 return SiteResearchWaveReason;
         }
-        // Half-hour refuelling and higher-trigger arrivals/production precede sites.
-        // Their item-dependent automatic discoveries need a separate stock projection.
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null;
+        long itemWork = dailyResearch?.Work ?? 0;
         if (rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.NeedItem))
         {
-            if (highest >= CampaignTimeTrigger.OneHour || campaign.BaseStates.Any(owner => owner.Crafts.Any(craft =>
-                    craft.Logistics is { Status: "STR_REFUELLING" })))
-                return "Mission site research requires timed item eligibility forecasts.";
+            var items = new SiteResearchItemForecast(dailyResearch);
+            if (ForecastHuntingCrafts(highest, ref itemWork, items) is { } itemReason) return itemReason;
+            var first = campaign.BaseStates[0];
+            firstBaseItems = items.Stocks[first.Id];
+            var uncertainty = items.Uncertainty.GetValueOrDefault(first.Id);
+            foreach (var entry in rules.Research.Rules)
+            {
+                if (++itemWork > MaximumAlienBaseChecks) return "Mission research exceeds the supported discovery work limit.";
+                if (entry.Value.Cost != 0 || !entry.Value.NeedItem || entry.Value.NeededItem is not { } needed ||
+                    !rules.Items.TryGet(needed, out var item)) continue;
+                var upper = firstBaseItems.GetValueOrDefault(item);
+                var lower = upper - (uncertainty?.GetValueOrDefault(item) ?? 0);
+                if (lower < 0) return "Mission site research item stocks exceed the supported range.";
+                if (lower == 0 && upper != 0)
+                    return "Mission site research item eligibility depends on stochastic maintenance outcomes.";
+            }
         }
-        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch);
+        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork);
         var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
         foreach (var site in _sites)
         {
@@ -92,6 +107,13 @@ internal sealed partial class CampaignWorld
 
     private IReadOnlySet<string>? SiteResearchAfter(MissionSiteSnapshot site) =>
         _pass.SiteResearchAfterSite?.GetValueOrDefault((site.DeploymentId, site.Id));
+
+    private sealed class SiteResearchItemForecast(DailyResearchStockForecast? research)
+    {
+        public DailyResearchStockForecast? Research { get; } = research;
+        public Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> Stocks = [];
+        public Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> Uncertainty = [];
+    }
 
     private string? SiteResearchBaseGenerationReason(CampaignTimeTrigger highest)
     {

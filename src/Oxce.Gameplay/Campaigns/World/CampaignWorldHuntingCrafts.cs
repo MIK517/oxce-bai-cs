@@ -4,7 +4,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 
 internal sealed partial class CampaignWorld
 {
-    private string? ForecastHuntingCrafts(CampaignTimeTrigger highest, ref long work)
+    private string? ForecastHuntingCrafts(CampaignTimeTrigger highest, ref long work, SiteResearchItemForecast? beforeSites = null)
     {
         _pass.HuntingCraftForecast = [];
         _pass.HuntingCraftSources = [];
@@ -19,7 +19,8 @@ internal sealed partial class CampaignWorld
             }
         if (highest >= CampaignTimeTrigger.OneDay && campaign.ResearchPreflight.HasDisabledDailyProjects(ref work))
             researchMayChangeStocks = true;
-        DailyResearchStockForecast? researchStocks = null;
+        DailyResearchStockForecast? researchStocks = beforeSites?.Research;
+        if (researchStocks is not null) researchMayChangeStocks = false;
         if (researchMayChangeStocks)
         {
             var supported = campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast);
@@ -88,6 +89,14 @@ internal sealed partial class CampaignWorld
                 }
                 _pass.HuntingCraftForecast.Add((rules.Crafts.GetExternalId(craft.Rule), craft.Id), state);
             }
+        }
+        if (beforeSites is not null)
+        {
+            // Site research runs after servicing/deliveries/production/refuelling,
+            // but before forced follower returns, fuel consumption and retargeting.
+            beforeSites.Stocks = baseStocks;
+            beforeSites.Uncertainty = baseUncertainty;
+            return null;
         }
         if (highest < CampaignTimeTrigger.TenMinutes) return null;
         // Every relaunch precedes fuel use. Fuel itself runs in saved craft order;
