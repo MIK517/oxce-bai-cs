@@ -141,6 +141,10 @@ public sealed class StrategicResearchDiaryExecutionTests
           - {name: BONUS, cost: 1, lookup: BONUS_LOOKUP}
           - {name: BONUS_LOOKUP, cost: {{(scenario == 1 ? 0 : 1)}}, dependencies: [BONUS]}
           - {name: AUTO, cost: {{(scenario == 2 ? 0 : 1)}}, dependencies: [BONUS]}
+        alienMissions:
+          - {type: MISSION_SCOUT, interruptResearch: CORE}
+          - {type: MISSION_LANDING, interruptResearch: BONUS}
+          - {type: MISSION_SITE, interruptResearch: AUTO}
         """);
 
     internal static CampaignSnapshot DailySnapshot(RuntimeContent content)

@@ -61,6 +61,7 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
         registry.Operation<ICampaignResearchPreflight>(this);
         registry.Operation<ICampaignProductionPreflight>(this);
         registry.Operation<ICampaignArcResearch>(this);
+        registry.Operation<ICampaignMissionResearch>(this);
         registry.Operation<ICampaignCustomCounters>(this);
         registry.Command<ConfigureResearchProject>(ConfigureResearch);
         registry.Command<ConfigureProductionProject>(ConfigureProduction);

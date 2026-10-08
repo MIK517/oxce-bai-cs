@@ -2,8 +2,32 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Campaigns.World;
 
-internal sealed partial class CampaignWorld
+internal sealed partial class CampaignWorld : ICampaignMissionResearchInterruption
 {
+    string? ICampaignMissionResearchInterruption.ValidationReason()
+    {
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var mission in _missions)
+        {
+            var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            if (rule.InterruptResearchId.Length != 0 && rule.InterruptResearch is null)
+                return "Alien mission interruption references undefined research.";
+        }
+        return null;
+    }
+
+    void ICampaignMissionResearchInterruption.Interrupt(IReadOnlyList<string> explicitTopics)
+    {
+        var topics = explicitTopics.ToHashSet(StringComparer.Ordinal);
+        var rules = campaign.Content.RuntimeRules;
+        for (var index = 0; index < _missions.Count; index++)
+        {
+            var mission = _missions[index];
+            var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+            if (topics.Contains(rule.InterruptResearchId)) _missions[index] = mission with { Interrupted = true };
+        }
+    }
+
     private AlienMissionSnapshot ForecastMission(int id, CampaignTimeTrigger highest)
     {
         var mission = FindMission(id) ?? throw new InvalidDataException("UFO forecast requires a mission link.");
