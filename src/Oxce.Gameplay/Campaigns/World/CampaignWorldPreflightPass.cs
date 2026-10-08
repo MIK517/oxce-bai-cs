@@ -7,7 +7,24 @@ internal sealed partial class CampaignWorld
     private readonly WorldPreflightPass _pass = new();
 
     private IReadOnlySet<string> GuaranteedDailyResearch() =>
-        _pass.GuaranteedDailyResearch ??= campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+        _pass.GuaranteedDailyResearch ??= TryDailyResearchProjection(out var daily)
+            ? daily.CompletedResearch!
+            : campaign.ResearchPreflight.GuaranteedResearchAfterDailyProgress();
+
+    private bool TryDailyResearchProjection(out DailyResearchStockForecast forecast)
+    {
+        if (_pass.DailyResearchProjection is null)
+        {
+            // This pure operation has its own million-step bound and chooses no
+            // random reward. Failed/uncertain projections never authorize effects.
+            long work = 0;
+            _pass.DailyResearchProjectionSupported = campaign.ResearchPreflight.TryForecastDailyStocks(
+                ref work, out var daily, includeDiscoveries: true);
+            _pass.DailyResearchProjection = daily;
+        }
+        forecast = _pass.DailyResearchProjection;
+        return _pass.DailyResearchProjectionSupported;
+    }
 
     /// <summary>
     /// Scratch state of one world preflight pass: pure forecasts, proofs and work counters read by
@@ -24,6 +41,8 @@ internal sealed partial class CampaignWorld
         // GuaranteedDailyResearch when a daily mission interruption or alien base self-destruction
         // depends on it, otherwise null; missions are projected through it after daily progress.
         public IReadOnlySet<string>? DailyResearchForecast;
+        public DailyResearchStockForecast? DailyResearchProjection;
+        public bool DailyResearchProjectionSupported;
         public Dictionary<int, AlienMissionSnapshot>? MissionCounterForecast;
         public CampaignState.MissionResearchForecast? SiteResearchForecast;
         public Dictionary<(string Deployment, int Id), IReadOnlySet<string>>? SiteResearchAfterSite;
@@ -90,6 +109,8 @@ internal sealed partial class CampaignWorld
             ArrivalLossFollowerScanRequired = false;
             UfoDestinationDistances.Clear();
             DailyResearchForecast = null;
+            DailyResearchProjection = null;
+            DailyResearchProjectionSupported = false;
             MissionCounterForecast = null;
             SiteResearchForecast = null;
             SiteResearchAfterSite = null;

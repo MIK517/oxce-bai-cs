@@ -1254,3 +1254,27 @@ and unchanged populated allocation budgets. Full formatting verification,
 code-map and diff checks pass; the pinned reference remains clean. Ordered daily
 research/site alternatives, linked deletion, newborn arrival/pursuit composition
 and final headless reconciliation remain open; 4d is untouched.
+
+## Exact daily world interruption forecasts (2026-10-09)
+
+World preflight now reuses the existing bounded daily stock/discovery projection
+for guaranteed research. Exact single, sequential and protected rewards, reward
+lookups, automatic dependencies and re-enabled automatic topics can interrupt
+due events and delete linked bases before activity. The result and support flag
+are cached only for the current preflight pass and shared with ordered site
+research. Uncertain or failed projections retain the conservative summary;
+no reward selection, script execution, RNG or campaign mutation occurs in proof.
+
+Reference: pinned `GeoscapeState::time1Day` and
+`SavedGame::selectGetOneFree`/`addFinishedResearch`, followed by daily mission/base
+checks and later event cleanup. Existing diary, event and base-cleanup captures
+back 28 fresh/cache regressions. Six exact reward paths reproduce the old false
+payload refusal, and linked cleanup reproduces the old uncertainty refusal.
+Selected execution matches full control snapshots/RNG and three rewrites.
+Repeatable, disabled, item-ineligible, unfinished and uncertain topics still
+refuse unavailable payloads; a later site disabler also refuses the entire tick.
+All 4,077 root tests pass with zero failures/skips, including fixture checksums,
+private corpus and unchanged populated allocation budgets. Full formatting,
+code-map and diff verification pass; the pinned reference remains clean. This
+is the first slice of the next three-slice batch; its remaining slices and batch
+audit are pending.

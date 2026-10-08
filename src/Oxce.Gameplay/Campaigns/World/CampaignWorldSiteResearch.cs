@@ -39,8 +39,7 @@ internal sealed partial class CampaignWorld
         DailyResearchStockForecast? dailyResearch = null;
         if (highest >= CampaignTimeTrigger.OneDay)
         {
-            long work = 0;
-            if (!campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var daily, includeDiscoveries: true))
+            if (!TryDailyResearchProjection(out var daily))
                 return daily.UnavailableReason ?? "Mission site research requires deterministic daily research phase forecasts.";
             dailyResearch = daily;
         }
