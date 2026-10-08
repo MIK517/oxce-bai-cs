@@ -75,6 +75,8 @@ documents; entries here link to them instead of copying them.
   now composes too. Saved/daily/hunting counter-only objective prefixes and
   72-hour reload scenarios pass with the survivor-validation audit fix;
   all 3,714 root tests and full formatting verification pass.
+  Saved ordinary airborne/grounded births and immediate takeoff now compose
+  too; their batch audit passes all 3,736 root tests and real VM caller checks.
   Actor/objective generation and waves, newborn-site phase
   composition, remaining uncertainty and final closure keep 4c open;
   4d is unchanged.

@@ -64,7 +64,7 @@ public sealed class StrategicWorldSiteResearchWaveTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ExcessiveChainsAndActorBirthsStillStopBeforeSiteResearch(bool excessive)
+    public void ImmediateActorChainsComposeWhileExcessiveChainsStillStopBeforeSiteResearch(bool excessive)
     {
         var content = Content(false);
         var initial = Snapshot(content, excessive ? "excessive" : "ufos", 0);
@@ -76,7 +76,20 @@ public sealed class StrategicWorldSiteResearchWaveTests
             Assert.Equal("Immediate mission waves exceed the supported work limit.", error.Message);
             Assert.Equivalent(before, campaign.Capture(), strict: true);
         }
-        else AssertTimeBlocked(campaign, "Mission site research requires mission-wave composition forecasts.");
+        else
+        {
+            TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var mission = Assert.Single(after.World.Missions);
+            Assert.Equal((2, 0, 3), (mission.NextWave, mission.NextUfoCounter, mission.LiveUfos));
+            Assert.True(mission.Interrupted);
+            Assert.Equal(3, after.World.Ufos.Count);
+            Assert.All(after.World.Ufos, ufo => Assert.Equal(UfoStatus.Flying, ufo.Status));
+            Assert.Empty(after.World.MissionSites);
+            Assert.Equal("CORE", Assert.Single(after.ResearchDiary).RuleId);
+            Assert.Equivalent(after, Reload(content, campaign, 66, "site-research-immediate-actors.sav").Capture(), strict: true);
+        }
     }
 
     internal static RuntimeContent Content(bool cache) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, """
@@ -89,6 +102,7 @@ public sealed class StrategicWorldSiteResearchWaveTests
           - {type: CHAIN_rounded, interruptResearch: CORE}
           - {type: CHAIN_empty-count, interruptResearch: CORE}
           - {type: CHAIN_pending, interruptResearch: CORE}
+          - {type: CHAIN_ufos, interruptResearch: CORE}
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, string name, int live)

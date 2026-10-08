@@ -193,6 +193,47 @@ public sealed class StrategicWorldSiteResearchSpawnTests
         Assert.Equivalent(campaign.Capture(), Reload(content, campaign, 17, "newborn-detection-post-site.sav").Capture(), strict: true);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BirthGeometryWorkIsBoundedBeforeSelectingAnyPointOrGrant(bool cache)
+    {
+        var origins = string.Join(", ", Enumerable.Repeat("[10, 10, 8, 8]", 256));
+        var destinations = string.Join(", ", Enumerable.Repeat("[100, 100, 2, 2]", 256));
+        var content = Content(cache, "RESEARCH_GEOMETRY", extra: $$"""
+            regions:
+              - type: RESEARCH_GEOMETRY_REGION
+                areas: [[0, 180, -30, 30]]
+                missionZones:
+                  - [{{origins}}]
+                  - [{{destinations}}]
+            ufoTrajectories:
+              - id: RESEARCH_GEOMETRY
+                waypoints: [[0, 3, 100], [1, 2, 80], [0, 3, 50]]
+            """);
+        var initial = Snapshot(content);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                Missions = Enumerable.Range(4, 16).Select(id => initial.World.Missions[0] with
+                { Id = id, RegionId = "RESEARCH_GEOMETRY_REGION" }).ToArray(),
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Alien mission spawn geometry exceeds the supported work limit.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewHuntersStillRequireTheirResearchCompositionForecast(bool cache)
+    {
+        var content = Content(cache, "PATH_0_0", ufo: "UFO_HUNTER");
+        AssertTimeBlocked(CampaignState.Restore(Snapshot(content), content, new SplitMix64RandomSource(17)),
+            "Mission site research requires mission-wave composition forecasts.");
+    }
+
     internal static RuntimeContent Content(bool cache, string trajectory, bool final = false, string interrupt = "CORE", string extra = "", string ufo = "UFO_SCOUT") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-spawn-paths.rul"], cache, $$$"""
         research:

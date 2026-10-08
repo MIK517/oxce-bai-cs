@@ -589,3 +589,17 @@ absent at birth detection, then present at the next half-hour after save/reload.
 All 28 affected birth/detection/spawn-path tests pass; the six new cases first
 failed at the prior composition guard. Hunters, escorts and objective effects
 remain separately guarded, without changing event or combat boundaries.
+
+The birth batch audit adds fresh/cache geometry-limit and remaining-hunter
+boundary checks. It also replaces the old blanket actor-chain refusal with
+acceptance for the now-owned finite three-UFO chain, including interruption,
+surviving live counts and reloads; excessive chains still fail before mutation.
+All 352 affected research/spawn/escort tests pass. Review covered removal masks,
+native detection/site/lift ordering, strict first-destination distance, source
+and geometry work reservations, marker/activity limits and late event guards.
+No implementation defect was confirmed by this audit.
+
+Full batch acceptance passes all 3,736 root tests with no failures or skips,
+including checksums, private corpus and allocation coverage. Formatting,
+regenerated code-map validation and diff checks pass. No new native artifacts
+were produced; existing captures and ignored validation logs remain useful.
