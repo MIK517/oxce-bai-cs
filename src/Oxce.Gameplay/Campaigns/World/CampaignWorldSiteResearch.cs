@@ -42,12 +42,14 @@ internal sealed partial class CampaignWorld
             var mission = MissionAfterDailyResearch(saved, _pass.DailyResearchForecast);
             var rule = MissionRule(mission);
             if (mission.Interrupted || IsOver(mission, rule) || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30) continue;
-            // Counter-only score waves have no research-dependent actor birth or
+            // Counter-only objective prefixes have no research-dependent actor birth or
             // objective transition. Preserve their native immediate chain before sites.
-            if (rule.Objective != RuntimeMissionObjective.Score) return SiteResearchWaveReason;
             foreach (var step in DueWaveSteps(mission, rule))
             {
                 if (++waveWork > MaximumImmediateWaveSteps) return WaveWorkReason;
+                if (RetaliationWaveReason(step, rule, ref generationWork) is { } retaliationReason) return retaliationReason;
+                var wave = rule.Waves[step.NextWave];
+                if (CompletesBaseObjective(step, rule, wave) || CompletesInfiltration(step, rule, wave)) return SiteResearchWaveReason;
                 if (!CanAdvanceNoObjectWave(step, rule)) return SiteResearchWaveReason;
             }
         }
