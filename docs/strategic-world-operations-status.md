@@ -1039,3 +1039,16 @@ three rewrites and continuation, while both close cases remain atomic. All 636
 affected hunting, escort and pursuit cases pass. Reference: GeoscapeState craft
 movement, MovingTarget::calculateSpeed/move and existing strategic-hunting traces.
 This is cycle 17 slice two; transitive UFO followers and batch audit remain.
+
+Regional leader proofs now propagate inexact flight positions through bounded
+saved UFO escort chains. Only flying escorts with valid original waypoints qualify;
+ordered position caches cannot treat a regional stand-in as an exact coordinate.
+Every pursuing craft is checked against its target's whole movement envelope.
+Eight fresh/cache regressions cover two-level chains in both saved orders, with
+and without pursuit; independent geometry pins movement toward the actual random
+leader origin and earlier/later pointer positions. Counters, activity, identities,
+three rewrites and continuation remain exact. Two grounded cases refuse before
+birth. All 201 affected cases pass, including escort endurance. Reference: pinned
+GeoscapeState::time5Seconds, Ufo::think/setEscortedUfo and MovingTarget::move,
+with verified strategic-world idleEscortFollowerMovement rows. This completes
+cycle 17's three slices; daily alternatives and dependent consumers are audited next.

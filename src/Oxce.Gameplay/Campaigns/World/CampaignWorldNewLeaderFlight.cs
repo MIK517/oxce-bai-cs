@@ -57,10 +57,11 @@ internal sealed partial class CampaignWorld
                 if (_pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) == true ||
                     rule.Objective == RuntimeMissionObjective.Supply &&
                     _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true) return null;
-                if (RegionalNewLeaderDependencies(escort, ref work, out var dependentReason) is { } workReason)
+                if (RegionalNewLeaderDependencies(escort, ref work, out var dependentIds) is { } workReason)
                     return workReason;
-                if (dependentReason) return null;
-                (_pass.InexactNewLeaderFlights ??= []).Add(escort.UniqueId);
+                var inexact = _pass.InexactNewLeaderFlights ??= [];
+                inexact.Add(escort.UniqueId);
+                foreach (var id in dependentIds) inexact.Add(id);
             }
             var ufoRule = rules.Ufos[rules.Ufos.GetRequired(escort.RuleId)].Value;
             var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
@@ -76,13 +77,25 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private string? RegionalNewLeaderDependencies(UfoSnapshot source, ref long work, out bool depends)
+    private string? RegionalNewLeaderDependencies(UfoSnapshot source, ref long work, out IReadOnlyList<int> dependentIds)
     {
-        depends = false;
+        List<int> ids = [];
+        dependentIds = ids;
         foreach (var saved in _ufos)
         {
             if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
-            if (saved.Escorting && FollowsUfo(saved.Destination, source)) depends = true;
+            if (saved.UniqueId == source.UniqueId) continue;
+            var projected = UfoForFlight(saved, _pass.NewbornHighestTrigger);
+            if (projected.Destination is not { Kind: WorldTargetKind.Ufo } target) continue;
+            if (NewLeaderPursuitDependency(target, source, ref work, out var depends) is { } reason) return reason;
+            if (!depends) continue;
+            // Flying escorts never execute ordinary waypoint arrival effects.
+            // Keep their position inexact through every ordered/transitive follower;
+            // grounded or other target states need a distinct owning proof.
+            if (projected.Status != UfoStatus.Flying || !projected.Escorting || projected.Hunting ||
+                projected.OriginalWaypoint is not { IsNormalized: true })
+                return "Regional newborn leader followers require flying escort forecasts.";
+            ids.Add(saved.UniqueId);
         }
         // Craft pursuit consumes the whole movement envelope, not an invented
         // regional coordinate. Near arrivals remain guarded before any birth.
