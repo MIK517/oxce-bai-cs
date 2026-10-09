@@ -89,11 +89,11 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
     internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3,
         string extraRules = "", string generationRegion = "", int firstAltitude = 3, int groundTimer = 0,
         int points = 0, bool alerts = false, int nextSpeedPercentage = 80,
-        int hunterPercentage = 0, bool escort = false) =>
+        int hunterPercentage = 0, bool escort = false, int radarRange = 0, int huntSpeed = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             {{{extraRules}}}
             ufos:
-              - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: {{{(alerts ? "false" : "true")}}}, shieldCapacity: 10, shieldRechargeInGeoscape: 100, hunterKillerPercentage: {{{hunterPercentage}}}, huntMode: 2, huntBehavior: 2}
+              - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: {{{(alerts ? "false" : "true")}}}, shieldCapacity: 10, shieldRechargeInGeoscape: 100, hunterKillerPercentage: {{{hunterPercentage}}}, huntMode: 2, huntBehavior: 2, radarRange: {{{radarRange}}}, huntSpeed: {{{huntSpeed}}}}
             ufoTrajectories:
               - {id: FIRST_ARRIVAL_AIR, groundTimer: {{{groundTimer}}}, waypoints: [[5, {{{firstAltitude}}}, 100], [{{{(separate ? 6 : 5)}}}, 2, {{{nextSpeedPercentage}}}], [4, {{{nextAltitude}}}, 100]]}
             alienMissions:

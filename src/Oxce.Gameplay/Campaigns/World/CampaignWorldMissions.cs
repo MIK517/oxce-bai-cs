@@ -412,7 +412,7 @@ internal sealed partial class CampaignWorld
         // Landed births consume their ground timer, including a possible lift,
         // without moving in this pass. Their next tick uses saved-UFO proofs.
         if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(positions, destinations, speed) &&
-            !CanAdvanceNewbornAirborneWaypoint(rule, wave, trajectory, region, stats.SpeedMaximum)) return false;
+            !CanAdvanceNewbornAirborneWaypoint(mission, rule, wave, trajectory, region, stats.SpeedMaximum)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -426,7 +426,7 @@ internal sealed partial class CampaignWorld
         return false;
     }
 
-    private bool CanAdvanceNewbornAirborneWaypoint(RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
+    private bool CanAdvanceNewbornAirborneWaypoint(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int speedMaximum)
     {
         // A flying birth can advance exactly once. Keep conditional interruption,
@@ -440,7 +440,8 @@ internal sealed partial class CampaignWorld
             (wave.HunterKillerPercentage == -1
                 ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
                 : wave.HunterKillerPercentage) > 0 &&
-            (wave.Escort || !NoCraftCanBecomeHunterTarget())) return false;
+            (wave.Escort || !(NoCraftCanBecomeHunterTarget() ||
+                HasHuntingProof(_pass.NewbornNoTargetProofs, mission, wave)))) return false;
         // Validate the native wide intermediate before narrowing. Calling Speed
         // here would throw rather than return an atomic capability refusal.
         var replacementSpeed = (long)speedMaximum * trajectory.Waypoints[1].SpeedPercentage / 100;

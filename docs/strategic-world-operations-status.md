@@ -859,3 +859,20 @@ checks pass. The quota interruption left this classification update pending; its
 morning validation closes that checkpoint. Remaining conditional newborn flight/
 pursuit, linked deletion, research/maintenance alternatives and final acceptance
 keep 4c open. Branch 4d remains untouched; no native objects were generated.
+
+## Forecasted no-target first arrivals (2026-10-09)
+
+The first-airborne proof now accepts a mission/wave/mode-specific no-target result
+from the existing newborn hunting owner. Active craft can be present when native
+radar eligibility, bounded geometry or projected craft state excludes every target;
+preflight still validates attraction before the radar test. No constructor RNG or
+future identity is consumed. Pinned GeoscapeState::ufoHuntingAndEscorting, Ufo
+constructor and AlienMission arrival caller, with verified hunting/lifecycle
+captures, back zero, negative and separated positive-radar cases through fresh/
+cache content. Exact constructor/detection/arrival RNG, every mode/behavior outcome,
+three rewrites and following flight remain asserted; malformed attraction, possible
+hunts and escort-leader boundaries remain atomic.
+
+Four positive cases reproduce the prior coarse craft exclusion. All 132 affected
+tests pass. This is cycle 15's first slice; safe hunt alternatives, research/escort
+composition and the batch audit remain. Branch 4d and later-branch gates are unchanged.
