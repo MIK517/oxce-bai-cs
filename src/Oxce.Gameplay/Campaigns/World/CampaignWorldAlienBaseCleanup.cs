@@ -90,12 +90,13 @@ internal sealed partial class CampaignWorld
 
     private string? UncertainCraftBaseReturnReason(CampaignState.CraftState craft, CraftLogisticsState state)
     {
-        if (state.Status == "STR_OUT" || state.IsAutoPatrolling)
+        if (state.Status == "STR_OUT")
             return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
         if (!CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
                 state.Weapons, campaign.Content.RuntimeRules, out _)) return SpeedRangeReason;
-        // Native returnToBase preserves status. Grounded non-patrolling followers
-        // consume no movement/target fields during later ordered servicing.
+        // Native returnToBase preserves status. Servicing either stays grounded,
+        // without consuming flight fields, or relaunches auto-patrol with its own
+        // waypoint/full speed/takeoff60 in both source alternatives.
         return null;
     }
 
