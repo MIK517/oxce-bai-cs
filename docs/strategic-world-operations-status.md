@@ -1081,3 +1081,15 @@ and control continuation. The old grounded guard now uses malformed zero time.
 All 169 affected cases pass. Reference: pinned Ufo::think's LANDED branch and
 GeoscapeState::time5Seconds, with verified strategic-world/lifecycle captures.
 This is cycle 18 slice one; lift boundaries, passive followers and audit remain.
+
+Final five-second landed timers also cut position dependence: native ufoLifting
+changes altitude/speed without movement. Ordered vector fixtures expose an existing
+execution defect: an earlier moving UFO's saved destination coordinates were used
+at takeoff. Lift now resolves the live UFO/craft pointer before calculating speed;
+both normal and site-reactivation callers bound that lookup, including projected
+craft births. Ten prior refusals and two vector mismatches reproduce before the
+fix. Fresh/cache and both saved orders pin vectors/direction, three rewrites and
+continuation; direct/transitive far craft pursue normally, close stay/lift paths
+retain deployment/combat guards. All 208 affected cases pass. Reference:
+AlienMission::ufoLifting, Ufo::think and MovingTarget::setSpeed/calculateSpeed,
+with verified lifecycle and site-timer traces. This is cycle 18 slice two.
