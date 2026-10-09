@@ -1625,3 +1625,17 @@ code-map and diff checks pass; the reference checkout remains clean. Confirmed
 audit test correction fd87a7cf is separate from the three slices. No native
 artifacts were generated; useful captures and logs remain. Variable-speed/fuel,
 near-home and transfer alternatives plus branch-wide closure keep 4c open.
+
+Optional airborne returns now admit different saved/effective speeds when native
+fuel consumption is identical: item fuel burns one, and ordinary speeds can
+share a floor bucket. Equal fuel preserves low-fuel recall and hunter eligibility;
+flight keeps both speeds/destinations. Ten fresh/cache cases reproduce eight old
+guard failures, then cover takeoff, actual hunting, both outcomes over 32 seeds,
+exact fuel/movement, complete control snapshots/RNG, three rewrites and following
+ticks. Negative speed and different burn remain atomic. Craft-escort references
+are conservatively scanned and charged against the existing work budget; they
+retain a precise boundary pending their consumer proofs. All 130 affected tests
+pass, with targeted format/map/diff checks. Reference: Craft::getFuelConsumption/
+getFuelLimit/consumeFuel, Geoscape time10Minutes and MovingTarget::calculateMeetPoint
+(disabled interception extrapolation), backed by verified world craft/hunting
+captures. This is cycle 24 slice one.
