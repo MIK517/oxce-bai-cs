@@ -127,7 +127,7 @@ internal sealed partial class CampaignWorld
                     TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
                     geometryWork += (long)origins.Count * destinations.Count;
                     if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
-                    if (FirstWaypointReachable(origins, destinations, trajectory.Speed(0,
+                    if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(origins, destinations, trajectory.Speed(0,
                             campaign.Content.RuntimeRules.Ufos[SpawnWave(step, rule).Ufo!.Value].Value.StatsForRace(step.Race).SpeedMaximum)))
                     {
                         // ufoReachedWaypoint selects its replacement twice. This
@@ -409,7 +409,9 @@ internal sealed partial class CampaignWorld
         if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var positions) ||
             !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations))
             return false;
-        if (FirstWaypointReachable(positions, destinations, speed) &&
+        // Landed births consume their ground timer, including a possible lift,
+        // without moving in this pass. Their next tick uses saved-UFO proofs.
+        if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(positions, destinations, speed) &&
             !CanAdvanceNewbornAirborneWaypoint(rule, wave, trajectory, region, stats.SpeedMaximum)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }

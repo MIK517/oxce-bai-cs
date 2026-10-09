@@ -108,7 +108,7 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool mixed, int generation) =>
+    internal static RuntimeContent Content(bool cache, bool mixed, int generation, int firstAltitude = 3, int groundTimer = 0) =>
         StrategicWorldNewbornFirstArrivalTests.Content(cache, false, extraRules: $$$"""
             regions:
               - type: FIRST_REGION
@@ -131,7 +131,7 @@ public sealed class StrategicWorldNewbornRegionalArrivalTests
                 baseDetectionChance: 100
                 huntMissionMaxFrequency: 60
                 huntMissionWeights: {0: {FIRST_ARRIVAL_MISSION: 1}}
-            """, generationRegion: "FIRST_REGION");
+            """, generationRegion: "FIRST_REGION", firstAltitude: firstAltitude, groundTimer: groundTimer);
 
     [Theory]
     [InlineData(false)]
