@@ -64,9 +64,9 @@ internal sealed partial class CampaignWorld
                 // the interrupted branch can expire earlier or omit wave awards.
                 work += _ufos.Count;
                 if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                foreach (var ufo in _ufos)
-                    if (ufo.MissionId == mission.Id && (ufo.HunterKiller || ufo.Hunting || ufo.Escorting || ufo.Escort))
-                        return "Alien base self-destruction requires hunter or escort mission alternatives for uncertain research.";
+                // Native interruption does not reset hunting or escort flags.
+                // Their shared flight/retarget proofs retain the continuing branch;
+                // ordinary arrivals may terminate earlier in the interrupted branch.
                 if (mission.LiveUfos == 0 && MissionExpiryReason(mission, missionRule, ref work) is { } cleanupReason)
                     return cleanupReason;
                 (_pass.PossibleDailyMissionInterruptions ??= []).Add(mission.Id);
