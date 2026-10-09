@@ -85,11 +85,6 @@ internal sealed partial class CampaignWorld
         // Both generation callers retain their full surviving-source choice,
         // capacity and activity envelopes. Immediate research births are proved
         // separately against the ordered daily research phase before mutation.
-        if (campaign.Content.RuntimeRules.Campaign.AllowCountriesToCancelAlienPact && alienBase.PactCountryId.Length != 0)
-            foreach (var country in campaign.CountryStates)
-                if (campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule) == alienBase.PactCountryId &&
-                    (country.NewPact || country.CancelPact != country.Pact))
-                    return "Alien base self-destruction requires uncertain pact-cancellation forecasts.";
         return null;
     }
 

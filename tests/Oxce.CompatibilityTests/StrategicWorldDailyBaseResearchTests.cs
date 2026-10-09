@@ -115,11 +115,9 @@ public sealed class StrategicWorldDailyBaseResearchTests
     [InlineData(true, 1)]
     [InlineData(false, 2)]
     [InlineData(true, 2)]
-    [InlineData(false, 4)]
-    [InlineData(true, 4)]
     public void UnprojectedDeletionEffectsHavePreciseAtomicBoundaries(bool cache, int effect)
     {
-        var content = Content(cache, pacts: effect == 4);
+        var content = Content(cache);
         var initial = Snapshot(content, 17, false);
         var target = new WorldTargetReference(WorldTargetKind.AlienBase, "QUIET_RESEARCH_MARKER", 6, 0.2, 0.1);
         if (effect == 1) initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Destination = target } });
@@ -132,17 +130,8 @@ public sealed class StrategicWorldDailyBaseResearchTests
                         initial.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics! with { Destination = target } })],
             }],
         };
-        if (effect == 4) initial = initial with
-        {
-            Countries = [initial.Countries[0] with { Pact = true, NewPact = true }],
-            World = initial.World with { AlienBases = [initial.World.AlienBases[0] with { PactCountryId = initial.Countries[0].RuleId }, initial.World.AlienBases[1]] },
-        };
-        var reason = effect switch
-        {
-            4 => "Alien base self-destruction requires uncertain pact-cancellation forecasts.",
-            _ => "Alien base self-destruction requires linked-target alternatives for uncertain research.",
-        };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), reason);
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Alien base self-destruction requires linked-target alternatives for uncertain research.");
     }
 
     [Theory]
