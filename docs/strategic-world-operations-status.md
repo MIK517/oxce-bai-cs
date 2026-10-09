@@ -820,3 +820,22 @@ outcomes, complete-state/RNG controls and three save rewrites.
 All 61 affected tests pass; targeted formatting, regenerated code-map and diff
 checks pass. Cycle 14's second slice is complete; no-target hunter constructors
 and the batch audit remain. No event payload or combat boundary is removed.
+
+## No-target hunter first airborne arrivals (2026-10-09)
+
+Hunter constructors can use the ordinary first-airborne arrival when the existing
+bounded craft/transfer scan proves no selectable craft and the wave cannot escort.
+The proof consumes no RNG; runtime keeps native percentage, randomized mode and
+behavior choices before waypoint selections. Pinned Ufo constructor, AlienMission
+spawnUfo and GeoscapeState hunting/detection callers, with verified hunting and
+lifecycle captures, back fresh/cache 50/100-percent three-wave cases. Missing,
+grounded and undetectable outbound craft preserve exact constructor/detection/
+arrival RNG, all five stochastic outcomes, wave identity, shields, three rewrites
+and following flight. Outbound craft still participate in detection even when
+undetectable to hunters. Possible craft hunts and conditional escort leaders keep
+atomic arrival boundaries.
+
+Four positive cases reproduce the old restriction; four boundary cases already
+pass. All 150 affected tests pass. Targeted formatting, regenerated code-map and
+diff checks pass. This completes cycle 14's execution slices; their batch audit
+and full validation follow. No combat or landing transition is enabled.
