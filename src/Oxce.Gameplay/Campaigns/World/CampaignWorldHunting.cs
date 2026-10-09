@@ -190,6 +190,9 @@ internal sealed partial class CampaignWorld
 
     private UfoSnapshot ProjectFlightTarget(UfoSnapshot ufo, CampaignTimeTrigger highest, bool buildingPrefix = false)
     {
+        // A regional leader/follower proof guarantees flying escort status but
+        // no exact movement target. Consumers use its envelope or status only.
+        if (_pass.InexactNewLeaderFlights?.Contains(ufo.UniqueId) == true) return ufo;
         if (ufo.Hunting && ufo.Destination is { Kind: WorldTargetKind.Craft } craft)
         {
             if (_pass.HuntingCraftForecast?.GetValueOrDefault((craft.TypeId, craft.Id)) is { } state)
