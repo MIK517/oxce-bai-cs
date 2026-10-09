@@ -1533,3 +1533,18 @@ backed by the verified world idle-escort follower and lifecycle captures. The
 shared owning proofs added in slice one cover these cases without another guard
 removal. All 150 affected cases pass, with targeted formatting, code-map and diff checks.
 This closes cycle 22 slice two; newborn escort alternatives remain.
+
+Newborn non-objective Space supply escorts now compose with an optional earlier
+ordinary objective ship. The origin proof keeps both possible leader origins
+and nominal idle flight until an independent ordinary birth guarantees attachment.
+Their native source link is unused by coordinates or escort selection, so the
+shared hunting key omits it while the leader-domain owner proves source-dependent
+birth suppression separately. Eighteen fresh/cache cases cover 50/100-percent
+constructors, no-target and distant actual hunting, objective-prefix and
+escort-only waves, both deletion outcomes over 64 seeds, complete selected-control
+snapshots/RNG, three rewrites and continuation. The escort-only targetable fixture
+confirmed four execution exceptions before the source-key fix. Combat and marker
+exhaustion remain atomic. All 184 affected cases pass. Reference: pinned
+AlienMission::spawnUfo supply/escort branches and GeoscapeState ordered retargeting,
+with verified supplyRows, cleanup, hunting and wave-chain captures. This completes
+cycle 22's three slices; the batch audit follows.

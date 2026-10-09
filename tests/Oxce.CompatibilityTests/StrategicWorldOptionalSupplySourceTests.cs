@@ -144,9 +144,8 @@ public sealed class StrategicWorldOptionalSupplySourceTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ConditionalSupplyLeadersRetainPreciseSpecialActorBoundaries(bool cache)
+    public void ConditionalSupplyTerminalLeadersRetainTheirArrivalBoundary(bool cache)
     {
-        const string reason = "Supply source deletion requires conditional hunter or escort leader forecasts.";
         var content = Content(cache, 0);
         var initial = Snapshot(content, 17);
         initial = initial with
@@ -160,8 +159,6 @@ public sealed class StrategicWorldOptionalSupplySourceTests
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Loaded idle escorts require same-tick newborn waypoint forecasts.");
-        content = Content(cache, 6, nonObjectiveEscort: true);
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)), reason);
     }
 
     [Theory]
@@ -216,7 +213,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
     {
         var wave = kind == 3 ? "{ufo: OPTIONAL_SUPPLY_SITE, count: 1, trajectory: TRAJ_PATROL, timer: 0, objective: true}" :
             "{ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: " + (kind == 4 ? 9000 : 0) +
-            ", objective: " + (kind == 1 ? "false" : "true") + (kind == 5 ? ", hunterKillerPercentage: 100, escort: true" : "") + "}";
+            ", objective: " + (kind is 1 or 7 ? "false" : "true") + (kind == 5 ? ", hunterKillerPercentage: 100, escort: true" : kind == 7 ? ", hunterKillerPercentage: " + nonObjectiveHunterPercentage + ", escort: true" : "") + "}";
         return StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             {{{(craftRadarRange > 0 ? "crafts: [{type: SHIP, radarRange: " + craftRadarRange + ", radarChance: 100}]" : "")}}}
             research:
