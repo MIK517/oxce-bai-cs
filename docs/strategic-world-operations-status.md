@@ -985,3 +985,32 @@ site CORE/UNLOCK grants; ordinary ships land while active hunts/escorts stay fly
 All 594 affected cases pass. This completes cycle 16's three implementation slices;
 the batch audit will review initial destination as well as replacement work and run
 full validation. Event payload, conversion/base-assault and combat gates remain.
+
+Cycle 16 batch audit confirms an initial-destination work-limit gap: distant
+ordinary and nonobjective supply births could execute land retries without charging
+the spawn budget. Four fresh/cache regressions reproduce a mutated tick. Shared
+destination accounting now charges ordinary getWaypoint(1) or supply's distinct
+altitude(1) getLandPoint caller at birth, and both ordinary calls at arrival. City
+bypass remains executable with the same large globe; both positive cases reload.
+Two obsolete patrol-wave boundaries now require exact wave/live counters, created
+UFO identity and rewrite/continuation. All 635 affected cases pass. Reviewed native
+origin/destination exceptions, selected-area priority, predicate caller order,
+ground status/timer/shields, silent marker reservation, generated alternatives,
+work aggregation and retained conversion/base-assault/event/combat guards. Full
+formatting and root validation follow before the audit correction closes.
+
+The first root run exposed seventeen obsolete expectations around newly supported
+land selection. Space rectangular origins now assert exact position/RNG and reload.
+Immediate patrol generation covers both rounded delay/birth outcomes, live counters,
+zero-default base activity and control continuation. Existing hunting/site guard
+fixtures now use genuine first-arrival conversion (current zone equals spawnZone),
+preserving atomic refusal instead of accidentally testing an ordinary landing.
+The 309 remaining affected cases and both new patrol cases pass; the throwing
+no-RNG sentinel remains in invalid/unsupported tests. No additional runtime defect
+was confirmed. Root validation is rerun after these fixture corrections.
+
+Cycle 16 audit closes with all 4,387 root tests passing, zero failures/skips,
+full formatting verification and regenerated code-map/diff checks. The initial
+destination work-limit correction is committed separately from the three slices.
+Useful captures and logs remain; the pinned reference is clean. No other confirmed
+runtime defect was found; remaining linked/newborn composition keeps 4c open.

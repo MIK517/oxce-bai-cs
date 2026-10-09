@@ -122,6 +122,7 @@ internal sealed partial class CampaignWorld
                     var trajectory = campaign.Content.RuntimeRules.UfoTrajectories[SpawnWave(step, rule).Trajectory!.Value].Value;
                     var region = campaign.Content.RuntimeRules.Regions[campaign.Content.RuntimeRules.Regions.GetRequired(step.RegionId)].Value;
                     landWork += SpawnOriginLandWork(step, rule, trajectory, region);
+                    landWork += SpawnDestinationLandWork(step, rule, trajectory, region);
                     if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
                     TryOrdinarySpawnPositions(step, rule, trajectory, region, out var origins);
                     TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
@@ -481,6 +482,24 @@ internal sealed partial class CampaignWorld
     }
 
     private long NewbornReplacementLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region) =>
+        2 * OrdinaryDestinationLandWork(mission, rule, trajectory, region);
+
+    private long SpawnDestinationLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
+    {
+        if (HasRetaliationTarget(mission, rule)) return 0;
+        if (rule.Objective != RuntimeMissionObjective.Supply)
+            return OrdinaryDestinationLandWork(mission, rule, trajectory, region);
+        // Supply birth selects land using altitude(1), rather than getWaypoint's
+        // altitude(2). An objective supply ship instead targets its linked base.
+        var wave = SpawnWave(mission, rule);
+        if (trajectory.Altitude(1) != 0 || wave.Objective ||
+            WorldGeometry.MissionAreas(region, trajectory.Zone(1))[0].IsPoint) return 0;
+        return 100 * (2 * GlobeLandQueryWork() + region.Areas.Count + 1);
+    }
+
+    private long OrdinaryDestinationLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
         RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
     {
         var wave = SpawnWave(mission, rule);
@@ -489,9 +508,9 @@ internal sealed partial class CampaignWorld
         if (!selected && (trajectory.Waypoints.Count <= 2 || trajectory.Altitude(2) != 0)) return 0;
         if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(1))[0].IsPoint) return 0;
         var scan = GlobeLandQueryWork();
-        // Both native replacement selections can make 100 attempts. A selected
-        // site area omits the ordinary region containment query and city bypass.
-        return 2L * 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
+        // A selected site area omits the ordinary region query and city bypass.
+        // Charge once at birth and twice at an ordinary first arrival.
+        return 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
     }
 
     private long NewbornLandingGeometryWork(IReadOnlyList<SpawnArea> destinations)

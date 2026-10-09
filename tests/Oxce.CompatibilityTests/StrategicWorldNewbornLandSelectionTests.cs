@@ -10,6 +10,61 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldNewbornLandSelectionTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CityDestinationBypassDoesNotChargePolygonRetries(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var polygons = string.Join("\n", Enumerable.Repeat("    - [10, 0, -10, 20, -10, 20, 10, 0, 10]", 5000));
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, groundTimer: 2, nextAltitude: 0,
+            extraRulesAfterOverlays: true, extraRules: "globe:\n  polygons:\n" + polygons);
+        Assert.Equal(5000, content.RuntimeRules.Campaign.Globe.Polygons.Count);
+        var campaign = CampaignState.Restore(StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17), content,
+            new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo =>
+        {
+            Assert.Equal(1, ufo.TrajectoryPoint);
+            Assert.Equal(UfoStatus.Flying, ufo.Status);
+            Assert.Equal(1760, ufo.Speed);
+        });
+        campaign = Reload(content, campaign, 17, "newborn-city-land-bypass.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(UfoStatus.Landed, ufo.Status));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void InitialDestinationLandWorkIsReservedEvenWithoutFirstArrival(bool cache, bool supply)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var polygons = string.Join("\n", Enumerable.Repeat("    - [10, 0, -10, 20, -10, 20, 10, 0, 10]", 5000));
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, true, groundTimer: 2,
+            nextAltitude: supply ? 3 : 0, arrivalAltitude: supply ? 0 : 2, objective: supply ? 5 : 0,
+            extraRulesAfterOverlays: true, extraRules: "globe:\n  polygons:\n" + polygons + "\n" + """
+            regions:
+              - type: LIMIT_REGION
+                areas: [[0, 30, -20, 20]]
+                missionZones:
+                  - [[8, 8, 2, 2]]
+                  - [[8, 8, 2, 2]]
+                  - [[8, 8, 2, 2]]
+                  - [[8, 8, 2, 2]]
+                  - [[8, 8, 2, 2]]
+                  - [[8, 8, 2, 2]]
+                  - [[22, 22.02, 2, 2.02]]
+            """);
+        Assert.Equal(5000, content.RuntimeRules.Campaign.Globe.Polygons.Count);
+        var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17);
+        initial = initial with { World = initial.World with { Missions = [initial.World.Missions[0] with { RegionId = "LIMIT_REGION" }] } };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Alien mission land selection exceeds the supported work limit.");
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
