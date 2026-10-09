@@ -7,10 +7,18 @@ internal sealed partial class CampaignWorld
     private readonly record struct NewbornHuntingProof(int Mission, string Rule, string Region, string Race,
         WorldTargetReference? Source, int Area, int Wave, int Counter, string Ufo, int Mode);
 
-    private NewbornHuntingProof HuntingProof(AlienMissionSnapshot mission, RuntimeMissionWave wave, bool generated = false) =>
-        new(generated ? 0 : mission.Id, mission.RuleId, mission.RegionId, mission.Race, mission.AlienBase,
+    private NewbornHuntingProof HuntingProof(AlienMissionSnapshot mission, RuntimeMissionWave wave, bool generated = false)
+    {
+        var rule = MissionRule(mission);
+        // Native non-objective Space supply births select region points even
+        // while a source exists. Without escort initialization, clearing that
+        // source cannot change any hunting input or invalidate its proof.
+        var independent = rule.Objective == RuntimeMissionObjective.Supply &&
+            rule.OperationType == RuntimeMissionOperationType.Space && !wave.Objective && !wave.Escort;
+        return new(generated ? 0 : mission.Id, mission.RuleId, mission.RegionId, mission.Race, independent ? null : mission.AlienBase,
             wave.Objective ? mission.MissionSiteZoneArea : -1, mission.NextWave, mission.NextUfoCounter,
             wave.UfoType, NewbornHuntMode(wave));
+    }
 
     private bool HasHuntingProof(HashSet<NewbornHuntingProof> proofs, AlienMissionSnapshot mission, RuntimeMissionWave wave) =>
         proofs.Contains(HuntingProof(mission, wave)) || mission.AlienBase is not null &&

@@ -159,7 +159,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
             }
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), reason);
-        content = Content(cache, 6);
+        content = Content(cache, 6, nonObjectiveEscort: true);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)), reason);
     }
 
@@ -211,7 +211,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
         Assert.True(survivedSeen);
     }
 
-    internal static RuntimeContent Content(bool cache, int kind, string code = "BONUS", int points = 3, int? followingScore = null, int radarRange = 0)
+    internal static RuntimeContent Content(bool cache, int kind, string code = "BONUS", int points = 3, int? followingScore = null, int radarRange = 0, int nonObjectiveHunterPercentage = 100, bool nonObjectiveEscort = false)
     {
         var wave = kind == 3 ? "{ufo: OPTIONAL_SUPPLY_SITE, count: 1, trajectory: TRAJ_PATROL, timer: 0, objective: true}" :
             "{ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: " + (kind == 4 ? 9000 : 0) +
@@ -237,7 +237,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
                 spawnZone: 5
                 waves:
                   - {{{wave}}}
-            {{{(kind is 2 or 6 ? "      - {ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: 0, hunterKillerPercentage: " + (kind == 6 ? 100 : 0) + "}" : "")}}}
+            {{{(kind is 2 or 6 ? "      - {ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: 0, hunterKillerPercentage: " + (kind == 6 ? nonObjectiveHunterPercentage : 0) + (nonObjectiveEscort ? ", escort: true" : "") + "}" : "")}}}
             """);
     }
 
