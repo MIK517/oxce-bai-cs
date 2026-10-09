@@ -50,14 +50,13 @@ public sealed class PrivateStrategicWorldTests
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(results));
             Assert.Equal(19, results.Count);
-            Assert.Equal(10, results.Count(result => result.Outcome == "executable"));
-            Assert.Equal(1, results.Count(result => result.Outcome == "blocked"));
+            Assert.Equal(11, results.Count(result => result.Outcome == "executable"));
+            Assert.Equal(0, results.Count(result => result.Outcome == "blocked"));
             Assert.Equal(8, results.Count(result => result.Outcome == "preservation-only"));
             foreach (var result in results)
             {
                 var expected = (result.Family, result.Name) switch
                 {
-                    ("vanilla-ufo", "early/Begining.sav") => (125, "Alien mission wave spawning requires world simulation."),
                     (_, var name) when name.StartsWith("battlescape/", StringComparison.Ordinal) =>
                         (0, "Active tactical battle is preserved; tactical continuation is unavailable."),
                     _ => (360, (string?)null),
@@ -122,6 +121,15 @@ public sealed class PrivateStrategicWorldTests
                 break;
             }
             var after = loaded.Campaign.Capture();
+            if (family == "vanilla-ufo" && Path.GetFileName(file) == "Begining.sav")
+            {
+                // The site's first ordinary wave formerly stopped at tick 125:
+                // regional candidates can reach an airborne first waypoint.
+                var terror = Assert.Single(initial.World.Missions, mission => mission.RuleId == "STR_ALIEN_TERROR");
+                var rule = content.RuntimeRules.AlienMissions[content.RuntimeRules.AlienMissions.GetRequired(terror.RuleId)].Value;
+                Assert.Equal(Oxce.Mods.Rulesets.Runtime.RuntimeMissionObjective.Site, rule.Objective);
+                Assert.Contains(after.World.Ufos, ufo => ufo.MissionId == terror.Id && ufo.MissionWaveNumber == 0);
+            }
             var rewritten = OxceSaveAdapter.EmitLoadedCampaign(after, loaded.Source);
             var restored = OxceSaveAdapter.Load(rewritten, file, content, new SplitMix64RandomSource(17), options);
             Assert.Equivalent(after, restored.Campaign.Capture(), strict: true);
