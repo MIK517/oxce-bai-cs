@@ -1210,3 +1210,19 @@ private corpus and populated allocation gates. Full formatting, code-map and dif
 checks pass; no native edits or disposable probe artifacts were produced. Useful
 regression logs remain. Conditional ground/terminal outcomes, source/research
 alternatives and final branch-wide reconciliation keep 4c open.
+
+## Globe equality audit correction (2026-10-09)
+
+Cycle 25's combined audit confirmed that globe equality used .NET's smallest
+subnormal instead of the native machine epsilon. `WorldGeometry.AreSame` now
+uses the exact binary64 spacing near 1.0, retaining the native absolute/relative
+scale and inclusive comparison. This corrects destination arrival, coincident
+distance and cardinal heading consumers without changing coordinate storage.
+Reference: pinned `src/fmath.h::AreSame`, `Target::getDistance`,
+`MovingTarget::reachedDestination` and `Ufo::calculateSpeed`.
+
+The extracted native world capture adds twenty equality and eight two-axis arrival
+boundaries with 17-digit coordinates; every existing oracle row is unchanged. Three
+unit and three compatibility cases reproduce the old defect, including fresh/cache
+optional base deletion near home during takeoff: the tick now refuses before any
+research mutation. Full validation is recorded in the integration checkpoint.

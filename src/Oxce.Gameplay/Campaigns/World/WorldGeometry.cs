@@ -55,9 +55,12 @@ public readonly record struct WorldPosition(double Longitude, double Latitude)
 /// </summary>
 public static class WorldGeometry
 {
+    // DBL_EPSILON is the spacing near 1.0, unlike .NET double.Epsilon (the smallest subnormal).
+    private const double DoubleMachineEpsilon = 2.2204460492503131e-16;
+
     /// <summary>fmath.h AreSame(double, double).</summary>
     public static bool AreSame(double left, double right) =>
-        Math.Abs(left - right) <= double.Epsilon * Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right)));
+        Math.Abs(left - right) <= DoubleMachineEpsilon * Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right)));
 
     /// <summary>fmath.h Nautical: converts reference distance units to radians.</summary>
     public static double Nautical(double value) => value * (1 / 60.0) * (Math.PI / 180.0);

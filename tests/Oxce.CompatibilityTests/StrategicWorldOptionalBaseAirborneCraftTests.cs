@@ -103,6 +103,26 @@ public sealed class StrategicWorldOptionalBaseAirborneCraftTests
             "Airborne craft fuel or takeoff state is out of range.");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NearHomeOptionalReturnBlocksBeforeResearchUsingNativeEquality(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world");
+        var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
+        var initial = Snapshot(content, 17, 5, false, false);
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Longitude = Math.BitIncrement(initial.Bases[0].Longitude),
+                Latitude = initial.Bases[0].Latitude,
+            },
+        });
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Alien base self-destruction requires craft arrival alternatives for uncertain research.");
+    }
+
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int takeoff, bool escort, bool hunter)
     {
         var initial = StrategicWorldOptionalBaseCraftTests.Snapshot(content, seed, "STR_OUT").WithCraft("SHIP", craft => craft with
