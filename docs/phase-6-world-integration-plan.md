@@ -109,7 +109,9 @@ documents; entries here link to them instead of copying them.
   saved/daily/hunting callers; their speed audit correction and all 4,260 root
   tests pass. First arrivals across objectives, harmless research tags and idle
   hunters now compose; their batch audit and all 4,288 root tests pass, including
-  eleven strategic saves completing the fixed continuation horizon.
+  eleven strategic saves completing the fixed continuation horizon. Forecasted idle
+  hunts, safe hunt alternatives and escort/research first arrivals now compose;
+  their initial-speed audit correction and all 4,322 root tests pass.
   See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
   Ordered daily research/site alternatives, remaining
   linked deletion, newborn flight/pursuit composition and final closure keep 4c open;
