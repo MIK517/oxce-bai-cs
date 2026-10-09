@@ -33,7 +33,11 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
                     {
                         Logistics = craft.Logistics! with
                         {
-                            Status = "STR_OUT", Speed = 0, Fuel = 100, Longitude = Degrees(20), Latitude = Degrees(2),
+                            Status = "STR_OUT",
+                            Speed = 0,
+                            Fuel = 100,
+                            Longitude = Degrees(20),
+                            Latitude = Degrees(2),
                             Destination = WorldTargetReference.ForWaypoint(5, new(Degrees(30), Degrees(2))),
                         },
                     });
@@ -103,7 +107,11 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
             {
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_OUT", Speed = 0, Fuel = 100, Longitude = Degrees(20), Latitude = Degrees(2),
+                    Status = "STR_OUT",
+                    Speed = 0,
+                    Fuel = 100,
+                    Longitude = Degrees(20),
+                    Latitude = Degrees(2),
                     Destination = WorldTargetReference.ForWaypoint(5, new(Degrees(30), Degrees(2))),
                 },
             });
