@@ -31,7 +31,7 @@ internal sealed partial class CampaignWorld
         long sourceBaseWork = 0;
         long cleanupWork = 0;
         long geometryWork = 0;
-        long landWork = 0;
+        long landWork = _pass.UfoWaypointLandWork;
         long escortSelectionWork = 0;
         Dictionary<string, int>? siteMarkerReservations = null;
         var siteSpawns = 0;
@@ -500,16 +500,19 @@ internal sealed partial class CampaignWorld
     }
 
     private long OrdinaryDestinationLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
-        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region) =>
+        OrdinaryWaypointLandWork(mission, rule, SpawnWave(mission, rule), trajectory, region, 1);
+
+    private long OrdinaryWaypointLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeMissionWave wave, RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int point)
     {
-        var wave = SpawnWave(mission, rule);
-        var selected = mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(1) == rule.SpawnZone;
+        var selected = mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(point) == rule.SpawnZone;
         if (selected && !wave.ObjectiveOnTheLandingSite) return 0;
-        if (!selected && (trajectory.Waypoints.Count <= 2 || trajectory.Altitude(2) != 0)) return 0;
-        if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(1))[0].IsPoint) return 0;
+        if (!selected && (trajectory.Waypoints.Count <= point + 1 || trajectory.Altitude(point + 1) != 0)) return 0;
+        if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(point))[0].IsPoint) return 0;
         var scan = GlobeLandQueryWork();
-        // A selected site area omits the ordinary region query and city bypass.
-        // Charge once at birth and twice at an ordinary first arrival.
+        // Selected site areas omit the ordinary region query and city bypass.
+        // Callers reserve once at birth and twice at ordinary waypoint arrival.
         return 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
     }
 

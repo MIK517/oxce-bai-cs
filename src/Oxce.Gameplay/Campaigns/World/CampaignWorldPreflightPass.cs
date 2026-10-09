@@ -97,6 +97,7 @@ internal sealed partial class CampaignWorld
         public int PossibleHuntMarkerIds;
         public bool ArrivalLossFollowerScanRequired;
         public long HuntingForecastWork;
+        public long UfoWaypointLandWork;
         public Dictionary<(string TypeId, int Id), CraftLogisticsState>? HuntingCraftForecast;
         public Dictionary<int, List<CampaignState.CraftState>>? HuntingCraftSources;
         public long? BaseHuntingCraftPopulationBound;
@@ -159,6 +160,7 @@ internal sealed partial class CampaignWorld
             InexactNewLeaderFlights = null;
             PossibleHuntMarkerIds = 0;
             HuntingForecastWork = 0;
+            UfoWaypointLandWork = 0;
             HuntingCraftForecast = null;
             HuntingCraftSources = null;
             BaseHuntingCraftPopulationBound = null;

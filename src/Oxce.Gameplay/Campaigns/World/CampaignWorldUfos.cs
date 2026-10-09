@@ -179,6 +179,13 @@ internal sealed partial class CampaignWorld
                     }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
+                    var regionForWaypoint = campaign.Content.RuntimeRules.Regions[
+                        campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
+                    var wave = rule.Waves[MissionWaveIndex(ufo, mission, rule)];
+                    _pass.UfoWaypointLandWork += 2 * OrdinaryWaypointLandWork(mission, rule, wave, trajectory,
+                        regionForWaypoint, ufo.TrajectoryPoint + 1);
+                    if (_pass.UfoWaypointLandWork > MaximumSpawnLandWork)
+                        return "UFO waypoint land selection exceeds the supported work limit.";
                 }
             }
         }

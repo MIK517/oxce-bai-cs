@@ -17,15 +17,12 @@ internal sealed partial class CampaignWorld
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(source.TrajectoryId)].Value;
         var next = source.TrajectoryPoint + 1;
         // A remaining idle actor must stay airborne, with no conversion, landing,
-        // terminal pass interruption or land-selection lookahead to hide.
-        if (next >= trajectory.Waypoints.Count || !IsAirborne(trajectory.Altitude(next)) ||
-            next + 1 < trajectory.Waypoints.Count && !IsAirborne(trajectory.Altitude(next + 1))) return null;
+        // or terminal pass interruption to hide.
+        if (next >= trajectory.Waypoints.Count || !IsAirborne(trajectory.Altitude(next))) return null;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
         var waveIndex = MissionWaveIndex(source, mission, rule);
         if ((uint)waveIndex >= (uint)rule.Waves.Count) return null;
         var wave = rule.Waves[waveIndex];
-        if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(next) == rule.SpawnZone &&
-            wave.ObjectiveOnTheLandingSite) return null;
         var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(next));
         work += 3L * areas.Count + 1;
         if (work > MaximumAlienBaseChecks) return "Conditional UFO escort arrival exceeds the supported work limit.";
@@ -36,6 +33,9 @@ internal sealed partial class CampaignWorld
         if (maximum is < 0 or > int.MaxValue || replacement is < 0 or > int.MaxValue)
             return "UFO hunting stats exceed the supported range.";
         if (!CanAdvanceOrdinaryWaypoint(source, mission, trajectory)) return null;
+        _pass.UfoWaypointLandWork += 2 * OrdinaryWaypointLandWork(mission, rule, wave, trajectory, region, next);
+        if (_pass.UfoWaypointLandWork > MaximumSpawnLandWork)
+            return "UFO waypoint land selection exceeds the supported work limit.";
         if (RegionalNewLeaderDependencies(source, ref work, out var dependentIds) is { } dependentReason) return dependentReason;
         var inexact = _pass.InexactNewLeaderFlights ??= [];
         inexact.Add(source.UniqueId);
