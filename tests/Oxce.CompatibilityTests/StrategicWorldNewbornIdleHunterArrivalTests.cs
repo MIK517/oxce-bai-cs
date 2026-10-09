@@ -97,12 +97,13 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void CombatAndEscortLeadersRetainAtomicBoundaries(bool cache, bool escort)
+    public void CombatAndEscortCapacityRetainAtomicBoundaries(bool cache, bool escort)
     {
         var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, escort: escort, radarRange: 2000);
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17);
         if (escort)
-            initial = initial with { Bases = [initial.Bases[0] with { Crafts = [], Soldiers = [] }] };
+            initial = (initial with { Bases = [initial.Bases[0] with { Crafts = [], Soldiers = [] }] })
+                .WithNextId("STR_UFO_UNIQUE", int.MaxValue - 2);
         else
             initial = initial.WithCraft("SHIP", craft => craft with
             {
@@ -117,7 +118,7 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
                 },
             });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            escort ? "Alien mission wave spawning requires world simulation." :
+            escort ? "UFO unique IDs are exhausted or collide with a saved UFO." :
                 "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
