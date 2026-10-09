@@ -1517,3 +1517,19 @@ and escort selection, SavedGame::clearLinksForAlienBase, and ordered Geoscape
 retarget/movement, backed by verified supply, cleanup, hunting and lifecycle
 captures. This is cycle 22 slice one; ordered followers/pursuit and newborn
 escort alternatives follow before the batch audit.
+
+Optional supply leaders now have composed follower/pursuit acceptance: 28 new
+fresh/cache cases cover both source outcomes, forward/reverse list order, flying
+chains, grounded dependency cuts, ordered takeoff vectors and far craft pursuit.
+An independent guaranteed regional birth can replace the optional point leader;
+the first ordinary UFO remains the native selection. Selected controls compare
+whole snapshots/RNG through three rewrites and following ticks. Exact follower
+positions and takeoff vectors independently enforce native saved-list ordering.
+Missing radar coverage retains contact-loss notification and patrol response;
+close transitive pursuit and malformed ground timers stop before research.
+Reference: GeoscapeState::time5Seconds/ufoHuntingAndEscorting, Ufo::think/
+setEscortedUfo, MovingTarget/Target coordinates and Craft target-loss handling,
+backed by the verified world idle-escort follower and lifecycle captures. The
+shared owning proofs added in slice one cover these cases without another guard
+removal. All 150 affected cases pass, with targeted formatting, code-map and diff checks.
+This closes cycle 22 slice two; newborn escort alternatives remain.
