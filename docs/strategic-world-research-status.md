@@ -1579,3 +1579,16 @@ Craft::returnToBase/setDestination and GeoscapeState daily deletion/servicing or
 backed by verified cleanup followerRows and logistics captures. This is cycle 23
 slice one; auto-patrol relaunch and compatible airborne returns follow. Transfers
 and unsupported flight alternatives retain their precise boundary.
+
+Grounded auto-patrol followers now compose too. Servicing either leaves them
+grounded, without reading changed flight fields, or relaunches them with an
+independent player waypoint/full speed/takeoff60 in both source alternatives.
+Ten new fresh/cache cases first reproduce the guard, then exercise all four
+service states and actual saved hunter selection/detection after rearm/refuel
+relaunch. Both research outcomes over 32 seeds compare complete selected-control
+snapshots/RNG, three rewrites and following ticks. Relaunch waypoint capacity,
+hunter contact identity and close hunting combat remain atomic. All 95 affected
+cases pass. Reference: Craft::setDestination/repair/rearm/refuel and GeoscapeState
+time1Hour/time30Minutes/ufoHuntingAndEscorting, backed by verified hunting
+maintenanceRows/hourlyMaintenanceRows, cleanup and logistics captures. This closes
+cycle 23 slice two; compatible airborne followers and the batch audit remain.
