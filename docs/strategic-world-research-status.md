@@ -1618,3 +1618,10 @@ research cases pass; full formatting/map/diff pass. Runtime review found no
 additional defect beyond the takeoff-at-home correction within slice three.
 The first root run passed 4,619 of 4,621 cases with only those two stale assertions;
 the corrected root rerun follows.
+
+Corrected cycle 23 acceptance passes all 4,621 root tests with zero failures/skips,
+including checksum, private-corpus and populated allocation gates. Full formatting,
+code-map and diff checks pass; the reference checkout remains clean. Confirmed
+audit test correction fd87a7cf is separate from the three slices. No native
+artifacts were generated; useful captures and logs remain. Variable-speed/fuel,
+near-home and transfer alternatives plus branch-wide closure keep 4c open.

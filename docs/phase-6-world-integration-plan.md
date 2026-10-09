@@ -127,6 +127,9 @@ documents; entries here link to them instead of copying them.
   Optional supply escort leaders now compose through saved flight, followers,
   pursuit and newborn initialization; their consumed-speed audit fix and all
   4,583 root tests pass.
+  Optional owned base followers now compose through grounded servicing, relaunch
+  and equal-speed airborne returns; the batch audit and all 4,621 root tests pass.
+  See [craft follower evidence](strategic-world-research-status.md#optional-alien-base-craft-followers-2026-10-09).
   See [supply escort evidence](strategic-world-research-status.md#optional-space-supply-escort-leaders-2026-10-09).
   See [optional source evidence](strategic-world-research-status.md#optional-earth-source-loss-with-special-ufos-2026-10-09).
   See [conditional waypoint evidence](strategic-world-operations-status.md#conditional-escort-waypoint-selection-2026-10-09).
