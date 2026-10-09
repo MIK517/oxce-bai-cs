@@ -1746,3 +1746,23 @@ and continuation. Two ambiguity cases keep the 150/160-unit boundary atomic;
 older unequal-burn guard examples now use actual eligibility differences.
 All 198 affected tests pass. This is cycle 26 slice one; escort fuel alternatives,
 converged recall and their batch audit remain pending.
+
+
+## Optional escort fuel eligibility (2026-10-09)
+
+Owned airborne ordinary escorts now compose with an optional leader return when
+both capped fuel outcomes preserve low-fuel eligibility. Saved craft order still
+controls the speed consumed before the leader's own fuel recall. Transfer/checkup
+alternatives, malformed negative fallback speed and differing low-fuel outcomes
+retain atomic guards; grounded and distant escorts use their existing proofs.
+
+Reference: pinned GeoscapeState::time10Minutes, Craft::getFuelConsumption/setFuel,
+returnToBase and isIgnoredByHK. Forty-eight new native optionalEscortFuelRows retain
+all earlier hunting rows. Eight fresh/cache execution cases cover both saved
+orders and takeoff, low/high/capped/already-low fuel, both research outcomes over
+32 seeds, canonical native output, ordered movement, actual hunting, complete
+control snapshots/RNG, three rewrites and continuation. Two boundary cases cover
+150/160 fuel and negative fallback speed, reproducing the missing guard before
+its correction. Prior guard examples now demonstrate actual eligibility differences.
+All 208 affected tests pass. This is cycle 26 slice two; converged recall and the
+batch audit remain pending.
