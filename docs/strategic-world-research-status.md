@@ -1500,3 +1500,20 @@ diff checks pass.
 No new native artifacts were generated; useful test logs and evidence remain,
 and the pinned reference checkout is clean. Conditional supply escorts, remaining
 ordered research/arrival alternatives and final acceptance keep 4c open.
+
+## Optional Space supply escort leaders (2026-10-09)
+
+Saved escorts now compose with optional objective supply leaders. Source deletion
+keeps Space missions running but can omit that ordinary constructor, so the
+leader forecast retains its presence and absence rather than promising attachment.
+The shared bounded flight proof covers a distant old waypoint or one validated
+airborne arrival; dependent UFOs/craft consume its movement envelope. Reachable
+ground/terminal transitions and newborn escort initialization retain their checks.
+Four fresh/cache regressions first reproduced the blanket restriction, then cover
+both research outcomes over 32 seeds, exact source movement, whole selected-control
+snapshots/RNG, three rewrites and following ticks. All 102 affected cases pass.
+Reference: pinned AlienMission::spawnUfo's supply constructor/origin/destination
+and escort selection, SavedGame::clearLinksForAlienBase, and ordered Geoscape
+retarget/movement, backed by verified supply, cleanup, hunting and lifecycle
+captures. This is cycle 22 slice one; ordered followers/pursuit and newborn
+escort alternatives follow before the batch audit.

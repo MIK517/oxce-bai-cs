@@ -154,11 +154,12 @@ public sealed class StrategicWorldOptionalSupplySourceTests
             World = initial.World with
             {
                 Missions = [initial.World.Missions[0] with { LiveUfos = 1 }],
-                Ufos = [new(9, "OPTIONAL_SUPPLY_UFO", 4, "OPTIONAL_SUPPLY_AIR", 0, 0.4, 0.2, UfoStatus.Flying, "STR_HIGH_UC")
-            { Speed = 2200, HunterKiller = true, Escort = true, MissionWaveNumber = 0, Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) }],
+                Ufos = [new(9, "OPTIONAL_SUPPLY_UFO", 4, "OPTIONAL_SUPPLY_AIR", 2, 0.4, 0.2, UfoStatus.Flying, "STR_HIGH_UC")
+            { Speed = 2200, HunterKiller = true, Escort = true, MissionWaveNumber = 0, Destination = WorldTargetReference.ForWaypoint(0, new(0.4, 0.2)) }],
             }
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), reason);
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Loaded idle escorts require same-tick newborn waypoint forecasts.");
         content = Content(cache, 6, nonObjectiveEscort: true);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)), reason);
     }
