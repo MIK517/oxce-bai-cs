@@ -1608,3 +1608,13 @@ focused optional-base/cleanup cases pass afterward. Reference: Craft::think,
 getFuelConsumption/getFuelLimit/consumeFuel, Target destruction and Geoscape
 daily/fuel/hunting/movement order, with verified cleanup/world/hunting captures.
 This completes cycle 23's third slice; its combined audit follows.
+
+Cycle 23 batch audit found two obsolete guard assertions for grounded owned
+followers in the earlier daily-research fixture. Those cases now assert both
+research outcomes, native return identity/speed/takeoff, complete selected-control
+snapshots/RNG, three rewrites and continuation over 32 seeds. The transferred
+follower boundary retains its original atomic rejection. All 24 focused daily
+research cases pass; full formatting/map/diff pass. Runtime review found no
+additional defect beyond the takeoff-at-home correction within slice three.
+The first root run passed 4,619 of 4,621 cases with only those two stale assertions;
+the corrected root rerun follows.

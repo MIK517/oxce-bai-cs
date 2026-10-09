@@ -111,17 +111,14 @@ public sealed class StrategicWorldDailyBaseResearchTests
     }
 
     [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 1)]
-    [InlineData(false, 2)]
-    [InlineData(true, 2)]
-    public void UnprojectedDeletionEffectsHavePreciseAtomicBoundaries(bool cache, int effect)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TransferredDeletionFollowersKeepTheirPreciseAtomicBoundary(bool cache)
     {
         var content = Content(cache);
         var initial = Snapshot(content, 17, false);
         var target = new WorldTargetReference(WorldTargetKind.AlienBase, "QUIET_RESEARCH_MARKER", 6, 0.2, 0.1);
-        if (effect == 1) initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Destination = target } });
-        if (effect == 2) initial = initial with
+        initial = initial with
         {
             Bases = [initial.Bases[0] with
             {
@@ -132,6 +129,49 @@ public sealed class StrategicWorldDailyBaseResearchTests
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires linked-target alternatives for uncertain research.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OwnedGroundedDeletionFollowersComposeWithBothResearchOutcomes(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
+        var content = Content(cache);
+        var deletedContent = Content(cache, "CORE");
+        var survivedContent = Content(cache, "");
+        HashSet<bool> outcomes = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, seed, false).WithCraft("SHIP", craft => craft with
+            { Logistics = craft.Logistics! with { Destination = new(WorldTargetKind.AlienBase, "QUIET_RESEARCH_MARKER", 6, 0.2, 0.1) } });
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var deleted = after.CompletedResearch.Contains("BONUS");
+            outcomes.Add(deleted);
+            var state = after.Bases[0].Crafts.Single(craft => craft.RuleId == "SHIP").Logistics!;
+            Assert.Equal(deleted ? WorldTargetKind.Base : WorldTargetKind.AlienBase, state.Destination!.Kind);
+            Assert.Equal(deleted ? after.Bases[0].Id : 6, state.Destination.Id);
+            Assert.NotEqual("STR_OUT", state.Status);
+            if (deleted)
+            {
+                Assert.Equal(6000, state.Speed);
+                Assert.Equal(60, state.Takeoff);
+            }
+            var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), after, strict: true);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "quiet-base-owned-follower.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 1);
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+        }
+        Assert.Equal(2, outcomes.Count);
     }
 
     [Theory]
