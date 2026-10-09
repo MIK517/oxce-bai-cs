@@ -100,7 +100,8 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
         int points = 0, bool alerts = false, int nextSpeedPercentage = 80,
         int hunterPercentage = 0, bool escort = false, int radarRange = 0, int huntSpeed = 0,
         int firstSpeedPercentage = 100, int arrivalAltitude = 2, int fakeWaterLandingChance = 0,
-        bool extraRulesAfterOverlays = false, int objective = 0) =>
+        bool extraRulesAfterOverlays = false, int objective = 0, bool waveObjective = false,
+        bool objectiveOnLandingSite = false, int spawnZone = -1) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             {{{extraRules}}}
             ufos:
@@ -111,12 +112,13 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
               - type: FIRST_ARRIVAL_MISSION
                 interruptResearch: {{{interrupt}}}
                 objective: {{{objective}}}
+                spawnZone: {{{spawnZone}}}
                 points: {{{points}}}
             {{{(generationRegion.Length == 0 ? "" : "    regionWeights: {0: {" + generationRegion + ": 1}}")}}}
                 waves:
-                  - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0, escort: {{{(escort ? "true" : "false")}}}}
-                  - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0, escort: {{{(escort ? "true" : "false")}}}}
-                  - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0, escort: {{{(escort ? "true" : "false")}}}}
+                  - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0, escort: {{{(escort ? "true" : "false")}}}, objective: {{{(waveObjective ? "true" : "false")}}}, objectiveOnTheLandingSite: {{{(objectiveOnLandingSite ? "true" : "false")}}}}
+                  - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0, escort: {{{(escort ? "true" : "false")}}}, objective: {{{(waveObjective ? "true" : "false")}}}, objectiveOnTheLandingSite: {{{(objectiveOnLandingSite ? "true" : "false")}}}}
+                  - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0, escort: {{{(escort ? "true" : "false")}}}, objective: {{{(waveObjective ? "true" : "false")}}}, objectiveOnTheLandingSite: {{{(objectiveOnLandingSite ? "true" : "false")}}}}
             """, extraRulesAfterOverlays);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed)

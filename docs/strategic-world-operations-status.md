@@ -1177,3 +1177,14 @@ Reference: pinned AlienMission::think/ufoReachedWaypoint/getWaypoint and
 GeoscapeState::ufoHuntingAndEscorting, with verified strategic-world-lifecycle,
 strategic-hunting, strategic-objective-base-spawn and strategic-infiltration-region
 evidence. This is cycle 20 slice one; selected areas, land lookahead and audit remain.
+
+Selected-area airborne arrivals now use the native objective-wave/spawn-zone
+predicate. Fixed selected origins/destinations execute without random selection;
+unconsumed selected metadata does not block ordinary regional selection. Four
+fresh/cache regressions reproduce the refusal; 64 seeds assert exact constructor,
+radar and double-waypoint RNG, positions/identity, three rewrites and continuation.
+Two consumed invalid-index tests fail intentionally before mutation, while invalid
+unconsumed indices remain executable. All 62 affected cases pass. Reference:
+AlienMission::getWaypoint/ufoReachedWaypoint and the existing verified origin,
+lifecycle and hunting captures. This is cycle 20 slice two; selected land retries
+and ordinary ground-lookahead selection remain for slice three and the batch audit.
