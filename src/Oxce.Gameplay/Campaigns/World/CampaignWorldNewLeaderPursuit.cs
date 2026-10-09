@@ -69,6 +69,12 @@ internal sealed partial class CampaignWorld
         return latitude >= Math.PI / 2 ? Math.PI : Math.Min(Math.PI, step * (1 + 1 / Math.Cos(latitude)));
     }
 
+    // Ufo::think consumes a landed timer without moving. Stop position
+    // dependence here; flying followers use this actor's exact saved position.
+    private static bool StationaryNewLeaderFollower(UfoSnapshot ufo) =>
+        ufo.Status == UfoStatus.Landed && ufo.Altitude == WorldAltitudes.Ground &&
+        ufo.SecondsRemaining > 5 && ufo.SecondsRemaining % 5 == 0;
+
     private string? NewLeaderPursuitDependency(WorldTargetReference target, UfoSnapshot source,
         ref long work, out bool depends)
     {
@@ -86,6 +92,7 @@ internal sealed partial class CampaignWorld
                 return null;
             }
             var projected = UfoForFlight(actor, _pass.NewbornHighestTrigger);
+            if (StationaryNewLeaderFollower(projected)) return null;
             if (!projected.Escorting || projected.Destination is not { Kind: WorldTargetKind.Ufo } leader) return null;
             target = leader;
         }
