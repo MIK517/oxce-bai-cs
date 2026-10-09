@@ -1382,3 +1382,31 @@ automatic UNLOCK, retained Space missions and removed zero-live Earth missions;
 missing research still refuses atomically. All 770 affected tests and 25 final
 focused cases pass; targeted formatting, code-map and diff checks pass. This is
 cycle 12's first execution slice; supply, pact alternatives and batch audit remain.
+
+## Optional Space supply-source loss (2026-10-09)
+
+Space supply missions now suppress objective UFO births when uncertain daily
+research removes their source, without marking the mission interrupted. Other
+regional UFOs and direct deployment sites continue. Possible objective awards
+include zero; counter completion reserves earlier zero-live mission expiry and
+retaliation-link validation. Existing special actors or same-tick special births
+with a conditional ordinary leader retain a precise guard; delayed source unlinking
+does not invent that dependency when no objective birth can occur this tick.
+
+Reference: pinned `AlienMission::spawnUfo` supply branch, `think`'s next-wave timer,
+`SavedGame::clearLinksForAlienBase` and the half-hour mission cleanup. Verified
+`strategic-mission-origin` supply rows pin source suppression and constructor
+defaults; cleanup, wave-chain and site captures back the composition. Fresh/cache
+32-seed cases cover objective/non-objective, finite immediate mixed waves,
+deployment sites, delayed waves and ignored objective hunter/escort metadata.
+Selected controls compare all state/RNG through three rewrites and next ticks.
+Signed-limit cases cover omitted awards and safe bounds; identity exhaustion,
+early invalid retaliation cleanup and conditional leader paths refuse atomically.
+
+All 1,040 other successful cases in the affected run and all 26 final supply cases
+pass. Four fixture failures came from a nonzero next-wave timer in an intended
+immediate chain; the native next-wave timer was restored to zero and all final
+cases pass. Targeted formatting, code-map and diff checks pass. An overlapping
+test/build attempt hit an owned-process executable lock; after both runs exited,
+sequential validation passed without permission or host changes. This is cycle
+12's second slice; pact alternatives and the full batch audit remain.
