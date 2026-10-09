@@ -1093,3 +1093,15 @@ continuation; direct/transitive far craft pursue normally, close stay/lift paths
 retain deployment/combat guards. All 208 affected cases pass. Reference:
 AlienMission::ufoLifting, Ufo::think and MovingTarget::setSpeed/calculateSpeed,
 with verified lifecycle and site-timer traces. This is cycle 18 slice two.
+
+Crashed, destroyed and dormant followers now cut position dependence after timed
+transitions. Existing cleanup and target-loss operations keep ownership; a dormant
+UFO reactivated by an expiring site is already flying and remains in the active
+regional proof. Sixteen regressions reproduce passive refusal; four reactivation
+controls prevent an incorrect raw-save-state cut. Fresh/cache and both saved orders
+pin movement, activity/live counts, exact link repair, repeated rewrites with no
+resurrection and continuation. All 217 affected cases pass. Reference: Ufo::think,
+GeoscapeState time30Minutes/time5Seconds/processMissionSite and target deletion,
+with verified strategic-crashed-ufo/world/site-timer captures. This completes
+cycle 18's three slices; aggregate lookup work, malformed cases and batch acceptance
+are audited next. No event/combat/month capability or 4d behavior is enabled.

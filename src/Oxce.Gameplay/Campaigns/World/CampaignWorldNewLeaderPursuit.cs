@@ -69,10 +69,11 @@ internal sealed partial class CampaignWorld
         return latitude >= Math.PI / 2 ? Math.PI : Math.Min(Math.PI, step * (1 + 1 / Math.Cos(latitude)));
     }
 
-    // Ufo::think consumes a landed timer without moving, including the
-    // final timer's ufoLifting call. Stop position dependence here; flying
-    // followers use this actor's exact saved position for this tick.
+    // Read the state after timed transitions: dormant site reactivation may
+    // already make this actor fly. Native landed/crashed/dormant/destroyed
+    // branches never move; cleanup/target loss retain their separate owners.
     private static bool StationaryNewLeaderFollower(UfoSnapshot ufo) =>
+        ufo.Status is UfoStatus.Crashed or UfoStatus.IgnoreMe or UfoStatus.Destroyed ||
         ufo.Status == UfoStatus.Landed && ufo.Altitude == WorldAltitudes.Ground &&
         ufo.SecondsRemaining >= 5 && ufo.SecondsRemaining % 5 == 0;
 
