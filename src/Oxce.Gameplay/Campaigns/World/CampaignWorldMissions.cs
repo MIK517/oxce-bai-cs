@@ -437,7 +437,11 @@ internal sealed partial class CampaignWorld
             !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
             (wave.HunterKillerPercentage == -1
                 ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
-                : wave.HunterKillerPercentage) > 0 || trajectory.Speed(1, speedMaximum) < 0) return false;
+                : wave.HunterKillerPercentage) > 0) return false;
+        // Validate the native wide intermediate before narrowing. Calling Speed
+        // here would throw rather than return an atomic capability refusal.
+        var replacementSpeed = (long)speedMaximum * trajectory.Waypoints[1].SpeedPercentage / 100;
+        if (replacementSpeed is < 0 or > int.MaxValue) return false;
         if (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count > 256) return false;
         ValidateWaypointAreas(region, trajectory.Zone(1));
         return true;

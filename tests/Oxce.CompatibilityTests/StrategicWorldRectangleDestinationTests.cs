@@ -38,25 +38,31 @@ public sealed class StrategicWorldRectangleDestinationTests
         }
     }
 
-    [Fact]
-    public void ARectangleContainingTheOriginBlocksTheWholeTick()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DestinationRectanglesContainingTheOriginPreserveBothSelectedMovementPaths(bool cache)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-rectangle-destinations.rul"]);
-        var initial = CreateSnapshot(content, "Unsafe rectangle");
-        var campaign = CampaignState.Restore(initial with
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-rectangle-destinations.rul"], cache);
+        var initial = CreateSnapshot(content, "Reachable destination rectangle");
+        var snapshot = initial with
         {
+            RandomState = 0,
             Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
             World = initial.World with { Missions = [new AlienMissionSnapshot(4, "RECT_UNSAFE", "REGION", "RACE_A", 0, 0, 0, 0, -1)] },
-        }, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+        };
+        Assert.True(AssertSelectedNewbornArrival(content, snapshot,
+            new FractionChoices(6.0 / 26, 20.0 / 36), new FractionChoices(6.0 / 26, 20.0 / 36)));
+        Assert.False(AssertSelectedNewbornArrival(content, snapshot, new FractionChoices(0), new FractionChoices(0)));
     }
 
-    private sealed class FractionChoices(double fraction) : IStatefulRandomSource
+    private sealed class FractionChoices(double fraction, double? latitudeFraction = null) : IStatefulRandomSource
     {
+        private int _coordinate;
         public ulong State { get; set; }
         public int NextInclusive(int minimum, int maximum) { State++; return minimum; }
         public int NextExclusive(int maximum) => NextInclusive(0, maximum - 1);
-        public void Restore(ulong state) => State = state;
-        public double NextUnit() { State++; return fraction; }
+        public void Restore(ulong state) { State = state; _coordinate = 0; }
+        public double NextUnit() { State++; return _coordinate++ % 2 == 0 ? fraction : latitudeFraction ?? fraction; }
     }
 }

@@ -182,12 +182,15 @@ public sealed class StrategicWorldRectangleOriginTests
         AssertTimeBlocked(campaign, "UFO alien activity exceeds the supported range.");
     }
 
-    [Fact]
-    public void AnOriginRectangleThatCanReachItsDestinationBlocksAtomically()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReachableOriginRectanglesPreserveBothSelectedMovementPaths(bool cache)
     {
-        var content = Load(false);
-        var campaign = CampaignState.Restore(Snapshot(content, "RECT_ORIGIN_UNSAFE"), content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+        var content = Load(cache);
+        foreach (var fraction in new[] { 0.0, 0.5, 1.0 })
+            Assert.Equal(fraction == 0.5, AssertSelectedNewbornArrival(content,
+                Snapshot(content, "RECT_ORIGIN_UNSAFE"), new FractionChoices(fraction), new FractionChoices(fraction)));
     }
 
     private static RuntimeContent Load(bool cache) => StrategicReadinessTestContent.Load(

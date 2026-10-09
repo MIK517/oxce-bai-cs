@@ -52,16 +52,28 @@ public sealed class StrategicWorldPointDestinationTests
         Assert.Equal(2, seen.Count);
     }
 
-    [Fact]
-    public void AnyCandidateThatWouldArriveInTheSpawnTickBlocksBeforeRandomSelection()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MixedPointCandidatesPreserveSelectedFirstArrivalAndContinuingFlight(bool cache)
     {
-        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-point-destinations.rul"]);
-        var initial = CreateSnapshot(content, "Unsafe candidate");
-        var campaign = CampaignState.Restore(initial with
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-point-destinations.rul"], cache);
+        var initial = CreateSnapshot(content, "Mixed first-arrival candidates");
+        var arrivedSeen = false;
+        var continuingSeen = false;
+        for (ulong seed = 1; seed <= 32; seed++)
         {
-            Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
-            World = initial.World with { Missions = [new AlienMissionSnapshot(4, "UNSAFE_DESTINATION", "REGION", "RACE_A", 0, 0, 0, 0, -1)] },
-        }, content, new SplitMix64RandomSource(17));
-        AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+            var selected = initial with
+            {
+                RandomState = seed,
+                Time = new CampaignTime(1, 1, 1, 1999, 1, 29, 55),
+                World = initial.World with { Missions = [new(4, "UNSAFE_DESTINATION", "REGION", "RACE_A", 0, 0, 0, 0, -1)] },
+            };
+            var arrived = AssertSelectedNewbornArrival(content, selected, new SplitMix64RandomSource(seed), new SplitMix64RandomSource(seed));
+            arrivedSeen |= arrived;
+            continuingSeen |= !arrived;
+        }
+        Assert.True(arrivedSeen);
+        Assert.True(continuingSeen);
     }
 }

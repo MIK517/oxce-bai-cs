@@ -769,3 +769,14 @@ All 16 new cases reproduce the distance refusal before the change. All 72 affect
 tests pass; targeted formatting, code-map and diff checks pass. This completes
 cycle 13's execution slices; their batch audit and full validation follow. 4c and
 its later-branch boundaries remain open; 4d is untouched.
+
+Cycle 13 batch audit reproduced replacement-speed overflow in both fresh/cache
+content: calling the checked speed helper during proof threw instead of refusing
+the tick. The proof now validates the wide product before narrowing. Both overflow
+regressions refuse atomically; the maximum safe result still executes/reloads.
+Three older blanket-arrival refusal tests were replaced with stronger fresh/cache
+selected coordinate, discarded RNG, speed and three-rewrite checks for both
+reachable and distant point/rectangle outcomes. All 71 affected cases pass.
+Reviewed caller order, constructor/landed branch, counter/wave identity, pure
+forecast work and precise interruption/special/ground boundaries. Full final
+root/format validation follows the separately committed correction.
