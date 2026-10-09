@@ -39,9 +39,9 @@ internal sealed partial class CampaignWorld
 
     private string? UncertainBaseDeletionReason(AlienBaseSnapshot alienBase, RuntimeAlienDeploymentRule rule, ref long work)
     {
-        // The surviving branch owns activity, timers and discovery proofs. A quiet
-        // unlinked deletion only removes that actor; generation, link repair and
-        // pact eligibility need their own earlier/later caller alternatives.
+        // The surviving branch owns activity, timers, discovery and generated
+        // mission proofs. Deletion omits those optional actors; source links and
+        // pact eligibility still need their own caller alternatives.
         work += _missions.Count + (long)rule.GenMission.Count + campaign.BaseStates.Count + campaign.CountryStates.Count;
         foreach (var owner in campaign.BaseStates) work += owner.Crafts.Count + (long)owner.Transfers.Count;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
@@ -74,12 +74,9 @@ internal sealed partial class CampaignWorld
                 if (FollowsAlienBase(transfer.Craft?.Logistics?.Destination, alienBase))
                     return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
         }
-        if (rule.GenMissionFrequency > 0 && alienBase.GenMissionCount < rule.GenMissionLimit &&
-            rule.GenMission.Any(static choice => choice.Key.Length != 0 && choice.Value != 0))
-            return "Alien base self-destruction requires optional mission-generation forecasts.";
-        if (rule.BaseDetectionRange > 0 && rule.BaseDetectionChance > 0 &&
-            rule.HuntMissions.Count != 0 && (long)alienBase.MinutesSinceLastHuntMissionGeneration + 10 >= rule.HuntMissionMaxFrequency)
-            return "Alien base self-destruction requires optional hunting-generation forecasts.";
+        // Both generation callers retain their full surviving-source choice,
+        // capacity and activity envelopes. Immediate research births are proved
+        // separately against the ordered daily research phase before mutation.
         if (campaign.Content.RuntimeRules.Campaign.AllowCountriesToCancelAlienPact && alienBase.PactCountryId.Length != 0)
             foreach (var country in campaign.CountryStates)
                 if (campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule) == alienBase.PactCountryId &&
