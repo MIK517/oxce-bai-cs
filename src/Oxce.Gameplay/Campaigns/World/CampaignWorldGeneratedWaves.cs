@@ -117,6 +117,21 @@ internal sealed partial class CampaignWorld
                     }
                     if (wave.Ufo is null || wave.Trajectory is not { } trajectory) return GeneratedWaveBoundary;
                     var path = campaign.Content.RuntimeRules.UfoTrajectories[trajectory].Value;
+                    if (path.Waypoints.Count > 1 && path.Altitude(0) != 0 && path.Altitude(1) == 0)
+                    {
+                        var regionRule = campaign.Content.RuntimeRules.Regions[
+                            campaign.Content.RuntimeRules.Regions.GetRequired(region)].Value;
+                        if (!TryOrdinarySpawnPositions(step, rule, path, regionRule, out var origins) ||
+                            !TryOrdinarySpawnDestinations(step, rule, path, regionRule, out var destinations)) return GeneratedWaveBoundary;
+                        work += (long)origins.Count * destinations.Count;
+                        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                        if (TryNewbornInitialSpeed(path, campaign.Content.RuntimeRules.Ufos[wave.Ufo.Value].Value
+                                .StatsForRace(step.Race).SpeedMaximum, out var speed) && FirstWaypointReachable(origins, destinations, speed))
+                        {
+                            work += NewbornLandingGeometryWork(destinations);
+                            if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                        }
+                    }
                     if (path.Waypoints.Count == 0 ||
                         !CanSpawnOrdinaryUfoWave(step, rule, requireHuntingForecast: false)) return GeneratedWaveBoundary;
                 }

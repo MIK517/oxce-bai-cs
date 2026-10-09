@@ -203,7 +203,8 @@ internal sealed partial class CampaignWorld
                 if (!forecast.Hunting && !grounded && trajectory.Altitude(1) == 0 &&
                     TryOrdinarySpawnDestinations(step, missionRule, trajectory, region, out var destinations) &&
                     FirstWaypointReachable(ordinaryOrigins, destinations,
-                        trajectory.Speed(0, rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum)))
+                        trajectory.Speed(0, rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum)) &&
+                    NewbornLandingPossible(destinations, rules.Ufos[wave.Ufo!.Value].Value))
                     missionLandings++;
                 if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
                     missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration))

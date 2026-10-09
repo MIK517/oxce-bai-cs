@@ -202,6 +202,10 @@ internal sealed partial class CampaignWorld
         if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var origins) ||
             !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations)) return SiteResearchWaveReason;
         work += (long)origins.Count * destinations.Count + origins.Count + destinations.Count;
+        if (trajectory.Altitude(0) != 0 && trajectory.Altitude(1) == 0 &&
+            TryNewbornInitialSpeed(trajectory, rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum,
+                out var speed) && FirstWaypointReachable(origins, destinations, speed))
+            work += NewbornLandingGeometryWork(destinations);
         if (work > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
         landWork += SpawnOriginLandWork(mission, rule, trajectory, region);
         if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
