@@ -805,3 +805,18 @@ Ten cases fail at the old objective restriction before the change; supply's two
 already-supported cases pass. All 79 affected cases pass with targeted formatting,
 code-map and diff checks. This is cycle 14's first slice; harmless research tags,
 no-target hunter arrivals and their batch audit remain. 4d is unchanged.
+
+## Research-tagged first airborne arrivals (2026-10-09)
+
+A birth's interrupt tag now blocks first-airborne advancement only when the ordered
+site-research forecast can explicitly grant that topic after spawning. Daily
+research interruption occurs before spawning; harmless tags and unrelated later
+grants use the existing ordinary movement owner. A relevant possible post-birth
+grant retains an atomic terminal-arrival boundary. Pinned GeoscapeState daily/site
+caller order and AlienMission interruption/arrival handling, with verified lifecycle,
+site-timer and daily-generation evidence, back fresh/cache selected interruption
+outcomes, complete-state/RNG controls and three save rewrites.
+
+All 61 affected tests pass; targeted formatting, regenerated code-map and diff
+checks pass. Cycle 14's second slice is complete; no-target hunter constructors
+and the batch audit remain. No event payload or combat boundary is removed.
