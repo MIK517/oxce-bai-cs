@@ -90,13 +90,13 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
 
     internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3,
         string extraRules = "", string generationRegion = "", int firstAltitude = 3, int groundTimer = 0,
-        int points = 0, bool alerts = false) =>
+        int points = 0, bool alerts = false, int nextSpeedPercentage = 80) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             {{{extraRules}}}
             ufos:
               - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: {{{(alerts ? "false" : "true")}}}, shieldCapacity: 10, shieldRechargeInGeoscape: 100}
             ufoTrajectories:
-              - {id: FIRST_ARRIVAL_AIR, groundTimer: {{{groundTimer}}}, waypoints: [[5, {{{firstAltitude}}}, 100], [{{{(separate ? 6 : 5)}}}, 2, 80], [4, {{{nextAltitude}}}, 100]]}
+              - {id: FIRST_ARRIVAL_AIR, groundTimer: {{{groundTimer}}}, waypoints: [[5, {{{firstAltitude}}}, 100], [{{{(separate ? 6 : 5)}}}, 2, {{{nextSpeedPercentage}}}], [4, {{{nextAltitude}}}, 100]]}
             alienMissions:
               - type: FIRST_ARRIVAL_MISSION
                 interruptResearch: {{{interrupt}}}
@@ -118,5 +118,29 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
             Time = new(1, 1, 1, 1999, 1, 29, 55),
             World = initial.World with { Missions = [new(4, "FIRST_ARRIVAL_MISSION", "REGION", "RACE_A", 0, 0, 0, 0, -1)] },
         };
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NewbornReplacementSpeedOverflowRefusesTheTickAtomically(bool cache)
+    {
+        var content = Content(cache, false, nextSpeedPercentage: 100_000_000);
+        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)),
+            "Alien mission wave spawning requires world simulation.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MaximumSafeNewbornReplacementSpeedStillExecutes(bool cache)
+    {
+        var content = Content(cache, false, nextSpeedPercentage: 97_612_893);
+        var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2_147_483_646, ufo.Speed));
+        campaign = Reload(content, campaign, 17, "newborn-replacement-speed-limit.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2, ufo.TrajectoryPoint));
     }
 }

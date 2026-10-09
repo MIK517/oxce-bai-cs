@@ -168,6 +168,49 @@ internal static class StrategicWorldTestSupport
         return restored;
     }
 
+    /// <summary>Checks one ordinary count-two birth, including its possible first airborne arrival.</summary>
+    public static bool AssertSelectedNewbornArrival(RuntimeContent content, CampaignSnapshot initial,
+        IStatefulRandomSource expectedRandom, IStatefulRandomSource actualRandom)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        expectedRandom.Restore(initial.RandomState);
+        var mission = Assert.Single(initial.World.Missions);
+        var rules = content.RuntimeRules;
+        var rule = rules.AlienMissions[rules.AlienMissions.GetRequired(mission.RuleId)].Value;
+        var wave = rule.Waves[0];
+        Assert.Equal(2u, wave.UfoCount);
+        var path = rules.UfoTrajectories[wave.Trajectory!.Value].Value;
+        var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var maximum = rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum;
+        var speed = path.Speed(0, maximum);
+        var origin = WorldGeometry.RandomPoint(region, path.Zone(0), -1, expectedRandom);
+        var destination = WorldGeometry.RandomPoint(region, path.Zone(1), -1, expectedRandom);
+        WorldTrajectory.SpawnCountdown(checked((int)wave.SpawnTimer), expectedRandom);
+        expectedRandom.NextInclusive(0, 99); // Base detection, including chance zero.
+        var arrived = WorldGeometry.Distance(origin, destination) <= WorldGeometry.RadianSpeed(speed);
+        var position = WorldGeometry.Move(origin, destination, WorldGeometry.RadianSpeed(speed));
+        if (arrived)
+        {
+            _ = WorldGeometry.RandomPoint(region, path.Zone(1), -1, expectedRandom);
+            destination = WorldGeometry.RandomPoint(region, path.Zone(1), -1, expectedRandom);
+        }
+        var campaign = CampaignState.Restore(initial, content, actualRandom);
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.Equal(position, ufo.Position);
+        Assert.Equal(destination, ufo.Destination!.Position);
+        Assert.Equal(arrived ? 1 : 0, ufo.TrajectoryPoint);
+        Assert.Equal(arrived ? path.Speed(1, maximum) : speed, ufo.Speed);
+        Assert.Equal(expectedRandom.State, after.RandomState);
+        for (var pass = 0; pass < 3; pass++)
+        {
+            campaign = Reload(content, campaign, initial.RandomState, "selected-newborn-arrival.sav");
+            Assert.Equivalent(after, campaign.Capture(), strict: true);
+        }
+        return arrived;
+    }
+
     /// <summary>Managed bytes allocated on this thread by <paramref name="action"/>.</summary>
     public static long AllocatedBytes(Action action)
     {
