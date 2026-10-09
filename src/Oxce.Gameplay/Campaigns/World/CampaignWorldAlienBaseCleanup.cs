@@ -104,13 +104,18 @@ internal sealed partial class CampaignWorld
             var from = new WorldPosition(state.Longitude, state.Latitude);
             if (!from.IsNormalized) return "Airborne craft coordinates are invalid.";
             if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
-            if (CraftFuelAlternativeReason(owner, state, rule, maximum,
-                    WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, state.Speed, 0),
-                    WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, maximum, 0),
+            var firstBurn = WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, state.Speed, 0);
+            var secondBurn = WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, maximum, 0);
+            if (CraftFuelAlternativeReason(owner, state, rule, maximum, firstBurn, secondBurn,
                     "Alien base self-destruction requires craft speed alternatives for uncertain research.", ref work) is { } fuelReason)
                 return fuelReason;
             if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, state.Speed, maximum, from, ref work) is { } escortReason)
                 return escortReason;
+            // Fuel precedes movement. Empty fuel in both alternatives forces
+            // the same home destination/full speed even during takeoff. Native
+            // think/checkup may then arrive in either branch without ambiguity.
+            // An already-low craft skips this recall and cannot use the proof.
+            if (!state.LowFuel && maximum > 0 && state.Fuel <= Math.Min(firstBurn, secondBurn)) return null;
             var home = new WorldPosition(owner.Longitude, owner.Latitude);
             if (WorldGeometry.ReachedDestination(from, home) || state.Takeoff <= 0 &&
                 !(WorldGeometry.Distance(from, home) > WorldGeometry.RadianSpeed(maximum)))
