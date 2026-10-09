@@ -161,7 +161,7 @@ void reuseItem(const RuleItem*);
 Cargo cargo; Cargo* _items=&cargo; void unloadItems() {
 // PRODUCTION_CRAFT_UNLOAD_ITEMS
 }
-int getFuel() const { return _fuel; } int getFuelLimit() const { return 0; }
+int _fuelLimit=0; int getFuel() const { return _fuel; } int getFuelLimit() const { return _fuelLimit; }
 int getSpeed() const { return speed; } void setLowFuel(bool value) { _lowFuel=value; }
 Target* getDestination() const { return _dest; } double getDistance(Target*) const { return 0; }
 void setDamage(int value) { _damage=std::max(0,value); }
@@ -992,6 +992,20 @@ craft._dest=destination?&target:nullptr;
 craft.consumeFuel(0);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << (destination?"true":"false") << ',' << (patrolFree?"true":"false")
 << ',' << speed << ',' << fuel << ',' << excess << ',' << craft._fuel << ',' << craft._excessFuel << ',' << base.storage.count << ']';
+}
+std::cout << "],\"optionalReturnFuelRows\":[";
+serviceFirst=true;
+for(int limit:{0,139}) for(int fuel:{0,1,10,21,100,139,149,150,160,200,1000,1500})
+for(bool low:{false,true}) for(bool deleted:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Base base; Target target; FuelCaller caller;
+craft._base=&base; craft._stats.speedMax=2100; craft._stats.fuelMax=1000;
+craft._status="STR_OUT"; craft.speed=1000; craft._fuel=fuel; craft._fuelLimit=limit;
+craft._lowFuel=low; craft._dest=&target; craft.autoPatrol=false;
+if(deleted) craft.returnToBase();
+caller.fuel(&craft);
+std::cout << '[' << limit << ',' << fuel << ',' << (low?"true":"false") << ',' << (deleted?"true":"false")
+<< ',' << craft._fuel << ',' << (craft._lowFuel?"true":"false") << ',' << craft.speed << ',' << (craft._dest==&base?"true":"false") << ']';
 }
 std::cout << "],\"hourlyMaintenanceRows\":[";
 serviceFirst=true;

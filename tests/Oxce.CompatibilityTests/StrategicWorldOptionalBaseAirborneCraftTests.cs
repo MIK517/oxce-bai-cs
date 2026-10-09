@@ -88,7 +88,10 @@ public sealed class StrategicWorldOptionalBaseAirborneCraftTests
     public void ChangedSpeedArrivalAndMalformedTakeoffKeepPreciseAtomicBoundaries(bool cache)
     {
         var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
-        var initial = Snapshot(content, 17, 0, false, false).WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = 3000 } });
+        var initial = Snapshot(content, 17, 0, false, false);
+        var threshold = WorldFlight.FuelLimit(false, 6000, WorldGeometry.Distance(new(1, 0.6),
+            new(initial.Bases[0].Longitude, initial.Bases[0].Latitude)));
+        initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = 3000, Fuel = threshold + 60 } });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft speed alternatives for uncertain research.");
         initial = Snapshot(content, 17, 0, false, false).WithCraft("SHIP", craft => craft with
