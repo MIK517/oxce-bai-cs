@@ -1639,3 +1639,14 @@ pass, with targeted format/map/diff checks. Reference: Craft::getFuelConsumption
 getFuelLimit/consumeFuel, Geoscape time10Minutes and MovingTarget::calculateMeetPoint
 (disabled interception extrapolation), backed by verified world craft/hunting
 captures. This is cycle 24 slice one.
+
+Item-fuelled craft escorts now compose with those speed-changing leaders. Their
+native one-unit consumption is independent of saved leader speed, including
+saved-order low-fuel propagation. Eight fresh/cache regressions reproduced the
+escort guard; ten cases now cover both craft orders, takeoff, actual hunting,
+both source outcomes over 32 seeds, exact fuel/follower movement, complete
+selected-control snapshots/RNG, three rewrites and continuation. Ordinary escorts
+retain an atomic consumer boundary. All 140 affected tests pass, with targeted
+format/map/diff checks. Reference: Geoscape time10Minutes dynamic craft destination
+and Craft::getFuelConsumption item branch, backed by verified escortFuelRows.
+This is cycle 24 slice two; ordinary capped consumers and the batch audit follow.

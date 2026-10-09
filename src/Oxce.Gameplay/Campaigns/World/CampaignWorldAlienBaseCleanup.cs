@@ -126,13 +126,15 @@ internal sealed partial class CampaignWorld
             foreach (var craft in owner.Crafts)
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (FollowsCraft(craft.Logistics?.Destination, type, source.Id))
+                if (FollowsCraft(craft.Logistics?.Destination, type, source.Id) &&
+                    campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.RefuelItem is null)
                     return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
             }
             foreach (var transfer in owner.Transfers)
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (FollowsCraft(transfer.Craft?.Logistics?.Destination, type, source.Id))
+                if (transfer.Craft is { } incoming && FollowsCraft(incoming.Logistics?.Destination, type, source.Id) &&
+                    campaign.Content.RuntimeRules.Crafts[campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value.RefuelItem is null)
                     return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
             }
         }
