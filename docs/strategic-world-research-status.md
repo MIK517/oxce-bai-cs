@@ -1410,3 +1410,26 @@ cases pass. Targeted formatting, code-map and diff checks pass. An overlapping
 test/build attempt hit an owned-process executable lock; after both runs exited,
 sequential validation passed without permission or host changes. This is cycle
 12's second slice; pact alternatives and the full batch audit remain.
+
+## Optional daily pact cancellation (2026-10-09)
+
+Country-linked source deletion now composes with later infiltration. Preflight
+reserves the union of original eligibility and the possible
+`Country::setCancelPact` result (`newPact=false`, `cancelPact=pact`). Existing
+country/spawn/capacity bounds cover that union without changing country state or
+random ordering. Disabled cancellation keeps original eligibility and does not
+reserve a birth for an ineligible country. Monthly pact settlement and unavailable
+event consequences remain guarded at their existing branch 6 boundary.
+
+Reference: pinned `SavedGame::clearLinksForAlienBase`, `Country::setCancelPact`/
+`canBeInfiltrated`, daily deletion ordering and later saved/daily/hunting mission
+completion. Cleanup and infiltration truth-table captures back all eight flag
+combinations, no-mission cancellation and all three later mission callers.
+Fresh/cache 32-seed selected controls compare whole snapshots/RNG, both outcomes,
+three rewrites and next ticks. Newly possible eligibility reserves marker and
+birth-sequence capacity atomically. Disabled-option cases retain unused exhausted
+marker capacity. Eight selected seeds also compose 72 hours of hunting cleanup,
+day/hour batches and transition reloads with stable pact/base populations.
+All 166 affected cases pass; targeted formatting, code-map and diff checks pass.
+This completes cycle 12's execution slices; their batch audit and root validation
+follow.

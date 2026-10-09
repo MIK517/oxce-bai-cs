@@ -97,18 +97,27 @@ internal sealed partial class CampaignWorld
         {
             var newPact = country.NewPact;
             var cancelPact = country.CancelPact;
+            var possibleCancellation = false;
             if (destruction)
             {
                 var id = rules.Countries.GetExternalId(country.Rule);
                 foreach (var alienBase in _alienBases)
-                    if (alienBase.PactCountryId == id && BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast))
+                    if (alienBase.PactCountryId == id)
                     {
-                        newPact = false;
-                        cancelPact = country.Pact;
-                        break;
+                        if (BaseDestroyedAfterDailyResearch(alienBase, _pass.DailyResearchForecast))
+                        {
+                            newPact = false;
+                            cancelPact = country.Pact;
+                            break;
+                        }
+                        possibleCancellation |= _pass.PossibleDailyBaseDeletions?.Contains((alienBase.DeploymentId, alienBase.Id)) == true;
                     }
             }
-            if (WorldInfiltration.CanInfiltrate(country.Pact, newPact, cancelPact)) eligible.Add(country);
+            // The selected deletion applies Country::setCancelPact before every
+            // later infiltration caller. Reserve both eligibility outcomes; no
+            // country fields or random country order are changed during proof.
+            if (WorldInfiltration.CanInfiltrate(country.Pact, newPact, cancelPact) ||
+                possibleCancellation && WorldInfiltration.CanInfiltrate(country.Pact, false, country.Pact)) eligible.Add(country);
         }
         _pass.InfiltrationCountries = eligible;
         return null;
