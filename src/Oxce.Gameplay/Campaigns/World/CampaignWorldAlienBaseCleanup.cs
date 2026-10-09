@@ -52,9 +52,11 @@ internal sealed partial class CampaignWorld
                 if (missionRule.OperationType == RuntimeMissionOperationType.Space)
                 {
                     if (missionRule.Objective == RuntimeMissionObjective.Supply)
-                        return "Alien base self-destruction requires optional supply-source forecasts.";
-                    // Space spawning and ordinary waypoints ignore the source;
-                    // unlinking never interrupts or changes these regional actors.
+                    {
+                        if (PossibleSupplySourceLossReason(mission, missionRule, ref work) is { } supplyReason) return supplyReason;
+                    }
+                    // Ordinary Space flight ignores the source; objective supply
+                    // births above reserve suppression separately from interruption.
                     continue;
                 }
                 // Earth operations interrupt when the source disappears. Their
@@ -88,6 +90,40 @@ internal sealed partial class CampaignWorld
                 if (campaign.Content.RuntimeRules.Countries.GetExternalId(country.Rule) == alienBase.PactCountryId &&
                     (country.NewPact || country.CancelPact != country.Pact))
                     return "Alien base self-destruction requires uncertain pact-cancellation forecasts.";
+        return null;
+    }
+
+    private string? PossibleSupplySourceLossReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, ref long work)
+    {
+        if (mission.Interrupted || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30 ||
+            mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra) return null;
+        var objectiveBirth = false;
+        var specialBirth = false;
+        try
+        {
+            foreach (var step in DueWaveSteps(mission, rule))
+            {
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                var wave = SpawnWave(step, rule);
+                if (wave.Ufo is not { } handle) continue;
+                if (wave.Objective) objectiveBirth = true;
+                else if ((wave.HunterKillerPercentage == -1
+                    ? campaign.Content.RuntimeRules.Ufos[handle].Value.HunterKillerPercentage
+                    : wave.HunterKillerPercentage) > 0) specialBirth = true;
+            }
+        }
+        catch (InvalidDataException error) { return error.Message; }
+        if (!objectiveBirth) return null;
+        const string specialReason = "Supply source deletion requires conditional hunter or escort leader forecasts.";
+        if (specialBirth) return specialReason;
+        work += _ufos.Count;
+        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        foreach (var ufo in _ufos)
+            if (ufo.MissionId == mission.Id && (ufo.HunterKiller || ufo.Hunting || ufo.Escorting || ufo.Escort)) return specialReason;
+        // Source loss suppresses objective UFOs without interrupting the mission.
+        // Counter completion can therefore expire a zero-live mission earlier.
+        if (mission.LiveUfos == 0 && MissionExpiryReason(mission, rule, ref work) is { } expiryReason) return expiryReason;
+        (_pass.PossibleDailySupplySourceLoss ??= []).Add(mission.Id);
         return null;
     }
 

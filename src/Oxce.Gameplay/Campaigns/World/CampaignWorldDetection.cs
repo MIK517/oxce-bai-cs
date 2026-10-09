@@ -180,7 +180,9 @@ internal sealed partial class CampaignWorld
                         birthCandidate = true;
                     }
                     if (CheckSpawnActivity(wave.UfoType, positions, birthRegions, birthCountries, grounded ? 2 : 1,
-                            guaranteedAward: !forecast.Generated && _pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) != true) is { } reason) return reason;
+                            guaranteedAward: !forecast.Generated && _pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) != true &&
+                                !(missionRule.Objective == RuntimeMissionObjective.Supply && wave.Objective &&
+                                  _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true)) is { } reason) return reason;
                     if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
                             ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
                 }
