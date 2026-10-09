@@ -198,6 +198,13 @@ internal sealed partial class CampaignWorld
                     missionContacts++;
                     if (grounded) missionLandings++;
                 }
+                // Detection precedes flight. Even a noAlert contact can receive
+                // a landing ID on its first ground arrival in the flying pass.
+                if (!forecast.Hunting && !grounded && trajectory.Altitude(1) == 0 &&
+                    TryOrdinarySpawnDestinations(step, missionRule, trajectory, region, out var destinations) &&
+                    FirstWaypointReachable(ordinaryOrigins, destinations,
+                        trajectory.Speed(0, rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum)))
+                    missionLandings++;
                 if (grounded && trajectory.GroundTimer == 1 && missionRule.Points > 0 &&
                     missionRule.Objective is not (RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration))
                     (takeoffScores ??= []).Add((positions, missionRule.Points));
