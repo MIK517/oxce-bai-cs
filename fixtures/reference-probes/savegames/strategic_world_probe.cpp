@@ -204,6 +204,33 @@ int main()
 	std::cout << R"({"schemaVersion":1,"referenceCommit":"4df3a5e571a1a4b5e8a46d3161fb2e21a2adba15")"
 		<< R"(,"referenceBuild":{"compiler":"MSVC","languageStandard":"c++20"},"mods":[])";
 
+	// Retain 17 digits here: fixed12 would erase the epsilon boundary.
+	std::cout << ",\"equality\":[";
+	bool equalityFirst = true;
+	for (double left : { 0.0, -0.5, 1.0, 4.0 })
+		for (double right : { left, left + DBL_EPSILON, left + 2 * DBL_EPSILON,
+			std::nextafter(left, INFINITY), std::nextafter(std::nextafter(left, INFINITY), INFINITY) })
+		{
+			if (!equalityFirst) std::cout << ','; equalityFirst = false;
+			std::cout << '[' << std::defaultfloat << std::setprecision(17) << left << ',' << right
+				<< ',' << AreSame(left, right) << ']';
+		}
+	std::cout << "],\"arrivalEquality\":[";
+	equalityFirst = true;
+	for (int axis : { 0, 1 })
+		for (int ulps : { 0, 1, 2, 3 })
+		{
+			Target destination; destination.setLongitude(1.0); destination.setLatitude(1.0);
+			MovingTarget mover; mover.setLongitude(1.0); mover.setLatitude(1.0);
+			double nearby = 1.0;
+			for (int step = 0; step < ulps; ++step) nearby = std::nextafter(nearby, INFINITY);
+			if (axis == 0) mover.setLongitude(nearby); else mover.setLatitude(nearby);
+			mover._dest = &destination;
+			if (!equalityFirst) std::cout << ','; equalityFirst = false;
+			std::cout << '[' << axis << ',' << ulps << ',' << mover.reachedDestination() << ']';
+		}
+	std::cout << ']' << std::fixed << std::setprecision(12);
+
 	// Coordinate wrapping and great-circle distance.
 	std::cout << ",\"coordinates\":[";
 	bool first = true;

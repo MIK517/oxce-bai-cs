@@ -131,8 +131,12 @@ documents; entries here link to them instead of copying them.
   and equal-speed airborne returns; the batch audit and all 4,621 root tests pass.
   Fuel-equivalent optional craft returns now compose with item-fuel and capped
   ordinary escorts; their batch audit and all 4,653 root tests pass.
-  Owned airborne zero-speed escort fallback now composes too; its interim audit
-  and all 4,663 root tests pass. The next two slices and their batch audit remain.
+  Owned airborne zero-speed escort fallback, distant escorts and independent
+  grounded escort servicing now compose. The combined audit corrected native
+  machine-epsilon equality; all 4,705 root tests and full formatting pass.
+  See [geometry correction](strategic-world-operations-status.md#globe-equality-audit-correction-2026-10-09).
+  Native review also confirmed missing overfilled-flight fuel capping/refunds;
+  that follow-up correction and final guard reconciliation remain open.
   See [craft follower evidence](strategic-world-research-status.md#optional-alien-base-craft-followers-2026-10-09).
   See [supply escort evidence](strategic-world-research-status.md#optional-space-supply-escort-leaders-2026-10-09).
   See [optional source evidence](strategic-world-research-status.md#optional-earth-source-loss-with-special-ufos-2026-10-09).

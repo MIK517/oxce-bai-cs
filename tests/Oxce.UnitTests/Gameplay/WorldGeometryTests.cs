@@ -8,6 +8,21 @@ namespace Oxce.UnitTests.Gameplay;
 
 public sealed class WorldGeometryTests
 {
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(1.0)]
+    [InlineData(4.0)]
+    public void EqualityUsesMachineEpsilonAndScalesWithCoordinates(double value)
+    {
+        const double epsilon = 2.2204460492503131e-16;
+        var inside = value + epsilon * Math.Max(1, Math.Abs(value));
+        var outside = value + 2 * epsilon * Math.Max(1, Math.Abs(value));
+        Assert.True(WorldGeometry.AreSame(value, inside));
+        Assert.True(WorldGeometry.AreSame(inside, value));
+        Assert.False(WorldGeometry.AreSame(value, outside));
+        Assert.False(WorldGeometry.AreSame(outside, value));
+    }
+
     [Fact]
     public void CoincidentAndAntipodalRoundingStaysInsideAcosDomain()
     {
