@@ -50,7 +50,13 @@ internal sealed partial class CampaignWorld
             {
                 var missionRule = MissionRule(mission);
                 if (missionRule.OperationType == RuntimeMissionOperationType.Space)
-                    return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+                {
+                    if (missionRule.Objective == RuntimeMissionObjective.Supply)
+                        return "Alien base self-destruction requires optional supply-source forecasts.";
+                    // Space spawning and ordinary waypoints ignore the source;
+                    // unlinking never interrupts or changes these regional actors.
+                    continue;
+                }
                 // Earth operations interrupt when the source disappears. Their
                 // surviving branch keeps all ordinary spawn/arrival proofs, while
                 // the interrupted branch can expire earlier or omit wave awards.

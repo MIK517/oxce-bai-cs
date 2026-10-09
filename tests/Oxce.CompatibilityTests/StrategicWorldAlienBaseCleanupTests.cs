@@ -13,6 +13,8 @@ namespace Oxce.CompatibilityTests;
 
 public sealed class StrategicWorldAlienBaseCleanupTests
 {
+    private static readonly int[] RetainedSpaceMissionIds = [4, 6];
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -91,12 +93,29 @@ public sealed class StrategicWorldAlienBaseCleanupTests
     }
 
     [Fact]
-    public void UncertainRewardAndMissingResearchStopBeforeAnyDailyMutation()
+    public void UncertainRewardCleansSpaceAndEarthLinksWhileMissingResearchRemainsAtomic()
     {
         var content = Load();
         var snapshot = Snapshot(content).WithFacility("CLEANUP_LAB");
         snapshot = snapshot with { Bases = [snapshot.Bases[0] with { Research = [new("CLEANUP_REWARD", 1, 0, 1)] }] };
-        AssertTimeBlocked(Restore(content, snapshot), "Alien base self-destruction requires linked-target alternatives for uncertain research.");
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var campaign = CampaignState.Restore(snapshot with { RandomState = seed }, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Contains("CLEANUP_REWARD", after.CompletedResearch);
+            // Zero-cost UNLOCK is discovered automatically even when the other reward wins.
+            Assert.Contains("UNLOCK", after.CompletedResearch);
+            Assert.Empty(after.World.AlienBases);
+            Assert.DoesNotContain(after.World.Missions, mission => mission.Id == 5);
+            Assert.Equal(RetainedSpaceMissionIds, after.World.Missions.Select(mission => mission.Id));
+            Assert.All(after.World.Missions, mission => { Assert.Null(mission.AlienBase); Assert.False(mission.Interrupted); });
+            for (var pass = 0; pass < 3; pass++)
+            {
+                campaign = Reload(content, campaign, seed, "uncertain-cleanup-space-links.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
         AssertTimeBlocked(Restore(content, Snapshot(content, "CLEANUP_MISSING_RESEARCH")),
             "Alien base self-destruction references undefined research.");
     }
