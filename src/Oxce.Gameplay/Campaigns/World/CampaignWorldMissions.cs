@@ -397,7 +397,7 @@ internal sealed partial class CampaignWorld
             (trajectory.Altitude(0) != 0 && !NewbornHuntingIsForecast(mission, wave))) return false;
         if (NewEscortSpawnReason(mission, rule, requireHuntingForecast) is not null) return false;
         var stats = ufoRule.StatsForRace(mission.Race);
-        var speed = trajectory.Speed(0, stats.SpeedMaximum);
+        if (!TryNewbornInitialSpeed(trajectory, stats.SpeedMaximum, out var speed)) return false;
         if (trajectory.Altitude(0) == 0 &&
             (rule.Objective == RuntimeMissionObjective.Supply || stats.DamageMaximum <= 0 ||
              trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5))
@@ -415,6 +415,13 @@ internal sealed partial class CampaignWorld
             !CanAdvanceNewbornAirborneWaypoint(mission, rule, wave, trajectory, region, stats.SpeedMaximum,
                 requireHuntingForecast)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
+    }
+
+    private static bool TryNewbornInitialSpeed(RuntimeUfoTrajectoryRule trajectory, int maximum, out int speed)
+    {
+        var value = (long)maximum * trajectory.Waypoints[0].SpeedPercentage / 100;
+        speed = value is >= 0 and <= int.MaxValue ? (int)value : 0;
+        return value is >= 0 and <= int.MaxValue;
     }
 
     private static bool FirstWaypointReachable(IReadOnlyList<SpawnArea> positions,

@@ -913,3 +913,15 @@ Capacity and precombat refusals remain precise. Twenty new cases and two stronge
 capacity assertions reproduce the previous boundaries; all 150 affected tests pass.
 This completes cycle 15's execution slices; their batch audit and full validation
 follow. Branch 4d and unavailable landing/combat/event effects are unchanged.
+
+Cycle 15 audit reproduced initial trajectory-speed overflow in fresh/cache ordinary
+and hunter births: preflight called the checked speed helper before validating the
+quotient. The shared pure initial-speed check now prevents narrowing in both spawn
+and newborn-hunt owners. Four atomic regressions reproduce/fix the exception; four
+ceiling cases still execute and reload. Reference UfoTrajectory.h uses a size_t
+percentage and wide multiplication before returning signed speed; out-of-range
+narrowing remains intentionally unsupported. All 164 affected cases pass. Reviewed
+proof keys/reset, read-only early site deferral versus final owning checks, native
+constructor/retarget/movement order, escort fallback and source geometry, marker/
+work reservations and unchanged combat/landing/event gates. Full validation follows
+the separately committed audit correction; no further confirmed defect was found.
