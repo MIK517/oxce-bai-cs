@@ -46,10 +46,16 @@ public sealed class StrategicWorldRegionalLeaderFollowerTests
                 {
                     Logistics = craft.Logistics! with
                     {
-                        Status = "STR_OUT", Damage = 0, Fuel = 1000, Speed = 6000, Takeoff = 0,
-                        Longitude = 1, Latitude = 0.6,
+                        Status = "STR_OUT",
+                        Damage = 0,
+                        Fuel = 1000,
+                        Speed = 6000,
+                        Takeoff = 0,
+                        Longitude = 1,
+                        Latitude = 0.6,
                         Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id,
-                            target.Longitude, target.Latitude) { UniqueId = target.UniqueId },
+                            target.Longitude, target.Latitude)
+                        { UniqueId = target.UniqueId },
                     },
                 });
             }
@@ -115,16 +121,30 @@ public sealed class StrategicWorldRegionalLeaderFollowerTests
         var source = initial.World.Ufos[0] with { Detected = true };
         var follower = source with
         {
-            UniqueId = 10, Id = 10, Longitude = Degrees(8.13), Latitude = Degrees(2.01), Speed = 2200,
-            Escorting = true, OriginalWaypoint = new(Degrees(10), Degrees(8)),
+            UniqueId = 10,
+            Id = 10,
+            Longitude = Degrees(8.13),
+            Latitude = Degrees(2.01),
+            Speed = 2200,
+            Escorting = true,
+            OriginalWaypoint = new(Degrees(10), Degrees(8)),
             Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, source.Id,
-                source.Longitude, source.Latitude) { UniqueId = source.UniqueId },
+                source.Longitude, source.Latitude)
+            { UniqueId = source.UniqueId },
         };
         var last = follower with
         {
-            UniqueId = 11, Id = 11, Longitude = Degrees(8.17), Latitude = Degrees(2.03),
-            Destination = follower.Destination! with { Id = follower.Id, UniqueId = follower.UniqueId,
-                Longitude = follower.Longitude, Latitude = follower.Latitude },
+            UniqueId = 11,
+            Id = 11,
+            Longitude = Degrees(8.17),
+            Latitude = Degrees(2.03),
+            Destination = follower.Destination! with
+            {
+                Id = follower.Id,
+                UniqueId = follower.UniqueId,
+                Longitude = follower.Longitude,
+                Latitude = follower.Latitude
+            },
         };
         return initial with
         {

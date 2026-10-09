@@ -114,6 +114,8 @@ documents; entries here link to them instead of copying them.
   their initial-speed audit correction and all 4,322 root tests pass. Newborn
   point/regional ground arrivals and bounded replacement land selection now compose;
   their initial-destination work audit correction and all 4,387 root tests pass.
+  Regional newborn leaders, safe player pursuit and transitive flying escorts now
+  compose; their daily availability audit correction and all 4,409 root tests pass.
   See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
   Ordered daily research/site alternatives, remaining
   linked deletion, newborn flight/pursuit composition and final closure keep 4c open;
