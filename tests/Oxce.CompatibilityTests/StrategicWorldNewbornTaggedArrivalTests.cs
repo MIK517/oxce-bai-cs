@@ -46,11 +46,13 @@ public sealed class StrategicWorldNewbornTaggedArrivalTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RelevantPostBirthGrantRetainsTheTerminalArrivalBoundary(bool cache)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void RelevantPostBirthGrantRetainsTheTerminalArrivalBoundary(bool cache, bool optional)
     {
-        var content = Content(cache, "CORE", "CORE");
+        var content = Content(cache, optional ? "BONUS" : "CORE", "CORE");
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17, true), content, new SplitMix64RandomSource(17)),
             "Alien mission wave spawning requires world simulation.");
     }

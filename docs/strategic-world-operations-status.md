@@ -836,6 +836,16 @@ undetectable to hunters. Possible craft hunts and conditional escort leaders kee
 atomic arrival boundaries.
 
 Four positive cases reproduce the old restriction; four boundary cases already
-pass. All 150 affected tests pass. Targeted formatting, regenerated code-map and
-diff checks pass. This completes cycle 14's execution slices; their batch audit
-and full validation follow. No combat or landing transition is enabled.
+pass. All 150 affected tests pass; regenerated code-map and diff checks pass.
+Formatting reported test initializer whitespace, corrected during the batch audit.
+This completes cycle 14's execution slices; their batch audit and full validation
+follow. No combat or landing transition is enabled.
+
+Cycle 14 batch review finds no additional confirmed runtime defect. Final wave
+proofs see the completed site forecast; its possible explicit topics include
+optional free-research outcomes. Two additional fresh/cache regressions preserve
+atomic refusal for a possible later grant. Reviewed objective completion order,
+constructor/escort exceptions, bounded no-target craft/transfer scans, source
+geometry, single-step movement, counters and remaining combat/event boundaries.
+All 30 focused audit cases pass and full formatting passes after correcting test
+initializer whitespace. Root validation follows before the audit closes.
