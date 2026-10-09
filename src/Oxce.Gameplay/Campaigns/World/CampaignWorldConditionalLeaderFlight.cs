@@ -9,7 +9,9 @@ internal sealed partial class CampaignWorld
     {
         var rules = campaign.Content.RuntimeRules;
         var rule = MissionRule(mission);
-        if (rule.Objective != RuntimeMissionObjective.Score || mission.MissionSiteZoneArea != -1 ||
+        // The caller has already limited the objective and proved its think-time
+        // consequences. Native airborne arrival does not execute those effects.
+        if (mission.MissionSiteZoneArea != -1 ||
             _pass.SiteResearchForecast?.PossibleExplicitTopics.Contains(rule.InterruptResearchId) == true ||
             source.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
             WorldGeometry.Distance(source.Position, destination.Position) > WorldGeometry.RadianSpeed(source.Speed)) return null;
