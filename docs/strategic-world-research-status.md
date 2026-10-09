@@ -1723,3 +1723,26 @@ repair/rearm/refuel/setDestination and Geoscape time1Hour/time30Minutes/time10Mi
 ordering, backed by verified maintenanceRows/hourlyMaintenanceRows/escortFuelRows.
 Targeted format/map/diff pass. This completes cycle 25's third slice; combined
 audit includes the earlier committed zero-speed slice a869570b.
+
+## Optional craft fuel eligibility (2026-10-09)
+
+Optional alien-base returns now allow unequal ordinary burns when both capped
+fuel outcomes preserve the native low-fuel eligibility. Current fuel quantity
+is not exposed by Craft::ScriptRegister or consumed by hunter attraction;
+lowFuel/missionComplete remain the selection inputs. Primitive capped fuel
+bounds avoid allocating speculative craft records. Changed leader speed still
+requires the existing escort-consumer proofs, and near-home arrivals remain
+separately guarded. Item fuel retains its identical one-unit burn.
+
+Reference: pinned Craft.cpp getFuelConsumption/setFuel/isIgnoredByHK/ScriptRegister
+and GeoscapeState time10Minutes. The hunting capture adds 96 native ordered
+return/consumption traces with controlled limits 0/139; 139 is linked to the
+native strategic-world getFuelLimit row at speedMax 2,100, craft (1, 0.6) and home
+(0.4, 0.2). Every prior hunting row is unchanged. Twenty fresh/cache execution
+cases reproduce the old guard, then cover low/inclusive/high/capped fuel,
+already-low flags, takeoff, both research outcomes over 32 seeds, canonical
+native output, actual hunting, complete control snapshots/RNG, three rewrites
+and continuation. Two ambiguity cases keep the 150/160-unit boundary atomic;
+older unequal-burn guard examples now use actual eligibility differences.
+All 198 affected tests pass. This is cycle 26 slice one; escort fuel alternatives,
+converged recall and their batch audit remain pending.

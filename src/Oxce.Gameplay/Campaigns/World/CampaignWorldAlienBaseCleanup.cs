@@ -95,17 +95,22 @@ internal sealed partial class CampaignWorld
                 state.Weapons, campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
         if (state.Status == "STR_OUT")
         {
-            // Identical burn preserves fuel, recall and hunter eligibility. A
-            // changed saved speed still needs proofs for craft-escort consumers.
+            // Fuel quantity is not a native hunter/script input. Unequal burns
+            // can compose when both capped outcomes retain the same low-fuel
+            // eligibility; changed speed still needs craft-escort consumer proofs.
             var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
-            if (state.Speed < 0 || WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, state.Speed, 0) !=
-                WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, maximum, 0))
+            if (state.Speed < 0)
                 return "Alien base self-destruction requires craft speed alternatives for uncertain research.";
             var from = new WorldPosition(state.Longitude, state.Latitude);
             if (!from.IsNormalized) return "Airborne craft coordinates are invalid.";
+            if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
+            if (CraftFuelAlternativeReason(owner, state, rule, maximum,
+                    WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, state.Speed, 0),
+                    WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, maximum, 0),
+                    "Alien base self-destruction requires craft speed alternatives for uncertain research.", ref work) is { } fuelReason)
+                return fuelReason;
             if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, state.Speed, maximum, from, ref work) is { } escortReason)
                 return escortReason;
-            if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
             var home = new WorldPosition(owner.Longitude, owner.Latitude);
             if (WorldGeometry.ReachedDestination(from, home) || state.Takeoff <= 0 &&
                 !(WorldGeometry.Distance(from, home) > WorldGeometry.RadianSpeed(maximum)))
@@ -116,6 +121,24 @@ internal sealed partial class CampaignWorld
         // without consuming flight fields, or relaunches auto-patrol with its own
         // waypoint/full speed/takeoff60 in both source alternatives.
         return null;
+    }
+
+    private string? CraftFuelAlternativeReason(CampaignState.BaseState owner, CraftLogisticsState state,
+        RuntimeCraftRule rule, int maximum, int firstBurn, int secondBurn, string mismatchReason, ref long work)
+    {
+        if (firstBurn == secondBurn || state.LowFuel) return null;
+        if (maximum <= 0) return mismatchReason;
+        work += state.Weapons.Count;
+        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (!CraftLogistics.TryEffectiveFuelMaximum(rule, state.Weapons, campaign.Content.RuntimeRules, out var fuelMaximum) ||
+            fuelMaximum < 0) return FlightFuelRangeReason;
+        // Unequal burns arise only for ordinary fuel. These primitive bounds
+        // match setFuel's clamp without allocating alternate craft records.
+        var first = Math.Clamp((long)state.Fuel - firstBurn, 0, fuelMaximum);
+        var second = Math.Clamp((long)state.Fuel - secondBurn, 0, fuelMaximum);
+        var limit = WorldFlight.FuelLimit(false, maximum, WorldGeometry.Distance(
+            new(state.Longitude, state.Latitude), new(owner.Longitude, owner.Latitude)));
+        return (first <= limit) == (second <= limit) ? null : mismatchReason;
     }
 
     private string? UncertainCraftReturnEscortReason(CampaignState.CraftState source, int oldSpeed,
