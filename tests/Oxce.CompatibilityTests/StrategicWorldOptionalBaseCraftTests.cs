@@ -74,10 +74,10 @@ public sealed class StrategicWorldOptionalBaseCraftTests
             "Craft speed exceeds the supported range.");
     }
 
-    internal static RuntimeContent Content(bool cache, string code = "BONUS") =>
+    internal static RuntimeContent Content(bool cache, string code = "BONUS", bool itemFuel = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             crafts:
-              - {type: SHIP, speedMax: 6000, fuelMax: 300, refuelRate: 100, repairRate: 2, autoPatrol: true, radarRange: 20000, radarChance: 100}
+              - {type: SHIP, speedMax: 6000, fuelMax: 300, refuelRate: 100, repairRate: 2, autoPatrol: true, radarRange: 20000, radarChance: 100{{{(itemFuel ? ", refuelItem: SUPPLY" : "")}}}}
             research:
               - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
               - {name: BONUS, cost: 1}

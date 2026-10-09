@@ -77,7 +77,7 @@ internal sealed partial class CampaignWorld
         {
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is { } state && FollowsAlienBase(state.Destination, alienBase) &&
-                    UncertainCraftBaseReturnReason(owner, craft, state) is { } returnReason) return returnReason;
+                    UncertainCraftBaseReturnReason(owner, craft, state, ref work) is { } returnReason) return returnReason;
             foreach (var transfer in owner.Transfers)
                 if (FollowsAlienBase(transfer.Craft?.Logistics?.Destination, alienBase))
                     return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
@@ -89,17 +89,20 @@ internal sealed partial class CampaignWorld
     }
 
     private string? UncertainCraftBaseReturnReason(CampaignState.BaseState owner,
-        CampaignState.CraftState craft, CraftLogisticsState state)
+        CampaignState.CraftState craft, CraftLogisticsState state, ref long work)
     {
         if (!CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
                 state.Weapons, campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
         if (state.Status == "STR_OUT")
         {
-            // Equal-speed return changes no pre-movement fuel, attraction or
-            // craft-escort input. Keep both destination alternatives for flight;
-            // a same-tick home arrival needs its own servicing/status proof.
-            if (state.Speed != maximum)
+            // Identical burn preserves fuel, recall and hunter eligibility. A
+            // changed saved speed still needs proofs for craft-escort consumers.
+            var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
+            if (state.Speed < 0 || WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, state.Speed, 0) !=
+                WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, maximum, 0))
                 return "Alien base self-destruction requires craft speed alternatives for uncertain research.";
+            if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, ref work) is { } escortReason)
+                return escortReason;
             if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
             var from = new WorldPosition(state.Longitude, state.Latitude);
             if (!from.IsNormalized) return "Airborne craft coordinates are invalid.";
@@ -114,6 +117,30 @@ internal sealed partial class CampaignWorld
         // waypoint/full speed/takeoff60 in both source alternatives.
         return null;
     }
+
+    private string? UncertainCraftReturnEscortReason(CampaignState.CraftState source, ref long work)
+    {
+        var type = campaign.Content.RuntimeRules.Crafts.GetExternalId(source.Rule);
+        foreach (var owner in campaign.BaseStates)
+        {
+            foreach (var craft in owner.Crafts)
+            {
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (FollowsCraft(craft.Logistics?.Destination, type, source.Id))
+                    return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
+            }
+            foreach (var transfer in owner.Transfers)
+            {
+                if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (FollowsCraft(transfer.Craft?.Logistics?.Destination, type, source.Id))
+                    return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
+            }
+        }
+        return null;
+    }
+
+    private static bool FollowsCraft(WorldTargetReference? target, string type, int id) =>
+        target is { Kind: WorldTargetKind.Craft } && target.TypeId == type && target.Id == id;
 
     private string? PossibleSupplySourceLossReason(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, ref long work)
     {
