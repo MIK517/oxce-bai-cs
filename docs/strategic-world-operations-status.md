@@ -1105,3 +1105,16 @@ GeoscapeState time30Minutes/time5Seconds/processMissionSite and target deletion,
 with verified strategic-crashed-ufo/world/site-timer captures. This completes
 cycle 18's three slices; aggregate lookup work, malformed cases and batch acceptance
 are audited next. No event/combat/month capability or 4d behavior is enabled.
+
+Cycle 18 batch audit finds no additional confirmed runtime defect. The lift-vector
+mismatch was fixed during slice two. Reviewed ordered live pointer lookup, both lift
+callers' work bounds and craft population changes, timed versus raw follower state,
+crash cleanup, restored waypoints, shields, activity and exact persistence/control
+continuation. Full formatting and code-map/diff checks pass; root validation runs
+before this checkpoint closes. No new disposable artifacts or reference edits.
+
+Cycle 18 audit closes with all 4,449 root tests passing, zero failures/skips,
+full formatting and regenerated code-map/diff checks. No additional confirmed
+defect was found; ordered takeoff vectors were fixed in slice two. Useful captures
+and logs remain and the pinned reference is clean. Conditional leader availability,
+research/source alternatives and final acceptance keep 4c open.
