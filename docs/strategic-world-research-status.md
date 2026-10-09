@@ -1291,3 +1291,14 @@ deletes bases before scoring survivors and later half-hour UFO activity.
 All 4,085 root tests and full formatting verification pass, including fixture
 checksums, private corpus and unchanged allocation gates. Code-map/diff checks
 pass. The confirmed correction is committed separately from the execution slices.
+
+The same review confirmed optional wave awards also need zero in their activity
+envelope. Daily interruption can omit an ordinary UFO or direct site before later
+site scoring. Eight fresh/cache regressions reproduced an unsafe tick being
+accepted at both signed limits. Possible mission interruption is now recorded
+once per pass; newborn activity, direct sites and later newborn takeoff awards
+retain the omitted outcome. Existing saved UFO activity remains mandatory because
+half-hour scoring precedes waypoint interruption. Sixteen new regressions include
+32-seed safe selected controls/RNG and three rewrites. All 677 affected research,
+interruption, objective, base and event tests pass. Full repository validation
+will be repeated with the execution batch; this correction is committed separately.

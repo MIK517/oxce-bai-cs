@@ -8,7 +8,7 @@ namespace Oxce.Gameplay.Campaigns.World;
 /// </summary>
 internal sealed partial class CampaignWorld
 {
-    private readonly record struct NewbornTakeoffForecast(WorldTargetReference? Source, bool Hunting,
+    private readonly record struct NewbornTakeoffForecast(WorldTargetReference? Source, bool Hunting, bool Optional,
         IReadOnlyList<(IReadOnlyList<SpawnArea> Positions, int Points)> Scores);
 
     private void RegisterUfoDetection(CampaignCapabilityRegistry registry)
@@ -180,7 +180,7 @@ internal sealed partial class CampaignWorld
                         birthCandidate = true;
                     }
                     if (CheckSpawnActivity(wave.UfoType, positions, birthRegions, birthCountries, grounded ? 2 : 1,
-                            guaranteedAward: !forecast.Generated) is { } reason) return reason;
+                            guaranteedAward: !forecast.Generated && _pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) != true) is { } reason) return reason;
                     if (ReserveDetectionScriptWork(wave.UfoType, highest, ref detectionWork, ref detectionCraftSources,
                             ref detectionWeaponSlots, race: mission.Race) is { } scriptWorkReason) return scriptWorkReason;
                 }
@@ -202,7 +202,8 @@ internal sealed partial class CampaignWorld
             }
             if (birthCandidate) GeneratedActivityAlternatives.Complete(regionTotals, countryTotals, birthRegions, birthCountries);
             if (takeoffScores is not null)
-                (newbornTakeoffScores ??= []).Add(new(forecast.Generated ? mission.AlienBase : null, forecast.Hunting, takeoffScores));
+                (newbornTakeoffScores ??= []).Add(new(forecast.Generated ? mission.AlienBase : null, forecast.Hunting,
+                    _pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) == true, takeoffScores));
             if (forecast.Generated && (missionContacts != 0 || missionLandings != 0))
             {
                 // One source creates one daily mission. Its rule, race, region and
@@ -271,7 +272,7 @@ internal sealed partial class CampaignWorld
                         directCandidate = true;
                     }
                     if (DirectSiteActivityReason(step, rule, regions, countries, ref activityWork,
-                            guaranteedAward: !forecast.Generated) is { } reason) return reason;
+                            guaranteedAward: !forecast.Generated && _pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) != true) is { } reason) return reason;
                 }
                 if (directCandidate)
                     GeneratedActivityAlternatives.Complete(regionTotals, countryTotals, regions, countries);
@@ -312,7 +313,7 @@ internal sealed partial class CampaignWorld
                     return choiceReason;
                 foreach (var score in takeoff.Scores)
                     if (CheckPossibleActivity(score.Positions, score.Points, liftRegions, liftCountries,
-                            guaranteedAward: takeoff.Source is null) is { } liftReason) return liftReason;
+                            guaranteedAward: takeoff.Source is null && !takeoff.Optional) is { } liftReason) return liftReason;
                 if (takeoff.Source is not null)
                     GeneratedActivityAlternatives.Complete(regionTotals, countryTotals, liftRegions, liftCountries);
             }
