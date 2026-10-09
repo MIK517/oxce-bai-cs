@@ -925,3 +925,10 @@ proof keys/reset, read-only early site deferral versus final owning checks, nati
 constructor/retarget/movement order, escort fallback and source geometry, marker/
 work reservations and unchanged combat/landing/event gates. Full validation follows
 the separately committed audit correction; no further confirmed defect was found.
+
+Cycle 15 closes with all 4,322 root tests passing without failures or skips. Full
+formatting, regenerated code-map and diff checks pass. Private fresh/cache/rewrite
+classifications and population checks remain green; the pinned reference is unchanged.
+No additional confirmed issue remains from this batch audit. First ground arrivals,
+linked deletion, ordered research/maintenance alternatives and final acceptance
+remain open for 4c. Useful captures/logs are retained; no probe objects were added.
