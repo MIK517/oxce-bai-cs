@@ -11,8 +11,7 @@ internal sealed partial class CampaignWorld
         var rule = MissionRule(mission);
         // The caller has already limited the objective and proved its think-time
         // consequences. Native airborne arrival does not execute those effects.
-        if (mission.MissionSiteZoneArea != -1 ||
-            _pass.SiteResearchForecast?.PossibleExplicitTopics.Contains(rule.InterruptResearchId) == true ||
+        if (_pass.SiteResearchForecast?.PossibleExplicitTopics.Contains(rule.InterruptResearchId) == true ||
             source.Destination is not { Kind: WorldTargetKind.Waypoint } destination ||
             WorldGeometry.Distance(source.Position, destination.Position) > WorldGeometry.RadianSpeed(source.Speed)) return null;
         var trajectory = rules.UfoTrajectories[rules.UfoTrajectories.GetRequired(source.TrajectoryId)].Value;
@@ -22,6 +21,11 @@ internal sealed partial class CampaignWorld
         if (next >= trajectory.Waypoints.Count || !IsAirborne(trajectory.Altitude(next)) ||
             next + 1 < trajectory.Waypoints.Count && !IsAirborne(trajectory.Altitude(next + 1))) return null;
         var region = rules.Regions[rules.Regions.GetRequired(mission.RegionId)].Value;
+        var waveIndex = MissionWaveIndex(source, mission, rule);
+        if ((uint)waveIndex >= (uint)rule.Waves.Count) return null;
+        var wave = rule.Waves[waveIndex];
+        if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(next) == rule.SpawnZone &&
+            wave.ObjectiveOnTheLandingSite) return null;
         var areas = WorldGeometry.MissionAreas(region, trajectory.Zone(next));
         work += 3L * areas.Count + 1;
         if (work > MaximumAlienBaseChecks) return "Conditional UFO escort arrival exceeds the supported work limit.";
