@@ -20,6 +20,9 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
     [InlineData(false, true, 5)]
     [InlineData(true, true, 5)]
     public void ItemFuelEscortsKeepTheirBurnAcrossOptionalLeaderSpeedChanges(bool cache, bool reverse, int takeoff)
+        => AssertEquivalentEscort(cache, reverse, takeoff, false);
+
+    internal static void AssertEquivalentEscort(bool cache, bool reverse, int takeoff, bool ordinary)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"));
@@ -30,6 +33,7 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
         for (ulong seed = 1; seed <= 32; seed++)
         {
             var initial = Snapshot(content, seed, reverse, takeoff);
+            if (ordinary) initial = NormalEscort(initial);
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
@@ -38,7 +42,7 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
             var leader = after.Bases[0].Crafts.Single(craft => craft.Id == 1).Logistics!;
             var follower = after.Bases[0].Crafts.Single(craft => craft.Id == 2).Logistics!;
             Assert.Equal(999, leader.Fuel);
-            Assert.Equal(999, follower.Fuel);
+            Assert.Equal(ordinary ? 980 : 999, follower.Fuel);
             Assert.False(leader.LowFuel);
             Assert.False(follower.LowFuel);
             Assert.Equal(deleted ? 6000 : 3000, leader.Speed);
@@ -47,9 +51,10 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
             var leaderBefore = new WorldPosition(1, 0.6);
             var leaderPosition = new WorldPosition(leader.Longitude, leader.Latitude);
             var followerPosition = new WorldPosition(follower.Longitude, follower.Latitude);
-            Assert.Equal(WorldGeometry.Move(new(1.0004, 0.6002), reverse ? leaderBefore : leaderPosition, WorldGeometry.RadianSpeed(6000)), followerPosition);
+            Assert.Equal(WorldGeometry.Move(new(1.0004, 0.6002), reverse ? leaderBefore : leaderPosition, WorldGeometry.RadianSpeed(ordinary ? 2000 : 6000)), followerPosition);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
-            Assert.Equal(reverse ? 2 : 1, after.World.Ufos[0].Destination!.Id);
+            if (!ordinary) Assert.Equal(reverse ? 2 : 1, after.World.Ufos[0].Destination!.Id);
+            else Assert.True(after.World.Ufos[0].Destination!.Id is 1 or 2);
             var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(control, 1);
             Assert.Equivalent(control.Capture(), after, strict: true);
@@ -80,6 +85,12 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft escort speed alternatives for uncertain research.");
     }
+
+    internal static CampaignSnapshot NormalEscort(CampaignSnapshot initial) => initial with
+    {
+        Bases = [initial.Bases[0] with { Crafts = initial.Bases[0].Crafts.Select(craft => craft.Id != 2 ? craft : craft with
+        { RuleId = "OPTIONAL_NORMAL_ESCORT", Logistics = craft.Logistics! with { Speed = 2000 } }).ToArray() }],
+    };
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, bool reverse, int takeoff)
     {
