@@ -155,7 +155,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
             {
                 Missions = [initial.World.Missions[0] with { LiveUfos = 1 }],
                 Ufos = [new(9, "OPTIONAL_SUPPLY_UFO", 4, "OPTIONAL_SUPPLY_AIR", 0, 0.4, 0.2, UfoStatus.Flying, "STR_HIGH_UC")
-            { Speed = 2200, HunterKiller = true, MissionWaveNumber = 0, Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) }],
+            { Speed = 2200, HunterKiller = true, Escort = true, MissionWaveNumber = 0, Destination = WorldTargetReference.ForWaypoint(0, new(1, 0.6)) }],
             }
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), reason);
@@ -211,7 +211,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
         Assert.True(survivedSeen);
     }
 
-    internal static RuntimeContent Content(bool cache, int kind, string code = "BONUS", int points = 3, int? followingScore = null)
+    internal static RuntimeContent Content(bool cache, int kind, string code = "BONUS", int points = 3, int? followingScore = null, int radarRange = 0)
     {
         var wave = kind == 3 ? "{ufo: OPTIONAL_SUPPLY_SITE, count: 1, trajectory: TRAJ_PATROL, timer: 0, objective: true}" :
             "{ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: " + (kind == 4 ? 9000 : 0) +
@@ -227,7 +227,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
               - {type: OPTIONAL_SUPPLY_SITE, markerName: OPTIONAL_SUPPLY_SITE_MARKER, duration: [1, 1]}
             {{{(followingScore is { } score ? "  - {type: OPTIONAL_SUPPLY_ACTIVITY_SITE, markerName: OPTIONAL_SUPPLY_ACTIVITY, duration: [1, 1], points: " + score + "}" : "")}}}
             ufos:
-              - {type: OPTIONAL_SUPPLY_UFO, speedMax: 2200, damageMax: 50, missionScore: {{{points}}}, noAlert: true}
+              - {type: OPTIONAL_SUPPLY_UFO, speedMax: 2200, damageMax: 50, missionScore: {{{points}}}, noAlert: true, radarRange: {{{radarRange}}}}
             ufoTrajectories:
               - {id: OPTIONAL_SUPPLY_AIR, waypoints: [[4, 3, 100], [5, 2, 80], [4, 3, 100]]}
             alienMissions:

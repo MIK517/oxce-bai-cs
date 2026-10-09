@@ -1461,3 +1461,15 @@ following ticks. All 104 affected cases pass. Reference: pinned SavedGame::
 clearLinksForAlienBase, GeoscapeState::time1Day/ufoHuntingAndEscorting/time5Seconds
 and AlienMission::ufoReachedWaypoint, with verified cleanup/lifecycle/hunting
 captures. This is cycle 21 slice one; Space supply hunter composition and audit remain.
+
+Saved Space supply hunters without escort state now compose with optional objective
+ship suppression. They do not consume the conditional ordinary leader; shared
+hunting/waypoint operations retain their status and movement. Existing escort
+state still requires its own conditional leader proof. Six fresh/cache regressions
+reproduce the restriction across idle, arriving and actively hunting sources,
+objective-only/mixed waves and 32 seeds. Both deletion outcomes compare whole
+snapshots/RNG with selected controls through three rewrites and continuation.
+All 54 affected cases pass. Reference: AlienMission::spawnUfo's supply branch,
+SavedGame::clearLinksForAlienBase and GeoscapeState::ufoHuntingAndEscorting, with
+verified mission-origin supplyRows, cleanup and hunting captures. This is cycle 21
+slice two; independent newborn supply hunters and the batch audit remain.

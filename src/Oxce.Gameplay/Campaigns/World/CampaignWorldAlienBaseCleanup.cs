@@ -113,8 +113,10 @@ internal sealed partial class CampaignWorld
         if (specialBirth) return specialReason;
         work += _ufos.Count;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        // A saved hunter without escort state never consumes the optional
+        // ordinary leader. Shared targeting and waypoint proofs own its movement.
         foreach (var ufo in _ufos)
-            if (ufo.MissionId == mission.Id && (ufo.HunterKiller || ufo.Hunting || ufo.Escorting || ufo.Escort)) return specialReason;
+            if (ufo.MissionId == mission.Id && (ufo.Escorting || ufo.Escort)) return specialReason;
         // Source loss suppresses objective UFOs without interrupting the mission.
         // Counter completion can therefore expire a zero-live mission earlier.
         if (mission.LiveUfos == 0 && MissionExpiryReason(mission, rule, ref work) is { } expiryReason) return expiryReason;
