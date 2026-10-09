@@ -1563,3 +1563,19 @@ diff checks pass; correction 84630b4b is separate. No new native artifacts were
 generated, useful captures/logs remain, and the reference checkout is clean.
 Remaining linked deletion, ordered research/arrival alternatives and final
 acceptance keep 4c open; 4d remains untouched.
+
+## Optional alien-base craft followers (2026-10-09)
+
+Grounded non-patrolling owned craft now compose with optional destination-base
+deletion. Native Target destruction calls returnToBase before servicing; it
+preserves status, replaces destination/speed and assigns takeoff60 while grounded.
+Later repair, rearm and refuel callers do not consume those flight fields. The
+owner validates effective return speed even while grounded. Ten fresh/cache
+regressions reproduced the old linked-target boundary, then cover all four service
+states over 32 seeds, both research outcomes, exact return fields, complete
+selected-control snapshots/RNG, three rewrites, following ticks and malformed
+effective speed. All 85 affected cases pass. Reference: Target::~Target,
+Craft::returnToBase/setDestination and GeoscapeState daily deletion/servicing order,
+backed by verified cleanup followerRows and logistics captures. This is cycle 23
+slice one; auto-patrol relaunch and compatible airborne returns follow. Transfers
+and unsupported flight alternatives retain their precise boundary.

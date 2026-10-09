@@ -76,8 +76,8 @@ internal sealed partial class CampaignWorld
         foreach (var owner in campaign.BaseStates)
         {
             foreach (var craft in owner.Crafts)
-                if (FollowsAlienBase(craft.Logistics?.Destination, alienBase))
-                    return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+                if (craft.Logistics is { } state && FollowsAlienBase(state.Destination, alienBase) &&
+                    UncertainCraftBaseReturnReason(craft, state) is { } returnReason) return returnReason;
             foreach (var transfer in owner.Transfers)
                 if (FollowsAlienBase(transfer.Craft?.Logistics?.Destination, alienBase))
                     return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
@@ -85,6 +85,17 @@ internal sealed partial class CampaignWorld
         // Both generation callers retain their full surviving-source choice,
         // capacity and activity envelopes. Immediate research births are proved
         // separately against the ordered daily research phase before mutation.
+        return null;
+    }
+
+    private string? UncertainCraftBaseReturnReason(CampaignState.CraftState craft, CraftLogisticsState state)
+    {
+        if (state.Status == "STR_OUT" || state.IsAutoPatrolling)
+            return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+        if (!CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+                state.Weapons, campaign.Content.RuntimeRules, out _)) return SpeedRangeReason;
+        // Native returnToBase preserves status. Grounded non-patrolling followers
+        // consume no movement/target fields during later ordered servicing.
         return null;
     }
 
