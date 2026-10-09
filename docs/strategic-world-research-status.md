@@ -1709,3 +1709,17 @@ and transferred position alternatives remain atomic. All 176 affected tests pass
 Reference: GeoscapeState::time10Minutes strict getDistance comparison and
 Craft::getFuelConsumption, backed by verified world and escortFuelRows captures.
 Targeted formatting/map/diff checks pass. This completes cycle 25 slice two.
+
+Grounded owned craft escorts now compose with optional leader speed changes.
+Hourly/half-hour servicing either keeps them outside fuel use or relaunches to
+an independent waypoint first. Twenty execution cases reproduce the guard, then
+cover four service states, auto-patrol, zero/moving leaders, both saved orders
+and both source outcomes, exact status/fuel/flags/takeoff, actual hunting, complete
+control snapshots/RNG, three rewrites and continuation. Two waypoint-exhaustion
+cases retain atomic identity checks. The earlier grounded zero-speed assertion
+is replaced by this execution coverage; different airborne burn and transfer
+checkup retain their boundaries. All 198 affected tests pass. Reference: Craft
+repair/rearm/refuel/setDestination and Geoscape time1Hour/time30Minutes/time10Minutes
+ordering, backed by verified maintenanceRows/hourlyMaintenanceRows/escortFuelRows.
+Targeted format/map/diff pass. This completes cycle 25's third slice; combined
+audit includes the earlier committed zero-speed slice a869570b.
