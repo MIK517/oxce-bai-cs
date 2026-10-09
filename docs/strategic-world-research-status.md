@@ -1473,3 +1473,18 @@ All 54 affected cases pass. Reference: AlienMission::spawnUfo's supply branch,
 SavedGame::clearLinksForAlienBase and GeoscapeState::ufoHuntingAndEscorting, with
 verified mission-origin supplyRows, cleanup and hunting captures. This is cycle 21
 slice two; independent newborn supply hunters and the batch audit remain.
+
+Non-escort hunter births now compose with optional Space supply objective-ship
+suppression. Native non-objective Space origins/destinations ignore the source;
+only escort initialization consumes the possible ordinary leader. Ten fresh/cache
+regressions reproduce the old restriction, then cover 50/100-percent constructors,
+source deletion/survival, no-target and distant actual hunting over 64 seeds.
+Selected controls compare complete snapshots/RNG through three rewrites and
+following ticks; close hunting and contact-ID exhaustion remain atomic. Integration
+exposed a preflight proof-key mismatch after unlinking; the source-independent
+non-objective/non-escort Space supply key now omits that unused link. Four tests
+reproduced the execution exception before the correction. All 172 affected cases
+pass. Reference: AlienMission::spawnUfo's supply constructor/coordinates/escort
+branch and GeoscapeState::ufoHuntingAndEscorting, with verified supply, cleanup,
+hunting and immediate-wave captures. This completes cycle 21's three slices;
+the batch audit checks every optional source consumer and proof reuse boundary.

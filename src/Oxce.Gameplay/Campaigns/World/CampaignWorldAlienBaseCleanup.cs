@@ -93,7 +93,7 @@ internal sealed partial class CampaignWorld
         if (mission.Interrupted || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30 ||
             mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra) return null;
         var objectiveBirth = false;
-        var specialBirth = false;
+        var escortBirth = false;
         try
         {
             foreach (var step in DueWaveSteps(mission, rule))
@@ -102,15 +102,15 @@ internal sealed partial class CampaignWorld
                 var wave = SpawnWave(step, rule);
                 if (wave.Ufo is not { } handle) continue;
                 if (wave.Objective) objectiveBirth = true;
-                else if ((wave.HunterKillerPercentage == -1
+                else if (wave.Escort && (wave.HunterKillerPercentage == -1
                     ? campaign.Content.RuntimeRules.Ufos[handle].Value.HunterKillerPercentage
-                    : wave.HunterKillerPercentage) > 0) specialBirth = true;
+                    : wave.HunterKillerPercentage) > 0) escortBirth = true;
             }
         }
         catch (InvalidDataException error) { return error.Message; }
         if (!objectiveBirth) return null;
         const string specialReason = "Supply source deletion requires conditional hunter or escort leader forecasts.";
-        if (specialBirth) return specialReason;
+        if (escortBirth) return specialReason;
         work += _ufos.Count;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         // A saved hunter without escort state never consumes the optional
