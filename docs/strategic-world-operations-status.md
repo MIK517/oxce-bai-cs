@@ -1188,3 +1188,16 @@ unconsumed indices remain executable. All 62 affected cases pass. Reference:
 AlienMission::getWaypoint/ufoReachedWaypoint and the existing verified origin,
 lifecycle and hunting captures. This is cycle 20 slice two; selected land retries
 and ordinary ground-lookahead selection remain for slice three and the batch audit.
+
+Conditional airborne arrivals now select land for a later ground point, including
+selected landing-site areas. A shared waypoint work estimator preserves both native
+selections, point-city bypass, selected-area region bypass and the hundred-attempt
+forced decision. Loaded ordinary/conditional arrivals and newborn waves share one
+pass budget. Twelve fresh/cache regressions reproduce refusals or missing loaded
+bounds; eight 64-seed cases pin exact RNG and all constructor patterns, subsequent
+landing/conversion, three rewrites and control continuation. Four extra cases prove
+city bypass and independently admissible newborn work refusing only when composed
+with loaded work. All 111 affected tests pass. Reference: pinned AlienMission::
+getWaypoint/getLandPoint/getLandPointForMissionSite/ufoReachedWaypoint and verified
+lifecycle landRectangleOriginRows. This completes cycle 20's three slices; the batch
+audit checks skipped effects, caller predicates and aggregate bounds before closure.
