@@ -30,13 +30,10 @@ internal sealed partial class CampaignWorld
         if (maximum is < 0 or > int.MaxValue || replacement is < 0 or > int.MaxValue)
             return "UFO hunting stats exceed the supported range.";
         if (!CanAdvanceOrdinaryWaypoint(source, mission, trajectory)) return null;
-        foreach (var saved in _ufos)
-        {
-            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
-            if (FollowsUfo(saved.Destination, source)) return null;
-        }
-        if (NewLeaderCraftPursuitReason(source, ref work) is { } pursuitReason) return pursuitReason;
-        (_pass.InexactNewLeaderFlights ??= []).Add(source.UniqueId);
+        if (RegionalNewLeaderDependencies(source, ref work, out var dependentIds) is { } dependentReason) return dependentReason;
+        var inexact = _pass.InexactNewLeaderFlights ??= [];
+        inexact.Add(source.UniqueId);
+        foreach (var id in dependentIds) inexact.Add(id);
         // A flight-only proxy skips an already validated ordinary arrival. Both
         // outcomes stay flying; execution retains the real flags, speed, waypoint
         // and identity. Its coordinate must never become an exact target proof.
