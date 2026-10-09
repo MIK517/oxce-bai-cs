@@ -76,7 +76,7 @@ internal sealed partial class CampaignWorld
                 WorldHunting.Escort(escort, WorldTargetReference.ForWaypoint(0, exactOrigin ? firstPossibleOrigin!.Value : escort.Position), (int)maximum));
             return null;
         }
-        return null;
+        return firstPossibleOrigin is null ? null : ForecastConditionalLeaderFlight(escort, mission, highest, ref work);
     }
 
     private string? RegionalNewLeaderDependencies(UfoSnapshot source, ref long work, out IReadOnlyList<int> dependentIds)
