@@ -74,8 +74,9 @@ public sealed class StrategicWorldOptionalBaseCraftTests
             "Craft speed exceeds the supported range.");
     }
 
-    internal static RuntimeContent Content(bool cache, string code = "BONUS", bool itemFuel = false) =>
+    internal static RuntimeContent Content(bool cache, string code = "BONUS", bool itemFuel = false, int escortRange = 20) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+            escortRange: {{{escortRange}}}
             crafts:
               - {type: SHIP, speedMax: 6000, fuelMax: 300, refuelRate: 100, repairRate: 2, autoPatrol: true, radarRange: 20000, radarChance: 100{{{(itemFuel ? ", refuelItem: SUPPLY" : "")}}}}
               - {type: OPTIONAL_NORMAL_ESCORT, speedMax: 2000, damageMax: 100, fuelMax: 1000, weapons: 2}
