@@ -97,7 +97,7 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void ConditionalHuntsAndEscortLeadersRetainAtomicBoundaries(bool cache, bool escort)
+    public void CombatAndEscortLeadersRetainAtomicBoundaries(bool cache, bool escort)
     {
         var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, escort: escort, radarRange: 2000);
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17);
@@ -111,13 +111,14 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
                     Status = "STR_OUT",
                     Speed = 0,
                     Fuel = 100,
-                    Longitude = Degrees(20),
+                    Longitude = Degrees(8),
                     Latitude = Degrees(2),
                     Destination = WorldTargetReference.ForWaypoint(5, new(Degrees(30), Degrees(2))),
                 },
             });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Alien mission wave spawning requires world simulation.");
+            escort ? "Alien mission wave spawning requires world simulation." :
+                "UFO hunting interception requires strategic combat (Phase 6 branch 5).");
     }
 
     [Theory]
