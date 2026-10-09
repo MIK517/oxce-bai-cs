@@ -120,6 +120,9 @@ documents; entries here link to them instead of copying them.
   vectors are corrected and their batch audit passes all 4,449 root tests.
   Conditional score/airborne escort arrivals now compose with safe craft pursuit
   and ordered followers; their batch audit passes all 4,465 root tests.
+  Conditional objective, selected-area and bounded land-lookahead arrivals now
+  compose too; their batch audit passes all 4,495 root tests.
+  See [conditional waypoint evidence](strategic-world-operations-status.md#conditional-escort-waypoint-selection-2026-10-09).
   See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
   Ordered daily research/site alternatives, remaining
   linked deletion, newborn flight/pursuit composition and final closure keep 4c open;
