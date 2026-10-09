@@ -82,6 +82,18 @@ public static class CraftLogistics
         IEnumerable<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
         => SupportedValue(RawEffectiveStats(rule, weapons, rules).Fuel);
 
+    /// <summary>Fuel capacity alone, without allocating or consuming unrelated unit statistics.</summary>
+    public static bool TryEffectiveFuelMaximum(RuntimeCraftRule rule,
+        IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules, out int result)
+    {
+        long fuel = rule.FuelMaximum;
+        for (var index = 0; index < weapons.Count; index++)
+            if (weapons[index] is { } weapon)
+                fuel += rules.CraftWeapons[rules.CraftWeapons.GetRequired(weapon.RuleId)].Value.BonusStats.GetValueOrDefault("fuelMax");
+        result = (int)Math.Clamp(fuel, int.MinValue, int.MaxValue);
+        return IsSupportedValue(fuel);
+    }
+
     /// <summary>Craft::getCraftStats speed, including installed craft-weapon bonuses.</summary>
     public static int EffectiveSpeedMaximum(RuntimeCraftRule rule,
         IReadOnlyList<CraftWeaponSnapshot?> weapons, RuntimeRuleCatalog rules)
@@ -306,6 +318,35 @@ public static class CraftLogistics
         };
     }
 
+    /// <summary>Craft::setFuel, including excess item-fuel refunds after capacity changes.</summary>
+    public static (CraftLogisticsState State, int FuelItemChange) SetFuel(
+        CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules, int fuel)
+    {
+        if (!TryEffectiveFuelMaximum(rule, state.Weapons, rules, out var maximum))
+            throw new OverflowException("Craft weapon bonuses exceed the supported fuel capacity range.");
+        return SetFuel(state, rule, maximum, fuel);
+    }
+
+    private static (CraftLogisticsState State, int FuelItemChange) SetFuel(
+        CraftLogisticsState state, RuntimeCraftRule rule, int maximum, int fuel)
+    {
+        if (maximum < 0) throw new InvalidDataException("Craft maximum fuel cannot be negative.");
+        var itemChange = 0;
+        var excess = state.ExcessFuel;
+        if (fuel > maximum && rule.RefuelItem is not null)
+        {
+            var overflow = checked(fuel - maximum + excess);
+            if (overflow > 0)
+            {
+                if (rule.RefuelRate <= 0) throw new InvalidDataException("Item flight fuel refunds require a positive refuel rate.");
+                itemChange = overflow / rule.RefuelRate;
+                excess = overflow % rule.RefuelRate;
+            }
+        }
+        fuel = Math.Clamp(fuel, 0, maximum);
+        return (state.Fuel == fuel && state.ExcessFuel == excess ? state : state with { Fuel = fuel, ExcessFuel = excess }, itemChange);
+    }
+
     public static (CraftLogisticsState State, int FuelItemChange, bool MissingFuel) Refuel(
         CraftLogisticsState state, RuntimeCraftRule rule, RuntimeRuleCatalog rules, int availableFuelItems)
     {
@@ -318,19 +359,9 @@ public static class CraftLogistics
             if (rule.RefuelItem is null || availableFuelItems > 0)
             {
                 if (rule.RefuelItem is not null) itemChange--;
-                var fuel = checked(state.Fuel + rule.RefuelRate);
-                var excess = state.ExcessFuel;
-                if (fuel > maximum && rule.RefuelItem is not null)
-                {
-                    var overflow = checked(fuel - maximum + excess);
-                    if (overflow > 0)
-                    {
-                        if (rule.RefuelRate <= 0) throw new InvalidDataException("Item refuelling requires a positive rate.");
-                        itemChange = checked(itemChange + overflow / rule.RefuelRate);
-                        excess = overflow % rule.RefuelRate;
-                    }
-                }
-                state = state with { Fuel = Math.Clamp(fuel, 0, maximum), ExcessFuel = excess, LowFuel = rule.RefuelItem is null && state.LowFuel };
+                var fuel = SetFuel(state, rule, maximum, checked(state.Fuel + rule.RefuelRate));
+                itemChange = checked(itemChange + fuel.FuelItemChange);
+                state = fuel.State with { LowFuel = rule.RefuelItem is null && state.LowFuel };
             }
             else if (!state.LowFuel)
             {

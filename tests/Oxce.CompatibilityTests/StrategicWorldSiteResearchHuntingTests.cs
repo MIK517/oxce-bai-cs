@@ -51,7 +51,7 @@ public sealed class StrategicWorldSiteResearchHuntingTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool uncertain = false, string extraRules = "", string[]? ruleFiles = null) =>
+    internal static RuntimeContent Content(bool cache, bool uncertain = false, string extraRules = "", string[]? ruleFiles = null, string? finalRules = null) =>
         StrategicReadinessTestContent.Load(ruleFiles ?? ["strategic-world.rul", "strategic-hunting.rul"], cache, $$"""
             research:
               - {name: UNLOCK, cost: 1}
@@ -60,7 +60,7 @@ public sealed class StrategicWorldSiteResearchHuntingTests
               - {name: OTHER, cost: 1}
             alienMissions:
               - {type: MISSION_SCOUT, interruptResearch: {{(uncertain ? "BONUS" : "CORE")}}}
-            """ + "\n" + Deployment + "\n" + extraRules);
+            """ + "\n" + Deployment + "\n" + extraRules, finalRules: finalRules);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content)
     {

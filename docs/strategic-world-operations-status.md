@@ -1226,3 +1226,32 @@ boundaries with 17-digit coordinates; every existing oracle row is unchanged. Th
 unit and three compatibility cases reproduce the old defect, including fresh/cache
 optional base deletion near home during takeoff: the tick now refuses before any
 research mutation. Full validation is recorded in the integration checkpoint.
+
+## Flight fuel setter correction (2026-10-09)
+
+Native `Craft::consumeFuel` calls `setFuel`, including for a zero burn when
+consumption is enabled. The port now shares that setter with refuelling: ordinary
+overfilled tanks cap at effective capacity, item fuel returns whole refuel units
+to the owning base and retains the remainder, and free patrol skips the setter.
+Installed weapon fuel bonuses use a fuel-only allocation-free projection. Refund
+writes belong to the registered servicing operation. Arithmetic/rate checks run
+before world forecasts; aggregate refund stock checks use the pure servicing,
+arrival and production projection without replacing the full hunter forecast.
+
+Reference: pinned `Craft.cpp::setFuel/consumeFuel/refuel`,
+`GeoscapeState::time10Minutes` and `Transfer::advance`. The hunting capture adds
+192 direct native consumption rows; every prior row is unchanged. Fresh/cache
+runtime cases cover all rows, three repeated save rewrites, no duplicate refund
+on the next tick, combined craft refunds, exact stock limits, hourly arrival plus
+refund, unsafe excess arithmetic, negative-speed subtraction, relaunched refund
+validation even without hunters and installed disabled-weapon fuel bonuses without consuming unrelated
+unit statistics. Twenty-three affected unit tests and 372 affected pursuit/escort/
+supply/site-return tests pass; full gates are recorded in the integration checkpoint.
+
+The optional-return fixture now loads its explicit craft rules after the master
+and overlay and gives its intended full-tank scenarios capacity 1,000. Earlier
+merge order left those fabricated 1,000-unit tanks above the actual capacity of
+100, which the missing setter had masked. Dedicated overfilled tests retain that
+external behavior coverage instead of relying on an impossible full-tank setup.
+Other affected pursuit fixtures use a final craft-capacity override without
+changing the previous ruleset merge order or weakening their assertions.

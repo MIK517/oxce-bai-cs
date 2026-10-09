@@ -1556,7 +1556,8 @@ public sealed class StrategicWorldEscortSpawnTests
     }
 
     private static RuntimeContent Load(bool cache = false, string? overlay = null) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay);
+        StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-hunting.rul"], cache, extraRules: overlay,
+            finalRules: "crafts: [{type: SHIP, fuelMax: 1000}]\n");
 
     private static CampaignSnapshot SpawnSnapshot(RuntimeContent content, UfoStatus status)
     {

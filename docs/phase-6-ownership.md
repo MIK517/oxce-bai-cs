@@ -572,3 +572,6 @@ Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status
 Recorded in `phase-6-world-integration-plan.md`: [Item detection metadata cycle audit (2026-10-04)](phase-6-world-integration-plan.md#item-detection-metadata-cycle-audit-2026-10-04).
 
 Recorded in [`strategic-world-hunting-status.md`](strategic-world-hunting-status.md#maintenance-before-hunter-selection).
+
+Native flight-fuel setter ownership, registered stock refunds and pre-tick safety
+are recorded in [the flight fuel correction](strategic-world-operations-status.md#flight-fuel-setter-correction-2026-10-09).

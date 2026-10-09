@@ -146,7 +146,7 @@ struct Rule { bool landing = false, hidden = false, autoPatrol=true; Item* fuelI
 bool getAllowLanding() const { return landing; } bool isUndetectable() const { return hidden; }
 const Item* getRefuelItem() const { return fuelItem; } int getRefuelRate() const { return refuelRate; }
 int getRepairRate() const { return 10; }
-bool patrolWithoutFuel() const { return false; }
+bool patrolFree=false; bool patrolWithoutFuel() const { return patrolFree; }
 bool canAutoPatrol() const { return autoPatrol; } } rule;
 const Rule* _rules = &rule;
 struct Stats { int speedMax = 2000, damageMax = 100, fuelMax=100; } _stats;
@@ -978,6 +978,20 @@ Craft* target=select(&hunter,ordered);
 std::cout << '[' << (relaunch?"true":"false") << ',' << (leaderFirst?"true":"false") << ','
 << escort._fuel << ',' << (escort._lowFuel?"true":"false") << ',' << leader._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint;
+}
+std::cout << "],\"flightFuelCapRows\":[";
+serviceFirst=true;
+for(bool itemFuel:{false,true}) for(bool destination:{false,true}) for(bool patrolFree:{false,true})
+for(int speed:{0,500,6000}) for(int fuel:{0,100,101,245}) for(int excess:{0,7}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Base base; Item item; Target target;
+craft._base=&base; craft._stats.speedMax=6000; craft._stats.fuelMax=100;
+craft._status="STR_OUT"; craft.speed=speed; craft._fuel=fuel; craft._excessFuel=excess;
+craft.rule.fuelItem=itemFuel?&item:nullptr; craft.rule.patrolFree=patrolFree;
+craft._dest=destination?&target:nullptr;
+craft.consumeFuel(0);
+std::cout << '[' << (itemFuel?"true":"false") << ',' << (destination?"true":"false") << ',' << (patrolFree?"true":"false")
+<< ',' << speed << ',' << fuel << ',' << excess << ',' << craft._fuel << ',' << craft._excessFuel << ',' << base.storage.count << ']';
 }
 std::cout << "],\"hourlyMaintenanceRows\":[";
 serviceFirst=true;

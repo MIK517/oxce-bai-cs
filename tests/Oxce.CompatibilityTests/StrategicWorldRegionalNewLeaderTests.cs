@@ -176,7 +176,7 @@ public sealed class StrategicWorldRegionalNewLeaderTests
                   - [[8, 8.02, 2, 2.02]]
                   - [[10, 10, 8, 8]]
                   - [[8, 8.02, 2, 2.02]{{{(multiple ? ", [8.04, 8.06, 2, 2.02]" : "")}}}]
-            """);
+            """, finalRules: "crafts: [{type: SHIP, fuelMax: 1000}]\n");
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed)
     {

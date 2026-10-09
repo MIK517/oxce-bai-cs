@@ -238,7 +238,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
                 waves:
                   - {{{wave}}}
             {{{(kind is 2 or 6 ? "      - {ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: " + (nonObjectiveRegional ? "OPTIONAL_SUPPLY_REGIONAL" : "OPTIONAL_SUPPLY_AIR") + ", timer: 0, hunterKillerPercentage: " + (kind == 6 ? nonObjectiveHunterPercentage : 0) + (nonObjectiveEscort ? ", escort: true" : "") + "}" : "")}}}
-            """);
+            """, finalRules: "crafts: [{type: SHIP, fuelMax: 1000}]\n");
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int kind = 0)

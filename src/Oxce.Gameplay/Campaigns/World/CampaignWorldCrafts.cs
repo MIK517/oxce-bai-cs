@@ -462,7 +462,9 @@ internal sealed partial class CampaignWorld
             {
                 var craft = owner.Crafts[index];
                 if (craft.Logistics is not { Status: "STR_OUT" } state) continue;
-                state = AdvanceCraftFuel(owner, craft, state);
+                state = AdvanceCraftFuel(owner, craft, state, out var refund);
+                if (refund != 0)
+                    campaign.CraftFuelStock.Refund(owner.Id, campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.RefuelItem!.Value, refund);
                 if (!craft.Logistics.LowFuel && state.LowFuel && !state.IsAutoPatrolling)
                     effects.Notify(new CraftLowFuel(owner.Id,
                         campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
@@ -475,8 +477,14 @@ internal sealed partial class CampaignWorld
     // Pure transition shared by time10Minutes and arrival preflight. Fuel return precedes
     // time5Seconds even when its notification pauses subsequent ticks.
     private CraftLogisticsState AdvanceCraftFuel(CampaignState.BaseState owner, CampaignState.CraftState craft,
-        CraftLogisticsState state, IReadOnlyDictionary<(string TypeId, int Id), CraftLogisticsState>? projectedCrafts = null)
+        CraftLogisticsState state, IReadOnlyDictionary<(string TypeId, int Id), CraftLogisticsState>? projectedCrafts = null) =>
+        AdvanceCraftFuel(owner, craft, state, out _, projectedCrafts);
+
+    private CraftLogisticsState AdvanceCraftFuel(CampaignState.BaseState owner, CampaignState.CraftState craft,
+        CraftLogisticsState state, out int fuelItemChange,
+        IReadOnlyDictionary<(string TypeId, int Id), CraftLogisticsState>? projectedCrafts = null)
     {
+        fuelItemChange = 0;
         var rule = campaign.Content.RuntimeRules.Crafts[craft.Rule].Value;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var speedMaximum))
@@ -490,9 +498,15 @@ internal sealed partial class CampaignWorld
                     new(leader.Longitude, leader.Latitude)) < WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
                 escortSpeed = leader.Speed;
         }
-        var consumption = state.Destination is null && rule.PatrolWithoutFuel ? 0 :
-            WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, escortSpeed);
-        if (consumption != 0) state = state with { Fuel = Math.Max(0, state.Fuel - consumption) };
+        // Native free patrol returns before setFuel; a zero burn with a
+        // destination still caps an overfilled tank and refunds item fuel.
+        if (state.Destination is not null || !rule.PatrolWithoutFuel)
+        {
+            var consumption = WorldFlight.FuelConsumption(rule.RefuelItem is not null, speedMaximum, state.Speed, escortSpeed);
+            var result = CraftLogistics.SetFuel(state, rule, campaign.Content.RuntimeRules, checked(state.Fuel - consumption));
+            state = result.State;
+            fuelItemChange = result.FuelItemChange;
+        }
         // Craft::getFuelLimit divides by zero here, so its C++ result is undefined.
         // Keep the craft stationary and recallable instead of inventing a low-fuel return.
         if (speedMaximum > 0 && !state.LowFuel && state.Fuel <= WorldFlight.FuelLimit(
