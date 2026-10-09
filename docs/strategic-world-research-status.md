@@ -1433,3 +1433,15 @@ day/hour batches and transition reloads with stable pact/base populations.
 All 166 affected cases pass; targeted formatting, code-map and diff checks pass.
 This completes cycle 12's execution slices; their batch audit and root validation
 follow.
+
+Cycle 12 batch audit closes Space unlinking, optional supply-source births and
+daily pact cancellation. No additional confirmed defect was found. Reviewed all
+native source reads, supply constructor/escort defaults, immediate-wave timer
+ordering, omitted signed awards, early expiry, country eligibility unions and
+per-tick forecast reset. Conditional supply leaders and Earth special/follower
+alternatives retain their precise checks. All 4,211 root tests pass without
+failures/skips, including checksums, private classifications and populated
+allocation gates. Full formatting, code-map and diff checks pass; the reference
+checkout remains unchanged. Ordered daily research/site alternatives, remaining
+linked deletion, newborn first arrival, stochastic maintenance and final
+acceptance reconciliation keep 4c open; 4d has not started.

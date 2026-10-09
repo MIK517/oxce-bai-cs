@@ -103,7 +103,9 @@ documents; entries here link to them instead of copying them.
   their batch audit and all 4,049 root tests pass. Exact daily discovery now feeds
   world interruption proofs; ordinary Earth-source deletion and optional daily/
   hunting generation now compose. Their batch audit, signed activity corrections
-  and all 4,163 root tests pass. Ordered daily research/site alternatives, remaining
+  and all 4,163 root tests pass. Optional Space-source unlinking, supply births and
+  daily pact cancellation now compose; their batch audit and all 4,211 root tests
+  pass. Ordered daily research/site alternatives, remaining
   linked deletion, newborn flight/pursuit composition and final closure keep 4c open;
   4d is unchanged.
 
