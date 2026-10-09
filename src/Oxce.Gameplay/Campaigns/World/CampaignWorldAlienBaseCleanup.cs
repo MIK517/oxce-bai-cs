@@ -144,9 +144,11 @@ internal sealed partial class CampaignWorld
     }
 
     private string? UncertainEscortFuelReason(RuntimeCraftRule rule, CraftLogisticsState state,
-        int oldSpeed, int returnSpeed, bool stableOwnSpeed, WorldPosition sourcePosition, ref long work)
+        int oldSpeed, int returnSpeed, bool owned, WorldPosition sourcePosition, ref long work)
     {
-        if (rule.RefuelItem is not null) return null;
+        // Grounded owned craft either stay outside the fuel caller or relaunch
+        // to an independent waypoint before fuel, replacing the craft destination.
+        if (rule.RefuelItem is not null || owned && state.Status != "STR_OUT") return null;
         work += state.Weapons.Count;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
@@ -155,13 +157,13 @@ internal sealed partial class CampaignWorld
         // their coordinates until fuel; outside the strict native range the
         // leader's speed is unused. Transfer/checkup positions need other proofs.
         var position = new WorldPosition(state.Longitude, state.Latitude);
-        if (stableOwnSpeed && state.Status == "STR_OUT" && position.IsNormalized &&
+        if (owned && state.Status == "STR_OUT" && position.IsNormalized &&
             WorldGeometry.Distance(position, sourcePosition) >= WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
             return null;
         // Positive speeds use the cap. At zero, only an already-owned OUT craft
         // retains its own saved speed until fuel; transfer/checkup or grounded
         // relaunch can replace that input and still need separate proofs.
-        if (oldSpeed < 0 || returnSpeed <= 0 || oldSpeed == 0 && (!stableOwnSpeed || state.Status != "STR_OUT") ||
+        if (oldSpeed < 0 || returnSpeed <= 0 || oldSpeed == 0 && (!owned || state.Status != "STR_OUT") ||
             WorldFlight.FuelConsumption(false, maximum, state.Speed, oldSpeed) !=
             WorldFlight.FuelConsumption(false, maximum, state.Speed, returnSpeed))
             return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
