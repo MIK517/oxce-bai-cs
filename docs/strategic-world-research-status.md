@@ -1674,3 +1674,16 @@ and populated allocation gates. Full formatting/map/diff pass and reference is
 clean. No new native artifacts were generated; useful logs/captures remain.
 Zero-speed consumer proofs, near-home/transfer alternatives and final closure
 keep 4c open; 4d remains untouched.
+
+Zero saved leader speed now composes for already-owned airborne ordinary escorts
+when their native own-speed fallback equals the positive return-speed cap. Their
+status and saved speed remain stable until fuel. Grounded relaunch and transfer
+checkup inputs retain a precise boundary; zero return maximum remains excluded.
+Ten fresh/cache cases first reproduce eight guard failures, then exercise both
+saved orders/takeoff, stationary continuing leaders, exact follower burn/movement,
+actual hunting, both outcomes over 32 seeds, complete control snapshots/RNG, three
+rewrites and continuation. Different own-speed burn, grounded and arriving transfer
+inputs remain atomic. All 162 affected tests pass. Reference: Craft::getFuelConsumption
+zero escort-speed branch and Geoscape fuel-before-movement ordering, backed by
+verified world craft/escortFuelRows. This is cycle 25 slice one; far/grounded
+consumer proofs and the final batch audit remain pending.

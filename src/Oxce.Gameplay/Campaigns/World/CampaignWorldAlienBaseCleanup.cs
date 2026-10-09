@@ -129,7 +129,7 @@ internal sealed partial class CampaignWorld
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (craft.Logistics is { } state && FollowsCraft(state.Destination, type, source.Id) &&
-                    UncertainEscortFuelReason(rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, ref work) is { } reason)
+                    UncertainEscortFuelReason(rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, true, ref work) is { } reason)
                     return reason;
             }
             foreach (var transfer in owner.Transfers)
@@ -137,25 +137,26 @@ internal sealed partial class CampaignWorld
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (transfer.Craft is { Logistics: { } state } incoming && FollowsCraft(state.Destination, type, source.Id) &&
                     UncertainEscortFuelReason(rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value,
-                        state, oldSpeed, returnSpeed, ref work) is { } reason) return reason;
+                        state, oldSpeed, returnSpeed, false, ref work) is { } reason) return reason;
             }
         }
         return null;
     }
 
     private string? UncertainEscortFuelReason(RuntimeCraftRule rule, CraftLogisticsState state,
-        int oldSpeed, int returnSpeed, ref long work)
+        int oldSpeed, int returnSpeed, bool stableOwnSpeed, ref long work)
     {
         if (rule.RefuelItem is not null) return null;
         work += state.Weapons.Count;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
-        // Positive escort speeds use only the cap, independent of servicing or
-        // the follower's saved speed. Zero invokes the separate own-speed branch.
-        if (oldSpeed <= 0 || returnSpeed <= 0 ||
-            WorldFlight.FuelConsumption(false, maximum, 0, oldSpeed) !=
-            WorldFlight.FuelConsumption(false, maximum, 0, returnSpeed))
+        // Positive speeds use the cap. At zero, only an already-owned OUT craft
+        // retains its own saved speed until fuel; transfer/checkup or grounded
+        // relaunch can replace that input and still need separate proofs.
+        if (oldSpeed < 0 || returnSpeed <= 0 || oldSpeed == 0 && (!stableOwnSpeed || state.Status != "STR_OUT") ||
+            WorldFlight.FuelConsumption(false, maximum, state.Speed, oldSpeed) !=
+            WorldFlight.FuelConsumption(false, maximum, state.Speed, returnSpeed))
             return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
         return null;
     }

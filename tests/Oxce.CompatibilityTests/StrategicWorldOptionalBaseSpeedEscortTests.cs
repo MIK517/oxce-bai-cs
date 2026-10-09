@@ -22,7 +22,7 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
     public void ItemFuelEscortsKeepTheirBurnAcrossOptionalLeaderSpeedChanges(bool cache, bool reverse, int takeoff)
         => AssertEquivalentEscort(cache, reverse, takeoff, false);
 
-    internal static void AssertEquivalentEscort(bool cache, bool reverse, int takeoff, bool ordinary)
+    internal static void AssertEquivalentEscort(bool cache, bool reverse, int takeoff, bool ordinary, bool parked = false)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
         Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "escortFuelRows"));
@@ -34,6 +34,7 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
         {
             var initial = Snapshot(content, seed, reverse, takeoff);
             if (ordinary) initial = NormalEscort(initial);
+            if (parked) initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Speed = 0 } });
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
@@ -45,11 +46,13 @@ public sealed class StrategicWorldOptionalBaseSpeedEscortTests
             Assert.Equal(ordinary ? 980 : 999, follower.Fuel);
             Assert.False(leader.LowFuel);
             Assert.False(follower.LowFuel);
-            Assert.Equal(deleted ? 6000 : 3000, leader.Speed);
+            Assert.Equal(deleted ? 6000 : parked ? 0 : 3000, leader.Speed);
             Assert.Equal(WorldTargetKind.Craft, follower.Destination!.Kind);
             Assert.Equal(1, follower.Destination.Id);
             var leaderBefore = new WorldPosition(1, 0.6);
             var leaderPosition = new WorldPosition(leader.Longitude, leader.Latitude);
+            if (parked) Assert.Equal(takeoff > 0 || !deleted ? leaderBefore : WorldGeometry.Move(leaderBefore,
+                new(0.2, 0.1), WorldGeometry.RadianSpeed(6000)), leaderPosition);
             var followerPosition = new WorldPosition(follower.Longitude, follower.Latitude);
             Assert.Equal(WorldGeometry.Move(new(1.0004, 0.6002), reverse ? leaderBefore : leaderPosition, WorldGeometry.RadianSpeed(ordinary ? 2000 : 6000)), followerPosition);
             Assert.True(Assert.Single(after.World.Ufos).Hunting);
