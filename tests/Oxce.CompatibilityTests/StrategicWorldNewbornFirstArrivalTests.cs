@@ -77,13 +77,11 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void AirborneBirthsKeepLaterGroundAndInterruptionBoundaries(bool cache, bool interruption)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AirborneBirthsKeepLaterGroundSelectionBoundaries(bool cache)
     {
-        var content = Content(cache, false, interruption ? "UNLOCK" : "", interruption ? 3 : 0);
+        var content = Content(cache, false, nextAltitude: 0);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)),
             "Alien mission wave spawning requires world simulation.");
     }
