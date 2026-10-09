@@ -1323,3 +1323,32 @@ regressions verify source-driven interruption cannot credit an omitted UFO or
 direct-site award. All 713 affected tests and 60 final focused cases pass;
 targeted formatting, code-map and diff checks pass. This is cycle 11's second
 execution slice; generation and the batch audit remain.
+
+## Optional surviving-base generation (2026-10-09)
+
+Possible source deletion now composes with both daily generation and later
+hunting generation. The surviving source retains existing bounded mission-choice,
+geometry, counter, identity, activity and creation-wave proofs; deletion omits
+those actors. Immediate daily research births still require the ordered daily
+research projection. A zero-duration site created by hunting follows the current
+site caller and grants research only at the following site-processing pass.
+
+Reference: pinned `GeoscapeState::time1Day`, `GenerateSupplyMission::operator()`
+and `GeoscapeState::baseHunting`; the cleanup, daily/hunting generation, wave-chain,
+objective, infiltration and site captures back the composed fixtures. Native
+daily deletion precedes scoring and generation; hunting increments the surviving
+timer, selects an eligible craft, allocates a source-linked mission and calls
+think immediately. Daily generation increments its own counter; hunting resets
+its timer only on successful generation. Selected deletion consumes neither
+generation caller's RNG or identity sequence.
+
+Fresh/cache fixtures cover delayed, ordinary, finite no-object prefixes, final
+base/infiltration and positive-duration site waves from each caller and both
+together. Every kind runs 32 seeds with both outcomes, full selected controls/RNG,
+three rewrites and next-tick comparison. Further cases retain mission/base/site
+capacity refusal, daily immediate-grant refusal, late zero-duration expiry and
+no eligible hunting craft. All 737 other affected cases passed the broad run;
+after correcting two fixture diary assertions for automatic zero-cost UNLOCK,
+all 22 generation cases pass. Targeted formatting, code-map and diff checks pass.
+This completes cycle 11's execution slices; their batch audit and full repository
+validation follow.

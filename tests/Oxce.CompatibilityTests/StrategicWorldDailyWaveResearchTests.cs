@@ -144,7 +144,8 @@ public sealed class StrategicWorldDailyWaveResearchTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, int kind, string interrupt = "BONUS", int operation = 0, string sourceCode = "BONUS")
+    internal static RuntimeContent Content(bool cache, int kind, string interrupt = "BONUS", int operation = 0, string sourceCode = "BONUS",
+        int generation = 0, bool immediateResearch = false)
     {
         var wave = kind switch
         {
@@ -161,8 +162,8 @@ public sealed class StrategicWorldDailyWaveResearchTests
               - {name: OTHER, cost: 1}
             alienDeployments:
               - {type: DEPLOY_DAILY_BASE, markerName: DAILY_BASE}
-              - {type: DEPLOY_DAILY_SITE, markerName: DAILY_SITE, duration: [1, 1]}
-            {{{(operation == 0 ? "" : "  - {type: OPTIONAL_OPERATION_BASE, markerName: OPTIONAL_SOURCE, points: 7, baseSelfDestructCode: " + sourceCode + "}")}}}
+              - {type: DEPLOY_DAILY_SITE, markerName: DAILY_SITE, duration: [{{{(immediateResearch ? 0 : 1)}}}, {{{(immediateResearch ? 0 : 1)}}}], unlockedResearchOnDespawn: {{{(immediateResearch ? "BONUS" : "")}}}}
+            {{{(operation == 0 ? "" : "  - type: OPTIONAL_OPERATION_BASE\n    markerName: OPTIONAL_SOURCE\n    points: 7\n    baseSelfDestructCode: " + sourceCode + (generation == 0 ? "" : "\n    genMission: {DAILY_RESEARCH_WAVE: 1}\n    genMissionFreq: " + (generation is 1 or 3 ? 100 : 0) + "\n    genMissionLimit: 1\n    baseDetectionRange: " + (generation >= 2 ? 100 : 0) + "\n    baseDetectionChance: 100\n    huntMissionMaxFrequency: 60\n    huntMissionWeights: {0: {DAILY_RESEARCH_WAVE: 1}}"))}}}
             ufoTrajectories:
               - {id: DAILY_AIR, waypoints: [[4, 3, 100], [5, 2, 80], [4, 3, 100]]}
             alienMissions:

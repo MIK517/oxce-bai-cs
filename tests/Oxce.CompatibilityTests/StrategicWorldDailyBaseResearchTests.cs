@@ -119,10 +119,6 @@ public sealed class StrategicWorldDailyBaseResearchTests
     [InlineData(true, 2)]
     [InlineData(false, 4)]
     [InlineData(true, 4)]
-    [InlineData(false, 5)]
-    [InlineData(true, 5)]
-    [InlineData(false, 6)]
-    [InlineData(true, 6)]
     public void UnprojectedDeletionEffectsHavePreciseAtomicBoundaries(bool cache, int effect)
     {
         var content = Content(cache, activity: effect == 5 ? 1 : effect == 6 ? 2 : 0, pacts: effect == 4);
@@ -150,8 +146,6 @@ public sealed class StrategicWorldDailyBaseResearchTests
         var reason = effect switch
         {
             4 => "Alien base self-destruction requires uncertain pact-cancellation forecasts.",
-            5 => "Alien base self-destruction requires optional mission-generation forecasts.",
-            6 => "Alien base self-destruction requires optional hunting-generation forecasts.",
             _ => "Alien base self-destruction requires linked-target alternatives for uncertain research.",
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)), reason);
