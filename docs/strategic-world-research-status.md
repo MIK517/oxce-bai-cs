@@ -1687,3 +1687,13 @@ inputs remain atomic. All 162 affected tests pass. Reference: Craft::getFuelCons
 zero escort-speed branch and Geoscape fuel-before-movement ordering, backed by
 verified world craft/escortFuelRows. This is cycle 25 slice one; far/grounded
 consumer proofs and the final batch audit remain pending.
+
+Cycle 25 slice-one interim audit found no additional confirmed issue. Reviewed
+owned OUT speed stability until fuel, independent source-removal returns,
+zero/positive native branches, transfer/grounded exclusions, hunter eligibility
+and ordered movement. All 4,663 root tests pass with zero failures/skips, including
+checksums, private corpus and populated allocation gates. Full formatting/map/diff
+pass and reference remains clean. Obsolete task-local fixture drafts were removed;
+useful evidence/logs remain. The timed run stops after closing this validation.
+Two execution slices and cycle 25's combined audit remain; 4c remains open and
+4d is untouched.

@@ -131,6 +131,8 @@ documents; entries here link to them instead of copying them.
   and equal-speed airborne returns; the batch audit and all 4,621 root tests pass.
   Fuel-equivalent optional craft returns now compose with item-fuel and capped
   ordinary escorts; their batch audit and all 4,653 root tests pass.
+  Owned airborne zero-speed escort fallback now composes too; its interim audit
+  and all 4,663 root tests pass. The next two slices and their batch audit remain.
   See [craft follower evidence](strategic-world-research-status.md#optional-alien-base-craft-followers-2026-10-09).
   See [supply escort evidence](strategic-world-research-status.md#optional-space-supply-escort-leaders-2026-10-09).
   See [optional source evidence](strategic-world-research-status.md#optional-earth-source-loss-with-special-ufos-2026-10-09).
