@@ -1148,3 +1148,18 @@ case pin both native source outcomes, ordered positions, identities, activity,
 three rewrites and continuation. All 176 affected cases pass. This completes
 cycle 19's three slices; the batch audit checks every skipped arrival operation
 and conditional position consumer before full validation.
+
+Cycle 19 batch audit finds no additional confirmed defect. Reviewed every ordinary
+alternative's airborne/nonterminal status, selected-area and ground/land exclusions,
+daily/late interruption checks, wide speed and area validation, source wave inference,
+ordered inexact propagation and craft envelopes. Constructor RNG, first ordinary
+identity and all eight outcomes retain exact execution/persistence. Full formatting
+and regenerated code-map/diff checks pass; root validation is running before closure.
+
+Cycle 19 audit closes with all 4,465 root tests passing, zero failures/skips,
+full formatting and regenerated code-map/diff verification. No additional confirmed
+runtime issue was found. Two redundant draft copies were removed; useful captures,
+logs and checkpoints remain, and the pinned reference is clean. The timed run stops
+after this audit. Conditional arrivals beyond the proven score/air domain, ordered
+research/source alternatives, special newborn outcomes and final branch-wide
+reconciliation keep 4c open; 4d and later-branch capabilities are unchanged.
