@@ -1118,3 +1118,17 @@ full formatting and regenerated code-map/diff checks. No additional confirmed
 defect was found; ordered takeoff vectors were fixed in slice two. Useful captures
 and logs remain and the pinned reference is clean. Conditional leader availability,
 research/source alternatives and final acceptance keep 4c open.
+
+## Conditional loaded-escort airborne arrivals (2026-10-09)
+
+A loaded idle escort with possible ordinary newborn leaders can now either attach
+or execute its already-proved old airborne arrival. The bounded source-only proof
+requires a nonterminal airborne score path, no selected-area/land lookahead or
+research interruption, validated areas and wide replacement speed. It publishes
+flying status only; execution retains real flags, waypoint, speed and identity.
+Two fresh/cache regressions reproduce the restriction; 64 deterministic seeds
+cover all eight constructor patterns with exact RNG/ordered movement, activity,
+live counts, three rewrites and continuation. All 144 affected cases pass.
+Reference: GeoscapeState::ufoHuntingAndEscorting/time5Seconds, AlienMission::
+ufoReachedWaypoint/getWaypoint and native hunter constructor/lifecycle captures.
+This is cycle 19 slice one; pursuit/follower composition and batch audit remain.
