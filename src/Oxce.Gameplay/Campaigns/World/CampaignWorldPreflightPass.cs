@@ -93,6 +93,7 @@ internal sealed partial class CampaignWorld
         public readonly Dictionary<CampaignState.CraftState, HuntingCraftFacts> HuntingFacts =
             new(ReferenceEqualityComparer.Instance);
         public Dictionary<int, UfoSnapshot>? NewLeaderFlightForecast;
+        public HashSet<int>? InexactNewLeaderFlights;
         public int PossibleHuntMarkerIds;
         public bool ArrivalLossFollowerScanRequired;
         public long HuntingForecastWork;
@@ -155,6 +156,7 @@ internal sealed partial class CampaignWorld
             HuntingCandidates.Clear();
             HuntingFacts.Clear();
             NewLeaderFlightForecast = null;
+            InexactNewLeaderFlights = null;
             PossibleHuntMarkerIds = 0;
             HuntingForecastWork = 0;
             HuntingCraftForecast = null;

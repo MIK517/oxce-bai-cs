@@ -1014,3 +1014,18 @@ full formatting verification and regenerated code-map/diff checks. The initial
 destination work-limit correction is committed separately from the three slices.
 Useful captures and logs remain; the pinned reference is clean. No other confirmed
 runtime defect was found; remaining linked/newborn composition keeps 4c open.
+
+## Regional newborn leaders for loaded escorts (2026-10-09)
+
+Loaded idle escorts now attach to guaranteed ordinary births with regional or
+mixed origins when no other actor consumes their future position. The bounded
+proof publishes status and full speed only, retaining random position and identity
+for execution. Possible daily interruption/source loss cannot establish regional
+attachment. Four fresh/cache regressions reproduce the old refusal; sixteen seeds
+per case assert native ordered movement, exact RNG, wave/activity counters, three
+rewrites and control continuation. The former regional guard now asserts attachment
+while probabilistic all-hunter births remain atomic. All 170 affected tests pass.
+Reference: pinned GeoscapeState::ufoHuntingAndEscorting/time5Seconds,
+Ufo::setEscortedUfo/backupOriginalDestination and MovingTarget::move; verified
+strategic-hunting and strategic-world-lifecycle captures. This is cycle 17 slice
+one; player pursuit, transitive followers and its batch audit remain.

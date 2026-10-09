@@ -22,6 +22,7 @@ internal sealed partial class CampaignWorld
             mission.SpawnCountdown > 30 || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra)
             return null;
         WorldPosition? firstPossibleOrigin = null;
+        var exactOrigin = true;
         foreach (var step in DueWaveSteps(mission, rule))
         {
             work += 3L * _alienBases.Count + 1;
@@ -43,22 +44,54 @@ internal sealed partial class CampaignWorld
             work += _alienBases.Count;
             if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             if (!TryOrdinarySpawnPositions(step, rule, rules.UfoTrajectories[trajectory].Value, region, out var origins) ||
-                origins.Count != 1 || origins[0].Radius != 0) return null;
-            // The first ordinary identity may vary while its movement target does not.
-            // Require every possible earlier leader to share the same point, and a
-            // guaranteed later ordinary birth before publishing any flight proof.
-            if (firstPossibleOrigin is { } earlier && earlier != origins[0].Center) return null;
-            firstPossibleOrigin = origins[0].Center;
+                origins.Count == 0) return null;
+            // Every earlier possible leader contributes to the target domain. A
+            // guaranteed ordinary birth establishes attachment; only identical
+            // point origins establish an exact movement target.
+            if (origins.Count != 1 || origins[0].Radius != 0 ||
+                firstPossibleOrigin is { } earlier && earlier != origins[0].Center) exactOrigin = false;
+            firstPossibleOrigin ??= origins[0].Center;
             if (percentage > 0) continue;
+            if (!exactOrigin)
+            {
+                if (_pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) == true ||
+                    rule.Objective == RuntimeMissionObjective.Supply &&
+                    _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true) return null;
+                if (RegionalNewLeaderDependencies(escort, ref work, out var dependentReason) is { } workReason)
+                    return workReason;
+                if (dependentReason) return null;
+                (_pass.InexactNewLeaderFlights ??= []).Add(escort.UniqueId);
+            }
             var ufoRule = rules.Ufos[rules.Ufos.GetRequired(escort.RuleId)].Value;
             var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
             if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";
             // Flight-only stand-in: the real leader is appended after saved UFOs,
-            // so its point origin is the exact target for this movement pass.
+            // so a point origin is exact. A regional proof supplies status/speed only;
+            // its unchanged position must never serve as an exact flight target.
             // Never allocate a future actor identity or change detection inputs.
             (_pass.NewLeaderFlightForecast ??= []).Add(escort.UniqueId,
-                WorldHunting.Escort(escort, WorldTargetReference.ForWaypoint(0, origins[0].Center), (int)maximum));
+                WorldHunting.Escort(escort, WorldTargetReference.ForWaypoint(0, exactOrigin ? firstPossibleOrigin!.Value : escort.Position), (int)maximum));
             return null;
+        }
+        return null;
+    }
+
+    private string? RegionalNewLeaderDependencies(UfoSnapshot source, ref long work, out bool depends)
+    {
+        depends = false;
+        foreach (var saved in _ufos)
+        {
+            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            if (saved.Escorting && FollowsUfo(saved.Destination, source)) depends = true;
+        }
+        foreach (var owner in campaign.BaseStates)
+        {
+            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+            foreach (var craft in owner.Crafts)
+            {
+                if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
+                if (craft.Logistics is { Status: "STR_OUT" } state && FollowsUfo(state.Destination, source)) depends = true;
+            }
         }
         return null;
     }
