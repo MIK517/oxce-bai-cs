@@ -88,8 +88,10 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
             "Alien mission wave spawning requires world simulation.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3) =>
+    internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3,
+        string extraRules = "", string generationRegion = "") =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+            {{{extraRules}}}
             ufos:
               - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: true, shieldCapacity: 10, shieldRechargeInGeoscape: 100}
             ufoTrajectories:
@@ -98,6 +100,7 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
               - type: FIRST_ARRIVAL_MISSION
                 interruptResearch: {{{interrupt}}}
                 objective: 0
+            {{{(generationRegion.Length == 0 ? "" : "    regionWeights: {0: {" + generationRegion + ": 1}}")}}}
                 waves:
                   - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0}
                   - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0}

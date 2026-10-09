@@ -410,8 +410,7 @@ internal sealed partial class CampaignWorld
             !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations))
             return false;
         if (FirstWaypointReachable(positions, destinations, speed) &&
-            (!PointSpawnAreas(positions) || !PointSpawnAreas(destinations) ||
-             !CanAdvanceNewbornAirborneWaypoint(rule, wave, trajectory, region, stats.SpeedMaximum))) return false;
+            !CanAdvanceNewbornAirborneWaypoint(rule, wave, trajectory, region, stats.SpeedMaximum)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -423,13 +422,6 @@ internal sealed partial class CampaignWorld
                 if (!(WorldGeometry.Distance(position.Center, destination.Center) - position.Radius - destination.Radius >
                         WorldGeometry.RadianSpeed(speed) + 1e-12)) return true;
         return false;
-    }
-
-    private static bool PointSpawnAreas(IReadOnlyList<SpawnArea> areas)
-    {
-        foreach (var area in areas)
-            if (area.Radius != 0) return false;
-        return true;
     }
 
     private bool CanAdvanceNewbornAirborneWaypoint(RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
