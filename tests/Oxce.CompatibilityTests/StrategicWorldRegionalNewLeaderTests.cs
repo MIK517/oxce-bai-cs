@@ -96,10 +96,16 @@ public sealed class StrategicWorldRegionalNewLeaderTests
             {
                 Logistics = craft.Logistics! with
                 {
-                    Status = "STR_OUT", Fuel = 1000, Damage = 0, Speed = 6000, Takeoff = takeoff ? 1 : 0,
-                    Longitude = from.Longitude, Latitude = from.Latitude,
+                    Status = "STR_OUT",
+                    Fuel = 1000,
+                    Damage = 0,
+                    Speed = 6000,
+                    Takeoff = takeoff ? 1 : 0,
+                    Longitude = from.Longitude,
+                    Latitude = from.Latitude,
                     Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, source.Id,
-                        source.Longitude, source.Latitude) { UniqueId = source.UniqueId },
+                        source.Longitude, source.Latitude)
+                    { UniqueId = source.UniqueId },
                 },
             });
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
@@ -128,6 +134,33 @@ public sealed class StrategicWorldRegionalNewLeaderTests
             AdvanceUnblocked(campaign, 2);
             Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OptionalDailyInterruptionCannotProveGuaranteedPointLeaderAttachment(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, interrupt: "BONUS", extraRules: """
+            research:
+              - {name: UNLOCK, cost: 1}
+              - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
+              - {name: BONUS, cost: 1}
+              - {name: OTHER, cost: 1}
+            """);
+        var initial = Snapshot(content, 17);
+        initial = initial with
+        {
+            Time = new(2, 2, 1, 1999, 23, 59, 55),
+            Bases = [initial.Bases[0] with { Research = [new("CORE", 0, 1, 1)] }],
+            World = initial.World with
+            {
+                Missions = [initial.World.Missions[0] with { RegionId = "REGION" }],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Loaded idle escorts require same-tick newborn waypoint forecasts.");
     }
 
     internal static RuntimeContent Content(bool cache, bool multiple = false, string extraRules = "") =>

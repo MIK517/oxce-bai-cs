@@ -21,6 +21,11 @@ internal sealed partial class CampaignWorld
             IsOver(mission, rule) || mission.Interrupted || mission.NextWave >= rule.Waves.Count ||
             mission.SpawnCountdown > 30 || mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra)
             return null;
+        // A daily random reward can omit every birth even when a wave's
+        // hunter percentage guarantees an ordinary constructor if it executes.
+        if (_pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) == true ||
+            rule.Objective == RuntimeMissionObjective.Supply &&
+            _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true) return null;
         WorldPosition? firstPossibleOrigin = null;
         var exactOrigin = true;
         foreach (var step in DueWaveSteps(mission, rule))
@@ -54,9 +59,6 @@ internal sealed partial class CampaignWorld
             if (percentage > 0) continue;
             if (!exactOrigin)
             {
-                if (_pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) == true ||
-                    rule.Objective == RuntimeMissionObjective.Supply &&
-                    _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true) return null;
                 if (RegionalNewLeaderDependencies(escort, ref work, out var dependentIds) is { } workReason)
                     return workReason;
                 var inexact = _pass.InexactNewLeaderFlights ??= [];

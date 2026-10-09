@@ -1052,3 +1052,19 @@ birth. All 201 affected cases pass, including escort endurance. Reference: pinne
 GeoscapeState::time5Seconds, Ufo::think/setEscortedUfo and MovingTarget::move,
 with verified strategic-world idleEscortFollowerMovement rows. This completes
 cycle 17's three slices; daily alternatives and dependent consumers are audited next.
+
+Cycle 17 batch audit confirms an earlier point-origin availability gap: optional
+daily research interruption may suppress every otherwise ordinary birth. Both
+fresh/cache regressions reproduce tick mutation with an unproved attachment;
+exact and regional forecasts now share the pre-publication availability check.
+All 178 affected daily/source/escort tests pass. Reviewed native constructor/order,
+waypoint backup, full speed, inexact propagation, every flight/site/base/craft
+consumer, bounded dependency scans and per-pass reset. Test initializer formatting
+was corrected. Full formatting and regenerated code-map/diff checks pass; root
+validation is running before committing this audit correction.
+
+Cycle 17 audit closes with all 4,409 root tests passing, zero failures/skips,
+full formatting and code-map/diff verification. The availability correction is
+committed separately. No other confirmed defect was found; useful artifacts remain
+and the pinned reference is clean. Non-flying follower and uncertainty composition
+remain 4c work; later-branch effects and 4d are unchanged.
