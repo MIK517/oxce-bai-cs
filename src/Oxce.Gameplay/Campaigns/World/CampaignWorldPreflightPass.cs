@@ -43,6 +43,7 @@ internal sealed partial class CampaignWorld
         public IReadOnlySet<string>? DailyResearchForecast;
         public DailyResearchStockForecast? DailyResearchProjection;
         public bool DailyResearchProjectionSupported;
+        public HashSet<(string Deployment, int Id)>? PossibleDailyBaseDeletions;
         public Dictionary<int, AlienMissionSnapshot>? MissionCounterForecast;
         public CampaignState.MissionResearchForecast? SiteResearchForecast;
         public Dictionary<(string Deployment, int Id), IReadOnlySet<string>>? SiteResearchAfterSite;
@@ -111,6 +112,7 @@ internal sealed partial class CampaignWorld
             DailyResearchForecast = null;
             DailyResearchProjection = null;
             DailyResearchProjectionSupported = false;
+            PossibleDailyBaseDeletions = null;
             MissionCounterForecast = null;
             SiteResearchForecast = null;
             SiteResearchAfterSite = null;

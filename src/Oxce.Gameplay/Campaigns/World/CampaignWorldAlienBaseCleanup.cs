@@ -26,8 +26,11 @@ internal sealed partial class CampaignWorld
             foreach (var other in _alienBases)
                 if (!ReferenceEquals(other, alienBase) && other.Id == alienBase.Id && MarkerName(other.DeploymentId) == marker)
                     return "Alien base self-destruction cannot resolve an ambiguous marker identity.";
-            if (!guaranteedResearch.Contains(rule.BaseSelfDestructCodeId) &&
-                UncertainBaseDeletionReason(alienBase, rule, ref work) is { } uncertainReason) return uncertainReason;
+            if (!guaranteedResearch.Contains(rule.BaseSelfDestructCodeId))
+            {
+                (_pass.PossibleDailyBaseDeletions ??= []).Add((alienBase.DeploymentId, alienBase.Id));
+                if (UncertainBaseDeletionReason(alienBase, rule, ref work) is { } uncertainReason) return uncertainReason;
+            }
         }
         if (guaranteedResearch is not null && (long)_alienBases.Count *
             _missions.Count(mission => mission.AlienBase is not null) > MaximumAlienBaseChecks) return AlienBaseWorkReason;

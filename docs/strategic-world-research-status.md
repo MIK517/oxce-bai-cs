@@ -1278,3 +1278,16 @@ private corpus and unchanged populated allocation budgets. Full formatting,
 code-map and diff verification pass; the pinned reference remains clean. This
 is the first slice of the next three-slice batch; its remaining slices and batch
 audit are pending.
+
+Interim review before the next slice confirmed an optional activity defect in
+quiet base deletion: the score forecast counted a possibly deleted base as
+certain. An opposite-sign later UFO score could then exceed the signed limit
+when the base disappeared. Four fresh/cache regressions reproduced an unsafe
+tick being accepted before the fix. Possible base deletion is now recorded in
+pass-local proof state, and activity includes both zero and the signed score.
+Eight regressions cover both score limits across 32 seeds, atomic unsafe refusal,
+safe selected controls/RNG and three rewrites. Native `GeoscapeState::time1Day`
+deletes bases before scoring survivors and later half-hour UFO activity.
+All 4,085 root tests and full formatting verification pass, including fixture
+checksums, private corpus and unchanged allocation gates. Code-map/diff checks
+pass. The confirmed correction is committed separately from the execution slices.
