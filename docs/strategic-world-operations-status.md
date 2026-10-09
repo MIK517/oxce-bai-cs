@@ -969,3 +969,19 @@ The shared content helper offers an explicit later ruleset layer because filenam
 load in descending order; a verified 5,000-polygon test exercises the refusal.
 Fourteen cases reproduce prior boundaries. All 376 affected cases pass. This is
 cycle 16 slice two; composed hunts/escorts/research and the batch audit remain.
+
+## Bounded newborn replacement land selection (2026-10-09)
+
+A first arrival now permits the reference's two replacement land selections for
+a later ground waypoint. Ordinary regional and selected-site retry work is bounded
+without drawing RNG; immutable globe query cost is cached for candidate waves.
+Selected mission areas retain their native priority and validation. Pinned
+AlienMission::getWaypoint/getLandPoint/ufoReachedWaypoint and verified lifecycle
+land-retry captures back fresh/cache permitted and forced hundredth fake-water
+choices, exact RNG/coordinates, repeated rewrites and the following ground arrival.
+Six cases reproduce the former restriction. Ground arrivals also compose with
+all eight hunter constructor patterns, earlier/later/no escort leaders and ordered
+site CORE/UNLOCK grants; ordinary ships land while active hunts/escorts stay flying.
+All 594 affected cases pass. This completes cycle 16's three implementation slices;
+the batch audit will review initial destination as well as replacement work and run
+full validation. Event payload, conversion/base-assault and combat gates remain.

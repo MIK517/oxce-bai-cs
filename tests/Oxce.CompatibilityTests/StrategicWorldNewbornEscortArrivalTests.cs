@@ -13,19 +13,28 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
     private static readonly string[] ResearchDiaryRules = ["CORE", "UNLOCK"];
 
     [Theory]
-    [InlineData(false, 50, false)]
-    [InlineData(true, 50, false)]
-    [InlineData(false, 100, false)]
-    [InlineData(true, 100, false)]
-    [InlineData(false, 50, true)]
-    [InlineData(true, 50, true)]
-    [InlineData(false, 100, true)]
-    [InlineData(true, 100, true)]
-    public void EscortsChooseTheFirstOrdinaryLeaderOrAdvanceWithoutOne(bool cache, int percentage, bool savedLeader)
+    [InlineData(false, 50, false, false)]
+    [InlineData(true, 50, false, false)]
+    [InlineData(false, 100, false, false)]
+    [InlineData(true, 100, false, false)]
+    [InlineData(false, 50, true, false)]
+    [InlineData(true, 50, true, false)]
+    [InlineData(false, 100, true, false)]
+    [InlineData(true, 100, true, false)]
+    [InlineData(false, 50, false, true)]
+    [InlineData(true, 50, false, true)]
+    [InlineData(false, 100, false, true)]
+    [InlineData(true, 100, false, true)]
+    [InlineData(false, 50, true, true)]
+    [InlineData(true, 50, true, true)]
+    [InlineData(false, 100, true, true)]
+    [InlineData(true, 100, true, true)]
+    public void EscortsChooseTheFirstOrdinaryLeaderOrAdvanceWithoutOne(bool cache, int percentage, bool savedLeader, bool ground)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: percentage, escort: true);
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: percentage, escort: true,
+            arrivalAltitude: ground ? 0 : 2, groundTimer: ground ? 2 : 0);
         HashSet<int> patterns = [];
         for (ulong seed = 1; seed <= 64; seed++)
         {
@@ -75,7 +84,9 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
                 Assert.Equal(attaches, born.Escorting);
                 Assert.False(born.Hunting);
                 Assert.Equal(attaches ? 0 : 1, born.TrajectoryPoint);
-                Assert.Equal(attaches ? 2200 : 1760, born.Speed);
+                Assert.Equal(attaches ? 2200 : ground ? 0 : 1760, born.Speed);
+                Assert.Equal(ground && !attaches ? UfoStatus.Landed : UfoStatus.Flying, born.Status);
+                Assert.Equal(ground && !attaches ? 10 : 0, born.SecondsRemaining);
                 Assert.Equal(10, born.Shield);
                 if (attaches)
                 {
@@ -97,25 +108,33 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
             }
             AdvanceUnblocked(campaign, 1);
             Assert.All(campaign.Capture().World.Ufos.Where(ufo => !savedLeader || ufo.UniqueId != 9),
-                ufo => Assert.Equal(ufo.Escorting ? 0 : 2, ufo.TrajectoryPoint));
+                ufo => Assert.Equal(ufo.Escorting ? 0 : ground ? 1 : 2, ufo.TrajectoryPoint));
         }
         Assert.Equal(percentage == 100 ? 1 : 8, patterns.Count);
     }
 
     [Theory]
-    [InlineData(false, false, false)]
-    [InlineData(true, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, true)]
-    [InlineData(true, false, true)]
-    [InlineData(false, true, true)]
-    [InlineData(true, true, true)]
-    public void SiteResearchComposesWithNoTargetAndSafeEscortHuntOutcomes(bool cache, bool hunt, bool escort)
+    [InlineData(false, false, false, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(false, true, false, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(false, false, true, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, true, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(false, false, false, true)]
+    [InlineData(true, false, false, true)]
+    [InlineData(false, true, false, true)]
+    [InlineData(true, true, false, true)]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, true, true, true)]
+    [InlineData(true, true, true, true)]
+    public void SiteResearchComposesWithNoTargetAndSafeEscortHuntOutcomes(bool cache, bool hunt, bool escort, bool ground)
     {
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = ResearchContent(cache, escort, "OTHER");
+        var content = ResearchContent(cache, escort, "OTHER", ground: ground);
         for (ulong seed = 1; seed <= 16; seed++)
         {
             var initial = ResearchSnapshot(content, seed, hunt);
@@ -126,6 +145,12 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
             AdvanceUnblocked(control, 1);
             var after = campaign.Capture();
             Assert.Equal(3, after.World.Ufos.Count);
+            Assert.All(after.World.Ufos, ufo =>
+            {
+                var lands = ground && !ufo.Hunting && !ufo.Escorting;
+                Assert.Equal(lands ? UfoStatus.Landed : UfoStatus.Flying, ufo.Status);
+                Assert.Equal(lands ? 10 : 0, ufo.SecondsRemaining);
+            });
             Assert.Equivalent(control.Capture().World.Ufos, after.World.Ufos, strict: true);
             Assert.Equal(control.Capture().RandomState, after.RandomState);
             Assert.Contains("CORE", after.CompletedResearch);
@@ -160,9 +185,9 @@ public sealed class StrategicWorldNewbornEscortArrivalTests
             malformed ? "Craft hunter attraction exceeds the supported range." : "Alien mission wave spawning requires world simulation.");
     }
 
-    private static RuntimeContent ResearchContent(bool cache, bool escort, string interrupt, string crafts = "") =>
+    private static RuntimeContent ResearchContent(bool cache, bool escort, string interrupt, string crafts = "", bool ground = false) =>
         StrategicWorldNewbornFirstArrivalTests.Content(cache, false, interrupt, hunterPercentage: 50, escort: escort,
-            radarRange: 300, extraRules: $$$"""
+            radarRange: 300, arrivalAltitude: ground ? 0 : 2, groundTimer: ground ? 2 : 0, extraRules: $$$"""
             research:
               - {name: CORE, cost: 1}
               - {name: OTHER, cost: 1}
