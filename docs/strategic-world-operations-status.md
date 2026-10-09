@@ -736,3 +736,19 @@ All 186 affected tests pass, with targeted formatting, code-map and diff checks.
 This is cycle 13's first slice; variable/generated origins, ground starts and the
 batch audit remain. No native objects/downloads were generated; useful existing
 captures remain. 4c is open and 4d has not started.
+
+## Regional and generated first arrivals (2026-10-09)
+
+The safe airborne proof now accepts bounded regional areas, including a mix of
+reachable and distant first destinations. Both possible movement paths use the
+existing owner; no RNG or future actor identity is consumed in preflight. Native
+lifecycle rectangle/transition and daily/hunting generation captures back exact
+selected coordinates/RNG, altitude/speed, three rewrites and subsequent ticks.
+Daily births score before detection; hunting births follow that pass. Fresh/cache
+fixtures include both callers together, full identity envelopes and 72 hours of
+day batching versus hourly advancement/reloads with bounded populations.
+
+All ten new regional/caller cases reproduce the point-only restriction before
+the change. All 142 affected tests pass, including six further capacity/endurance
+cases. Targeted formatting, regenerated code-map and diff checks pass. This is
+cycle 13's second slice; overlapping ground starts and batch audit remain.
