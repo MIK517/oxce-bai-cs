@@ -282,16 +282,16 @@ between fresh and cached content.
 
 | Corpus | Executable | Blocked | Preservation only |
 |---|---:|---:|---:|
-| UFO (7 saves) | 3 | 1 | 3 |
+| UFO (7 saves) | 4 | 0 | 3 |
 | TFTD (5 saves) | 3 | 0 | 2 |
-| Rosigma (7 saves) | 0 | 4 | 3 |
-| Total | 6 | 5 | 8 |
+| Rosigma (7 saves) | 4 | 0 | 3 |
+| Total | 11 | 0 | 8 |
 
-UFO `early/Begining.sav` advances 125 ticks, then stops before unsupported wave
-spawning. Rosigma `early/Begining.sav` stops on strategic event scheduling; its
-`Early.sav`, `Middle.sav` and `_autogeo_.asav` stop on UFO shield handling. These four
-stop without advancing. All eight tactical saves retain their battle data and stop
-without advancing. Exact reasons/tick counts are regression assertions. The ignored
+All eleven strategic saves complete 360 ticks. Cycle 14's first-airborne site
+objective proof lets UFO `early/Begining.sav` pass its former tick-125 wave boundary;
+the regression also requires the expected terror-mission wave to exist afterward.
+All eight tactical saves retain their battle data and stop without advancing.
+Exact reasons/tick counts remain regression assertions. The ignored
 `artifacts/world-closure-corpus.json` records the per-save results. This is C# adapter
 continuation evidence; emitted ordinary saves were not loaded into the complete C++
 engine as part of this closure run.
@@ -849,3 +849,13 @@ constructor/escort exceptions, bounded no-target craft/transfer scans, source
 geometry, single-step movement, counters and remaining combat/event boundaries.
 All 30 focused audit cases pass and full formatting passes after correcting test
 initializer whitespace. Root validation follows before the audit closes.
+
+Cycle 14 closes with all 4,288 root tests passing without failures/skips, including
+checksums, private fresh/cache/rewrite classifications and population gates. The
+corpus expectation now requires eleven strategic saves to complete the fixed
+horizon and the formerly blocked UFO save's terror wave to exist; eight tactical
+saves still stop at zero ticks. Full formatting, map/diff and unchanged reference
+checks pass. The quota interruption left this classification update pending; its
+morning validation closes that checkpoint. Remaining conditional newborn flight/
+pursuit, linked deletion, research/maintenance alternatives and final acceptance
+keep 4c open. Branch 4d remains untouched; no native objects were generated.
