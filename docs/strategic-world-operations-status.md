@@ -1139,3 +1139,12 @@ fresh/cache cases reproduce the refusal; 64 seeds cover both outcomes with actua
 craft coordinates/identity, three rewrites and control continuation. Close cases
 retain atomic combat refusal. All 164 affected pursuit/escort cases pass.
 This is cycle 19 slice two; dependent UFO chains and the batch audit remain.
+
+Conditional attachment/air-arrival now propagates through the shared bounded
+follower proof. Flying chains retain inexact positions, stationary nodes cut them,
+and all craft dependencies use movement envelopes. Eight fresh/cache regressions
+cover two-level chains in both saved orders with/without pursuit; 64 seeds per
+case pin both native source outcomes, ordered positions, identities, activity,
+three rewrites and continuation. All 176 affected cases pass. This completes
+cycle 19's three slices; the batch audit checks every skipped arrival operation
+and conditional position consumer before full validation.
