@@ -1132,3 +1132,10 @@ live counts, three rewrites and continuation. All 144 affected cases pass.
 Reference: GeoscapeState::ufoHuntingAndEscorting/time5Seconds, AlienMission::
 ufoReachedWaypoint/getWaypoint and native hunter constructor/lifecycle captures.
 This is cycle 19 slice one; pursuit/follower composition and batch audit remain.
+
+Conditional attachment/old-air-arrival proofs now compose with distant craft
+pursuit and takeoff through the existing bounded target movement envelope. Four
+fresh/cache cases reproduce the refusal; 64 seeds cover both outcomes with actual
+craft coordinates/identity, three rewrites and control continuation. Close cases
+retain atomic combat refusal. All 164 affected pursuit/escort cases pass.
+This is cycle 19 slice two; dependent UFO chains and the batch audit remain.

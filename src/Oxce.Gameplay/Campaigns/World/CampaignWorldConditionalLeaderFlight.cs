@@ -35,15 +35,7 @@ internal sealed partial class CampaignWorld
             if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             if (FollowsUfo(saved.Destination, source)) return null;
         }
-        foreach (var owner in campaign.BaseStates)
-        {
-            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
-            foreach (var craft in owner.Crafts)
-            {
-                if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
-                if (craft.Logistics is { Status: "STR_OUT" } state && FollowsUfo(state.Destination, source)) return null;
-            }
-        }
+        if (NewLeaderCraftPursuitReason(source, ref work) is { } pursuitReason) return pursuitReason;
         (_pass.InexactNewLeaderFlights ??= []).Add(source.UniqueId);
         // A flight-only proxy skips an already validated ordinary arrival. Both
         // outcomes stay flying; execution retains the real flags, speed, waypoint
