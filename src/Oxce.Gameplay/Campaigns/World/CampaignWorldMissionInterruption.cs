@@ -116,11 +116,15 @@ internal sealed partial class CampaignWorld : ICampaignMissionResearchInterrupti
             // Possible-only interruption skips mission think and later ordinary
             // arrival effects. The continuing branch retains their owning proofs;
             // same-day site grants still require their ordered research forecasts.
-            if (mission.LiveUfos == 0 && !guaranteedResearch.Contains(id))
+            if (!guaranteedResearch.Contains(id))
             {
                 possibleResearch ??= campaign.ResearchPreflight.PossibleResearchAfterDailyProgress();
-                if (possibleResearch.Contains(id) && MissionExpiryReason(mission, rule, ref cleanupWork) is { } cleanupReason)
-                    return cleanupReason;
+                if (possibleResearch.Contains(id))
+                {
+                    (_pass.PossibleDailyMissionInterruptions ??= []).Add(mission.Id);
+                    if (mission.LiveUfos == 0 && MissionExpiryReason(mission, rule, ref cleanupWork) is { } cleanupReason)
+                        return cleanupReason;
+                }
             }
         }
         return null;
