@@ -1697,3 +1697,15 @@ pass and reference remains clean. Obsolete task-local fixture drafts were remove
 useful evidence/logs remain. The timed run stops after closing this validation.
 Two execution slices and cycle 25's combined audit remain; 4c remains open and
 4d is untouched.
+
+Owned airborne escorts outside the native strict range now ignore the optional
+leader's changing speed. Both coordinates remain unchanged until the fuel caller;
+transfer/checkup positions retain their boundary. Fourteen fresh/cache cases
+reproduce twelve guard failures, then cover both saved orders/takeoff, 32 seeds
+and both source outcomes, exact own-speed burn/ordered pursuit, actual hunting,
+complete control snapshots/RNG, three rewrites and continuation. Zero escort
+range with coincident craft pins the strict comparison. Nearby differing caps
+and transferred position alternatives remain atomic. All 176 affected tests pass.
+Reference: GeoscapeState::time10Minutes strict getDistance comparison and
+Craft::getFuelConsumption, backed by verified world and escortFuelRows captures.
+Targeted formatting/map/diff checks pass. This completes cycle 25 slice two.

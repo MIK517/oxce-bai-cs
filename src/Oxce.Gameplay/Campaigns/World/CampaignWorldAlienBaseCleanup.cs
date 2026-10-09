@@ -101,11 +101,11 @@ internal sealed partial class CampaignWorld
             if (state.Speed < 0 || WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, state.Speed, 0) !=
                 WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, maximum, 0))
                 return "Alien base self-destruction requires craft speed alternatives for uncertain research.";
-            if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, state.Speed, maximum, ref work) is { } escortReason)
-                return escortReason;
-            if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
             var from = new WorldPosition(state.Longitude, state.Latitude);
             if (!from.IsNormalized) return "Airborne craft coordinates are invalid.";
+            if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, state.Speed, maximum, from, ref work) is { } escortReason)
+                return escortReason;
+            if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
             var home = new WorldPosition(owner.Longitude, owner.Latitude);
             if (WorldGeometry.ReachedDestination(from, home) || state.Takeoff <= 0 &&
                 !(WorldGeometry.Distance(from, home) > WorldGeometry.RadianSpeed(maximum)))
@@ -119,7 +119,7 @@ internal sealed partial class CampaignWorld
     }
 
     private string? UncertainCraftReturnEscortReason(CampaignState.CraftState source, int oldSpeed,
-        int returnSpeed, ref long work)
+        int returnSpeed, WorldPosition sourcePosition, ref long work)
     {
         var rules = campaign.Content.RuntimeRules;
         var type = rules.Crafts.GetExternalId(source.Rule);
@@ -129,7 +129,7 @@ internal sealed partial class CampaignWorld
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (craft.Logistics is { } state && FollowsCraft(state.Destination, type, source.Id) &&
-                    UncertainEscortFuelReason(rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, true, ref work) is { } reason)
+                    UncertainEscortFuelReason(rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, true, sourcePosition, ref work) is { } reason)
                     return reason;
             }
             foreach (var transfer in owner.Transfers)
@@ -137,20 +137,27 @@ internal sealed partial class CampaignWorld
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (transfer.Craft is { Logistics: { } state } incoming && FollowsCraft(state.Destination, type, source.Id) &&
                     UncertainEscortFuelReason(rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value,
-                        state, oldSpeed, returnSpeed, false, ref work) is { } reason) return reason;
+                        state, oldSpeed, returnSpeed, false, sourcePosition, ref work) is { } reason) return reason;
             }
         }
         return null;
     }
 
     private string? UncertainEscortFuelReason(RuntimeCraftRule rule, CraftLogisticsState state,
-        int oldSpeed, int returnSpeed, bool stableOwnSpeed, ref long work)
+        int oldSpeed, int returnSpeed, bool stableOwnSpeed, WorldPosition sourcePosition, ref long work)
     {
         if (rule.RefuelItem is not null) return null;
         work += state.Weapons.Count;
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
                 campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
+        // Fuel precedes movement. An owned OUT craft and this source retain
+        // their coordinates until fuel; outside the strict native range the
+        // leader's speed is unused. Transfer/checkup positions need other proofs.
+        var position = new WorldPosition(state.Longitude, state.Latitude);
+        if (stableOwnSpeed && state.Status == "STR_OUT" && position.IsNormalized &&
+            WorldGeometry.Distance(position, sourcePosition) >= WorldGeometry.Nautical(campaign.Content.RuntimeRules.Campaign.EscortRange))
+            return null;
         // Positive speeds use the cap. At zero, only an already-owned OUT craft
         // retains its own saved speed until fuel; transfer/checkup or grounded
         // relaunch can replace that input and still need separate proofs.
