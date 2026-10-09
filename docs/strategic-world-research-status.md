@@ -1488,3 +1488,15 @@ pass. Reference: AlienMission::spawnUfo's supply constructor/coordinates/escort
 branch and GeoscapeState::ufoHuntingAndEscorting, with verified supply, cleanup,
 hunting and immediate-wave captures. This completes cycle 21's three slices;
 the batch audit checks every optional source consumer and proof reuse boundary.
+
+Cycle 21 batch audit found no additional confirmed defect. The audit checked
+Earth interruption with retained special flags, Space objective suppression,
+every newborn hunting proof caller and source-key normalization, early expiry,
+optional signed awards, work/population/identity bounds and per-pass reset.
+The source-independent proof-key exception was fixed within slice three.
+All 4,525 root tests pass with zero failures/skips, including checksums, private
+classifications and populated allocation gates. Full formatting, code-map and
+diff checks pass.
+No new native artifacts were generated; useful test logs and evidence remain,
+and the pinned reference checkout is clean. Conditional supply escorts, remaining
+ordered research/arrival alternatives and final acceptance keep 4c open.
