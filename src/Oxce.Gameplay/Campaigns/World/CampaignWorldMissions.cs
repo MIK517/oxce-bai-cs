@@ -431,7 +431,8 @@ internal sealed partial class CampaignWorld
     {
         // A flying birth can advance exactly once. Keep conditional interruption,
         // hunting, ground arrival and land-selection consequences in their owners.
-        if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply) ||
+        if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or
+                RuntimeMissionObjective.Site or RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) ||
             rule.InterruptResearchId.Length != 0 || !IsAirborne(trajectory.Altitude(0)) ||
             !IsAirborne(trajectory.Altitude(1)) || trajectory.Waypoints.Count > 2 && trajectory.Altitude(2) == 0 ||
             !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
