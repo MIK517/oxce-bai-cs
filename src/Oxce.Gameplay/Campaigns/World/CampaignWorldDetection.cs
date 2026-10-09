@@ -54,7 +54,7 @@ internal sealed partial class CampaignWorld
         if (dailyBases)
             foreach (var alienBase in _alienBases)
                 if (!BaseDestroyedAfterDailyResearch(alienBase, guaranteedResearch) && CheckActivityScore(alienBase.Position, AlienBaseRule(alienBase).Points,
-                        regionTotals, countryTotals) is { } reason)
+                        regionTotals, countryTotals, certain: _pass.PossibleDailyBaseDeletions?.Contains((alienBase.DeploymentId, alienBase.Id)) != true) is { } reason)
                     return reason;
         if (_pass.ObjectiveBaseScores is not null)
         {
@@ -412,14 +412,14 @@ internal sealed partial class CampaignWorld
         }
     }
 
-    private string? CheckActivityScore(WorldPosition position, int score, ActivityRange[] regionTotals, ActivityRange[] countryTotals)
+    private string? CheckActivityScore(WorldPosition position, int score, ActivityRange[] regionTotals, ActivityRange[] countryTotals, bool certain = true)
     {
         var rules = campaign.Content.RuntimeRules;
         for (var index = 0; index < campaign.RegionStates.Count; index++)
         {
             var region = campaign.RegionStates[index];
             if (!WorldGeometry.InsideRegion(rules.Regions[region.Rule].Value, position)) continue;
-            if (!regionTotals[index].Add(score, certain: true))
+            if (!regionTotals[index].Add(score, certain))
                 return "UFO alien activity exceeds the supported range.";
             break;
         }
@@ -427,7 +427,7 @@ internal sealed partial class CampaignWorld
         {
             var country = campaign.CountryStates[index];
             if (!WorldGeometry.InsideCountry(rules.Countries[country.Rule].Value, position)) continue;
-            if (!countryTotals[index].Add(score, certain: true))
+            if (!countryTotals[index].Add(score, certain))
                 return "UFO alien activity exceeds the supported range.";
             break;
         }
