@@ -86,13 +86,13 @@ public sealed class StrategicWorldNewbornObjectiveArrivalTests
             "Base objective birth sequence is exhausted.");
     }
 
-    internal static RuntimeContent Content(bool cache, int objective, bool earth) =>
+    internal static RuntimeContent Content(bool cache, int objective, bool earth, int hunterPercentage = 0, bool waveObjective = true) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             alienDeployments:
               - {type: FIRST_OBJECTIVE_SOURCE, markerName: FIRST_SOURCE, points: 0, genMissionFreq: 0, huntMissionMaxFrequency: 0}
               - {type: FIRST_OBJECTIVE_BASE, markerName: FIRST_OBJECTIVE_BIRTH, points: 0, genMissionFreq: 0, huntMissionMaxFrequency: 0}
             ufos:
-              - {type: FIRST_OBJECTIVE_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: true}
+              - {type: FIRST_OBJECTIVE_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: true, hunterKillerPercentage: {{{hunterPercentage}}}, huntMode: 2, huntBehavior: 2}
             ufoTrajectories:
               - {id: FIRST_OBJECTIVE_AIR, waypoints: [[5, 3, 100], [5, 2, 80], [4, 3, 100]]}
             alienMissions:
@@ -105,9 +105,9 @@ public sealed class StrategicWorldNewbornObjectiveArrivalTests
                 showAlienBase: true
                 endlessInfiltration: false
                 waves:
-                  - {ufo: FIRST_OBJECTIVE_UFO, count: 1, trajectory: FIRST_OBJECTIVE_AIR, timer: 0, objective: true}
-                  - {ufo: FIRST_OBJECTIVE_UFO, count: 1, trajectory: FIRST_OBJECTIVE_AIR, timer: 0, objective: true}
-                  - {ufo: FIRST_OBJECTIVE_UFO, count: 1, trajectory: FIRST_OBJECTIVE_AIR, timer: 0, objective: true}
+                  - {ufo: FIRST_OBJECTIVE_UFO, count: 1, trajectory: FIRST_OBJECTIVE_AIR, timer: 0, objective: {{{(waveObjective ? "true" : "false")}}}}
+                  - {ufo: FIRST_OBJECTIVE_UFO, count: 1, trajectory: FIRST_OBJECTIVE_AIR, timer: 0, objective: {{{(waveObjective ? "true" : "false")}}}}
+                  - {ufo: FIRST_OBJECTIVE_UFO, count: 1, trajectory: FIRST_OBJECTIVE_AIR, timer: 0, objective: {{{(waveObjective ? "true" : "false")}}}}
             """);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int objective)

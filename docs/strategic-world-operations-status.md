@@ -1163,3 +1163,17 @@ logs and checkpoints remain, and the pinned reference is clean. The timed run st
 after this audit. Conditional arrivals beyond the proven score/air domain, ordered
 research/source alternatives, special newborn outcomes and final branch-wide
 reconciliation keep 4c open; 4d and later-branch capabilities are unchanged.
+
+
+## Conditional escort waypoint selection (2026-10-09)
+
+Conditional loaded-escort airborne arrivals now compose with infiltration, base,
+site and supply objectives. The caller already validates think-time consequences;
+native non-ground arrival does not execute them again. Eight fresh/cache
+regressions reproduce the former refusal, then cover all eight constructor
+patterns over 64 seeds, both Earth/Space operations, final base/pact/activity
+consequences, three rewrites and control continuation. All 48 affected cases pass.
+Reference: pinned AlienMission::think/ufoReachedWaypoint/getWaypoint and
+GeoscapeState::ufoHuntingAndEscorting, with verified strategic-world-lifecycle,
+strategic-hunting, strategic-objective-base-spawn and strategic-infiltration-region
+evidence. This is cycle 20 slice one; selected areas, land lookahead and audit remain.
