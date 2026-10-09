@@ -126,9 +126,12 @@ internal sealed partial class CampaignWorld
                 if (state.Status != "STR_OUT" && !returnHome) continue;
                 if (!owner.IsPlaced || !new WorldPosition(state.Longitude, state.Latitude).IsNormalized)
                     return "Airborne craft coordinates require a placed base and normalized positions.";
+                work += state.Weapons.Count * 5L;
+                if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var maximum))
                     return SpeedRangeReason;
                 if (returnHome) state = SetDestination(state, maximum, BaseReference(owner)) with { Status = state.Status };
+                if (FlightFuelStateReason(state, rules.Crafts[craft.Rule].Value) is { } fuelReason) return fuelReason;
                 _pass.HuntingCraftForecast[key] = state.Status == "STR_OUT"
                     ? AdvanceCraftFuel(owner, craft, state, _pass.HuntingCraftForecast) : state;
             }

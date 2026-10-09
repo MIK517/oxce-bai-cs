@@ -324,7 +324,8 @@ public sealed class StrategicWorldPursuitTests
     [InlineData(false, 0.3, 60)]
     public void CraftEscortUsesReferenceRangeAndFuelFloor(bool fromCache, double leaderLongitude, int consumption)
     {
-        var content = StrategicReadinessTestContent.Load("strategic-escort.rul", fromCache);
+        var content = StrategicReadinessTestContent.Load(["strategic-escort.rul"], fromCache,
+            finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         Assert.Equal(42, content.RuntimeRules.Campaign.EscortRange);
         var snapshot = CreateSnapshot(content, "Escort fuel") with
         { Time = new CampaignTime(1, 1, 1, 1999, 1, 9, 55) };

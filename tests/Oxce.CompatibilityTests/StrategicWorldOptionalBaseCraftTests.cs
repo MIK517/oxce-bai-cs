@@ -78,7 +78,7 @@ public sealed class StrategicWorldOptionalBaseCraftTests
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             escortRange: {{{escortRange}}}
             crafts:
-              - {type: SHIP, speedMax: 6000, fuelMax: 300, refuelRate: 100, repairRate: 2, autoPatrol: true, radarRange: 20000, radarChance: 100{{{(itemFuel ? ", refuelItem: SUPPLY" : "")}}}}
+              - {type: SHIP, speedMax: 6000, fuelMax: 1000, refuelRate: 100, repairRate: 2, autoPatrol: true, radarRange: 20000, radarChance: 100{{{(itemFuel ? ", refuelItem: SUPPLY" : "")}}}}
               - {type: OPTIONAL_NORMAL_ESCORT, speedMax: 2000, damageMax: 100, fuelMax: 1000, weapons: 2, refuelRate: 100, repairRate: 2, autoPatrol: true}
             research:
               - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
@@ -94,7 +94,7 @@ public sealed class StrategicWorldOptionalBaseCraftTests
               - type: OPTIONAL_RETURN_MISSION
                 objective: 0
                 waves: [{ufo: OPTIONAL_RETURN_HUNTER, count: 1, trajectory: OPTIONAL_RETURN_AIR, timer: 9000}]
-            """);
+            """, extraRulesAfterOverlays: true);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, string status)
     {
@@ -114,7 +114,7 @@ public sealed class StrategicWorldOptionalBaseCraftTests
             {
                 Status = status,
                 Damage = status == "STR_REPAIRS" ? 4 : 0,
-                Fuel = status == "STR_REFUELLING" ? 200 : 300,
+                Fuel = status == "STR_REFUELLING" ? 900 : 1000,
                 Weapons = [],
                 IsAutoPatrolling = false,
                 LowFuel = false,

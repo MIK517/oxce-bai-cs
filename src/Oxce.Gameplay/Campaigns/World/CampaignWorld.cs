@@ -453,6 +453,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
     private string? LiveWorldReason(CampaignTimeTrigger highest, CampaignTimeSpeed speed)
     {
         _pass.BeginWorld(highest);
+        if (FlightFuelValuesReason(highest) is { } fuelValuesReason) return fuelValuesReason;
         var interruptionReason = MissionInterruptionReason(highest, out var guaranteedResearch);
         if (interruptionReason is not null) return interruptionReason;
         var destructionReason = AlienBaseDestructionReason(highest, ref guaranteedResearch);
@@ -482,6 +483,7 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (ObjectiveBasePatrolReason(highest) is { } patrolReason) return patrolReason;
         var detectionReason = UfoHalfHourReason(highest, guaranteedResearch);
         if (detectionReason is not null) return detectionReason;
+        if (FlightFuelRefundReason(highest) is { } fuelRefundReason) return fuelRefundReason;
         return EventSchedulingReason(highest);
     }
 

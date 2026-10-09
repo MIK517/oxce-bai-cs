@@ -153,7 +153,8 @@ public sealed class StrategicWorldConditionalLeaderArrivalTests
     }
 
     internal static RuntimeContent Content(bool cache, string extraRules = "") =>
-        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, extraRules: extraRules);
+        StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, extraRules: extraRules,
+            finalRules: "crafts: [{type: SHIP, fuelMax: 1000}]\n");
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed)
     {

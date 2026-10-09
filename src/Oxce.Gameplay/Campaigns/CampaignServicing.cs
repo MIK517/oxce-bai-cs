@@ -2,10 +2,24 @@ using Oxce.Mods.Rulesets.Runtime;
 
 namespace Oxce.Gameplay.Campaigns;
 
-public sealed partial class CampaignState
+internal interface ICampaignCraftFuelStock
 {
+    void Refund(int baseId, RuleHandle<ItemRuleFamily> item, int quantity);
+}
+
+public sealed partial class CampaignState : ICampaignCraftFuelStock
+{
+    internal ICampaignCraftFuelStock CraftFuelStock => _handlers.Operation<ICampaignCraftFuelStock>();
+
+    void ICampaignCraftFuelStock.Refund(int baseId, RuleHandle<ItemRuleFamily> item, int quantity)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(quantity);
+        ChangeServiceStock(_bases.Single(owner => owner.Id == baseId), item, quantity);
+    }
+
     private void RegisterCraftServicing(CampaignCapabilityRegistry registry)
     {
+        registry.Operation<ICampaignCraftFuelStock>(this);
         registry.Preflight(CampaignPreflightOrder.Servicing, "craft servicing", (_, highest) =>
             highest >= CampaignTimeTrigger.ThirtyMinutes ? PreflightServicing() : null);
         registry.Timed(CampaignTimeTrigger.OneHour, CampaignTimeOrder.HourCraftServicing, "craft servicing", ServiceCraftsHourly);

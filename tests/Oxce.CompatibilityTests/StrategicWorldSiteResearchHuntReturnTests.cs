@@ -20,7 +20,8 @@ public sealed class StrategicWorldSiteResearchHuntReturnTests
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         var content = Content(cache, extraRules: "  - {type: QUIET_BASE, markerName: QUIET, baseSelfDestructCode: UNLOCK}",
-            ruleFiles: ["strategic-world.rul", "strategic-hunting.rul", "strategic-site-timer.rul"]);
+            ruleFiles: ["strategic-world.rul", "strategic-hunting.rul", "strategic-site-timer.rul"],
+            finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         var initial = Snapshot(content);
         initial = initial with
         {
@@ -67,7 +68,8 @@ public sealed class StrategicWorldSiteResearchHuntReturnTests
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
-        var content = Content(cache, extraRules: "  - {type: QUIET_BASE, markerName: QUIET, baseSelfDestructCode: UNLOCK}");
+        var content = Content(cache, extraRules: "  - {type: QUIET_BASE, markerName: QUIET, baseSelfDestructCode: UNLOCK}",
+            finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         var initial = Snapshot(content);
         initial = initial with
         {
@@ -107,7 +109,8 @@ public sealed class StrategicWorldSiteResearchHuntReturnTests
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-site-timer");
         TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
-        var content = Content(cache, ruleFiles: ["strategic-world.rul", "strategic-hunting.rul", "strategic-site-timer.rul"]);
+        var content = Content(cache, ruleFiles: ["strategic-world.rul", "strategic-hunting.rul", "strategic-site-timer.rul"],
+            finalRules: "crafts: [{type: SHIP, fuelMax: 300}]\n");
         var initial = Snapshot(content);
         if (!expiry) initial = initial with { Time = new(1, 1, 1, 1999, 1, 19, 55) };
         var site = initial.World.MissionSites[0];
