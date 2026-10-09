@@ -89,13 +89,14 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
     internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3,
         string extraRules = "", string generationRegion = "", int firstAltitude = 3, int groundTimer = 0,
         int points = 0, bool alerts = false, int nextSpeedPercentage = 80,
-        int hunterPercentage = 0, bool escort = false, int radarRange = 0, int huntSpeed = 0) =>
+        int hunterPercentage = 0, bool escort = false, int radarRange = 0, int huntSpeed = 0,
+        int firstSpeedPercentage = 100) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             {{{extraRules}}}
             ufos:
               - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: {{{(alerts ? "false" : "true")}}}, shieldCapacity: 10, shieldRechargeInGeoscape: 100, hunterKillerPercentage: {{{hunterPercentage}}}, huntMode: 2, huntBehavior: 2, radarRange: {{{radarRange}}}, huntSpeed: {{{huntSpeed}}}}
             ufoTrajectories:
-              - {id: FIRST_ARRIVAL_AIR, groundTimer: {{{groundTimer}}}, waypoints: [[5, {{{firstAltitude}}}, 100], [{{{(separate ? 6 : 5)}}}, 2, {{{nextSpeedPercentage}}}], [4, {{{nextAltitude}}}, 100]]}
+              - {id: FIRST_ARRIVAL_AIR, groundTimer: {{{groundTimer}}}, waypoints: [[5, {{{firstAltitude}}}, {{{firstSpeedPercentage}}}], [{{{(separate ? 6 : 5)}}}, 2, {{{nextSpeedPercentage}}}], [4, {{{nextAltitude}}}, 100]]}
             alienMissions:
               - type: FIRST_ARRIVAL_MISSION
                 interruptResearch: {{{interrupt}}}
@@ -139,6 +140,38 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
         AdvanceUnblocked(campaign, 1);
         Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2_147_483_646, ufo.Speed));
         campaign = Reload(content, campaign, 17, "newborn-replacement-speed-limit.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2, ufo.TrajectoryPoint));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NewbornInitialSpeedOverflowRefusesBeforeConstruction(bool cache, bool hunter)
+    {
+        var content = Content(cache, false, hunterPercentage: hunter ? 100 : 0, firstSpeedPercentage: 100_000_000);
+        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)),
+            hunter ? "UFO initial trajectory speed exceeds the supported range." : "Alien mission wave spawning requires world simulation.");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void MaximumSafeNewbornInitialSpeedStillExecutes(bool cache, bool hunter)
+    {
+        var content = Content(cache, false, hunterPercentage: hunter ? 100 : 0, firstSpeedPercentage: 97_612_893);
+        var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo =>
+        {
+            Assert.Equal(1, ufo.TrajectoryPoint);
+            Assert.Equal(1760, ufo.Speed);
+        });
+        campaign = Reload(content, campaign, 17, "newborn-initial-speed-limit.sav");
         AdvanceUnblocked(campaign, 1);
         Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(2, ufo.TrajectoryPoint));
     }

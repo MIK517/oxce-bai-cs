@@ -47,6 +47,8 @@ internal sealed partial class CampaignWorld
             return wave.Escort ? "UFO escort speed exceeds the supported range." : "UFO hunting stats exceed the supported range.";
         if (radar is < int.MinValue or > int.MaxValue)
             return "UFO hunting stats exceed the supported range.";
+        if (!TryNewbornInitialSpeed(path, (int)maximum, out _))
+            return "UFO initial trajectory speed exceeds the supported range.";
         if (NoCraftCanBecomeHunterTarget()) return null;
         var mode = NewbornHuntMode(wave);
         var key = HuntingProof(mission, wave);
