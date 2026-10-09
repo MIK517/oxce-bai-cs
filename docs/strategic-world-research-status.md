@@ -1650,3 +1650,17 @@ retain an atomic consumer boundary. All 140 affected tests pass, with targeted
 format/map/diff checks. Reference: Geoscape time10Minutes dynamic craft destination
 and Craft::getFuelConsumption item branch, backed by verified escortFuelRows.
 This is cycle 24 slice two; ordinary capped consumers and the batch audit follow.
+
+Ordinary craft escorts now compose when native capped consumption is equal at
+both positive leader-speed endpoints. This also covers earlier leader recall
+changing speed before later fuel consumption. The proof validates follower
+effective maximum, charges installed-weapon work and conservatively scans every
+owned/transfer reference. Zero-speed fallback and differing caps retain their
+precise boundary. Twelve new fresh/cache cases cover both saved orders, takeoff,
+actual hunting, both outcomes, exact ordinary burn/movement, complete controls/
+RNG, three rewrites and continuation; invalid follower maximum, differing cap and
+1,100-craft aggregate work remain atomic. Eight execution cases reproduced the
+old guard before implementation. All 152 affected tests pass, with targeted
+format/map/diff checks. Reference: Craft::getFuelConsumption positive escort caps
+and Geoscape saved-order fuel loop, with verified escortFuelRows. This completes
+cycle 24's third slice; the batch audit follows.

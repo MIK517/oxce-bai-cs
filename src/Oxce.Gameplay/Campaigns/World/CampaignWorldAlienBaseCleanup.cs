@@ -101,7 +101,7 @@ internal sealed partial class CampaignWorld
             if (state.Speed < 0 || WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, state.Speed, 0) !=
                 WorldFlight.FuelConsumption(rule.RefuelItem is not null, maximum, maximum, 0))
                 return "Alien base self-destruction requires craft speed alternatives for uncertain research.";
-            if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, ref work) is { } escortReason)
+            if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, state.Speed, maximum, ref work) is { } escortReason)
                 return escortReason;
             if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
             var from = new WorldPosition(state.Longitude, state.Latitude);
@@ -118,26 +118,45 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private string? UncertainCraftReturnEscortReason(CampaignState.CraftState source, ref long work)
+    private string? UncertainCraftReturnEscortReason(CampaignState.CraftState source, int oldSpeed,
+        int returnSpeed, ref long work)
     {
-        var type = campaign.Content.RuntimeRules.Crafts.GetExternalId(source.Rule);
+        var rules = campaign.Content.RuntimeRules;
+        var type = rules.Crafts.GetExternalId(source.Rule);
         foreach (var owner in campaign.BaseStates)
         {
             foreach (var craft in owner.Crafts)
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (FollowsCraft(craft.Logistics?.Destination, type, source.Id) &&
-                    campaign.Content.RuntimeRules.Crafts[craft.Rule].Value.RefuelItem is null)
-                    return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
+                if (craft.Logistics is { } state && FollowsCraft(state.Destination, type, source.Id) &&
+                    UncertainEscortFuelReason(rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, ref work) is { } reason)
+                    return reason;
             }
             foreach (var transfer in owner.Transfers)
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
-                if (transfer.Craft is { } incoming && FollowsCraft(incoming.Logistics?.Destination, type, source.Id) &&
-                    campaign.Content.RuntimeRules.Crafts[campaign.Content.RuntimeRules.Crafts.GetRequired(incoming.RuleId)].Value.RefuelItem is null)
-                    return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
+                if (transfer.Craft is { Logistics: { } state } incoming && FollowsCraft(state.Destination, type, source.Id) &&
+                    UncertainEscortFuelReason(rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value,
+                        state, oldSpeed, returnSpeed, ref work) is { } reason) return reason;
             }
         }
+        return null;
+    }
+
+    private string? UncertainEscortFuelReason(RuntimeCraftRule rule, CraftLogisticsState state,
+        int oldSpeed, int returnSpeed, ref long work)
+    {
+        if (rule.RefuelItem is not null) return null;
+        work += state.Weapons.Count;
+        if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+        if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
+                campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
+        // Positive escort speeds use only the cap, independent of servicing or
+        // the follower's saved speed. Zero invokes the separate own-speed branch.
+        if (oldSpeed <= 0 || returnSpeed <= 0 ||
+            WorldFlight.FuelConsumption(false, maximum, 0, oldSpeed) !=
+            WorldFlight.FuelConsumption(false, maximum, 0, returnSpeed))
+            return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
         return null;
     }
 
