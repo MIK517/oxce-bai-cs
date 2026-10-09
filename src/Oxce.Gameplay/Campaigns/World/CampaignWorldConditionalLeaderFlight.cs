@@ -12,6 +12,9 @@ internal sealed partial class CampaignWorld
         // The caller has proved think-time consequences. A remaining idle actor
         // can follow a distant old waypoint, or execute one owned airborne arrival.
         if (source.Destination is not { Kind: WorldTargetKind.Waypoint } destination) return null;
+        // The no-leader branch consumes this speed even though attachment would
+        // replace it. Do not let the full-speed proxy hide malformed idle input.
+        if (source.Speed < 0) return "UFO speed is invalid.";
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(source.RuleId)].Value;
         var maximum = (long)ufoRule.Stats.SpeedMaximum + ufoRule.RaceBonus(mission.Race).SpeedMaximum;
         if (maximum is < 0 or > int.MaxValue) return "UFO hunting stats exceed the supported range.";

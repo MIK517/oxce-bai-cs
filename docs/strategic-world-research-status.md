@@ -1548,3 +1548,14 @@ exhaustion remain atomic. All 184 affected cases pass. Reference: pinned
 AlienMission::spawnUfo supply/escort branches and GeoscapeState ordered retargeting,
 with verified supplyRows, cleanup, hunting and wave-chain captures. This completes
 cycle 22's three slices; the batch audit follows.
+
+Cycle 22 batch audit confirmed that the distant conditional flight proxy hid a
+negative saved speed in the possible idle branch. Four fresh/cache/current-point
+regressions advanced before the correction; the owning conditional proof now
+refuses that consumed input before mutation. Two guaranteed independent-leader
+cases retain executable replacement of the unused old speed, and two distant
+terminal-waypoint cases retain normal flight without consuming a future arrival.
+All 192 affected cases pass. The audit also checked leader order/origin unions,
+source-key reuse across generated and escort-only paths, radar-loss patrol,
+transitive movement/takeoff, work bounds and per-pass reset. Full root acceptance
+for the corrected batch follows; the correction commits separately.
