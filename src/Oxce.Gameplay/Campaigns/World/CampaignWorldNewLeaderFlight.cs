@@ -23,9 +23,7 @@ internal sealed partial class CampaignWorld
             return null;
         // A daily random reward can omit every birth even when a wave's
         // hunter percentage guarantees an ordinary constructor if it executes.
-        if (_pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) == true ||
-            rule.Objective == RuntimeMissionObjective.Supply &&
-            _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true) return null;
+        if (_pass.PossibleDailyMissionInterruptions?.Contains(mission.Id) == true) return null;
         WorldPosition? firstPossibleOrigin = null;
         var exactOrigin = true;
         foreach (var step in DueWaveSteps(mission, rule))
@@ -56,7 +54,10 @@ internal sealed partial class CampaignWorld
             if (origins.Count != 1 || origins[0].Radius != 0 ||
                 firstPossibleOrigin is { } earlier && earlier != origins[0].Center) exactOrigin = false;
             firstPossibleOrigin ??= origins[0].Center;
-            if (percentage > 0) continue;
+            // Space source deletion suppresses objective supply ships without
+            // interrupting ordinary flight. That leader is possible, not certain.
+            if (percentage > 0 || rule.Objective == RuntimeMissionObjective.Supply && wave.Objective &&
+                _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true) continue;
             if (!exactOrigin)
             {
                 if (RegionalNewLeaderDependencies(escort, ref work, out var dependentIds) is { } workReason)
