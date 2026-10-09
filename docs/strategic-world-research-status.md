@@ -1592,3 +1592,19 @@ cases pass. Reference: Craft::setDestination/repair/rearm/refuel and GeoscapeSta
 time1Hour/time30Minutes/ufoHuntingAndEscorting, backed by verified hunting
 maintenanceRows/hourlyMaintenanceRows, cleanup and logistics captures. This closes
 cycle 23 slice two; compatible airborne followers and the batch audit remain.
+
+Airborne owned followers now compose when their saved speed already equals the
+effective return speed and home remains outside a current-tick arrival. Fuel,
+hunter eligibility and craft-escort consumption are unchanged before movement;
+flight retains both destinations. Eighteen fresh/cache cases cover takeoff,
+ordered craft escorts and actual hunting over 32 seeds, both outcomes, exact
+movement/fuel, complete selected-control snapshots/RNG, three rewrites and
+continuation. Review reproduced two already-at-home takeoff failures: native
+Craft::think checks arrival even while decrementing takeoff. The owning proof now
+checks existing home arrival regardless of takeoff. Speed-changing returns,
+near-home arrival, invalid takeoff and transfer followers retain atomic boundaries.
+All 623 adjacent hunting/cleanup cases passed before that correction, and all 113
+focused optional-base/cleanup cases pass afterward. Reference: Craft::think,
+getFuelConsumption/getFuelLimit/consumeFuel, Target destruction and Geoscape
+daily/fuel/hunting/movement order, with verified cleanup/world/hunting captures.
+This completes cycle 23's third slice; its combined audit follows.

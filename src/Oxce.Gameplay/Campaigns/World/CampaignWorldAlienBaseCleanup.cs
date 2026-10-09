@@ -77,7 +77,7 @@ internal sealed partial class CampaignWorld
         {
             foreach (var craft in owner.Crafts)
                 if (craft.Logistics is { } state && FollowsAlienBase(state.Destination, alienBase) &&
-                    UncertainCraftBaseReturnReason(craft, state) is { } returnReason) return returnReason;
+                    UncertainCraftBaseReturnReason(owner, craft, state) is { } returnReason) return returnReason;
             foreach (var transfer in owner.Transfers)
                 if (FollowsAlienBase(transfer.Craft?.Logistics?.Destination, alienBase))
                     return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
@@ -88,12 +88,27 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
-    private string? UncertainCraftBaseReturnReason(CampaignState.CraftState craft, CraftLogisticsState state)
+    private string? UncertainCraftBaseReturnReason(CampaignState.BaseState owner,
+        CampaignState.CraftState craft, CraftLogisticsState state)
     {
-        if (state.Status == "STR_OUT")
-            return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
         if (!CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
-                state.Weapons, campaign.Content.RuntimeRules, out _)) return SpeedRangeReason;
+                state.Weapons, campaign.Content.RuntimeRules, out var maximum)) return SpeedRangeReason;
+        if (state.Status == "STR_OUT")
+        {
+            // Equal-speed return changes no pre-movement fuel, attraction or
+            // craft-escort input. Keep both destination alternatives for flight;
+            // a same-tick home arrival needs its own servicing/status proof.
+            if (state.Speed != maximum)
+                return "Alien base self-destruction requires craft speed alternatives for uncertain research.";
+            if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
+            var from = new WorldPosition(state.Longitude, state.Latitude);
+            if (!from.IsNormalized) return "Airborne craft coordinates are invalid.";
+            var home = new WorldPosition(owner.Longitude, owner.Latitude);
+            if (WorldGeometry.ReachedDestination(from, home) || state.Takeoff <= 0 &&
+                !(WorldGeometry.Distance(from, home) > WorldGeometry.RadianSpeed(maximum)))
+                return "Alien base self-destruction requires craft arrival alternatives for uncertain research.";
+            return null;
+        }
         // Native returnToBase preserves status. Servicing either stays grounded,
         // without consuming flight fields, or relaunches auto-patrol with its own
         // waypoint/full speed/takeoff60 in both source alternatives.
