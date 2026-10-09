@@ -152,21 +152,21 @@ internal sealed partial class CampaignWorld
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (craft.Logistics is { } state && FollowsCraft(state.Destination, type, source.Id) &&
-                    UncertainEscortFuelReason(rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, true, sourcePosition, ref work) is { } reason)
+                    UncertainEscortFuelReason(owner, rules.Crafts[craft.Rule].Value, state, oldSpeed, returnSpeed, true, sourcePosition, ref work) is { } reason)
                     return reason;
             }
             foreach (var transfer in owner.Transfers)
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 if (transfer.Craft is { Logistics: { } state } incoming && FollowsCraft(state.Destination, type, source.Id) &&
-                    UncertainEscortFuelReason(rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value,
+                    UncertainEscortFuelReason(owner, rules.Crafts[rules.Crafts.GetRequired(incoming.RuleId)].Value,
                         state, oldSpeed, returnSpeed, false, sourcePosition, ref work) is { } reason) return reason;
             }
         }
         return null;
     }
 
-    private string? UncertainEscortFuelReason(RuntimeCraftRule rule, CraftLogisticsState state,
+    private string? UncertainEscortFuelReason(CampaignState.BaseState owner, RuntimeCraftRule rule, CraftLogisticsState state,
         int oldSpeed, int returnSpeed, bool owned, WorldPosition sourcePosition, ref long work)
     {
         // Grounded owned craft either stay outside the fuel caller or relaunch
@@ -186,11 +186,15 @@ internal sealed partial class CampaignWorld
         // Positive speeds use the cap. At zero, only an already-owned OUT craft
         // retains its own saved speed until fuel; transfer/checkup or grounded
         // relaunch can replace that input and still need separate proofs.
-        if (oldSpeed < 0 || returnSpeed <= 0 || oldSpeed == 0 && (!owned || state.Status != "STR_OUT") ||
-            WorldFlight.FuelConsumption(false, maximum, state.Speed, oldSpeed) !=
-            WorldFlight.FuelConsumption(false, maximum, state.Speed, returnSpeed))
+        if (oldSpeed < 0 || returnSpeed <= 0 || oldSpeed == 0 && (!owned || state.Status != "STR_OUT"))
             return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
-        return null;
+        var firstBurn = WorldFlight.FuelConsumption(false, maximum, state.Speed, oldSpeed);
+        var secondBurn = WorldFlight.FuelConsumption(false, maximum, state.Speed, returnSpeed);
+        if (firstBurn == secondBurn) return null;
+        if (!owned || state.Speed < 0 || !position.IsNormalized || !owner.IsPlaced)
+            return "Alien base self-destruction requires craft escort speed alternatives for uncertain research.";
+        return CraftFuelAlternativeReason(owner, state, rule, maximum, firstBurn, secondBurn,
+            "Alien base self-destruction requires craft escort speed alternatives for uncertain research.", ref work);
     }
 
     private static bool FollowsCraft(WorldTargetReference? target, string type, int id) =>

@@ -34,6 +34,7 @@ public sealed class StrategicWorldOptionalBaseZeroSpeedEscortTests
             [initial.Bases[0].Crafts[0], initial.Bases[0].Crafts[1] with { Logistics = initial.Bases[0].Crafts[1].Logistics! with
             { Speed = 500 } }] }]
         };
+        trial = StrategicWorldOptionalBaseEscortFuelParityTests.WithBoundaryFuel(trial, content, 20);
         AssertTimeBlocked(CampaignState.Restore(trial, content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft escort speed alternatives for uncertain research.");
         var follower = initial.Bases[0].Crafts[1];

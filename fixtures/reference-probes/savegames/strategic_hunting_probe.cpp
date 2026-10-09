@@ -1007,6 +1007,22 @@ caller.fuel(&craft);
 std::cout << '[' << limit << ',' << fuel << ',' << (low?"true":"false") << ',' << (deleted?"true":"false")
 << ',' << craft._fuel << ',' << (craft._lowFuel?"true":"false") << ',' << craft.speed << ',' << (craft._dest==&base?"true":"false") << ']';
 }
+std::cout << "],\"optionalEscortFuelRows\":[";
+serviceFirst=true;
+for(int fuel:{100,149,150,160,200,1500}) for(bool low:{false,true}) for(bool deleted:{false,true}) for(bool leaderFirst:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft leader,follower; Base base; Target target; Item item; FuelCaller caller;
+leader._base=follower._base=&base; leader._stats.speedMax=6000; leader._stats.fuelMax=1000;
+leader._status="STR_OUT"; leader.speed=1000; leader._fuel=1000; leader.rule.fuelItem=&item; leader._dest=&target;
+follower._stats.speedMax=2100; follower._stats.fuelMax=1000; follower._fuelLimit=139;
+follower._status="STR_OUT"; follower.speed=2100; follower._fuel=fuel; follower._lowFuel=low; follower._dest=&leader;
+if(deleted) leader.returnToBase();
+const std::vector<Craft*> ordered=leaderFirst?std::vector<Craft*>{&leader,&follower}:std::vector<Craft*>{&follower,&leader};
+for(Craft* craft:ordered) caller.fuel(craft);
+std::cout << '[' << fuel << ',' << (low?"true":"false") << ',' << (deleted?"true":"false") << ',' << (leaderFirst?"true":"false")
+<< ',' << leader._fuel << ',' << (leader._lowFuel?"true":"false") << ',' << leader.speed
+<< ',' << follower._fuel << ',' << (follower._lowFuel?"true":"false") << ',' << follower.speed << ',' << (follower._dest==&base?"true":"false") << ']';
+}
 std::cout << "],\"hourlyMaintenanceRows\":[";
 serviceFirst=true;
 for(const std::string status:{"STR_REFUELLING","STR_REARMING","STR_REPAIRS","STR_READY"}) for(int fuel:{0,60,100}) for(int damage:{0,15}) {

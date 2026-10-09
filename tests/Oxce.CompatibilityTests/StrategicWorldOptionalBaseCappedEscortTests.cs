@@ -32,6 +32,7 @@ public sealed class StrategicWorldOptionalBaseCappedEscortTests
             Bases = [initial.Bases[0] with { Crafts =
             [initial.Bases[0].Crafts[0] with { Logistics = initial.Bases[0].Crafts[0].Logistics! with { Speed = 500 } }, initial.Bases[0].Crafts[1]] }]
         };
+        initial = StrategicWorldOptionalBaseEscortFuelParityTests.WithBoundaryFuel(initial, content, 20);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft escort speed alternatives for uncertain research.");
         initial = StrategicWorldOptionalBaseSpeedEscortTests.NormalEscort(
