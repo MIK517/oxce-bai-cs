@@ -184,6 +184,10 @@ internal sealed partial class CampaignWorld
             // Detection may reveal an imported hidden destination at the half-hour boundary.
             if (ufo is null || !ufo.Detected && highest < CampaignTimeTrigger.ThirtyMinutes ||
                 ufo.Status is UfoStatus.Destroyed or UfoStatus.IgnoreMe) return null;
+            // Regional attachment has no exact target position. Its owning
+            // preflight has proved every pursuing craft outside the full movement
+            // envelope (or returning home), so no arrival can occur this tick.
+            if (_pass.InexactNewLeaderFlights?.Contains(ufo.UniqueId) == true) return null;
             // Conversion's new site position and reset speed are forecast by the world capability.
             if (ArrivesAtSite(ufo, highest)) return null;
             projectedUfo = ForecastUfo(ufo, highest);
