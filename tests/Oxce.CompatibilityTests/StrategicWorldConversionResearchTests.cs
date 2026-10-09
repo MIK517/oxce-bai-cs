@@ -119,7 +119,7 @@ public sealed class StrategicWorldConversionResearchTests
     }
 
     internal static RuntimeContent Content(bool cache, bool respawn = false, string interrupt = "BONUS", bool baseLanding = false,
-        bool showBase = false, int operation = 0, string sourceCode = "BONUS") => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+        bool showBase = false, int operation = 0, string sourceCode = "BONUS", bool includeSource = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
@@ -140,6 +140,6 @@ public sealed class StrategicWorldConversionResearchTests
         """ + "\n" + StrategicWorldSiteResearchTests.Deployment + "\n" + $$$"""
           - {type: DEPLOY_ARRIVAL_SITE, markerName: ARRIVAL_SITE, duration: [1, 1]}
           - {type: DEPLOY_ARRIVAL_BASE, markerName: ARRIVAL_BASE, duration: [1, 1]}
-        {{{(operation == 0 ? "" : "  - {type: OPTIONAL_OPERATION_BASE, markerName: OPTIONAL_SOURCE, points: 7, baseSelfDestructCode: " + sourceCode + "}")}}}
+        {{{(operation == 0 && !includeSource ? "" : "  - {type: OPTIONAL_OPERATION_BASE, markerName: OPTIONAL_SOURCE, points: 7, baseSelfDestructCode: " + sourceCode + "}")}}}
         """);
 }

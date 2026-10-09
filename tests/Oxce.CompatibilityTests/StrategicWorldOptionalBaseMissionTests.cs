@@ -228,7 +228,7 @@ public sealed class StrategicWorldOptionalBaseMissionTests
     private static RuntimeContent WaveContent(bool cache, int kind, string sourceCode = "BONUS") =>
         StrategicWorldDailyWaveResearchTests.Content(cache, kind, interrupt: "", operation: kind + 1, sourceCode: sourceCode);
 
-    private static CampaignSnapshot Source(CampaignSnapshot initial) => initial.WithNextId("OPTIONAL_SOURCE", 70) with
+    internal static CampaignSnapshot Source(CampaignSnapshot initial) => initial.WithNextId("OPTIONAL_SOURCE", 70) with
     {
         World = initial.World with
         {

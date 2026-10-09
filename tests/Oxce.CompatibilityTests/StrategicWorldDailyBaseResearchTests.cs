@@ -111,8 +111,6 @@ public sealed class StrategicWorldDailyBaseResearchTests
     }
 
     [Theory]
-    [InlineData(false, 0)]
-    [InlineData(true, 0)]
     [InlineData(false, 1)]
     [InlineData(true, 1)]
     [InlineData(false, 2)]
@@ -121,13 +119,9 @@ public sealed class StrategicWorldDailyBaseResearchTests
     [InlineData(true, 4)]
     public void UnprojectedDeletionEffectsHavePreciseAtomicBoundaries(bool cache, int effect)
     {
-        var content = Content(cache, activity: effect == 5 ? 1 : effect == 6 ? 2 : 0, pacts: effect == 4);
+        var content = Content(cache, pacts: effect == 4);
         var initial = Snapshot(content, 17, false);
         var target = new WorldTargetReference(WorldTargetKind.AlienBase, "QUIET_RESEARCH_MARKER", 6, 0.2, 0.1);
-        if (effect == 0) initial = initial with
-        {
-            World = initial.World with { Missions = [new(4, "MISSION_SCOUT", "REGION", "RACE_A", 0, 0, 9000, 0, -1) { AlienBase = target }] },
-        };
         if (effect == 1) initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Destination = target } });
         if (effect == 2) initial = initial with
         {

@@ -1363,3 +1363,22 @@ allocation gates. Full formatting, code-map and diff checks pass; the pinned
 reference is unchanged. Remaining ordered stochastic daily research, Space/special
 source links, craft followers, pact alternatives, newborn first arrival, stochastic
 maintenance and final acceptance reconciliation keep 4c open.
+
+## Optional Space-source unlinking (2026-10-09)
+
+Space missions other than supply now keep executing when uncertain daily research
+deletes their source. Native `SavedGame::clearLinksForAlienBase` clears the pointer
+without interruption; `AlienMission::spawnUfo` and `getWaypoint` use regional
+geometry for these Space operations. Supply's objective birth reads the source
+even in Space mode and retains a separate optional-supply forecast boundary.
+Earth special-UFO links and direct/incoming craft followers retain their checks.
+
+Cleanup, lifecycle, mission-origin, wave, objective and site captures back seven
+ordinary flight paths, six due-wave kinds and saved hunter/escort behavior. Each
+runs 32 seeds in fresh/cache mode with both outcomes, full selected controls/RNG,
+three rewrites and following-tick comparison. A prior cleanup refusal fixture now
+executes its newly supported Space/Earth links and explicitly checks zero-cost
+automatic UNLOCK, retained Space missions and removed zero-live Earth missions;
+missing research still refuses atomically. All 770 affected tests and 25 final
+focused cases pass; targeted formatting, code-map and diff checks pass. This is
+cycle 12's first execution slice; supply, pact alternatives and batch audit remain.
