@@ -1302,3 +1302,24 @@ half-hour scoring precedes waypoint interruption. Sixteen new regressions includ
 32-seed safe selected controls/RNG and three rewrites. All 677 affected research,
 interruption, objective, base and event tests pass. Full repository validation
 will be repeated with the execution batch; this correction is committed separately.
+
+## Optional operation-base deletion (2026-10-09)
+
+Possible source deletion now composes with ordinary Earth-based missions. Native
+`SavedGame::clearLinksForAlienBase` clears their source and interrupts every
+non-space operation before half-hour think and five-second arrival. The surviving
+branch retains normal spawning, creation, capacity and combat proofs. The deleted
+branch reserves earlier zero-live expiry and retaliation repair, and omitted
+wave awards use the optional activity envelope. Space-source unlinking, special
+UFO links, craft followers and changed pact fields retain precise remaining checks.
+
+Pinned cleanup, lifecycle, wave-chain, objective and site captures back seven
+ordinary flight paths and six due-wave kinds across all six Earth operation
+modes. Fresh/cache 32-seed selected controls match full snapshots/RNG, three
+rewrites and next-tick cleanup. Zero-live retaliation links repair at the actual
+caller; orphan UFOs, invalid retaliation links, possible marker exhaustion and
+interception stop before research or RNG mutation. Eight further signed-limit
+regressions verify source-driven interruption cannot credit an omitted UFO or
+direct-site award. All 713 affected tests and 60 final focused cases pass;
+targeted formatting, code-map and diff checks pass. This is cycle 11's second
+execution slice; generation and the batch audit remain.
