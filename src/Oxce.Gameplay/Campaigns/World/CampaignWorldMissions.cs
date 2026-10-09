@@ -130,9 +130,12 @@ internal sealed partial class CampaignWorld
                     if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(origins, destinations, trajectory.Speed(0,
                             campaign.Content.RuntimeRules.Ufos[SpawnWave(step, rule).Ufo!.Value].Value.StatsForRace(step.Race).SpeedMaximum)))
                     {
-                        // ufoReachedWaypoint selects its replacement twice. This
-                        // airborne path has no land retry, marker or site effect.
+                        // ufoReachedWaypoint selects its replacement twice. Its
+                        // next waypoint is airborne, so neither selection retries.
                         geometryWork += 2L * (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count + _alienBases.Count + 1);
+                        if (trajectory.Altitude(1) == 0)
+                            foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
+                                geometryWork += 2L * (1L + 4L * polygon.Points.Count);
                         if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
                     }
                     if (forecast.Generated) missionUfoSpawns++;
@@ -413,7 +416,7 @@ internal sealed partial class CampaignWorld
         // without moving in this pass. Their next tick uses saved-UFO proofs.
         if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(positions, destinations, speed) &&
             !CanAdvanceNewbornAirborneWaypoint(mission, rule, wave, trajectory, region, stats.SpeedMaximum,
-                requireHuntingForecast)) return false;
+                destinations, requireHuntingForecast)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -435,22 +438,32 @@ internal sealed partial class CampaignWorld
     }
 
     private bool CanAdvanceNewbornAirborneWaypoint(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
-        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int speedMaximum, bool requireHuntingForecast)
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int speedMaximum,
+        IReadOnlyList<SpawnArea> destinations, bool requireHuntingForecast)
     {
         // A flying birth can advance exactly once. Early read-only site projection
         // defers hunt/escort proof to final mission preflight, after its research
         // forecast is available. Actual spawning always requires that owning proof.
-        // Conditional interruption, ground arrival and land selection stay guarded.
+        // Conditional interruption, conversion and landing-base effects stay guarded.
         if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or
                 RuntimeMissionObjective.Site or RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) ||
             _pass.SiteResearchForecast?.PossibleExplicitTopics.Contains(rule.InterruptResearchId) == true ||
             !IsAirborne(trajectory.Altitude(0)) ||
-            !IsAirborne(trajectory.Altitude(1)) || trajectory.Waypoints.Count > 2 && trajectory.Altitude(2) == 0 ||
+            trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)) ||
+            trajectory.Waypoints.Count > 2 && trajectory.Altitude(2) == 0 ||
             !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
             (wave.HunterKillerPercentage == -1
                 ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
                 : wave.HunterKillerPercentage) > 0 && requireHuntingForecast &&
             !NewbornHuntingIsForecast(mission, wave)) return false;
+        if (trajectory.Altitude(1) == 0 &&
+            (destinations.Any(static destination => destination.Radius != 0) ||
+             trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5 ||
+             campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).DamageMaximum <= 0 ||
+             wave.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
+             mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone ||
+             WorldObjectiveBaseSpawn.CreatesOnLanding(rule, wave, trajectory.Zone(0), allowed: true, conversion: false)))
+            return false;
         // Validate the native wide intermediate before narrowing. Calling Speed
         // here would throw rather than return an atomic capability refusal.
         var replacementSpeed = (long)speedMaximum * trajectory.Waypoints[1].SpeedPercentage / 100;

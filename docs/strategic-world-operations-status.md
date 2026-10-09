@@ -932,3 +932,20 @@ classifications and population checks remain green; the pinned reference is unch
 No additional confirmed issue remains from this batch audit. First ground arrivals,
 linked deletion, ordered research/maintenance alternatives and final acceptance
 remain open for 4c. Useful captures/logs are retained; no probe objects were added.
+
+## Newborn point landing arrivals (2026-10-09)
+
+Ordinary airborne births can land at their first point destination through the
+existing UFO movement owner. The flying pass initializes shields and the complete
+ground timer; only later landed passes consume it and lift without movement.
+Half-hour activity remains airborne. A silent detected contact still receives
+a landing ID on arrival, so its capacity is reserved independently of noAlert.
+Conversion, landing-base creation, assault and later land-retry paths remain scoped
+boundaries. Positive timer, damage, speed, marker and geometry checks run before
+mutation. Reference AlienMission::ufoReachedWaypoint/getWaypoint/ufoLifting,
+Ufo::setAltitude and GeoscapeState::time30Minutes/time5Seconds, with verified
+world-lifecycle/wave-chain captures, back exact RNG, fresh/cache timers, silent/
+alerted detection, three rewrites, lift and following flight. Ten positive cases
+reproduce the prior guard; six malformed timer cases already refuse atomically.
+All 76 affected cases pass. This is cycle 16 slice one; regional/generated landing
+and hunt/escort/research composition plus their batch audit remain. 4d is untouched.
