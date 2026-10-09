@@ -1557,5 +1557,9 @@ cases retain executable replacement of the unused old speed, and two distant
 terminal-waypoint cases retain normal flight without consuming a future arrival.
 All 192 affected cases pass. The audit also checked leader order/origin unions,
 source-key reuse across generated and escort-only paths, radar-loss patrol,
-transitive movement/takeoff, work bounds and per-pass reset. Full root acceptance
-for the corrected batch follows; the correction commits separately.
+transitive movement/takeoff, work bounds and per-pass reset. All 4,583 root tests pass with zero failures/skips, including checksums, private
+classifications and populated allocation gates. Full formatting, code-map and
+diff checks pass; correction 84630b4b is separate. No new native artifacts were
+generated, useful captures/logs remain, and the reference checkout is clean.
+Remaining linked deletion, ordered research/arrival alternatives and final
+acceptance keep 4c open; 4d remains untouched.

@@ -124,6 +124,10 @@ documents; entries here link to them instead of copying them.
   compose too; their batch audit passes all 4,495 root tests.
   Optional Earth special actors, Space supply hunters and source-independent
   hunter births now compose; their batch audit passes all 4,525 root tests.
+  Optional supply escort leaders now compose through saved flight, followers,
+  pursuit and newborn initialization; their consumed-speed audit fix and all
+  4,583 root tests pass.
+  See [supply escort evidence](strategic-world-research-status.md#optional-space-supply-escort-leaders-2026-10-09).
   See [optional source evidence](strategic-world-research-status.md#optional-earth-source-loss-with-special-ufos-2026-10-09).
   See [conditional waypoint evidence](strategic-world-operations-status.md#conditional-escort-waypoint-selection-2026-10-09).
   See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
