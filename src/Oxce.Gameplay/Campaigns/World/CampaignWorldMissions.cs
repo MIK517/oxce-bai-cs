@@ -130,9 +130,11 @@ internal sealed partial class CampaignWorld
                     if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(origins, destinations, trajectory.Speed(0,
                             campaign.Content.RuntimeRules.Ufos[SpawnWave(step, rule).Ufo!.Value].Value.StatsForRace(step.Race).SpeedMaximum)))
                     {
-                        // ufoReachedWaypoint selects its replacement twice. Its
-                        // next waypoint is airborne, so neither selection retries.
+                        // ufoReachedWaypoint selects its replacement twice. Bound
+                        // any land retries independently from waypoint lookup work.
                         geometryWork += 2L * (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count + _alienBases.Count + 1);
+                        landWork += NewbornReplacementLandWork(step, rule, trajectory, region);
+                        if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
                         if (trajectory.Altitude(1) == 0)
                             geometryWork += NewbornLandingGeometryWork(destinations);
                         if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
@@ -449,7 +451,6 @@ internal sealed partial class CampaignWorld
             _pass.SiteResearchForecast?.PossibleExplicitTopics.Contains(rule.InterruptResearchId) == true ||
             !IsAirborne(trajectory.Altitude(0)) ||
             trajectory.Altitude(1) != 0 && !IsAirborne(trajectory.Altitude(1)) ||
-            trajectory.Waypoints.Count > 2 && trajectory.Altitude(2) == 0 ||
             !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
             (wave.HunterKillerPercentage == -1
                 ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
@@ -473,17 +474,46 @@ internal sealed partial class CampaignWorld
         if (replacementSpeed is < 0 or > int.MaxValue) return false;
         if (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count > 256) return false;
         ValidateWaypointAreas(region, trajectory.Zone(1));
+        if (mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(1) == rule.SpawnZone)
+            _ = SelectedMissionArea(region, rule.SpawnZone, mission.MissionSiteZoneArea);
+        if (NewbornReplacementLandWork(mission, rule, trajectory, region) > MaximumSpawnLandWork) return false;
         return true;
+    }
+
+    private long NewbornReplacementLandWork(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region)
+    {
+        var wave = SpawnWave(mission, rule);
+        var selected = mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(1) == rule.SpawnZone;
+        if (selected && !wave.ObjectiveOnTheLandingSite) return 0;
+        if (!selected && (trajectory.Waypoints.Count <= 2 || trajectory.Altitude(2) != 0)) return 0;
+        if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(1))[0].IsPoint) return 0;
+        var scan = GlobeLandQueryWork();
+        // Both native replacement selections can make 100 attempts. A selected
+        // site area omits the ordinary region containment query and city bypass.
+        return 2L * 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
     }
 
     private long NewbornLandingGeometryWork(IReadOnlyList<SpawnArea> destinations)
     {
-        long scan = 1;
-        foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
-            scan += 1L + 4L * polygon.Points.Count;
+        var scan = GlobeLandQueryWork();
         // Both land queries, all spawn/forecast predicate callers, and the actual
         // arrival. Rectangles conservatively admit land without polygon queries.
         return 2L * (6L * destinations.Count + 1) * scan;
+    }
+
+    // Runtime globe rules are immutable for this campaign; avoid rescanning the
+    // polygon collection for each candidate wave and each preflight caller.
+    private long? _globeLandQueryWork;
+
+    private long GlobeLandQueryWork()
+    {
+        if (_globeLandQueryWork is { } cached) return cached;
+        long scan = 1;
+        foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
+            scan += 1L + 4L * polygon.Points.Count;
+        _globeLandQueryWork = scan;
+        return scan;
     }
 
     private bool NewbornLandingPossible(IReadOnlyList<SpawnArea> destinations, RuntimeUfoRule rule)
@@ -678,9 +708,7 @@ internal sealed partial class CampaignWorld
         if (rule.Objective == RuntimeMissionObjective.Supply && rule.OperationType != RuntimeMissionOperationType.Space &&
             MissionSourceBase(mission) is not null) return 0;
         if (!selected && WorldGeometry.MissionAreas(region, trajectory.Zone(0))[0].IsPoint) return 0;
-        long scan = 1;
-        foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
-            scan += 1L + 4L * polygon.Points.Count;
+        var scan = GlobeLandQueryWork();
         // Up to 100 attempts, with two polygon queries and an ordinary region query.
         return 100 * (2 * scan + (selected ? 0 : region.Areas.Count) + 1);
     }

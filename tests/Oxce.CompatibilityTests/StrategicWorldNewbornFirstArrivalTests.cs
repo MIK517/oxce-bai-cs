@@ -79,11 +79,20 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AirborneBirthsKeepLaterGroundSelectionBoundaries(bool cache)
+    public void AirborneBirthsSelectLandForTheirLaterGroundWaypoint(bool cache)
     {
-        var content = Content(cache, false, nextAltitude: 0);
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17)),
-            "Alien mission wave spawning requires world simulation.");
+        var content = Content(cache, false, nextAltitude: 0, groundTimer: 2);
+        var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo => Assert.Equal(1, ufo.TrajectoryPoint));
+        campaign = Reload(content, campaign, 17, "newborn-later-ground.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.All(campaign.Capture().World.Ufos, ufo =>
+        {
+            Assert.Equal(2, ufo.TrajectoryPoint);
+            Assert.Equal(UfoStatus.Landed, ufo.Status);
+            Assert.Equal(10, ufo.SecondsRemaining);
+        });
     }
 
     internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3,

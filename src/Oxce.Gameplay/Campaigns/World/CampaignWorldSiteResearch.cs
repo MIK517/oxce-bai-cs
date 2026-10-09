@@ -208,6 +208,10 @@ internal sealed partial class CampaignWorld
             work += NewbornLandingGeometryWork(destinations);
         if (work > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
         landWork += SpawnOriginLandWork(mission, rule, trajectory, region);
+        if (trajectory.Altitude(0) != 0 && TryNewbornInitialSpeed(trajectory,
+                rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum, out var firstSpeed) &&
+            FirstWaypointReachable(origins, destinations, firstSpeed))
+            landWork += NewbornReplacementLandWork(mission, rule, trajectory, region);
         if (landWork > MaximumSpawnLandWork) return "Alien mission land selection exceeds the supported work limit.";
         // The owning mission preflight proves retargeting after site research has
         // populated its forecast, still before the transaction mutates anything.
