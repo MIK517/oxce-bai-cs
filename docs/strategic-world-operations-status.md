@@ -789,3 +789,19 @@ ordinary objective/interrupt/hunter first arrivals, newborn ground/conversion
 consequences, linked deletion, ordered research/maintenance alternatives and final
 acceptance reconciliation keep 4c open; branch 4d is untouched. Useful captures
 and validation logs remain; no native probe objects were generated this cycle.
+
+## First airborne arrivals across objectives (2026-10-09)
+
+Site/base/infiltration births now use the same bounded first-airborne proof as
+score/supply. Existing think-time owners reserve final objectives before movement;
+no landing/conversion effect is enabled. Pinned AlienMission::think/spawnUfo/
+ufoReachedWaypoint and verified lifecycle, objective-base, infiltration and
+mission-origin captures back Space/Earth source variants. Fresh/cache seed cases
+preserve three-wave identity, one-step altitude/speed/position, final base/pact
+state, native revelation, activity, three rewrites and following flight. Base
+birth-sequence exhaustion still refuses before any wave/research mutation.
+
+Ten cases fail at the old objective restriction before the change; supply's two
+already-supported cases pass. All 79 affected cases pass with targeted formatting,
+code-map and diff checks. This is cycle 14's first slice; harmless research tags,
+no-target hunter arrivals and their batch audit remain. 4d is unchanged.
