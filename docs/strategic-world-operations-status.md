@@ -717,3 +717,22 @@ corpus, checksum and existing allocation checks. Formatting verification,
 code-map validation and diff checks pass. The reference remains clean at the
 pinned commit. This timed run completes seven three-slice cycles and seven batch
 audits, with confirmed issues repaired in their owning slices or audit commits.
+
+## Newborn first airborne arrivals (2026-10-09)
+
+Ordinary score/supply point births can now reach their first airborne destination
+in the creation tick. The existing movement owner advances exactly one waypoint;
+preflight validates its replacement altitude/speed and bounded double waypoint/
+source lookup work. Ground transitions, land retry, research interruption and
+special hunters/escorts retain their existing boundaries. Native references are
+AlienMission::spawnUfo/ufoReachedWaypoint and GeoscapeState::time5Seconds at the
+pinned commit; verified lifecycle transition and immediate-wave captures back
+fresh/cache coincident/nearby origins, three-wave chains and transition rewrites.
+
+Six new execution/capacity cases reproduce the old distance guard before the fix;
+four further cases preserve later-ground and interruption refusal. Exact RNG
+assertions include both waypoint draws, zero timers and zero-chance base detection.
+All 186 affected tests pass, with targeted formatting, code-map and diff checks.
+This is cycle 13's first slice; variable/generated origins, ground starts and the
+batch audit remain. No native objects/downloads were generated; useful existing
+captures remain. 4c is open and 4d has not started.

@@ -127,6 +127,14 @@ internal sealed partial class CampaignWorld
                     TryOrdinarySpawnDestinations(step, rule, trajectory, region, out var destinations);
                     geometryWork += (long)origins.Count * destinations.Count;
                     if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+                    if (FirstWaypointReachable(origins, destinations, trajectory.Speed(0,
+                            campaign.Content.RuntimeRules.Ufos[SpawnWave(step, rule).Ufo!.Value].Value.StatsForRace(step.Race).SpeedMaximum)))
+                    {
+                        // ufoReachedWaypoint selects its replacement twice. This
+                        // airborne path has no land retry, marker or site effect.
+                        geometryWork += 2L * (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count + _alienBases.Count + 1);
+                        if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
+                    }
                     if (forecast.Generated) missionUfoSpawns++;
                     else ufoSpawns++;
                     var wave = SpawnWave(step, rule);
@@ -401,10 +409,44 @@ internal sealed partial class CampaignWorld
         if (!TryOrdinarySpawnPositions(mission, rule, trajectory, region, out var positions) ||
             !TryOrdinarySpawnDestinations(mission, rule, trajectory, region, out var destinations))
             return false;
+        if (FirstWaypointReachable(positions, destinations, speed) &&
+            (!PointSpawnAreas(positions) || !PointSpawnAreas(destinations) ||
+             !CanAdvanceNewbornAirborneWaypoint(rule, wave, trajectory, region, stats.SpeedMaximum))) return false;
+        return CanAdvanceWaveCounters(mission, rule, wave);
+    }
+
+    private static bool FirstWaypointReachable(IReadOnlyList<SpawnArea> positions,
+        IReadOnlyList<SpawnArea> destinations, int speed)
+    {
         foreach (var position in positions)
             foreach (var destination in destinations)
-                if (!(WorldGeometry.Distance(position.Center, destination.Center) - position.Radius - destination.Radius > WorldGeometry.RadianSpeed(speed) + 1e-12)) return false;
-        return CanAdvanceWaveCounters(mission, rule, wave);
+                if (!(WorldGeometry.Distance(position.Center, destination.Center) - position.Radius - destination.Radius >
+                        WorldGeometry.RadianSpeed(speed) + 1e-12)) return true;
+        return false;
+    }
+
+    private static bool PointSpawnAreas(IReadOnlyList<SpawnArea> areas)
+    {
+        foreach (var area in areas)
+            if (area.Radius != 0) return false;
+        return true;
+    }
+
+    private bool CanAdvanceNewbornAirborneWaypoint(RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int speedMaximum)
+    {
+        // A flying birth can advance exactly once. Keep conditional interruption,
+        // hunting, ground arrival and land-selection consequences in their owners.
+        if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply) ||
+            rule.InterruptResearchId.Length != 0 || !IsAirborne(trajectory.Altitude(0)) ||
+            !IsAirborne(trajectory.Altitude(1)) || trajectory.Waypoints.Count > 2 && trajectory.Altitude(2) == 0 ||
+            !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
+            (wave.HunterKillerPercentage == -1
+                ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
+                : wave.HunterKillerPercentage) > 0 || trajectory.Speed(1, speedMaximum) < 0) return false;
+        if (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count > 256) return false;
+        ValidateWaypointAreas(region, trajectory.Zone(1));
+        return true;
     }
 
     private bool NewEscortWave(RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
