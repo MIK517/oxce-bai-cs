@@ -93,26 +93,19 @@ internal sealed partial class CampaignWorld
         if (mission.Interrupted || mission.NextWave >= rule.Waves.Count || mission.SpawnCountdown > 30 ||
             mission.MultiUfoRetaliationInProgress && !rule.MultiUfoRetaliationExtra) return null;
         var objectiveBirth = false;
-        var escortBirth = false;
         try
         {
             foreach (var step in DueWaveSteps(mission, rule))
             {
                 if (++work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
                 var wave = SpawnWave(step, rule);
-                if (wave.Ufo is not { } handle) continue;
-                if (wave.Objective) objectiveBirth = true;
-                else if (wave.Escort && (wave.HunterKillerPercentage == -1
-                    ? campaign.Content.RuntimeRules.Ufos[handle].Value.HunterKillerPercentage
-                    : wave.HunterKillerPercentage) > 0) escortBirth = true;
+                if (wave.Ufo is not null && wave.Objective) objectiveBirth = true;
             }
         }
         catch (InvalidDataException error) { return error.Message; }
         if (!objectiveBirth) return null;
-        const string specialReason = "Supply source deletion requires conditional hunter or escort leader forecasts.";
-        if (escortBirth) return specialReason;
-        // Saved special actors use shared targeting and conditional leader
-        // flight proofs; only newborn escort initialization still needs its union.
+        // Saved flight and newborn escort initialization consume the optional
+        // leader domain through their shared bounded owners after this phase.
         // Source loss suppresses objective UFOs without interrupting the mission.
         // Counter completion can therefore expire a zero-live mission earlier.
         if (mission.LiveUfos == 0 && MissionExpiryReason(mission, rule, ref work) is { } expiryReason) return expiryReason;

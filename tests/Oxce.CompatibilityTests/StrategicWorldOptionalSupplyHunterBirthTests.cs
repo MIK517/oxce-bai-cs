@@ -77,7 +77,7 @@ public sealed class StrategicWorldOptionalSupplyHunterBirthTests
             "UFO contact marker IDs are exhausted or collide with a saved UFO.");
     }
 
-    private static CampaignSnapshot Target(CampaignSnapshot initial, bool close)
+    internal static CampaignSnapshot Target(CampaignSnapshot initial, bool close)
     {
         initial = initial.WithCraft("SHIP", craft => craft with
         {

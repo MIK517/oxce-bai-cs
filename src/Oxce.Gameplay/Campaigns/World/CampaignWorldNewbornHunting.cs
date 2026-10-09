@@ -11,10 +11,11 @@ internal sealed partial class CampaignWorld
     {
         var rule = MissionRule(mission);
         // Native non-objective Space supply births select region points even
-        // while a source exists. Without escort initialization, clearing that
-        // source cannot change any hunting input or invalidate its proof.
+        // while a source exists. Escort initialization consumes the ordinary
+        // leader domain, whose owner includes optional source-dependent births;
+        // it never reads the source link itself.
         var independent = rule.Objective == RuntimeMissionObjective.Supply &&
-            rule.OperationType == RuntimeMissionOperationType.Space && !wave.Objective && !wave.Escort;
+            rule.OperationType == RuntimeMissionOperationType.Space && !wave.Objective;
         return new(generated ? 0 : mission.Id, mission.RuleId, mission.RegionId, mission.Race, independent ? null : mission.AlienBase,
             wave.Objective ? mission.MissionSiteZoneArea : -1, mission.NextWave, mission.NextUfoCounter,
             wave.UfoType, NewbornHuntMode(wave));

@@ -60,7 +60,11 @@ internal sealed partial class CampaignWorld
             if (work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             (possible ??= []).AddRange(origins);
             canInitialize = true;
-            if (percentage <= 0)
+            // Losing a Space source can omit an objective supply constructor.
+            // Keep its possible origin, but retain nominal idle flight until an
+            // independent ordinary birth establishes attachment in every branch.
+            if (percentage <= 0 && !(missionRule.Objective == RuntimeMissionObjective.Supply && wave.Objective &&
+                _pass.PossibleDailySupplySourceLoss?.Contains(mission.Id) == true))
             {
                 // Native selection stops at the first ordinary leader in list
                 // order. Earlier stochastic leaders remain possible first choices.
