@@ -11,11 +11,13 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldOptionalSupplyEscortSourceTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void OptionalObjectiveLeadersPreserveBothSavedEscortFlightBranches(bool cache, bool arrival)
+    [InlineData(false, false, 0)]
+    [InlineData(true, false, 0)]
+    [InlineData(false, true, 0)]
+    [InlineData(true, true, 0)]
+    [InlineData(false, false, 2)]
+    [InlineData(true, false, 2)]
+    public void OptionalObjectiveLeadersPreserveBothSavedEscortFlightBranches(bool cache, bool arrival, int point)
     {
         TestFixtures.LoadVerifiedManifest("strategic-mission-origin");
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
@@ -28,6 +30,7 @@ public sealed class StrategicWorldOptionalSupplyEscortSourceTests
         for (ulong seed = 1; seed <= 32; seed++)
         {
             var initial = Snapshot(content, seed, arrival);
+            initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { TrajectoryPoint = point }] } };
             var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
             AdvanceUnblocked(campaign, 1);
             var after = campaign.Capture();
@@ -42,7 +45,7 @@ public sealed class StrategicWorldOptionalSupplyEscortSourceTests
             Assert.True(source.Escort);
             Assert.False(source.Hunting);
             Assert.Equal(UfoStatus.Flying, source.Status);
-            Assert.Equal(deleted && arrival ? 1 : 0, source.TrajectoryPoint);
+            Assert.Equal(deleted && arrival ? 1 : point, source.TrajectoryPoint);
             Assert.Equal(deleted && arrival ? 1760 : 2200, source.Speed);
             var origin = new WorldPosition(Degrees(10), Degrees(8));
             var destination = deleted ? initial.World.Ufos[0].Destination!.Position : origin;
@@ -72,6 +75,22 @@ public sealed class StrategicWorldOptionalSupplyEscortSourceTests
         Assert.Equal(2, outcomes.Count);
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void OptionalAttachmentCannotHideConsumedNegativeIdleSpeed(bool cache, int point)
+    {
+        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 0);
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, seed, false);
+            initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { TrajectoryPoint = point, Speed = -1 }] } };
+            AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed)), "UFO speed is invalid.");
+        }
+    }
+
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, bool arrival)
     {
         var initial = StrategicWorldOptionalSupplySourceTests.Snapshot(content, seed);
@@ -90,5 +109,42 @@ public sealed class StrategicWorldOptionalSupplyEscortSourceTests
             Bases = [initial.Bases[0] with { Crafts = [] }],
             World = initial.World with { Missions = [initial.World.Missions[0] with { LiveUfos = 1 }], Ufos = [source] },
         };
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GuaranteedReplacementDoesNotConsumeNegativeOldSpeed(bool cache)
+    {
+        var content = StrategicWorldOptionalSupplySourceTests.Content(cache, 2);
+        var deletedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 2, "CORE");
+        var survivedContent = StrategicWorldOptionalSupplySourceTests.Content(cache, 2, "");
+        HashSet<bool> outcomes = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, seed, false);
+            initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { Speed = -1 }] } };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var deleted = after.CompletedResearch.Contains("BONUS");
+            outcomes.Add(deleted);
+            var source = after.World.Ufos[0];
+            Assert.True(source.Escorting);
+            Assert.Equal(2200, source.Speed);
+            Assert.Equal(WorldGeometry.Move(initial.World.Ufos[0].Position, new(Degrees(10), Degrees(8)), WorldGeometry.RadianSpeed(2200)), source.Position);
+            var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), after, strict: true);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "optional-supply-guaranteed-speed.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 1);
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+        }
+        Assert.Equal(2, outcomes.Count);
     }
 }
