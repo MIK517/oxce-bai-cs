@@ -118,6 +118,8 @@ documents; entries here link to them instead of copying them.
   compose; their daily availability audit correction and all 4,409 root tests pass.
   Stationary, lifting and passive escort followers now compose; ordered takeoff
   vectors are corrected and their batch audit passes all 4,449 root tests.
+  Conditional score/airborne escort arrivals now compose with safe craft pursuit
+  and ordered followers; their batch audit passes all 4,465 root tests.
   See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
   Ordered daily research/site alternatives, remaining
   linked deletion, newborn flight/pursuit composition and final closure keep 4c open;
