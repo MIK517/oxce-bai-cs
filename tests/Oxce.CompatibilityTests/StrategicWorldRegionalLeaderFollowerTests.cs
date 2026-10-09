@@ -99,7 +99,7 @@ public sealed class StrategicWorldRegionalLeaderFollowerTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void GroundedFollowerRequiresItsOwnRegionalFlightProofBeforeAnyBirth(bool cache)
+    public void MalformedGroundedFollowerRefusesBeforeAnyBirth(bool cache)
     {
         var content = StrategicWorldRegionalNewLeaderTests.Content(cache);
         var initial = Snapshot(content, 17, false);
@@ -108,7 +108,7 @@ public sealed class StrategicWorldRegionalLeaderFollowerTests
             World = initial.World with
             {
                 Ufos = [initial.World.Ufos[0], initial.World.Ufos[1] with
-                    { Status = UfoStatus.Landed, Altitude = WorldAltitudes.Ground, Speed = 0, SecondsRemaining = 10 }, initial.World.Ufos[2]],
+                    { Status = UfoStatus.Landed, Altitude = WorldAltitudes.Ground, Speed = 0, SecondsRemaining = 0 }, initial.World.Ufos[2]],
             },
         };
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),

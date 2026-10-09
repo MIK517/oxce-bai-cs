@@ -1068,3 +1068,16 @@ full formatting and code-map/diff verification. The availability correction is
 committed separately. No other confirmed defect was found; useful artifacts remain
 and the pinned reference is clean. Non-flying follower and uncertainty composition
 remain 4c work; later-branch effects and 4d are unchanged.
+
+## Stationary follower cuts through newborn escort chains (2026-10-09)
+
+Valid landed followers with more than five seconds remaining now cut regional
+position dependence. They consume their timer without moving; indirect flying
+escorts use that exact position, and craft arrival checks retain their normal
+owner. Four fresh/cache regressions reproduce the old refusal in both saved
+orders; eight seeds pin actual regional source movement, stationary/indirect
+positions, linked coordinates, shields, activity/live counters, three rewrites
+and control continuation. The old grounded guard now uses malformed zero time.
+All 169 affected cases pass. Reference: pinned Ufo::think's LANDED branch and
+GeoscapeState::time5Seconds, with verified strategic-world/lifecycle captures.
+This is cycle 18 slice one; lift boundaries, passive followers and audit remain.

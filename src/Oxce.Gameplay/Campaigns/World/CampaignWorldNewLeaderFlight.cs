@@ -88,6 +88,7 @@ internal sealed partial class CampaignWorld
             if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             if (saved.UniqueId == source.UniqueId) continue;
             var projected = UfoForFlight(saved, _pass.NewbornHighestTrigger);
+            if (StationaryNewLeaderFollower(projected)) continue;
             if (projected.Destination is not { Kind: WorldTargetKind.Ufo } target) continue;
             if (NewLeaderPursuitDependency(target, source, ref work, out var depends) is { } reason) return reason;
             if (!depends) continue;
