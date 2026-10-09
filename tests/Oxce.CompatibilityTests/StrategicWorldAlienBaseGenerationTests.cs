@@ -193,7 +193,6 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     }
 
     [Theory]
-    [InlineData("GEN_IMMEDIATE_UFO", "Immediate generated mission waves require creation-tick lifecycle forecasts.")]
     [InlineData("GEN_FUTURE_REGION", "Alien base mission region timeline has no entry for the current month.")]
     [InlineData("GEN_INVALID_ZONE", "Alien base site mission has an invalid spawn zone.")]
     [InlineData("GEN_WEIGHT_OVERFLOW", "Alien base mission weights exceed the supported range.")]
@@ -202,6 +201,47 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     {
         var content = Load();
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, mission), content, new MinimumChoices()), reason);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImmediatePatrolGenerationSupportsBothRoundedCountdownOutcomes(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var content = Load(cache);
+        var bornSeen = false;
+        var delayedSeen = false;
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, "GEN_IMMEDIATE_UFO") with { RandomState = seed };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var mission = Assert.Single(after.World.Missions);
+            var born = after.World.Ufos.Count != 0;
+            bornSeen |= born;
+            delayedSeen |= !born;
+            Assert.Equal(born ? 1 : 0, mission.NextWave);
+            Assert.Equal(born ? 1 : 0, mission.LiveUfos);
+            Assert.Equal(1, Assert.Single(after.World.AlienBases).GenMissionCount);
+            Assert.Equal(born ? 3 : 0, after.Regions[0].ActivityAlien[^1]);
+            if (born)
+            {
+                var ufo = Assert.Single(after.World.Ufos);
+                Assert.Equal("UFO_SCOUT", ufo.RuleId);
+                Assert.Equal(mission.Id, ufo.MissionId);
+                Assert.Equal(0, ufo.MissionWaveNumber);
+                Assert.Equal(UfoStatus.Flying, ufo.Status);
+            }
+            campaign = Reload(content, campaign, seed, "generated-immediate-patrol.sav");
+            var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(control, 2);
+            AdvanceUnblocked(campaign, 1);
+            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+        }
+        Assert.True(bornSeen);
+        Assert.True(delayedSeen);
     }
 
     [Theory]

@@ -111,7 +111,9 @@ documents; entries here link to them instead of copying them.
   hunters now compose; their batch audit and all 4,288 root tests pass, including
   eleven strategic saves completing the fixed continuation horizon. Forecasted idle
   hunts, safe hunt alternatives and escort/research first arrivals now compose;
-  their initial-speed audit correction and all 4,322 root tests pass.
+  their initial-speed audit correction and all 4,322 root tests pass. Newborn
+  point/regional ground arrivals and bounded replacement land selection now compose;
+  their initial-destination work audit correction and all 4,387 root tests pass.
   See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
   Ordered daily research/site alternatives, remaining
   linked deletion, newborn flight/pursuit composition and final closure keep 4c open;

@@ -13,7 +13,7 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldMissionCountdownTests
 {
     [Fact]
-    public void CountdownPersistsAndStopsBeforeAnUnsupportedWave()
+    public void CountdownPersistsAndSpawnsItsSupportedPatrolWave()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateCampaign(content);
@@ -27,13 +27,23 @@ public sealed class StrategicWorldMissionCountdownTests
         Assert.Equal(360, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(second.Events)).Summary.TickCount);
         Assert.Equal(30, Assert.Single(reloaded.Capture().World.Missions).SpawnCountdown);
 
-        var beforeSpawn = reloaded.Capture();
-        var stopped = reloaded.Execute(new AdvanceCampaignTime(360));
-        Assert.Equal(359, Assert.IsType<CampaignTimeAdvanced>(stopped.Events[0]).Summary.TickCount);
-        Assert.Equal("Alien mission wave spawning requires world simulation.",
-            Assert.IsType<CampaignActionBlocked>(stopped.Events[^1]).Reason);
-        Assert.Equal(beforeSpawn.World.Missions, reloaded.Capture().World.Missions);
-        Assert.Empty(reloaded.Capture().World.Ufos);
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var spawned = reloaded.Execute(new AdvanceCampaignTime(360));
+        Assert.Empty(spawned.Events.OfType<CampaignActionBlocked>());
+        Assert.Equal(360, Assert.IsType<CampaignTimeAdvanced>(spawned.Events[0]).Summary.TickCount);
+        var after = reloaded.Capture();
+        var mission = Assert.Single(after.World.Missions);
+        Assert.Equal(0, mission.NextWave);
+        Assert.Equal(1, mission.NextUfoCounter);
+        Assert.Equal(1, mission.LiveUfos);
+        Assert.True(mission.SpawnCountdown > 30);
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.Equal("UFO_SCOUT", ufo.RuleId);
+        Assert.Equal(mission.Id, ufo.MissionId);
+        Assert.Equal(0, ufo.MissionWaveNumber);
+        Assert.InRange(ufo.TrajectoryPoint, 0, 1);
+        Assert.Equal(UfoStatus.Flying, ufo.Status);
+        Reload(content, reloaded, 45, "mission-countdown-spawned.sav");
     }
 
     [Fact]
@@ -308,12 +318,26 @@ public sealed class StrategicWorldMissionCountdownTests
     }
 
     [Fact]
-    public void ZeroTimerFollowUpWaveStopsBeforeTheRecursiveSpawn()
+    public void ZeroTimerFollowUpWaveExecutesTheBoundedPatrolSpawn()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateWaveCampaign(content, "MISSION_EMPTY_RECURSIVE");
 
-        AssertTimeBlocked(campaign, "Alien mission wave spawning requires world simulation.");
+        TestFixtures.LoadVerifiedManifest("strategic-wave-chain");
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var mission = Assert.Single(after.World.Missions);
+        Assert.Equal(2, mission.NextWave);
+        Assert.Equal(0, mission.NextUfoCounter);
+        Assert.Equal(1, mission.LiveUfos);
+        var ufo = Assert.Single(after.World.Ufos);
+        Assert.Equal("UFO_SCOUT", ufo.RuleId);
+        Assert.Equal(1, ufo.MissionWaveNumber);
+        Assert.Equal(mission.Id, ufo.MissionId);
+        Assert.Equal(UfoStatus.Flying, ufo.Status);
+        campaign = Reload(content, campaign, 66, "recursive-patrol-spawned.sav");
+        AdvanceUnblocked(campaign, 1);
+        Assert.Single(campaign.Capture().World.Ufos);
     }
 
     [Fact]

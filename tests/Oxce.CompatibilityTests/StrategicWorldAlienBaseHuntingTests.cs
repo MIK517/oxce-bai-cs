@@ -497,15 +497,17 @@ public sealed class StrategicWorldAlienBaseHuntingTests
     private static RuntimeContent Load(bool cache, string extraRules = "")
     {
         TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-timer");
-        // These eligibility guards require an immediate site objective, whose
-        // creation effects remain unavailable. Airborne hunters have separate acceptance.
+        // These eligibility guards require a genuine first-arrival conversion:
+        // current zone equals spawnZone. Ordinary first landings are supported.
         var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-hunt-timer.rul", "strategic-alien-base-hunt-generation.rul"], cache,
             """
+            ufoTrajectories:
+              - {id: HUNT_UNAVAILABLE_CONVERSION, groundTimer: 6, waypoints: [[1, 3, 100], [1, 0, 60], [0, 4, 100]]}
             alienMissions:
               - type: HUNT_UNSAFE_WAVE
                 objective: 3
                 spawnZone: 1
-                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: 30, objective: true}]
+                waves: [{ufo: UFO_SCOUT, count: 1, trajectory: HUNT_UNAVAILABLE_CONVERSION, timer: 30, objective: true}]
             alienDeployments:
               - type: HUNT_UNSAFE
                 alienBase: true

@@ -363,7 +363,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
     {
         foreach (var hunting in new[] { false, true })
         {
-            var content = GeneratedWaveContent(cache, 0, hunting, site: true, siteObjectiveTimer: 0);
+            var content = GeneratedWaveContent(cache, 0, hunting, site: true, siteObjectiveTimer: 0, siteConversion: true);
             var initial = hunting ? HuntingGeneratedWaveSnapshot(content, new(1, 1, 1, 1999, 0, 29, 55))
                 : GeneratedWaveSnapshot(content, 19);
             if (hunting) initial = initial with
@@ -375,7 +375,7 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
         }
     }
 
-    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0, bool site = false, int siteObjectiveTimer = 9000, int missionPoints = 0) =>
+    private static RuntimeContent GeneratedWaveContent(bool cache, int timer, bool hunting = false, bool combined = false, bool chain = false, int groundTimer = 0, int hunterPercentage = 0, bool site = false, int siteObjectiveTimer = 9000, int missionPoints = 0, bool siteConversion = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-alien-base-generation.rul"], cache,
             $$$"""
             alienDeployments:
@@ -398,8 +398,9 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 spawnZone: 1
                 interruptResearch: GEN_STOP
                 {{{(chain ? "regionWeights: {0: {REGION_SECOND: 1}}\n    raceWeights: {0: {RACE_A: 1, RACE_B: 1}}" : "")}}}
-                waves: {{{GeneratedWaves(timer, chain, groundTimer, hunterPercentage, site, siteObjectiveTimer)}}}
+                waves: {{{GeneratedWaves(timer, chain, groundTimer, hunterPercentage, site, siteObjectiveTimer, siteConversion)}}}
             ufoTrajectories:
+              - {id: GENERATED_SITE_CONVERSION, groundTimer: 6, waypoints: [[1, 3, 100], [1, 0, 60], [0, 4, 100]]}
               - id: GENERATED_GROUND_PATH
                 groundTimer: {{{groundTimer}}}
                 waypoints: [[4, 0, 100], [5, 2, 80], [0, 3, 50]]
@@ -408,8 +409,8 @@ public sealed partial class StrategicWorldAlienBaseGenerationTests
                 sightRange: 0
             """);
 
-    private static string GeneratedWaves(int timer, bool chain, int groundTimer, int hunterPercentage, bool site, int siteObjectiveTimer) => site
-        ? $"[{{ufo: UFO_SCOUT, count: 1, trajectory: {(groundTimer != 0 ? "GENERATED_GROUND_PATH" : "TRAJ_SPAWN_FIXED")}, timer: {timer}}}, {{ufo: UFO_SCOUT, count: 1, trajectory: TRAJ_SITE, timer: {siteObjectiveTimer}, objective: true}}]"
+    private static string GeneratedWaves(int timer, bool chain, int groundTimer, int hunterPercentage, bool site, int siteObjectiveTimer, bool siteConversion) => site
+        ? $"[{{ufo: UFO_SCOUT, count: 1, trajectory: {(groundTimer != 0 ? "GENERATED_GROUND_PATH" : "TRAJ_SPAWN_FIXED")}, timer: {timer}}}, {{ufo: UFO_SCOUT, count: 1, trajectory: {(siteConversion ? "GENERATED_SITE_CONVERSION" : "TRAJ_SITE")}, timer: {siteObjectiveTimer}, objective: true}}]"
         : chain
         ? "[{ufo: UFO_SCOUT, count: 2, trajectory: TRAJ_SPAWN_FIXED, timer: 0}, {ufo: UFO_SCOUT, count: 3, trajectory: TRAJ_SPAWN_FIXED, timer: 0}]"
         : $"[{{ufo: UFO_SCOUT, count: 1, trajectory: {(groundTimer != 0 ? "GENERATED_GROUND_PATH" : "TRAJ_SPAWN_FIXED")}, timer: {timer}, hunterKillerPercentage: {hunterPercentage}}}]";

@@ -33,7 +33,7 @@ public sealed class StrategicWorldEarthRectangleOriginTests
             var random = new SplitMix64RandomSource(17);
             var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("REGION")].Value;
             if (groundNext != 0) random.NextInclusive(0, 99);
-            WorldGeometry.RandomPoint(region, 0, -1, random);
+            var regionalOrigin = WorldGeometry.RandomPoint(region, 0, -1, random);
             WorldGeometry.RandomPoint(region, 5, -1, random);
             WorldTrajectory.SpawnCountdown(9000, random);
             random.NextInclusive(0, 99);
@@ -55,7 +55,20 @@ public sealed class StrategicWorldEarthRectangleOriginTests
                 World = snapshot.World with
                 { Missions = [mission with { RuleId = $"EARTH_RECT_0_{groundNext}" }] }
             }, content, new SplitMix64RandomSource(17));
-            AssertTimeBlocked(space, "Alien mission wave spawning requires world simulation.");
+            AdvanceUnblocked(space, 1);
+            var spaceAfter = space.Capture();
+            var spaceUfo = Assert.Single(spaceAfter.World.Ufos);
+            var destination = new WorldPosition(Degrees(8), Degrees(2));
+            var arrived = WorldGeometry.Distance(regionalOrigin, destination) <= WorldGeometry.RadianSpeed(2200);
+            var spaceRandom = new SplitMix64RandomSource(random.State);
+            if (arrived)
+                for (var draw = 0; draw < 6; draw++) spaceRandom.NextUnit();
+            Assert.Equal(spaceRandom.State, spaceAfter.RandomState);
+            Assert.Equal(WorldGeometry.Move(regionalOrigin, destination, WorldGeometry.RadianSpeed(2200)), spaceUfo.Position);
+            Assert.Equal(arrived ? 1 : 0, spaceUfo.TrajectoryPoint);
+            Assert.Equal(arrived && groundNext != 0 ? UfoStatus.Landed : UfoStatus.Flying, spaceUfo.Status);
+            Assert.Equal(1, Assert.Single(spaceAfter.World.Missions).LiveUfos);
+            Reload(content, space, 17, "space-rectangle-origin.sav");
         }
     }
 }

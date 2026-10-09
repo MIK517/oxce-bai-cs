@@ -100,7 +100,7 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
         int points = 0, bool alerts = false, int nextSpeedPercentage = 80,
         int hunterPercentage = 0, bool escort = false, int radarRange = 0, int huntSpeed = 0,
         int firstSpeedPercentage = 100, int arrivalAltitude = 2, int fakeWaterLandingChance = 0,
-        bool extraRulesAfterOverlays = false) =>
+        bool extraRulesAfterOverlays = false, int objective = 0) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             {{{extraRules}}}
             ufos:
@@ -110,7 +110,7 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
             alienMissions:
               - type: FIRST_ARRIVAL_MISSION
                 interruptResearch: {{{interrupt}}}
-                objective: 0
+                objective: {{{objective}}}
                 points: {{{points}}}
             {{{(generationRegion.Length == 0 ? "" : "    regionWeights: {0: {" + generationRegion + ": 1}}")}}}
                 waves:

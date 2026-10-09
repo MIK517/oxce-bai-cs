@@ -208,6 +208,7 @@ internal sealed partial class CampaignWorld
             work += NewbornLandingGeometryWork(destinations);
         if (work > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
         landWork += SpawnOriginLandWork(mission, rule, trajectory, region);
+        landWork += SpawnDestinationLandWork(mission, rule, trajectory, region);
         if (trajectory.Altitude(0) != 0 && TryNewbornInitialSpeed(trajectory,
                 rules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).SpeedMaximum, out var firstSpeed) &&
             FirstWaypointReachable(origins, destinations, firstSpeed))
