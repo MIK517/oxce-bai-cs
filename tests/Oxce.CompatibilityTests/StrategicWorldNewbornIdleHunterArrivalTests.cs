@@ -19,16 +19,17 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         HashSet<(bool Hunter, int Mode, int Behavior)> outcomes = [];
-        for (var craftKind = 0; craftKind < 3; craftKind++)
+        for (var craftKind = 0; craftKind < 6; craftKind++)
         {
             var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false,
-                hunterPercentage: percentage, extraRules: craftKind == 2 ? "crafts: [{type: SHIP, undetectable: true}]" : "");
+                hunterPercentage: percentage, extraRules: craftKind == 2 ? "crafts: [{type: SHIP, undetectable: true}]" : "",
+                radarRange: craftKind == 4 ? 300 : craftKind == 5 ? int.MinValue : 0);
             for (ulong seed = 1; seed <= 32; seed++)
             {
                 var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, seed);
                 if (craftKind == 0)
                     initial = initial with { Bases = [initial.Bases[0] with { Crafts = [], Soldiers = [] }] };
-                else if (craftKind == 2)
+                else if (craftKind >= 2)
                     initial = initial.WithCraft("SHIP", craft => craft with
                     {
                         Logistics = craft.Logistics! with
@@ -54,7 +55,7 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
                 // Detection draws at zero chance for each base and outbound craft;
                 // being undetectable to hunters does not remove the craft radar caller.
                 // Every arrival then makes two native waypoint selections.
-                for (var draw = 0; draw < 3 * (craftKind == 2 ? 8 : 7); draw++) expectedRandom.NextUnit();
+                for (var draw = 0; draw < 3 * (craftKind >= 2 ? 8 : 7); draw++) expectedRandom.NextUnit();
                 var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
                 var result = campaign.Execute(new AdvanceCampaignTime(1));
                 Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
@@ -98,7 +99,7 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
     [InlineData(true, true)]
     public void ConditionalHuntsAndEscortLeadersRetainAtomicBoundaries(bool cache, bool escort)
     {
-        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, escort: escort);
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 50, escort: escort, radarRange: 2000);
         var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17);
         if (escort)
             initial = initial with { Bases = [initial.Bases[0] with { Crafts = [], Soldiers = [] }] };
@@ -117,5 +118,28 @@ public sealed class StrategicWorldNewbornIdleHunterArrivalTests
             });
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Alien mission wave spawning requires world simulation.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NoTargetArrivalCannotHideInvalidCraftAttraction(bool cache)
+    {
+        var content = StrategicWorldNewbornFirstArrivalTests.Content(cache, false, hunterPercentage: 100,
+            extraRules: "crafts: [{type: SHIP, soldiers: 2147483647}]");
+        var initial = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 17).WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Speed = 0,
+                Fuel = 100,
+                Longitude = Degrees(20),
+                Latitude = Degrees(2),
+                Destination = WorldTargetReference.ForWaypoint(5, new(Degrees(30), Degrees(2))),
+            },
+        });
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "Craft hunter attraction exceeds the supported range.");
     }
 }
