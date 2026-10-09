@@ -1029,3 +1029,13 @@ Reference: pinned GeoscapeState::ufoHuntingAndEscorting/time5Seconds,
 Ufo::setEscortedUfo/backupOriginalDestination and MovingTarget::move; verified
 strategic-hunting and strategic-world-lifecycle captures. This is cycle 17 slice
 one; player pursuit, transitive followers and its batch audit remain.
+
+Regional leader attachment now composes with player craft pursuit through a
+bounded movement envelope. The proof includes projected servicing, takeoff and
+fuel-return state, preserving target identity and actual runtime coordinates.
+Exact arrival code cannot consume the regional status-only stand-in. Four cases
+reproduce far/takeoff refusal; eight seeds per fresh/cache case assert movement,
+three rewrites and continuation, while both close cases remain atomic. All 636
+affected hunting, escort and pursuit cases pass. Reference: GeoscapeState craft
+movement, MovingTarget::calculateSpeed/move and existing strategic-hunting traces.
+This is cycle 17 slice two; transitive UFO followers and batch audit remain.

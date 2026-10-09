@@ -84,15 +84,9 @@ internal sealed partial class CampaignWorld
             if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
             if (saved.Escorting && FollowsUfo(saved.Destination, source)) depends = true;
         }
-        foreach (var owner in campaign.BaseStates)
-        {
-            if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
-            foreach (var craft in owner.Crafts)
-            {
-                if (++work > MaximumAlienBaseChecks) return NewbornEscortOriginWorkReason;
-                if (craft.Logistics is { Status: "STR_OUT" } state && FollowsUfo(state.Destination, source)) depends = true;
-            }
-        }
+        // Craft pursuit consumes the whole movement envelope, not an invented
+        // regional coordinate. Near arrivals remain guarded before any birth.
+        if (NewLeaderCraftPursuitReason(source, ref work) is { } pursuitReason) return pursuitReason;
         return null;
     }
 }

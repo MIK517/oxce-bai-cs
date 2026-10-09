@@ -71,8 +71,68 @@ public sealed class StrategicWorldRegionalNewLeaderTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool multiple = false) =>
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    public void RegionalAttachmentPreservesFarCraftPursuitAndGuardsCloseCombat(bool cache, bool close, bool takeoff)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = Content(cache, true, "crafts: [{type: SHIP, radarRange: 20000, radarChance: 100}]\n");
+        for (ulong seed = 1; seed <= 8; seed++)
+        {
+            var initial = Snapshot(content, seed);
+            var source = initial.World.Ufos[0] with { Detected = true };
+            var from = close ? source.Position : new WorldPosition(1, 0.6);
+            initial = initial with
+            {
+                Bases = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, seed).Bases,
+                World = initial.World with { Ufos = [source] },
+            };
+            initial = initial.WithCraft("SHIP", craft => craft with
+            {
+                Logistics = craft.Logistics! with
+                {
+                    Status = "STR_OUT", Fuel = 1000, Damage = 0, Speed = 6000, Takeoff = takeoff ? 1 : 0,
+                    Longitude = from.Longitude, Latitude = from.Latitude,
+                    Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, source.Id,
+                        source.Longitude, source.Latitude) { UniqueId = source.UniqueId },
+                },
+            });
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            if (close)
+            {
+                AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn craft pursuit forecasts.");
+                continue;
+            }
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var escort = after.World.Ufos[0];
+            var state = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP").Logistics!;
+            Assert.True(escort.Escorting);
+            Assert.True(escort.Detected);
+            Assert.Equal(escort.UniqueId, state.Destination!.UniqueId);
+            Assert.Equal(escort.Position, state.Destination.Position);
+            var expected = takeoff ? from : WorldGeometry.Move(from, escort.Position, WorldGeometry.RadianSpeed(6000));
+            Assert.Equal(expected, new(state.Longitude, state.Latitude));
+            for (var pass = 0; pass < 3; pass++)
+            {
+                campaign = Reload(content, campaign, seed, "regional-leader-pursuit.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(control, 3);
+            AdvanceUnblocked(campaign, 2);
+            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+        }
+    }
+
+    internal static RuntimeContent Content(bool cache, bool multiple = false, string extraRules = "") =>
         StrategicWorldNewbornFirstArrivalTests.Content(cache, false, extraRules: $$$"""
+            {{{extraRules}}}
             regions:
               - type: LEADER_REGION
                 areas: [[0, 30, -20, 20]]
