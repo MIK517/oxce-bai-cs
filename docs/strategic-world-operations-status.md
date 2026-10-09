@@ -876,3 +876,19 @@ hunts and escort-leader boundaries remain atomic.
 Four positive cases reproduce the prior coarse craft exclusion. All 132 affected
 tests pass. This is cycle 15's first slice; safe hunt alternatives, research/escort
 composition and the batch audit remain. Branch 4d and later-branch gates are unchanged.
+
+## Safe hunt and ordinary-arrival alternatives (2026-10-09)
+
+The first-airborne proof also consumes the existing bounded safe-hunt result for
+nonescort births. A successful constructor may target a distant craft; its ordinary
+alternative can advance one airborne waypoint. Pinned GeoscapeState retarget/move
+ordering and Ufo/AlienMission constructor/arrival callers, with verified hunting/
+lifecycle traces, back all eight three-wave constructor patterns, both native mode/
+behavior choices and unchanged versus 150-percent hunt speed. Fresh/cache fixtures
+pass explicit slow/day speed context, preserve original waypoints, live movement,
+contact markers and notifications, exact RNG, three rewrites and following ticks.
+A reachable craft retains the precise precombat refusal before any random choice.
+
+Four cases reproduce the former no-target-only boundary. All 124 affected tests
+pass. This is cycle 15's second slice; research/escort composition and the batch
+audit remain. Branch 4d and unavailable combat/landing/event consequences are unchanged.

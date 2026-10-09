@@ -441,7 +441,8 @@ internal sealed partial class CampaignWorld
                 ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
                 : wave.HunterKillerPercentage) > 0 &&
             (wave.Escort || !(NoCraftCanBecomeHunterTarget() ||
-                HasHuntingProof(_pass.NewbornNoTargetProofs, mission, wave)))) return false;
+                HasHuntingProof(_pass.NewbornNoTargetProofs, mission, wave) ||
+                HasHuntingProof(_pass.NewbornSafeHuntingProofs, mission, wave)))) return false;
         // Validate the native wide intermediate before narrowing. Calling Speed
         // here would throw rather than return an atomic capability refusal.
         var replacementSpeed = (long)speedMaximum * trajectory.Waypoints[1].SpeedPercentage / 100;
