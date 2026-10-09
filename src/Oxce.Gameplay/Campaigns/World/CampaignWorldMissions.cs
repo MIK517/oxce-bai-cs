@@ -412,7 +412,8 @@ internal sealed partial class CampaignWorld
         // Landed births consume their ground timer, including a possible lift,
         // without moving in this pass. Their next tick uses saved-UFO proofs.
         if (trajectory.Altitude(0) != 0 && FirstWaypointReachable(positions, destinations, speed) &&
-            !CanAdvanceNewbornAirborneWaypoint(mission, rule, wave, trajectory, region, stats.SpeedMaximum)) return false;
+            !CanAdvanceNewbornAirborneWaypoint(mission, rule, wave, trajectory, region, stats.SpeedMaximum,
+                requireHuntingForecast)) return false;
         return CanAdvanceWaveCounters(mission, rule, wave);
     }
 
@@ -427,10 +428,12 @@ internal sealed partial class CampaignWorld
     }
 
     private bool CanAdvanceNewbornAirborneWaypoint(AlienMissionSnapshot mission, RuntimeAlienMissionRule rule, RuntimeMissionWave wave,
-        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int speedMaximum)
+        RuntimeUfoTrajectoryRule trajectory, RuntimeRegionRule region, int speedMaximum, bool requireHuntingForecast)
     {
-        // A flying birth can advance exactly once. Keep conditional interruption,
-        // hunting, ground arrival and land-selection consequences in their owners.
+        // A flying birth can advance exactly once. Early read-only site projection
+        // defers hunt/escort proof to final mission preflight, after its research
+        // forecast is available. Actual spawning always requires that owning proof.
+        // Conditional interruption, ground arrival and land selection stay guarded.
         if (rule.Objective is not (RuntimeMissionObjective.Score or RuntimeMissionObjective.Supply or
                 RuntimeMissionObjective.Site or RuntimeMissionObjective.Base or RuntimeMissionObjective.Infiltration) ||
             _pass.SiteResearchForecast?.PossibleExplicitTopics.Contains(rule.InterruptResearchId) == true ||
@@ -439,10 +442,8 @@ internal sealed partial class CampaignWorld
             !(rule.Objective == RuntimeMissionObjective.Supply && wave.Objective) &&
             (wave.HunterKillerPercentage == -1
                 ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
-                : wave.HunterKillerPercentage) > 0 &&
-            (wave.Escort || !(NoCraftCanBecomeHunterTarget() ||
-                HasHuntingProof(_pass.NewbornNoTargetProofs, mission, wave) ||
-                HasHuntingProof(_pass.NewbornSafeHuntingProofs, mission, wave)))) return false;
+                : wave.HunterKillerPercentage) > 0 && requireHuntingForecast &&
+            !NewbornHuntingIsForecast(mission, wave)) return false;
         // Validate the native wide intermediate before narrowing. Calling Speed
         // here would throw rather than return an atomic capability refusal.
         var replacementSpeed = (long)speedMaximum * trajectory.Waypoints[1].SpeedPercentage / 100;

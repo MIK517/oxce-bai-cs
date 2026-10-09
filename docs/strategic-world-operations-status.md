@@ -892,3 +892,24 @@ A reachable craft retains the precise precombat refusal before any random choice
 Four cases reproduce the former no-target-only boundary. All 124 affected tests
 pass. This is cycle 15's second slice; research/escort composition and the batch
 audit remain. Branch 4d and unavailable combat/landing/event consequences are unchanged.
+
+## Escort and site-research first-arrival composition (2026-10-09)
+
+The ordinary first-airborne owner now composes existing safe-hunt and no-target
+proofs with escort constructors. Native initialization can attach an earlier leader;
+retargeting can attach a later appended ordinary leader. All-hunter chains without
+a leader retain ordinary waypoint advancement. Early read-only site projection
+defers hunting proof to final mission preflight; runtime spawning always requires
+that proof after the complete site forecast. Relevant later interrupt topics and
+invalid attraction still refuse before research or wave mutation.
+
+Pinned AlienMission::spawnUfo, GeoscapeState::ufoHuntingAndEscorting/time30Minutes/
+time5Seconds and mission-site research callers, with verified hunting/lifecycle/
+site captures, back fresh/cache saved/later/no-leader alternatives, all eight
+constructor patterns, exact RNG and stable unique targets through three rewrites.
+Active craft combine separated or safe hunts with site grants; control worlds
+preserve UFO/RNG state, including automatic CORE/UNLOCK diary order and sources.
+Capacity and precombat refusals remain precise. Twenty new cases and two stronger
+capacity assertions reproduce the previous boundaries; all 150 affected tests pass.
+This completes cycle 15's execution slices; their batch audit and full validation
+follow. Branch 4d and unavailable landing/combat/event effects are unchanged.
