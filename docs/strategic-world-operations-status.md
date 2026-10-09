@@ -752,3 +752,20 @@ All ten new regional/caller cases reproduce the point-only restriction before
 the change. All 142 affected tests pass, including six further capacity/endurance
 cases. Targeted formatting, regenerated code-map and diff checks pass. This is
 cycle 13's second slice; overlapping ground starts and batch audit remain.
+
+## Overlapping newborn ground starts (2026-10-09)
+
+A grounded birth no longer requires its first destination to be farther than one
+flight step. Native GeoscapeState::time5Seconds enters LANDED, consumes five
+seconds and may lift without moving or recharging; subsequent ticks use the saved
+UFO arrival owner. Existing ground-supply and assault starts retain their precise
+checks. Lifecycle spawn/lift captures back one-, two- and ten-tick stays, exact
+creation/detection RNG, double landed activity, lift points and initial shields.
+Fresh/cache fixtures preserve detection/landing markers through lift, clear them
+on the next airborne arrival, reserve combined activity and marker capacity,
+rewrite saves three times and compose both regional generation callers.
+
+All 16 new cases reproduce the distance refusal before the change. All 72 affected
+tests pass; targeted formatting, code-map and diff checks pass. This completes
+cycle 13's execution slices; their batch audit and full validation follow. 4c and
+its later-branch boundaries remain open; 4d is untouched.

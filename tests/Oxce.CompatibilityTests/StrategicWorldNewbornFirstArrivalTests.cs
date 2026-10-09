@@ -89,17 +89,19 @@ public sealed class StrategicWorldNewbornFirstArrivalTests
     }
 
     internal static RuntimeContent Content(bool cache, bool separate, string interrupt = "", int nextAltitude = 3,
-        string extraRules = "", string generationRegion = "") =>
+        string extraRules = "", string generationRegion = "", int firstAltitude = 3, int groundTimer = 0,
+        int points = 0, bool alerts = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             {{{extraRules}}}
             ufos:
-              - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: true, shieldCapacity: 10, shieldRechargeInGeoscape: 100}
+              - {type: FIRST_ARRIVAL_UFO, speedMax: 2200, damageMax: 50, missionScore: 3, noAlert: {{{(alerts ? "false" : "true")}}}, shieldCapacity: 10, shieldRechargeInGeoscape: 100}
             ufoTrajectories:
-              - {id: FIRST_ARRIVAL_AIR, waypoints: [[5, 3, 100], [{{{(separate ? 6 : 5)}}}, 2, 80], [4, {{{nextAltitude}}}, 100]]}
+              - {id: FIRST_ARRIVAL_AIR, groundTimer: {{{groundTimer}}}, waypoints: [[5, {{{firstAltitude}}}, 100], [{{{(separate ? 6 : 5)}}}, 2, 80], [4, {{{nextAltitude}}}, 100]]}
             alienMissions:
               - type: FIRST_ARRIVAL_MISSION
                 interruptResearch: {{{interrupt}}}
                 objective: 0
+                points: {{{points}}}
             {{{(generationRegion.Length == 0 ? "" : "    regionWeights: {0: {" + generationRegion + ": 1}}")}}}
                 waves:
                   - {ufo: FIRST_ARRIVAL_UFO, count: 1, trajectory: FIRST_ARRIVAL_AIR, timer: 0}
