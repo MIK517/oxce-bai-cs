@@ -122,6 +122,9 @@ documents; entries here link to them instead of copying them.
   and ordered followers; their batch audit passes all 4,465 root tests.
   Conditional objective, selected-area and bounded land-lookahead arrivals now
   compose too; their batch audit passes all 4,495 root tests.
+  Optional Earth special actors, Space supply hunters and source-independent
+  hunter births now compose; their batch audit passes all 4,525 root tests.
+  See [optional source evidence](strategic-world-research-status.md#optional-earth-source-loss-with-special-ufos-2026-10-09).
   See [conditional waypoint evidence](strategic-world-operations-status.md#conditional-escort-waypoint-selection-2026-10-09).
   See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
   Ordered daily research/site alternatives, remaining
