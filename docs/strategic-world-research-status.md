@@ -1664,3 +1664,13 @@ old guard before implementation. All 152 affected tests pass, with targeted
 format/map/diff checks. Reference: Craft::getFuelConsumption positive escort caps
 and Geoscape saved-order fuel loop, with verified escortFuelRows. This completes
 cycle 24's third slice; the batch audit follows.
+
+Cycle 24 batch audit found no additional confirmed defect. Reviewed source and
+escort burn branches, strict range/positive-speed caps, saved-order low-fuel
+propagation, grounded relaunch and transfer inputs, immutable detection stats,
+pre-movement hunter coordinates, work accounting and malformed boundaries. All
+4,653 root tests pass with zero failures/skips, including checksums, private corpus
+and populated allocation gates. Full formatting/map/diff pass and reference is
+clean. No new native artifacts were generated; useful logs/captures remain.
+Zero-speed consumer proofs, near-home/transfer alternatives and final closure
+keep 4c open; 4d remains untouched.
