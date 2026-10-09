@@ -971,7 +971,7 @@ public sealed class StrategicWorldEscortSpawnTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void LoadedIdleEscortRetainsArrivalGuardForUncertainFirstLeader(bool cache, bool regional)
+    public void LoadedIdleEscortRequiresGuaranteedFirstLeader(bool cache, bool regional)
     {
         var content = Load(cache, $$"""
             regions:
@@ -996,8 +996,24 @@ public sealed class StrategicWorldEscortSpawnTests
                 Ufos = [initial.World.Ufos[0] with { TrajectoryPoint = 2, Destination = WorldTargetReference.ForWaypoint(0, new(0.400001, 0.2)) }]
             }
         };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)),
-            "Loaded idle escorts require same-tick newborn waypoint forecasts.");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        if (!regional)
+        {
+            AssertTimeBlocked(campaign, "Loaded idle escorts require same-tick newborn waypoint forecasts.");
+            return;
+        }
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var escort = after.World.Ufos.Single(ufo => ufo.UniqueId == 9);
+        var leader = Assert.Single(after.World.Ufos, ufo => !ufo.HunterKiller);
+        Assert.True(escort.Escorting);
+        Assert.Equal(leader.UniqueId, escort.Destination!.UniqueId);
+        Assert.Equal(UfoStatus.Flying, escort.Status);
+        Assert.Equal(2, escort.TrajectoryPoint);
+        Assert.Equal(initial.World.Ufos[0].Destination!.Position, escort.OriginalWaypoint);
+        campaign = Reload(content, campaign, 81, "guaranteed-regional-leader.sav");
+        Assert.Equivalent(after, campaign.Capture(), strict: true);
+        AdvanceUnblocked(campaign, 1);
     }
 
     [Theory]
