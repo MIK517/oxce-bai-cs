@@ -10,7 +10,8 @@ internal static class StrategicReadinessTestContent
     public static RuntimeContent Load(string overlay = "strategic-bases.rul", bool fromCache = false)
         => Load([overlay], fromCache);
 
-    public static RuntimeContent Load(IReadOnlyList<string> overlays, bool fromCache = false, string? extraRules = null)
+    public static RuntimeContent Load(IReadOnlyList<string> overlays, bool fromCache = false, string? extraRules = null,
+        bool extraRulesAfterOverlays = false)
     {
         var repository = Oxce.FixtureSupport.FixturePaths.FindRepositoryRoot();
         var root = Path.Combine(Path.GetTempPath(), $"oxce-readiness-content-{Guid.NewGuid():N}");
@@ -25,7 +26,9 @@ internal static class StrategicReadinessTestContent
                     Path.Combine(root, "standard/logistics/Ruleset", targetName));
             }
             if (extraRules is not null)
-                File.WriteAllText(Path.Combine(root, "standard/logistics/Ruleset/zz-generated-test.rul"), extraRules);
+                // The reference loads ruleset filenames in descending order.
+                File.WriteAllText(Path.Combine(root, "standard/logistics/Ruleset",
+                    extraRulesAfterOverlays ? "a0-generated-test.rul" : "zz-generated-test.rul"), extraRules);
             var request = InstallationLoadRequest.ForMasterAndAddOn(root, "logistics", "-", TestFixtures.Engine);
             var loaded = InstallationContentLoader.Load(request, cancellationToken: TestContext.Current.CancellationToken);
             if (fromCache)

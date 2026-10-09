@@ -949,3 +949,23 @@ alerted detection, three rewrites, lift and following flight. Ten positive cases
 reproduce the prior guard; six malformed timer cases already refuse atomically.
 All 76 affected cases pass. This is cycle 16 slice one; regional/generated landing
 and hunt/escort/research composition plus their batch audit remain. 4d is untouched.
+
+## Regional and generated first landings (2026-10-09)
+
+The first-ground proof now covers bounded regional rectangles and both daily and
+late hunting creation callers. Origins preserve native land selection; replacement
+waypoint selection still occurs twice. Point terrain determines whether a real
+landing is possible: cosmetic ocean and forbidden fake water retain the native
+five-second fallback without a landing ID, even with an exhausted landing namespace.
+Rectangles conservatively admit land. Timer validation and landing reservations
+follow that possibility; known water does not require a usable groundTimer.
+
+Pinned AlienMission land/waypoint/arrival callers, Globe terrain semantics and
+GeoscapeState generation/detection order, with verified lifecycle and generation
+captures, back fresh/cache exact RNG, mixed arrivals, ocean/fake-water variants,
+three rewrites, control continuation and the maximum safe timer. Polygon work is
+bounded across the early generated/site and final mission proofs before mutation.
+The shared content helper offers an explicit later ruleset layer because filenames
+load in descending order; a verified 5,000-polygon test exercises the refusal.
+Fourteen cases reproduce prior boundaries. All 376 affected cases pass. This is
+cycle 16 slice two; composed hunts/escorts/research and the batch audit remain.

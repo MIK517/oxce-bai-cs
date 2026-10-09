@@ -134,8 +134,7 @@ internal sealed partial class CampaignWorld
                         // next waypoint is airborne, so neither selection retries.
                         geometryWork += 2L * (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count + _alienBases.Count + 1);
                         if (trajectory.Altitude(1) == 0)
-                            foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
-                                geometryWork += 2L * (1L + 4L * polygon.Points.Count);
+                            geometryWork += NewbornLandingGeometryWork(destinations);
                         if (geometryWork > MaximumAlienBaseChecks) return "Alien mission spawn geometry exceeds the supported work limit.";
                     }
                     if (forecast.Generated) missionUfoSpawns++;
@@ -456,14 +455,18 @@ internal sealed partial class CampaignWorld
                 ? campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.HunterKillerPercentage
                 : wave.HunterKillerPercentage) > 0 && requireHuntingForecast &&
             !NewbornHuntingIsForecast(mission, wave)) return false;
-        if (trajectory.Altitude(1) == 0 &&
-            (destinations.Any(static destination => destination.Radius != 0) ||
-             trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5 ||
-             campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value.StatsForRace(mission.Race).DamageMaximum <= 0 ||
-             wave.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
-             mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone ||
-             WorldObjectiveBaseSpawn.CreatesOnLanding(rule, wave, trajectory.Zone(0), allowed: true, conversion: false)))
-            return false;
+        if (trajectory.Altitude(1) == 0)
+        {
+            var ufoRule = campaign.Content.RuntimeRules.Ufos[wave.Ufo!.Value].Value;
+            if (NewbornLandingGeometryWork(destinations) > MaximumAlienBaseChecks ||
+                ufoRule.StatsForRace(mission.Race).DamageMaximum <= 0 ||
+                wave.TrajectoryId == RuntimeUfoTrajectoryRule.RetaliationAssaultRun ||
+                mission.MissionSiteZoneArea != -1 && wave.Objective && trajectory.Zone(0) == rule.SpawnZone) return false;
+            var mayLand = NewbornLandingPossible(destinations, ufoRule);
+            if (mayLand && (trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5 ||
+                WorldObjectiveBaseSpawn.CreatesOnLanding(rule, wave, trajectory.Zone(0), allowed: true, conversion: false)))
+                return false;
+        }
         // Validate the native wide intermediate before narrowing. Calling Speed
         // here would throw rather than return an atomic capability refusal.
         var replacementSpeed = (long)speedMaximum * trajectory.Waypoints[1].SpeedPercentage / 100;
@@ -471,6 +474,23 @@ internal sealed partial class CampaignWorld
         if (WorldGeometry.MissionAreas(region, trajectory.Zone(1)).Count > 256) return false;
         ValidateWaypointAreas(region, trajectory.Zone(1));
         return true;
+    }
+
+    private long NewbornLandingGeometryWork(IReadOnlyList<SpawnArea> destinations)
+    {
+        long scan = 1;
+        foreach (var polygon in campaign.Content.RuntimeRules.Campaign.Globe.Polygons)
+            scan += 1L + 4L * polygon.Points.Count;
+        // Both land queries, all spawn/forecast predicate callers, and the actual
+        // arrival. Rectangles conservatively admit land without polygon queries.
+        return 2L * (6L * destinations.Count + 1) * scan;
+    }
+
+    private bool NewbornLandingPossible(IReadOnlyList<SpawnArea> destinations, RuntimeUfoRule rule)
+    {
+        foreach (var destination in destinations)
+            if (destination.Radius != 0 || LandingAllowed(destination.Center, rule)) return true;
+        return false;
     }
 
     private bool NewEscortWave(RuntimeAlienMissionRule rule, RuntimeMissionWave wave) =>
