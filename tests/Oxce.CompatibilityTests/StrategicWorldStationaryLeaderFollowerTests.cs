@@ -11,11 +11,15 @@ namespace Oxce.CompatibilityTests;
 public sealed class StrategicWorldStationaryLeaderFollowerTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public void LandedFollowerCutsRegionalPositionDependencyWithoutMoving(bool cache, bool reverse)
+    [InlineData(false, false, 10)]
+    [InlineData(true, false, 10)]
+    [InlineData(false, true, 10)]
+    [InlineData(true, true, 10)]
+    [InlineData(false, false, 5)]
+    [InlineData(true, false, 5)]
+    [InlineData(false, true, 5)]
+    [InlineData(true, true, 5)]
+    public void LandedFollowerCutsRegionalPositionDependencyWithoutMoving(bool cache, bool reverse, int timer)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
         TestFixtures.LoadVerifiedManifest("strategic-world");
@@ -23,7 +27,7 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
         var region = content.RuntimeRules.Regions[content.RuntimeRules.Regions.GetRequired("LEADER_REGION")].Value;
         for (ulong seed = 1; seed <= 8; seed++)
         {
-            var initial = Snapshot(content, seed, reverse, 10);
+            var initial = Snapshot(content, seed, reverse, timer);
             var source = initial.World.Ufos.Single(ufo => ufo.UniqueId == 9);
             var grounded = initial.World.Ufos.Single(ufo => ufo.UniqueId == 10);
             var follower = initial.World.Ufos.Single(ufo => ufo.UniqueId == 11);
@@ -37,10 +41,18 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
             Assert.True(actualSource.Escorting);
             Assert.Equal(WorldGeometry.Move(source.Position, origin, WorldGeometry.RadianSpeed(2200)), actualSource.Position);
             Assert.Equal(grounded.Position, actualGround.Position);
-            Assert.Equal(UfoStatus.Landed, actualGround.Status);
-            Assert.Equal(WorldAltitudes.Ground, actualGround.Altitude);
-            Assert.Equal(5, actualGround.SecondsRemaining);
-            Assert.Equal(0, actualGround.Speed);
+            Assert.Equal(timer == 5 ? UfoStatus.Flying : UfoStatus.Landed, actualGround.Status);
+            Assert.Equal(timer == 5 ? WorldAltitudes.VeryLow : WorldAltitudes.Ground, actualGround.Altitude);
+            Assert.Equal(timer - 5, actualGround.SecondsRemaining);
+            Assert.Equal(timer == 5 ? 2200 : 0, actualGround.Speed);
+            if (timer == 5)
+            {
+                var target = reverse ? source.Position : actualSource.Position;
+                var vector = WorldGeometry.SpeedVector(grounded.Position, target, WorldGeometry.RadianSpeed(2200));
+                Assert.Equal(vector.Longitude, actualGround.SpeedLongitude);
+                Assert.Equal(vector.Latitude, actualGround.SpeedLatitude);
+                Assert.Equal(WorldAltitudes.Direction(vector.Longitude, vector.Latitude), actualGround.Direction);
+            }
             Assert.Equal(10, actualGround.Shield);
             Assert.True(actualGround.Escorting);
             Assert.Equal(actualSource.Position, actualGround.Destination!.Position);
@@ -58,6 +70,80 @@ public sealed class StrategicWorldStationaryLeaderFollowerTests
             AdvanceUnblocked(campaign, 2);
             Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
         }
+    }
+
+    [Theory]
+    [InlineData(false, 10, "ground-far")]
+    [InlineData(true, 10, "ground-far")]
+    [InlineData(false, 5, "ground-far")]
+    [InlineData(true, 5, "ground-far")]
+    [InlineData(false, 10, "chain-far")]
+    [InlineData(true, 10, "chain-far")]
+    [InlineData(false, 5, "chain-far")]
+    [InlineData(true, 5, "chain-far")]
+    [InlineData(false, 10, "ground-close")]
+    [InlineData(true, 10, "ground-close")]
+    [InlineData(false, 5, "ground-close")]
+    [InlineData(true, 5, "ground-close")]
+    public void StationaryAndLiftingLinksRetainCraftArrivalOwnership(bool cache, int timer, string kind)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-world-lifecycle");
+        var content = StrategicWorldRegionalNewLeaderTests.Content(cache, true,
+            "crafts: [{type: SHIP, allowLanding: true, radarRange: 20000, radarChance: 100}]\n");
+        var initial = Snapshot(content, 41, false, timer);
+        var target = initial.World.Ufos.Single(ufo => ufo.UniqueId == (kind == "chain-far" ? 11 : 10));
+        var close = kind == "ground-close";
+        var from = close ? target.Position : new WorldPosition(1, 0.6);
+        initial = initial with { Bases = StrategicWorldNewbornFirstArrivalTests.Snapshot(content, 41).Bases };
+        initial = initial.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Fuel = 1000,
+                Damage = 0,
+                Speed = 6000,
+                Takeoff = 0,
+                Longitude = from.Longitude,
+                Latitude = from.Latitude,
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, target.Id,
+                    target.Longitude, target.Latitude)
+                { UniqueId = target.UniqueId },
+            },
+        });
+        var owner = initial.Bases[0];
+        initial = initial with
+        {
+            Bases = [owner with
+            {
+                Soldiers = [owner.Soldiers[0] with
+                    { Personal = owner.Soldiers[0].Personal! with { CraftType = "SHIP", CraftId = 1 } }, .. owner.Soldiers.Skip(1)],
+            }],
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+        if (close)
+        {
+            AssertTimeBlocked(campaign, timer == 5 ? "Craft interception requires strategic combat (Phase 6 branch 5)."
+                : "Craft landing requires deployment (Phase 6 branch 5).");
+            return;
+        }
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        var actualTarget = after.World.Ufos.Single(ufo => ufo.UniqueId == target.UniqueId);
+        var craft = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "SHIP").Logistics!;
+        Assert.Equal(target.UniqueId, craft.Destination!.UniqueId);
+        Assert.Equal(actualTarget.Position, craft.Destination.Position);
+        Assert.Equal(WorldGeometry.Move(from, actualTarget.Position, WorldGeometry.RadianSpeed(6000)),
+            new(craft.Longitude, craft.Latitude));
+        for (var pass = 0; pass < 3; pass++)
+        {
+            campaign = Reload(content, campaign, 41, "stationary-leader-pursuit.sav");
+            Assert.Equivalent(after, campaign.Capture(), strict: true);
+        }
+        var control = CampaignState.Restore(initial, content, new SplitMix64RandomSource(41));
+        AdvanceUnblocked(control, 3);
+        AdvanceUnblocked(campaign, 2);
+        Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, bool reverse, int timer)

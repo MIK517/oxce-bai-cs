@@ -112,6 +112,7 @@ internal sealed partial class CampaignWorld
                     return "Mission site UFO reactivation requires a dormant UFO.";
                 if (!TryLiftUfo(ufo, fromSite: true, out _, out _))
                     return "Mission site UFO reactivation speed exceeds the supported range.";
+                if (UfoLiftTargetReason(ufo, highest, ref despawnWork) is { } liftReason) return liftReason;
             }
             if (transition.Remove)
             {

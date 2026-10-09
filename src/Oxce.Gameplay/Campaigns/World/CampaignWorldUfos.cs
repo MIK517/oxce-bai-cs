@@ -127,6 +127,8 @@ internal sealed partial class CampaignWorld
                 var mission = FindMission(ufo.MissionId)!;
                 if (!TryUfoLiftSpeed(ufo, mission, out _))
                     return "UFO speed is invalid.";
+                if (ufo.SecondsRemaining == 5 && UfoLiftTargetReason(ufo, highest, ref siteLinkWork) is { } liftReason)
+                    return liftReason;
                 continue;
             }
             if (ufo.Hunting || ufo.Escorting)
@@ -499,8 +501,26 @@ internal sealed partial class CampaignWorld
         return true;
     }
 
+    private string? UfoLiftTargetReason(UfoSnapshot ufo, CampaignTimeTrigger highest, ref long work)
+    {
+        if (!ufo.Hunting && !ufo.Escorting) return null;
+        if (ufo.Destination is { Kind: WorldTargetKind.Ufo }) work += _ufos.Count;
+        else if (ufo.Destination is { Kind: WorldTargetKind.Craft })
+        {
+            if (campaign.ProductionPreflight.CraftPopulationBound(highest, ref work, out var crafts) is { } reason) return reason;
+            work += crafts + campaign.BaseStates.Count;
+        }
+        return work > MaximumAlienBaseChecks ? "UFO takeoff target lookup exceeds the supported work limit." : null;
+    }
+
     private UfoSnapshot LiftUfo(UfoSnapshot ufo, bool fromSite = false)
     {
+        // Native target pointers see earlier actors after movement. setSpeed
+        // recalculates the lift vector without moving the landed UFO itself.
+        if ((ufo.Hunting || ufo.Escorting) && ufo.Destination is { Kind: WorldTargetKind.Ufo or WorldTargetKind.Craft } &&
+            Resolve(ufo.Destination) is { } target &&
+            !SameTargetCoordinates(ufo.Destination, target.Longitude, target.Latitude))
+            ufo = ufo with { Destination = target };
         if (!TryLiftUfo(ufo, fromSite, out var lifted, out var score))
             throw new InvalidOperationException("UFO takeoff changed after world preflight.");
         if (score != 0) ScoreUfoActivity(ufo.Position, score, campaign.Content.RuntimeRules);
