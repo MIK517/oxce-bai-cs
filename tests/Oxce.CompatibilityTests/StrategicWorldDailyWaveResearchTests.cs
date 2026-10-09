@@ -144,7 +144,7 @@ public sealed class StrategicWorldDailyWaveResearchTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, int kind, string interrupt = "BONUS")
+    internal static RuntimeContent Content(bool cache, int kind, string interrupt = "BONUS", int operation = 0, string sourceCode = "BONUS")
     {
         var wave = kind switch
         {
@@ -162,6 +162,7 @@ public sealed class StrategicWorldDailyWaveResearchTests
             alienDeployments:
               - {type: DEPLOY_DAILY_BASE, markerName: DAILY_BASE}
               - {type: DEPLOY_DAILY_SITE, markerName: DAILY_SITE, duration: [1, 1]}
+            {{{(operation == 0 ? "" : "  - {type: OPTIONAL_OPERATION_BASE, markerName: OPTIONAL_SOURCE, points: 7, baseSelfDestructCode: " + sourceCode + "}")}}}
             ufoTrajectories:
               - {id: DAILY_AIR, waypoints: [[4, 3, 100], [5, 2, 80], [4, 3, 100]]}
             alienMissions:
@@ -172,6 +173,8 @@ public sealed class StrategicWorldDailyWaveResearchTests
                 points: 5
                 endlessInfiltration: false
                 showAlienBase: true
+                operationType: {{{operation}}}
+                operationBaseType: {{{(operation == 0 ? "" : "OPTIONAL_OPERATION_BASE")}}}
                 siteType: {{{(kind == 5 ? "DEPLOY_DAILY_SITE" : "DEPLOY_DAILY_BASE")}}}
                 waves:
                   - {{{wave}}}

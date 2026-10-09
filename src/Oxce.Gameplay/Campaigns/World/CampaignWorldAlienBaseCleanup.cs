@@ -47,7 +47,22 @@ internal sealed partial class CampaignWorld
         if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
         foreach (var mission in _missions)
             if (FollowsAlienBase(mission.AlienBase, alienBase))
-                return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+            {
+                var missionRule = MissionRule(mission);
+                if (missionRule.OperationType == RuntimeMissionOperationType.Space)
+                    return "Alien base self-destruction requires linked-target alternatives for uncertain research.";
+                // Earth operations interrupt when the source disappears. Their
+                // surviving branch keeps all ordinary spawn/arrival proofs, while
+                // the interrupted branch can expire earlier or omit wave awards.
+                work += _ufos.Count;
+                if (work > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                foreach (var ufo in _ufos)
+                    if (ufo.MissionId == mission.Id && (ufo.HunterKiller || ufo.Hunting || ufo.Escorting || ufo.Escort))
+                        return "Alien base self-destruction requires hunter or escort mission alternatives for uncertain research.";
+                if (mission.LiveUfos == 0 && MissionExpiryReason(mission, missionRule, ref work) is { } cleanupReason)
+                    return cleanupReason;
+                (_pass.PossibleDailyMissionInterruptions ??= []).Add(mission.Id);
+            }
         // Ordinary UFO destinations restore as anonymous waypoints. Their source
         // links are owned by missions; they do not follow an alien-base pointer.
         foreach (var owner in campaign.BaseStates)

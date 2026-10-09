@@ -69,7 +69,33 @@ public sealed class StrategicWorldOptionalMissionActivityTests
         Assert.True(continuedSeen);
     }
 
-    private static RuntimeContent Content(bool cache, bool direct, int sign, string interrupt = "BONUS") =>
+    [Theory]
+    [InlineData(false, false, 1)]
+    [InlineData(true, false, 1)]
+    [InlineData(false, false, -1)]
+    [InlineData(true, false, -1)]
+    [InlineData(false, true, 1)]
+    [InlineData(true, true, 1)]
+    [InlineData(false, true, -1)]
+    [InlineData(true, true, -1)]
+    public void OptionalEarthSourceInterruptionCannotMaskLaterSiteOverflow(bool cache, bool direct, int sign)
+    {
+        var content = Content(cache, direct, sign, interrupt: "", source: true);
+        var initial = Snapshot(content, direct, sign, safe: false);
+        initial = initial with
+        {
+            World = initial.World with
+            {
+                AlienBases = [new(6, "OPTIONAL_ACTIVITY_BASE", "RACE_A", 0.2, 0.1)],
+                Missions = [.. initial.World.Missions.Select(mission => mission.Id == 4 ? mission with
+                { AlienBase = new(WorldTargetKind.AlienBase, "OPTIONAL_ACTIVITY_SOURCE", 6, 0.2, 0.1) } : mission)],
+            },
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
+            "UFO alien activity exceeds the supported range.");
+    }
+
+    private static RuntimeContent Content(bool cache, bool direct, int sign, string interrupt = "BONUS", bool source = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
         research:
           - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
@@ -82,10 +108,13 @@ public sealed class StrategicWorldOptionalMissionActivityTests
         alienDeployments:
           - {type: OPTIONAL_AWARD_SITE, markerName: OPTIONAL_AWARD_MARKER, duration: [1, 1], points: {{{7 * sign}}}}
           - {type: LATER_AWARD_SITE, markerName: LATER_AWARD_MARKER, duration: [1, 1], points: {{{-5 * sign}}}}
+        {{{(source ? "  - {type: OPTIONAL_ACTIVITY_BASE, markerName: OPTIONAL_ACTIVITY_SOURCE, baseSelfDestructCode: BONUS}" : "")}}}
         alienMissions:
           - type: OPTIONAL_AWARD_MISSION
             interruptResearch: {{{interrupt}}}
             objective: {{{(direct ? 3 : 0)}}}
+            operationType: {{{(source ? 1 : 0)}}}
+            operationBaseType: {{{(source ? "OPTIONAL_ACTIVITY_BASE" : "")}}}
             spawnZone: 5
             waves: [{ufo: {{{(direct ? "OPTIONAL_AWARD_SITE" : "UFO_OPTIONAL_AWARD")}}}, count: 1, trajectory: OPTIONAL_AIR, timer: 9000}]
           - type: LATER_AWARD_MISSION
