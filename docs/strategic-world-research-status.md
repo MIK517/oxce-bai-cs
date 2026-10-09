@@ -1445,3 +1445,19 @@ allocation gates. Full formatting, code-map and diff checks pass; the reference
 checkout remains unchanged. Ordered daily research/site alternatives, remaining
 linked deletion, newborn first arrival, stochastic maintenance and final
 acceptance reconciliation keep 4c open; 4d has not started.
+
+
+## Optional Earth source loss with special UFOs (2026-10-09)
+
+Saved hunters and escorts now use the shared flight/retarget proofs when uncertain
+daily research deletes their Earth operation base. Native source unlinking marks
+the mission interrupted without resetting UFO hunt/escort flags; an ordinary
+arrival can end the pass earlier, while the surviving branch retains every owned
+arrival and pursuit check. Conditional newborn leaders keep their existing proof
+boundary. Fourteen fresh/cache regressions reproduce the blanket refusal across
+seven flight/lifecycle paths, then cover hunter/escort variants over 32 seeds,
+both research outcomes, whole selected-control snapshots/RNG, three rewrites and
+following ticks. All 104 affected cases pass. Reference: pinned SavedGame::
+clearLinksForAlienBase, GeoscapeState::time1Day/ufoHuntingAndEscorting/time5Seconds
+and AlienMission::ufoReachedWaypoint, with verified cleanup/lifecycle/hunting
+captures. This is cycle 21 slice one; Space supply hunter composition and audit remain.

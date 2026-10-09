@@ -165,13 +165,16 @@ public sealed class StrategicWorldOptionalBaseMissionTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void OptionalSpecialUfoSourceLinksKeepTheirOwnBoundary(bool cache)
+    public void OptionalSpecialUfoSourceLinksUseEarthMissionInterruption(bool cache)
     {
         var content = FlightContent(cache, 0);
         var initial = Source(StrategicWorldDailyMissionResearchTests.Snapshot(content, 17, 0));
         initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { HunterKiller = true }, initial.World.Ufos[1]] } };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Alien base self-destruction requires hunter or escort mission alternatives for uncertain research.");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(after.CompletedResearch.Contains("BONUS"), Assert.Single(after.World.Missions).Interrupted);
+        Assert.True(after.World.Ufos[0].HunterKiller);
     }
 
     [Theory]
