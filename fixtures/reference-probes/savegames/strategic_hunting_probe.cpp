@@ -156,7 +156,10 @@ std::string _status="STR_REFUELLING"; bool autoPatrol=true;
 std::vector<CraftWeapon*> _weapons;
 void setFuel(int); std::string refuel(); void setDestination(Target*); void repair(); const RuleItem* rearm();
 int getFuelConsumption(int,int) const; void consumeFuel(int); void returnToBase();
-void checkup(); void setBase(Base*,bool move=true);
+void checkup(); bool think(); void setBase(Base*,bool move=true);
+// Controlled at-home movement collaborators; globe equality has its own capture.
+bool atDestination=true; bool reachedDestination() const { return atDestination; }
+void move() {} void resetMeetPoint() {} void setInterceptionOrder(int) {}
 void reuseItem(const RuleItem*);
 Cargo cargo; Cargo* _items=&cargo; void unloadItems() {
 // PRODUCTION_CRAFT_UNLOAD_ITEMS
@@ -173,6 +176,7 @@ int _damage = 0, units = 0, id = 0; bool ignored = false, _lowFuel = false, _mis
 int getMaxUnitsClamped() const { return units; }
 bool isIgnoredByHK() const;
 bool getLowFuel() const { return _lowFuel; }
+bool& _mission=_missionComplete;
 bool getMissionComplete() const { return _missionComplete; }
 const Rule* getRules() const { return _rules; }
 int getHunterKillerAttraction(int huntMode) const;
@@ -1006,6 +1010,20 @@ if(deleted) craft.returnToBase();
 caller.fuel(&craft);
 std::cout << '[' << limit << ',' << fuel << ',' << (low?"true":"false") << ',' << (deleted?"true":"false")
 << ',' << craft._fuel << ',' << (craft._lowFuel?"true":"false") << ',' << craft.speed << ',' << (craft._dest==&base?"true":"false") << ']';
+}
+std::cout << "],\"optionalRecallArrivalRows\":[";
+serviceFirst=true;
+for(int fuel:{0,1,10}) for(int takeoff:{0,5}) for(bool deleted:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; Base base; Target target; FuelCaller caller;
+craft._base=&base; craft._stats.speedMax=2100; craft._stats.fuelMax=1000;
+craft._status="STR_OUT"; craft.speed=1000; craft._fuel=fuel; craft._takeoff=takeoff;
+craft._dest=&target; craft.autoPatrol=false;
+if(deleted) craft.returnToBase();
+caller.fuel(&craft); const bool arrived=craft.think();
+std::cout << '[' << fuel << ',' << takeoff << ',' << (deleted?"true":"false") << ',' << (arrived?"true":"false")
+<< ',' << craft._fuel << ',' << '\"' << craft._status << '\"' << ',' << craft.speed << ',' << craft._takeoff
+<< ',' << (craft._lowFuel?"true":"false") << ',' << (craft._missionComplete?"true":"false") << ',' << (craft._dest==nullptr?"true":"false") << ']';
 }
 std::cout << "],\"optionalEscortFuelRows\":[";
 serviceFirst=true;

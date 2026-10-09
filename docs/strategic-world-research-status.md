@@ -1766,3 +1766,24 @@ control snapshots/RNG, three rewrites and continuation. Two boundary cases cover
 its correction. Prior guard examples now demonstrate actual eligibility differences.
 All 208 affected tests pass. This is cycle 26 slice two; converged recall and the
 batch audit remain pending.
+
+
+## Optional fuel recall before arrival (2026-10-09)
+
+Optional alien-base returns now allow near-home arrivals when both fuel burns
+empty the tank and force the same home destination/full speed before movement.
+The existing escort-consumer proofs still run first. Already-low craft skip the
+native automatic recall and retain the arrival guard; differing low-fuel outcomes
+and malformed speed/coordinates remain atomic. No research draw is forecast.
+
+Reference: pinned GeoscapeState::time10Minutes and Craft::consumeFuel/setFuel,
+returnToBase, think and checkup. Twelve new native optionalRecallArrivalRows use
+controlled at-home reachability/inert movement and the exact native think/checkup
+bodies, retaining all earlier hunting rows; world equality is captured separately.
+Four fresh/cache execution cases reproduce the arrival guard, then cover fuel
+0/1/10, takeoff 0/5, both research outcomes over 32 seeds, canonical native arrival
+and servicing, no hunter selection, full control snapshots/RNG, three rewrites
+and continuation. Two boundary cases retain uncertain recall and already-low
+arrival refusal. All 214 affected tests and full formatting pass. This completes
+cycle 26's third implementation slice; the batch
+audit and root validation remain pending.
