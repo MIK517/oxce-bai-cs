@@ -780,3 +780,12 @@ reachable and distant point/rectangle outcomes. All 71 affected cases pass.
 Reviewed caller order, constructor/landed branch, counter/wave identity, pure
 forecast work and precise interruption/special/ground boundaries. Full final
 root/format validation follows the separately committed correction.
+
+Cycle 13 closes with all 4,260 root tests passing without failures/skips, including
+native checksums, private classifications and populated allocation gates. Full
+formatting, code-map and diff checks pass; the pinned reference is unchanged.
+The replacement-speed defect is fixed in its separate audit commit. Remaining
+ordinary objective/interrupt/hunter first arrivals, newborn ground/conversion
+consequences, linked deletion, ordered research/maintenance alternatives and final
+acceptance reconciliation keep 4c open; branch 4d is untouched. Useful captures
+and validation logs remain; no native probe objects were generated this cycle.

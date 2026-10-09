@@ -105,7 +105,10 @@ documents; entries here link to them instead of copying them.
   hunting generation now compose. Their batch audit, signed activity corrections
   and all 4,163 root tests pass. Optional Space-source unlinking, supply births and
   daily pact cancellation now compose; their batch audit and all 4,211 root tests
-  pass. Ordered daily research/site alternatives, remaining
+  pass. Ordinary first-airborne and overlapping ground births now compose across
+  saved/daily/hunting callers; their speed audit correction and all 4,260 root
+  tests pass. See [newborn movement evidence and audit](strategic-world-operations-status.md#newborn-first-airborne-arrivals-2026-10-09).
+  Ordered daily research/site alternatives, remaining
   linked deletion, newborn flight/pursuit composition and final closure keep 4c open;
   4d is unchanged.
 
