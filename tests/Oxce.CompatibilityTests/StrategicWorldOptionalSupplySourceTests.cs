@@ -212,12 +212,13 @@ public sealed class StrategicWorldOptionalSupplySourceTests
         Assert.True(survivedSeen);
     }
 
-    internal static RuntimeContent Content(bool cache, int kind, string code = "BONUS", int points = 3, int? followingScore = null, int radarRange = 0, int nonObjectiveHunterPercentage = 100, bool nonObjectiveEscort = false)
+    internal static RuntimeContent Content(bool cache, int kind, string code = "BONUS", int points = 3, int? followingScore = null, int radarRange = 0, int nonObjectiveHunterPercentage = 100, bool nonObjectiveEscort = false, bool nonObjectiveRegional = false, int craftRadarRange = 0)
     {
         var wave = kind == 3 ? "{ufo: OPTIONAL_SUPPLY_SITE, count: 1, trajectory: TRAJ_PATROL, timer: 0, objective: true}" :
             "{ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: " + (kind == 4 ? 9000 : 0) +
             ", objective: " + (kind == 1 ? "false" : "true") + (kind == 5 ? ", hunterKillerPercentage: 100, escort: true" : "") + "}";
         return StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
+            {{{(craftRadarRange > 0 ? "crafts: [{type: SHIP, radarRange: " + craftRadarRange + ", radarChance: 100}]" : "")}}}
             research:
               - {name: UNLOCK, cost: 1}
               - {name: CORE, cost: 1, getOneFree: [BONUS, OTHER]}
@@ -231,6 +232,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
               - {type: OPTIONAL_SUPPLY_UFO, speedMax: 2200, damageMax: 50, missionScore: {{{points}}}, noAlert: true, radarRange: {{{radarRange}}}}
             ufoTrajectories:
               - {id: OPTIONAL_SUPPLY_AIR, waypoints: [[4, 3, 100], [5, 2, 80], [4, 3, 100]]}
+              - {id: OPTIONAL_SUPPLY_REGIONAL, waypoints: [[0, 3, 100], [5, 2, 80], [4, 3, 100]]}
             alienMissions:
               - type: OPTIONAL_SPACE_SUPPLY
                 objective: 5
@@ -238,7 +240,7 @@ public sealed class StrategicWorldOptionalSupplySourceTests
                 spawnZone: 5
                 waves:
                   - {{{wave}}}
-            {{{(kind is 2 or 6 ? "      - {ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: OPTIONAL_SUPPLY_AIR, timer: 0, hunterKillerPercentage: " + (kind == 6 ? nonObjectiveHunterPercentage : 0) + (nonObjectiveEscort ? ", escort: true" : "") + "}" : "")}}}
+            {{{(kind is 2 or 6 ? "      - {ufo: OPTIONAL_SUPPLY_UFO, count: 1, trajectory: " + (nonObjectiveRegional ? "OPTIONAL_SUPPLY_REGIONAL" : "OPTIONAL_SUPPLY_AIR") + ", timer: 0, hunterKillerPercentage: " + (kind == 6 ? nonObjectiveHunterPercentage : 0) + (nonObjectiveEscort ? ", escort: true" : "") + "}" : "")}}}
             """);
     }
 
