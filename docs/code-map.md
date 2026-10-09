@@ -25,7 +25,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 260 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 261 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 92 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -1054,14 +1054,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 260 files.
+`tests/Oxce.CompatibilityTests` - 261 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>258 test classes</summary>
+<details><summary>259 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1244,6 +1244,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldOptionalBaseMissionTests` ([StrategicWorldOptionalBaseMissionTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalBaseMissionTests.cs))
 - `StrategicWorldOptionalBaseSpeedCraftTests` ([StrategicWorldOptionalBaseSpeedCraftTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalBaseSpeedCraftTests.cs))
 - `StrategicWorldOptionalBaseSpeedEscortTests` ([StrategicWorldOptionalBaseSpeedEscortTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalBaseSpeedEscortTests.cs))
+- `StrategicWorldOptionalBaseZeroSpeedEscortTests` ([StrategicWorldOptionalBaseZeroSpeedEscortTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalBaseZeroSpeedEscortTests.cs))
 - `StrategicWorldOptionalEarthSpecialSourceTests` ([StrategicWorldOptionalEarthSpecialSourceTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalEarthSpecialSourceTests.cs))
 - `StrategicWorldOptionalGenerationResearchTests` ([StrategicWorldOptionalGenerationResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalGenerationResearchTests.cs))
 - `StrategicWorldOptionalMissionActivityTests` ([StrategicWorldOptionalMissionActivityTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldOptionalMissionActivityTests.cs))
