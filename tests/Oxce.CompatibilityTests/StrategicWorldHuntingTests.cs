@@ -505,7 +505,8 @@ public sealed partial class StrategicWorldHuntingTests
         initial = initial with { Bases = Enumerable.Range(0, 1001).Select(index => owner with { Id = index }).ToArray() };
         var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
         for (var attempt = 0; attempt < 2; attempt++)
-            AssertTimeBlocked(campaign, "Research custom counters exceed the supported work limit.");
+            // The bounded reward search now runs in the earlier diary forecast.
+            AssertTimeBlocked(campaign, "Research diary forecasts exceed the supported work limit.");
     }
 
     [Theory]
