@@ -881,3 +881,33 @@ item presence/order, transfer counts, range/history checks and three save rewrit
 Useful captures remain; the obsolete object was removed and reference is clean.
 No unexpected access denial occurred. Variable consumed quantities, wider research/
 site compositions and final guard reconciliation still keep branch 4c open.
+
+## Present-item random quantity envelopes (2026-10-10)
+
+Random production now supports opt-in lower/upper quantities for protected items
+that occur in every positive-weight choice and retain native non-inert delivery
+order. Presence changes, reordered reuse and alien quantities keep their existing
+restrictions. The old inert upper-only envelope and its work contract remain
+unchanged. Immediate quantities accumulate max-minus-min in caller-owned sparse
+stock uncertainty; existing lower material checks and paired servicing forecasts
+must agree on consumed craft behavior. No random outcome or history is fabricated.
+The internal production capability explicitly owns mutable scratch uncertainty;
+empty base maps may be added when a quantity range first appears.
+
+Reference: Production::step random delivery/history, Craft::reuseItem/refuel,
+GeoscapeState hourly/half-hour order and fuel consumption. Eight new
+strategic-hunting productionFuelQuantityRows capture quantities 0/1 versus 2,
+zero/one initial item, native stock/history and actual relaunch/target outcomes;
+all older rows remain identical. Six fresh/cache cases first reproduced the guard
+and now observe both actual quantities across twelve saved seeds, canonical native
+outputs, three rewrites and continued pursuit equality. Two threshold cases keep
+atomic refusal when native launch outcomes differ. A sparse projection case checks
+upper/lower stock, pure campaign/RNG state and work exhaustion. Zero initial stock
+is represented by an absent item, preserving save validation against zero entries.
+
+All eight envelope unit tests pass, including zero-weight extremes, zero-quantity
+presence, order and work limits; the original 19-step assertion remains unchanged.
+All nine new hunting quantity cases and all 505 hunting cases pass. Full formatting,
+regenerated code-map and diff checks pass; native prior rows remain unchanged and
+the reference checkout is clean.
+This is cycle 32 slice one; delayed/shared quantity composition and batch are pending.

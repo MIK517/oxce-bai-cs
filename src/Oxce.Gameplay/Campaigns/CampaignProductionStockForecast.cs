@@ -7,7 +7,7 @@ public sealed partial class CampaignState
     string? ICampaignProductionPreflight.ForecastStocks(
         IReadOnlyDictionary<int, List<CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
-        IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stockUncertainty,
+        Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stockUncertainty,
         int? nextResearchTransferId, bool uncertainResearch, IReadOnlyList<CustomCounterChange>? researchCounters,
         CampaignTimeTrigger highest, ref long work)
     {
@@ -73,7 +73,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var deterministicRandom = TryForecastRandomProduction(owner, sources, assignments, rule, out var randomItems, out var randomTransferCount, ref work);
+                var deterministicRandom = TryForecastRandomProduction(owner, sources, assignments, rule, out var randomItems, out var randomMinimum, out var randomTransferCount, ref work);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
                 var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
@@ -133,8 +133,20 @@ public sealed partial class CampaignState
                         }
                     if (randomItems is not null && (rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0))
                         foreach (var item in randomItems)
-                            if (ForecastProductionItemOutput(owner.Id, rules.Items.GetRequired(item.Key), item.Value, crafts, stocks, ref work) is { } randomReason)
+                        {
+                            var handle = rules.Items.GetRequired(item.Key);
+                            if (ForecastProductionItemOutput(owner.Id, handle, item.Value, crafts, stocks, ref work) is { } randomReason)
                                 return randomReason;
+                            if (randomMinimum?.TryGetValue(item.Key, out var minimum) == true)
+                            {
+                                if (++work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
+                                if (!stockUncertainty.TryGetValue(owner.Id, out var outputUncertainty))
+                                    stockUncertainty.Add(owner.Id, outputUncertainty = []);
+                                var difference = outputUncertainty.GetValueOrDefault(handle) + (long)item.Value - minimum;
+                                if (difference > int.MaxValue) return "Production outputs exceed the supported stock range.";
+                                outputUncertainty[handle] = (int)difference;
+                            }
+                        }
                     if (tracksSoldierCounter && rule.SpawnedPersonType is not "" and not "STR_SCIENTIST" and not "STR_ENGINEER")
                     {
                         if (uncertainCraftCounters?.Contains(soldierCraft) == true)
@@ -333,9 +345,10 @@ public sealed partial class CampaignState
     }
 
     private bool TryForecastRandomProduction(BaseState owner, IReadOnlyList<CraftState> sources, int[] assignments, RuntimeManufactureRule rule,
-        out IReadOnlyDictionary<string, int>? items, out int transferCount, ref long work)
+        out IReadOnlyDictionary<string, int>? items, out IReadOnlyDictionary<string, int>? minimum, out int transferCount, ref long work)
     {
         items = null;
+        minimum = null;
         transferCount = 0;
         if (rule.RandomProducedItems.Count == 0) return true;
         var rules = _content.RuntimeRules;
@@ -379,11 +392,12 @@ public sealed partial class CampaignState
             minimumTransfers = Math.Min(minimumTransfers, choice.Items.Count);
         }
         var stableTransfers = immediate || minimumTransfers == transferCount;
-        return ProductionOutputEnvelope.TryCreate(rule.RandomProducedItems, id =>
+        return ProductionOutputEnvelope.TryCreateQuantityRanges(rule.RandomProducedItems, id =>
         {
             var item = rules.Items.GetRequired(id);
             var definition = rules.Items[item].Value;
             return stableTransfers && definition.BattleType != 0 && !definition.IsAlien && !sensitive.Contains(item);
-        }, ref work, out items);
+        }, id => stableTransfers && !rules.Items[rules.Items.GetRequired(id)].Value.IsAlien,
+            ref work, out items, out minimum);
     }
 }

@@ -69,7 +69,7 @@ internal sealed partial class CampaignWorld
             var sources = _pass.HuntingCraftSources[owner.Id];
             var stocks = baseStocks.GetValueOrDefault(owner.Id);
             Dictionary<RuleHandle<ItemRuleFamily>, int>? minimumStocks = null;
-            if (baseUncertainty.TryGetValue(owner.Id, out var uncertainty))
+            if (baseUncertainty.TryGetValue(owner.Id, out var uncertainty) && uncertainty.Count != 0)
             {
                 work += stocks!.Count + (long)uncertainty.Count;
                 if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
