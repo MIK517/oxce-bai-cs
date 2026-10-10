@@ -869,6 +869,26 @@ const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) {
 std::cout << '[' << mode << ',' << choice << ',' << base.storage.count << ',' << transfers << ',' << saved._ids["EQUIV_COUNTER"]
 << ',' << (saved._ids.contains("")?"true":"false") << ',' << saved._ids["UNKNOWN_COUNTER"] << ',' << saved.researchScore << ']';
 }
+std::cout << "],\"researchMultiBaseRewardRows\":[";
+serviceFirst=true;
+for(int count:{2,3}) for(bool incoming:{false,true}) for(int firstChoice:{0,1,2}) for(int secondChoice:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[4]; auto* source=&topics[0]; source->name="CORE"; source->count=1;
+for(int i=1;i<4;i++) { topics[i].name="EQUIV_"+std::string(1,char('A'+i-1)); topics[i].count=2; source->free.push_back(&topics[i]); }
+for(auto& topic:topics) { topic.spawned="SUPPLY"; topic.increases={"EQUIV_COUNTER"}; }
+SavedGame saved; Mod mod; mod.rules={&topics[0],&topics[1],&topics[2],&topics[3]}; Base bases[3]; ResearchCaller caller; saved._ids["EQUIV_COUNTER"]=1;
+for(int index=0;index<count;index++) { saved.bases.push_back(&bases[index]); if(incoming) { auto* transfer=new Transfer(1); transfer->setItems(&mod.supply); bases[index].transfers.push_back(transfer); } }
+for(int index=0;index<count;index++) {
+RNG::suppliedChoice=index==0?firstChoice:index==1?secondChoice:0; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&bases[index]); saved.addFinishedResearch(source,&mod,&bases[index]);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) { caller.spawn(topic,&mod,&bases[index]); saved.applyPrimaryCounters(topic); }
+}
+int mask=0,transfers=0; for(int i=1;i<4;i++) if(saved.isResearched(&topics[i],false)) mask|=1<<(i-1);
+std::cout << '[' << count << ',' << (incoming?"true":"false") << ',' << firstChoice << ',' << secondChoice << ',' << mask << ",[";
+for(int index=0;index<count;index++) { auto& base=bases[index]; transfers+=(int)base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; } if(index)std::cout<<',';std::cout<<base.storage.count; }
+std::cout << "]," << transfers << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore << ']';
+}
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
 for(bool sequential:{false,true}) for(bool duplicate:{false,true}) for(int aState:{0,1,2}) for(int bState:{0,1,2}) for(bool gate:{false,true}) {
