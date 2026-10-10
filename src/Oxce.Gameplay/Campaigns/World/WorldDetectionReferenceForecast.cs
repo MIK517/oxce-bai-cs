@@ -152,6 +152,17 @@ internal sealed class WorldDetectionReferenceForecast
                             values.Add(item is RuntimeItemRule rule
                                 ? binding.Name == "RuleItem.getDamageType" ? rule.Damage : rule.MeleeDamage : null);
                     }
+                    else if (WorldDetectionArmorLinks.Supports(binding.Name) && source is not null)
+                    {
+                        values = new(ReferenceEqualityComparer.Instance);
+                        foreach (var armor in source)
+                        {
+                            work += WorldDetectionArmorLinks.Work(armor as RuntimeArmorRule);
+                            if (work > maximumWork) return (null, work);
+                            foreach (var value in WorldDetectionArmorLinks.Possible(binding.Name, armor as RuntimeArmorRule, rules))
+                                values.Add(value);
+                        }
+                    }
                     else if (binding.Name is "RuleUnit.getSpawnUnit" or "RuleUnit.getLiveAlienGeoscape" or
                         "RuleUnit.getCivilianRecoveryItemType" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" && source is not null)
                     {

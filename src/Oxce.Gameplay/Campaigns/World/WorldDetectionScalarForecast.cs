@@ -102,6 +102,18 @@ internal sealed class WorldDetectionScalarForecast
                     }
                     if (range.Min > range.Max) range = WorldDetectionScalarRanges.Full;
                 }
+                if (binding.Name == "RuleArmor.getArmor")
+                {
+                    // Any side argument: the five native sides or zero outside them.
+                    var candidates = references.At(index, operands[1]);
+                    work += 6L * (candidates?.Count ?? rules.Armors.Count);
+                    if (work > maximumWork) return null;
+                    range = (0, 0);
+                    foreach (var candidate in candidates ?? rules.Armors.Rules.Select(static rule => (object?)rule.Value))
+                        if (candidate is RuntimeArmorRule armor)
+                            foreach (var value in armor.Script.Sides)
+                                range = (Math.Min(range.Min, value), Math.Max(range.Max, value));
+                }
                 if (binding.Name == "RuleInventory.getMoveToCost")
                 {
                     var sources = references.At(index, operands[1]);

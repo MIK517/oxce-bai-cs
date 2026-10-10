@@ -32,7 +32,7 @@ internal static class WorldDetectionBoundedQueries
         "Ufo.getHuntMode" or "Ufo.getHuntBehavior" or "Craft.getDamage" or "Craft.getDamageMax" or
         "Craft.getDamagePercentage" or "Craft.getShield" or "Craft.getShieldMax" or "Craft.getShieldPercentage" or
         "Country.getCurrentFunding" or "Country.getCurrentActivityXcom" or "Country.getCurrentActivityAlien" or
-        "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or "Time.getYear" ||
+        "GeoscapeGame.difficultyLevel" or "GeoscapeGame.getDaysPassed" or "GeoscapeGame.getMonthsPassed" or "Time.getYear" or "Time.getDaysPastEpoch" ||
         name.StartsWith("Ufo.", StringComparison.Ordinal) && CampaignWorld.DetectionUfoStatIndex(name) >= 0 ||
         name.StartsWith("Craft.", StringComparison.Ordinal) && CampaignWorld.DetectionCraftStatKey(name) is not null;
 }

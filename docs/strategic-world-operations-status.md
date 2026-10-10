@@ -1255,3 +1255,24 @@ merge order left those fabricated 1,000-unit tanks above the actual capacity of
 external behavior coverage instead of relying on an impossible full-tank setup.
 Other affected pursuit fixtures use a final craft-capacity override without
 changing the previous ruleset merge order or weakening their assertions.
+
+## Branch 4c closure R1: detection provider ledger (2026-10-11)
+
+Every detectUfoFromBase/detectUfoFromCraft binding in the pinned catalogue (377)
+is now either executed or listed in the fixed ledger of
+`StrategicWorldDetectionClosureTests`, keyed by name and receiver type. Newly
+executed: `Time.getDaysPastEpoch` (shared with price scripts through
+`CampaignTimeScriptValues`; native `std::mktime` reads the host zone, the port
+fixes it to UTC and truncates like C++), all fifteen remaining read-only Armor
+getters (side armor with native out-of-range zero, drawing routine, bubbles,
+death frames, constant animation, the six base move costs, geoscape/battle
+corpses and required research, with reference forecasts), and counted loops
+whose limit is a local register written only by literal `set`/`clear` (bounded
+by the largest literal; inputs, outputs and computed limits still refuse and the
+step budget is unchanged). The 82 ledger entries are unreachable or not
+headless-strategic: BattleGame/Tile receivers (branch 5), editable receivers and
+`RandomState`, Mod sound/sprite offsets (vanilla resource-set sizes), Position
+value arithmetic (no VM value representation; tactical scripting) and the
+`Target`-typed generic `getId`. The armor work exposed a loader defect: an
+explicit `corpseGeo` now overrides the battle-corpse default as in `Armor::load`
+(compiler revision 55).

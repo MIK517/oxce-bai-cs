@@ -112,7 +112,7 @@ internal static class WorldDetectionScriptSafety
         var back = instructions[end - 1];
         if ((CoreScriptOperation)initialize.Operation.Value != CoreScriptOperation.Set ||
             initialize.Operands.Count != 2 || initialize.Operands[0] != args[3] ||
-            initialize.Operands[1].Kind != ScriptOperandKind.Scalar ||
+            initialize.Operands[1].Kind is not (ScriptOperandKind.Scalar or ScriptOperandKind.Register) ||
             (CoreScriptOperation)clear.Operation.Value != CoreScriptOperation.Clear ||
             clear.Operands.Count != 1 || clear.Operands[0] != args[2] ||
             (CoreScriptOperation)expose.Operation.Value != CoreScriptOperation.Set ||
@@ -128,7 +128,46 @@ internal static class WorldDetectionScriptSafety
             foreach (var operand in instructions[index].Operands)
                 if (operand.Kind == ScriptOperandKind.Register &&
                     (operand.Scalar == args[2].Scalar || operand.Scalar == args[3].Scalar)) return false;
-        limit = initialize.Operands[1].Scalar;
+        if (initialize.Operands[1].Kind == ScriptOperandKind.Scalar)
+        {
+            limit = initialize.Operands[1].Scalar;
+            return true;
+        }
+        return TryLiteralRegisterBound(program, initialize.Operands[1].Scalar, out limit);
+    }
+
+    /// <summary>
+    /// Bounds a local limit register (<c>var int count 1; loop var i count;</c>) whose
+    /// only writes are literal Set/Clear instructions anywhere in the program. Locals
+    /// start cleared, so the loop limit is at most the largest literal or zero.
+    /// Inputs and outputs carry caller values and are never bounded this way.
+    /// </summary>
+    private static bool TryLiteralRegisterBound(ScriptProgram program, int register, out int limit)
+    {
+        limit = 0;
+        foreach (var definition in program.Registers)
+            if (definition.Offset == register && (definition.IsInput || definition.IsOutput)) return false;
+        foreach (var instruction in program.Instructions)
+        {
+            var operation = (CoreScriptOperation)instruction.Operation.Value;
+            var operands = instruction.Operands;
+            for (var position = 0; position < operands.Count; position++)
+            {
+                if (operands[position] != ScriptOperand.Register(register)) continue;
+                if (position == 0 && operation == CoreScriptOperation.Clear && operands.Count == 1) continue;
+                if (position == 0 && operation == CoreScriptOperation.Set && operands.Count == 2 &&
+                    operands[1].Kind == ScriptOperandKind.Scalar)
+                {
+                    limit = Math.Max(limit, operands[1].Scalar);
+                    continue;
+                }
+                // Read-only uses: copies, comparisons and returned values.
+                if (operation == CoreScriptOperation.Set && position == 1 ||
+                    operation == CoreScriptOperation.BranchCondition && position is 2 or 3 ||
+                    operation == CoreScriptOperation.Return) continue;
+                return false;
+            }
+        }
         return true;
     }
 }

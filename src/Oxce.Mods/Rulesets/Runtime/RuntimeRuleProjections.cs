@@ -294,6 +294,28 @@ public sealed record RuntimeArmorRule(
     public RuleHandle<ItemRuleFamily>? CorpseGeoscape { get; init; }
     public int Group { get; init; }
     public IReadOnlyDictionary<string, short> Stats { get; init; } = new ReadOnlyDictionary<string, short>(new Dictionary<string, short>());
+    public RuntimeArmorScriptFields Script { get; init; } = RuntimeArmorScriptFields.Default;
+}
+
+/// <summary>
+/// Remaining read-only Armor::ScriptRegister providers: side armor in UnitSide order
+/// (front, left = side + leftArmorDiff, right, rear, under), presentation fields,
+/// base move costs, linked battle corpses and required research.
+/// </summary>
+public sealed record RuntimeArmorScriptFields(
+    IReadOnlyList<int> Sides,
+    int DrawingRoutine,
+    bool DrawBubbles,
+    int DeathFrames,
+    bool ConstantAnimation,
+    (int Time, int Energy) MoveCostBase,
+    (int Time, int Energy) MoveCostBaseNormal,
+    (int Time, int Energy) MoveCostBaseFly,
+    IReadOnlyList<RuleHandle<ItemRuleFamily>?> CorpseBattle,
+    RuleHandle<ResearchRuleFamily>? RequiredResearch)
+{
+    public static RuntimeArmorScriptFields Default { get; } =
+        new([0, 0, 0, 0, 0], 0, false, 3, false, (100, 100), (100, 100), (100, 100), [], null);
 }
 
 /// <summary>Immutable Armor vision and light metadata, before tactical calculations.</summary>

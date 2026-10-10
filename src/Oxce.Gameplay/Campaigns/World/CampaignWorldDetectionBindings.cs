@@ -11,8 +11,8 @@ internal sealed partial class CampaignWorld
     private int _detectionShieldCapacity;
     private int _detectionDamageMaximum;
 
-    private bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
-        DetectionValueSet(binding) || WorldDetectionItemQueries.Supports(binding.Name) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
+    internal bool DetectionBindingSupported(ScriptBindingDeclaration binding) =>
+        DetectionValueSet(binding) || WorldDetectionItemQueries.Supports(binding.Name) || WorldDetectionDamageQueries.Supports(binding.Name) || DetectionBindingNameSupported(binding.Name) || WorldDetectionRuleQueries.Supports(binding.Name) || WorldDetectionArmorLinks.Supports(binding.Name) || DetectionInventoryRole(binding.Name) is not null || DetectionUnitRuleStat(binding.Name).Key is not null || DetectionCraftStatKey(binding.Name) is not null || DetectionUfoStatIndex(binding.Name) >= 0 || DetectionTagSupported(binding);
 
     private static bool DetectionValueSet(ScriptBindingDeclaration binding) =>
         binding.Name == "set" && binding.Parameters.Count == 2 &&
@@ -33,7 +33,7 @@ internal sealed partial class CampaignWorld
         "RuleDamageType.isDirect" or "RuleDamageType.isAreaOfEffect" or
         "RuleItem.hasCategory" or
         "RuleItem.getWaypoints" or
-        "RuleArmor.getSize" or
+        "RuleArmor.getSize" or "RuleArmor.getArmor" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "Craft.getDamage" or "Craft.getDamageMax" or "Craft.getDamagePercentage" or
         "Craft.getShield" or "Craft.getShieldMax" or "Craft.getShieldPercentage" or "Craft.getRuleCraft" or
@@ -46,8 +46,8 @@ internal sealed partial class CampaignWorld
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleResearch" or
         "RuleMod.getSmokeReduction" or "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits" or
         "RuleMod.getRuleItem" or "RuleMod.getRuleArmor" or "RuleMod.getRuleSoldier" or "RuleMod.getRuleSkill" or
-        "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "Time.getDay" or "Time.getMonth" or "Time.getYear" or
-        "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
+        "RuleResearch.getNeededItem" or "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" ||
+        CampaignTimeScriptValues.Supports(name);
 
     private static string? DetectionInventoryRole(string name) => WorldDetectionReferenceForecast.InventoryRole(name);
 
@@ -125,6 +125,15 @@ internal sealed partial class CampaignWorld
             case "RuleMod.getRuleResearch":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is null ? null : DetectionResearchRule(args[2].Text));
                 break;
+            case "RuleArmor.getArmor":
+                args[1] = ScriptRuntimeValue.FromScalar(DetectionArmorSide(receiver as RuntimeArmorRule, args[2].Scalar));
+                break;
+            case "RuleArmor.getCorpseGeoscape":
+            case "RuleArmor.getCorpseBattlescape":
+            case "RuleArmor.getRequiredResearch":
+                args[1] = ScriptRuntimeValue.FromReference(WorldDetectionArmorLinks.Value(name, receiver as RuntimeArmorRule,
+                    args.Length > 2 ? args[2].Scalar : 0, rules));
+                break;
             case "RuleUnit.getSpawnUnit":
                 args[1] = ScriptRuntimeValue.FromReference(receiver is RuntimeUnitRule { SpawnUnit: { } spawned } ? rules.Units[spawned].Value : null);
                 break;
@@ -195,7 +204,7 @@ internal sealed partial class CampaignWorld
                     receiver is CampaignState.CountryState country ? GeoscapeCountryQueries.Value(name, country) :
                     receiver is RuntimeCountryRule countryRule ? countryRule.FundingCap :
                     receiver is RuntimeItemRule itemRule ? WorldDetectionItemQueries.Value(name, itemRule) :
-                    receiver is DetectionTimeReference time ? DetectionTimeValue(name, time.Time) :
+                    receiver is DetectionTimeReference time ? CampaignTimeScriptValues.Value(name, time.Time) :
                     name switch
                     {
                         "GeoscapeGame.difficultyLevel" => (int)campaign.Difficulty,
@@ -318,18 +327,6 @@ internal sealed partial class CampaignWorld
         "RuleCraft.Stats.getMaxVehiclesAndLargeSoldiers" or "Craft.Stats.getMaxVehiclesAndLargeSoldiers" => "vehicles",
         "RuleCraft.Stats.getMaxItems" or "Craft.Stats.getMaxItems" => "maxItems",
         _ => null,
-    };
-
-    private static int DetectionTimeValue(string name, CampaignTime time) => name switch
-    {
-        "Time.getDay" => time.Day,
-        "Time.getMonth" => time.Month,
-        "Time.getYear" => time.Year,
-        "Time.getHour" => time.Hour,
-        "Time.getMinute" => time.Minute,
-        "Time.getSecond" => time.Second,
-        "Time.getSecondsPastMidnight" => time.Hour * 3600 + time.Minute * 60 + time.Second,
-        _ => throw new InvalidOperationException("Detection time provider was not preflighted."),
     };
 
     private sealed class DetectionTimeReference
