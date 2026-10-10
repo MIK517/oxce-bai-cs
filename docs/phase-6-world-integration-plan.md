@@ -63,6 +63,11 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-10 ordered daily score slice: exact bounded prefixes replace false
+  range refusals while preserving intermediate overflow guards. See
+  [score evidence](strategic-world-research-status.md#ordered-daily-score-prefixes-2026-10-10).
+  Diary/production composition and the cycle audit remain pending; 4c is open.
+
 - 2026-10-10 daily quantity composition cycle: variable research arrivals now
   compose with craft servicing, correlated site eligibility and common counters
   before craft/personnel births. All 4,982 root tests and formatting pass; the
