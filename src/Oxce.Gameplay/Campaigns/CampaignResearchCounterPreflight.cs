@@ -6,11 +6,16 @@ public sealed partial class CampaignState
 
     private bool TryForecastDailySharedCounters(ref long work, out IReadOnlyList<CustomCounterChange> counters)
     {
-        var supported = ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast);
+        var supported = TryForecastDailyCounterStates(ref work, out var forecast) && forecast.CounterChangesAreCommon;
+        counters = supported ? forecast.CounterChanges : [];
+        return supported;
+    }
+
+    private bool TryForecastDailyCounterStates(ref long work, out DailyResearchStockForecast forecast)
+    {
+        var supported = ResearchPreflight.TryForecastDailyStocks(ref work, out forecast);
         if (!supported && work <= 1_000_000)
             supported = ResearchPreflight.TryForecastDailyWorldStocks(ref work, out forecast);
-        supported &= forecast.CounterChangesAreCommon;
-        counters = supported ? forecast.CounterChanges : [];
         return supported;
     }
 
@@ -44,23 +49,19 @@ public sealed partial class CampaignState
             if (finishes) finishingBases++;
         }
         if (finishingBases == 0) return null;
-        Dictionary<string, long> projected = new(StringComparer.Ordinal);
-        if (TryForecastDailySharedCounters(ref work, out var counters))
+        if (TryForecastDailyCounterStates(ref work, out var forecast))
         {
-            foreach (var change in counters)
-            {
-                if (++work > 1_000_000) return workReason;
-                if (change.Name.Length == 0) continue;
-                var current = projected.GetValueOrDefault(change.Name, _nextIds.GetValueOrDefault(change.Name, 1));
-                var next = change.Increase ? current + 1 : Math.Max(1, current - 1);
-                if (next > int.MaxValue) return rangeReason;
-                projected[change.Name] = next;
-            }
+            if (forecast.CounterChangesAreCommon) return DailyCounterTraceReason(forecast.CounterChanges, ref work);
+            // Each exact path has its own floor/order. Combining unselected
+            // increases would discard guaranteed decreases and safe alternatives.
+            foreach (var branch in forecast.DiscoveryAlternatives)
+                if (DailyCounterTraceReason(branch.CounterChanges, ref work) is { } reason) return reason;
             return null;
         }
         if (work > 1_000_000) return workReason;
         // Unknown reward choices can contribute an increase in any finishing
         // base. Do not credit decreases or cancellation from an unselected path.
+        Dictionary<string, long> projected = new(StringComparer.Ordinal);
         var finishing = FinishingResearchTopics();
         var possible = new HashSet<string>(finishing, StringComparer.Ordinal);
         foreach (var id in finishing)
@@ -90,6 +91,23 @@ public sealed partial class CampaignState
                 if (next > int.MaxValue) return rangeReason;
                 projected[name] = next;
             }
+        }
+        return null;
+    }
+
+    private string? DailyCounterTraceReason(IReadOnlyList<CustomCounterChange> counters, ref long work)
+    {
+        const string workReason = "Research custom counters exceed the supported work limit.";
+        if (++work > 1_000_000) return workReason;
+        Dictionary<string, long> projected = new(StringComparer.Ordinal);
+        foreach (var change in counters)
+        {
+            if (++work > 1_000_000) return workReason;
+            if (change.Name.Length == 0) continue;
+            var current = projected.GetValueOrDefault(change.Name, _nextIds.GetValueOrDefault(change.Name, 1));
+            var next = change.Increase ? current + 1 : Math.Max(1, current - 1);
+            if (next > int.MaxValue) return "Research custom counters exceed the supported range.";
+            projected[change.Name] = next;
         }
         return null;
     }

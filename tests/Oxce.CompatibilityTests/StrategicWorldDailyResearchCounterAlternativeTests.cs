@@ -16,10 +16,13 @@ public sealed class StrategicWorldDailyResearchCounterAlternativeTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
-    public void DifferentCounterNamesRetainTheirWorldBranchesAndNativeEffects(bool cache, bool withSite)
+    public void DifferentCounterNamesRetainTheirWorldBranchesAndNativeEffects(bool cache, bool withSite) =>
+        AssertNativeCounterAlternatives(cache, 0, withSite);
+
+    internal static void AssertNativeCounterAlternatives(bool cache, int mode, bool withSite)
     {
         using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
-        var content = Content(cache, 0, withSite);
+        var content = Content(cache, mode, withSite);
         foreach (var start in new[] { 1, 20, int.MaxValue - 1 })
         {
             HashSet<int> seen = [];
@@ -40,8 +43,8 @@ public sealed class StrategicWorldDailyResearchCounterAlternativeTests
                 var after = campaign.Capture();
                 var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
                 seen.Add(choice);
-                var expected = TestFixtures.Rows(oracle.RootElement, "researchDailyCounterAlternativeRows").Single(row => row[0].GetInt32() == 0 && row[1].GetInt32() == start && row[2].GetInt32() == choice);
-                var actual = JsonSerializer.SerializeToUtf8Bytes(new long[] { 0, start, choice, after.NextIds["EQUIV_COUNTER"], after.NextIds["LEFT_COUNTER"], after.NextIds["RIGHT_COUNTER"], after.NextIds["TRACE_COUNTER"], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.ResearchScores[^1] - initial.ResearchScores[^1] - (withSite ? 3 : 0), after.NextIds["oxcePortTransfer"] - initial.NextIds.GetValueOrDefault("oxcePortTransfer", 1) });
+                var expected = TestFixtures.Rows(oracle.RootElement, "researchDailyCounterAlternativeRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == start && row[2].GetInt32() == choice);
+                var actual = JsonSerializer.SerializeToUtf8Bytes(new long[] { mode, start, choice, after.NextIds["EQUIV_COUNTER"], after.NextIds["LEFT_COUNTER"], after.NextIds["RIGHT_COUNTER"], after.NextIds["TRACE_COUNTER"], after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.ResearchScores[^1] - initial.ResearchScores[^1] - (withSite ? 3 : 0), after.NextIds["oxcePortTransfer"] - initial.NextIds.GetValueOrDefault("oxcePortTransfer", 1) });
                 Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
                 Assert.True(Assert.Single(after.World.Ufos).Hunting);
                 Assert.Equal("STR_OUT", after.Bases[0].Crafts[0].Logistics!.Status);
