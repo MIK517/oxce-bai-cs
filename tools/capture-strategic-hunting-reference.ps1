@@ -31,6 +31,11 @@ $neededStart = $researchAvailability.IndexOf('if (research->needItem() && base->
 $neededEnd = $researchAvailability.IndexOf('// Check for required buildings/functions', $neededStart, [StringComparison]::Ordinal)
 if ($neededStart -lt 0 -or $neededEnd -le $neededStart) { throw 'Missing needed-item research availability fragment.' }
 $template = $template.Replace('// RESEARCH_NEED_ITEM_AVAILABILITY', $researchAvailability.Substring($neededStart, $neededEnd - $neededStart).Replace('research->', 'rule->'))
+$activeStart = $researchAvailability.IndexOf('bool found = false;', [StringComparison]::Ordinal)
+$activeEnd = $researchAvailability.IndexOf('// Check for needed item', $activeStart, [StringComparison]::Ordinal)
+if ($activeStart -lt 0 -or $activeEnd -le $activeStart) { throw 'Missing active research availability fragment.' }
+$template = $template.Replace('// RESEARCH_ACTIVE_AVAILABILITY', $researchAvailability.Substring($activeStart, $activeEnd - $activeStart).Replace('== research', '== rule'))
+
 
 $template = $template.Replace('// CRAFT_ESCORT_ARRIVAL', (Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'else if (x != 0)').Replace('else if (x != 0)', 'if (x != 0)'))
 $template = $template.Replace('// ALIEN_BASE_ARRIVAL', (Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'else if (b != 0)').Replace('else if (b != 0)', 'if (b != 0)'))
@@ -50,6 +55,11 @@ $spawnStart = $researchSpawn.IndexOf('RuleItem* spawnedItem =', [StringCompariso
 $spawnEnd = $researchSpawn.IndexOf('// 3l. handle spawned events', $spawnStart, [StringComparison]::Ordinal)
 if ($spawnStart -lt 0 -or $spawnEnd -le $spawnStart) { throw 'Missing research item transfer fragment.' }
 $dailyResearch = Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'void GeoscapeState::time1Day()'
+$disabledStart = $dailyResearch.IndexOf('// check and remove disabled projects from ongoing research', [StringComparison]::Ordinal)
+$disabledEnd = $dailyResearch.IndexOf('// check and interrupt alien missions', $disabledStart, [StringComparison]::Ordinal)
+if ($disabledStart -lt 0 -or $disabledEnd -le $disabledStart) { throw 'Missing daily disabled-project cleanup fragment.' }
+$template = $template.Replace('// DAILY_DISABLED_RESEARCH', $dailyResearch.Substring($disabledStart, $disabledEnd - $disabledStart))
+
 $corpseStart = $dailyResearch.IndexOf('if (Options::retainCorpses && research->needItem()', [StringComparison]::Ordinal)
 $corpseEnd = $dailyResearch.IndexOf('// 3bb.', $corpseStart, [StringComparison]::Ordinal)
 if ($corpseStart -lt 0 -or $corpseEnd -le $corpseStart) { throw 'Missing daily research corpse fragment.' }
