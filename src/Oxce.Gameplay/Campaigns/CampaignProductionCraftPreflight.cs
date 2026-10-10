@@ -32,8 +32,8 @@ public sealed partial class CampaignState
         long soldierBirths, CampaignTimeTrigger highest, ref long work)
     {
         IReadOnlyList<CustomCounterChange>? researchCounters = null;
-        if (highest >= CampaignTimeTrigger.OneDay && ResearchPreflight.TryForecastDailyStocks(ref work, out var researchForecast))
-            researchCounters = researchForecast.CounterChanges;
+        if (highest >= CampaignTimeTrigger.OneDay && TryForecastDailySharedCounters(ref work, out var researchForecast))
+            researchCounters = researchForecast;
         long population = births.Values.Sum();
         foreach (var owner in _bases)
         {

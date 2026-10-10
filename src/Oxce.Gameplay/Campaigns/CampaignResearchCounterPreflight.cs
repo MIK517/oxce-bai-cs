@@ -4,6 +4,15 @@ public sealed partial class CampaignState
 {
     private bool? _researchCountersPresent;
 
+    private bool TryForecastDailySharedCounters(ref long work, out IReadOnlyList<CustomCounterChange> counters)
+    {
+        var supported = ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast);
+        if (!supported && work <= 1_000_000)
+            supported = ResearchPreflight.TryForecastDailyWorldStocks(ref work, out forecast);
+        counters = supported ? forecast.CounterChanges : [];
+        return supported;
+    }
+
     private string? PreflightDailyResearchCounters(ref long work)
     {
         const string rangeReason = "Research custom counters exceed the supported range.";
@@ -35,9 +44,9 @@ public sealed partial class CampaignState
         }
         if (finishingBases == 0) return null;
         Dictionary<string, long> projected = new(StringComparer.Ordinal);
-        if (ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast))
+        if (TryForecastDailySharedCounters(ref work, out var counters))
         {
-            foreach (var change in forecast.CounterChanges)
+            foreach (var change in counters)
             {
                 if (++work > 1_000_000) return workReason;
                 if (change.Name.Length == 0) continue;

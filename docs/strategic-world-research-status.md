@@ -2177,3 +2177,28 @@ the commit; combined root acceptance follows the third slice.
 
 All 350 site-research regressions, six new context cases, full formatting,
 regenerated code-map and diff verification pass before the slice commit.
+
+## Common daily counters with variable item quantities (2026-10-10)
+
+Daily counter validation and produced craft/soldier population checks now consume
+the common ordered counter sequence from the world projection when strict stock
+projection cannot agree on quantities. The cheap strict path remains first;
+failed proof work and the fallback's branch work share the same million-step
+budget. Different counter operations, refunds, arrival identities/order or transfer
+population still do not authorize an exact sequence. Price and diary scalar
+consumers retain their strict contracts.
+
+Twelve researchQuantityCounterBirthRows use native primary counter order, variable
+item transfers, produced craft/person delivery and later refuelling. The controlled
+allocation collaborator is seeded from the actual native counter result. Initial
+one, twenty and int-max-minus-one counters cover the floor and final safe birth.
+Four fresh/cache execution cases reproduce the old false counter-overflow refusal
+and now match native identities, stocks and pending personnel across twelve seeds,
+three rewrites and subsequent ticks. Six capacity cases preserve atomic counter
+intermediate overflow, insufficient craft/soldier identity headroom and upper
+arrival-stock overflow; the earlier world craft-birth guard keeps its precise
+priority. All ten cases and 27 counter regressions pass. Full formatting and the
+three-slice batch audit follow.
+
+Final formatting verification, regenerated code-map and diff checks pass before
+the third slice commit. The batch audit/root gate remains pending.
