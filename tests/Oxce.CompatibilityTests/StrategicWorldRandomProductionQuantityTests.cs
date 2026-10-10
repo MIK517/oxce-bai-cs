@@ -88,6 +88,123 @@ public sealed partial class StrategicWorldHuntingTests
         Assert.Equivalent(before, campaign.Capture(), strict: true);
     }
 
+    [Theory]
+    [InlineData(false, 0, 1)]
+    [InlineData(true, 0, 1)]
+    [InlineData(false, 0, 2)]
+    [InlineData(true, 0, 2)]
+    [InlineData(false, 1, 1)]
+    [InlineData(true, 1, 1)]
+    [InlineData(false, 1, 2)]
+    [InlineData(true, 1, 2)]
+    public void DelayedFuelQuantitiesPreserveActualTransfersThroughArrival(bool cache, int minimum, int stock)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, FuelQuantityRules(minimum, 2));
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var campaign = CampaignState.Restore(FuelQuantitySnapshot(content, stock) with { RandomState = seed }, content, new SplitMix64RandomSource(seed));
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var owner = after.Bases[0];
+            var history = Assert.Single(owner.Productions).RandomProductionInfo["SUPPLY"];
+            var choice = history == minimum ? 1 : 2;
+            choices.Add(choice);
+            var row = TestFixtures.Rows(oracle.RootElement, "productionDelayedFuelQuantityRows").Single(row => row[0].GetInt32() == minimum && row[1].GetInt32() == stock && row[2].GetInt32() == choice);
+            var progress = Assert.Single(result.Events.OfType<CampaignProductionProgress>());
+            var craft = Assert.Single(owner.Crafts, craft => craft.RuleId == "VARIANT_HUNT").Logistics!;
+            Assert.Equal(2, owner.Transfers.Count);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { minimum, stock, choice, progress.Produced, NativeProductionStop(progress.StopReason),
+                owner.Items.GetValueOrDefault("SUPPLY"), history, craft.Status, craft.Fuel, after.World.Ufos[0].Destination!.Id,
+                owner.Transfers.Count, owner.Transfers[0].Quantity, owner.Transfers[1].Quantity, owner.Transfers[0].Hours });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row.EnumerateArray().Take(14).ToArray())), CanonicalJson.Normalize(actual));
+            var transferIds = owner.Transfers.Select(transfer => transfer.Id).ToArray();
+            Assert.Equal(2, transferIds.Distinct().Count());
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "delayed-fuel-quantity.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            // Isolate the two hourly delivery boundaries, pausing further production.
+            // The airborne craft remains in its takeoff countdown during both ticks.
+            for (var hour = 3; hour <= 4; hour++)
+            {
+                var boundary = campaign.Capture();
+                boundary = boundary with
+                {
+                    Time = new(1, 1, 1, 1999, hour - 1, 59, 55),
+                    Bases = [boundary.Bases[0] with { Productions = [boundary.Bases[0].Productions[0] with { Assigned = 0 }] }],
+                };
+                campaign = CampaignState.Restore(boundary, content, new SplitMix64RandomSource(seed));
+                AdvanceUnblocked(campaign, 1);
+                after = campaign.Capture();
+                owner = after.Bases[0];
+                Assert.Equal(row[hour == 3 ? 14 : 16].GetInt32(), owner.Items.GetValueOrDefault("SUPPLY"));
+                if (hour == 3)
+                {
+                    Assert.Equal(transferIds, owner.Transfers.Select(transfer => transfer.Id));
+                    Assert.All(owner.Transfers, transfer => Assert.Equal(row[15].GetInt32(), transfer.Hours));
+                }
+                else Assert.Empty(owner.Transfers);
+                Assert.Equal(history, Assert.Single(owner.Productions).RandomProductionInfo["SUPPLY"]);
+                for (var rewrite = 0; rewrite < 3; rewrite++)
+                {
+                    campaign = Reload(content, campaign, seed, "delayed-fuel-arrival.sav");
+                    Assert.Equivalent(after, campaign.Capture(), strict: true);
+                }
+            }
+            var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DelayedFuelQuantityRangesReserveActualTransferCountAndUpperCapacity(bool cache)
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = Load(cache, FuelQuantityRules(0, 2));
+        var initial = FuelQuantitySnapshot(content, 1);
+        initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue - 2 } };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(2, after.Bases[0].Transfers.Count);
+        Assert.Equal(int.MaxValue, after.NextIds["oxcePortTransfer"]);
+        Assert.Equivalent(after, Reload(content, campaign, 81, "delayed-fuel-ids.sav").Capture(), strict: true);
+        initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { ["oxcePortTransfer"] = int.MaxValue - 1 } };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Production arrivals exhaust the transfer identity range.");
+        initial = initial with
+        {
+            NextIds = new Dictionary<string, int> { ["oxcePortTransfer"] = 18 },
+            Bases = [initial.Bases[0] with { Transfers = [new(17, 4, CampaignTransferKind.Item, "SUPPLY", int.MaxValue)] }],
+        };
+        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(81)), "Production arrivals exceed the supported quantity range.");
+    }
+
+    [Fact]
+    public void DelayedFuelQuantityProjectionLeavesCurrentStockAndUncertaintyUntouched()
+    {
+        TestFixtures.LoadVerifiedManifest("strategic-hunting");
+        var content = Load(false, FuelQuantityRules(0, 2));
+        var campaign = CampaignState.Restore(FuelQuantitySnapshot(content, 1), content, new SplitMix64RandomSource(81));
+        var before = campaign.Capture();
+        var crafts = campaign.BaseStates.ToDictionary(owner => owner.Id, owner => owner.Crafts.ToList());
+        var stocks = campaign.BaseStates.ToDictionary(owner => owner.Id, owner => new Dictionary<RuleHandle<ItemRuleFamily>, int>(owner.Items));
+        Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> uncertainty = [];
+        long work = 0;
+        Assert.Null(campaign.ProductionPreflight.ForecastStocks(crafts, stocks, uncertainty, null, false, null, CampaignTimeTrigger.OneHour, ref work));
+        Assert.Equal(1, stocks[before.Bases[0].Id][content.RuntimeRules.Items.GetRequired("SUPPLY")]);
+        Assert.Empty(uncertainty);
+        Assert.Equivalent(before, campaign.Capture(), strict: true);
+    }
+
     private static string FuelQuantityRules(int minimum, int delay = 0) => $$"""
         crafts: [{type: VARIANT_HUNT, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, autoPatrol: true, refuelItem: SUPPLY}]
         manufacture: [{name: VARIANT_PRODUCT, time: 1, producedItems: {SUPPLY: 0}, randomProducedItems: [[1, {SUPPLY: {{minimum}}}], [1, {SUPPLY: 2}]], transferTimes: [{{delay}}]}]
