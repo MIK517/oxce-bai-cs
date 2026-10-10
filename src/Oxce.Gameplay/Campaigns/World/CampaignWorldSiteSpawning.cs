@@ -156,7 +156,7 @@ internal sealed partial class CampaignWorld
         if ((long)_sites.Count + population > 100_000) return "World mission site population exceeds the supported limit.";
         foreach (var marker in markers)
         {
-            if (string.IsNullOrWhiteSpace(marker))
+            if (string.IsNullOrEmpty(marker))
                 return "Direct mission site marker names require a nonempty ID namespace.";
             work += _sites.Count + (long)_alienBases.Count;
             if (work > MaximumAlienBaseChecks) return "Direct mission site creation exceeds the supported work limit.";

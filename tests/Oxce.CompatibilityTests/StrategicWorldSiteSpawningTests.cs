@@ -71,6 +71,37 @@ public sealed class StrategicWorldSiteSpawningTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void WhitespaceMarkerNameIsANonemptyIdNamespace(bool cache)
+    {
+        // Native AlienMission::think tests markerName.empty(); SavedGame::getId keys keep
+        // whitespace. Only an empty name lacks an ID namespace.
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul", "strategic-site-spawn.rul"], cache, """
+            alienDeployments:
+              - {type: WHITESPACE_MARKER_SITE, markerName: ' ', duration: [2, 2]}
+            alienMissions:
+              - type: WHITESPACE_MARKER_MISSION
+                objective: 3
+                spawnZone: 0
+                waves: [{ufo: WHITESPACE_MARKER_SITE, count: 1, trajectory: DIRECT_SITE, timer: 3000, objective: true}]
+            """);
+        var initial = CreateSnapshot(content, "Whitespace site marker") with
+        {
+            RandomState = 17,
+            Time = new(1, 1, 1, 1999, 1, 29, 55),
+            World = new() { Missions = [new(4, "WHITESPACE_MARKER_MISSION", "SITE_SPAWN_REGION", "RACE_A", 0, 0, 0, 0, -1)] },
+        };
+        var campaign = CampaignState.Restore(initial.WithNextId(" ", 5), content, new SplitMix64RandomSource(17));
+        AdvanceOne(campaign);
+        var after = campaign.Capture();
+        var site = Assert.Single(after.World.MissionSites);
+        Assert.Equal(("WHITESPACE_MARKER_SITE", 5), (site.DeploymentId, site.Id));
+        Assert.Equal(6, after.NextIds[" "]);
+        Reload(content, campaign, 17, "whitespace-marker-site.sav");
+    }
+
+    [Theory]
     [InlineData("DIRECT_NEGATIVE_DURATION")]
     [InlineData("DIRECT_OVERFLOW_DURATION")]
     public void UnsafeDurationsStopBeforeAnyTickMutation(string mission)

@@ -103,7 +103,7 @@ internal sealed partial class CampaignWorld
             if (deployment.DurationMinimum < 0 || deployment.DurationMaximum < deployment.DurationMinimum ||
                 deployment.DurationMaximum > int.MaxValue / 3600)
                 return "UFO mission site duration is outside the supported range.";
-            if (string.IsNullOrWhiteSpace(deployment.MarkerName) || IsUfoIdNamespace(deployment.MarkerName))
+            if (string.IsNullOrEmpty(deployment.MarkerName) || IsUfoIdNamespace(deployment.MarkerName))
                 return "UFO mission site marker namespace is unsupported.";
             markers.Add(deployment.MarkerName);
         }
