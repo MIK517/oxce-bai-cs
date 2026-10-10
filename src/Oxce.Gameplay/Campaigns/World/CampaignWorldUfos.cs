@@ -179,6 +179,10 @@ internal sealed partial class CampaignWorld
                     }
                     if (!CanAdvanceOrdinaryWaypoint(ufo, mission, trajectory))
                         return "UFO waypoint arrival requires mission simulation.";
+                    // Crafts and escorts react to the new CRASHED status later in this
+                    // time5Seconds pass (landing confirmation, return or escort loss).
+                    if (CrashesOnGroundArrival(ufo, mission, trajectory) && HasArrivalContactFollowers(ufo))
+                        return "Crashed UFO arrival with followers requires interception simulation.";
                     var regionForWaypoint = campaign.Content.RuntimeRules.Regions[
                         campaign.Content.RuntimeRules.Regions.GetRequired(mission.RegionId)].Value;
                     var wave = rule.Waves[MissionWaveIndex(ufo, mission, rule)];
@@ -334,15 +338,29 @@ internal sealed partial class CampaignWorld
         var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
         if (altitude == 0)
         {
-            var damageMaximum = ufoRule.StatsForRace(mission.Race).DamageMaximum;
-            if (!conversion && (ufo.Damage >= damageMaximum ||
-                !ufoRule.Unmanned && ufo.HuntBehavior != 1 && ufo.Damage > damageMaximum / 2))
-                return false; // Ordinary crash outcomes remain guarded. Conversion replaces the transient altitude status.
             if (!conversion && LandingAllowed(ufo.Destination!.Position, ufoRule) &&
                 (trajectory.GroundTimer <= 0 || trajectory.GroundTimer > int.MaxValue / 5)) return false;
         }
         return trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum) >= 0;
     }
+
+    /// <summary>
+    /// Ufo::setAltitude marks a damaged UFO CRASHED instead of LANDED on any ground
+    /// waypoint (Ufo::isCrashed). Site conversion replaces that transient status.
+    /// </summary>
+    private bool CrashesOnGroundArrival(UfoSnapshot ufo, AlienMissionSnapshot mission, RuntimeUfoTrajectoryRule trajectory)
+    {
+        var next = ufo.TrajectoryPoint + 1;
+        if (next >= trajectory.Waypoints.Count || trajectory.Altitude(next) != 0 ||
+            IsSiteConversion(ufo, mission, trajectory)) return false;
+        var rules = campaign.Content.RuntimeRules;
+        var ufoRule = rules.Ufos[rules.Ufos.GetRequired(ufo.RuleId)].Value;
+        return IsCrashed(ufo, ufoRule, ufoRule.StatsForRace(mission.Race).DamageMaximum);
+    }
+
+    /// <summary>Ufo::isCrashed: destroyed, or past half damage unless kamikaze or unmanned.</summary>
+    private static bool IsCrashed(UfoSnapshot ufo, RuntimeUfoRule rule, int damageMaximum) =>
+        ufo.Damage >= damageMaximum || !rule.Unmanned && ufo.HuntBehavior != 1 && ufo.Damage > damageMaximum / 2;
 
     private static void ValidateWaypointAreas(RuntimeRegionRule region, int zone)
     {
@@ -391,6 +409,9 @@ internal sealed partial class CampaignWorld
         var landed = trajectory.Altitude(nextWaypoint) == 0;
         var conversion = IsSiteConversion(ufo, mission, trajectory);
         var landingAllowed = landed && LandingAllowed(position, ufoRule);
+        // The ground branch still assigns the landing timer and marker to a crashed UFO.
+        var crashed = landed && !conversion &&
+            IsCrashed(ufo, ufoRule, ufoRule.StatsForRace(mission.Race).DamageMaximum);
         var speed = landed ? 0 : trajectory.Speed(nextWaypoint, ufoRule.StatsForRace(mission.Race).SpeedMaximum);
         var speedRadian = WorldGeometry.RadianSpeed(speed);
         var vector = WorldGeometry.SpeedVector(position, nextPosition, speedRadian);
@@ -400,7 +421,7 @@ internal sealed partial class CampaignWorld
             Longitude = position.Longitude,
             Latitude = position.Latitude,
             Altitude = WorldAltitudes.All[trajectory.Altitude(nextWaypoint)],
-            Status = landed ? UfoStatus.Landed : UfoStatus.Flying,
+            Status = crashed ? UfoStatus.Crashed : landed ? UfoStatus.Landed : UfoStatus.Flying,
             LandId = conversion ? ufo.LandId : !landed ? 0 : landingAllowed && ufo.Detected && ufo.LandId == 0
                 ? campaign.NextId("STR_LANDING_SITE") : ufo.LandId,
             SecondsRemaining = landed && !conversion ? (landingAllowed ? checked(trajectory.GroundTimer * 5) : 5) : ufo.SecondsRemaining,
