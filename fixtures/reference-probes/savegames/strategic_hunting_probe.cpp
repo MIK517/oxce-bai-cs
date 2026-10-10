@@ -112,7 +112,7 @@ struct ResearchArmor { const RuleItem* _corpseGeo=nullptr; const RuleItem* getCo
 using Armor=ResearchArmor;
 // ARMOR_CORPSE
 struct ResearchUnit { const ResearchArmor* armor=nullptr; const ResearchArmor* getArmor() const { return armor; } };
-struct ResearchMod { std::vector<ResearchRule*> rules; mutable Item supply; ResearchUnit* matchedUnit=nullptr; std::string matchName="CORPSE_TOPIC"; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : nullptr; } ResearchUnit* getUnit(const std::string& name,bool) const { return name==matchName?matchedUnit:nullptr; } mutable RuleSoldier soldierRule; RuleSoldier* getSoldier(const std::string&) const { return &soldierRule; } Soldier* genSoldier(SavedGame*,const RuleSoldier*,int) const; int getScriptGlobal() const { return 0; } int getStatStrings() const { return 0; } int getPsiRequirements() const { return 0; } };
+struct ResearchMod { std::vector<ResearchRule*> rules; mutable Item supply, clip; bool extraItems=false; ResearchUnit* matchedUnit=nullptr; std::string matchName="CORPSE_TOPIC"; Item* getItem(const std::string& id) const { return id=="SUPPLY" ? &supply : extraItems && id=="CLIP" ? &clip : nullptr; } ResearchUnit* getUnit(const std::string& name,bool) const { return name==matchName?matchedUnit:nullptr; } mutable RuleSoldier soldierRule; RuleSoldier* getSoldier(const std::string&) const { return &soldierRule; } Soldier* genSoldier(SavedGame*,const RuleSoldier*,int) const; int getScriptGlobal() const { return 0; } int getStatStrings() const { return 0; } int getPsiRequirements() const { return 0; } };
 using Mod=ResearchMod;
 enum class DiscoverySourceType { FREE_AFTER };
 struct ResearchDiaryEntry { explicit ResearchDiaryEntry(const RuleResearch*) {} void setDate(int) {}
@@ -903,6 +903,24 @@ auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),pr
 for(auto* topic:primary) { caller.spawn(topic,&mod,&base); saved.applyPrimaryCounters(topic); }
 std::cout << '[' << labels << ',' << choice << ',' << base.storage.count << ',' << base.transfers.size()
 << ',' << saved._ids["UNKNOWN_COUNTER"] << ',' << saved.researchScore << ']';
+}
+std::cout << "],\"researchOrderedArrivalRows\":[";
+serviceFirst=true;
+for(bool duplicate:{false,true}) for(int choice:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[3]; auto* source=&topics[0]; auto* a=&topics[1]; auto* b=&topics[2];
+source->name="CORE"; a->name="EQUIV_A"; b->name="EQUIV_B"; source->free={a,b};
+source->spawned="SUPPLY"; source->count=1;
+a->list={"CLIP","SUPPLY"}; b->list={"SUPPLY","CLIP"}; if(duplicate) { a->list.push_back("CLIP"); b->list.insert(b->list.begin(),"CLIP"); }
+SavedGame saved; Mod mod; mod.extraItems=true; mod.clip.type="CLIP"; mod.clip.battle=2; mod.rules={source,a,b}; Base base; ResearchCaller caller;
+RNG::suppliedChoice=choice; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) caller.spawn(topic,&mod,&base);
+std::cout << '[' << (duplicate?"true":"false") << ',' << choice << ",[";
+for(size_t i=0;i<base.transfers.size();i++) { if(i)std::cout<<','; std::cout<<'"'<<base.transfers[i]->_itemId->type<<'"'; }
+const auto count=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
+std::cout << "]," << base.storage.count << ',' << base.storage.getItem(&mod.clip) << ',' << count << ',' << saved.researchScore << ']';
 }
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
