@@ -1714,6 +1714,22 @@ std::cout << '[' << initial << ',' << (bonus?"true":"false") << ',' << (duplicat
 bool changeFirst=true; for(auto* topic:primary) { for(auto& name:topic->increases) { if(!changeFirst) std::cout << ','; changeFirst=false; std::cout << "true"; } for(auto& name:topic->decreases) { if(!changeFirst) std::cout << ','; changeFirst=false; std::cout << "false"; } }
 std::cout << "]]";
 }
+std::cout << "],\"researchQuantityCounterBirthRows\":[";first=true;
+for(bool person:{false,true}) for(int initial:{1,20,INT_MAX-1}) for(int choice:{0,1}) {
+if(!first)std::cout<<',';first=false;
+ResearchRule topics[3];auto* source=&topics[0];auto* a=&topics[1];auto* b=&topics[2];source->name="CORE";a->name="EQUIV_A";b->name="EQUIV_B";source->free={a,b};
+const std::string counter=person?"STR_SOLDIER":"PRODUCED_CRAFT";source->increases={counter};source->decreases={counter,counter};a->increases=b->increases={counter,counter};a->decreases=b->decreases={counter};
+source->spawned=a->spawned=b->spawned="SUPPLY";source->count=1;a->count=2;b->count=3;
+SavedGame saved;Mod mod;mod.rules={source,a,b};Base base;ResearchCaller caller;saved._ids[counter]=initial;saved.bases={&base};
+RNG::suppliedChoice=choice;auto* bonus=saved.selectGetOneFree(source);RNG::suppliedChoice=-1;saved.addFinishedResearch(bonus,&mod,&base);saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus);std::sort(primary.begin(),primary.end());primary.erase(std::unique(primary.begin(),primary.end()),primary.end());for(auto* topic:primary){caller.spawn(topic,&mod,&base);saved.applyPrimaryCounters(topic);}
+for(auto* transfer:base.transfers){transfer->advance(&base);delete transfer;}base.transfers.clear();const auto before=saved._ids[counter];saved.craftCounter=saved.soldierCounter=before;
+ProductionCraftRule birth;birth.craft.fuelMax=0;ProductionItemRule output;output.person=person?"RECRUIT":"";ProductionDeliveryCaller delivery{&output};if(!person)delivery.craftBirth=&birth;delivery.deliver(&base,&saved);
+Craft craft;craft._base=&base;craft.rule.fuelItem=&mod.supply;craft._fuel=960;craft._stats.fuelMax=1000;craft.refuel();
+const auto id=person?base.transfers.back()->_soldier->id:base.crafts.back()->id;
+std::cout<<'['<<(person?1:0)<<','<<initial<<','<<choice<<','<<before<<','<<id<<','<<(person?saved.soldierCounter:saved.craftCounter)<<','<<base.storage.count<<','<<base.transfers.size()<<','<<saved.researchScore<<']';
+if(!person)delete base.crafts.back();for(auto* transfer:base.transfers){delete transfer->_soldier;delete transfer;}
+}
 std::cout << "],\"researchCounterSequentialBaseRows\":["; first=true;
 for(int initial:{-1,1,3,20,INT_MAX-1}) for(int bases:{1,2}) {
 if(!first) std::cout << ','; first=false;

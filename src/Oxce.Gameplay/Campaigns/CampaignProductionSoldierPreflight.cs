@@ -84,8 +84,8 @@ public sealed partial class CampaignState
         }
         if (population > 100_000) return "Soldier production exceeds the supported population limit.";
         IReadOnlyList<CustomCounterChange>? counters = null;
-        if (highest >= CampaignTimeTrigger.OneDay && ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast))
-            counters = forecast.CounterChanges;
+        if (highest >= CampaignTimeTrigger.OneDay && TryForecastDailySharedCounters(ref work, out var forecast))
+            counters = forecast;
         if (ProducedCraftCounterRange("STR_SOLDIER", highest, counters, ref work, out var range) is { } reason)
             return reason.Replace("Craft", "Soldier", StringComparison.Ordinal).Replace("craft", "soldier", StringComparison.Ordinal);
         work += _bases.Count + _bases.Sum(owner => owner.Soldiers.Count + (long)owner.Transfers.Count);
