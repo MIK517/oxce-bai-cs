@@ -786,3 +786,32 @@ their original limits. The reference checkout remains clean; useful capture
 source/executable/output remain, disposable native objects were removed. No
 unexpected access denial occurred. Wider daily stock/research alternatives,
 transfer composition and final guard reconciliation keep branch 4c open.
+
+## Random production fuel sensitivity by base (2026-10-10)
+
+Random output envelopes now collect fuel-sensitive items from this base's projected
+craft sources, including due incoming craft and earlier production births, rather
+than every craft rule in the catalog. Potential craft products from all this base's
+projects remain sensitive, including conservatively delayed products. Required
+production materials, BT_NONE reuse, alien quantities, transfer cardinality and
+quantity/history capacity checks retain their existing restrictions. No outcome is
+selected in preflight; execution and persisted random history remain unchanged.
+
+Reference: Production::step/startItem, Transfer::advance, Craft::refuel and the
+GeoscapeState hourly/half-hour ordering at the pinned revision. Existing verified
+strategic-hunting productionVariantRows supply the observable native stock,
+progress, history, fuel and target output. Six fresh/cache cases first reproduced
+false fuel guards for an unused craft rule, a craft at another base and a future
+craft transfer. They now match both native outcomes across twelve saved seeds,
+conserve the other base/future transfer and survive three rewrites. Four guard
+cases retain atomic refusal for due incoming and potential produced craft.
+
+The affected 480-case hunting class passed 478 cases; the two new craft-production
+setups needed category STR_CRAFT rather than item production. All four corrected
+due/produced guard cases pass. The initial overlay also needed definitions in the
+same YAML family lists rather than duplicate top-level keys; native expectations
+and existing guard assertions were retained. Cycle 31 slice one; batch pending.
+
+Slice verification/interim review: corrected guard cases and full formatting pass;
+regenerated code-map/diff checks pass and the reference remains clean. No confirmed
+issue. The batch root gate follows the remaining two implementation slices.

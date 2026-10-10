@@ -73,7 +73,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var deterministicRandom = TryForecastRandomProduction(owner, rule, out var randomItems, out var randomTransferCount, ref work);
+                var deterministicRandom = TryForecastRandomProduction(owner, sources, rule, out var randomItems, out var randomTransferCount, ref work);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
                 var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
@@ -332,7 +332,7 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private bool TryForecastRandomProduction(BaseState owner, RuntimeManufactureRule rule,
+    private bool TryForecastRandomProduction(BaseState owner, IReadOnlyList<CraftState> sources, RuntimeManufactureRule rule,
         out IReadOnlyDictionary<string, int>? items, out int transferCount, ref long work)
     {
         items = null;
@@ -340,18 +340,25 @@ public sealed partial class CampaignState
         if (rule.RandomProducedItems.Count == 0) return true;
         var rules = _content.RuntimeRules;
         HashSet<RuleHandle<ItemRuleFamily>> sensitive = [];
-        foreach (var craft in rules.Crafts.Rules)
+        // Due transfers and earlier production births are already in sources.
+        // Fuel at another base or on an absent craft cannot consume these stocks.
+        foreach (var craft in sources)
         {
             if (++work > 1_000_000) return false;
-            if (craft.Value.RefuelItem is { } fuel) sensitive.Add(fuel);
+            if (rules.Crafts[craft.Rule].Value.RefuelItem is { } fuel) sensitive.Add(fuel);
         }
         foreach (var project in owner.Productions)
         {
             var product = rules.Manufacture[project.Rule].Value;
-            work += 1L + product.RequiredMaterials.Count;
+            work += 1L + product.RequiredMaterials.Count + product.ProducedMaterials.Count;
             if (work > 1_000_000) return false;
             foreach (var material in product.RequiredMaterials)
                 if (material.Item is { } item && material.Quantity > 0) sensitive.Add(item);
+            // Later projects can add craft before half-hour maintenance. Retain
+            // all potential products here, including conservatively delayed ones.
+            foreach (var material in product.ProducedMaterials)
+                if (material.Craft is { } craft && material.Quantity > 0 && rules.Crafts[craft].Value.RefuelItem is { } fuel)
+                    sensitive.Add(fuel);
         }
         var immediate = rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0;
         var minimumTransfers = int.MaxValue;
