@@ -777,3 +777,12 @@ thirty-two patrol allocation assertion, pass after the fix. The initial root's
 other failure was a 176-byte polygon allocation measurement in unchanged
 rendering code; all 15 rendering tests pass in isolation without edits. Root
 acceptance is rerun rather than weakening either performance assertion.
+
+Final arrival-cycle acceptance: all 4,782 root tests pass, zero failures/skips,
+in 6m 16s. Full solution formatting, regenerated code-map and diff checks pass.
+Fixture checksum, all staged-save classifications, endurance and populated
+allocation gates pass with the root suite. Both performance assertions retain
+their original limits. The reference checkout remains clean; useful capture
+source/executable/output remain, disposable native objects were removed. No
+unexpected access denial occurred. Wider daily stock/research alternatives,
+transfer composition and final guard reconciliation keep branch 4c open.
