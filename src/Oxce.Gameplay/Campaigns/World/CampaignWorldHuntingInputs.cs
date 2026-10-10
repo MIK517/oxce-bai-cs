@@ -8,6 +8,7 @@ internal sealed partial class CampaignWorld
         List<CampaignState.CraftState> sources, Dictionary<RuleHandle<ItemRuleFamily>, int> stocks,
         CampaignTimeTrigger highest, bool researchMayChangeStocks,
         IReadOnlyList<KeyValuePair<string, int>>? researchArrivals,
+        IReadOnlyDictionary<string, int>? researchUncertainty,
         Dictionary<RuleHandle<ItemRuleFamily>, int> uncertainty, ref long work)
     {
         var rules = campaign.Content.RuntimeRules;
@@ -148,6 +149,16 @@ internal sealed partial class CampaignWorld
                 if (quantity > int.MaxValue) return "Research arrivals exceed the supported stock range.";
                 stocks[item] = (int)quantity;
                 if (rules.Items[item].Value.BattleType == 0) reusableItems.Add(item);
+            }
+        if (researchUncertainty is not null)
+            foreach (var delta in researchUncertainty)
+            {
+                if (++work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
+                var item = rules.Items.GetRequired(delta.Key);
+                var combined = (long)uncertainty.GetValueOrDefault(item) + delta.Value;
+                if (combined > int.MaxValue || combined > stocks.GetValueOrDefault(item))
+                    return "Research arrivals exceed the supported stock range.";
+                uncertainty[item] = (int)combined;
             }
         work += reusableItems.Count * (long)sources.Count;
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";

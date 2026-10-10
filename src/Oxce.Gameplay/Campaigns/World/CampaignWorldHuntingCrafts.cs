@@ -31,6 +31,12 @@ internal sealed partial class CampaignWorld
                 researchMayChangeStocks = false;
             }
         }
+        if (researchMayChangeStocks && work <= MaximumAlienBaseChecks && TryDailyResearchProjection(out var worldStocks))
+        {
+            work += worldStocks.Work;
+            researchStocks = worldStocks;
+            researchMayChangeStocks = false;
+        }
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseStocks = [];
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseUncertainty = [];
@@ -55,7 +61,8 @@ internal sealed partial class CampaignWorld
             Dictionary<RuleHandle<ItemRuleFamily>, int>? uncertainty = highest >= CampaignTimeTrigger.OneHour ? [] : null;
             if (highest >= CampaignTimeTrigger.OneHour &&
                 ForecastHuntingHourlyInputs(owner, sources, stocks!, highest, researchMayChangeStocks,
-                    researchStocks?.Arrivals.GetValueOrDefault(owner.Id), uncertainty!, ref work) is { } inputReason)
+                    researchStocks?.Arrivals.GetValueOrDefault(owner.Id),
+                    researchStocks?.ArrivalUncertainty.GetValueOrDefault(owner.Id), uncertainty!, ref work) is { } inputReason)
                 return inputReason;
             if (stocks is not null) baseStocks.Add(owner.Id, stocks);
             if (uncertainty?.Count > 0) baseUncertainty.Add(owner.Id, uncertainty);

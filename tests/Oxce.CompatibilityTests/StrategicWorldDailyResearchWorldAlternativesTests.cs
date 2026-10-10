@@ -69,12 +69,12 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void WorldResearchAlternativesStillRequireCommonStockAndCounterEffects(bool cache)
+    public void WorldResearchAlternativesStillRequireCommonRefundsAndCounterEffects(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         foreach (var content in new[]
         {
-            StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, otherCount: 3),
+            StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}"),
             StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, otherCounter: "OTHER_COUNTER"),
         })
         {
