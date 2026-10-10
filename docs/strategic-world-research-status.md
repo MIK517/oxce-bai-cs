@@ -1873,3 +1873,10 @@ comparisons, pure state copies, exact research consumers, event and resource
 guards, and native pointer/automatic-discovery evidence. Multi-base repeated
 choices remain a useful additional integration case for the following cycle.
 Full root rerun follows the diagnostic correction.
+
+Cycle acceptance: root rerun passes all 4,806 tests with zero failures or skips
+in 6m17s725ms. Full formatting verification, code-map, diff, fixture checksums,
+private corpus and unchanged allocation/endurance gates pass. The reference tree
+remains clean; no unexpected access denial occurred. Branch 4c stays open for
+wider consumed-consequence, stock/research and transfer composition and final
+guard reconciliation. Branch 4d is untouched.

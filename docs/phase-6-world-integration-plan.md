@@ -63,6 +63,14 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-10 reward-projection cycle: common stock consequences and exact
+  convergent research states now support bounded distinct reward paths while
+  retaining actual duplicate weights and diary order. Audit corrected the expected
+  earlier work-limit diagnostic; all 4,806 root tests and formatting pass.
+  See [reward evidence and audit](strategic-world-research-status.md#stock-equivalent-free-research-choices-2026-10-10).
+  Wider consumed-consequence, stock/research and transfer composition plus final
+  guard reconciliation keep 4c open; 4d is unchanged.
+
 - 2026-10-10 craft-arrival cycle: returned-craft hunting cancellation,
   undiscovered alien-base arrival and optional source-deletion arrivals now
   compose through saved-order escorts. The batch audit corrected manufactured
