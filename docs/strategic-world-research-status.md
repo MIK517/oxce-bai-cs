@@ -2151,3 +2151,29 @@ obsolete stochastic quantity guard assertions. Those now pass with exact selecte
 branch, native fuel/hunting, other-base project retention and three-rewrite checks.
 Final full formatting, code-map and diff verification pass. Root acceptance remains
 at the three-slice batch boundary.
+
+## Correlated daily item context for site research (2026-10-10)
+
+Each retained daily discovery state now carries its own first-base item context
+through site grants. Starting from the common post-servicing upper stock, the
+forecast subtracts that branch's missing arrival quantities. It separates the
+daily deltas from remaining craft/production uncertainty, retaining zero/present
+masks only where that branch can actually cross zero. Immutable stock contexts and
+active-project contexts survive grant cloning and optional sequences. All copies,
+arrival scans and masks stay within the shared work and 256-outcome bounds; invalid
+or negative contexts fail before campaign mutation.
+
+Four native researchDailyQuantityContextRows couple selected A/B rewards, one/two
+item arrivals, refuelling and a later item-required automatic site dependency.
+The new regressions reproduced the old false score-overflow refusal: the item is
+absent in the only branch satisfying the research dependency. Native fixture setup
+now enables the explicit needItem flag alongside its needed-item link; all prior
+trace values remain unchanged. The direct site proof removes that impossible
+outcome, while the separate general daily score reserve remains conservative.
+Six fresh/cache cases pass, including actual selected score/stock/diary identity,
+twelve seeds, three rewrites, subsequent ticks, unrelated uncertainty, malformed
+stock contexts and exhausted work. Site regressions and full formatting precede
+the commit; combined root acceptance follows the third slice.
+
+All 350 site-research regressions, six new context cases, full formatting,
+regenerated code-map and diff verification pass before the slice commit.
