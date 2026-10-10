@@ -26,6 +26,7 @@ $researchGetters = (Read-ReferenceMethod 'src/Mod/RuleResearch.cpp' 'int RuleRes
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleResearch* getLookup() const').Replace('getLookup()', 'RuleResearch::getLookup()').Replace('_lookup', 'lookup') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleItem* getNeededItem() const').Replace('getNeededItem()', 'RuleResearch::getNeededItem()').Replace('_neededItem', 'needed')
 $template = $template.Replace('// RESEARCH_RULE_GETTERS', $researchGetters)
+$template = $template.Replace('// CRAFT_ESCORT_ARRIVAL', (Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'else if (x != 0)').Replace('else if (x != 0)', 'if (x != 0)'))
 $template = $template.Replace('// ALIEN_BASE_ARRIVAL', (Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'else if (b != 0)').Replace('else if (b != 0)', 'if (b != 0)'))
 $template = $template.Replace('// STOP_HUNTING_CRAFT', (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::stopHuntingXcomCraft(Craft *target)'))
 $template = $template.Replace('// PRICE_TIME_POINTER',

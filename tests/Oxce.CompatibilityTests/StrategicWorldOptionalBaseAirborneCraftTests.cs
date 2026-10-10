@@ -96,11 +96,15 @@ public sealed class StrategicWorldOptionalBaseAirborneCraftTests
             "Alien base self-destruction requires craft speed alternatives for uncertain research.");
         initial = Snapshot(content, 17, 0, false, false).WithCraft("SHIP", craft => craft with
         { Logistics = craft.Logistics! with { Longitude = 0.2, Latitude = 0.1 } });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Alien base self-destruction requires craft arrival alternatives for uncertain research.");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(after.CompletedResearch.Contains("BONUS"), after.Bases[0].Crafts[0].Logistics!.Status != "STR_OUT");
         initial = initial.WithCraft("SHIP", craft => craft with { Logistics = craft.Logistics! with { Takeoff = 5 } });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Alien base self-destruction requires craft arrival alternatives for uncertain research.");
+        campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        after = campaign.Capture();
+        Assert.Equal(after.CompletedResearch.Contains("BONUS"), after.Bases[0].Crafts[0].Logistics!.Status != "STR_OUT");
         initial = Snapshot(content, 17, -1, false, false);
         AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
             "Airborne craft fuel or takeoff state is out of range.");
@@ -109,7 +113,7 @@ public sealed class StrategicWorldOptionalBaseAirborneCraftTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void NearHomeOptionalReturnBlocksBeforeResearchUsingNativeEquality(bool cache)
+    public void NearHomeOptionalReturnUsesNativeEquality(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-world");
         var content = StrategicWorldOptionalBaseCraftTests.Content(cache);
@@ -122,8 +126,10 @@ public sealed class StrategicWorldOptionalBaseAirborneCraftTests
                 Latitude = initial.Bases[0].Latitude,
             },
         });
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Alien base self-destruction requires craft arrival alternatives for uncertain research.");
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(after.CompletedResearch.Contains("BONUS"), after.Bases[0].Crafts[0].Logistics!.Status != "STR_OUT");
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int takeoff, bool escort, bool hunter)

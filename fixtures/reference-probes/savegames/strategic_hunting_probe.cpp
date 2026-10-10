@@ -174,7 +174,7 @@ bool getIsAutoPatrolling() const { return autoPatrol; }
 double getLongitudeAuto() const { return 0.8; } double getLatitudeAuto() const { return 0.3; }
 int _damage = 0, units = 0, id = 0; bool ignored = false, _lowFuel = false, _missionComplete = false;
 int getMaxUnitsClamped() const { return units; } int getNumTotalUnits() const { return units; }
-bool isIgnoredByHK() const;
+bool isIgnoredByHK() const; bool isDestroyed() const { return false; }
 bool getLowFuel() const { return _lowFuel; }
 bool& _mission=_missionComplete;
 bool getMissionComplete() const { return _missionComplete; }
@@ -382,6 +382,9 @@ ArrivalGlobe globe; ArrivalGlobe* _globe=&globe; ArrivalGame game; ArrivalGame* 
 bool landing=false; void timerReset() {} void popup(ConfirmLandingState* value) { landing=true; delete value; }
 void arrive(Craft* xcraft,AlienBase* b,bool suppressLanding) {
 // ALIEN_BASE_ARRIVAL
+}
+void arriveEscort(Craft* xcraft,Craft* x) {
+// CRAFT_ESCORT_ARRIVAL
 }
 };
 }
@@ -1014,6 +1017,37 @@ craft._dest=destination?&target:nullptr;
 craft.consumeFuel(0);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << (destination?"true":"false") << ',' << (patrolFree?"true":"false")
 << ',' << speed << ',' << fuel << ',' << excess << ',' << craft._fuel << ',' << craft._excessFuel << ',' << base.storage.count << ']';
+}
+std::cout << "],\"optionalCraftArrivalRows\":[";
+serviceFirst=true;
+for(bool deleted:{false,true}) for(int takeoff:{0,5}) for(bool leaderFirst:{false,true}) for(bool itemFuel:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft leader,escort; Base home; AlienBase target; SavedGame game; Ufo hunter; Item item;
+FuelCaller fuelCaller; AlienBaseArrivalCaller arrival;
+leader._base=&home; leader._dest=&target; leader._status="STR_OUT"; leader.speed=1000;
+leader._stats.speedMax=2100; leader._stats.fuelMax=1000; leader._fuel=1000; leader._takeoff=takeoff;
+leader.autoPatrol=false; leader.rule.fuelItem=itemFuel?&item:nullptr;
+target.discovered=true;
+escort._base=&home; escort._dest=&leader; escort._status="STR_OUT"; escort.speed=2100;
+escort._stats.speedMax=2100; escort._stats.fuelMax=1000; escort._fuel=1000; escort.autoPatrol=false; escort._missionComplete=true;
+hunter._dest=&leader; hunter._isHunting=true; hunter.speed=3300;
+hunter._origWaypoint=new Waypoint(); hunter._origWaypoint->lon=1; hunter._origWaypoint->lat=0.6;
+game.ufos={&hunter};
+if(deleted) leader.returnToBase();
+std::vector<Craft*> ordered=leaderFirst?std::vector<Craft*>{&leader,&escort}:std::vector<Craft*>{&escort,&leader};
+for(auto* craft:ordered) fuelCaller.fuel(craft);
+for(auto* craft:ordered) {
+if(craft->think()) game.stopHuntingXcomCraft(craft);
+else if(craft==&leader) arrival.arrive(craft,&target,false);
+else arrival.arriveEscort(craft,&leader);
+}
+auto destinationKind=[&](Craft& craft) { return !craft._dest?0:craft._dest==&home?1:craft._dest==&target?2:3; };
+std::cout << '[' << (deleted?"true":"false") << ',' << takeoff << ',' << (leaderFirst?"true":"false") << ',' << (itemFuel?"true":"false")
+<< ',' << leader._fuel << ',' << '\"' << leader._status << '\"' << ',' << leader.speed << ',' << leader._takeoff << ',' << destinationKind(leader)
+<< ',' << escort._fuel << ',' << '\"' << escort._status << '\"' << ',' << escort.speed << ',' << escort._takeoff << ',' << destinationKind(escort)
+<< ',' << (hunter._isHunting?"true":"false") << ',' << (hunter._origWaypoint!=nullptr?"true":"false") << ']';
+if(hunter._origWaypoint) { delete hunter._origWaypoint; hunter._origWaypoint=nullptr; }
+if(dynamic_cast<Waypoint*>(hunter._dest)) { delete hunter._dest; hunter._dest=nullptr; }
 }
 std::cout << "],\"alienBaseArrivalRows\":[";
 serviceFirst=true;

@@ -111,15 +111,10 @@ internal sealed partial class CampaignWorld
                 return fuelReason;
             if (state.Speed != maximum && UncertainCraftReturnEscortReason(craft, state.Speed, maximum, from, ref work) is { } escortReason)
                 return escortReason;
-            // Fuel precedes movement. Empty fuel in both alternatives forces
-            // the same home destination/full speed even during takeoff. Native
-            // think/checkup may then arrive in either branch without ambiguity.
-            // An already-low craft skips this recall and cannot use the proof.
-            if (!state.LowFuel && maximum > 0 && state.Fuel <= Math.Min(firstBurn, secondBurn)) return null;
-            var home = new WorldPosition(owner.Longitude, owner.Latitude);
-            if (WorldGeometry.ReachedDestination(from, home) || state.Takeoff <= 0 &&
-                !(WorldGeometry.Distance(from, home) > WorldGeometry.RadianSpeed(maximum)))
-                return "Alien base self-destruction requires craft arrival alternatives for uncertain research.";
+            // Hunter selection/UFO movement consume the proven pre-movement
+            // eligibility. Each real research outcome may then arrive/check up
+            // independently, stop its hunters and update later saved-order escorts.
+            // The surviving target's deployment boundary is owned by craft arrival.
             return null;
         }
         // Native returnToBase preserves status. Servicing either stays grounded,
