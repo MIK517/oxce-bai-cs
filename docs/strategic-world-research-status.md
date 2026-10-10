@@ -2064,3 +2064,24 @@ eight cases, full formatting, regenerated code-map and diff checks pass. Interim
 review preserves strict callers, collapses equivalent terminal states before the
 world population bound and charges the frozen summary copy. Site integration and
 composed acceptance remain pending.
+
+## Daily exact alternatives through site grants (2026-10-10)
+
+Cycle 33 slice two connects the cached world daily projection to site research.
+MissionResearchForecast initializes every retained exact state, publishes their
+intersection/union, and keeps each path's active projects through item alternatives
+and grant cloning. Common stock effects remain shared. Each copy/summary is charged
+before allocation, and the existing 256-outcome/million-step guards remain intact.
+The strict price/diary projection still requires one common state.
+
+Four new pinned strategic-hunting researchDailySiteAlternativeRows compose native
+time1Day bonus/lookup/core and primary side effects with a later site-source
+addFinishedResearch grant and a conditional zero-cost dependency. Four fresh/cache
+execution cases first reproduced the deterministic-daily-phase guard, then compare
+actual item/counter/score/research states and daily/mission diary order across twelve
+saved seeds. Both paths persist through three rewrites and continued pursuit. All
+prior native rows remain unchanged. All twelve daily-world projection/integration
+cases, full formatting, code-map and diff checks pass. Interim review confirms
+only the world operation exposes alternatives, guarantees are intersections and
+active project context survives each clone. Event/active/capacity composition and
+root batch acceptance remain pending.

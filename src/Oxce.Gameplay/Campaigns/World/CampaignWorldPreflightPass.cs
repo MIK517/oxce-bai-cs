@@ -18,8 +18,8 @@ internal sealed partial class CampaignWorld
             // This pure operation has its own million-step bound and chooses no
             // random reward. Failed/uncertain projections never authorize effects.
             long work = 0;
-            _pass.DailyResearchProjectionSupported = campaign.ResearchPreflight.TryForecastDailyStocks(
-                ref work, out var daily, includeDiscoveries: true);
+            _pass.DailyResearchProjectionSupported = campaign.ResearchPreflight.TryForecastDailyWorldStocks(
+                ref work, out var daily);
             _pass.DailyResearchProjection = daily;
         }
         forecast = _pass.DailyResearchProjection;

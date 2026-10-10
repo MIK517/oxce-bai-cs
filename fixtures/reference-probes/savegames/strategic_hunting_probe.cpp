@@ -978,6 +978,25 @@ const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) {
 std::cout << '[' << mode << ',' << choice << ',' << (saved.isResearched(z,false)?"true":"false") << ',' << base.storage.count
 << ',' << transfers << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore << ']';
 }
+std::cout << "],\"researchDailySiteAlternativeRows\":[";
+serviceFirst=true;
+for(int mode:{0,1}) for(int choice:{0,1}) {
+if(!serviceFirst)std::cout<<',';serviceFirst=false;
+ResearchRule topics[6];auto* source=&topics[0];auto* a=&topics[1];auto* b=&topics[2];auto* z=&topics[3];auto* site=&topics[4];auto* automatic=&topics[5];
+source->name="CORE";a->name="EQUIV_A";b->name="EQUIV_B";z->name="EQUIV_Z";z->points=0;site->name="SITE";site->points=3;
+automatic->name="SITE_AUTO";automatic->cost=0;automatic->points=0;automatic->dependencies={site,a};
+b->points=mode==0?2:1;if(mode==1)a->lookup=z;source->free={a,b};
+source->spawned=a->spawned=b->spawned="SUPPLY";source->count=1;a->count=b->count=2;source->increases=a->increases=b->increases={"EQUIV_COUNTER"};
+SavedGame saved;Mod mod;mod.rules={source,a,b,z,site,automatic};Base base;ResearchCaller caller;saved._ids["EQUIV_COUNTER"]=1;
+RNG::suppliedChoice=choice;auto* bonus=saved.selectGetOneFree(source);RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base);if(bonus->lookup)saved.addFinishedResearch(bonus->lookup,&mod,&base);saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus);std::sort(primary.begin(),primary.end());primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary){caller.spawn(topic,&mod,&base);saved.applyPrimaryCounters(topic);}for(auto* transfer:base.transfers){transfer->advance(&base);delete transfer;}base.transfers.clear();
+Craft craft;craft._base=&base;craft.rule.fuelItem=&mod.supply;craft._fuel=960;craft._stats.fuelMax=1000;craft.refuel();
+saved.addFinishedResearch(site,&mod,&base,true);
+std::cout << '[' << mode << ',' << choice << ',' << base.storage.count << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore
+<< ',' << (saved.isResearched(automatic,false)?1:0) << ',' << (saved.isResearched(a,false)?1:0) << ',' << (saved.isResearched(b,false)?1:0) << ',' << (saved.isResearched(z,false)?1:0) << ']';
+}
 std::cout << "],\"researchEmptyCounterRewardRows\":[";
 serviceFirst=true;
 for(int mode:{0,1,2}) for(int choice:{0,1}) {

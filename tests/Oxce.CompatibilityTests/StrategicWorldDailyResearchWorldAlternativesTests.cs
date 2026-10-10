@@ -87,6 +87,60 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
     }
 
     [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void DailyExactAlternativesComposeWithLaterSiteResearch(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = SiteContent(cache, mode);
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var campaign = CampaignState.Restore(SiteSnapshot(content, seed), content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
+            choices.Add(choice);
+            var row = TestFixtures.Rows(oracle.RootElement, "researchDailySiteAlternativeRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { mode, choice, after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.NextIds["EQUIV_COUNTER"],
+                after.ResearchScores[^1] - before.ResearchScores[^1], after.CompletedResearch.Contains("SITE_AUTO") ? 1 : 0, after.CompletedResearch.Contains("EQUIV_A") ? 1 : 0,
+                after.CompletedResearch.Contains("EQUIV_B") ? 1 : 0, after.CompletedResearch.Contains("EQUIV_Z") ? 1 : 0 });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(row)), CanonicalJson.Normalize(actual));
+            Assert.Contains("SITE", after.CompletedResearch);
+            Assert.Empty(after.World.MissionSites);
+            var expectedDiary = new List<string> { "CORE", choice == 0 ? "EQUIV_A" : "EQUIV_B" };
+            if (mode == 1 && choice == 0) expectedDiary.Add("EQUIV_Z");
+            expectedDiary.Add("SITE");
+            if (choice == 0) expectedDiary.Add("SITE_AUTO");
+            Assert.Equal(expectedDiary, after.ResearchDiary.Select(entry => entry.RuleId));
+            var control = CampaignState.Restore(after, content, new SplitMix64RandomSource(seed));
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "daily-alternative-site.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 1);
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    internal static Oxce.Mods.Rulesets.Content.RuntimeContent SiteContent(bool cache, int mode, string extra = "", string research = "") =>
+        StrategicWorldResearchStockAlternativesTests.Content(cache, false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1,
+            extra: StrategicWorldSiteResearchTests.Deployment.Replace("unlockedResearchOnDespawn: CORE", "unlockedResearchOnDespawn: SITE", StringComparison.Ordinal) + "\n" + extra,
+            extraResearch: "  - {name: UNLOCK, cost: 1}\n  - {name: SITE, cost: 1, points: 3}\n  - {name: SITE_AUTO, cost: 0, points: 0, dependencies: [SITE, EQUIV_A]}\n" + research);
+
+    internal static CampaignSnapshot SiteSnapshot(Oxce.Mods.Rulesets.Content.RuntimeContent content, ulong seed)
+    {
+        var initial = StrategicWorldResearchStockAlternativesTests.Snapshot(content, seed);
+        return initial with { World = initial.World with { MissionSites = StrategicWorldSiteResearchTests.Snapshot(content).World.MissionSites } };
+    }
+
+    [Theory]
     [InlineData(256, true)]
     [InlineData(257, false)]
     public void WorldResearchDistinctOutcomePopulationIsBounded(int count, bool supported)
