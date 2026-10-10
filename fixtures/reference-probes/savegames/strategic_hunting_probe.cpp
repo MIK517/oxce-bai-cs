@@ -232,10 +232,10 @@ struct Rule { int huntSpeed = 100; int getHuntSpeed() const { return huntSpeed; 
 const Rule* _rules = &rule; Waypoint* _origWaypoint = nullptr; bool _isHunting = false, _isEscorting = false; int speed = 0;
 void setSpeed(int value) { speed = value; }
 void backupOriginalDestination(); void setTargetedXcomCraft(Craft*); void setEscortedUfo(Ufo*);
-void resetOriginalDestination(bool); void setDestination(Target*);
+void resetOriginalDestination(bool); void resetOriginalDestination(Craft*); void setDestination(Target*);
 Craft* original = nullptr; int mode = 0; bool hunting = false;
 bool isHunting() const { return hunting; }
-Craft* getTargetedXcomCraft() const { return original; }
+Craft* getTargetedXcomCraft() const;
 int getHuntMode() const { return mode; }
 double getDistance(Target* target) const { return target->distance; }
 bool insideRadarRange(Target* target) const;
@@ -244,7 +244,8 @@ bool insideRadarRange(Target* target) const;
 // TARGET_DESTRUCTOR
 // RETARGET_METHODS
 struct GameTime {};
-struct SavedGame { std::vector<Ufo*> ufos; std::vector<Waypoint*> waypoints;
+struct SavedGame { std::vector<Ufo*> ufos; std::vector<Ufo*>& _ufos=ufos; std::vector<Waypoint*> waypoints;
+void stopHuntingXcomCraft(Craft*);
 GameTime clockValue; GameTime* clock=&clockValue; GameTime* getTime() const;
 std::vector<Base*> bases; auto* getBases() { return &bases; }
 int selectSoldierNationalityByLocation(const Mod*,const RuleSoldier*,const Target*) const { return 0; }
@@ -278,6 +279,7 @@ bool hasUndiscoveredProtectedUnlock(const RuleResearch*) const;
 std::vector<Ufo*>* getUfos() { return &ufos; }
 std::vector<Waypoint*>* getWaypoints() { return &waypoints; }
 int craftCounter=10,soldierCounter=20; int getId(const std::string& type) { return type=="STR_SOLDIER"?soldierCounter++:type=="PRODUCED_CRAFT"?craftCounter++:8+(int)waypoints.size(); } };
+// STOP_HUNTING_CRAFT
 // PRICE_TIME_POINTER
 const int TRANSFER_SOLDIER=1;
 // PRODUCTION_SOLDIER_GENERATION
@@ -997,6 +999,22 @@ craft.consumeFuel(0);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << (destination?"true":"false") << ',' << (patrolFree?"true":"false")
 << ',' << speed << ',' << fuel << ',' << excess << ',' << craft._fuel << ',' << craft._excessFuel << ',' << base.storage.count << ']';
 }
+std::cout << "],\"returnedCraftHuntRows\":[";
+serviceFirst=true;
+for(bool match:{false,true}) for(bool original:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft,other; Ufo hunter; SavedGame game;
+hunter._dest=match?static_cast<Target*>(&craft):static_cast<Target*>(&other);
+hunter._isHunting=true; hunter.speed=3300;
+if(original) { hunter._origWaypoint=new Waypoint(); hunter._origWaypoint->lon=1; hunter._origWaypoint->lat=0.6; }
+game.ufos={&hunter}; bool threw=false;
+try { game.stopHuntingXcomCraft(&craft); } catch(const Exception&) { threw=true; }
+std::cout << '[' << (match?"true":"false") << ',' << (original?"true":"false") << ',' << (threw?"true":"false")
+<< ',' << (hunter._isHunting?"true":"false") << ',' << (hunter._isEscorting?"true":"false")
+<< ',' << (hunter._origWaypoint!=nullptr?"true":"false") << ',' << (dynamic_cast<Craft*>(hunter._dest)!=nullptr?"true":"false") << ',' << hunter.speed << ']';
+if(hunter._origWaypoint) { delete hunter._origWaypoint; hunter._origWaypoint=nullptr; }
+if(dynamic_cast<Waypoint*>(hunter._dest)) { delete hunter._dest; hunter._dest=nullptr; }
+}
 std::cout << "],\"optionalReturnFuelRows\":[";
 serviceFirst=true;
 for(int limit:{0,139}) for(int fuel:{0,1,10,21,100,139,149,150,160,200,1000,1500})
@@ -1092,12 +1110,12 @@ if (!first) std::cout << ','; first = false;
 Craft a,b; a.id = 1; b.id = 2; a._stats.speedMax = 2000; b._stats.speedMax = 6000;
 a.distance = Nautical(100); b.distance = Nautical(100);
 Ufo ufo; ufo.mode = mode; std::vector<Craft*> crafts{&a,&b};
-if (variant == 1) { ufo.original = &a; ufo.hunting = true; b._stats.speedMax = a._stats.speedMax; }
-if (variant == 2) { ufo.original = &a; ufo.hunting = true; a.rule.hidden = true; b._missionComplete = true; }
+if (variant == 1) { ufo._dest = &a; ufo.hunting = true; b._stats.speedMax = a._stats.speedMax; }
+if (variant == 2) { ufo._dest = &a; ufo.hunting = true; a.rule.hidden = true; b._missionComplete = true; }
 if (variant == 3) { a._lowFuel = true; b.rule.hidden = true; }
 if (variant == 4) { a.distance = Nautical(301); b.distance = Nautical(300); }
 if (variant == 5) { ufo._stats.radarRange = 0; }
-if (variant == 6) { ufo.original = &a; ufo.hunting = true; a._lowFuel = true; }
+if (variant == 6) { ufo._dest = &a; ufo.hunting = true; a._lowFuel = true; }
 if (variant == 7) { a.distance = Nautical(301); b.distance = Nautical(302); }
 if (variant == 8) { ufo._stats.radarRange = -1; a.distance = 0; b.distance = 0; }
 auto* selected = select(&ufo,crafts);

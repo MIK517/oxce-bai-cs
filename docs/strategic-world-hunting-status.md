@@ -676,3 +676,31 @@ Branch 4c live ammunition intervals: hourly hunting forecasts now retain exact c
 Branch 4c stochastic fuel convergence: hunting forecasts now advance lower and upper shared clip stocks in saved craft order and admit the tick only when both produce the same complete craft state. Fixed arrivals/output and exact facility use preserve those bounds. Actual random savings, stock, notifications and RNG remain execution-owned. Native ammunitionFuelRows now execute their sufficient-stock stochastic cases; twelve fresh/cache refill/order cases cover transfers, production, facilities, two consumers and atomic scarcity. Positive uncertain manufacturing inputs and divergent servicing remain precise guards. Reference: Craft::rearm/refuel, GeoscapeState hourly-to-half-hour fallthrough and Production::step; 4d untouched.
 
 Three-cycle 4c close: nine implementation slices and three batch audits completed. The final ammunition audit reviewed saving endpoints, saved-order shared stocks, exact craft/facility states, transfer/output ceilings, manufacturing dependencies, lower/upper refuelling convergence, RNG purity, transition reloads and shared work bounds. No additional confirmed defect was found; the first batch retained an explicit protected-delivery-order safeguard at the pure envelope boundary. All 3,179 root tests pass with zero failures/skips, including native fixture checksums, all staged-save classifications, endurance and 8/32/128-UFO allocation gates. Full formatting, regenerated code-map and diff checks pass. Reusable native capture/source/executable remain; the disposable native object was removed and the pinned C++ checkout is clean. No unexpected access denial occurred. Branch 4c remains open for wider mission-generation/uncertainty projections and final headless acceptance; branch 4d is untouched.
+
+
+## Returned craft hunting cancellation (2026-10-10)
+
+Craft arrival now runs the native stop-hunting consequence within the same
+five-second pass. Matching craft identity restores each UFO's original anonymous
+waypoint, clears hunting/escort flags and retains its current speed. Movement
+vectors are recalculated at the UFO's already-moved position, as in native
+MovingTarget::setDestination. Unrelated craft targets remain untouched.
+
+Returned identities use a reusable set and one UFO scan before cleanup. This is
+equivalent within the owned craft pass: native restoration changes no UFO position
+or speed, and later craft pursuit reads only those fields. Preflight separately
+rejects a missing original waypoint on a potentially returning craft target,
+including dormant contacts. Execution does not consume
+preflight scratch state. The terminal UFO fallthrough still skips the craft pass.
+
+Reference: GeoscapeState::time5Seconds after Craft::think,
+SavedGame::stopHuntingXcomCraft, Ufo::getTargetedXcomCraft/resetOriginalDestination,
+and MovingTarget::setDestination. Four native returnedCraftHuntRows cover matching
+and unrelated identities with present/missing original waypoints, keeping all
+previous hunting rows unchanged. Eight fresh/cache execution cases reproduce the
+late-cancellation defect, then cover disabled fast retarget and explicit five-minute
+context, takeoff, native canonical flags/speed, ordered movement/vector repair,
+three save rewrites and continuation. Two cases preserve non-arrival hunting and
+atomic corrupt/dormant-original refusal. This is cycle 27 slice one.
+
+Validation: all 10 new arrival tests, 470 existing hunting tests and 214 optional-base tests pass. Full solution formatting verification, regenerated code-map and diff checks pass. Batch/root acceptance follows the remaining two cycle slices.
