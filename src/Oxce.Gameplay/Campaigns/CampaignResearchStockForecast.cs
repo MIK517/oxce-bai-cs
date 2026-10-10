@@ -26,9 +26,9 @@ public sealed partial class CampaignState
         new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(new Dictionary<int, IReadOnlyList<KeyValuePair<string, int>>>()));
 
     private bool TryForecastDailyStockBranch(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries,
-        int[] choices, out int pendingChoices)
+        int[] choices, out IReadOnlyList<string> pendingChoices)
     {
-        pendingChoices = 0;
+        pendingChoices = [];
         var choiceIndex = 0;
         forecast = EmptyResearchStockForecast;
         if (!includeDiscoveries && DailyItemsUnchanged(ref work)) return true;
@@ -113,7 +113,7 @@ public sealed partial class CampaignState
                 {
                     if (choiceIndex >= choices.Length)
                     {
-                        pendingChoices = candidates.Count;
+                        pendingChoices = candidates;
                         return false;
                     }
                     selected = choices[choiceIndex++];

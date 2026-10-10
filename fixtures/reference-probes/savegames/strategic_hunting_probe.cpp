@@ -817,6 +817,22 @@ saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&m
 std::cout << '[' << choice << ',' << (saved.isResearched(a,false)?"true":"false") << ',' << (saved.isResearched(b,false)?"true":"false")
 << ',' << saved.statuses[z->name] << ',' << saved.researchScore << ']';
 }
+std::cout << "],\"researchWeightedEquivalentRows\":[";
+serviceFirst=true;
+for(int repeats:{3,4096}) for(int choice:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[3]; auto* source=&topics[0]; auto* a=&topics[1]; auto* b=&topics[2];
+source->name="CORE"; a->name="EQUIV_A"; b->name="EQUIV_B";
+source->free=std::vector<const ResearchRule*>(repeats,a); source->free.push_back(b);
+source->spawned=a->spawned=b->spawned="SUPPLY"; source->count=1; a->count=b->count=2;
+SavedGame saved; Mod mod; mod.rules={source,a,b}; Base base; ResearchCaller caller;
+RNG::suppliedChoice=choice?repeats:0; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) caller.spawn(topic,&mod,&base);
+const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
+std::cout << '[' << repeats << ',' << choice << ',' << (bonus==a?1:2) << ',' << base.storage.count << ',' << transfers << ',' << saved.researchScore << ']';
+}
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
 for(bool sequential:{false,true}) for(bool duplicate:{false,true}) for(int aState:{0,1,2}) for(int bState:{0,1,2}) for(bool gate:{false,true}) {
