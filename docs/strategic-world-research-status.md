@@ -1787,3 +1787,15 @@ and continuation. Two boundary cases retain uncertain recall and already-low
 arrival refusal. All 214 affected tests and full formatting pass. This completes
 cycle 26's third implementation slice; the batch
 audit and root validation remain pending.
+
+
+Cycle 26 batch audit closes the own-fuel/escort-fuel/converged-arrival slices
+608f20ba, f8456ba5 and 19d733ae. No additional confirmed runtime defect was found.
+Reviewed native saved order, strict escort distance, inclusive low-fuel thresholds,
+installed fuel capacities, positive/zero/negative fallback domains, early arithmetic
+validation, takeoff arrival/checkup, current-fuel script visibility, hunting eligibility,
+resource accounting and repeated saves. All 4,758 root tests pass with zero
+failures/skips, including native checksums, private corpus and population/allocation
+gates with unchanged bounds. Full formatting, regenerated code-map and diff checks
+pass. The pinned reference is clean; obsolete probe objects were removed. Optional
+arrival/transfer and wider composition guards still keep 4c open; 4d is untouched.
