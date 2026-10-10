@@ -82,7 +82,21 @@ public sealed partial class CampaignState
                 }
         }
         if (work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
-        return ResearchDiaryCapacityFits(additions) ? null : "Research diary exceeds its supported population or identity range.";
+        if (ResearchDiaryCapacityFits(additions)) return null;
+        // Entries only accumulate. If the conservative bound cannot fit, the
+        // bounded world proof may exclude unreachable automatic/lookup paths.
+        if (ResearchPreflight.TryForecastDailyWorldStocks(ref work, out forecast))
+        {
+            additions = forecast.DiaryEntries ?? 0;
+            foreach (var branch in forecast.DiscoveryAlternatives)
+            {
+                if (++work > 1_000_000) return "Research diary forecasts exceed the supported work limit.";
+                additions = Math.Max(additions, branch.DiaryEntries!.Value);
+            }
+            if (ResearchDiaryCapacityFits(additions)) return null;
+        }
+        return work > 1_000_000 ? "Research diary forecasts exceed the supported work limit." :
+            "Research diary exceeds its supported population or identity range.";
     }
 
     private void RestoreResearchDiary(CampaignSnapshot snapshot)
