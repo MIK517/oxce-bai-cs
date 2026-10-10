@@ -56,7 +56,8 @@ public sealed partial class CampaignState
                     work += 1L + branch.CompletedResearch!.Count + branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
                     foreach (var active in branch.ActiveResearch.Values) work += active.Count;
                     if (work > 1_000_000) return false;
-                    if (earlier.ScoreChange != branch.ScoreChange || earlier.DiaryEntries != branch.DiaryEntries ||
+                    if (earlier.ScoreChange != branch.ScoreChange || earlier.MinimumScorePrefix != branch.MinimumScorePrefix ||
+                        earlier.MaximumScorePrefix != branch.MaximumScorePrefix || earlier.DiaryEntries != branch.DiaryEntries ||
                         !SameResearchDiscoveryConsequences(earlier, branch)) continue;
                     work += branch.Arrivals.Count;
                     foreach (var arrivals in branch.Arrivals.Values) work += arrivals.Count;
@@ -83,7 +84,14 @@ public sealed partial class CampaignState
         if (alternatives?.Count > 1)
         {
             work += 2L * common.CompletedResearch!.Count;
-            foreach (var branch in alternatives) work += branch.CompletedResearch!.Count;
+            var minimumPrefix = common.MinimumScorePrefix!.Value;
+            var maximumPrefix = common.MaximumScorePrefix!.Value;
+            foreach (var branch in alternatives)
+            {
+                work += branch.CompletedResearch!.Count;
+                minimumPrefix = Math.Min(minimumPrefix, branch.MinimumScorePrefix!.Value);
+                maximumPrefix = Math.Max(maximumPrefix, branch.MaximumScorePrefix!.Value);
+            }
             if (work > 1_000_000) return false;
             if (!TryBoundResearchArrivals(alternatives, ref work, out var arrivals, out var uncertainty)) return false;
             var guaranteed = new HashSet<string>(common.CompletedResearch, StringComparer.Ordinal);
@@ -97,6 +105,8 @@ public sealed partial class CampaignState
                 ResearchStatuses = null,
                 ActiveResearch = null,
                 ScoreChange = null,
+                MinimumScorePrefix = minimumPrefix,
+                MaximumScorePrefix = maximumPrefix,
                 DiaryEntries = null,
                 DiscoveryAlternatives = alternatives.AsReadOnly(),
             };

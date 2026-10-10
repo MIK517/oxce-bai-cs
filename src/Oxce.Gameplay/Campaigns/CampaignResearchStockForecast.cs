@@ -18,6 +18,9 @@ internal sealed record DailyResearchStockForecast(
     public IReadOnlyDictionary<int, IReadOnlySet<string>>? ActiveResearch { get; init; }
     // Scalar metadata is supplied only for exact discovery projections.
     public long? ScoreChange { get; init; }
+    // Relative extrema after every ordered score mutation, including the initial zero.
+    public long? MinimumScorePrefix { get; init; }
+    public long? MaximumScorePrefix { get; init; }
     public long Work { get; init; }
     public long? DiaryEntries { get; init; }
     // World-only arrival upper quantities and conservative maximum-minus-minimum
@@ -54,6 +57,8 @@ public sealed partial class CampaignState
         List<CustomCounterChange>? counters = null;
         long diaryEntries = 0;
         long scoreChange = 0;
+        long minimumScorePrefix = 0;
+        long maximumScorePrefix = 0;
         foreach (var owner in _bases)
         {
             work += owner.Research.Count;
@@ -161,6 +166,8 @@ public sealed partial class CampaignState
                 }, (discoveredId, points, _) =>
                 {
                     scoreChange += points;
+                    minimumScorePrefix = Math.Min(minimumScorePrefix, scoreChange);
+                    maximumScorePrefix = Math.Max(maximumScorePrefix, scoreChange);
                     if (discoveredId != id) diaryEntries++;
                 }, ref localWork, 1_000_000 - projectionWork);
                 projectionWork += localWork;
@@ -249,6 +256,8 @@ public sealed partial class CampaignState
                 (IReadOnlySet<string>)pair.Value.Select(project => rules.Research.GetExternalId(project.Rule))
                     .Where(id => statuses.GetValueOrDefault(id) != 2).ToFrozenSet(StringComparer.Ordinal)) : null,
             ScoreChange = includeDiscoveries ? scoreChange : null,
+            MinimumScorePrefix = includeDiscoveries ? minimumScorePrefix : null,
+            MaximumScorePrefix = includeDiscoveries ? maximumScorePrefix : null,
             Work = work,
             DiaryEntries = includeDiscoveries ? diaryEntries : null,
         };

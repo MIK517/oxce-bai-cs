@@ -6,6 +6,29 @@ public sealed partial class CampaignState
 {
     private string? ReserveDailyResearchScores(ref ResearchScoreCapacity capacity, ref long work)
     {
+        const string rangeReason = "Research and production scores exceed the supported range.";
+        const string workReason = "Research score forecasts exceed the supported work limit.";
+        var previous = capacity;
+        var reason = ReserveDailyResearchScoreBounds(ref capacity, ref work);
+        if (reason != rangeReason) return reason;
+        capacity = previous;
+        if (!ResearchPreflight.TryForecastDailyWorldStocks(ref work, out var forecast))
+            return work > 1_000_000 ? workReason : reason;
+        var prefix = capacity;
+        if (!prefix.Reserve(forecast.MinimumScorePrefix!.Value, forecast.MaximumScorePrefix!.Value)) return reason;
+        var minimum = forecast.ScoreChange ?? long.MaxValue;
+        var maximum = forecast.ScoreChange ?? long.MinValue;
+        foreach (var branch in forecast.DiscoveryAlternatives)
+        {
+            if (++work > 1_000_000) return workReason;
+            minimum = Math.Min(minimum, branch.ScoreChange!.Value);
+            maximum = Math.Max(maximum, branch.ScoreChange!.Value);
+        }
+        return capacity.Reserve(minimum, maximum) ? null : reason;
+    }
+
+    private string? ReserveDailyResearchScoreBounds(ref ResearchScoreCapacity capacity, ref long work)
+    {
         if (!_bases.Any(owner => owner.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost))) return null;
         var rules = _content.RuntimeRules.Research;
         long automaticPositive = 0;

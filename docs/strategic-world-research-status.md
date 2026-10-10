@@ -2223,3 +2223,24 @@ counter allocation collaborators are explicit. The corrected root run passes
 all 4,982 tests with zero failures or skips. Full formatting, regenerated
 code-map, diff and pinned reference cleanliness checks pass before the separate
 audit fix commit. Wider composition and final guard reconciliation keep 4c open.
+
+## Ordered daily score prefixes (2026-10-10)
+
+Pinned GeoscapeState::time1Day selects and scores a free reward before the
+primary topic; SavedGame::addFinishedResearch applies each automatic discovery
+and addResearchScore mutates the signed integer score. Four native
+researchDailyScorePrefixRows capture positive and negative reward-first prefixes,
+final deltas, quantities and an unreachable automatic dependency. Exact pure
+branches retain their score prefix extrema; world summaries bound every branch
+and deduplication retains distinct prefixes. Strict final-scalar consumers keep
+their existing contracts.
+
+The cheap conservative daily reservation remains first. Only its range failure
+can invoke the bounded world proof, with shared work accounting and no RNG or
+state mutation. Every intermediate prefix must fit before the final interval is
+reserved for later production. Ten fresh/cache cases reproduce six old false
+refusals, preserve four final/intermediate overflow refusals and verify both
+reward choices across twelve seeds, repeated rewrites and subsequent ticks. The
+site context case excludes an unavailable automatic discovery from the daily
+reservation. All ten cases and six score-capacity regressions pass; the
+three-slice batch audit/root gate follows. No cache or save schema change.
