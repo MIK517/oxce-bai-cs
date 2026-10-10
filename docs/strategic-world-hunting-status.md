@@ -767,3 +767,13 @@ ordered escorts and remaining later-phase guards. No further confirmed defect
 was found. Full root acceptance is recorded after validation completes.
 
 The ten focused arrival/discovery cases and full formatting verification pass after the correction.
+
+Root acceptance exposed a second confirmed arrival-cycle regression: capturing
+an alien-base destination in the new lookup lambda allocated a display class
+before CraftArrivalReason's early return. Patrol allocation grew by exactly
+32 bytes per extra craft per tick. Both arrival lookups now use a direct stable
+identity scan. All 23 craft-operation tests, including the unchanged two-versus-
+thirty-two patrol allocation assertion, pass after the fix. The initial root's
+other failure was a 176-byte polygon allocation measurement in unchanged
+rendering code; all 15 rendering tests pass in isolation without edits. Root
+acceptance is rerun rather than weakening either performance assertion.

@@ -60,6 +60,13 @@ internal sealed partial class CampaignWorld
         return null;
     }
 
+    private AlienBaseSnapshot? TargetAlienBase(WorldTargetReference reference)
+    {
+        foreach (var alienBase in _alienBases)
+            if (FollowsAlienBase(reference, alienBase)) return alienBase;
+        return null;
+    }
+
     private bool IsVisibleTarget(WorldTargetReference reference) => reference.Kind switch
     {
         WorldTargetKind.Ufo => TargetUfo(reference) is { Detected: true, Status: not (UfoStatus.Destroyed or UfoStatus.IgnoreMe) },
@@ -208,7 +215,7 @@ internal sealed partial class CampaignWorld
         }
         if (!CanLand(owner, craft, state)) return null;
         if (destination.Kind == WorldTargetKind.AlienBase &&
-            _alienBases.Find(alienBase => FollowsAlienBase(destination, alienBase)) is { Discovered: false } undiscoveredBase)
+            TargetAlienBase(destination) is { Discovered: false } undiscoveredBase)
         {
             if (ArrivalBaseDiscoveryReason(undiscoveredBase, highest, out var possible) is { } discoveryReason) return discoveryReason;
             if (!possible) return null;
@@ -318,7 +325,7 @@ internal sealed partial class CampaignWorld
             WorldTargetKind.Craft => TargetCraft(destination)?.Logistics?.Status != "STR_OUT",
             WorldTargetKind.Ufo => TargetUfo(destination)?.Status == UfoStatus.Crashed && !CanLand(owner, craft, state),
             WorldTargetKind.MissionSite => !CanLand(owner, craft, state),
-            WorldTargetKind.AlienBase => _alienBases.Find(alienBase => FollowsAlienBase(destination, alienBase)) is
+            WorldTargetKind.AlienBase => TargetAlienBase(destination) is
             { Discovered: true } && !CanLand(owner, craft, state),
             _ => false,
         };
