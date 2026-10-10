@@ -1798,6 +1798,15 @@ const auto id=person?base.transfers.back()->_soldier->id:base.crafts.back()->id;
 std::cout<<'['<<(person?1:0)<<','<<initial<<','<<choice<<','<<before<<','<<id<<','<<(person?saved.soldierCounter:saved.craftCounter)<<','<<base.storage.count<<','<<base.transfers.size()<<','<<saved.researchScore<<']';
 if(!person)delete base.crafts.back();for(auto* transfer:base.transfers){delete transfer->_soldier;delete transfer;}
 }
+std::cout << "],\"researchCounterLabelRows\":[";first=true;
+const std::string counterLabels[]={"", " ", "\t", "\xc2\xa0"};
+for(int label=0;label<4;label++) for(int choice:{0,1}) {
+if(!first)std::cout<<',';first=false;
+SavedGame saved;const auto& name=counterLabels[label];
+if(choice==0){saved.increaseCustomCounter(name);saved.increaseCustomCounter(name);}else{saved.decreaseCustomCounter(name);}
+const auto found=saved._ids.find(name);
+std::cout<<'['<<label<<','<<choice<<','<<(found==saved._ids.end()?0:found->second)<<','<<saved._ids.size()<<']';
+}
 std::cout << "],\"researchDailyCounterAlternativeRows\":[";first=true;
 for(int mode:{0,1}) for(int initial:{1,20,INT_MAX-1}) for(int choice:{0,1}) {
 if(!first)std::cout<<',';first=false;
