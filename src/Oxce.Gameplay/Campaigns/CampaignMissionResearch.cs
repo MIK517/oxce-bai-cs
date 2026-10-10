@@ -11,7 +11,8 @@ internal interface ICampaignMissionResearch
         DailyResearchStockForecast? precedingResearch = null,
         IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null, long precedingWork = 0,
         int precedingMissionBirths = 0, IReadOnlySet<int>? precedingMissionRemovals = null,
-        IReadOnlyList<RuleHandle<ItemRuleFamily>>? uncertainFirstBaseItems = null);
+        IReadOnlyList<RuleHandle<ItemRuleFamily>>? uncertainFirstBaseItems = null,
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItemUncertainty = null);
 }
 
 /// <summary>The world owns immediate interruption for the explicit mission-source grants.</summary>
@@ -72,8 +73,9 @@ public sealed partial class CampaignState : ICampaignMissionResearch
     MissionResearchForecast ICampaignMissionResearch.CreateForecast(CampaignTimeTrigger highest, DailyResearchStockForecast? precedingResearch,
         IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems, long precedingWork,
         int precedingMissionBirths, IReadOnlySet<int>? precedingMissionRemovals,
-        IReadOnlyList<RuleHandle<ItemRuleFamily>>? uncertainFirstBaseItems) =>
-        new(this, highest, precedingResearch, firstBaseItems, precedingWork, precedingMissionBirths, precedingMissionRemovals, uncertainFirstBaseItems);
+        IReadOnlyList<RuleHandle<ItemRuleFamily>>? uncertainFirstBaseItems,
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItemUncertainty) =>
+        new(this, highest, precedingResearch, firstBaseItems, precedingWork, precedingMissionBirths, precedingMissionRemovals, uncertainFirstBaseItems, firstBaseItemUncertainty);
 
     bool ICampaignMissionResearch.Grant(string id, string deploymentId)
     {

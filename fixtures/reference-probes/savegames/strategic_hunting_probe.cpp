@@ -1008,7 +1008,7 @@ for(int choice:{0,1}) for(bool withSite:{false,true}) {
 if(!serviceFirst)std::cout<<',';serviceFirst=false;
 ResearchRule topics[5];auto* source=&topics[0];auto* a=&topics[1];auto* b=&topics[2];auto* site=&topics[3];auto* automatic=&topics[4];
 source->name="CORE";a->name="EQUIV_A";b->name="EQUIV_B";site->name="SITE";site->points=3;automatic->name="SITE_AUTO";automatic->cost=0;automatic->points=0;automatic->dependencies={site};
-SavedGame saved;Mod mod;mod.rules={source,a,b,site,automatic};Base base;ResearchCaller caller;saved._ids["EQUIV_COUNTER"]=1;automatic->needed=&mod.supply;
+SavedGame saved;Mod mod;mod.rules={source,a,b,site,automatic};Base base;ResearchCaller caller;saved._ids["EQUIV_COUNTER"]=1;automatic->needed=&mod.supply;automatic->needs=true;
 source->free={a,b};source->spawned=a->spawned=b->spawned="SUPPLY";source->count=1;a->count=2;b->count=3;source->increases=a->increases=b->increases={"EQUIV_COUNTER"};
 RNG::suppliedChoice=choice;auto* bonus=saved.selectGetOneFree(source);RNG::suppliedChoice=-1;saved.addFinishedResearch(bonus,&mod,&base);saved.addFinishedResearch(source,&mod,&base);
 auto primary=ResearchCaller::primary(source,bonus);std::sort(primary.begin(),primary.end());primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
@@ -1017,6 +1017,21 @@ for(auto* transfer:base.transfers){transfer->advance(&base);delete transfer;}bas
 Craft craft;craft._base=&base;craft.rule.fuelItem=&mod.supply;craft._fuel=960;craft._stats.fuelMax=1000;craft.refuel();
 if(withSite)saved.addFinishedResearch(site,&mod,&base,true);
 std::cout<<'['<<choice<<','<<(withSite?1:0)<<','<<base.storage.count<<','<<transfers<<','<<saved._ids["EQUIV_COUNTER"]<<','<<saved.researchScore<<','<<(saved.isResearched(automatic,false)?1:0)<<']';
+}
+std::cout << "],\"researchDailyQuantityContextRows\":[";
+serviceFirst=true;
+for(int dependency:{0,1}) for(int choice:{0,1}) {
+if(!serviceFirst)std::cout<<',';serviceFirst=false;
+ResearchRule topics[5];auto* source=&topics[0];auto* a=&topics[1];auto* b=&topics[2];auto* site=&topics[3];auto* automatic=&topics[4];
+source->name="CORE";a->name="EQUIV_A";b->name="EQUIV_B";site->name="SITE";site->points=3;automatic->name="SITE_AUTO";automatic->cost=0;automatic->points=2;automatic->dependencies={site,dependency==0?a:b};
+SavedGame saved;Mod mod;mod.rules={source,a,b,site,automatic};Base base;ResearchCaller caller;saved._ids["EQUIV_COUNTER"]=1;automatic->needed=&mod.supply;automatic->needs=true;
+source->free={a,b};a->spawned=b->spawned="SUPPLY";a->count=1;b->count=2;source->increases=a->increases=b->increases={"EQUIV_COUNTER"};
+RNG::suppliedChoice=choice;auto* bonus=saved.selectGetOneFree(source);RNG::suppliedChoice=-1;saved.addFinishedResearch(bonus,&mod,&base);saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus);std::sort(primary.begin(),primary.end());primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary){caller.spawn(topic,&mod,&base);saved.applyPrimaryCounters(topic);}const auto transfers=base.transfers.size();
+for(auto* transfer:base.transfers){transfer->advance(&base);delete transfer;}base.transfers.clear();
+Craft craft;craft._base=&base;craft.rule.fuelItem=&mod.supply;craft._fuel=960;craft._stats.fuelMax=1000;craft.refuel();saved.addFinishedResearch(site,&mod,&base,true);
+std::cout<<'['<<dependency<<','<<choice<<','<<base.storage.count<<','<<saved.researchScore<<','<<(saved.isResearched(automatic,false)?1:0)<<','<<transfers<<','<<saved._ids["EQUIV_COUNTER"]<<']';
 }
 std::cout << "],\"researchDailySiteActiveRows\":[";
 serviceFirst=true;

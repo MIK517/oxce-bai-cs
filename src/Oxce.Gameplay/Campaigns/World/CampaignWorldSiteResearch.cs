@@ -78,6 +78,7 @@ internal sealed partial class CampaignWorld
         }
         IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseItems = null;
         List<RuleHandle<ItemRuleFamily>>? uncertainItems = null;
+        IReadOnlyDictionary<RuleHandle<ItemRuleFamily>, int>? firstBaseUncertainty = null;
         long itemWork = (dailyResearch?.Work ?? 0) + generationWork;
         if (rules.Research.Rules.Any(entry => entry.Value.Cost == 0 && entry.Value.NeedItem))
         {
@@ -86,6 +87,7 @@ internal sealed partial class CampaignWorld
             var first = campaign.BaseStates[0];
             firstBaseItems = items.Stocks[first.Id];
             var uncertainty = items.Uncertainty.GetValueOrDefault(first.Id);
+            firstBaseUncertainty = uncertainty;
             foreach (var entry in rules.Research.Rules)
             {
                 if (++itemWork > MaximumAlienBaseChecks) return "Mission research exceeds the supported discovery work limit.";
@@ -98,7 +100,7 @@ internal sealed partial class CampaignWorld
                     (uncertainItems ??= []).Add(item);
             }
         }
-        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork, missionBirths, missionRemovals, uncertainItems);
+        var forecast = campaign.MissionResearch.CreateForecast(highest, dailyResearch, firstBaseItems, itemWork, missionBirths, missionRemovals, uncertainItems, firstBaseUncertainty);
         var afterSites = new Dictionary<(string Deployment, int Id), IReadOnlySet<string>>();
         foreach (var site in _sites)
         {
