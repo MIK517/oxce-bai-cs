@@ -1857,3 +1857,19 @@ all previous rows are unchanged. All 24 reward cases pass, including explicit
 saved seeds for both weighted outcomes, common stock purity, hunter relaunch,
 three save rewrites, unequal consequences and distinct-identity/work limits.
 No runtime selection, cache schema or later-branch boundary changes.
+
+### Reward projection batch audit (2026-10-10)
+
+The three-slice audit found no confirmed runtime defect. Root verification ran
+4,806 cases: 4,804 passed and two old work-limit assertions expected the later
+custom-counter diagnostic. The new bounded reward search runs earlier in diary
+preflight and refuses this 1,001-base repeated-reward workload there instead.
+The exact diagnostic assertion was updated; repeated-attempt snapshot equality
+and the original work limit remain unchanged. Score prefix safety remains with
+the existing signed-capacity owner; equal net forecasts do not waive it.
+
+Reviewed candidate order/weights, nested prefix indexing, common consequence
+comparisons, pure state copies, exact research consumers, event and resource
+guards, and native pointer/automatic-discovery evidence. Multi-base repeated
+choices remain a useful additional integration case for the following cycle.
+Full root rerun follows the diagnostic correction.
