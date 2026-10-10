@@ -1997,3 +1997,31 @@ This is cycle 30 slice two; broader composition and batch acceptance remain pend
 Slice verification: four new arrival-order cases, full formatting, regenerated
 code-map and diff checks pass. Previous native rows are unchanged; reference
 checkout remains clean. No confirmed issue in interim consumer review.
+
+### Reusable-order and bounded population acceptance (2026-10-10)
+
+The stock-only arrival canonicalizer now charges classification first and avoids
+sort work and scratch allocations when every arrival is reusable. Otherwise it
+charges the sort for the actual non-reusable count and bounds allocation/copying
+before creating lists. This preserves existing order while permitting equivalent
+1,000/10,000-item reward lists within a 940,000-step starting budget. Every transfer
+remains distinct; quantities and the next transfer identity match execution.
+
+Two native researchReusableArrivalRows prove that reversed BT_NONE ammunition
+lists set different weapon rearming flags, despite equal stock totals. Fresh/cache
+cases retain their ordered projections, refuse the ambiguous hunter tick without
+mutation, and execute/rewrite the actual native outcome when no hunter consumes
+that forecast. Two researchLargeReusableRows capture positive stock totals, raw
+transfer counts and scores. Four large-input cases observe both reward identities
+within 32 fixed saved seeds, exhaustion purity, relaunch/hunting and three rewrites.
+The initial two chosen seeds produced the same reward; the test now searches the
+bounded fixed range and still requires both identities. No assertion was weakened.
+
+All ten arrival-order cases pass. The native fixture collaborator required an
+explicit zero selection for its single-candidate large-list trace (its controlled
+RNG stub does not honor bounds); the pinned selector itself is unchanged. All prior
+native rows remain identical. Cycle 30 batch audit/root acceptance follows.
+
+Slice verification: full formatting, regenerated code-map and diff checks pass.
+All ten arrival cases passed after the seed coverage correction; the final edit
+only fixes initializer layout. No unexpected access denial; reference clean.

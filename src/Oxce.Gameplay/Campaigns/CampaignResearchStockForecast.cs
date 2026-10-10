@@ -267,13 +267,21 @@ public sealed partial class CampaignState
         foreach (var owner in arrivals)
         {
             var count = owner.Value.Count;
-            var levels = 0;
-            for (var remaining = count; remaining > 1; remaining = (remaining + 1) / 2) levels++;
-            // Bound classification, allocations, sort comparisons and copying before work.
-            work += 1L + count * (levels + 4L);
+            // Charge the scan before reading labels. An already ordered reusable
+            // list needs neither a sort nor scratch allocations.
+            work += 1L + count;
             if (work > 1_000_000) return false;
             if (count < 2) continue;
-            List<KeyValuePair<string, int>> reusable = new(count), other = new(count);
+            var otherCount = 0;
+            foreach (var item in owner.Value)
+                if (rules.Items[rules.Items.GetRequired(item.Key)].Value.BattleType != 0) otherCount++;
+            if (otherCount == 0) continue;
+            var levels = 0;
+            for (var remaining = otherCount; remaining > 1; remaining = (remaining + 1) / 2) levels++;
+            // Bound allocations, sort comparisons and copying before work.
+            work += count * 4L + otherCount * (long)levels;
+            if (work > 1_000_000) return false;
+            List<KeyValuePair<string, int>> reusable = new(count - otherCount), other = new(otherCount);
             foreach (var item in owner.Value)
                 (rules.Items[rules.Items.GetRequired(item.Key)].Value.BattleType == 0 ? reusable : other).Add(item);
             other.Sort(static (first, second) =>

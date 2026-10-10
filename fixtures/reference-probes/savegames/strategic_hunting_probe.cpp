@@ -922,6 +922,35 @@ for(size_t i=0;i<base.transfers.size();i++) { if(i)std::cout<<','; std::cout<<'"
 const auto count=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
 std::cout << "]," << base.storage.count << ',' << base.storage.getItem(&mod.clip) << ',' << count << ',' << saved.researchScore << ']';
 }
+std::cout << "],\"researchReusableArrivalRows\":[";
+serviceFirst=true;
+for(int choice:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[3]; auto* source=&topics[0]; auto* a=&topics[1]; auto* b=&topics[2];
+source->name="CORE"; a->name="EQUIV_A"; b->name="EQUIV_B"; source->free={a,b}; a->list={"CLIP","SUPPLY"}; b->list={"SUPPLY","CLIP"};
+SavedGame saved; Mod mod; mod.extraItems=true; mod.clip.type="CLIP"; mod.clip.battle=0; mod.rules={source,a,b}; Base base; ResearchCaller caller;
+Craft craft; CraftWeapon first,second; first.rule.clip=&mod.clip; second.rule.clip=&mod.supply; first.rule.ammoMax=second.rule.ammoMax=10; craft._weapons={&first,&second};
+craft._status="STR_REFUELLING"; craft.rule.fuelItem=&mod.supply; craft._fuel=960; craft._stats.fuelMax=1000;
+RNG::suppliedChoice=choice; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) caller.spawn(topic,&mod,&base);
+std::cout << '[' << choice << ",["; for(size_t i=0;i<base.transfers.size();i++) { if(i)std::cout<<','; std::cout<<'"'<<base.transfers[i]->_itemId->type<<'"'; }
+for(auto* transfer:base.transfers) transfer->advance(&base);
+for(auto* transfer:base.transfers) { if(transfer->_itemId->getBattleType()==0) craft.reuseItem(transfer->_itemId); delete transfer; }
+std::cout << "]," << base.storage.count << ',' << base.storage.getItem(&mod.clip) << ',' << (first.rearming?"true":"false") << ',' << (second.rearming?"true":"false") << ",\"" << craft._status << "\"]";
+}
+std::cout << "],\"researchLargeReusableRows\":[";
+serviceFirst=true;
+for(int count:{1000,10000}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule source,reward; source.name="CORE"; reward.name="EQUIV_A"; source.spawned="SUPPLY"; source.count=1; reward.list=std::vector<std::string>(count,"SUPPLY"); source.free={&reward};
+SavedGame saved; Mod mod; mod.rules={&source,&reward}; Base base; ResearchCaller caller;
+RNG::suppliedChoice=0; auto* bonus=saved.selectGetOneFree(&source); RNG::suppliedChoice=-1; saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(&source,&mod,&base);
+for(auto* topic:ResearchCaller::primary(&source,bonus)) caller.spawn(topic,&mod,&base);
+const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
+std::cout << '[' << count << ',' << base.storage.count << ',' << transfers << ',' << saved.researchScore << ']';
+}
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
 for(bool sequential:{false,true}) for(bool duplicate:{false,true}) for(int aState:{0,1,2}) for(int bState:{0,1,2}) for(bool gate:{false,true}) {

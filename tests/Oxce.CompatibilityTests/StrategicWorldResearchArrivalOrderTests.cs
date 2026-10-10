@@ -71,14 +71,118 @@ public sealed class StrategicWorldResearchArrivalOrderTests
         Assert.Equal(2, choices.Count);
     }
 
-    internal static RuntimeContent Content(bool cache, bool duplicate) =>
-        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
-        items: [{type: CLIP, battleType: 2}]
-        crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReusableAmmunitionPermutationsRemainOrderedAndRefusedAtomically(bool cache)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Content(cache, false, reusable: true);
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = StrategicWorldResearchStockAlternativesTests.Snapshot(content, seed);
+            initial = initial with
+            {
+                Bases = [initial.Bases[0] with { Crafts = [initial.Bases[0].Crafts[0] with
+                {
+                    Logistics = initial.Bases[0].Crafts[0].Logistics! with
+                    { Weapons = [new("REUSE_CLIP", 0), new("REUSE_SUPPLY", 0)] },
+                }] }],
+            };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            long work = 0;
+            Assert.False(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out _));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
+            // The native side effects themselves remain executable when no hunter
+            // needs an unselected craft forecast in this tick.
+            initial = initial with { World = initial.World with { Ufos = [initial.World.Ufos[0] with { HunterKiller = false }] } };
+            campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
+            choices.Add(choice);
+            var selected = CampaignState.Restore(initial with { CompletedResearch = [choice == 0 ? "EQUIV_B" : "EQUIV_A"] }, content, new SplitMix64RandomSource(seed));
+            long selectedWork = 0;
+            Assert.True(selected.ResearchPreflight.TryForecastDailyStocks(ref selectedWork, out var ordered));
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchReusableArrivalRows").Single(row => row[0].GetInt32() == choice);
+            var ship = after.Bases[0].Crafts[0].Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { choice, ordered.Arrivals[before.Bases[0].Id].Select(item => item.Key).ToArray(),
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("CLIP"),
+                ship.Weapons[0]!.Rearming, ship.Weapons[1]!.Rearming, ship.Status });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "reusable-research-order.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    [Theory]
+    [InlineData(false, 1000)]
+    [InlineData(true, 1000)]
+    [InlineData(false, 10000)]
+    [InlineData(true, 10000)]
+    public void LargeOrderedReusableListsDoNotPayForAnUnusedSort(bool cache, int count)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var labels = string.Join(", ", Enumerable.Repeat("SUPPLY", count));
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 2}]
         facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
         ufos: [{type: UFO_HUNTER, radarRange: 20000}]
         research:
           - {name: CORE, cost: 1, points: 1, getOneFree: [EQUIV_A, EQUIV_B], spawnedItem: SUPPLY, spawnedItemCount: 1}
+          - {name: EQUIV_A, cost: 1, points: 1, spawnedItemList: [{{labels}}]}
+          - {name: EQUIV_B, cost: 1, points: 1, spawnedItemList: [{{labels}}]}
+          - {name: UNLOCK, cost: 1}
+        """, extraRulesAfterOverlays: true);
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var campaign = CampaignState.Restore(StrategicWorldResearchStockAlternativesTests.Snapshot(content, seed), content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            long work = 940_000;
+            Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast));
+            Assert.InRange(work, 940_000 + count * 4, 1_000_000);
+            Assert.Equal(count + 1, forecast.Arrivals[before.Bases[0].Id].Count);
+            Assert.All(forecast.Arrivals[before.Bases[0].Id], item => Assert.Equal(new KeyValuePair<string, int>("SUPPLY", 1), item));
+            long exhausted = 999_999;
+            Assert.False(campaign.ResearchPreflight.TryForecastDailyStocks(ref exhausted, out _));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            choices.Add(after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1);
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchLargeReusableRows").Single(row => row[0].GetInt32() == count);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { count, after.Bases[0].Items["SUPPLY"] + 1,
+                forecast.Arrivals[before.Bases[0].Id].Count, after.ResearchScores[^1] - before.ResearchScores[^1] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            Assert.Equal(forecast.NextTransferId, after.NextIds["oxcePortTransfer"]);
+            Assert.Empty(after.Bases[0].Transfers);
+            Assert.True(Assert.Single(after.World.Ufos).Hunting);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "large-reusable-research.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            if (choices.Count == 2) break;
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    internal static RuntimeContent Content(bool cache, bool duplicate, bool reusable = false) =>
+        StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+        items: [{type: CLIP, battleType: {{(reusable ? 0 : 2)}}}]
+        crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true, weapons: 2}]
+        craftWeapons: [{type: REUSE_CLIP, launcher: SUPPLY, clip: CLIP, ammoMax: 10, rearmRate: 1}, {type: REUSE_SUPPLY, launcher: SUPPLY, clip: SUPPLY, ammoMax: 10, rearmRate: 1}]
+        facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
+        ufos: [{type: UFO_HUNTER, radarRange: 20000}]
+        research:
+          - {name: CORE, cost: 1, points: 1, getOneFree: [EQUIV_A, EQUIV_B], spawnedItem: '{{(reusable ? "" : "SUPPLY")}}', spawnedItemCount: 1}
           - {name: EQUIV_A, cost: 1, points: 1, spawnedItemList: [CLIP, SUPPLY{{(duplicate ? ", CLIP" : "")}}]}
           - {name: EQUIV_B, cost: 1, points: 1, spawnedItemList: [{{(duplicate ? "CLIP, " : "")}}SUPPLY, CLIP]}
           - {name: UNLOCK, cost: 1}
