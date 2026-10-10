@@ -63,6 +63,14 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-10 daily quantity composition cycle: variable research arrivals now
+  compose with craft servicing, correlated site eligibility and common counters
+  before craft/personnel births. All 4,982 root tests and formatting pass; the
+  batch fixed failed cached-proof work accounting. See
+  [research quantity evidence and audit](strategic-world-research-status.md#daily-quantity-composition-batch-audit-2026-10-10).
+  Daily score/diary capacity, wider stock composition and final guard
+  reconciliation keep 4c open; 4d is unchanged.
+
 - 2026-10-10 daily/site alternatives cycle: bounded daily discovery states now
   compose with site grants, active-project exclusions and event interruption.
   All 4,958 root tests and formatting pass. The batch audit corrected obsolete

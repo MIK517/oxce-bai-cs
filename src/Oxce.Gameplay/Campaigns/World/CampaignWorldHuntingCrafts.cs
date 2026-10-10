@@ -31,11 +31,16 @@ internal sealed partial class CampaignWorld
                 researchMayChangeStocks = false;
             }
         }
-        if (researchMayChangeStocks && work <= MaximumAlienBaseChecks && TryDailyResearchProjection(out var worldStocks))
+        if (researchMayChangeStocks && work <= MaximumAlienBaseChecks)
         {
-            work += worldStocks.Work;
-            researchStocks = worldStocks;
-            researchMayChangeStocks = false;
+            var supported = TryDailyResearchProjection(out var worldStocks);
+            // Failed branches also consume the caller's shared work budget.
+            work += _pass.DailyResearchProjectionWork;
+            if (supported)
+            {
+                researchStocks = worldStocks;
+                researchMayChangeStocks = false;
+            }
         }
         if (work > MaximumAlienBaseChecks) return "UFO retargeting exceeds the supported work limit.";
         Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> baseStocks = [];
