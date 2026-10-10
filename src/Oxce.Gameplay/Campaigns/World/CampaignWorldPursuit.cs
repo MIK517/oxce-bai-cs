@@ -260,6 +260,20 @@ internal sealed partial class CampaignWorld
                     return "Craft weapon sight bonuses exceed the supported range.";
                 var distance = WorldGeometry.Distance(new(state.Longitude, state.Latitude), alienBase.Position);
                 if (WorldAlienBaseSight.CraftChance(distance, range) is not > 0) continue;
+                // Production precedes patrol discovery. Without a hunter, no other
+                // caller may have requested the ordered craft-removal projection.
+                if (_pass.HuntingCraftForecast is null && highest >= CampaignTimeTrigger.OneHour && owner.Productions.Count != 0)
+                {
+                    if (ForecastHuntingCrafts(highest, ref _arrivalBaseDiscoveryWork) is { } forecastReason) return forecastReason;
+                    state = _pass.HuntingCraftForecast!.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id));
+                    if (state is not { Status: "STR_OUT", Destination: null }) continue;
+                    _arrivalBaseDiscoveryWork += state.Weapons.Count;
+                    if (_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                    if (!CraftLogistics.TryEffectiveSightRange(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out range))
+                        return "Craft weapon sight bonuses exceed the supported range.";
+                    distance = WorldGeometry.Distance(new(state.Longitude, state.Latitude), alienBase.Position);
+                    if (WorldAlienBaseSight.CraftChance(distance, range) is not > 0) continue;
+                }
                 possible = true;
                 _arrivalBaseDiscovery[key] = true;
                 return null;
