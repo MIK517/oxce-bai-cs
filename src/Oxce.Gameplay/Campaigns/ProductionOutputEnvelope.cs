@@ -2,7 +2,7 @@ using Oxce.Mods.Rulesets.EquipmentProduction;
 
 namespace Oxce.Gameplay.Campaigns;
 
-/// <summary>Pure upper quantities and optional present-item lower bounds; never selects an outcome.</summary>
+/// <summary>Pure upper quantities and optional lower stock bounds; never selects an outcome.</summary>
 internal static class ProductionOutputEnvelope
 {
     internal static bool TryCreate(IReadOnlyList<RandomProducedItems> choices,
@@ -43,12 +43,15 @@ internal static class ProductionOutputEnvelope
             if (++work > 1_000_000) return false;
             if (item.Value.Present == count && item.Value.Minimum == item.Value.Maximum) continue;
             differs = true;
-            if (allowsVariation(item.Key)) continue;
-            // Quantity ranges do not waive presence or ordered reuse effects.
+            var inert = allowsVariation(item.Key);
+            // Protected quantities do not waive presence or ordered reuse effects.
             // Even a zero-quantity present entry executes the native reuse call.
-            if (item.Value.Present != count || allowsQuantityVariation?.Invoke(item.Key) != true) return false;
+            if (!inert && (item.Value.Present != count || allowsQuantityVariation?.Invoke(item.Key) != true)) return false;
+            // Inert for servicing does not mean inert for a later needItem grant.
+            // Keep its lower stock too; absence in any choice means zero.
+            if (allowsQuantityVariation is null) continue;
             if (++work > 1_000_000) return false;
-            (quantityMinimum ??= new(StringComparer.Ordinal)).Add(item.Key, item.Value.Minimum);
+            (quantityMinimum ??= new(StringComparer.Ordinal)).Add(item.Key, item.Value.Present == count ? item.Value.Minimum : 0);
         }
         // Reuse changes craft status immediately. Even identical quantities must
         // retain the relative delivery order of effects that are not inert.

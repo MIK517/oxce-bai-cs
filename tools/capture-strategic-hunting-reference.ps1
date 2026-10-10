@@ -26,6 +26,12 @@ $researchGetters = (Read-ReferenceMethod 'src/Mod/RuleResearch.cpp' 'int RuleRes
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleResearch* getLookup() const').Replace('getLookup()', 'RuleResearch::getLookup()').Replace('_lookup', 'lookup') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleItem* getNeededItem() const').Replace('getNeededItem()', 'RuleResearch::getNeededItem()').Replace('_neededItem', 'needed')
 $template = $template.Replace('// RESEARCH_RULE_GETTERS', $researchGetters)
+$researchAvailability = Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::getAvailableResearchProjects('
+$neededStart = $researchAvailability.IndexOf('if (research->needItem() && base->getStorageItems()', [StringComparison]::Ordinal)
+$neededEnd = $researchAvailability.IndexOf('// Check for required buildings/functions', $neededStart, [StringComparison]::Ordinal)
+if ($neededStart -lt 0 -or $neededEnd -le $neededStart) { throw 'Missing needed-item research availability fragment.' }
+$template = $template.Replace('// RESEARCH_NEED_ITEM_AVAILABILITY', $researchAvailability.Substring($neededStart, $neededEnd - $neededStart).Replace('research->', 'rule->'))
+
 $template = $template.Replace('// CRAFT_ESCORT_ARRIVAL', (Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'else if (x != 0)').Replace('else if (x != 0)', 'if (x != 0)'))
 $template = $template.Replace('// ALIEN_BASE_ARRIVAL', (Read-ReferenceMethod 'src/Geoscape/GeoscapeState.cpp' 'else if (b != 0)').Replace('else if (b != 0)', 'if (b != 0)'))
 $template = $template.Replace('// STOP_HUNTING_CRAFT', (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::stopHuntingXcomCraft(Craft *target)'))

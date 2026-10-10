@@ -265,9 +265,11 @@ bool isResearched(const std::vector<const RuleResearch*>& topics,bool,bool disab
 void sortReserchVector(std::vector<const RuleResearch*>&) {} void removePoppedResearch(const RuleResearch*) {}
 void addResearchDiaryEntry(ResearchDiaryEntry* entry) { delete entry; } void addResearchScore(int);
 void removeDiscoveredResearch(const RuleResearch* rule) { std::erase(_discovered,rule); }
-void getAvailableResearchProjects(std::vector<RuleResearch*>& available,const Mod* mod,Base*) const {
+void getAvailableResearchProjects(std::vector<RuleResearch*>& available,const Mod* mod,Base* base) const {
 std::map<std::string,ResearchRule*> ordered; for(auto* rule:mod->rules) ordered[rule->name]=rule;
-for(const auto& pair:ordered) { auto* rule=pair.second; if(!isResearchRuleStatusDisabled(rule->name)&&!isResearched(rule,false)&&
+for(const auto& pair:ordered) { auto* rule=pair.second; if(base) {
+// RESEARCH_NEED_ITEM_AVAILABILITY
+} if(!isResearchRuleStatusDisabled(rule->name)&&!isResearched(rule,false)&&
 std::all_of(rule->dependencies.begin(),rule->dependencies.end(),[&](auto* r){return isResearched(r,false);})&&
 std::all_of(rule->requirements.begin(),rule->requirements.end(),[&](auto* r){return isResearched(r,false);})) available.push_back(rule); }
 }
@@ -552,6 +554,20 @@ std::vector<Craft*> active;if(craft._status=="STR_OUT"){fuelCaller.fuel(&craft);
 std::cout << '[' << required << ',' << stock << ',' << choice << ',' << progress.completedUnits << ',' << stop << ',' << other.completedUnits << ',' << otherStop
 << ',' << base.storage.count << ',' << base.storage.getItem(&output) << ',' << delivery._randomProductionInfo["SUPPLY"] << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints)delete waypoint;
+}
+std::cout << "],\"productionInertSiteResearchRows\":[";
+scoreFirst=true;
+for(bool presence:{false,true}) for(int stock:{0,1}) for(int choice:{1,2}) {
+if(!scoreFirst)std::cout<<',';scoreFirst=false;
+Base base;ServiceGame game;ResearchMod mod;Item item,token;token.type="TOKEN";token.battle=1;Production progress;Craft craft;
+craft.id=1;craft._base=&base;base.crafts={&craft};craft.rule.fuelItem=&item;craft._fuel=60;
+ProductionItemRule rule;rule.produced={{&item,1}};rule.random={{1,presence?std::map<const Item*,int>{}:std::map<const Item*,int>{{&token,0}}},{1,{{&token,2}}}};ProductionDeliveryCaller delivery{&rule};
+progress.rule.time=1;progress._timeSpent=0;progress._engineers=1;progress._amount=3;progress.infinite=true;base.storage.extra["TOKEN"]=stock;
+RNG::suppliedChoice=choice;int stop=progress.scalarStep(&base,&game.save,&mod,delivery);RNG::suppliedChoice=-1;craft.refuel();
+ResearchRule core,automatic;core.name="CORE";core.points=automatic.points=0;automatic.name="AUTO";automatic.cost=0;automatic.dependencies={&core};automatic.needs=true;automatic.needed=&token;mod.rules={&core,&automatic};
+game.save.addFinishedResearch(&core,&mod,&base,true);
+std::cout << '[' << (presence?1:0) << ',' << stock << ',' << choice << ',' << progress.completedUnits << ',' << stop << ',' << base.storage.getItem(&token)
+<< ',' << delivery._randomProductionInfo["TOKEN"] << ',' << (game.save.isResearched(&automatic,false)?1:0) << ',' << craft._fuel << ']';
 }
 std::cout << "],\"productionPersonnelRows\":[";
 scoreFirst=true;

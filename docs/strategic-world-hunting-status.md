@@ -953,3 +953,25 @@ The material threshold explicitly distinguishes the native continuation stop.
 All twenty new cases, the broader 83 shared regressions, full formatting, code-map
 and diff checks pass. Batch audit and root acceptance follow. Execution/RNG and save/cache schemas stay
 unchanged; variable quantities still require a common consumed-consequence proof.
+
+## Random quantity batch audit: later item research (2026-10-10)
+
+The cycle 32 audit confirmed that an item inert for craft servicing can still
+control automatic site research. Its prior upper-only production envelope falsely
+guaranteed a needItem grant and event interruption. Four fresh/cache reproductions
+reached an unavailable site payload after execution had begun. The quantity API now
+retains lower bounds for all varying items, using zero when a positive-weight choice
+omits an inert item; protected presence/reuse-order restrictions remain unchanged.
+The old upper-only API and its 19-step work assertion retain their contract.
+
+Eight native productionInertSiteResearchRows compose Production::step outputs with
+SavedGame::addFinishedResearch dependency closure. The probe inserts the exact
+getAvailableResearchProjects needed-item condition; its remaining availability
+collaborators stay controlled. All old rows remain identical. Sixteen fresh/cache
+cases cover both optional presence and zero/two quantities: unsafe event suppression
+stops atomically, while safe outcomes execute actual research/diary/history and
+survive three rewrites plus continued execution. All 4,933 root tests pass with zero failures/skips in 6m52s977ms. Full formatting,
+code-map, diff, native checksums, private corpus and original allocation/endurance
+gates pass. No further confirmed issue or unexpected access denial occurred; the
+reference remains clean. The correction is a separate audit-fix commit. Wider daily
+research/site alternatives and final guard reconciliation still keep 4c open.

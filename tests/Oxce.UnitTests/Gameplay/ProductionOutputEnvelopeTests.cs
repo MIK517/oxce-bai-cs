@@ -54,7 +54,10 @@ public sealed class ProductionOutputEnvelopeTests
         Assert.Equal(2, upper!["FUEL"]);
         Assert.Equal(1, upper["A"]);
         Assert.Equal(2, upper["B"]);
-        Assert.Equal(new KeyValuePair<string, int>("FUEL", 0), Assert.Single(minimum!));
+        Assert.Equal(3, minimum!.Count);
+        Assert.Equal(0, minimum["FUEL"]);
+        Assert.Equal(0, minimum["A"]);
+        Assert.Equal(0, minimum["B"]);
         Assert.Equal(0, choices[0].Items["FUEL"]);
         Assert.Equal(int.MaxValue, choices[2].Items["FUEL"]);
     }
