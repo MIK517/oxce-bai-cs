@@ -10,7 +10,7 @@
 #include <cstdint>
 namespace OpenXcom {
 using Exception = std::runtime_error; using RuleCraft=void;
-struct Craft; struct Ufo; struct Base; struct SavedGame; struct Item; struct ResearchMod; struct ProductionDeliveryCaller;
+struct Craft; struct Ufo; struct Base; struct SavedGame; struct Item; struct ResearchMod; struct ProductionDeliveryCaller; struct ResearchProject;
 // PRODUCTION_ENUM
 const int BT_NONE=0;
 struct RNG { static inline int roll=0, calls=0, suppliedChoice=-1;
@@ -65,6 +65,7 @@ template<class...T> void load(const YAML::YamlRootNodeReader& reader,T...) { if(
 };
 struct Base : Target { Storage storage; std::vector<Craft*> crafts; std::vector<Craft*>& _crafts=crafts; std::vector<Soldier*> soldiers; std::vector<Transfer*> transfers; std::vector<Transfer*>* getTransfers() { return &transfers; } int scientists=0,engineers=0; int& _engineers=engineers;
 std::vector<Production*> _productions; auto& getProductions() { return _productions; }
+std::vector<ResearchProject*> research; auto& getResearch() { return research; } void removeResearch(ResearchProject* project) { std::erase(research,project); }
 int freeWorkshops=0; int getAvailableWorkshops() const { return freeWorkshops; } int getUsedWorkshops() const; int getFreeWorkshops() const; void removeProduction(Production*); int getAvailableEngineers() const { return engineers; }
 int quarters=100; int getAvailableQuarters() const { return quarters; } int getUsedQuarters() const;
 int getTotalSoldiers() const; int getTotalScientists() const; int getTotalEngineers() const;
@@ -268,6 +269,7 @@ void removeDiscoveredResearch(const RuleResearch* rule) { std::erase(_discovered
 void getAvailableResearchProjects(std::vector<RuleResearch*>& available,const Mod* mod,Base* base) const {
 std::map<std::string,ResearchRule*> ordered; for(auto* rule:mod->rules) ordered[rule->name]=rule;
 for(const auto& pair:ordered) { auto* rule=pair.second; if(base) {
+// RESEARCH_ACTIVE_AVAILABILITY
 // RESEARCH_NEED_ITEM_AVAILABILITY
 } if(!isResearchRuleStatusDisabled(rule->name)&&!isResearched(rule,false)&&
 std::all_of(rule->dependencies.begin(),rule->dependencies.end(),[&](auto* r){return isResearched(r,false);})&&
@@ -337,6 +339,9 @@ void advance(Base* xbase) {
 }
 };
 struct ServiceGame { SavedGame save; SavedGame* getSavedGame() { return &save; } };
+void removeDisabled(ServiceGame* _game) {
+// DAILY_DISABLED_RESEARCH
+}
 void autoPatrol(Craft* xcraft, ServiceGame* _game) {
 // AUTO_PATROL
 }
@@ -996,6 +1001,22 @@ Craft craft;craft._base=&base;craft.rule.fuelItem=&mod.supply;craft._fuel=960;cr
 saved.addFinishedResearch(site,&mod,&base,true);
 std::cout << '[' << mode << ',' << choice << ',' << base.storage.count << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore
 << ',' << (saved.isResearched(automatic,false)?1:0) << ',' << (saved.isResearched(a,false)?1:0) << ',' << (saved.isResearched(b,false)?1:0) << ',' << (saved.isResearched(z,false)?1:0) << ']';
+}
+std::cout << "],\"researchDailySiteActiveRows\":[";
+serviceFirst=true;
+for(int choice:{0,1}) {
+if(!serviceFirst)std::cout<<',';serviceFirst=false;
+ResearchRule topics[5];auto* source=&topics[0];auto* a=&topics[1];auto* b=&topics[2];auto* site=&topics[3];auto* active=&topics[4];
+source->name="CORE";a->name="EQUIV_A";b->name="EQUIV_B";site->name="SITE";site->points=3;active->name="ACTIVE";active->cost=0;active->points=2;
+active->dependencies={site};b->points=2;source->free={a,b};a->disables={active};site->reenables={active};
+source->spawned=a->spawned=b->spawned="SUPPLY";source->count=1;a->count=b->count=2;source->increases=a->increases=b->increases={"EQUIV_COUNTER"};
+ServiceGame game;auto& saved=game.save;Mod mod;mod.rules={source,a,b,site,active};Base base;ResearchCaller caller;ResearchProject project;project.rule=active;base.research={&project};saved.bases={&base};saved._ids["EQUIV_COUNTER"]=1;
+RNG::suppliedChoice=choice;auto* bonus=saved.selectGetOneFree(source);RNG::suppliedChoice=-1;saved.addFinishedResearch(bonus,&mod,&base);saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus);std::sort(primary.begin(),primary.end());primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary){caller.spawn(topic,&mod,&base);saved.applyPrimaryCounters(topic);}removeDisabled(&game);
+for(auto* transfer:base.transfers){transfer->advance(&base);delete transfer;}base.transfers.clear();
+saved.addFinishedResearch(site,&mod,&base,true);
+std::cout << '[' << choice << ',' << base.research.size() << ',' << (saved.isResearched(active,false)?1:0) << ',' << saved.statuses["ACTIVE"] << ',' << saved.researchScore << ',' << saved._ids["EQUIV_COUNTER"] << ']';
 }
 std::cout << "],\"researchEmptyCounterRewardRows\":[";
 serviceFirst=true;

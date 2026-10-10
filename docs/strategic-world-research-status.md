@@ -2085,3 +2085,24 @@ cases, full formatting, code-map and diff checks pass. Interim review confirms
 only the world operation exposes alternatives, guarantees are intersections and
 active project context survives each clone. Event/active/capacity composition and
 root batch acceptance remain pending.
+
+## Daily/site all-path event, active and capacity acceptance (2026-10-10)
+
+Cycle 33 slice three verifies the new world alternatives through their consumed
+limits and event boundary. Two new native researchDailySiteActiveRows capture
+getAvailableResearchProjects active-project exclusion and the time1Day disabled
+project cleanup before a site grant re-enables the topic. Removal is controlled
+and nonholding in this fixture; the original bodies determine exclusion/cleanup
+order. All older native rows remain unchanged.
+
+Two fresh/cache cases keep an active project per daily path: one selected reward
+disables/removes it, allowing later re-enable and automatic discovery, while the
+other keeps it active. Actual project/status/research/score/counter and diary state
+match the trace across twelve saved seeds and three rewrites. Eight event cases
+require interruption on every path: the unconditional site grant suppresses safely,
+while conditional automatic discovery cannot suppress an unavailable payload.
+Two score cases refuse when only one path exceeds the range and allow exact
+headroom. One direct/transaction case preserves diary and shared work limits with
+no campaign/RNG mutation. The world-owned diary check precedes the general daily
+check, so the test retains its exact earlier diagnostic. All thirteen cases, full formatting, code-map and diff checks pass. The combined
+batch audit and root acceptance follow.
