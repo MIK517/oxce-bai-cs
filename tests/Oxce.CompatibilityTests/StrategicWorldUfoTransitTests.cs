@@ -418,7 +418,7 @@ public sealed class StrategicWorldUfoTransitTests
     }
 
     [Fact]
-    public void LaterUnsupportedCrashArrivalBlocksBeforeAnEarlierTerminalArrival()
+    public void LaterUnsupportedGroundArrivalBlocksBeforeAnEarlierTerminalArrival()
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var campaign = CreateUfoTransitCampaign(content, new CampaignTime(1, 1, 1, 1999, 1, 0, 0),
@@ -432,13 +432,14 @@ public sealed class StrategicWorldUfoTransitTests
         {
             UniqueId = 10,
             Id = 4,
-            Longitude = 0.99999,
-            Latitude = 0.6,
-            TrajectoryId = "TRAJ_PATROL",
-            TrajectoryPoint = 1,
-            Damage = int.MaxValue,
+            // Land inside the region, as in StrategicWorldUfoLandingTests.
+            Longitude = Degrees(8.02),
+            Latitude = Degrees(2),
+            Destination = ufo.Destination! with { Longitude = Degrees(8.02), Latitude = Degrees(2) },
+            TrajectoryId = "TRAJ_LANDING_ZERO",
+            TrajectoryPoint = 0,
         };
-        // Select an ordinary ground arrival: selected-site conversion now safely replaces crash status.
+        // Select an ordinary ground arrival whose zero ground timer is still invalid.
         var restored = CampaignState.Restore(snapshot with
         {
             World = snapshot.World with

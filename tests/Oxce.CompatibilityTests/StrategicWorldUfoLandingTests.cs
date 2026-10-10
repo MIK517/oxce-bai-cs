@@ -382,14 +382,59 @@ public sealed class StrategicWorldUfoLandingTests
     [Theory]
     [InlineData(26)]
     [InlineData(50)]
-    public void GroundArrivalThatWouldCrashRemainsGuarded(int damage)
+    public void DamagedGroundArrivalCrashesWithLandingTimerAndExpiresAfterReload(int damage)
     {
         var content = StrategicReadinessTestContent.Load("strategic-world.rul");
         var snapshot = CreateCampaign(content).Capture();
-        var campaign = RestoreUfos(content, snapshot,
-            Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1, Damage = damage });
+        var source = Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1 };
+        var healthy = RestoreUfos(content, snapshot, source with { Damage = 25 });
+        var damaged = RestoreUfos(content, snapshot, source with { Damage = damage });
+        AdvanceOne(healthy);
+        // Ufo::setAltitude only swaps LANDED for CRASHED; ufoReachedWaypoint's ground
+        // branch still draws both waypoints and assigns the landing timer and marker.
+        var result = damaged.Execute(new AdvanceCampaignTime(1));
+        Assert.Equal(1, Assert.IsType<CampaignTimeAdvanced>(Assert.Single(result.Events)).Summary.TickCount);
+        var landed = Assert.Single(healthy.Capture().World.Ufos);
+        Assert.Equal(UfoStatus.Landed, landed.Status);
+        var after = damaged.Capture();
+        var crashed = Assert.Single(after.World.Ufos);
+        Assert.Equal(landed with { Status = UfoStatus.Crashed, Damage = damage }, crashed);
+        Assert.Equal(healthy.Capture().RandomState, after.RandomState);
+        Assert.Equivalent(healthy.Capture().NextIds, after.NextIds, strict: true);
 
-        AssertTimeBlocked(campaign, "UFO waypoint arrival requires mission simulation.");
+        damaged = Reload(content, damaged, 97, "damaged-ground-arrival.sav");
+        AdvanceOne(damaged);
+        Assert.True(Assert.Single(damaged.Capture().World.Ufos).Detected);
+        // time30Minutes expires a crash whose remaining seconds are below half an hour.
+        Assert.InRange(crashed.SecondsRemaining, 5, 1795);
+        AdvanceUnblocked(damaged, 359);
+        Assert.DoesNotContain(damaged.Capture().World.Ufos, ufo => ufo.UniqueId == crashed.UniqueId && ufo.Status == UfoStatus.Crashed);
+        Reload(content, damaged, 98, "damaged-ground-arrival-expired.sav");
+    }
+
+    [Fact]
+    public void DamagedGroundArrivalWithAPursuingCraftRemainsGuarded()
+    {
+        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
+        var snapshot = CreateCampaign(content).Capture();
+        var source = Assert.Single(snapshot.World.Ufos) with { TrajectoryPoint = 1, Damage = 26 };
+        snapshot = snapshot.WithCraft("SHIP", craft => craft with
+        {
+            Logistics = craft.Logistics! with
+            {
+                Status = "STR_OUT",
+                Takeoff = 0,
+                Fuel = 300,
+                Speed = 100,
+                Longitude = Degrees(20),
+                Latitude = Degrees(2),
+                Destination = new(WorldTargetKind.Ufo, WorldTargetReference.UfoType, source.Id,
+                    source.Longitude, source.Latitude)
+                { UniqueId = source.UniqueId },
+            },
+        });
+        AssertTimeBlocked(RestoreUfos(content, snapshot, source),
+            "Crashed UFO arrival with followers requires interception simulation.");
     }
 
     [Fact]

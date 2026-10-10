@@ -528,20 +528,30 @@ public sealed class StrategicWorldUfoSiteConversionTests
     [Theory]
     [InlineData(26)]
     [InlineData(50)]
-    public void OrdinaryDamagedGroundOutcomesRemainAtomic(int damage)
+    public void OrdinaryDamagedGroundArrivalCrashesInsteadOfConverting(int damage)
     {
         var content = Load();
         var initial = Snapshot(content);
-        initial = initial with
+        CampaignSnapshot Arrive(int value)
         {
-            World = initial.World with
+            var campaign = CampaignState.Restore(initial with
             {
-                Missions = [initial.World.Missions[0] with { MissionSiteZoneArea = -1 }],
-                Ufos = [initial.World.Ufos[0] with { Damage = damage }],
-            },
-        };
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new QuarterChoices()),
-            "UFO waypoint arrival requires mission simulation.");
+                World = initial.World with
+                {
+                    Missions = [initial.World.Missions[0] with { MissionSiteZoneArea = -1 }],
+                    Ufos = [initial.World.Ufos[0] with { Damage = value }],
+                },
+            }, content, new QuarterChoices());
+            AdvanceOne(campaign);
+            return campaign.Capture();
+        }
+        var healthy = Arrive(0);
+        var damaged = Arrive(damage);
+        var landed = Assert.Single(healthy.World.Ufos);
+        Assert.Equal(UfoStatus.Landed, landed.Status);
+        Assert.Equal(landed with { Status = UfoStatus.Crashed, Damage = damage }, Assert.Single(damaged.World.Ufos));
+        Assert.Empty(damaged.World.MissionSites);
+        Assert.Equal(healthy.RandomState, damaged.RandomState);
     }
 
     [Theory]

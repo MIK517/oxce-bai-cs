@@ -36,3 +36,16 @@ remain 4c work. Branch 4c is incomplete; 4d remains untouched.
 Validation: all 1,414 root tests pass with no failures or skips, including 13
 crash cases, fixture checksums, private-corpus classification and allocation gates.
 Formatting, code-map and diff checks pass. The reference checkout is unchanged.
+
+Branch 4c closure R3 (damaged ground arrival): an already damaged flying UFO
+reaching an ordinary ground waypoint now becomes CRASHED, as
+`AlienMission::ufoReachedWaypoint` → `Ufo::setAltitude`/`isCrashed` do. The ground
+branch is otherwise unchanged: both waypoint draws, the landing timer
+(`groundTimer * 5`, or 5 on water) and the detected `STR_LANDING_SITE` marker are
+kept, no landing alert fires, and the existing crash lifecycle then marks it
+detected and expires it at the next half hour. Coarse handlers precede
+time5Seconds, so no same-tick timer observes the new crash. Arrivals with UFO or
+craft followers stay guarded ("Crashed UFO arrival with followers requires
+interception simulation."): their same-pass reaction is landing confirmation
+(branch 5), recall or escort loss (R4). Fresh landing, site-conversion and transit
+tests cover the 26/50 damage boundary, unchanged RNG and reload through expiry.

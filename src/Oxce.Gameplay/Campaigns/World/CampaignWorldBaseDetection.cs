@@ -86,8 +86,7 @@ internal sealed partial class CampaignWorld
         var damageMaximum = checked(rule.Stats.DamageMaximum + bonus.DamageMaximum);
         // isCrashed tests damage, not saved status: a healthy terminal-departure UFO
         // can still detect a base before the five-second cleanup removes it.
-        if (ufo.Damage >= damageMaximum ||
-            !rule.Unmanned && ufo.HuntBehavior != 1 && ufo.Damage > damageMaximum / 2) return false;
+        if (IsCrashed(ufo, rule, damageMaximum)) return false;
         sightRange = checked(rule.Stats.SightRange + bonus.SightRange);
         return sightRange > 0;
     }
