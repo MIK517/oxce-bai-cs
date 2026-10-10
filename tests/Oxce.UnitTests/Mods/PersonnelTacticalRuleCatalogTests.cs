@@ -41,6 +41,29 @@ public sealed class PersonnelTacticalRuleCatalogTests
     }
 
     [Fact]
+    public void ExplicitGeoscapeCorpseOverridesTheBattleCorpseDefault()
+    {
+        // Armor::load: corpseItem/corpseBattle set the default, then corpseGeo overrides it.
+        using var fixture = new TemporaryModFixture(("fixture.rul", """
+            armors:
+              - type: BATTLE_ONLY
+                corpseBattle: [FIRST, SECOND]
+              - type: BATTLE_AND_GEO
+                corpseGeo: GEO
+                corpseBattle: [FIRST, SECOND]
+              - type: ITEM_AND_GEO
+                corpseItem: SINGLE
+                corpseGeo: GEO
+            """));
+        var content = PersonnelTacticalRuleCatalog.Load(TestFixtures.CreatePlan(fixture.Root));
+        string Geo(string id) => content.Armors.Rules.Single(rule => rule.Id == id).Value.Strings["corpseGeo"];
+        Assert.Equal("FIRST", Geo("BATTLE_ONLY"));
+        Assert.Equal("GEO", Geo("BATTLE_AND_GEO"));
+        Assert.Equal("GEO", Geo("ITEM_AND_GEO"));
+        Assert.Equal(["SINGLE"], content.Armors.Rules.Single(rule => rule.Id == "ITEM_AND_GEO").Value.CorpseBattle);
+    }
+
+    [Fact]
     public void UnitNullableNamesKeepNulDistinctFromLiteralStrNull()
     {
         using var fixture = new TemporaryModFixture(("fixture.rul", """
