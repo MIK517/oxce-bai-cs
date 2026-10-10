@@ -2244,3 +2244,24 @@ reward choices across twelve seeds, repeated rewrites and subsequent ticks. The
 site context case excludes an unavailable automatic discovery from the daily
 reservation. All ten cases and six score-capacity regressions pass; the
 three-slice batch audit/root gate follows. No cache or save schema change.
+
+## Bounded daily diary capacity (2026-10-10)
+
+Reuses the pinned strategic-research-diary-execution stockScopeRows: native
+time1Day records primary diary entries before free rewards and their lookups,
+while SavedGame::addFinishedResearch records automatic discovery sources. The
+score-prefix fixture independently demonstrates an inactive automatic dependency.
+The strict exact or cheap conservative diary proof remains first; only a
+capacity failure attempts bounded world alternatives. Monotonic entry growth
+allows their maximum exact count, with the same shared work budget. Unequal
+lookup counts, unreached automatic topics and later site grants retain their
+actual ordered discovery context without selecting RNG.
+
+Twelve fresh/cache cases cover tight sequence headroom, twelve seeds and both
+reward choices, three rewrites and subsequent ticks, unsafe alternative counts,
+site discovery capacity and the full gameplay population ceiling. The huge
+population snapshot restores exactly; its serialized YAML intentionally exceeds
+the independent one-million-node reader limit, which the test preserves rather
+than raising. Ordinary transition rewrites remain covered by the identity/site
+cases. All 30 diary execution/persistence regressions pass. Batch audit/root
+validation follows; no content cache or save schema change.
