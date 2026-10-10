@@ -361,11 +361,13 @@ public sealed partial class CampaignState
             if (continues)
                 foreach (var material in product.RequiredMaterials)
                     if (material.Item is { } item && material.Quantity > 0) sensitive.Add(item);
-            // Later projects can add craft before half-hour maintenance. Retain
-            // all potential products here, including conservatively delayed ones.
-            foreach (var material in product.ProducedMaterials)
-                if (material.Craft is { } craft && material.Quantity > 0 && rules.Crafts[craft].Value.RefuelItem is { } fuel)
-                    sensitive.Add(fuel);
+            // Only reached immediate births enter this base's half-hour service.
+            // Delayed craft remain transfers until a later tick, whose forecast
+            // includes them as due sources after their actual random stock is saved.
+            if (requested != 0 && (product.TransferTimes.Count <= 2 || product.TransferTimes[2] <= 0))
+                foreach (var material in product.ProducedMaterials)
+                    if (material.Craft is { } craft && material.Quantity > 0 && rules.Crafts[craft].Value.RefuelItem is { } fuel)
+                        sensitive.Add(fuel);
         }
         var immediate = rule.TransferTimes.Count == 0 || rule.TransferTimes[0] <= 0;
         var minimumTransfers = int.MaxValue;

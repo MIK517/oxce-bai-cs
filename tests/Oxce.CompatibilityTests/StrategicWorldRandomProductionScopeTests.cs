@@ -150,6 +150,85 @@ public sealed partial class StrategicWorldHuntingTests
         };
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void UnreachedAndDelayedScopedCraftBirthsDoNotConsumeCurrentFuel(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var overlay = ScopedVariantRules().Replace("manufacture: [", "manufacture: [{name: OTHER_FUEL_PRODUCT, category: STR_CRAFT, time: " +
+            (mode == 1 ? 1 : 100) + ", producedItems: {OTHER_FUEL: 1}, transferTimes: [0, 0, " + (mode == 1 ? 2 : 0) + "]}, ", StringComparison.Ordinal);
+        var content = Load(cache, overlay);
+        var rows = TestFixtures.Rows(oracle.RootElement, "productionScopedCraftRows").Where(row => row[0].GetInt32() == mode).ToArray();
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var initial = ScopedVariantSnapshot(content, "produced") with { RandomState = seed };
+            var owner = initial.Bases[0];
+            initial = initial with
+            {
+                Bases = [owner with
+                {
+                    Engineers = mode == 2 ? 2 : 0,
+                    Productions = [owner.Productions[0], owner.Productions[1] with { Assigned = mode == 2 ? 0 : 1, IsFallback = mode == 2 }],
+                }],
+            };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var choice = after.Bases[0].Items.GetValueOrDefault("INERT_B") == 2 ? 2 : 1;
+            choices.Add(choice);
+            var first = Assert.Single(result.Events.OfType<CampaignProductionProgress>(), progress => progress.RuleId == "VARIANT_PRODUCT");
+            var other = result.Events.OfType<CampaignProductionProgress>().SingleOrDefault(progress => progress.RuleId == "OTHER_FUEL_PRODUCT");
+            var craft = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "VARIANT_HUNT").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                mode, choice, first.Produced, NativeProductionStop(first.StopReason), other?.Produced ?? 0, NativeProductionStop(other?.StopReason),
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("INERT_A"), after.Bases[0].Items.GetValueOrDefault("INERT_B"),
+                mode == 1 ? 1 : Assert.Single(after.Bases[0].Productions, project => project.RuleId == "OTHER_FUEL_PRODUCT").Assigned,
+                after.Bases[0].Crafts.Count(otherCraft => otherCraft.RuleId == "OTHER_FUEL"), after.Bases[0].Transfers.Count,
+                mode == 1 ? Assert.Single(after.Bases[0].Transfers).Hours : 0, craft.Status, craft.Fuel,
+                after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(Assert.Single(rows, row => row[1].GetInt32() == choice))), CanonicalJson.Normalize(actual));
+            if (mode == 1)
+            {
+                var born = Assert.Single(after.Bases[0].Transfers).Craft!;
+                Assert.Equal("STR_REFUELLING", born.Logistics!.Status);
+                Assert.Equal(0, born.Logistics.Fuel);
+                Assert.Equal(born.Id + 1, after.NextIds["OTHER_FUEL"]);
+            }
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "scoped-craft-production.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            if (mode == 1)
+            {
+                // The intervening hour has no completion (spent becomes three).
+                // A fresh hunter must consume the arrival forecast; the previous
+                // hunter can retain its already selected target without that query.
+                var due = after with
+                {
+                    Time = new(1, 1, 1, 1999, 3, 59, 55),
+                    World = after.World with { Ufos = initial.World.Ufos },
+                    Bases = [after.Bases[0] with
+                    {
+                        Transfers = [after.Bases[0].Transfers[0] with { Hours = 1 }],
+                        Productions = [after.Bases[0].Productions[0] with { Spent = 3 }],
+                    }],
+                };
+                AssertTimeBlocked(CampaignState.Restore(due, content, new SplitMix64RandomSource(seed)), "UFO retargeting requires production fuel-stock forecasts.");
+            }
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
     private static string ScopedVariantRules() => VariantProductionRules(0, 0).Replace("crafts: [",
         "crafts: [{type: OTHER_FUEL, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: INERT_A}, ", StringComparison.Ordinal);
 

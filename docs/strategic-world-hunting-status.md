@@ -839,3 +839,32 @@ pass. Cycle 31 slice two; inactive/delayed craft-product composition is next.
 Slice verification/interim review: all ten scoped-material cases, full formatting,
 regenerated code-map and diff checks pass. Native old rows remain unchanged and
 the reference is clean. No confirmed issue; the third slice and batch are pending.
+
+## Random production fuel sensitivity for reached craft births (2026-10-10)
+
+Potential product fuel is now sensitive only when the bounded hourly assignments
+can complete a craft and its native transfer time permits immediate delivery.
+An idle or still-incomplete fallback project cannot create a craft this hour;
+a delayed birth remains outside the base craft list until a later transfer tick.
+Due existing transfers still enter projected sources, and reached immediate births
+retain sensitivity. Work charges every project/material list before the proof.
+
+Reference: Production::step craft construction/checkup and transfer-time branch,
+getAmountProduced and fallback staffing. Six new strategic-hunting
+productionScopedCraftRows compose random item outputs with idle, delayed and
+still-incomplete fallback craft projects, retaining all earlier native rows.
+Six fresh/cache cases first reproduced the guard and now match native progress,
+stock, staff, birth/transfer count/hours, fuel and hunter target across twelve saved
+seeds. Pending craft identity/status/fuel survive three rewrites. A separate due
+snapshot aligns arrival with the next actual random completion and a fresh hunter,
+then verifies atomic refusal. The intervening hour has no completion, and an
+existing hunter can retain its current target without requesting this forecast;
+the initial boundary test setup did not exercise the intended consumed guard.
+
+All six craft-scope cases pass. Cycle 31's three slices are implemented; full
+formatting, combined batch audit and root acceptance follow. No execution/RNG,
+save/cache schema or later-branch transition was changed.
+
+Slice verification/interim review: all six craft-scope cases, full formatting,
+regenerated code-map and diff checks pass. Native prior rows remain unchanged;
+reference clean and obsolete probe object removed. Batch root acceptance pending.
