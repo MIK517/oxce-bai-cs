@@ -20,6 +20,9 @@ internal sealed record DailyResearchStockForecast(
     public long? ScoreChange { get; init; }
     public long Work { get; init; }
     public long? DiaryEntries { get; init; }
+    // World-only bounded exact states with common stocks/counters/arrival order.
+    // Summary discovery identities are guaranteed across every retained state.
+    public IReadOnlyList<DailyResearchStockForecast> DiscoveryAlternatives { get; init; } = [];
 }
 
 public sealed partial class CampaignState
