@@ -109,13 +109,47 @@ public sealed class StrategicWorldOptionalBaseGenerationTests
     [InlineData(true, 1)]
     [InlineData(false, 3)]
     [InlineData(true, 3)]
-    public void ImmediateGeneratedResearchRetainsItsOrderedDailyProjectionBoundary(bool cache, int generation)
+    public void ImmediateGeneratedResearchComposesOrderedDailyAlternatives(bool cache, int generation)
     {
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-hunt-generation");
+        TestFixtures.LoadVerifiedManifest("strategic-alien-base-cleanup");
+        TestFixtures.LoadVerifiedManifest("strategic-site-spawn");
+        TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
         var content = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
             generation: generation, immediateResearch: true);
-        var initial = Snapshot(content, 17, 5, generation);
-        AssertTimeBlocked(CampaignState.Restore(initial, content, new SplitMix64RandomSource(17)),
-            "Mission site research requires deterministic daily research phase forecasts.");
+        var deletedContent = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+            sourceCode: "CORE", generation: generation, immediateResearch: true);
+        var survivedContent = StrategicWorldDailyWaveResearchTests.Content(cache, 5, interrupt: "", operation: 1,
+            sourceCode: "", generation: generation, immediateResearch: true);
+        var deletedSeen = false;
+        var survivedSeen = false;
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var initial = Snapshot(content, seed, 5, generation);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var deleted = after.World.AlienBases.All(alienBase => alienBase.Id != 6);
+            var control = CampaignState.Restore(initial, deleted ? deletedContent : survivedContent, new SplitMix64RandomSource(seed));
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), after, strict: true);
+            Assert.Contains("BONUS", after.CompletedResearch);
+            Assert.Equal(!deleted && generation == 3 ? 1 : 0, after.World.MissionSites.Count);
+            Assert.Equal(deleted ? 1 : generation == 3 ? 3 : 2, after.NextIds.GetValueOrDefault("ALIEN_MISSIONS", 1));
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "optional-immediate-site-research.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+            AdvanceUnblocked(campaign, 1);
+            AdvanceUnblocked(control, 1);
+            Assert.Equivalent(control.Capture(), campaign.Capture(), strict: true);
+            deletedSeen |= deleted;
+            survivedSeen |= !deleted;
+        }
+        Assert.True(deletedSeen);
+        Assert.True(survivedSeen);
     }
 
     [Theory]

@@ -2106,3 +2106,18 @@ headroom. One direct/transaction case preserves diary and shared work limits wit
 no campaign/RNG mutation. The world-owned diary check precedes the general daily
 check, so the test retains its exact earlier diagnostic. All thirteen cases, full formatting, code-map and diff checks pass. The combined
 batch audit and root acceptance follow.
+
+## Daily/site alternatives batch audit (2026-10-10)
+
+The cycle 33 audit confirmed six obsolete deterministic-phase guard assertions
+(two saved-site and four optional-source generation cases). The first root run
+passed 4,952 of 4,958 tests, with only those six failures. The saved-site tests now
+retain an actual unavailable payload whose interruption is not guaranteed by the
+daily reward. The optional-source tests now execute both deleted/surviving paths
+and compare full snapshots against deterministic controls across twelve saved
+seeds, daily/late-hunting site horizons, three rewrites and subsequent progression.
+The later hunting site remains until its next native site caller. All four optional
+cases and all twenty daily/site cases pass. The corrected root run passes all
+4,958 tests with zero failures or skips. Full formatting, regenerated code-map
+and diff checks pass before the separate audit correction commit.
+No additional runtime defect has been confirmed.

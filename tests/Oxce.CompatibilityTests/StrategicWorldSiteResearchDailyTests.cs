@@ -105,14 +105,15 @@ public sealed class StrategicWorldSiteResearchDailyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AmbiguousDailyRewardRemainsAtomic(bool cache)
+    public void AmbiguousDailyRewardCannotSuppressUnavailableSitePayload(bool cache)
     {
-        var content = Content(cache, 4);
+        TestFixtures.LoadVerifiedManifest("strategic-research-diary-execution");
+        var content = Content(cache, 4, siteEvent: true);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 4), content, new SplitMix64RandomSource(17)),
-            "Mission site research requires deterministic daily research phase forecasts.");
+            "Mission site despawn requires research or event payloads.");
     }
 
-    internal static RuntimeContent Content(bool cache, int mode) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+    internal static RuntimeContent Content(bool cache, int mode, bool siteEvent = false) => StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
         research:
           - {name: UNLOCK, cost: 1}
           - {name: DAY, cost: 1, points: 3{{(mode == 2 ? ", disables: [CORE]" : mode == 3 ? ", reenables: [CORE]" : mode == 4 ? ", getOneFree: [BONUS, OTHER]" : "")}}}
@@ -122,7 +123,7 @@ public sealed class StrategicWorldSiteResearchDailyTests
           - {name: OTHER, cost: 1}
         alienMissions:
           - {type: MISSION_SCOUT, interruptResearch: CORE}
-        """ + "\n" + StrategicWorldSiteResearchTests.Deployment);
+        """ + "\n" + StrategicWorldSiteResearchTests.Deployment + (siteEvent ? "\n    despawnEvents: {DAILY_EVENT: 1}\nevents:\n  - {name: DAILY_EVENT, interruptResearch: BONUS}\n" : ""));
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, int mode)
     {
