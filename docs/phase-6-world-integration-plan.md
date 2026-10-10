@@ -140,7 +140,11 @@ documents; entries here link to them instead of copying them.
   4,720 root tests and full formatting pass; private-corpus and populated
   allocation bounds remain unchanged.
   See [flight fuel correction](strategic-world-operations-status.md#flight-fuel-setter-correction-2026-10-09).
-  Remaining optional return/escort fuel alternatives and final guard
+  Unequal own/escort fuel burns with stable low-fuel eligibility and guaranteed
+  empty-fuel return before arrival now compose. Their batch audit passes all
+  4,758 root tests and full formatting with unchanged corpus/allocation bounds.
+  See [fuel eligibility evidence](strategic-world-research-status.md#optional-craft-fuel-eligibility-2026-10-09).
+  Remaining optional arrival/transfer alternatives and final guard
   reconciliation keep 4c open.
   See [craft follower evidence](strategic-world-research-status.md#optional-alien-base-craft-followers-2026-10-09).
   See [supply escort evidence](strategic-world-research-status.md#optional-space-supply-escort-leaders-2026-10-09).
