@@ -851,6 +851,24 @@ const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) {
 std::cout << '[' << mode << ',' << choice << ',' << (saved.isResearched(z,false)?"true":"false") << ',' << base.storage.count
 << ',' << transfers << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore << ']';
 }
+std::cout << "],\"researchEmptyCounterRewardRows\":[";
+serviceFirst=true;
+for(int mode:{0,1,2}) for(int choice:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[3]; auto* source=&topics[0]; auto* a=&topics[1]; auto* b=&topics[2];
+source->name="CORE"; a->name="EQUIV_A"; b->name="EQUIV_B"; source->free={a,b};
+source->spawned=a->spawned=b->spawned="SUPPLY"; source->count=1; a->count=b->count=2;
+source->increases={"EQUIV_COUNTER"}; a->increases=mode==1?std::vector<std::string>{"EQUIV_COUNTER"}:std::vector<std::string>{""};
+b->increases=mode==1?std::vector<std::string>{"EQUIV_COUNTER"}:std::vector<std::string>{}; if(mode!=0)a->decreases={""};
+SavedGame saved; Mod mod; mod.rules={source,a,b}; Base base; ResearchCaller caller; saved._ids["EQUIV_COUNTER"]=1; saved._ids["UNKNOWN_COUNTER"]=11;
+RNG::suppliedChoice=choice; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) { caller.spawn(topic,&mod,&base); saved.applyPrimaryCounters(topic); }
+const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
+std::cout << '[' << mode << ',' << choice << ',' << base.storage.count << ',' << transfers << ',' << saved._ids["EQUIV_COUNTER"]
+<< ',' << (saved._ids.contains("")?"true":"false") << ',' << saved._ids["UNKNOWN_COUNTER"] << ',' << saved.researchScore << ']';
+}
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
 for(bool sequential:{false,true}) for(bool duplicate:{false,true}) for(int aState:{0,1,2}) for(int bState:{0,1,2}) for(bool gate:{false,true}) {

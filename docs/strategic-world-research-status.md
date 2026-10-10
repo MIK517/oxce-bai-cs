@@ -1898,3 +1898,19 @@ eight reward tests pass, including both selected outcomes across 32 saved seeds,
 actual native score/diary comparison, hunter relaunch and three save rewrites.
 Score overflow and diary identity exhaustion still stop before mutation. This
 changes only internal forecasts; no save/cache schema or later-branch boundary.
+
+### Empty custom-counter names in reward projections (2026-10-10)
+
+Projected primary counter traces now omit empty names, matching native
+increaseCustomCounter/decreaseCustomCounter short-circuits. Input entries still
+consume work, and every nonempty increase/decrease retains declaration order.
+Equivalent free rewards can therefore share stock proofs when their only counter
+difference is an unconsumed empty name. Execution remains with the shared native
+counter operation; no empty saved identity is fabricated.
+
+Reference: SavedGame.cpp custom-counter methods and time1Day primary side-effect
+loops. Six strategic-hunting rows cover empty increases, decreases and both, with
+absence of empty keys and unrelated counter conservation. Fresh/cache cases
+observe both actual reward choices across 32 saved seeds, ordered forecast effects,
+hunter relaunch and three save rewrites. Saved empty identity names remain subject
+to the existing malformed-input validation. Previous native rows are unchanged.
