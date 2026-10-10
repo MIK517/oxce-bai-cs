@@ -63,6 +63,15 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-10 production-sensitivity cycle: random output proofs now use this
+  base's projected craft, reached material starts and immediate craft births.
+  Unused, other-base, future/idle/final and delayed scopes match native outcomes;
+  due, continuing and fallback boundaries remain protected. All 4,874 root tests
+  and formatting pass; audit found no additional runtime issue. See
+  [sensitivity and batch evidence](strategic-world-hunting-status.md#random-production-fuel-sensitivity-by-base-2026-10-10).
+  Variable consumed quantities, wider research/site composition and final guard
+  reconciliation keep 4c open; 4d is unchanged.
+
 - 2026-10-10 arrival-order cycle: stock-only research projections permit
   reordered non-reusable arrivals, preserve reusable ammunition order and avoid
   unused sort work for large reusable lists. Batch audit found no additional issue;
