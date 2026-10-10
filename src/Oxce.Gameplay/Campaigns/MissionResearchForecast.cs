@@ -46,8 +46,22 @@ public sealed partial class CampaignState
                 (firstBaseItems?.Count ?? 0) + (precedingMissionRemovals?.Count ?? 0);
             _outcomes = [new(new(completed, StringComparer.Ordinal),
                 new(statuses, StringComparer.Ordinal), campaign._researchScores[^1] + (precedingResearch?.ScoreChange ?? 0),
-                precedingResearch?.DiaryEntries ?? 0, new(StringComparer.Ordinal))];
+                precedingResearch?.DiaryEntries ?? 0, new(StringComparer.Ordinal), activeResearch: precedingResearch?.ActiveResearch)];
             _guaranteedResearch = _possibleResearch = _outcomes[0].Completed;
+            if (precedingResearch?.DiscoveryAlternatives is { Count: > 0 } alternatives)
+            {
+                if (alternatives.Count > 256) { _reason = "Mission research exceeds the supported outcome limit."; return; }
+                List<Outcome> initial = [];
+                foreach (var branch in alternatives)
+                {
+                    _work += 1L + branch.CompletedResearch!.Count + branch.ResearchStatuses!.Count;
+                    if (_work > MaximumWork) { _reason = WorkReason; return; }
+                    initial.Add(new(new(branch.CompletedResearch, StringComparer.Ordinal),
+                        new(branch.ResearchStatuses, StringComparer.Ordinal), campaign._researchScores[^1] + branch.ScoreChange!.Value,
+                        branch.DiaryEntries!.Value, new(StringComparer.Ordinal), activeResearch: branch.ActiveResearch));
+                }
+                if (Publish(initial) is not null) return;
+            }
             if (campaign._bases.Count == 0) return;
             if (uncertainFirstBaseItems is not null) PrepareItemAlternatives(uncertainFirstBaseItems);
             var owner = campaign._bases[0];
@@ -90,7 +104,7 @@ public sealed partial class CampaignState
                     HashSet<RuleHandle<ItemRuleFamily>> absent = prior.AbsentItems is { } earlier ? new(earlier) : [];
                     absent.Add(item);
                     next.Add(prior);
-                    next.Add(new(prior.Completed, prior.Statuses, prior.Score, prior.DiaryEntries, prior.ExplicitTopics, absent));
+                    next.Add(new(prior.Completed, prior.Statuses, prior.Score, prior.DiaryEntries, prior.ExplicitTopics, absent, prior.ActiveResearch));
                 }
                 _outcomes = next;
             }
@@ -269,7 +283,7 @@ public sealed partial class CampaignState
             if (_work > MaximumWork) _reason = WorkReason;
             return _reason is not null ? outcome : new(new(outcome.Completed, StringComparer.Ordinal),
                 new(outcome.Statuses, StringComparer.Ordinal), outcome.Score, outcome.DiaryEntries,
-                new(outcome.ExplicitTopics, StringComparer.Ordinal), outcome.AbsentItems);
+                new(outcome.ExplicitTopics, StringComparer.Ordinal), outcome.AbsentItems, outcome.ActiveResearch);
         }
 
         private ResearchDiscoveryProgress Progress(Outcome outcome) => new(_rules, outcome.Completed, outcome.Statuses);
@@ -286,7 +300,7 @@ public sealed partial class CampaignState
                     (candidate.RequiredBaseFunctions.Count == 0 ? 0 : _functionWork) + 1;
                 if (eligibilityWork > MaximumWork - _work) return (false, eligibilityWork);
                 var candidateHandle = _rules.Research.GetRequired(candidateId);
-                var active = _precedingResearch?.ActiveResearch?.GetValueOrDefault(owner.Id)?.Contains(candidateId) ??
+                var active = outcome.ActiveResearch?.GetValueOrDefault(owner.Id)?.Contains(candidateId) ??
                     owner.Research.Any(project => project.Rule == candidateHandle);
                 var addedItems = _precedingResearch?.StockChanges.GetValueOrDefault(owner.Id)?.GetValueOrDefault(candidate.NeededItem ?? "") ?? 0;
                 return (!active &&
@@ -320,12 +334,14 @@ public sealed partial class CampaignState
         }
 
         private sealed class Outcome(HashSet<string> completed, Dictionary<string, int> statuses, long score,
-            long diaryEntries, HashSet<string> explicitTopics, IReadOnlySet<RuleHandle<ItemRuleFamily>>? absentItems = null)
+            long diaryEntries, HashSet<string> explicitTopics, IReadOnlySet<RuleHandle<ItemRuleFamily>>? absentItems = null,
+            IReadOnlyDictionary<int, IReadOnlySet<string>>? activeResearch = null)
         {
             public HashSet<string> Completed { get; } = completed;
             public Dictionary<string, int> Statuses { get; } = statuses;
             public HashSet<string> ExplicitTopics { get; } = explicitTopics;
             public IReadOnlySet<RuleHandle<ItemRuleFamily>>? AbsentItems { get; } = absentItems;
+            public IReadOnlyDictionary<int, IReadOnlySet<string>>? ActiveResearch { get; } = activeResearch;
             public long Score { get; set; } = score;
             public long DiaryEntries { get; set; } = diaryEntries;
         }
