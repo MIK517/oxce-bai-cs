@@ -1823,3 +1823,21 @@ exhausted work and oversized branching. Previous native rows remain unchanged.
 This is cycle 28 slice one; broader ordered execution and batch acceptance follow.
 
 Validation: the ten reward/limit cases and all 470 existing hunting cases pass. Full formatting verification, regenerated code-map and diff checks pass. Exact discovery callers retain their separate uncertainty boundary.
+
+### Convergent free-reward discovery projections (2026-10-10)
+
+Exact discovery consumers now share bounded reward branching when every terminal
+branch agrees on completed topics, status entries and active project sets, as well
+as the existing ordered item/arrival/counter and scalar consequences. Actual
+execution still selects its reward and records its own diary order. A common
+completed set alone is insufficient: disable/reenable ordering can leave different
+statuses and remains refused before mutation.
+
+Reference: SavedGame::selectGetOneFree/addFinishedResearch, its zero-cost dependency
+closure and GeoscapeState::time1Day primary side effects. strategic-hunting adds
+four convergent-reward and two convergent-status rows; previous rows are unchanged.
+Twenty reward tests pass, including fresh/cache, both actual choices across 32 saved
+seeds, same-tick site expiry, hunter relaunch, pure forecasts and three save rewrites.
+No event, combat, deployment or campaign-month boundary is enabled.
+
+Validation: all 306 existing site-research cases pass; full formatting verification, code-map and diff checks pass. Useful captures remain; the temporary probe object was removed.

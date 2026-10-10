@@ -783,6 +783,40 @@ const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) {
 std::cout << '[' << choice << ',' << (duplicate?"true":"false") << ',' << count << ',' << (bonus==a?1:2)
 << ',' << base.storage.count << ',' << transfers << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore << ']';
 }
+std::cout << "],\"researchConvergentRewardRows\":[";
+serviceFirst=true;
+for(int choice:{0,1}) for(bool duplicate:{false,true}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[3]; auto* source=&topics[0]; auto* a=&topics[1]; auto* b=&topics[2];
+source->name="CORE"; a->name="EQUIV_A"; b->name="EQUIV_B";
+a->cost=b->cost=0; a->dependencies=b->dependencies={source};
+source->free=duplicate?std::vector<const ResearchRule*>{a,a,b}:std::vector<const ResearchRule*>{a,b};
+source->spawned=a->spawned=b->spawned="SUPPLY"; source->count=1; a->count=b->count=2;
+source->increases=a->increases=b->increases={"EQUIV_COUNTER"};
+SavedGame saved; Mod mod; mod.rules={source,a,b}; Base base; ResearchCaller caller;
+saved._ids["EQUIV_COUNTER"]=1;
+RNG::suppliedChoice=duplicate?choice*2:choice; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) { caller.spawn(topic,&mod,&base); saved.applyPrimaryCounters(topic); }
+const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
+std::cout << '[' << choice << ',' << (duplicate?"true":"false") << ',' << (saved.isResearched(source,false)?"true":"false")
+<< ',' << (saved.isResearched(a,false)?"true":"false") << ',' << (saved.isResearched(b,false)?"true":"false")
+<< ',' << base.storage.count << ',' << transfers << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore << ']';
+}
+std::cout << "],\"researchConvergentStatusRows\":[";
+serviceFirst=true;
+for(int choice:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[4]; auto* source=&topics[0]; auto* a=&topics[1]; auto* b=&topics[2]; auto* z=&topics[3];
+source->name="CORE"; a->name="EQUIV_A"; b->name="EQUIV_B"; z->name="EQUIV_Z";
+a->cost=b->cost=0; a->dependencies=b->dependencies={source}; source->free={a,b}; a->disables={z}; b->reenables={z};
+SavedGame saved; Mod mod; mod.rules={source,a,b,z}; Base base;
+RNG::suppliedChoice=choice; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+std::cout << '[' << choice << ',' << (saved.isResearched(a,false)?"true":"false") << ',' << (saved.isResearched(b,false)?"true":"false")
+<< ',' << saved.statuses[z->name] << ',' << saved.researchScore << ']';
+}
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
 for(bool sequential:{false,true}) for(bool duplicate:{false,true}) for(int aState:{0,1,2}) for(int bState:{0,1,2}) for(bool gate:{false,true}) {

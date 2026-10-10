@@ -106,15 +106,97 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         Assert.Equivalent(initial, limited.Capture(), strict: true);
     }
 
-    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null) =>
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public void AutomaticClosureMakesDistinctRewardsAnExactFinalResearchProjection(bool cache, bool duplicate, bool withSite)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Content(cache, duplicate, 2, withSite ? StrategicWorldSiteResearchTests.Deployment : "", convergent: true);
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, seed);
+            if (withSite) initial = initial with { World = initial.World with { MissionSites = StrategicWorldSiteResearchTests.Snapshot(content).World.MissionSites } };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            long work = 0;
+            Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast, includeDiscoveries: true));
+            Assert.Equal(work, forecast.Work);
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            Assert.Empty(after.World.MissionSites);
+            var choice = after.ResearchDiary[1].RuleId == "EQUIV_A" ? 0 : 1;
+            choices.Add(choice);
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchConvergentRewardRows").Single(row =>
+                row[0].GetInt32() == choice && row[1].GetBoolean() == duplicate);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                choice, duplicate, after.CompletedResearch.Contains("CORE"), after.CompletedResearch.Contains("EQUIV_A"),
+                after.CompletedResearch.Contains("EQUIV_B"), after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1,
+                forecast.Arrivals[before.Bases[0].Id].Count, after.NextIds["EQUIV_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1],
+            });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            Assert.Equal(after.CompletedResearch.Order(StringComparer.Ordinal), forecast.CompletedResearch!.Order(StringComparer.Ordinal));
+            Assert.Equivalent(after.ResearchRuleStatus, forecast.ResearchStatuses, strict: true);
+            Assert.Equal(after.Bases[0].Research.Select(project => project.RuleId).Order(StringComparer.Ordinal), forecast.ActiveResearch![after.Bases[0].Id].Order(StringComparer.Ordinal));
+            Assert.Equal(after.ResearchDiary.Count - before.ResearchDiary.Count, forecast.DiaryEntries);
+            Assert.True(Assert.Single(after.World.Ufos).Hunting);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "convergent-research-stock.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MatchingCompletedTopicsDoNotHideDifferentResearchStatuses(bool cache)
+    {
+        var content = Content(cache, false, 2, convergent: true, unequalStatus: true);
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var campaign = CampaignState.Restore(Snapshot(content, seed), content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            long stockWork = 0;
+            Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref stockWork, out _));
+            long exactWork = 0;
+            Assert.False(campaign.ResearchPreflight.TryForecastDailyStocks(ref exactWork, out _, includeDiscoveries: true));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var choice = after.ResearchDiary[1].RuleId == "EQUIV_A" ? 0 : 1;
+            choices.Add(choice);
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchConvergentStatusRows").Single(row => row[0].GetInt32() == choice);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { choice, after.CompletedResearch.Contains("EQUIV_A"),
+                after.CompletedResearch.Contains("EQUIV_B"), after.ResearchRuleStatus.GetValueOrDefault("EQUIV_Z"), after.ResearchScores[^1] - before.ResearchScores[^1] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, bool convergent = false, bool unequalStatus = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
         facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
         ufos: [{type: UFO_HUNTER, radarRange: 20000}]
         research:
           - {name: CORE, cost: 1, points: 1, getOneFree: [{{labels ?? "EQUIV_A, " + (duplicate ? "EQUIV_A, " : "") + "EQUIV_B"}}], spawnedItem: SUPPLY, spawnedItemCount: 1, increaseCounter: [EQUIV_COUNTER]}
-          - {name: EQUIV_A, cost: 1, points: 1, spawnedItem: SUPPLY, spawnedItemCount: {{count}}, increaseCounter: [EQUIV_COUNTER]}
-          - {name: EQUIV_B, cost: 1, points: {{otherPoints}}, spawnedItem: SUPPLY, spawnedItemCount: {{otherCount ?? count}}, increaseCounter: [{{otherCounter}}]}
+          - {name: EQUIV_A, cost: {{(convergent ? 0 : 1)}}, points: 1{{(convergent ? ", dependencies: [CORE]" : "")}}{{(unequalStatus ? ", disables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{count}}, increaseCounter: [EQUIV_COUNTER]}
+          - {name: EQUIV_B, cost: {{(convergent ? 0 : 1)}}{{(convergent ? ", dependencies: [CORE]" : "")}}, points: {{otherPoints}}{{(unequalStatus ? ", reenables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{otherCount ?? count}}, increaseCounter: [{{otherCounter}}]}
+          {{(unequalStatus ? "- {name: EQUIV_Z, cost: 1}" : "")}}
         {{extra}}
         """, extraRulesAfterOverlays: true);
 
