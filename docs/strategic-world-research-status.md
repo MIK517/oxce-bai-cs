@@ -2265,3 +2265,22 @@ the independent one-million-node reader limit, which the test preserves rather
 than raising. Ordinary transition rewrites remain covered by the identity/site
 cases. All 30 diary execution/persistence regressions pass. Batch audit/root
 validation follows; no content cache or save schema change.
+
+## Guaranteed daily score before production (2026-10-10)
+
+Sixteen native researchDailyProductionScoreRows compose reward-first daily
+research with Production::step score-per-completion and money continuation
+checks. Four/five requested units and funding stops expose the distinction
+between actual and merely possible completions; every prior native trace stays
+unchanged. GeoscapeState time1Day falls through to time1Hour before world sites.
+
+Only a later production score refusal retries with a guaranteed daily final
+interval, after all ordered daily prefixes fit. Both attempts share one work
+budget. ResearchScoreCapacity moves its baseline only through this checked
+guaranteed transition; ordinary Reserve still never credits opposite-sign
+optional completions. Eight fresh/cache execution cases match the native final
+delta and refuel stocks across twelve seeds, three rewrites and subsequent
+ticks. Four refusal cases preserve unsafe production counts and optional
+offsets that could stop before creating the claimed headroom. All twelve cases
+and eight score-capacity unit cases pass. The batch audit/root gate follows,
+including review of subsequent site-score composition. No cache/schema change.

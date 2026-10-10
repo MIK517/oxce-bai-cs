@@ -26,6 +26,37 @@ public sealed class ResearchScoreCapacityTests
     }
 
     [Fact]
+    public void GuaranteedPrefixesAllowOnlyTheirFinalHeadroomAndFailuresDoNotMutateIt()
+    {
+        var positive = new ResearchScoreCapacity(int.MaxValue - 3);
+        Assert.True(positive.AdvanceGuaranteed(-2, 3, -2, -1));
+        Assert.True(positive.Reserve(1, 1, 4));
+        Assert.False(positive.Reserve(1, 1));
+        var negative = new ResearchScoreCapacity(int.MinValue + 3);
+        Assert.True(negative.AdvanceGuaranteed(-3, 2, 1, 2));
+        Assert.True(negative.Reserve(-1, -1, 4));
+        Assert.False(negative.Reserve(-1, -1));
+        var refused = new ResearchScoreCapacity(int.MaxValue - 2);
+        Assert.False(refused.AdvanceGuaranteed(-2, 3, -2, -1));
+        Assert.True(refused.Reserve(2, 2));
+    }
+
+    [Fact]
+    public void OptionalCompletionsCannotCreditTheGuaranteedDailyBaseline()
+    {
+        var capacity = new ResearchScoreCapacity(int.MaxValue - 3);
+        Assert.True(capacity.AdvanceGuaranteed(-2, 3, -2, -1));
+        Assert.True(capacity.Reserve(-1, -1, 4));
+        Assert.False(capacity.Reserve(1, 1, 6));
+        Assert.Throws<ArgumentException>(() => capacity.AdvanceGuaranteed(1, 2, 1, 2));
+        Assert.Throws<ArgumentException>(() => capacity.AdvanceGuaranteed(-2, -1, -2, -1));
+        Assert.Throws<ArgumentException>(() => capacity.AdvanceGuaranteed(-2, 3, 2, 1));
+        Assert.Throws<ArgumentException>(() => capacity.AdvanceGuaranteed(-2, 3, -3, 1));
+        Assert.Throws<ArgumentException>(() => capacity.AdvanceGuaranteed(-2, 3, -2, 4));
+        Assert.Throws<ArgumentException>(() => capacity.AdvanceGuaranteed(long.MinValue, long.MaxValue, long.MaxValue, long.MinValue));
+    }
+
+    [Fact]
     public void LargeCountsAndMalformedBoundsAreHandledIntentionally()
     {
         var capacity = new ResearchScoreCapacity(0);

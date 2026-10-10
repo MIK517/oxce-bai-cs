@@ -462,8 +462,20 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
 
     private string? PreflightResearchProduction(CampaignTimeTrigger highest)
     {
-        var scoreCapacity = new ResearchScoreCapacity(_researchScores[^1]);
         long work = 0;
+        var reason = PreflightResearchProduction(highest, ref work, exactDailyScores: false, out var dailyScoresReserved);
+        if (highest < CampaignTimeTrigger.OneDay || !dailyScoresReserved ||
+            reason != "Research and production scores exceed the supported range.") return reason;
+        // Retry only a later production score refusal. The guaranteed daily
+        // final interval may provide headroom, after all ordered prefixes fit.
+        // Both attempts share one work budget; optional production never credits it.
+        return PreflightResearchProduction(highest, ref work, exactDailyScores: true, out _);
+    }
+
+    private string? PreflightResearchProduction(CampaignTimeTrigger highest, ref long work, bool exactDailyScores, out bool dailyScoresReserved)
+    {
+        dailyScoresReserved = false;
+        var scoreCapacity = new ResearchScoreCapacity(_researchScores[^1]);
         if (highest >= CampaignTimeTrigger.OneDay)
         {
             // Any topic can complete through free or lookup discoveries, so all research events are checked.
@@ -476,7 +488,10 @@ public sealed partial class CampaignState : ICampaignResearchProductionQuery, IC
                 foreach (var project in owner.Research)
                     if ((long)project.Spent + project.Assigned > int.MaxValue)
                         return "Research progress exceeds the supported range.";
-            if (ReserveDailyResearchScores(ref scoreCapacity, ref work) is { } scoreReason) return scoreReason;
+            var scoreReason = exactDailyScores ? ReserveExactDailyResearchScores(ref scoreCapacity, ref work, advanceGuaranteed: true) :
+                ReserveDailyResearchScores(ref scoreCapacity, ref work);
+            if (scoreReason is not null) return scoreReason;
+            dailyScoresReserved = true;
             if (PreflightDailyResearchDiary(ref work) is { } diaryReason) return diaryReason;
             if (PreflightResearchRecovery(ref work) is { } recoveryReason) return recoveryReason;
             if (PreflightDailyResearchCounters(ref work) is { } counterReason) return counterReason;
