@@ -189,8 +189,10 @@ public sealed partial class CampaignState
                     if (rules.Items.TryGet(id, out _)) arrivals[owner.Id].Add(new(id, 1));
                 work += entry.Value.IncreaseCounters.Count + (long)entry.Value.DecreaseCounters.Count;
                 if (work > 1_000_000) return false;
-                foreach (var id in entry.Value.IncreaseCounters) (counters ??= []).Add(new(id, true));
-                foreach (var id in entry.Value.DecreaseCounters) (counters ??= []).Add(new(id, false));
+                foreach (var id in entry.Value.IncreaseCounters)
+                    if (id.Length != 0) (counters ??= []).Add(new(id, true));
+                foreach (var id in entry.Value.DecreaseCounters)
+                    if (id.Length != 0) (counters ??= []).Add(new(id, false));
             }
         }
         // time1Day removes disabled projects after all base loops, even when no

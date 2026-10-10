@@ -274,14 +274,56 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         AssertTimeBlocked(CampaignState.Restore(unsafeInitial, content, new SplitMix64RandomSource(17)), "Research diary exceeds its supported population or identity range.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false, bool rewardLookup = false) =>
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void EmptyCounterNamesAreUnconsumedInEquivalentRewardEffects(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Content(cache, false, 2, rewardCounter: mode == 1 ? "EQUIV_COUNTER" : "",
+            otherCounter: mode == 1 ? "EQUIV_COUNTER" : "", emptyDecrease: mode != 0);
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, seed);
+            initial = initial with { NextIds = new Dictionary<string, int>(initial.NextIds) { ["UNKNOWN_COUNTER"] = 11 } };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            long work = 0;
+            Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast));
+            Assert.Equal(mode == 1 ? 2 : 1, forecast.CounterChanges.Count);
+            Assert.All(forecast.CounterChanges, change => Assert.Equal(new CustomCounterChange("EQUIV_COUNTER", true), change));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
+            choices.Add(choice);
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchEmptyCounterRewardRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { mode, choice, after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1,
+                forecast.Arrivals[before.Bases[0].Id].Count, after.NextIds["EQUIV_COUNTER"], after.NextIds.ContainsKey(""), after.NextIds["UNKNOWN_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            Assert.True(Assert.Single(after.World.Ufos).Hunting);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "empty-research-counter.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false, bool rewardLookup = false, string rewardCounter = "EQUIV_COUNTER", bool emptyDecrease = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
         facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
         ufos: [{type: UFO_HUNTER, radarRange: 20000}]
         research:
           - {name: CORE, cost: 1, points: 1, getOneFree: [{{labels ?? "EQUIV_A, " + (duplicate ? "EQUIV_A, " : "") + "EQUIV_B"}}], spawnedItem: SUPPLY, spawnedItemCount: 1, increaseCounter: [EQUIV_COUNTER]}
-          - {name: EQUIV_A, cost: {{(convergent ? 0 : 1)}}, points: 1{{(rewardLookup ? ", lookup: EQUIV_Z" : "")}}{{(convergent ? ", dependencies: [CORE]" : "")}}{{(unequalStatus ? ", disables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{count}}, increaseCounter: [EQUIV_COUNTER]}
+          - {name: EQUIV_A, cost: {{(convergent ? 0 : 1)}}, points: 1{{(rewardLookup ? ", lookup: EQUIV_Z" : "")}}{{(convergent ? ", dependencies: [CORE]" : "")}}{{(unequalStatus ? ", disables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{count}}, increaseCounter: ['{{rewardCounter}}']{{(emptyDecrease ? ", decreaseCounter: ['']" : "")}}}
           - {name: EQUIV_B, cost: {{(convergent ? 0 : 1)}}{{(convergent ? ", dependencies: [CORE]" : "")}}, points: {{otherPoints}}{{(unequalStatus ? ", reenables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{otherCount ?? count}}, increaseCounter: [{{otherCounter}}]}
           {{(unequalStatus || rewardLookup ? "- {name: EQUIV_Z, cost: 1, points: 0}" : "")}}
         {{extraResearch}}
