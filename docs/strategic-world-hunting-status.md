@@ -931,3 +931,25 @@ atomically reject one-ID headroom or excessive pending quantity. A pure projecti
 case verifies delayed quantities create neither current stock nor uncertainty and
 consume no campaign/RNG state. All eleven cases, full formatting, code-map and diff checks pass. Shared quantity
 consumption and root batch acceptance remain pending.
+
+## Shared random fuel/material quantity acceptance (2026-10-10)
+
+Cycle 32 slice three verifies the quantity envelope through ordered consumers,
+without another runtime relaxation. Eight native productionSharedFuelQuantityRows
+compose quantities one/two with two craft, zero/one initial item and both saved
+craft orders. Twelve productionSharedMaterialQuantityRows compose those quantities
+with a later paid unit, a reached one/two-item continuation and zero/one/two initial
+items, then refuelling and hunter selection. Exact reference callers are
+Production::step/haveEnoughMaterialsForOneMoreUnit/startItem, Craft::refuel,
+GeoscapeState ordered hourly production and half-hour service, and hunter selection.
+All prior native rows are unchanged.
+
+Ten fresh/cache execution cases observe both quantities across twelve saved seeds,
+compare canonical native progress/stocks/history/craft/target, and preserve state
+through three rewrites plus subsequent pursuit. Both craft orders select the first
+matching native target. Ten threshold cases retain atomic refusal when a second
+craft launch, later material eligibility or subsequent fuel eligibility differs.
+The material threshold explicitly distinguishes the native continuation stop.
+All twenty new cases, the broader 83 shared regressions, full formatting, code-map
+and diff checks pass. Batch audit and root acceptance follow. Execution/RNG and save/cache schemas stay
+unchanged; variable quantities still require a common consumed-consequence proof.
