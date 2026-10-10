@@ -63,6 +63,14 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-10 quantity-envelope cycle: present-item random fuel ranges now
+  compose with delayed arrivals, shared craft and reached material starts. Batch
+  audit corrected inert item lower bounds consumed by later site research and
+  event suppression. All 4,933 root tests and formatting pass; see
+  [quantity evidence and audit](strategic-world-hunting-status.md#present-item-random-quantity-envelopes-2026-10-10).
+  Wider daily research/site alternatives and final guard reconciliation keep 4c
+  open; 4d is unchanged.
+
 - 2026-10-10 production-sensitivity cycle: random output proofs now use this
   base's projected craft, reached material starts and immediate craft births.
   Unused, other-base, future/idle/final and delayed scopes match native outcomes;
