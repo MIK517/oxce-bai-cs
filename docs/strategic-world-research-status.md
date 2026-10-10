@@ -1934,3 +1934,17 @@ GeoscapeState daily/hourly/half-hour fallthrough and existing strategic-event
 fixtures establish the unchanged event boundary. Previous native rows are unchanged.
 
 Slice verification: all 34 reward cases and all 18 composition cases pass. Full formatting verification, regenerated code-map and diff checks pass; the pinned reference remains clean and obsolete probe objects were removed.
+
+### Consumed-consequence cycle batch acceptance (2026-10-10)
+
+The batch audit found no confirmed defect. Root dotnet test passes all 4,834
+tests with zero failures/skips in 6m28s867ms. Reviewed nullable metadata consumers,
+exact versus stock-only contracts, nonempty counter order, signed score/diary
+capacity checks, nested saved-order choices, hourly transfer delivery, identity
+counts, reload equality and deferred event boundaries. Full formatting, regenerated
+code-map, diff, fixture checksums, private corpus and unchanged allocation/endurance
+gates pass. Useful captures/executables remain and obsolete objects were removed;
+the pinned reference is clean. No unexpected access denial occurred.
+
+This closes cycle 29. Wider stock/research/site and production/transfer composition
+and final guard reconciliation still keep branch 4c open; branch 4d is untouched.
