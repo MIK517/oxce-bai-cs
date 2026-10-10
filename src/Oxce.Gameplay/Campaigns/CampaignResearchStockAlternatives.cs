@@ -1,10 +1,18 @@
+using System.Collections.Frozen;
+
 namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
     private const int MaximumResearchStockAlternatives = 4096;
 
-    bool ICampaignResearchPreflight.TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries)
+    bool ICampaignResearchPreflight.TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries) =>
+        TryForecastDailyStocks(ref work, out forecast, includeDiscoveries, retainWorldAlternatives: false);
+
+    bool ICampaignResearchPreflight.TryForecastDailyWorldStocks(ref long work, out DailyResearchStockForecast forecast) =>
+        TryForecastDailyStocks(ref work, out forecast, includeDiscoveries: true, retainWorldAlternatives: true);
+
+    private bool TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries, bool retainWorldAlternatives)
     {
         if (TryForecastDailyStockBranch(ref work, out forecast, includeDiscoveries, [], out var pendingChoices)) return true;
         // Branching is safe only when every final consequence consumed by the caller agrees.
@@ -13,6 +21,7 @@ public sealed partial class CampaignState
         var created = 1;
         if (!EnqueueResearchStockBranches(pending, [], pendingChoices, ref created, ref work)) return false;
         DailyResearchStockForecast? common = null;
+        List<DailyResearchStockForecast>? alternatives = retainWorldAlternatives ? [] : null;
         while (pending.TryDequeue(out var choices))
         {
             if (!TryForecastDailyStockBranch(ref work, out var branch, includeDiscoveries, choices, out pendingChoices))
@@ -36,14 +45,56 @@ public sealed partial class CampaignState
                     work += branch.CompletedResearch!.Count + (long)branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
                     foreach (var active in branch.ActiveResearch.Values) work += active.Count;
                 }
-                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch) ||
-                    includeDiscoveries && !SameResearchDiscoveryConsequences(common, branch)) return false;
+                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch, includeMetadata: !retainWorldAlternatives) ||
+                    includeDiscoveries && !retainWorldAlternatives && !SameResearchDiscoveryConsequences(common, branch)) return false;
+            }
+            if (alternatives is not null)
+            {
+                var repeated = false;
+                foreach (var earlier in alternatives)
+                {
+                    work += 1L + branch.CompletedResearch!.Count + branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
+                    foreach (var active in branch.ActiveResearch.Values) work += active.Count;
+                    if (work > 1_000_000) return false;
+                    if (earlier.ScoreChange != branch.ScoreChange || earlier.DiaryEntries != branch.DiaryEntries ||
+                        !SameResearchDiscoveryConsequences(earlier, branch)) continue;
+                    repeated = true;
+                    break;
+                }
+                if (!repeated)
+                {
+                    if (alternatives.Count == 256)
+                    {
+                        forecast = branch with { UnavailableReason = "Daily research exceeds the supported world outcome limit." };
+                        return false;
+                    }
+                    if (++work > 1_000_000) return false;
+                    alternatives.Add(branch);
+                }
             }
         }
         if (common is null) return false;
-        // Every terminal branch agrees. Execution still consumes RNG and records
-        // the actual reward and diary order; exact callers receive only common final state.
-        forecast = common with { Work = work };
+        // Shared stock/counter effects agree. Exact callers require one common state;
+        // the world can retain bounded discovery states without selecting a reward.
+        if (alternatives?.Count > 1)
+        {
+            work += 2L * common.CompletedResearch!.Count;
+            foreach (var branch in alternatives) work += branch.CompletedResearch!.Count;
+            if (work > 1_000_000) return false;
+            var guaranteed = new HashSet<string>(common.CompletedResearch, StringComparer.Ordinal);
+            foreach (var branch in alternatives) guaranteed.IntersectWith(branch.CompletedResearch!);
+            forecast = common with
+            {
+                Work = work,
+                CompletedResearch = guaranteed.ToFrozenSet(StringComparer.Ordinal),
+                ResearchStatuses = null,
+                ActiveResearch = null,
+                ScoreChange = null,
+                DiaryEntries = null,
+                DiscoveryAlternatives = alternatives.AsReadOnly(),
+            };
+        }
+        else forecast = common with { Work = work };
         return true;
     }
 
@@ -83,10 +134,11 @@ public sealed partial class CampaignState
         return true;
     }
 
-    private static bool SameResearchStockConsequences(DailyResearchStockForecast first, DailyResearchStockForecast second)
+    private static bool SameResearchStockConsequences(DailyResearchStockForecast first, DailyResearchStockForecast second, bool includeMetadata = true)
     {
-        if (first.NextTransferId != second.NextTransferId || first.ScoreChange != second.ScoreChange ||
-            first.DiaryEntries != second.DiaryEntries || !first.CounterChanges.SequenceEqual(second.CounterChanges) ||
+        if (first.NextTransferId != second.NextTransferId ||
+            includeMetadata && (first.ScoreChange != second.ScoreChange || first.DiaryEntries != second.DiaryEntries) ||
+            !first.CounterChanges.SequenceEqual(second.CounterChanges) ||
             first.StockChanges.Count != second.StockChanges.Count || first.Arrivals.Count != second.Arrivals.Count) return false;
         foreach (var owner in first.StockChanges)
         {

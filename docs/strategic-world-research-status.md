@@ -2039,3 +2039,28 @@ checkout is clean. No unexpected access denial occurred.
 
 This closes cycle 30. Remaining production/transfer and wider consumed research/site
 compositions plus final guard reconciliation keep 4c open. Branch 4d is untouched.
+
+## Bounded exact daily states for world consumers (2026-10-10)
+
+Cycle 33 slice one adds a research-owned pure world projection while preserving
+the existing strict stock/exact projection contract. When native daily reward
+paths share stocks, ordered arrivals, counters and transfer IDs, the new operation
+retains each distinct completed/status/active/score/diary state. Duplicate equivalent
+states collapse; distinct world states are bounded at 256, alongside the existing
+4,096 prefix and million-step limits. The summary contains only guaranteed completed
+identities and omits uncertain scalar/status/active metadata. It never selects a
+reward or consumes campaign/RNG state. World caller integration follows separately.
+
+Reference: GeoscapeState::time1Day core diary, selected bonus/lookup then core/lookup
+discovery, disabled-project cleanup and primary side effects; SavedGame::selectGetOneFree
+and addFinishedResearch. Existing pinned strategic-hunting researchScopedRewardRows
+and strategic-research-diary-execution stockScopeRows establish unequal scores and
+bonus lookup diary states before implementation. Four fresh/cache cases preserve
+both exact outcomes across twelve saved seeds, canonical native consequences/diary
+order and three save rewrites; the strict projection still refuses these differences.
+Two stock/counter cases retain refusal. The 256/257 distinct-state boundary passes
+and refuses intentionally, and every forecast/work-exhaustion check is pure. All
+eight cases, full formatting, regenerated code-map and diff checks pass. Interim
+review preserves strict callers, collapses equivalent terminal states before the
+world population bound and charges the frozen summary copy. Site integration and
+composed acceptance remain pending.

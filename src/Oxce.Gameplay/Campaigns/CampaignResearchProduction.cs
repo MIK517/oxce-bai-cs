@@ -28,6 +28,7 @@ internal interface ICampaignResearchPreflight
     IReadOnlySet<string> GuaranteedResearchAfterDailyProgress();
     IReadOnlySet<string> PossibleResearchAfterDailyProgress();
     bool TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries = false);
+    bool TryForecastDailyWorldStocks(ref long work, out DailyResearchStockForecast forecast);
     bool HasDisabledDailyProjects(ref long work);
 }
 
