@@ -21,6 +21,7 @@ internal sealed partial class CampaignWorld
             _pass.DailyResearchProjectionSupported = campaign.ResearchPreflight.TryForecastDailyWorldStocks(
                 ref work, out var daily);
             _pass.DailyResearchProjection = daily;
+            _pass.DailyResearchProjectionWork = work;
         }
         forecast = _pass.DailyResearchProjection;
         return _pass.DailyResearchProjectionSupported;
@@ -43,6 +44,7 @@ internal sealed partial class CampaignWorld
         public IReadOnlySet<string>? DailyResearchForecast;
         public DailyResearchStockForecast? DailyResearchProjection;
         public bool DailyResearchProjectionSupported;
+        public long DailyResearchProjectionWork;
         public HashSet<(string Deployment, int Id)>? PossibleDailyBaseDeletions;
         public HashSet<int>? PossibleDailyMissionInterruptions;
         public HashSet<int>? PossibleDailySupplySourceLoss;
@@ -116,6 +118,7 @@ internal sealed partial class CampaignWorld
             DailyResearchForecast = null;
             DailyResearchProjection = null;
             DailyResearchProjectionSupported = false;
+            DailyResearchProjectionWork = 0;
             PossibleDailyBaseDeletions = null;
             PossibleDailyMissionInterruptions = null;
             PossibleDailySupplySourceLoss = null;

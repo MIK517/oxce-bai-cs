@@ -2202,3 +2202,24 @@ three-slice batch audit follow.
 
 Final formatting verification, regenerated code-map and diff checks pass before
 the third slice commit. The batch audit/root gate remains pending.
+
+## Daily quantity composition batch audit (2026-10-10)
+
+The three-slice root run passes 4,980 tests with zero failures or skips. Batch
+review confirmed a resource-limit defect in the new hunting fallback: a failed
+cached world projection discarded its actual work count. A fresh/cache ordinary
+fuel scenario with 257 varying item rewards and 800 inert rules exhausted the
+projection budget but still advanced the tick. The separate audit fix stores
+work for successful and failed cache results, resets it at BeginWorld and always
+charges the hunting caller. Two regressions now refuse atomically, repeat the
+refusal and verify safe progression matches a restored control after cancellation.
+No RNG or campaign state is consumed by the failed proof.
+
+Reviewed native caller order, arrival identity/order/population, quantity and
+intermediate counter ranges, full-state paired craft proofs, reached material
+consumption, branch-context cloning, active-project exclusions and event guards.
+All older native trace values remain unchanged; the captured quantities and
+counter allocation collaborators are explicit. The corrected root run passes
+all 4,982 tests with zero failures or skips. Full formatting, regenerated
+code-map, diff and pinned reference cleanliness checks pass before the separate
+audit fix commit. Wider composition and final guard reconciliation keep 4c open.
