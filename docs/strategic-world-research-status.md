@@ -2121,3 +2121,33 @@ cases and all twenty daily/site cases pass. The corrected root run passes all
 4,958 tests with zero failures or skips. Full formatting, regenerated code-map
 and diff checks pass before the separate audit correction commit.
 No additional runtime defect has been confirmed.
+
+## Daily research arrival quantity bounds (2026-10-10)
+
+The world-only daily projection retains exact discovery states when item arrival
+quantities vary but their identities, order, transfer population, refunds and
+counter operations agree. Its immutable summary carries upper quantities and
+per-base/item maximum-minus-minimum deltas. Exact branch arrivals participate in
+outcome deduplication. Strict stock and exact metadata consumers retain their
+original contracts; 256 world states, 4,096 choice prefixes and the shared million
+step limit remain. Arrival comparisons are charged only after discovery states
+match, preserving the existing 256-state acceptance.
+
+Craft forecasts add daily uncertainty after hourly craft/facility servicing and
+before production, item refuelling and site research. Every affected craft must
+have the same complete projected state at both stock endpoints. Site needed-item
+proofs retain zero/present alternatives. A failed cheap stock proof can use the
+cached world projection, charging its work to the shared caller budget. Native
+SavedGame::handlePrimaryResearchSideEffects, Transfer::advance, Craft::refuel and
+addFinishedResearch/getAvailableResearchProjects pin four quantity/site traces in
+strategic-hunting. They retain two transfers, primary counter order and actual
+selected rewards. Six new fresh/cache cases pass with twelve saved seeds, three
+rewrites, subsequent progression, strict-consumer refusal and malformed arrival
+population coverage. All 38 strict-stock and 12 bounded-world regressions and full
+formatting pass; hunting regression validation precedes the slice commit.
+
+The hunting regression run passed 692 of 694 cases; its only failures were two
+obsolete stochastic quantity guard assertions. Those now pass with exact selected
+branch, native fuel/hunting, other-base project retention and three-rewrite checks.
+Final full formatting, code-map and diff verification pass. Root acceptance remains
+at the three-slice batch boundary.

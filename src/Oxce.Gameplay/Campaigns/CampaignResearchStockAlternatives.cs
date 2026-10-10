@@ -45,7 +45,7 @@ public sealed partial class CampaignState
                     work += branch.CompletedResearch!.Count + (long)branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
                     foreach (var active in branch.ActiveResearch.Values) work += active.Count;
                 }
-                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch, includeMetadata: !retainWorldAlternatives) ||
+                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch, includeMetadata: !retainWorldAlternatives, includeQuantities: !retainWorldAlternatives) ||
                     includeDiscoveries && !retainWorldAlternatives && !SameResearchDiscoveryConsequences(common, branch)) return false;
             }
             if (alternatives is not null)
@@ -58,6 +58,10 @@ public sealed partial class CampaignState
                     if (work > 1_000_000) return false;
                     if (earlier.ScoreChange != branch.ScoreChange || earlier.DiaryEntries != branch.DiaryEntries ||
                         !SameResearchDiscoveryConsequences(earlier, branch)) continue;
+                    work += branch.Arrivals.Count;
+                    foreach (var arrivals in branch.Arrivals.Values) work += arrivals.Count;
+                    if (work > 1_000_000) return false;
+                    if (!SameResearchArrivals(earlier, branch)) continue;
                     repeated = true;
                     break;
                 }
@@ -74,18 +78,21 @@ public sealed partial class CampaignState
             }
         }
         if (common is null) return false;
-        // Shared stock/counter effects agree. Exact callers require one common state;
+        // Shared refund/counter effects and arrival shape agree. Exact callers require one common state;
         // the world can retain bounded discovery states without selecting a reward.
         if (alternatives?.Count > 1)
         {
             work += 2L * common.CompletedResearch!.Count;
             foreach (var branch in alternatives) work += branch.CompletedResearch!.Count;
             if (work > 1_000_000) return false;
+            if (!TryBoundResearchArrivals(alternatives, ref work, out var arrivals, out var uncertainty)) return false;
             var guaranteed = new HashSet<string>(common.CompletedResearch, StringComparer.Ordinal);
             foreach (var branch in alternatives) guaranteed.IntersectWith(branch.CompletedResearch!);
             forecast = common with
             {
                 Work = work,
+                Arrivals = arrivals,
+                ArrivalUncertainty = uncertainty,
                 CompletedResearch = guaranteed.ToFrozenSet(StringComparer.Ordinal),
                 ResearchStatuses = null,
                 ActiveResearch = null,
@@ -134,7 +141,7 @@ public sealed partial class CampaignState
         return true;
     }
 
-    private static bool SameResearchStockConsequences(DailyResearchStockForecast first, DailyResearchStockForecast second, bool includeMetadata = true)
+    private static bool SameResearchStockConsequences(DailyResearchStockForecast first, DailyResearchStockForecast second, bool includeMetadata = true, bool includeQuantities = true)
     {
         if (first.NextTransferId != second.NextTransferId ||
             includeMetadata && (first.ScoreChange != second.ScoreChange || first.DiaryEntries != second.DiaryEntries) ||
@@ -147,7 +154,57 @@ public sealed partial class CampaignState
                 if (!other.TryGetValue(item.Key, out var quantity) || quantity != item.Value) return false;
         }
         foreach (var owner in first.Arrivals)
+            if (!second.Arrivals.TryGetValue(owner.Key, out var other) || owner.Value.Count != other.Count) return false;
+            else
+                for (var index = 0; index < owner.Value.Count; index++)
+                    if (owner.Value[index].Key != other[index].Key || includeQuantities && owner.Value[index].Value != other[index].Value) return false;
+        return true;
+    }
+
+    private static bool SameResearchArrivals(DailyResearchStockForecast first, DailyResearchStockForecast second)
+    {
+        if (first.Arrivals.Count != second.Arrivals.Count) return false;
+        foreach (var owner in first.Arrivals)
             if (!second.Arrivals.TryGetValue(owner.Key, out var other) || !owner.Value.SequenceEqual(other)) return false;
+        return true;
+    }
+
+    private static bool TryBoundResearchArrivals(List<DailyResearchStockForecast> alternatives, ref long work,
+        out IReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>> arrivals,
+        out IReadOnlyDictionary<int, IReadOnlyDictionary<string, int>> uncertainty)
+    {
+        Dictionary<int, IReadOnlyList<KeyValuePair<string, int>>> upper = [];
+        Dictionary<int, IReadOnlyDictionary<string, int>> deltas = [];
+        arrivals = upper;
+        uncertainty = deltas;
+        foreach (var owner in alternatives[0].Arrivals)
+        {
+            work += 1L + owner.Value.Count * (long)(alternatives.Count + 3);
+            if (work > 1_000_000) return false;
+            List<KeyValuePair<string, int>> projected = new(owner.Value.Count);
+            Dictionary<string, int> local = new(StringComparer.Ordinal);
+            for (var index = 0; index < owner.Value.Count; index++)
+            {
+                var item = owner.Value[index];
+                var minimum = item.Value;
+                var maximum = item.Value;
+                foreach (var branch in alternatives)
+                {
+                    var quantity = branch.Arrivals[owner.Key][index].Value;
+                    minimum = Math.Min(minimum, quantity);
+                    maximum = Math.Max(maximum, quantity);
+                }
+                projected.Add(new(item.Key, maximum));
+                if (minimum == maximum) continue;
+                var delta = (long)local.GetValueOrDefault(item.Key) + maximum - minimum;
+                if (delta > int.MaxValue) return false;
+                local[item.Key] = (int)delta;
+            }
+            upper.Add(owner.Key, projected.AsReadOnly());
+            if (local.Count != 0) deltas.Add(owner.Key, local.ToFrozenDictionary(StringComparer.Ordinal));
+        }
+        arrivals = upper.ToFrozenDictionary();
+        uncertainty = deltas.ToFrozenDictionary();
         return true;
     }
 }

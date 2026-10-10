@@ -78,7 +78,7 @@ public sealed class StrategicWorldResearchStockAlternativesTests
     {
         foreach (var content in new[]
         {
-            Content(cache, false, 2, otherCount: 3),
+            Content(cache, false, 2, extraResearch: "  - {name: EQUIV_B, spawnedItemList: [SUPPLY]}"),
             Content(cache, false, 2, otherCounter: "OTHER_COUNTER"),
         })
         {

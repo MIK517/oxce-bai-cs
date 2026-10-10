@@ -2444,7 +2444,27 @@ public sealed partial class StrategicWorldHuntingTests
                 if (!group.Key.Sequential && row[2].GetInt32() == 0 && row[3].GetInt32() == 0 && row[4].GetBoolean())
                 {
                     Assert.False(supported);
-                    AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
+                    long worldWork = 0;
+                    Assert.True(campaign.ResearchPreflight.TryForecastDailyWorldStocks(ref worldWork, out var worldForecast));
+                    Assert.Equal(2, worldForecast.DiscoveryAlternatives.Count);
+                    Assert.Equal(1, worldForecast.ArrivalUncertainty[owner.Id]["SUPPLY"]);
+                    Assert.Equivalent(before, campaign.Capture(), strict: true);
+                    AdvanceUnblocked(campaign, 1);
+                    var selected = campaign.Capture();
+                    var chosen = selected.CompletedResearch.Contains("REWARD_A") ? "REWARD_A" : "REWARD_B";
+                    var branch = Assert.Single(worldForecast.DiscoveryAlternatives, alternative => alternative.CompletedResearch!.Contains(chosen));
+                    Assert.Equal(selected.CompletedResearch.Order(StringComparer.Ordinal), branch.CompletedResearch!.Order(StringComparer.Ordinal));
+                    Assert.Equal(branch.Arrivals[owner.Id].Sum(arrival => arrival.Value) - 1, selected.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+                    Assert.Equal(99, selected.Bases[0].Crafts.Single(craft => craft.RuleId == "REWARD_HUNT").Logistics!.Fuel);
+                    Assert.True(selected.World.Ufos[0].Hunting);
+                    Assert.Single(selected.Bases[1].Research);
+                    Assert.Equal(0, selected.Bases[1].Items.GetValueOrDefault("SUPPLY"));
+                    if (chosen == "REWARD_A") Assert.Equal(row[6].GetInt32() - 1, selected.Bases[0].Items.GetValueOrDefault("SUPPLY"));
+                    for (var rewrite = 0; rewrite < 3; rewrite++)
+                    {
+                        campaign = Reload(content, campaign, 81, "reward-variable-stocks.sav");
+                        Assert.Equivalent(selected, campaign.Capture(), strict: true);
+                    }
                     continue;
                 }
                 var result = campaign.Execute(new AdvanceCampaignTime(1));
