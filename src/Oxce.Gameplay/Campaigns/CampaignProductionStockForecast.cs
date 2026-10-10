@@ -73,7 +73,7 @@ public sealed partial class CampaignState
                 // The final unit was paid and its inputs consumed when it started.
                 // No subsequent start can change funds, materials or craft in this hour.
                 var final = !project.Infinite && requested == 1 && Produced(project) + 1L >= project.Amount;
-                var deterministicRandom = TryForecastRandomProduction(owner, sources, rule, out var randomItems, out var randomTransferCount, ref work);
+                var deterministicRandom = TryForecastRandomProduction(owner, sources, assignments, rule, out var randomItems, out var randomTransferCount, ref work);
                 if (work > 1_000_000) return "UFO retargeting exceeds the supported work limit.";
                 var personnel = rule.SpawnedPersonType.Length != 0;
                 var craftDelay = rule.TransferTimes.Count > 2 && rule.TransferTimes[2] > 0;
@@ -332,7 +332,7 @@ public sealed partial class CampaignState
         return null;
     }
 
-    private bool TryForecastRandomProduction(BaseState owner, IReadOnlyList<CraftState> sources, RuntimeManufactureRule rule,
+    private bool TryForecastRandomProduction(BaseState owner, IReadOnlyList<CraftState> sources, int[] assignments, RuntimeManufactureRule rule,
         out IReadOnlyDictionary<string, int>? items, out int transferCount, ref long work)
     {
         items = null;
@@ -347,13 +347,20 @@ public sealed partial class CampaignState
             if (++work > 1_000_000) return false;
             if (rules.Crafts[craft.Rule].Value.RefuelItem is { } fuel) sensitive.Add(fuel);
         }
-        foreach (var project in owner.Productions)
+        for (var index = 0; index < owner.Productions.Count; index++)
         {
+            var project = owner.Productions[index];
             var product = rules.Manufacture[project.Rule].Value;
             work += 1L + product.RequiredMaterials.Count + product.ProducedMaterials.Count;
             if (work > 1_000_000) return false;
-            foreach (var material in product.RequiredMaterials)
-                if (material.Item is { } item && material.Quantity > 0) sensitive.Add(item);
+            if (product.Time < 0) return false;
+            var requested = ProductionProgress.Requested(product.Time, project.Spent, assignments[index], project.Amount, project.Infinite);
+            // Current units were paid at start. Only a reached continuation can
+            // consume materials; use the already bounded fallback assignments.
+            var continues = requested > 0 && (project.Infinite || requested > 1 || Produced(project) + 1L < project.Amount);
+            if (continues)
+                foreach (var material in product.RequiredMaterials)
+                    if (material.Item is { } item && material.Quantity > 0) sensitive.Add(item);
             // Later projects can add craft before half-hour maintenance. Retain
             // all potential products here, including conservatively delayed ones.
             foreach (var material in product.ProducedMaterials)

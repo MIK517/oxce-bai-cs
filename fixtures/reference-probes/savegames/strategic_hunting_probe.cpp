@@ -442,6 +442,27 @@ auto* target=select(&hunter,active);
 std::cout << '[' << (sell?"true":"false") << ',' << delay << ',' << variant << ',' << choice << ',' << progress.completedUnits << ',' << stop << ',' << base.storage.count << ',' << base.storage.getItem(&a) << ',' << base.storage.getItem(&b) << ',' << base.transfers.size() << ',' << delivery._randomProductionInfo["SUPPLY"] << ',' << delivery._randomProductionInfo["INERT_A"] << ',' << delivery._randomProductionInfo["INERT_B"] << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints) delete waypoint; for(auto* transfer:base.transfers) delete transfer;
 }
+std::cout << "],\"productionScopedMaterialRows\":[";
+scoreFirst=true;
+for(int mode:{0,1,2,3,4}) for(int choice:{1,2}) {
+if(!scoreFirst)std::cout<<',';scoreFirst=false;
+Base base; ServiceGame game; ResearchMod mod; Item item,a,b; a.type="INERT_A"; b.type="INERT_B"; a.battle=b.battle=1;
+Production progress,other; Craft craft; Ufo hunter; FuelCaller fuelCaller;
+craft.id=1; craft._base=&base; base.crafts={&craft}; craft.rule.fuelItem=&item; craft._fuel=60; craft.distance=Nautical(100);
+ProductionItemRule rule; rule.produced={{&item,1}}; rule.random={{1,{{&item,2},{&a,1}}},{1,{{&item,2},{&b,2}}}}; ProductionDeliveryCaller delivery{&rule};
+progress.rule.time=2; progress.rule.requiredItems=mode==0?std::map<const Item*,int>{{&a,1}}:std::map<const Item*,int>{{&item,2}};
+progress._timeSpent=1;progress._engineers=1;progress._amount=mode==0?1:2;progress.infinite=mode!=0;
+ProductionItemRule otherRule;otherRule.produced={{&item,0}};ProductionDeliveryCaller otherDelivery{&otherRule};other.rule.time=2;other.rule.requiredItems={{&a,1}};
+other._timeSpent=1;other._engineers=mode==1||mode==4?0:1;other._amount=mode==2?1:3;other._isFallback=mode==4;
+base.freeWorkshops=6;base.engineers=mode==4?1:0;base._productions={&progress};if(mode!=0)base._productions.push_back(&other);
+base.storage.count=1;RNG::suppliedChoice=choice;int stop=progress.scalarStep(&base,&game.save,&mod,delivery);RNG::suppliedChoice=-1;
+int otherStop=mode==0?-1:other.scalarStep(&base,&game.save,&mod,otherDelivery);
+auto missing=craft.refuel();if(missing.empty())autoPatrol(&craft,&game);
+std::vector<Craft*> active;if(craft._status=="STR_OUT"){fuelCaller.fuel(&craft);active.push_back(&craft);}auto* target=select(&hunter,active);
+std::cout << '[' << mode << ',' << choice << ',' << progress.completedUnits << ',' << stop << ',' << other.completedUnits << ',' << otherStop
+<< ',' << base.storage.count << ',' << base.storage.getItem(&a) << ',' << base.storage.getItem(&b) << ',' << other._engineers << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
+for(auto* waypoint:game.save.waypoints)delete waypoint;
+}
 std::cout << "],\"productionPersonnelRows\":[";
 scoreFirst=true;
 for(bool scientist:{false,true}) for(int delay:{-1,0,3}) for(int assigned:{1,6}) for(int headroom:{0,1,2}) for(bool infinite:{false,true}) {

@@ -815,3 +815,27 @@ and existing guard assertions were retained. Cycle 31 slice one; batch pending.
 Slice verification/interim review: corrected guard cases and full formatting pass;
 regenerated code-map/diff checks pass and the reference remains clean. No confirmed
 issue. The batch root gate follows the remaining two implementation slices.
+
+## Random production material sensitivity at reached continuations (2026-10-10)
+
+Random-output sensitivity now reads this hour's bounded fallback assignments and
+marks required materials only for projects that can reach another unit start.
+No-completion projects and a single finite final completion were paid previously
+and do not consume their declared inputs in Production::step. Multiple completions
+or an infinite/unfinished continuation retain sensitivity. All input lists remain
+charged; negative rule time returns an unsupported proof rather than throwing.
+The material/accounting validators remain in their existing owners.
+
+Reference: Production::step/getAmountProduced/startItem, fallback staffing and
+hourly deferred removal. Ten new strategic-hunting productionScopedMaterialRows
+capture final primary units, idle/final other projects, ordinary continuations and
+fallback activations, both controlled random choices, stock, progress/stop, staff,
+fuel and target. All previous native rows are unchanged. Six fresh/cache cases
+first reproduced the false restriction and now match native outputs across twelve
+saved seeds and three rewrites. Four cases preserve the ordinary/fallback guards
+where native stop reasons differ across outcomes. All ten scoped-material tests
+pass. Cycle 31 slice two; inactive/delayed craft-product composition is next.
+
+Slice verification/interim review: all ten scoped-material cases, full formatting,
+regenerated code-map and diff checks pass. Native old rows remain unchanged and
+the reference is clean. No confirmed issue; the third slice and batch are pending.
