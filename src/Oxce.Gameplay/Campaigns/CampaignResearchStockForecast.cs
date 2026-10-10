@@ -297,7 +297,12 @@ public sealed partial class CampaignState
             if (++work > 1_000_000) return false;
             if (!rules.Research.TryGet(id, out var handle)) continue;
             var rule = rules.Research[handle].Value;
-            if (rule.IncreaseCounters.Count != 0 || rule.DecreaseCounters.Count != 0) return false;
+            work += rule.IncreaseCounters.Count + (long)rule.DecreaseCounters.Count;
+            if (work > 1_000_000) return false;
+            foreach (var name in rule.IncreaseCounters)
+                if (name.Length != 0) return false;
+            foreach (var name in rule.DecreaseCounters)
+                if (name.Length != 0) return false;
             if (rule.SpawnedItem.Length != 0 && rules.Items.TryGet(rule.SpawnedItem, out _)) return false;
             foreach (var item in rule.SpawnedItemList)
             {

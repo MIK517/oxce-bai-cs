@@ -316,6 +316,68 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         Assert.Equal(2, choices.Count);
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 10000)]
+    [InlineData(true, 10000)]
+    public void EmptyOnlyEffectsUseTheBoundedFastStockProof(bool cache, int labels)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var counters = string.Join(", ", Enumerable.Repeat("''", labels));
+        var content = StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
+            crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
+            facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
+            ufos: [{type: UFO_HUNTER, radarRange: 20000}]
+            research:
+              - {name: CORE, cost: 1, points: 1, getOneFree: [EQUIV_A, EQUIV_B], increaseCounter: [{{counters}}]}
+              - {name: EQUIV_A, cost: 1, points: 1}
+              - {name: EQUIV_B, cost: 1, points: 2}
+              - {name: UNLOCK, cost: 1}
+            """, extraRulesAfterOverlays: true);
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, seed);
+            initial = initial with
+            {
+                NextIds = new Dictionary<string, int>(initial.NextIds) { ["UNKNOWN_COUNTER"] = 11 },
+                Bases = [initial.Bases[0] with { Items = new Dictionary<string, int> { ["SUPPLY"] = 1 } }],
+            };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            long work = 985_000;
+            Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast));
+            Assert.InRange(work, 985_000 + labels, 1_000_000);
+            Assert.Empty(forecast.StockChanges);
+            Assert.Empty(forecast.Arrivals);
+            Assert.Empty(forecast.CounterChanges);
+            Assert.Null(forecast.NextTransferId);
+            Assert.Null(forecast.ScoreChange);
+            Assert.Null(forecast.DiaryEntries);
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            long exhausted = 999_999;
+            Assert.False(campaign.ResearchPreflight.TryForecastDailyStocks(ref exhausted, out _));
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
+            choices.Add(choice);
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchEmptyOnlyRewardRows").Single(row => row[0].GetInt32() == labels && row[1].GetInt32() == choice);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { labels, choice, after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1,
+                after.Bases[0].Transfers.Count, after.NextIds["UNKNOWN_COUNTER"], after.ResearchScores[^1] - before.ResearchScores[^1] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            Assert.False(after.NextIds.ContainsKey(""));
+            Assert.True(Assert.Single(after.World.Ufos).Hunting);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "empty-only-research-effects.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
     internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false, bool rewardLookup = false, string rewardCounter = "EQUIV_COUNTER", bool emptyDecrease = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]

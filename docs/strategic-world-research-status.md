@@ -1948,3 +1948,27 @@ the pinned reference is clean. No unexpected access denial occurred.
 
 This closes cycle 29. Wider stock/research/site and production/transfer composition
 and final guard reconciliation still keep branch 4c open; branch 4d is untouched.
+
+### Empty-only fast stock proof (2026-10-10)
+
+The existing no-stock-change fast proof now checks effective nonempty counter
+names after charging every increase/decrease input label. Empty-only lists no
+longer force full reward replay; nonempty operations still require the ordered
+projection. This permits a common stock proof within the caller's remaining
+budget without selecting research or omitting input work. Exact discovery callers
+retain their full projection and do not use this shortcut.
+
+Reference: SavedGame::increaseCustomCounter/decreaseCustomCounter and the daily
+primary callers. Four strategic-hunting researchEmptyOnlyRewardRows cover zero
+and 10,000 empty labels, both reward choices, unchanged item/transfer/counter
+state and unequal scores. All previous native rows are unchanged. Thirty-eight
+reward cases pass, including a 985,000-step starting budget, exhausted-work
+refusal, pure omitted metadata, actual item-fuel relaunch/hunting, both saved
+reward outcomes across 32 seeds and three save rewrites. This is cycle 30 slice
+one; its remaining slices and batch audit are still pending.
+
+Slice verification/interim review: all 470 hunting regressions also pass, including
+refund/corpse, nonempty counter and work-limit cases. Full formatting, code-map
+and diff checks pass; no confirmed issue was found. Useful native captures remain
+and the obsolete object was removed. The next two slices and cycle batch audit
+are pending; the latest full root gate is the prior 4,834-test cycle acceptance.
