@@ -185,9 +185,14 @@ public sealed class StrategicObjectiveBaseSpawnTests
         content = LoadWorld(false, "zero");
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "Base objective texture weights select an unavailable deployment.");
-        content = LoadWorld(false, marker: "\" \"");
+        content = LoadWorld(false, marker: "\"\"");
         AssertTimeBlocked(CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17)),
             "Base objective uses an unsupported marker namespace.");
+        // SavedGame::getId keys are external names: a whitespace marker is its own namespace.
+        content = LoadWorld(false, marker: "\" \"");
+        var whitespace = CampaignState.Restore(Initial(content), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(whitespace, 1);
+        Assert.Contains(whitespace.Capture().World.AlienBases, value => value.DeploymentId == "COLLISION_BASE");
     }
 
     [Theory]
