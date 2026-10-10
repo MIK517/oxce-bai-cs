@@ -99,17 +99,31 @@ public sealed partial class CampaignState
         range = default;
         if (researchCounters is not null)
         {
-            long next = _nextIds.GetValueOrDefault(type, 1);
-            foreach (var change in researchCounters)
-            {
-                if (++work > 1_000_000) return "Craft production exceeds the supported work limit.";
-                if (change.Name != type) continue;
-                next = change.Increase ? next + 1 : Math.Max(1, next - 1);
-                if (next > int.MaxValue) return "Craft production exhausts the craft identity range.";
-            }
+            if (ProducedResearchCounterTrace(type, researchCounters, ref work, out var next) is { } reason) return reason;
             range = (next, next);
             return null;
         }
+        if (highest >= CampaignTimeTrigger.OneDay && TryForecastDailyCounterStates(ref work, out var forecast))
+        {
+            if (forecast.CounterChangesAreCommon)
+            {
+                if (ProducedResearchCounterTrace(type, forecast.CounterChanges, ref work, out var next) is { } reason) return reason;
+                range = (next, next);
+                return null;
+            }
+            long minimum = long.MaxValue, maximum = long.MinValue;
+            foreach (var branch in forecast.DiscoveryAlternatives)
+            {
+                if (ProducedResearchCounterTrace(type, branch.CounterChanges, ref work, out var next) is { } reason) return reason;
+                minimum = Math.Min(minimum, next);
+                maximum = Math.Max(maximum, next);
+            }
+            // Only the consumed name matters. Unrelated traces may differ;
+            // callers still require a common identity for actual actor forecasts.
+            range = (minimum, maximum);
+            return null;
+        }
+        if (work > 1_000_000) return "Craft production exceeds the supported work limit.";
         if (highest >= CampaignTimeTrigger.OneDay)
             foreach (var owner in _bases)
             {
@@ -133,6 +147,20 @@ public sealed partial class CampaignState
                 }
             }
         range = CustomCounters.BeforeWorldCreation(type, highest);
+        return null;
+    }
+
+    private string? ProducedResearchCounterTrace(string type, IReadOnlyList<CustomCounterChange> changes, ref long work, out long next)
+    {
+        next = _nextIds.GetValueOrDefault(type, 1);
+        if (++work > 1_000_000) return "Craft production exceeds the supported work limit.";
+        foreach (var change in changes)
+        {
+            if (++work > 1_000_000) return "Craft production exceeds the supported work limit.";
+            if (change.Name != type) continue;
+            next = change.Increase ? next + 1 : Math.Max(1, next - 1);
+            if (next > int.MaxValue) return "Craft production exhausts the craft identity range.";
+        }
         return null;
     }
 }

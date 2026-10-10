@@ -2354,3 +2354,25 @@ an overflowing intermediate in an unselected path, including repeated atomic
 refusal. All six cases and 39 counter regressions pass. Shared work bounds and
 strict scalar contracts remain. Full formatting, regenerated code-map and
 diff checks pass; the cycle batch gate follows.
+
+## Consumed-name daily counter identity (2026-10-10)
+
+Twelve native researchCounterAlternativeBirthRows compose the preceding
+floor-aware traces with craft/person delivery and controlled allocation
+collaborators seeded from the actual counter result. Ordered paths differ,
+but their consumed identity name converges at all three tested headrooms.
+ProducedCraftCounterRange now filters exact bounded daily traces by that
+consumed name and validates every intermediate before publishing its final
+range. Common traces retain their direct path; unproved projections retain
+the conservative counter envelope. Unrelated names cannot fabricate a common
+trace, and genuinely different craft identities still stop before actor creation.
+
+Four fresh/cache craft/person cases reproduce false identity refusals and
+match native counters, identities, stocks and pending personnel across three
+headrooms, twelve seeds, both choices, three rewrites and subsequent ticks.
+Four refusal cases preserve consumed-counter intermediate overflow and different
+final craft identities, repeat refusal and verify cancellation clears the proof
+before a safe birth and reload. All eight cases and the preceding 45 counter
+regressions pass. Full formatting, regenerated code-map and diff checks pass;
+the three-slice batch gate follows. No cache
+or save schema change; wider composition and final reconciliation keep 4c open.
