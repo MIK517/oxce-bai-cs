@@ -63,6 +63,43 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+### Branch 4c closure (2026-10-11)
+
+Branch 4c closes with the named restrictions below. The 2026-10-10 closure audit
+listed seven open families (R1–R7); the finite ones are implemented and the
+composition families are restricted by decision rather than extended by more
+forecasts.
+
+- Implemented: R1 detection provider ledger (every catalogue binding executes
+  or is classified; see [operations status](strategic-world-operations-status.md#branch-4c-closure-r1-detection-provider-ledger-2026-10-11)),
+  R2 generation-only site-script regions ([mission scripts](strategic-mission-script-status.md)),
+  R3 damaged UFO ground arrival becoming CRASHED ([crashed UFOs](strategic-world-crashed-ufo-status.md))
+  and R7 whitespace external names as ID namespaces. An armor `corpseGeo` loader
+  defect found on the way is fixed (compiler revision 55).
+- Transactional coarse ticks were evaluated as the alternative to further
+  forecasts and not adopted. Whole-state capture/restore is cheap (TFTD
+  `Middle.sav`: 0.03 ms capture, 0.27 ms restore, against 0.05 ms per ordinary
+  tick). The blocker is soundness: execution handlers do not detect branch 5/6
+  transitions themselves (the boundary reasons exist only in preflight), and 58
+  preflight-pass fields feed execution. Adoption needs an execution-time check
+  for every boundary and an audit of every pass consumer; that is an architecture
+  item, best taken with branch 5, which must make those transitions executable.
+- Named restrictions (precise, atomic refusals; no staged save reaches them):
+  R4 conditional pursuit, escorts and optional-base deletion with divergent
+  speeds, fuel or targets; R5 shared stochastic servicing/production outcomes;
+  R6 nonconvergent daily consequences consumed later in the tick (refunds,
+  arrival shape, final identities, uncertain prices/activity); the R3 remainder
+  (`New base hunting supply waves require a live source forecast.`,
+  `Immediate hunting retaliation requires base-discovery forecasts.`); and a
+  damaged ground arrival whose UFO has craft or escort followers.
+- Acceptance: `PrivateStrategicWorldTests.ImportedWorldRunsToItsNamedLongHorizonStop`
+  pins every staged save's first stop at the one-day speed: nine month
+  boundaries, the Rosigma branch 6 event and branch 5 landing stops, and eight
+  preservation-only tactical saves. UFO/TFTD horizons were re-measured after the
+  closure changes; Rosigma values come from the 2026-10-10 measurement and are
+  rechecked by the owned Windows run. Unit (759) and public compatibility
+  (4,283) tests pass. Branch 4d is unchanged.
+
 - 2026-10-10 ordered counter composition cycle: bounded daily traces now
   compose with counter capacity and consumed craft/personnel identities. The
   batch fixed whitespace counter names rejected on reload. All 5,059 root tests
