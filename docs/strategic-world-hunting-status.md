@@ -749,3 +749,21 @@ fresh/cache landing regression proves that surviving eligible targets still stop
 atomically. This is cycle 27 slice three.
 
 Validation: all 218 optional-base composition tests pass, including four new arrival/landing cases. Full formatting, regenerated code-map and diff checks pass. Batch audit/root validation follows this slice.
+
+## Arrival-cycle batch audit correction (2026-10-10)
+
+The combined three-slice audit confirmed that an hourly manufactured patrol
+removal could reserve landing unnecessarily when no hunter requested the craft
+forecast. Positive patrol discovery candidates now request the existing ordered
+servicing/delivery/production/fuel projection when their owner has production.
+Removed patrols contribute no discovery hazard; surviving patrols still reserve
+landing before the tick mutates state. Four fresh/cache regressions cover both
+cases, using existing native zero-quantity craft-input/removal evidence and save
+reloads. The two removed-patrol cases reproduced the defect before the fix.
+
+Review also checked native caller/fallthrough order, stable identities, post-move
+vector repair, takeoff/home checkup, resource bounds, RNG purity, target deletion,
+ordered escorts and remaining later-phase guards. No further confirmed defect
+was found. Full root acceptance is recorded after validation completes.
+
+The ten focused arrival/discovery cases and full formatting verification pass after the correction.

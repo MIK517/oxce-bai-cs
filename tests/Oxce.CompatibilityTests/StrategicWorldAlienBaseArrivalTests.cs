@@ -111,10 +111,59 @@ public sealed class StrategicWorldAlienBaseArrivalTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool allow, string extra = "", int sightRange = 0) => StrategicReadinessTestContent.Load(
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ManufacturedPatrolRemovalPrecedesDiscoveryAndLanding(bool cache, bool removed)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        Assert.NotEmpty(TestFixtures.Rows(oracle.RootElement, "deletedCraftFollowerRows"));
+        var content = Content(cache, true, """
+            facilities: [{type: ARRIVAL_WORKSHOP, mapName: LOGISTICS, workshops: 2}]
+            manufacture: [{name: ARRIVAL_DELETE_PATROL, time: 1, requiredItems: {ARRIVAL_PATROL: 0}, producedItems: {SUPPLY: 0}}]
+            """, extraCrafts: "  - {type: ARRIVAL_PATROL, fuelMax: 1000, speedMax: 6000, sightRange: 10000}");
+        var initial = Snapshot(content, false, 1, false, 0);
+        var owner = initial.Bases[0];
+        var patrol = owner.Crafts[0] with
+        {
+            RuleId = "ARRIVAL_PATROL",
+            Id = 2,
+            Logistics = owner.Crafts[0].Logistics! with { Destination = null, Speed = 0 },
+        };
+        initial = initial with
+        {
+            Time = new(1, 1, 1, 1999, 1, 59, 55),
+            Bases = [owner with
+            {
+                Crafts = [owner.Crafts[0], patrol],
+                Facilities = [new("ARRIVAL_WORKSHOP", 0, 0, 0, 0, false, false, false)],
+                Engineers = 0,
+                Productions = [new("ARRIVAL_DELETE_PATROL", 1, 0, removed ? 2 : 1, false, false, false,
+                    new Dictionary<string, int>(StringComparer.Ordinal))],
+            }],
+        };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(81));
+        if (!removed)
+        {
+            AssertTimeBlocked(campaign, "Craft landing requires deployment (Phase 6 branch 5).");
+            return;
+        }
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Single(after.Bases[0].Crafts);
+        Assert.False(Assert.Single(after.World.AlienBases).Discovered);
+        Assert.Equal(WorldTargetKind.AlienBase, after.Bases[0].Crafts[0].Logistics!.Destination!.Kind);
+        campaign = Reload(content, campaign, 81, "removed-patrol-before-discovery.sav");
+        Assert.Equivalent(after, campaign.Capture(), strict: true);
+    }
+
+    internal static RuntimeContent Content(bool cache, bool allow, string extra = "", int sightRange = 0, string extraCrafts = "") => StrategicReadinessTestContent.Load(
         ["strategic-world.rul"], cache, $$"""
         crafts:
           - {type: SHIP, fuelMax: 1000, speedMax: 6000, sightRange: {{sightRange}}, allowLanding: {{(allow ? "true" : "false")}}}
+        {{extraCrafts}}
         alienDeployments:
           - {type: ARRIVAL_BASE, markerName: ARRIVAL_BASE, points: 0, genMissionFrequency: 0, huntMissionFrequency: 0}
         {{extra}}
