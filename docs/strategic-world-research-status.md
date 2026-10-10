@@ -1880,3 +1880,21 @@ private corpus and unchanged allocation/endurance gates pass. The reference tree
 remains clean; no unexpected access denial occurred. Branch 4c stays open for
 wider consumed-consequence, stock/research and transfer composition and final
 guard reconciliation. Branch 4d is untouched.
+
+### Consumed stock projection metadata (2026-10-10)
+
+Daily stock projections now explicitly omit scalar metadata unless the caller
+requests exact research discovery state. Nullable score/diary fields prevent a
+stock-only projection from presenting one uncertain reward as the scalar result.
+Stock-only consumers require equal ordered stock/arrival/transfer/counter effects;
+exact consumers still require all scalar and research consequences to agree.
+Actual execution retains the selected score, lookup discoveries and diary order.
+
+Reference: SavedGame::selectGetOneFree/addFinishedResearch and time1Day bonus
+lookup/primary callers. Four strategic-hunting scoped reward rows and four native
+strategic-research-diary-execution stockScopeRows cover unequal points and unequal
+lookup diaries with equal stock. All previous native rows are unchanged. Twenty-
+eight reward tests pass, including both selected outcomes across 32 saved seeds,
+actual native score/diary comparison, hunter relaunch and three save rewrites.
+Score overflow and diary identity exhaustion still stop before mutation. This
+changes only internal forecasts; no save/cache schema or later-branch boundary.

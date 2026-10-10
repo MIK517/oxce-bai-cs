@@ -50,7 +50,7 @@ public sealed partial class CampaignState
         if (!_bases.Any(owner => owner.Research.Any(project => (long)project.Spent + project.Assigned >= project.Cost))) return null;
         long additions;
         if (ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast, includeDiscoveries: true))
-            additions = forecast.DiaryEntries;
+            additions = forecast.DiaryEntries!.Value;
         else
         {
             // Random rewards can change later eligibility. Bound each initial/lookup

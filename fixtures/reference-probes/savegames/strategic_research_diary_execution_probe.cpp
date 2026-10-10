@@ -107,5 +107,15 @@ int main(){
   for(int pick=0;pick<count;pick++){RNG::pick=pick;auto*choice=saved.selectGetOneFree(&core);if(pick)std::cout<<',';std::cout<<std::quoted(choice->name);}
   std::cout<<"]}";
  }
+ std::cout<<"],\"stockScopeRows\":[";
+ for(int mode:{0,1})for(int choice:{0,1}){
+  RuleResearch core{"CORE"},a{"EQUIV_A"},b{"EQUIV_B"},lookup{"EQUIV_Z"};
+  core.bonus=&a;core.other=&b;if(mode==1)a.lookup=&lookup;
+  Mod mod{{&core,&a,&b,&lookup}};Base base;SavedGame saved;saved._bases={&base};RNG::pick=choice;
+  saved.daily(&core,&mod,&base);
+  if(mode||choice)std::cout<<',';std::cout<<'['<<mode<<','<<choice<<",[";
+  bool firstEntry=true;for(auto*entry:saved.diary){if(!firstEntry)std::cout<<',';firstEntry=false;std::cout<<std::quoted(entry->research->name);}
+  std::cout<<"]]";
+ }
  std::cout<<"]}\n";
 }
