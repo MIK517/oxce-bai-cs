@@ -68,7 +68,7 @@ internal sealed partial class CampaignWorld
                 if (!landing && !hunting && NewObjectiveBaseHuntingReason(rules.AlienDeployments.GetExternalId(candidate), deployment, area, position, highest, ref work, ref canHunt) is { } huntingReason)
                     return huntingReason;
                 var marker = deployment.MarkerName;
-                if (string.IsNullOrWhiteSpace(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
+                if (string.IsNullOrEmpty(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
                     marker is WorldTargetReference.WaypointType or WorldTargetReference.BaseType or "STR_ALIEN_TERROR")
                     return "Base objective uses an unsupported marker namespace.";
                 markers.Add(marker);

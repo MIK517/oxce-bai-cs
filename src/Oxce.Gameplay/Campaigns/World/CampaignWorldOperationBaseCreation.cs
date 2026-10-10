@@ -40,7 +40,7 @@ internal sealed partial class CampaignWorld
             if (deployment.HuntMissionMaxFrequency < 0)
                 return "Mission operation base hunting timer cannot be negative.";
             var marker = deployment.MarkerName;
-            if (string.IsNullOrWhiteSpace(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
+            if (string.IsNullOrEmpty(marker) || marker == "ALIEN_MISSIONS" || IsUfoIdNamespace(marker) ||
                 marker is WorldTargetReference.WaypointType or WorldTargetReference.BaseType or "STR_ALIEN_TERROR")
                 return "Mission operation base uses an unsupported marker namespace.";
             markers.Add(marker);

@@ -279,9 +279,10 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         return this;
     }
 
+    // SavedGame::getId keys are external names: whitespace is significant, only empty is invalid.
     internal int NextId(string name)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrEmpty(name);
         if (!_nextIds.TryGetValue(name, out var next)) next = 1;
         _nextIds[name] = checked(next + 1);
         return next;
@@ -289,7 +290,7 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
 
     internal int PeekNextId(string name)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrEmpty(name);
         return _nextIds.GetValueOrDefault(name, 1);
     }
 
