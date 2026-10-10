@@ -7,15 +7,21 @@ public sealed partial class CampaignState
     private string? ReserveDailyResearchScores(ref ResearchScoreCapacity capacity, ref long work)
     {
         const string rangeReason = "Research and production scores exceed the supported range.";
-        const string workReason = "Research score forecasts exceed the supported work limit.";
         var previous = capacity;
         var reason = ReserveDailyResearchScoreBounds(ref capacity, ref work);
         if (reason != rangeReason) return reason;
         capacity = previous;
+        return ReserveExactDailyResearchScores(ref capacity, ref work, advanceGuaranteed: false);
+    }
+
+    private string? ReserveExactDailyResearchScores(ref ResearchScoreCapacity capacity, ref long work, bool advanceGuaranteed)
+    {
+        const string rangeReason = "Research and production scores exceed the supported range.";
+        const string workReason = "Research score forecasts exceed the supported work limit.";
         if (!ResearchPreflight.TryForecastDailyWorldStocks(ref work, out var forecast))
-            return work > 1_000_000 ? workReason : reason;
+            return work > 1_000_000 ? workReason : rangeReason;
         var prefix = capacity;
-        if (!prefix.Reserve(forecast.MinimumScorePrefix!.Value, forecast.MaximumScorePrefix!.Value)) return reason;
+        if (!prefix.Reserve(forecast.MinimumScorePrefix!.Value, forecast.MaximumScorePrefix!.Value)) return rangeReason;
         var minimum = forecast.ScoreChange ?? long.MaxValue;
         var maximum = forecast.ScoreChange ?? long.MinValue;
         foreach (var branch in forecast.DiscoveryAlternatives)
@@ -24,7 +30,9 @@ public sealed partial class CampaignState
             minimum = Math.Min(minimum, branch.ScoreChange!.Value);
             maximum = Math.Max(maximum, branch.ScoreChange!.Value);
         }
-        return capacity.Reserve(minimum, maximum) ? null : reason;
+        var supported = advanceGuaranteed ? capacity.AdvanceGuaranteed(forecast.MinimumScorePrefix.Value,
+            forecast.MaximumScorePrefix.Value, minimum, maximum) : capacity.Reserve(minimum, maximum);
+        return supported ? null : rangeReason;
     }
 
     private string? ReserveDailyResearchScoreBounds(ref ResearchScoreCapacity capacity, ref long work)
