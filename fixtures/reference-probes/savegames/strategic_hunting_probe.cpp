@@ -1782,6 +1782,20 @@ const auto id=person?base.transfers.back()->_soldier->id:base.crafts.back()->id;
 std::cout<<'['<<(person?1:0)<<','<<initial<<','<<choice<<','<<before<<','<<id<<','<<(person?saved.soldierCounter:saved.craftCounter)<<','<<base.storage.count<<','<<base.transfers.size()<<','<<saved.researchScore<<']';
 if(!person)delete base.crafts.back();for(auto* transfer:base.transfers){delete transfer->_soldier;delete transfer;}
 }
+std::cout << "],\"researchDailyCounterAlternativeRows\":[";first=true;
+for(int mode:{0,1}) for(int initial:{1,20,INT_MAX-1}) for(int choice:{0,1}) {
+if(!first)std::cout<<',';first=false;
+ResearchRule topics[3];auto* source=&topics[0];auto* a=&topics[1];auto* b=&topics[2];source->name="CORE";a->name="EQUIV_A";b->name="EQUIV_B";source->free={a,b};
+source->increases={"EQUIV_COUNTER"};a->increases={mode==0?"LEFT_COUNTER":"TRACE_COUNTER"};b->increases={mode==0?"RIGHT_COUNTER":"TRACE_COUNTER"};
+if(mode==1){source->decreases={"TRACE_COUNTER","TRACE_COUNTER"};b->increases.push_back("TRACE_COUNTER");b->decreases={"TRACE_COUNTER"};}
+source->spawned=a->spawned=b->spawned="SUPPLY";source->count=1;a->count=2;b->count=3;
+SavedGame saved;Mod mod;mod.rules={source,a,b};Base base;ResearchCaller caller;saved._ids={{"EQUIV_COUNTER",1},{"LEFT_COUNTER",initial},{"RIGHT_COUNTER",initial},{"TRACE_COUNTER",initial}};saved.bases={&base};
+RNG::suppliedChoice=choice;auto* bonus=saved.selectGetOneFree(source);RNG::suppliedChoice=-1;saved.addFinishedResearch(bonus,&mod,&base);saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus);std::sort(primary.begin(),primary.end());primary.erase(std::unique(primary.begin(),primary.end()),primary.end());for(auto* topic:primary){caller.spawn(topic,&mod,&base);saved.applyPrimaryCounters(topic);}const auto transfers=base.transfers.size();
+for(auto* transfer:base.transfers){transfer->advance(&base);delete transfer;}base.transfers.clear();
+Craft craft;craft._base=&base;craft.rule.fuelItem=&mod.supply;craft._fuel=960;craft._stats.fuelMax=1000;craft.refuel();
+std::cout<<'['<<mode<<','<<initial<<','<<choice<<','<<saved._ids["EQUIV_COUNTER"]<<','<<saved._ids["LEFT_COUNTER"]<<','<<saved._ids["RIGHT_COUNTER"]<<','<<saved._ids["TRACE_COUNTER"]<<','<<base.storage.count<<','<<saved.researchScore<<','<<transfers<<']';
+}
 std::cout << "],\"researchCounterSequentialBaseRows\":["; first=true;
 for(int initial:{-1,1,3,20,INT_MAX-1}) for(int bases:{1,2}) {
 if(!first) std::cout << ','; first=false;

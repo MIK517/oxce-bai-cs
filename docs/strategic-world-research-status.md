@@ -2309,3 +2309,29 @@ pass. Reviewed signed prefix/final bounds, guaranteed versus optional effects,
 diary limits, transfer shape, work sharing, strict scalar consumers and subsequent
 site mutations. Wider counter/stock composition and final guard reconciliation
 keep 4c open; no 4d or later-branch effects are enabled.
+
+## Ordered daily counter alternatives (2026-10-10)
+
+Pinned GeoscapeState time1Day applies primary counter effects in catalog order;
+SavedGame::increaseCustomCounter/decreaseCustomCounter preserve absent-counter
+initialization and the floor at one. Twelve native researchDailyCounterAlternativeRows
+capture unrelated names and convergent ordered traces at initial one, twenty
+and int-max-minus-one, alongside variable quantities and refuelling.
+
+World-only daily projections now retain differing counter traces with an
+explicit CounterChangesAreCommon flag. Distinct traces participate in bounded
+deduplication; an empty noncommon summary never means inert counters. Strict
+stock/scalar consumers retain their existing contracts. Common-counter callers
+fall back to their conservative capacity proof when traces vary, and hunting
+passes a null exact trace so production uses its existing counter envelopes.
+Shared refunds, arrival identities/order/population and 256-state/4096-prefix/
+one-million-work bounds remain mandatory.
+
+Six fresh/cache cases reproduce the old fuel/site projection refusal and match
+native effects across three counter headrooms, twelve seeds and both choices,
+three rewrites and atomic overflow refusal. Obsolete counter-equality guard
+assertions now verify executable counters and reloads while unequal arrival
+shape stays blocked. All six cases, 38 strict stock and twelve world-alternative regressions pass.
+Full formatting, regenerated code-map and diff checks pass; the cycle batch
+gate follows. No content
+cache or save schema change; 4c remains open.

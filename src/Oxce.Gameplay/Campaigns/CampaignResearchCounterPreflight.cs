@@ -9,6 +9,7 @@ public sealed partial class CampaignState
         var supported = ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast);
         if (!supported && work <= 1_000_000)
             supported = ResearchPreflight.TryForecastDailyWorldStocks(ref work, out forecast);
+        supported &= forecast.CounterChangesAreCommon;
         counters = supported ? forecast.CounterChanges : [];
         return supported;
     }

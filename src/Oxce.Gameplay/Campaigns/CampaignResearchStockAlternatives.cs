@@ -21,6 +21,7 @@ public sealed partial class CampaignState
         var created = 1;
         if (!EnqueueResearchStockBranches(pending, [], pendingChoices, ref created, ref work)) return false;
         DailyResearchStockForecast? common = null;
+        var commonCounters = true;
         List<DailyResearchStockForecast>? alternatives = retainWorldAlternatives ? [] : null;
         while (pending.TryDequeue(out var choices))
         {
@@ -45,8 +46,10 @@ public sealed partial class CampaignState
                     work += branch.CompletedResearch!.Count + (long)branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
                     foreach (var active in branch.ActiveResearch.Values) work += active.Count;
                 }
-                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch, includeMetadata: !retainWorldAlternatives, includeQuantities: !retainWorldAlternatives) ||
+                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch, includeMetadata: !retainWorldAlternatives, includeQuantities: !retainWorldAlternatives,
+                        includeCounters: !retainWorldAlternatives) ||
                     includeDiscoveries && !retainWorldAlternatives && !SameResearchDiscoveryConsequences(common, branch)) return false;
+                commonCounters &= common.CounterChanges.SequenceEqual(branch.CounterChanges);
             }
             if (alternatives is not null)
             {
@@ -59,6 +62,9 @@ public sealed partial class CampaignState
                     if (earlier.ScoreChange != branch.ScoreChange || earlier.MinimumScorePrefix != branch.MinimumScorePrefix ||
                         earlier.MaximumScorePrefix != branch.MaximumScorePrefix || earlier.DiaryEntries != branch.DiaryEntries ||
                         !SameResearchDiscoveryConsequences(earlier, branch)) continue;
+                    work += branch.CounterChanges.Count;
+                    if (work > 1_000_000) return false;
+                    if (!earlier.CounterChanges.SequenceEqual(branch.CounterChanges)) continue;
                     work += branch.Arrivals.Count;
                     foreach (var arrivals in branch.Arrivals.Values) work += arrivals.Count;
                     if (work > 1_000_000) return false;
@@ -79,7 +85,7 @@ public sealed partial class CampaignState
             }
         }
         if (common is null) return false;
-        // Shared refund/counter effects and arrival shape agree. Exact callers require one common state;
+        // Shared refunds and arrival shape agree. Exact callers require one common state;
         // the world can retain bounded discovery states without selecting a reward.
         if (alternatives?.Count > 1)
         {
@@ -101,6 +107,8 @@ public sealed partial class CampaignState
                 Work = work,
                 Arrivals = arrivals,
                 ArrivalUncertainty = uncertainty,
+                CounterChangesAreCommon = commonCounters,
+                CounterChanges = commonCounters ? common.CounterChanges : [],
                 CompletedResearch = guaranteed.ToFrozenSet(StringComparer.Ordinal),
                 ResearchStatuses = null,
                 ActiveResearch = null,
@@ -151,11 +159,12 @@ public sealed partial class CampaignState
         return true;
     }
 
-    private static bool SameResearchStockConsequences(DailyResearchStockForecast first, DailyResearchStockForecast second, bool includeMetadata = true, bool includeQuantities = true)
+    private static bool SameResearchStockConsequences(DailyResearchStockForecast first, DailyResearchStockForecast second, bool includeMetadata = true, bool includeQuantities = true,
+        bool includeCounters = true)
     {
         if (first.NextTransferId != second.NextTransferId ||
             includeMetadata && (first.ScoreChange != second.ScoreChange || first.DiaryEntries != second.DiaryEntries) ||
-            !first.CounterChanges.SequenceEqual(second.CounterChanges) ||
+            includeCounters && !first.CounterChanges.SequenceEqual(second.CounterChanges) ||
             first.StockChanges.Count != second.StockChanges.Count || first.Arrivals.Count != second.Arrivals.Count) return false;
         foreach (var owner in first.StockChanges)
         {

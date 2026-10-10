@@ -69,7 +69,7 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void WorldResearchAlternativesStillRequireCommonRefundsAndCounterEffects(bool cache)
+    public void WorldResearchAlternativesRequireCommonArrivalShapeButRetainCounterTraces(bool cache)
     {
         TestFixtures.LoadVerifiedManifest("strategic-hunting");
         foreach (var content in new[]
@@ -81,7 +81,14 @@ public sealed class StrategicWorldDailyResearchWorldAlternativesTests
             var campaign = CampaignState.Restore(StrategicWorldResearchStockAlternativesTests.Snapshot(content, 17), content, new SplitMix64RandomSource(17));
             var before = campaign.Capture();
             long work = 0;
-            Assert.False(campaign.ResearchPreflight.TryForecastDailyWorldStocks(ref work, out _));
+            var varyingCounters = content.RuntimeRules.Research[content.RuntimeRules.Research.GetRequired("EQUIV_B")].Value.IncreaseCounters.Contains("OTHER_COUNTER");
+            Assert.Equal(varyingCounters, campaign.ResearchPreflight.TryForecastDailyWorldStocks(ref work, out var forecast));
+            if (varyingCounters)
+            {
+                Assert.False(forecast.CounterChangesAreCommon);
+                Assert.Empty(forecast.CounterChanges);
+                Assert.Equal(2, forecast.DiscoveryAlternatives.Count);
+            }
             Assert.Equivalent(before, campaign.Capture(), strict: true);
         }
     }
