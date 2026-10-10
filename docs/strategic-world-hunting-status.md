@@ -868,3 +868,16 @@ save/cache schema or later-branch transition was changed.
 Slice verification/interim review: all six craft-scope cases, full formatting,
 regenerated code-map and diff checks pass. Native prior rows remain unchanged;
 reference clean and obsolete probe object removed. Batch root acceptance pending.
+
+## Random production sensitivity cycle batch acceptance (2026-10-10)
+
+The cycle 31 batch audit found no additional confirmed runtime defect. Root dotnet
+test passes all 4,874 tests with zero failures/skips in 6m32s074ms. Full formatting,
+regenerated code-map, diff, native fixture checksums, private corpus and existing
+allocation/endurance gates pass with their original limits. Reviewed base-local
+stocks, due/earlier craft sources, reached immediate births, native final-payment
+and continuation semantics, bounded fallback staffing before deferred removal,
+item presence/order, transfer counts, range/history checks and three save rewrites.
+Useful captures remain; the obsolete object was removed and reference is clean.
+No unexpected access denial occurred. Variable consumed quantities, wider research/
+site compositions and final guard reconciliation still keep branch 4c open.
