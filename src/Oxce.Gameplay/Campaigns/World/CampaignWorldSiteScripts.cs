@@ -64,11 +64,13 @@ internal sealed partial class CampaignWorld
         if (selectedRegions.Length == 0) return SiteScriptRegionBoundary;
         work += regionIds.Count + (long)selectedRegions.Length;
         if (work > MaximumMissionScriptChecks) return MissionScriptWorkReason;
-        // Every candidate region must have a positive weight in the generation
-        // timeline. Conditioning then remains safe even when earlier commands
-        // occupy regions or expose previously suppressed point locations.
+        // Every listed (candidate) region must have a positive weight in the
+        // generation timeline; generation-only regions are rejected by the native
+        // retry loop and drop out of conditioning. A listed region without
+        // generation weight could leave only unreachable candidates after earlier
+        // commands change occupancy, which natively never terminates.
         var selectedRegionSet = selectedRegions.ToHashSet(StringComparer.Ordinal);
-        if (!selectedRegionSet.SetEquals(regionIds)) return SiteScriptRegionBoundary;
+        if (!selectedRegionSet.IsSupersetOf(regionIds)) return SiteScriptRegionBoundary;
         var rules = campaign.Content.RuntimeRules;
         foreach (var regionId in regionIds.Concat(selectedRegions).Distinct(StringComparer.Ordinal))
             if (!rules.Regions.TryGet(regionId, out var regionHandle) ||

@@ -348,6 +348,54 @@ public sealed class StrategicMissionSiteScriptTests
         Reload(content, campaign, 17, "conditioned-site-region.sav");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GenerationOnlyRegionsConditionOnTheSignedListingIntersection(bool cache)
+    {
+        // Signed listing scan stops at the 2^31 key; the unsigned generation scan
+        // stays on month zero, so SITE_SECOND is generated but never listed.
+        var content = LoadSite(cache, """
+            regions:
+              - type: SITE_SECOND
+                areas: [[90, 180, -20, 20]]
+                missionZones:
+                  - []
+                  - [[100, 100, 2, 2, 10]]
+            missionScripts:
+              - type: SITE_SCRIPT_START
+                executionOdds: 0
+              - type: SITE_SCRIPT_OVERLAP
+                useTable: false
+                missionWeights: {0: {SITE_SCRIPT_A: 1}}
+                raceWeights: {0: {RACE_A: 1}}
+                regionWeights: {0: {REGION: 1, SITE_SECOND: 1}, 2147483648: {REGION: 1}}
+            """);
+        var script = content.RuntimeRules.MissionScripts.Rules.Single(entry => entry.Id == "SITE_SCRIPT_OVERLAP").Value;
+        Assert.Equal("REGION", Assert.Single(WorldScriptSelection.Available(script.Regions, 0)).Rule.Id);
+        Assert.Equal(["REGION", "SITE_SECOND"],
+            WorldScriptSelection.ForMonth(script.Regions, 0, false).Select(choice => choice.Rule.Id).Order(StringComparer.Ordinal));
+        var initial = CreateSnapshot(content, "Generation-only site region") with { RandomState = 17 };
+        var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(17));
+        var expected = new SplitMix64RandomSource(17);
+        expected.NextInclusive(0, 99); // disabled original
+        expected.NextInclusive(0, 99); // active script
+        expected.NextInclusive(1, 1); // mission
+        expected.NextInclusive(0, 99); // base odds
+        expected.NextInclusive(1, 1); // conditioned REGION weight only
+        var area = expected.NextInclusive(0, 1);
+        expected.NextInclusive(1, 1); // race
+        var countdown = WorldTrajectory.SpawnCountdown(3000, expected);
+        Assert.Empty(campaign.Execute(new ScheduleMonthlyWorldMissions(0, 0)).Events);
+        var after = campaign.Capture();
+        var mission = Assert.Single(after.World.Missions);
+        Assert.Equal("REGION", mission.RegionId);
+        Assert.Equal(area, mission.MissionSiteZoneArea);
+        Assert.Equal(countdown, mission.SpawnCountdown);
+        Assert.Equal(expected.State, after.RandomState);
+        Reload(content, campaign, 17, "generation-only-site-region.sav");
+    }
+
     [Fact]
     public void SiteLocationHistoryCapacityIsReservedBeforeRngOrMutation()
     {

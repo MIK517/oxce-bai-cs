@@ -868,3 +868,12 @@ discovery. The previous search/landing arrays are unchanged. Saved final-base
 tests reproduced missing revelation before implementation; daily/late generated
 caller controls and three rewrites cover its visibility, alert and persistence.
 All 152 affected tests pass; targeted formatting, code-map and diff checks pass.
+
+Branch 4c closure R2: site-script region guards now require every listed region
+to carry positive generation weight instead of equal listing/generation sets.
+Generation-only regions (the signed 2^31 listing/unsigned generation split) are
+rejected by the native `GeoscapeState::processCommand` retry loop, so selection
+conditions on listed candidates with relative generation weights preserved.
+Listed regions without generation weight still block before mutation, because
+native retries never terminate once only those regions keep candidates.
+Fresh/cache coverage with reload pins the overlapping case's RNG and site.
