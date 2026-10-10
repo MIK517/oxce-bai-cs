@@ -80,7 +80,6 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         {
             Content(cache, false, 2, otherCount: 3),
             Content(cache, false, 2, otherCounter: "OTHER_COUNTER"),
-            Content(cache, false, 2, otherPoints: 2),
         })
         {
             var campaign = CampaignState.Restore(Snapshot(content, 17), content, new SplitMix64RandomSource(17));
@@ -227,16 +226,64 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         }
     }
 
-    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false) =>
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    public void StockCallersIgnoreUnusedRewardScoresAndDiaryMetadata(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        using var diary = TestFixtures.ReadVerifiedExpected("strategic-research-diary-execution");
+        var content = Content(cache, false, 2, otherPoints: mode == 0 ? 2 : 1, rewardLookup: mode == 1, extraResearch: "  - {name: UNLOCK, cost: 1}");
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 32; seed++)
+        {
+            var initial = Snapshot(content, seed);
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            long work = 0;
+            Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast));
+            Assert.Null(forecast.ScoreChange);
+            Assert.Null(forecast.DiaryEntries);
+            Assert.Null(forecast.CompletedResearch);
+            Assert.Equivalent(initial, campaign.Capture(), strict: true);
+            long exactWork = 0;
+            Assert.False(campaign.ResearchPreflight.TryForecastDailyStocks(ref exactWork, out _, includeDiscoveries: true));
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
+            choices.Add(choice);
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchScopedRewardRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { mode, choice, after.CompletedResearch.Contains("EQUIV_Z"),
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1, forecast.Arrivals[initial.Bases[0].Id].Count,
+                after.NextIds["EQUIV_COUNTER"], after.ResearchScores[^1] - initial.ResearchScores[^1] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            var expectedDiary = TestFixtures.Rows(diary.RootElement, "stockScopeRows").Single(row => row[0].GetInt32() == mode && row[1].GetInt32() == choice);
+            Assert.Equal(expectedDiary[2].EnumerateArray().Select(entry => entry.GetString()), after.ResearchDiary.Select(entry => entry.RuleId));
+            Assert.True(Assert.Single(after.World.Ufos).Hunting);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "scoped-research-stock.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+        Assert.Equal(2, choices.Count);
+        var unsafeInitial = Snapshot(content, 17) with { ResearchScores = [int.MaxValue] };
+        AssertTimeBlocked(CampaignState.Restore(unsafeInitial, content, new SplitMix64RandomSource(17)), "Research and production scores exceed the supported range.");
+        unsafeInitial = Snapshot(content, 17) with { ResearchDiarySequence = ulong.MaxValue };
+        AssertTimeBlocked(CampaignState.Restore(unsafeInitial, content, new SplitMix64RandomSource(17)), "Research diary exceeds its supported population or identity range.");
+    }
+
+    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false, bool rewardLookup = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
         facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
         ufos: [{type: UFO_HUNTER, radarRange: 20000}]
         research:
           - {name: CORE, cost: 1, points: 1, getOneFree: [{{labels ?? "EQUIV_A, " + (duplicate ? "EQUIV_A, " : "") + "EQUIV_B"}}], spawnedItem: SUPPLY, spawnedItemCount: 1, increaseCounter: [EQUIV_COUNTER]}
-          - {name: EQUIV_A, cost: {{(convergent ? 0 : 1)}}, points: 1{{(convergent ? ", dependencies: [CORE]" : "")}}{{(unequalStatus ? ", disables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{count}}, increaseCounter: [EQUIV_COUNTER]}
+          - {name: EQUIV_A, cost: {{(convergent ? 0 : 1)}}, points: 1{{(rewardLookup ? ", lookup: EQUIV_Z" : "")}}{{(convergent ? ", dependencies: [CORE]" : "")}}{{(unequalStatus ? ", disables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{count}}, increaseCounter: [EQUIV_COUNTER]}
           - {name: EQUIV_B, cost: {{(convergent ? 0 : 1)}}{{(convergent ? ", dependencies: [CORE]" : "")}}, points: {{otherPoints}}{{(unequalStatus ? ", reenables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{otherCount ?? count}}, increaseCounter: [{{otherCounter}}]}
-          {{(unequalStatus ? "- {name: EQUIV_Z, cost: 1}" : "")}}
+          {{(unequalStatus || rewardLookup ? "- {name: EQUIV_Z, cost: 1, points: 0}" : "")}}
         {{extraResearch}}
         {{extra}}
         """, extraRulesAfterOverlays: true);

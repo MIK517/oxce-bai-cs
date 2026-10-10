@@ -14,9 +14,10 @@ internal sealed record DailyResearchStockForecast(
     public IReadOnlySet<string>? CompletedResearch { get; init; }
     public IReadOnlyDictionary<string, int>? ResearchStatuses { get; init; }
     public IReadOnlyDictionary<int, IReadOnlySet<string>>? ActiveResearch { get; init; }
-    public long ScoreChange { get; init; }
+    // Scalar metadata is supplied only for exact discovery projections.
+    public long? ScoreChange { get; init; }
     public long Work { get; init; }
-    public long DiaryEntries { get; init; }
+    public long? DiaryEntries { get; init; }
 }
 
 public sealed partial class CampaignState
@@ -235,9 +236,9 @@ public sealed partial class CampaignState
             ActiveResearch = includeDiscoveries ? projects.ToFrozenDictionary(pair => pair.Key, pair =>
                 (IReadOnlySet<string>)pair.Value.Select(project => rules.Research.GetExternalId(project.Rule))
                     .Where(id => statuses.GetValueOrDefault(id) != 2).ToFrozenSet(StringComparer.Ordinal)) : null,
-            ScoreChange = scoreChange,
+            ScoreChange = includeDiscoveries ? scoreChange : null,
             Work = work,
-            DiaryEntries = diaryEntries,
+            DiaryEntries = includeDiscoveries ? diaryEntries : null,
         };
         return true;
 

@@ -833,6 +833,24 @@ for(auto* topic:primary) caller.spawn(topic,&mod,&base);
 const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
 std::cout << '[' << repeats << ',' << choice << ',' << (bonus==a?1:2) << ',' << base.storage.count << ',' << transfers << ',' << saved.researchScore << ']';
 }
+std::cout << "],\"researchScopedRewardRows\":[";
+serviceFirst=true;
+for(int mode:{0,1}) for(int choice:{0,1}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+ResearchRule topics[4]; auto* source=&topics[0]; auto* a=&topics[1]; auto* b=&topics[2]; auto* z=&topics[3];
+source->name="CORE"; a->name="EQUIV_A"; b->name="EQUIV_B"; z->name="EQUIV_Z"; z->points=0;
+b->points=mode==0?2:1; if(mode==1) a->lookup=z;
+source->free={a,b}; source->spawned=a->spawned=b->spawned="SUPPLY"; source->count=1; a->count=b->count=2;
+source->increases=a->increases=b->increases={"EQUIV_COUNTER"};
+SavedGame saved; Mod mod; mod.rules={source,a,b,z}; Base base; ResearchCaller caller; saved._ids["EQUIV_COUNTER"]=1;
+RNG::suppliedChoice=choice; auto* bonus=saved.selectGetOneFree(source); RNG::suppliedChoice=-1;
+saved.addFinishedResearch(bonus,&mod,&base); if(bonus->lookup) saved.addFinishedResearch(bonus->lookup,&mod,&base); saved.addFinishedResearch(source,&mod,&base);
+auto primary=ResearchCaller::primary(source,bonus); std::sort(primary.begin(),primary.end()); primary.erase(std::unique(primary.begin(),primary.end()),primary.end());
+for(auto* topic:primary) { caller.spawn(topic,&mod,&base); saved.applyPrimaryCounters(topic); }
+const auto transfers=base.transfers.size(); for(auto* transfer:base.transfers) { transfer->advance(&base); delete transfer; }
+std::cout << '[' << mode << ',' << choice << ',' << (saved.isResearched(z,false)?"true":"false") << ',' << base.storage.count
+<< ',' << transfers << ',' << saved._ids["EQUIV_COUNTER"] << ',' << saved.researchScore << ']';
+}
 std::cout << "],\"researchRewardRows\":[";
 serviceFirst=true;
 for(bool sequential:{false,true}) for(bool duplicate:{false,true}) for(int aState:{0,1,2}) for(int bState:{0,1,2}) for(bool gate:{false,true}) {
