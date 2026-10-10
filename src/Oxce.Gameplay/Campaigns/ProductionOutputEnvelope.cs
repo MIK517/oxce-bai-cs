@@ -2,13 +2,25 @@ using Oxce.Mods.Rulesets.EquipmentProduction;
 
 namespace Oxce.Gameplay.Campaigns;
 
-/// <summary>Pure upper quantities for Production::step choices; never selects an outcome.</summary>
+/// <summary>Pure upper quantities and optional present-item lower bounds; never selects an outcome.</summary>
 internal static class ProductionOutputEnvelope
 {
     internal static bool TryCreate(IReadOnlyList<RandomProducedItems> choices,
-        Func<string, bool> allowsVariation, ref long work, out IReadOnlyDictionary<string, int>? items)
+        Func<string, bool> allowsVariation, ref long work, out IReadOnlyDictionary<string, int>? items) =>
+        TryCreate(choices, allowsVariation, null, ref work, out items, out _);
+
+    internal static bool TryCreateQuantityRanges(IReadOnlyList<RandomProducedItems> choices,
+        Func<string, bool> allowsVariation, Func<string, bool> allowsQuantityVariation, ref long work,
+        out IReadOnlyDictionary<string, int>? items, out IReadOnlyDictionary<string, int>? minimum) =>
+        TryCreate(choices, allowsVariation, allowsQuantityVariation, ref work, out items, out minimum);
+
+    private static bool TryCreate(IReadOnlyList<RandomProducedItems> choices,
+        Func<string, bool> allowsVariation, Func<string, bool>? allowsQuantityVariation, ref long work,
+        out IReadOnlyDictionary<string, int>? items, out IReadOnlyDictionary<string, int>? minimum)
     {
         items = null;
+        minimum = null;
+        Dictionary<string, int>? quantityMinimum = null;
         Dictionary<string, (int Maximum, int Minimum, int Present)> bounds = new(StringComparer.Ordinal);
         var count = 0;
         foreach (var choice in choices)
@@ -31,7 +43,12 @@ internal static class ProductionOutputEnvelope
             if (++work > 1_000_000) return false;
             if (item.Value.Present == count && item.Value.Minimum == item.Value.Maximum) continue;
             differs = true;
-            if (!allowsVariation(item.Key)) return false;
+            if (allowsVariation(item.Key)) continue;
+            // Quantity ranges do not waive presence or ordered reuse effects.
+            // Even a zero-quantity present entry executes the native reuse call.
+            if (item.Value.Present != count || allowsQuantityVariation?.Invoke(item.Key) != true) return false;
+            if (++work > 1_000_000) return false;
+            (quantityMinimum ??= new(StringComparer.Ordinal)).Add(item.Key, item.Value.Minimum);
         }
         // Reuse changes craft status immediately. Even identical quantities must
         // retain the relative delivery order of effects that are not inert.
@@ -46,6 +63,7 @@ internal static class ProductionOutputEnvelope
             else if (!effectOrder.SequenceEqual(order, StringComparer.Ordinal)) return false;
         }
         if (differs) items = bounds.ToDictionary(item => item.Key, item => item.Value.Maximum, StringComparer.Ordinal);
+        minimum = quantityMinimum;
         return true;
     }
 }

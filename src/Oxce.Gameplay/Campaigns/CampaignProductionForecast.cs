@@ -5,9 +5,11 @@ namespace Oxce.Gameplay.Campaigns;
 /// <summary>Production-owned hourly stock projections and ID bounds before world creation.</summary>
 internal interface ICampaignProductionPreflight
 {
+    // Stocks and uncertainty are caller-owned scratch maps; the operation may
+    // add a base uncertainty map when random output quantities first vary.
     string? ForecastStocks(IReadOnlyDictionary<int, List<CampaignState.CraftState>> crafts,
         IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stocks,
-        IReadOnlyDictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stockUncertainty,
+        Dictionary<int, Dictionary<RuleHandle<ItemRuleFamily>, int>> stockUncertainty,
         int? nextResearchTransferId, bool uncertainResearch, IReadOnlyList<CustomCounterChange>? researchCounters,
         CampaignTimeTrigger highest, ref long work);
     string? CraftRemovalWork(int ufos, CampaignTimeTrigger highest, ref long work, out IReadOnlySet<string> types);
