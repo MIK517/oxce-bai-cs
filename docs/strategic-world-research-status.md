@@ -1914,3 +1914,23 @@ absence of empty keys and unrelated counter conservation. Fresh/cache cases
 observe both actual reward choices across 32 saved seeds, ordered forecast effects,
 hunter relaunch and three save rewrites. Saved empty identity names remain subject
 to the existing malformed-input validation. Previous native rows are unchanged.
+
+### Multi-base reward and arrival composition (2026-10-10)
+
+Twenty-four strategic-hunting native rows cover two nested selections from three
+reward identities across two/three finishing bases, with existing incoming item
+transfers. They run the native reward selector, discovery, primary spawn/counter
+callers and Transfer::advance in reference order. Sixteen fresh/cache execution
+cases observe all six ordered paths across 32 saved seeds, both saved base orders,
+scarce item-fuel relaunch/hunting, transfer identity totals, actual stock/counter/
+score outputs, three rewrites and stepped/batched pursuit continuation.
+
+Three bases exhaust the pool and agree on exact completed/status/project state;
+two bases retain differing identities and remain refused for exact consumers.
+Two further cases compose repeated future events with the common closure,
+preserve their identities/countdowns over rewrites, and reserve the due branch 6
+payload boundary before mutation. All 18 new composition cases pass. Reference
+GeoscapeState daily/hourly/half-hour fallthrough and existing strategic-event
+fixtures establish the unchanged event boundary. Previous native rows are unchanged.
+
+Slice verification: all 34 reward cases and all 18 composition cases pass. Full formatting verification, regenerated code-map and diff checks pass; the pinned reference remains clean and obsolete probe objects were removed.
