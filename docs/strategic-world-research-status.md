@@ -1972,3 +1972,28 @@ refund/corpse, nonempty counter and work-limit cases. Full formatting, code-map
 and diff checks pass; no confirmed issue was found. Useful native captures remain
 and the obsolete object was removed. The next two slices and cycle batch audit
 are pending; the latest full root gate is the prior 4,834-test cycle acceptance.
+
+### Ordered stock-only research arrivals (2026-10-10)
+
+Stock-only projections now canonicalize non-BT_NONE item arrivals while preserving
+all duplicate transfer entries and the ordered BT_NONE subsequence. Exact discovery
+projections retain native order. Reference Craft::reuseItem can mark only the first
+of two different ammunition types before its status becomes rearming, so reusable
+arrivals cannot be treated as a multiset. ItemsArrivingState excludes every other
+battle type from reuse; their positive stock additions and identity counts commute.
+The sort, classification and copying consume the shared work budget before allocation.
+
+Reference: GeoscapeState::time1Day/time1Hour, primary research spawned-item callers,
+Transfer::advance, ItemsArrivingState and Craft::reuseItem at the pinned revision.
+All stock-only consumers were reviewed: counter and production identity callers
+consume counters; hunting consumes positive arrivals, transfer counts and the
+reusable subsequence after hourly service. Exact world/diary/price consumers remain
+ordered. Four native researchOrderedArrivalRows cover reversed CLIP/SUPPLY lists
+and duplicate clips, with exact transfer order, quantities and score. Fresh/cache
+execution cases observe both actual choices, exact ordered projections, identity
+multiplicity, fuel relaunch/hunting, exhausted-budget purity and three save rewrites.
+This is cycle 30 slice two; broader composition and batch acceptance remain pending.
+
+Slice verification: four new arrival-order cases, full formatting, regenerated
+code-map and diff checks pass. Previous native rows are unchanged; reference
+checkout remains clean. No confirmed issue in interim consumer review.

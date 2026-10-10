@@ -6,6 +6,8 @@ namespace Oxce.Gameplay.Campaigns;
 
 internal sealed record DailyResearchStockForecast(
     IReadOnlyDictionary<int, IReadOnlyDictionary<string, int>> StockChanges,
+    // Exact projections retain native order. Stock-only projections keep reusable
+    // items in order and canonicalize the other arrivals, without merging transfers.
     IReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>> Arrivals)
 {
     public string? UnavailableReason { get; init; }
@@ -221,6 +223,7 @@ public sealed partial class CampaignState
             }
             nextTransfer = (int)((long)NextTransferId() + arrivalCount);
         }
+        if (!includeDiscoveries && !CanonicalizeResearchStockArrivals(arrivals, ref work)) return false;
         if (includeDiscoveries)
         {
             work += completed.Count + (long)statuses.Count + projects.Values.Sum(local => (long)local.Count) + projects.Count;
@@ -256,6 +259,35 @@ public sealed partial class CampaignState
                 changes[baseId][itemId] = checked(changes[baseId].GetValueOrDefault(itemId) + quantity);
             }
         }
+    }
+
+    private bool CanonicalizeResearchStockArrivals(Dictionary<int, List<KeyValuePair<string, int>>> arrivals, ref long work)
+    {
+        var rules = _content.RuntimeRules;
+        foreach (var owner in arrivals)
+        {
+            var count = owner.Value.Count;
+            var levels = 0;
+            for (var remaining = count; remaining > 1; remaining = (remaining + 1) / 2) levels++;
+            // Bound classification, allocations, sort comparisons and copying before work.
+            work += 1L + count * (levels + 4L);
+            if (work > 1_000_000) return false;
+            if (count < 2) continue;
+            List<KeyValuePair<string, int>> reusable = new(count), other = new(count);
+            foreach (var item in owner.Value)
+                (rules.Items[rules.Items.GetRequired(item.Key)].Value.BattleType == 0 ? reusable : other).Add(item);
+            other.Sort(static (first, second) =>
+            {
+                var identity = StringComparer.Ordinal.Compare(first.Key, second.Key);
+                return identity != 0 ? identity : first.Value.CompareTo(second.Value);
+            });
+            // ItemsArrivingState skips non-BT_NONE items. They cannot interrupt
+            // reuse, but two different reusable clips can: retain that subsequence.
+            owner.Value.Clear();
+            owner.Value.AddRange(reusable);
+            owner.Value.AddRange(other);
+        }
+        return true;
     }
 
     bool ICampaignResearchPreflight.HasDisabledDailyProjects(ref long work)
