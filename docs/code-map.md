@@ -18,14 +18,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 | [Oxce.Extensions.Abstractions](#oxceextensionsabstractions) | 3 | - |
 | [Oxce.Extensions](#oxceextensions) | 3 | Core, Extensions.Abstractions, Gameplay |
 | [Oxce.Formats](#oxceformats) | 34 | Core |
-| [Oxce.Gameplay](#oxcegameplay) | 164 | Core, Mods, Scripting |
+| [Oxce.Gameplay](#oxcegameplay) | 166 | Core, Mods, Scripting |
 | [Oxce.Mods](#oxcemods) | 92 | Core, Formats, Scripting |
 | [Oxce.Platform.Sdl](#oxceplatformsdl) | 11 | Core, Engine, Rendering |
 | [Oxce.Rendering](#oxcerendering) | 5 | Core |
 | [Oxce.Resources](#oxceresources) | 1 | Core, Formats, Mods, Rendering |
 | [Oxce.Savegames](#oxcesavegames) | 5 | Core, Formats, Gameplay, Mods |
 | [Oxce.Scripting](#oxcescripting) | 25 | Core |
-| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 290 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
+| [Oxce.CompatibilityTests](#oxcecompatibilitytests) | 291 | Core, Engine, FixtureSupport, Formats, Gameplay, Mods, Rendering, ResourceBrowser, Resources, Savegames, Scripting |
 | [Oxce.TestExtension](#oxcetestextension) | 1 | Extensions.Abstractions |
 | [Oxce.UnitTests](#oxceunittests) | 92 | Core, Engine, Extensions, Extensions.Abstractions, FixtureSupport, Formats, Mods, Platform.Sdl, Rendering, Resources, Savegames, Scripting, TestExtension |
 | [Oxce.FixtureSupport](#oxcefixturesupport) | 6 | - |
@@ -292,7 +292,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.Gameplay
 
-`src/Oxce.Gameplay` - 164 files.
+`src/Oxce.Gameplay` - 166 files.
 
 ### `Oxce.Gameplay`
 
@@ -814,6 +814,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `RuntimeItemAccuracy` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs) - Raw rule action accuracy before tactical bonuses and random rolls.
 - `RuntimeItemRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeArmorRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
+- `RuntimeArmorScriptFields` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs) - Remaining read-only Armor::ScriptRegister providers: side armor in UnitSide order (front, left = side + leftArmorDiff, right, rear, under...
 - `RuntimeArmorVision` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs) - Immutable Armor vision and light metadata, before tactical calculations.
 - `RuntimeSoldierRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
 - `RuntimeSoldierBonusRule` (record) [RuntimeRuleProjections.cs](../src/Oxce.Mods/Rulesets/Runtime/RuntimeRuleProjections.cs)
@@ -1055,14 +1056,14 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 
 ## Oxce.CompatibilityTests
 
-`tests/Oxce.CompatibilityTests` - 290 files.
+`tests/Oxce.CompatibilityTests` - 291 files.
 
 ### `Oxce.CompatibilityTests`
 
 - `StrategicReadinessTestContent` (internal class) [StrategicReadinessTestContent.cs](../tests/Oxce.CompatibilityTests/StrategicReadinessTestContent.cs)
 - `StrategicWorldTestSupport` (internal class) [StrategicWorldTestSupport.cs](../tests/Oxce.CompatibilityTests/StrategicWorldTestSupport.cs) - Shared setup and assertions for the strategic-world compatibility tests.
 
-<details><summary>288 test classes</summary>
+<details><summary>289 test classes</summary>
 
 - `BinaryFixtureTests` ([BinaryFixtureTests.cs](../tests/Oxce.CompatibilityTests/BinaryFixtureTests.cs))
 - `CampaignFoundationFixtureTests` ([CampaignFoundationFixtureTests.cs](../tests/Oxce.CompatibilityTests/CampaignFoundationFixtureTests.cs))
@@ -1196,6 +1197,7 @@ line numbers are omitted so that ordinary edits do not invalidate the map.
 - `StrategicWorldDailyWaveResearchTests` ([StrategicWorldDailyWaveResearchTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDailyWaveResearchTests.cs))
 - `StrategicWorldDetectionBindingTests` ([StrategicWorldDetectionBindingTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBindingTests.cs))
 - `StrategicWorldDetectionBoundedQueriesTests` ([StrategicWorldDetectionBoundedQueriesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionBoundedQueriesTests.cs))
+- `StrategicWorldDetectionClosureTests` ([StrategicWorldDetectionClosureTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionClosureTests.cs))
 - `StrategicWorldDetectionConsumedFieldsTests` ([StrategicWorldDetectionConsumedFieldsTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionConsumedFieldsTests.cs))
 - `StrategicWorldDetectionCountryTests` ([StrategicWorldDetectionCountryTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionCountryTests.cs))
 - `StrategicWorldDetectionInventoryRulesTests` ([StrategicWorldDetectionInventoryRulesTests.cs](../tests/Oxce.CompatibilityTests/StrategicWorldDetectionInventoryRulesTests.cs))

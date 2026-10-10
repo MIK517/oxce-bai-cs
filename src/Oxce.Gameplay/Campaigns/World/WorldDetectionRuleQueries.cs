@@ -12,6 +12,10 @@ internal static class WorldDetectionRuleQueries
         "RuleArmor.getCamouflageAtDark" or "RuleArmor.getCamouflageAtDay" or "RuleArmor.getAntiCamouflageAtDark" or
         "RuleArmor.getAntiCamouflageAtDay" or "RuleArmor.getHeatVision" or "RuleArmor.getVisibilityThroughFire" or
         "RuleArmor.getPersonalLight" or "RuleArmor.getPersonalLightHostile" or "RuleArmor.getPersonalLightNeutral" or
+        "RuleArmor.getDrawingRoutine" or "RuleArmor.getDrawBubbles" or "RuleArmor.getDeathFrames" or "RuleArmor.getConstantAnimation" or
+        "RuleArmor.MoveCost.getBaseTimePercent" or "RuleArmor.MoveCost.getBaseEnergyPercent" or
+        "RuleArmor.MoveCost.getBaseNormalTimePercent" or "RuleArmor.MoveCost.getBaseNormalEnergyPercent" or
+        "RuleArmor.MoveCost.getBaseFlyTimePercent" or "RuleArmor.MoveCost.getBaseFlyEnergyPercent" or
         "RuleCraft.getPilotsMax" or "RuleCraft.getSoldiersMax" or "RuleCraft.getVehiclesMax" or "RuleCraft.getWeaponsMax" or
         "RuleUfo.getRadius" or "RuleUfo.getWeaponRange" or "RuleUfo.getWeaponPower" or "RuleUfo.getWeaponReload" or
         "RuleInventory.getType" or "RuleInventory.isRightHand" or "RuleInventory.isLeftHand" or

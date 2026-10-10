@@ -304,6 +304,7 @@ public static class RuntimeRuleLinker
                     rule.Value.Integers["personalLight"],
                     rule.Value.Integers["personalLightHostile"],
                     rule.Value.Integers["personalLightNeutral"]),
+                Script = ArmorScriptFields(rule.Value, itemHandles, researchHandles),
             });
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -917,6 +918,25 @@ public static class RuntimeRuleLinker
         Dictionary<string, RuleHandle<TFamily>> handles,
         IEnumerable<string> ids) => new(ids.Select(id =>
             new RuntimeRuleReference<TFamily>(id, OptionalRuntime(handles, id))));
+
+    private static RuntimeArmorScriptFields ArmorScriptFields(ArmorRule armor,
+        Dictionary<string, RuleHandle<ItemRuleFamily>> items, Dictionary<string, RuleHandle<ResearchRuleFamily>> research)
+    {
+        var integers = armor.Integers;
+        (int, int) Cost(string key) => (armor.MoveCosts[key].TimePercent, armor.MoveCosts[key].EnergyPercent);
+        return new(
+            Array.AsReadOnly([integers["frontArmor"], unchecked(integers["sideArmor"] + integers["leftArmorDiff"]),
+                integers["sideArmor"], integers["rearArmor"], integers["underArmor"]]),
+            integers["drawingRoutine"],
+            armor.Booleans["drawBubbles"],
+            integers["deathFrames"],
+            armor.Booleans["constantAnimation"],
+            Cost("basePercent"),
+            Cost("baseNormalPercent"),
+            Cost("baseFlyPercent"),
+            Array.AsReadOnly(armor.CorpseBattle.Select(id => OptionalItem(items, id)).ToArray()),
+            OptionalRuntime(research, armor.Strings["requires"]));
+    }
 
     private static RuleHandle<ItemRuleFamily>? OptionalItem(
         Dictionary<string, RuleHandle<ItemRuleFamily>> handles,

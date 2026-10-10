@@ -71,6 +71,10 @@ internal sealed partial class CampaignWorld
         return values.GetValueOrDefault(key!);
     }
 
+    /// <summary>Armor::getArmor through getArmorValueScript: sides outside 0..SIDE_MAX-1 read zero.</summary>
+    internal static int DetectionArmorSide(RuntimeArmorRule? rule, int side) =>
+        rule is not null && (uint)side < (uint)rule.Script.Sides.Count ? rule.Script.Sides[side] : 0;
+
     internal static int DetectionArmorValue(string name, RuntimeArmorRule rule)
     {
         if (DetectionUnitRuleStat(name) is (4, { } key)) return rule.Stats.GetValueOrDefault(key);
@@ -88,6 +92,16 @@ internal sealed partial class CampaignWorld
             "RuleArmor.getPersonalLight" => rule.Vision.PersonalLight,
             "RuleArmor.getPersonalLightHostile" => rule.Vision.PersonalLightHostile,
             "RuleArmor.getPersonalLightNeutral" => rule.Vision.PersonalLightNeutral,
+            "RuleArmor.getDrawingRoutine" => rule.Script.DrawingRoutine,
+            "RuleArmor.getDrawBubbles" => rule.Script.DrawBubbles ? 1 : 0,
+            "RuleArmor.getDeathFrames" => rule.Script.DeathFrames,
+            "RuleArmor.getConstantAnimation" => rule.Script.ConstantAnimation ? 1 : 0,
+            "RuleArmor.MoveCost.getBaseTimePercent" => rule.Script.MoveCostBase.Time,
+            "RuleArmor.MoveCost.getBaseEnergyPercent" => rule.Script.MoveCostBase.Energy,
+            "RuleArmor.MoveCost.getBaseNormalTimePercent" => rule.Script.MoveCostBaseNormal.Time,
+            "RuleArmor.MoveCost.getBaseNormalEnergyPercent" => rule.Script.MoveCostBaseNormal.Energy,
+            "RuleArmor.MoveCost.getBaseFlyTimePercent" => rule.Script.MoveCostBaseFly.Time,
+            "RuleArmor.MoveCost.getBaseFlyEnergyPercent" => rule.Script.MoveCostBaseFly.Energy,
             _ => throw new InvalidOperationException("Detection armor provider was not preflighted."),
         };
     }

@@ -172,8 +172,7 @@ public sealed partial class CampaignState
         "GeoscapeGame.getTime" or "GeoscapeGame.isResearched" or "RuleMod.getRuleItem" or "RuleMod.getRuleResearch" or
         "RuleResearch.getCost" or "RuleResearch.getPoints" or "RuleResearch.getLookup" or "RuleResearch.getNeededItem" or
         "RuleMod.getMaxViewDistance" or "RuleMod.getMaxDarknessToSeeUnits" or "RuleMod.getSmokeReduction" or
-        "RuleItem.getType" or "RuleItem.hasCategory" or "Time.getDay" or "Time.getMonth" or
-        "Time.getYear" or "Time.getHour" or "Time.getMinute" or "Time.getSecond" or "Time.getSecondsPastMidnight";
+        "RuleItem.getType" or "RuleItem.hasCategory" || CampaignTimeScriptValues.Supports(name);
 
     private ScriptBindingResult InvokePriceBinding(ScriptBindingDeclaration binding, Span<ScriptRuntimeValue> args, PriceForecastContext forecast, object timeReference)
     {
@@ -263,13 +262,7 @@ public sealed partial class CampaignState
                     "RuleItem.getBattleType" => item?.Rule.BattleType ?? 0,
                     "RuleResearch.getCost" => researchRule?.Cost ?? 0,
                     "RuleResearch.getPoints" => researchRule?.Points ?? 0,
-                    "Time.getDay" => time.Day,
-                    "Time.getMonth" => time.Month,
-                    "Time.getYear" => time.Year,
-                    "Time.getHour" => time.Hour,
-                    "Time.getMinute" => time.Minute,
-                    "Time.getSecond" => time.Second,
-                    "Time.getSecondsPastMidnight" => time.Hour * 3600 + time.Minute * 60 + time.Second,
+                    _ when CampaignTimeScriptValues.Supports(name) => CampaignTimeScriptValues.Value(name, time),
                     _ => throw new InvalidOperationException("Price provider was not preflighted."),
                 });
                 break;
