@@ -1841,3 +1841,19 @@ seeds, same-tick site expiry, hunter relaunch, pure forecasts and three save rew
 No event, combat, deployment or campaign-month boundary is enabled.
 
 Validation: all 306 existing site-research cases pass; full formatting verification, code-map and diff checks pass. Useful captures remain; the temporary probe object was removed.
+
+### Weighted duplicate reward proof paths (2026-10-10)
+
+Pure daily projections now retain only the first candidate index for each distinct
+reward identity at a given branch. The actual selector still consumes the full
+ordered candidate list, retaining duplicate weights and protected-list semantics.
+Every label is charged to the work budget, and stored distinct paths remain capped
+at 4,096 nodes. Repeated labels therefore do not unnecessarily exhaust the path
+limit; 4,097 distinct choices still refuse before unbounded expansion.
+
+Reference: SavedGame::selectGetOneFree and its ordered candidate construction.
+strategic-hunting adds four controlled endpoint draws with 3/4,096 repeated labels;
+all previous rows are unchanged. All 24 reward cases pass, including explicit
+saved seeds for both weighted outcomes, common stock purity, hunter relaunch,
+three save rewrites, unequal consequences and distinct-identity/work limits.
+No runtime selection, cache schema or later-branch boundary changes.

@@ -96,8 +96,10 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         long exhausted = 999_999;
         Assert.False(limited.ResearchPreflight.TryForecastDailyStocks(ref exhausted, out _));
         Assert.Equivalent(initial, limited.Capture(), strict: true);
-        var labels = string.Join(", ", Enumerable.Repeat("EQUIV_A", 4096).Append("EQUIV_B"));
-        var oversized = Content(cache, false, 2, labels: labels);
+        var identities = Enumerable.Range(0, 4097).Select(index => "LIMIT_REWARD_" + index).ToArray();
+        var labels = string.Join(", ", identities);
+        var extraResearch = string.Join("\n", identities.Select(id => "  - {name: " + id + ", cost: 1}"));
+        var oversized = Content(cache, false, 2, labels: labels, extraResearch: extraResearch);
         limited = CampaignState.Restore(Snapshot(oversized, 17), oversized, new SplitMix64RandomSource(17));
         initial = limited.Capture();
         long branching = 0;
@@ -187,7 +189,45 @@ public sealed class StrategicWorldResearchStockAlternativesTests
         Assert.Equal(2, choices.Count);
     }
 
-    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, bool convergent = false, bool unequalStatus = false) =>
+    [Theory]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    [InlineData(false, 4096)]
+    [InlineData(true, 4096)]
+    public void WeightedDuplicateLabelsShareProofWithoutChangingActualSelection(bool cache, int repeats)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var labels = string.Join(", ", Enumerable.Repeat("EQUIV_A", repeats).Append("EQUIV_B"));
+        var content = Content(cache, false, 2, labels: labels);
+        foreach (var seed in new ulong[] { 1, repeats == 3 ? 7UL : 221UL })
+        {
+            var predictedChoice = new SplitMix64RandomSource(seed).NextExclusive(repeats + 1) == repeats ? 1 : 0;
+            var campaign = CampaignState.Restore(Snapshot(content, seed), content, new SplitMix64RandomSource(seed));
+            var before = campaign.Capture();
+            long work = 0;
+            Assert.True(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out var forecast));
+            Assert.InRange(work, 1, 100_000);
+            Assert.Equivalent(before, campaign.Capture(), strict: true);
+            AdvanceUnblocked(campaign, 1);
+            var after = campaign.Capture();
+            var choice = after.CompletedResearch.Contains("EQUIV_A") ? 0 : 1;
+            Assert.Equal(predictedChoice, choice);
+            var expected = TestFixtures.Rows(oracle.RootElement, "researchWeightedEquivalentRows").Single(row =>
+                row[0].GetInt32() == repeats && row[1].GetInt32() == choice);
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[] { repeats, choice, choice + 1,
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY") + 1, forecast.Arrivals[before.Bases[0].Id].Count,
+                after.ResearchScores[^1] - before.ResearchScores[^1] });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(expected)), CanonicalJson.Normalize(actual));
+            Assert.True(Assert.Single(after.World.Ufos).Hunting);
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "weighted-research-stock.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+    }
+
+    internal static RuntimeContent Content(bool cache, bool duplicate, int count, string extra = "", int? otherCount = null, string otherCounter = "EQUIV_COUNTER", int otherPoints = 1, string? labels = null, string extraResearch = "", bool convergent = false, bool unequalStatus = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
         crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
         facilities: [{type: EQUIV_LAB, mapName: LOGISTICS, labs: 2}]
@@ -197,6 +237,7 @@ public sealed class StrategicWorldResearchStockAlternativesTests
           - {name: EQUIV_A, cost: {{(convergent ? 0 : 1)}}, points: 1{{(convergent ? ", dependencies: [CORE]" : "")}}{{(unequalStatus ? ", disables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{count}}, increaseCounter: [EQUIV_COUNTER]}
           - {name: EQUIV_B, cost: {{(convergent ? 0 : 1)}}{{(convergent ? ", dependencies: [CORE]" : "")}}, points: {{otherPoints}}{{(unequalStatus ? ", reenables: [EQUIV_Z]" : "")}}, spawnedItem: SUPPLY, spawnedItemCount: {{otherCount ?? count}}, increaseCounter: [{{otherCounter}}]}
           {{(unequalStatus ? "- {name: EQUIV_Z, cost: 1}" : "")}}
+        {{extraResearch}}
         {{extra}}
         """, extraRulesAfterOverlays: true);
 

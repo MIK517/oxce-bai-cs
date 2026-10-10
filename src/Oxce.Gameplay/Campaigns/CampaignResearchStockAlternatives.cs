@@ -8,7 +8,7 @@ public sealed partial class CampaignState
     {
         if (TryForecastDailyStockBranch(ref work, out forecast, includeDiscoveries, [], out var pendingChoices)) return true;
         // Branching is safe only when every final consequence consumed by the caller agrees.
-        if (pendingChoices == 0) return false;
+        if (pendingChoices.Count == 0) return false;
         Queue<int[]> pending = [];
         var created = 1;
         if (!EnqueueResearchStockBranches(pending, [], pendingChoices, ref created, ref work)) return false;
@@ -17,7 +17,7 @@ public sealed partial class CampaignState
         {
             if (!TryForecastDailyStockBranch(ref work, out var branch, includeDiscoveries, choices, out pendingChoices))
             {
-                if (pendingChoices == 0)
+                if (pendingChoices.Count == 0)
                 {
                     forecast = branch;
                     return false;
@@ -47,22 +47,27 @@ public sealed partial class CampaignState
         return true;
     }
 
-    private static bool EnqueueResearchStockBranches(Queue<int[]> pending, int[] prefix, int count,
+    private static bool EnqueueResearchStockBranches(Queue<int[]> pending, int[] prefix, IReadOnlyList<string> candidates,
         ref int created, ref long projectionWork)
     {
-        // Bound both repeated projection work and stored branch prefixes before
-        // allocation. Duplicate candidate labels remain in reference order.
-        if (count > MaximumResearchStockAlternatives - created) return false;
-        projectionWork += (long)(prefix.Length + 1) * count;
+        // Duplicate labels weight actual selection, but have the same pure
+        // consequence at this choice. Retain the first index of each identity.
+        projectionWork += candidates.Count;
         if (projectionWork > 1_000_000) return false;
-        for (var index = 0; index < count; index++)
+        HashSet<string> seen = new(StringComparer.Ordinal);
+        for (var index = 0; index < candidates.Count; index++)
         {
+            if (seen.Contains(candidates[index])) continue;
+            if (created == MaximumResearchStockAlternatives) return false;
+            projectionWork += prefix.Length + 1L;
+            if (projectionWork > 1_000_000) return false;
+            seen.Add(candidates[index]);
             var path = new int[prefix.Length + 1];
             prefix.CopyTo(path, 0);
             path[^1] = index;
             pending.Enqueue(path);
+            created++;
         }
-        created += count;
         return true;
     }
 
