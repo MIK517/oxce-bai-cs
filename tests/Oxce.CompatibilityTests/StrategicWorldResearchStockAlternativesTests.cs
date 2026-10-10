@@ -87,7 +87,16 @@ public sealed class StrategicWorldResearchStockAlternativesTests
             long work = 0;
             Assert.False(campaign.ResearchPreflight.TryForecastDailyStocks(ref work, out _));
             Assert.Equivalent(before, campaign.Capture(), strict: true);
-            AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
+            if (content.RuntimeRules.Research[content.RuntimeRules.Research.GetRequired("EQUIV_B")].Value.IncreaseCounters.Contains("OTHER_COUNTER"))
+            {
+                AdvanceUnblocked(campaign, 1);
+                var after = campaign.Capture();
+                var a = after.CompletedResearch.Contains("EQUIV_A");
+                Assert.Equal(a ? 3 : 2, after.NextIds["EQUIV_COUNTER"]);
+                Assert.Equal(a ? 1 : 2, after.NextIds.GetValueOrDefault("OTHER_COUNTER", 1));
+                Reload(content, campaign, 17, "stock-counter-choice.sav");
+            }
+            else AssertTimeBlocked(campaign, "UFO retargeting requires daily research fuel-stock forecasts.");
         }
         var supported = Content(cache, false, 2);
         var limited = CampaignState.Restore(Snapshot(supported, 17), supported, new SplitMix64RandomSource(17));

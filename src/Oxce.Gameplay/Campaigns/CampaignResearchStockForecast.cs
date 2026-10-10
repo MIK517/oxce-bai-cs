@@ -13,6 +13,9 @@ internal sealed record DailyResearchStockForecast(
     public string? UnavailableReason { get; init; }
     public int? NextTransferId { get; init; }
     public IReadOnlyList<CustomCounterChange> CounterChanges { get; init; } = [];
+    // A world summary may retain different ordered counter traces in its exact
+    // alternatives. An empty summary then does not mean that counters are inert.
+    public bool CounterChangesAreCommon { get; init; } = true;
     public IReadOnlySet<string>? CompletedResearch { get; init; }
     public IReadOnlyDictionary<string, int>? ResearchStatuses { get; init; }
     public IReadOnlyDictionary<int, IReadOnlySet<string>>? ActiveResearch { get; init; }
@@ -27,7 +30,7 @@ internal sealed record DailyResearchStockForecast(
     // deltas. Arrival identities, order and transfer counts agree across states.
     public IReadOnlyDictionary<int, IReadOnlyDictionary<string, int>> ArrivalUncertainty { get; init; } =
         FrozenDictionary<int, IReadOnlyDictionary<string, int>>.Empty;
-    // World-only bounded exact states with common refunds/counters/arrival order.
+    // World-only bounded exact states with common refunds and arrival order.
     // Summary discovery identities are guaranteed across every retained state.
     public IReadOnlyList<DailyResearchStockForecast> DiscoveryAlternatives { get; init; } = [];
 }
