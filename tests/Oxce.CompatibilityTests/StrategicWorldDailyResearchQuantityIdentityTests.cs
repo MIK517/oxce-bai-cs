@@ -99,7 +99,7 @@ public sealed class StrategicWorldDailyResearchQuantityIdentityTests
             "Research arrivals exceed the supported stock range.");
     }
 
-    internal static RuntimeContent Content(bool cache, bool person)
+    internal static RuntimeContent Content(bool cache, bool person, bool floorRewardTrace = false, bool differentFinalCounters = false)
     {
         var counter = person ? "STR_SOLDIER" : "PRODUCED_CRAFT";
         return StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$"""
@@ -112,9 +112,9 @@ public sealed class StrategicWorldDailyResearchQuantityIdentityTests
               - {type: QUANTITY_WORKSHOP, mapName: LOGISTICS, labs: 2, workshops: 2, personnel: 20}
             research:
               - {name: UNLOCK, cost: 1}
-              - {name: CORE, cost: 1, points: 1, getOneFree: [EQUIV_A, EQUIV_B], spawnedItem: SUPPLY, spawnedItemCount: 1, increaseCounter: [{{counter}}], decreaseCounter: [{{counter}}, {{counter}}]}
-              - {name: EQUIV_A, cost: 1, points: 1, spawnedItem: SUPPLY, spawnedItemCount: 2, increaseCounter: [{{counter}}, {{counter}}], decreaseCounter: [{{counter}}]}
-              - {name: EQUIV_B, cost: 1, points: 1, spawnedItem: SUPPLY, spawnedItemCount: 3, increaseCounter: [{{counter}}, {{counter}}], decreaseCounter: [{{counter}}]}
+              - {name: CORE, cost: 1, points: 1, getOneFree: [EQUIV_A, EQUIV_B], spawnedItem: SUPPLY, spawnedItemCount: 1, increaseCounter: [{{(floorRewardTrace ? "EQUIV_COUNTER" : counter)}}], decreaseCounter: [{{counter}}, {{counter}}]}
+              - {name: EQUIV_A, cost: 1, points: 1, spawnedItem: SUPPLY, spawnedItemCount: 2, increaseCounter: [{{(floorRewardTrace ? counter : counter + ", " + counter)}}], decreaseCounter: [{{(floorRewardTrace ? "" : counter)}}]}
+              - {name: EQUIV_B, cost: 1, points: 1, spawnedItem: SUPPLY, spawnedItemCount: 3, increaseCounter: [{{counter}}, {{counter}}], decreaseCounter: [{{(differentFinalCounters ? "" : counter)}}]}
             manufacture:
               - {name: QUANTITY_BIRTH, time: 1, {{(person ? "producedItems: {SUPPLY: 0}, spawnedPersonType: RECRUIT" : "category: STR_CRAFT, producedItems: {PRODUCED_CRAFT: 1}")}}}
             """, extraRulesAfterOverlays: true);
