@@ -2025,3 +2025,17 @@ native rows remain identical. Cycle 30 batch audit/root acceptance follows.
 Slice verification: full formatting, regenerated code-map and diff checks pass.
 All ten arrival cases passed after the seed coverage correction; the final edit
 only fixes initializer layout. No unexpected access denial; reference clean.
+
+### Arrival-order cycle batch acceptance (2026-10-10)
+
+The cycle 30 batch audit found no additional confirmed runtime issue. Root dotnet
+test passes all 4,848 tests with zero failures/skips in 6m26s809ms. Full formatting,
+regenerated code-map, diff, fixture checksums, private corpus and existing populated
+allocation/endurance gates pass with their limits unchanged. Reviewed every
+stock-only consumer, BT_NONE reuse ordering, duplicate transfer identities, positive
+stock/range checks, pure work/RNG/state and exact-versus-common projections.
+Useful native captures remain; the obsolete object was removed and the reference
+checkout is clean. No unexpected access denial occurred.
+
+This closes cycle 30. Remaining production/transfer and wider consumed research/site
+compositions plus final guard reconciliation keep 4c open. Branch 4d is untouched.
