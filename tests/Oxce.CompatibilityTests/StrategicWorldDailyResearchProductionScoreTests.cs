@@ -78,7 +78,7 @@ public sealed class StrategicWorldDailyResearchProductionScoreTests
             "Research and production scores exceed the supported range.");
     }
 
-    internal static RuntimeContent Content(bool cache, int mode, bool stopped, bool uncertainOffset = false) =>
+    internal static RuntimeContent Content(bool cache, int mode, bool stopped, bool uncertainOffset = false, bool withSite = false) =>
         StrategicReadinessTestContent.Load(["strategic-world.rul"], cache, $$$"""
             crafts: [{type: SHIP, fuelMax: 1000, refuelRate: 40, refuelItem: SUPPLY, autoPatrol: true}]
             ufos: [{type: UFO_HUNTER, radarRange: 20000}]
@@ -90,11 +90,13 @@ public sealed class StrategicWorldDailyResearchProductionScoreTests
               - {name: CORE, cost: 1, points: {{{(mode == 0 ? -4 : 4)}}}, getOneFree: [EQUIV_A, EQUIV_B], spawnedItem: SUPPLY, spawnedItemCount: 1, increaseCounter: [EQUIV_COUNTER]}
               - {name: EQUIV_A, cost: 1, points: {{{(mode == 0 ? 3 : -3)}}}, spawnedItem: SUPPLY, spawnedItemCount: 2, increaseCounter: [EQUIV_COUNTER]}
               - {name: EQUIV_B, cost: 1, points: {{{(mode == 0 ? 2 : -2)}}}, spawnedItem: SUPPLY, spawnedItemCount: 3, increaseCounter: [EQUIV_COUNTER]}
+              {{{(withSite ? "- {name: SITE, cost: 1, points: " + (mode == 0 ? 1 : -1) + "}" : "")}}}
               - {name: FUTURE_GATE, cost: 1}
               - {name: UNREACHED_AUTO, cost: 0, points: 99, dependencies: [FUTURE_GATE]}
             manufacture:
               - {name: SCORE_OUTPUT, time: 1, cost: {{{(stopped ? 2000 : 0)}}}, points: {{{(mode == 0 ? 1 : -1)}}}, producedItems: {SUPPLY: 0}}
               {{{(uncertainOffset ? "- {name: UNCERTAIN_OFFSET, time: 1, cost: 2000, points: " + (mode == 0 ? -1 : 1) + ", producedItems: {SUPPLY: 0}}" : "")}}}
+            {{{(withSite ? StrategicWorldSiteResearchTests.Deployment.Replace("unlockedResearchOnDespawn: CORE", "unlockedResearchOnDespawn: SITE", StringComparison.Ordinal) : "")}}}
             """, extraRulesAfterOverlays: true);
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int mode)

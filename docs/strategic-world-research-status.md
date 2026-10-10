@@ -2284,3 +2284,28 @@ ticks. Four refusal cases preserve unsafe production counts and optional
 offsets that could stop before creating the claimed headroom. All twelve cases
 and eight score-capacity unit cases pass. The batch audit/root gate follows,
 including review of subsequent site-score composition. No cache/schema change.
+
+## Daily score and diary batch audit (2026-10-10)
+
+Audit confirmed a score composition defect: site research forecasts omitted
+preceding hourly production scores. Six fresh/cache daily/hourly regressions
+exposed missing atomic refusal, including runtime exceptions after production
+had already mutated state. The separate audit correction adds a gameplay-owned
+production score-bound operation, retaining actual projected staffing and
+including zero through all requested completions. Every ordered site research
+score mutation checks both production endpoints. Optional opposite-sign
+completions remain uncredited; direct grants use their actual current state.
+Shared work is charged before staffing, rule validation and output scans, and
+wider accumulation fails intentionally before narrowing.
+
+Sixteen native researchDailyProductionSiteScoreRows extend the prior production
+traces through actual addFinishedResearch site scoring; all older rows are
+unchanged. Twelve new cases preserve daily/hourly atomicity, safe combined
+endpoints across twelve seeds and repeated rewrites, optional funding stops and
+pure work exhaustion. All twelve new cases and 350 site-research regressions pass. The corrected
+root gate passes all 5,030 tests with zero failures or skips; full formatting,
+regenerated code-map, checksums, diff and pinned reference cleanliness checks
+pass. Reviewed signed prefix/final bounds, guaranteed versus optional effects,
+diary limits, transfer shape, work sharing, strict scalar consumers and subsequent
+site mutations. Wider counter/stock composition and final guard reconciliation
+keep 4c open; no 4d or later-branch effects are enabled.

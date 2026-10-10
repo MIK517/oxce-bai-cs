@@ -19,6 +19,8 @@ public sealed partial class CampaignState
         private List<Outcome> _outcomes;
         private long _work;
         private readonly long _functionWork;
+        private readonly long _precedingProductionMinimum;
+        private readonly long _precedingProductionMaximum;
         private readonly int _precedingMissionBirths;
         private readonly IReadOnlySet<int>? _precedingMissionRemovals;
         private string? _reason;
@@ -84,6 +86,8 @@ public sealed partial class CampaignState
             }
             if (campaign._bases.Count == 0) return;
             if (uncertainFirstBaseItems is not null) PrepareItemAlternatives(uncertainFirstBaseItems);
+            _reason ??= campaign.ProductionPreflight.ScoreBounds(highest, ref _work, out _precedingProductionMinimum, out _precedingProductionMaximum);
+            if (_reason is not null) return;
             var owner = campaign._bases[0];
             _functionWork = owner.Facilities.Count + campaign._countries.Count + (long)campaign._regions.Count;
             foreach (var facility in owner.Facilities) _functionWork += _rules.Facilities[facility.Rule].Value.ProvidedBaseFunctions.Count;
@@ -361,7 +365,9 @@ public sealed partial class CampaignState
             {
                 outcome.Score += points;
                 if (discovered != topic) outcome.DiaryEntries++;
-                if (outcome.Score is < int.MinValue or > int.MaxValue) _reason = "Mission research score exceeds the supported range.";
+                if ((Int128)outcome.Score + _precedingProductionMinimum < int.MinValue ||
+                    (Int128)outcome.Score + _precedingProductionMaximum > int.MaxValue)
+                    _reason = "Mission research score exceeds the supported range.";
             }, ref _work, MaximumWork);
             if (!supported) _reason = WorkReason;
             if (!_campaign.ResearchDiaryCapacityFits(outcome.DiaryEntries))

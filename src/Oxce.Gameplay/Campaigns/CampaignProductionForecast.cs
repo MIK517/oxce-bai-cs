@@ -16,6 +16,7 @@ internal interface ICampaignProductionPreflight
     (long Minimum, long Maximum) CraftCounter(string name, CampaignTimeTrigger highest,
         (long Minimum, long Maximum) before);
     string? CraftPopulationBound(CampaignTimeTrigger highest, ref long work, out long population);
+    string? ScoreBounds(CampaignTimeTrigger highest, ref long work, out long minimum, out long maximum);
 }
 
 public sealed partial class CampaignState

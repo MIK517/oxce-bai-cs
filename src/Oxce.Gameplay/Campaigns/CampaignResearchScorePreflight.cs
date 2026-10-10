@@ -4,6 +4,42 @@ namespace Oxce.Gameplay.Campaigns;
 
 public sealed partial class CampaignState
 {
+    string? ICampaignProductionPreflight.ScoreBounds(CampaignTimeTrigger highest, ref long work, out long minimum, out long maximum)
+    {
+        minimum = maximum = 0;
+        if (highest < CampaignTimeTrigger.OneHour) return null;
+        foreach (var owner in _bases)
+        {
+            if (++work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+            if (ForecastProductionAssignments(owner, highest, out var assignments, ref work) is { } staffingReason) return staffingReason;
+            for (var index = 0; index < owner.Productions.Count; index++)
+            {
+                if (++work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+                var project = owner.Productions[index];
+                var rule = _content.RuntimeRules.Manufacture[project.Rule].Value;
+                if (rule.Points == 0) continue;
+                work += 2L * rule.RequiredMaterials.Count + 2L * rule.ProducedMaterials.Count + rule.RandomProducedItems.Count + (long)rule.Events.Count;
+                if (work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+                foreach (var output in rule.RandomProducedItems)
+                {
+                    work += output.Items.Count;
+                    if (work > 1_000_000) return "Mission research exceeds the supported discovery work limit.";
+                }
+                if (ProductionRuleInvalid(rule) is { } invalidReason) return invalidReason;
+                var units = ProductionProgress.Requested(rule.Time, project.Spent, assignments[index], project.Amount, project.Infinite);
+                var change = (long)rule.Points * units;
+                // Production may stop before its requested completions. Its
+                // interval includes zero and never credits an optional offset.
+                var lower = (Int128)minimum + Math.Min(0, change);
+                var upper = (Int128)maximum + Math.Max(0, change);
+                if (lower < long.MinValue || upper > long.MaxValue) return "Mission research score exceeds the supported range.";
+                minimum = (long)lower;
+                maximum = (long)upper;
+            }
+        }
+        return null;
+    }
+
     private string? ReserveDailyResearchScores(ref ResearchScoreCapacity capacity, ref long work)
     {
         const string rangeReason = "Research and production scores exceed the supported range.";
