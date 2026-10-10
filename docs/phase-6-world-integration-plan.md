@@ -63,6 +63,14 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-10 consumed-consequence cycle: stock-only projections now omit
+  uncertain scalar metadata and unconsumed empty counters; nested rewards compose
+  across saved base order and incoming items. Audit found no confirmed issue;
+  all 4,834 root tests and formatting pass. See
+  [scope, composition and audit evidence](strategic-world-research-status.md#consumed-stock-projection-metadata-2026-10-10).
+  Wider stock/research/site and production/transfer composition plus final guard
+  reconciliation keep 4c open; 4d is unchanged.
+
 - 2026-10-10 reward-projection cycle: common stock consequences and exact
   convergent research states now support bounded distinct reward paths while
   retaining actual duplicate weights and diary order. Audit corrected the expected
