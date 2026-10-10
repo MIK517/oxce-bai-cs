@@ -704,3 +704,25 @@ three save rewrites and continuation. Two cases preserve non-arrival hunting and
 atomic corrupt/dormant-original refusal. This is cycle 27 slice one.
 
 Validation: all 10 new arrival tests, 470 existing hunting tests and 214 optional-base tests pass. Full solution formatting verification, regenerated code-map and diff checks pass. Batch/root acceptance follows the remaining two cycle slices.
+
+## Undiscovered alien-base craft arrival (2026-10-10)
+
+GeoscapeState::time5Seconds checks AlienBase::isDiscovered before requesting
+landing or returning a craft home. Undiscovered saved targets now retain their
+destination and speed, including arrivals during takeoff. Discovered targets
+still return crafts lacking landing eligibility; eligible landing stops before
+the affected tick mutates state (branch 5).
+
+The pinned native complete alien-base arrival block, with a popup observer and
+controlled movement after Craft::think, adds 32 alienBaseArrivalRows. Four fresh/
+cache matrix tests reproduced the prior mismatch and cover discovery, units,
+allowLanding, equipment suppression, takeoff, three rewrites and continuation.
+Two further fresh/cache cases cover eight earlier discovery combinations:
+daily facility sight after construction completion and ten-minute patrol sight
+after fuel return. Their shared geometry/chance helpers retain existing native
+sight evidence. Positive potential discovery retains the landing guard without
+RNG consumption; inactive or unfinished facilities and fuel-returning patrols do
+not create a landing hazard. Per-target discovery results reuse a cache; shared
+scan and weapon work is bounded before evaluation. This is cycle 27 slice two.
+
+Validation: all six arrival/discovery tests and all 26 existing pursuit tests pass. Full solution formatting, regenerated code-map and diff checks pass; prior hunting capture rows are unchanged.

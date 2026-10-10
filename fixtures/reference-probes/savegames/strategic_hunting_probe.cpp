@@ -173,7 +173,7 @@ std::string getStatus() const { return _status; } void setStatus(const std::stri
 bool getIsAutoPatrolling() const { return autoPatrol; }
 double getLongitudeAuto() const { return 0.8; } double getLatitudeAuto() const { return 0.3; }
 int _damage = 0, units = 0, id = 0; bool ignored = false, _lowFuel = false, _missionComplete = false;
-int getMaxUnitsClamped() const { return units; }
+int getMaxUnitsClamped() const { return units; } int getNumTotalUnits() const { return units; }
 bool isIgnoredByHK() const;
 bool getLowFuel() const { return _lowFuel; }
 bool& _mission=_missionComplete;
@@ -368,6 +368,22 @@ const auto* activeCrafts = &crafts;
 // SELECTION
 return newTarget;
 }
+}
+namespace OpenXcom {
+struct AlienBase : Target { bool discovered=false; bool isDiscovered() const { return discovered; } };
+struct Texture {};
+struct ArrivalGlobe { Texture* getTexture(int) { return nullptr; }
+void getPolygonTextureAndShade(double,double,int* texture,int* shade) { *texture=0; *shade=0; } };
+struct ArrivalMod { ArrivalGlobe globe; ArrivalGlobe* getGlobe() { return &globe; } };
+struct ArrivalGame { ArrivalMod mod; ArrivalMod* getMod() { return &mod; } };
+struct ConfirmLandingState { ConfirmLandingState(Craft*,Texture*,Texture*,int) {} };
+struct AlienBaseArrivalCaller {
+ArrivalGlobe globe; ArrivalGlobe* _globe=&globe; ArrivalGame game; ArrivalGame* _game=&game;
+bool landing=false; void timerReset() {} void popup(ConfirmLandingState* value) { landing=true; delete value; }
+void arrive(Craft* xcraft,AlienBase* b,bool suppressLanding) {
+// ALIEN_BASE_ARRIVAL
+}
+};
 }
 int main() {
 using namespace OpenXcom;
@@ -998,6 +1014,20 @@ craft._dest=destination?&target:nullptr;
 craft.consumeFuel(0);
 std::cout << '[' << (itemFuel?"true":"false") << ',' << (destination?"true":"false") << ',' << (patrolFree?"true":"false")
 << ',' << speed << ',' << fuel << ',' << excess << ',' << craft._fuel << ',' << craft._excessFuel << ',' << base.storage.count << ']';
+}
+std::cout << "],\"alienBaseArrivalRows\":[";
+serviceFirst=true;
+for(bool discovered:{false,true}) for(int units:{0,1}) for(bool allow:{false,true})
+for(bool suppress:{false,true}) for(int takeoff:{0,5}) {
+if(!serviceFirst) std::cout << ','; serviceFirst=false;
+Craft craft; AlienBase target; Base home; AlienBaseArrivalCaller caller;
+craft._base=&home; craft._dest=&target; craft._status="STR_OUT"; craft.speed=1000;
+craft._stats.speedMax=6000; craft._stats.fuelMax=1000; craft._fuel=1000; craft.autoPatrol=false;
+craft.units=units; craft.rule.landing=allow; craft._takeoff=takeoff; target.discovered=discovered;
+craft.think(); caller.arrive(&craft,&target,suppress);
+std::cout << '[' << (discovered?"true":"false") << ',' << units << ',' << (allow?"true":"false")
+<< ',' << (suppress?"true":"false") << ',' << takeoff << ',' << (caller.landing?"true":"false")
+<< ',' << (craft._dest==&home?"true":"false") << ',' << craft.speed << ',' << craft._takeoff << ',' << '\"' << craft._status << '\"' << ']';
 }
 std::cout << "],\"returnedCraftHuntRows\":[";
 serviceFirst=true;

@@ -206,7 +206,67 @@ internal sealed partial class CampaignWorld
                 state.Weapons, campaign.Content.RuntimeRules, out var maximum);
             return projected.Speed <= maximum ? InterceptionReason : null;
         }
-        return CanLand(owner, craft, state) ? LandingReason : null;
+        if (!CanLand(owner, craft, state)) return null;
+        if (destination.Kind == WorldTargetKind.AlienBase &&
+            _alienBases.Find(alienBase => FollowsAlienBase(destination, alienBase)) is { Discovered: false } undiscoveredBase)
+        {
+            if (ArrivalBaseDiscoveryReason(undiscoveredBase, highest, out var possible) is { } discoveryReason) return discoveryReason;
+            if (!possible) return null;
+        }
+        return LandingReason;
+    }
+
+    // Facility sight runs after daily construction; patrol sight runs after ten-minute
+    // fuel. Reserve deployment if either can reveal this saved target before arrival.
+    // No RNG/script execution or speculative state mutation is needed.
+    private string? ArrivalBaseDiscoveryReason(AlienBaseSnapshot alienBase, CampaignTimeTrigger highest, out bool possible)
+    {
+        possible = false;
+        if (highest < CampaignTimeTrigger.TenMinutes) return null;
+        var key = (MarkerName(alienBase.DeploymentId), alienBase.Id);
+        if (_arrivalBaseDiscovery.TryGetValue(key, out possible)) return null;
+        var rules = campaign.Content.RuntimeRules;
+        foreach (var owner in campaign.BaseStates)
+        {
+            if (++_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+            if (highest >= CampaignTimeTrigger.OneDay)
+            {
+                var distance = WorldGeometry.Distance(new(owner.Longitude, owner.Latitude), alienBase.Position);
+                foreach (var facility in owner.Facilities)
+                {
+                    if (++_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                    var rule = rules.Facilities[facility.Rule].Value;
+                    if (WorldAlienBaseSight.FacilityChance(distance, rule.SightRange, rule.SightChance,
+                            Math.Max(0, facility.BuildTime - 1)) is > 0)
+                    {
+                        possible = true;
+                        _arrivalBaseDiscovery[key] = true;
+                        return null;
+                    }
+                }
+            }
+            foreach (var craft in owner.Crafts)
+            {
+                if (++_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                var state = _pass.HuntingCraftForecast is { } forecast
+                    ? forecast.GetValueOrDefault((rules.Crafts.GetExternalId(craft.Rule), craft.Id))
+                    : craft.Logistics;
+                if (state is not { Status: "STR_OUT", Destination: null }) continue;
+                _arrivalBaseDiscoveryWork += (_pass.HuntingCraftForecast is null ? 4L : 1L) * state.Weapons.Count;
+                if (_arrivalBaseDiscoveryWork > MaximumAlienBaseChecks) return AlienBaseWorkReason;
+                if (_pass.HuntingCraftForecast is null) state = AdvanceCraftFuel(owner, craft, state);
+                if (state.Destination is not null) continue;
+                if (!CraftLogistics.TryEffectiveSightRange(rules.Crafts[craft.Rule].Value, state.Weapons, rules, out var range))
+                    return "Craft weapon sight bonuses exceed the supported range.";
+                var distance = WorldGeometry.Distance(new(state.Longitude, state.Latitude), alienBase.Position);
+                if (WorldAlienBaseSight.CraftChance(distance, range) is not > 0) continue;
+                possible = true;
+                _arrivalBaseDiscovery[key] = true;
+                return null;
+            }
+        }
+        _arrivalBaseDiscovery[key] = false;
+        return null;
     }
 
     private CraftLogisticsState RepairCraftPursuit(CampaignState.BaseState owner, CampaignState.CraftState craft,
@@ -243,7 +303,9 @@ internal sealed partial class CampaignWorld
         {
             WorldTargetKind.Craft => TargetCraft(destination)?.Logistics?.Status != "STR_OUT",
             WorldTargetKind.Ufo => TargetUfo(destination)?.Status == UfoStatus.Crashed && !CanLand(owner, craft, state),
-            WorldTargetKind.MissionSite or WorldTargetKind.AlienBase => !CanLand(owner, craft, state),
+            WorldTargetKind.MissionSite => !CanLand(owner, craft, state),
+            WorldTargetKind.AlienBase => _alienBases.Find(alienBase => FollowsAlienBase(destination, alienBase)) is
+            { Discovered: true } && !CanLand(owner, craft, state),
             _ => false,
         };
         if (!returnHome) return state;
