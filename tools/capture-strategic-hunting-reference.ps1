@@ -26,6 +26,7 @@ $researchGetters = (Read-ReferenceMethod 'src/Mod/RuleResearch.cpp' 'int RuleRes
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleResearch* getLookup() const').Replace('getLookup()', 'RuleResearch::getLookup()').Replace('_lookup', 'lookup') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Mod/RuleResearch.h' 'const RuleItem* getNeededItem() const').Replace('getNeededItem()', 'RuleResearch::getNeededItem()').Replace('_neededItem', 'needed')
 $template = $template.Replace('// RESEARCH_RULE_GETTERS', $researchGetters)
+$template = $template.Replace('// STOP_HUNTING_CRAFT', (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void SavedGame::stopHuntingXcomCraft(Craft *target)'))
 $template = $template.Replace('// PRICE_TIME_POINTER',
     (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'GameTime *SavedGame::getTime() const').Replace('_time', 'clock') + [Environment]::NewLine +
     (Read-ReferenceMethod 'src/Savegame/SavedGame.cpp' 'void getTimeScript(const SavedGame* sg, const GameTime*& r)'))
@@ -187,7 +188,7 @@ if ($depth -ne 0) { throw 'Unbalanced retarget escort fragment.' }
 $template = $template.Replace('// RETARGET_ESCORT', $method.Substring($escortStart, $escortEnd - $escortStart))
 
 $retarget = ''
-foreach ($signature in @('void Ufo::backupOriginalDestination()', 'void Ufo::setTargetedXcomCraft(', 'void Ufo::setEscortedUfo(', 'void Ufo::resetOriginalDestination(bool', 'void Ufo::setDestination(')) {
+foreach ($signature in @('void Ufo::backupOriginalDestination()', 'void Ufo::setTargetedXcomCraft(', 'void Ufo::setEscortedUfo(', 'void Ufo::resetOriginalDestination(bool', 'void Ufo::resetOriginalDestination(Craft', 'Craft *Ufo::getTargetedXcomCraft() const', 'void Ufo::setDestination(')) {
     $retarget += (Read-ReferenceMethod 'src/Savegame/Ufo.cpp' $signature) + [Environment]::NewLine
 }
 $template = $template.Replace('// RETARGET_METHODS', $retarget)

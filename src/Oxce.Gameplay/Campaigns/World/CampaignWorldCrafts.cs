@@ -37,6 +37,8 @@ public sealed record CraftTargetLost(int BaseId, string CraftTypeId, int CraftId
 internal sealed partial class CampaignWorld
 {
     private readonly HashSet<int> _followedWaypointIds = [];
+    private readonly HashSet<(string TypeId, int Id)> _possibleCraftReturns = [];
+    private readonly HashSet<(string TypeId, int Id)> _returnedCraftTargets = [];
 
     private void RegisterCraftOperations(CampaignCapabilityRegistry registry)
     {
@@ -204,6 +206,7 @@ internal sealed partial class CampaignWorld
     {
         var bases = campaign.BaseStates;
         var possibleRelaunches = 0;
+        _possibleCraftReturns.Clear();
         bool? terminalUfoArrival = null;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
         {
@@ -218,6 +221,8 @@ internal sealed partial class CampaignWorld
                     (state.Status == "STR_REFUELLING" || highest >= CampaignTimeTrigger.OneHour &&
                         (state.Status == "STR_REARMING" || state.Status == "STR_READY" && rule.RefuelItem is not null)))
                     possibleRelaunches++;
+                if (state.Status == "STR_OUT" || highest >= CampaignTimeTrigger.ThirtyMinutes && state.IsAutoPatrolling && rule.AutoPatrol)
+                    _possibleCraftReturns.Add((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
                 if (state.Status != "STR_OUT") continue;
                 if (!owner.IsPlaced) return "An airborne craft belongs to a base that is not placed.";
                 if (!CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons,
@@ -241,6 +246,12 @@ internal sealed partial class CampaignWorld
                 if (state.IsAutoPatrolling && rule.AutoPatrol) possibleRelaunches++;
             }
         }
+        // Native stopHuntingXcomCraft inspects every UFO, including dormant
+        // contacts and a malformed craft destination without hunting flags.
+        foreach (var ufo in _ufos)
+            if (ufo.Destination is { Kind: WorldTargetKind.Craft } target &&
+                _possibleCraftReturns.Contains((target.TypeId, target.Id)) && ufo.OriginalWaypoint is not { IsNormalized: true })
+                return HuntStateReason;
         // Reserve an upper bound: hourly servicing, arrivals and produced fuel can
         // enter refuelling before relaunch. ReuseItem also changes READY craft with
         // missing fuel. No forecast mutates stocks or consumes RNG.
@@ -300,6 +311,7 @@ internal sealed partial class CampaignWorld
     {
         // UFO movement runs at order 100; a terminal arrival returns from the reference
         // handler before craft movement at order 200. Cleanup follows at order 300.
+        _returnedCraftTargets.Clear();
         if (_ufoArrivalEndedTick) return;
         var bases = campaign.BaseStates;
         for (var baseIndex = 0; baseIndex < bases.Count; baseIndex++)
@@ -339,6 +351,7 @@ internal sealed partial class CampaignWorld
                                 if (destination.Kind == WorldTargetKind.Base)
                                 {
                                     state = CheckupOnReturn(state, craft, campaign.Content.RuntimeRules);
+                                    _returnedCraftTargets.Add((campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule), craft.Id));
                                 }
                                 else if (destination.Kind == WorldTargetKind.Waypoint)
                                 {
@@ -378,6 +391,7 @@ internal sealed partial class CampaignWorld
                 if (!ReferenceEquals(state, craft.Logistics)) owner.Crafts[index] = craft with { Logistics = state };
             }
         }
+        StopHuntingReturnedCrafts();
         // GeoscapeState::time5Seconds deletes waypoints without followers. Gather the
         // followers once so cleanup does not rescan every craft for every waypoint.
         if (_waypoints.Count == 0) return;
@@ -391,6 +405,29 @@ internal sealed partial class CampaignWorld
         }
         for (var index = _waypoints.Count - 1; index >= 0; index--)
             if (!_followedWaypointIds.Contains(_waypoints[index].Id)) _waypoints.RemoveAt(index);
+    }
+
+    private void StopHuntingReturnedCrafts()
+    {
+        if (_returnedCraftTargets.Count == 0) return;
+        // Native stops each returned craft's hunters immediately after think.
+        // UFO positions/speeds are unchanged by the reset; later craft flight
+        // reads those fields only. Batch before UFO cleanup to scan each UFO once.
+        for (var index = 0; index < _ufos.Count; index++)
+        {
+            var ufo = _ufos[index];
+            if (ufo.Destination is not { Kind: WorldTargetKind.Craft } target ||
+                !_returnedCraftTargets.Contains((target.TypeId, target.Id))) continue;
+            var restored = WorldHunting.Restore(ufo);
+            var speed = WorldGeometry.RadianSpeed(restored.Speed);
+            var vector = WorldGeometry.SpeedVector(restored.Position, restored.Destination!.Position, speed);
+            _ufos[index] = restored with
+            {
+                SpeedRadian = speed,
+                SpeedLongitude = vector.Longitude,
+                SpeedLatitude = vector.Latitude,
+            };
+        }
     }
 
     private bool TryGetCraftDestinationPosition(WorldTargetReference destination, out WorldPosition position)
