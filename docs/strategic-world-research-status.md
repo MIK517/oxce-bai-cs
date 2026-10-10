@@ -2335,3 +2335,22 @@ shape stays blocked. All six cases, 38 strict stock and twelve world-alternative
 Full formatting, regenerated code-map and diff checks pass; the cycle batch
 gate follows. No content
 cache or save schema change; 4c remains open.
+
+## Exact daily counter capacity (2026-10-10)
+
+Reuses native researchDailyCounterAlternativeRows mode one: a guaranteed
+primary pair of decrements precedes one increase or two increases followed
+by a decrement. Both reward paths converge at the floor and near integer
+headroom. The general daily counter preflight consumes the existing bounded
+world proof directly, validates each ordered trace from its own initial map
+and checks every intermediate value. Common traces keep their cheap single
+validation; unproved stock/arrival branches keep the conservative union path.
+No RNG or campaign state is consumed.
+
+Four fresh/cache hunter/site cases reproduce the old false overflow near
+int-max-minus-one and compare native counters/stocks/scores across three
+headrooms, twelve seeds, both choices and three rewrites. Two cases preserve
+an overflowing intermediate in an unselected path, including repeated atomic
+refusal. All six cases and 39 counter regressions pass. Shared work bounds and
+strict scalar contracts remain. Full formatting, regenerated code-map and
+diff checks pass; the cycle batch gate follows.
