@@ -498,6 +498,26 @@ std::cout << '[' << minimum << ',' << stock << ',' << choice << ',' << progress.
 << ',' << delivery._randomProductionInfo["SUPPLY"] << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0) << ']';
 for(auto* waypoint:game.save.waypoints)delete waypoint;
 }
+std::cout << "],\"productionDelayedFuelQuantityRows\":[";
+scoreFirst=true;
+for(int minimum:{0,1}) for(int stock:{1,2}) for(int choice:{1,2}) {
+if(!scoreFirst)std::cout<<',';scoreFirst=false;
+Base base;ServiceGame game;ResearchMod mod;Item item;Production progress;Craft craft;Ufo hunter;FuelCaller fuelCaller;
+craft.id=1;craft._base=&base;base.crafts={&craft};craft.rule.fuelItem=&item;craft._fuel=60;craft.distance=Nautical(100);
+ProductionItemRule rule;rule.times={2};rule.produced={{&item,0}};rule.random={{1,{{&item,minimum}}},{1,{{&item,2}}}};ProductionDeliveryCaller delivery{&rule};
+progress.rule.time=1;progress._timeSpent=0;progress._engineers=1;progress._amount=3;progress.infinite=true;base.storage.count=stock;
+RNG::suppliedChoice=choice;int stop=progress.scalarStep(&base,&game.save,&mod,delivery);RNG::suppliedChoice=-1;
+auto missing=craft.refuel();if(missing.empty())autoPatrol(&craft,&game);
+std::vector<Craft*> active;if(craft._status=="STR_OUT"){fuelCaller.fuel(&craft);active.push_back(&craft);}auto* target=select(&hunter,active);
+std::cout << '[' << minimum << ',' << stock << ',' << choice << ',' << progress.completedUnits << ',' << stop << ',' << base.storage.count
+<< ',' << delivery._randomProductionInfo["SUPPLY"] << ",\"" << craft._status << "\"," << craft._fuel << ',' << (target?target->id:0)
+<< ',' << base.transfers.size() << ',' << base.transfers[0]->_itemQty << ',' << base.transfers[1]->_itemQty << ',' << base.transfers[0]->getHours();
+for(auto* transfer:base.transfers)transfer->advance(&base);
+std::cout << ',' << base.storage.count << ',' << base.transfers[0]->getHours();
+for(auto* transfer:base.transfers)transfer->advance(&base);
+std::cout << ',' << base.storage.count << ',' << base.transfers[0]->getHours() << ']';
+for(auto* transfer:base.transfers)delete transfer;for(auto* waypoint:game.save.waypoints)delete waypoint;
+}
 std::cout << "],\"productionPersonnelRows\":[";
 scoreFirst=true;
 for(bool scientist:{false,true}) for(int delay:{-1,0,3}) for(int assigned:{1,6}) for(int headroom:{0,1,2}) for(bool infinite:{false,true}) {

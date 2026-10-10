@@ -911,3 +911,23 @@ All nine new hunting quantity cases and all 505 hunting cases pass. Full formatt
 regenerated code-map and diff checks pass; native prior rows remain unchanged and
 the reference checkout is clean.
 This is cycle 32 slice one; delayed/shared quantity composition and batch are pending.
+
+## Delayed random fuel quantity acceptance (2026-10-10)
+
+Cycle 32 slice two closes delayed acceptance for the quantity envelope introduced
+above; it requires no additional runtime relaxation. Production::step creates both
+fixed zero-quantity and selected random transfers before refuelling, and
+Transfer::advance delivers them after two hourly boundaries. Eight pinned
+productionDelayedFuelQuantityRows record quantities 0/1 versus 2, one/two initial
+fuel items, actual history, native launch/target, ordered transfer quantities and
+intermediate/final stocks. Previous native rows remain unchanged.
+
+Eight fresh/cache cases observe both draws across twelve saved seeds, preserve
+actual transfer identities/quantities through three rewrites at creation and each
+arrival boundary, and compare continued execution after reload. Further production
+is paused in those isolated arrival fixtures. Zero-quantity transfers still count
+and disappear at arrival. Two capacity cases allow exactly two remaining IDs and
+atomically reject one-ID headroom or excessive pending quantity. A pure projection
+case verifies delayed quantities create neither current stock nor uncertainty and
+consume no campaign/RNG state. All eleven cases, full formatting, code-map and diff checks pass. Shared quantity
+consumption and root batch acceptance remain pending.
