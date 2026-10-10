@@ -2376,3 +2376,24 @@ before a safe birth and reload. All eight cases and the preceding 45 counter
 regressions pass. Full formatting, regenerated code-map and diff checks pass;
 the three-slice batch gate follows. No cache
 or save schema change; wider composition and final reconciliation keep 4c open.
+
+## Daily counter alternatives batch audit (2026-10-10)
+
+Reviewed strict versus world projections, every noncommon-counter marker consumer,
+ordered intermediate bounds, floor behavior, consumed identity ranges, cancellation
+and shared work charging. The initial root gate passed all 5,050 tests. Audit then
+confirmed a persistence defect: native nonempty whitespace custom counter labels
+were created during play but rejected by campaign validation on reload. Existing
+saves containing these labels were also rejected.
+
+Eight native researchCounterLabelRows capture empty, space, tab and UTF-8
+nonbreaking-space names through SavedGame::increaseCustomCounter/decreaseCustomCounter.
+Campaign validation now rejects only empty names, preserving exact ordinal identity
+and positive integer checks. No trimming, counter aliasing or schema change is used.
+Four fresh/cache execution and existing-save cases cover both reward paths across
+twelve seeds and three rewrites; five malformed cases retain empty-name and
+nonpositive-ID rejection. Six cases failed before the fix; all nine now pass.
+The corrected root gate passes all 5,059 tests with zero failures or skips;
+full formatting, regenerated code-map, checksum tests, diff checks and pinned
+reference cleanliness pass. Wider stock composition, stochastic craft transitions
+and final guard reconciliation keep 4c open.

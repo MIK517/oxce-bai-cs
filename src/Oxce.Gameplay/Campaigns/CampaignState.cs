@@ -393,7 +393,8 @@ public sealed partial class CampaignState : ICampaignCommandTarget, ICampaignQue
         EnsureUnique(_bases.Select(static item => item.Id), "base IDs");
         foreach (var pair in _nextIds)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(pair.Key);
+            // Native custom counters skip only empty names; whitespace is part of their identity.
+            ArgumentException.ThrowIfNullOrEmpty(pair.Key);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pair.Value);
         }
         foreach (var item in _bases) ValidateBase(item, _content.RuntimeRules);

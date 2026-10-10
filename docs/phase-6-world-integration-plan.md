@@ -63,6 +63,13 @@ This section owns cross-cutting 4c checkpoints, the current scope and the remain
 Subsystem slices, audits and evidence are recorded once, in their `strategic-*-status.md`
 documents; entries here link to them instead of copying them.
 
+- 2026-10-10 ordered counter composition cycle: bounded daily traces now
+  compose with counter capacity and consumed craft/personnel identities. The
+  batch fixed whitespace counter names rejected on reload. All 5,059 root tests
+  and formatting pass; see [evidence and audit](strategic-world-research-status.md#daily-counter-alternatives-batch-audit-2026-10-10).
+  Wider stock composition, stochastic craft transitions and final guard
+  reconciliation keep 4c open; 4d remains unchanged.
+
 - 2026-10-10 ordered score/diary cycle: bounded daily prefixes, diary counts and
   guaranteed final scores compose with later production. The batch fixed omitted
   production scores before site research. All 5,030 root tests and formatting pass;
