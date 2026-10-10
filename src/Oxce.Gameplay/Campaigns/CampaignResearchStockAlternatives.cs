@@ -7,15 +7,15 @@ public sealed partial class CampaignState
     bool ICampaignResearchPreflight.TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries)
     {
         if (TryForecastDailyStockBranch(ref work, out forecast, includeDiscoveries, [], out var pendingChoices)) return true;
-        // Exact discovery callers cannot treat different research identities as one.
-        if (includeDiscoveries || pendingChoices == 0) return false;
+        // Branching is safe only when every final consequence consumed by the caller agrees.
+        if (pendingChoices == 0) return false;
         Queue<int[]> pending = [];
         var created = 1;
         if (!EnqueueResearchStockBranches(pending, [], pendingChoices, ref created, ref work)) return false;
         DailyResearchStockForecast? common = null;
         while (pending.TryDequeue(out var choices))
         {
-            if (!TryForecastDailyStockBranch(ref work, out var branch, false, choices, out pendingChoices))
+            if (!TryForecastDailyStockBranch(ref work, out var branch, includeDiscoveries, choices, out pendingChoices))
             {
                 if (pendingChoices == 0)
                 {
@@ -31,12 +31,18 @@ public sealed partial class CampaignState
                 work += branch.CounterChanges.Count + branch.StockChanges.Count + (long)branch.Arrivals.Count;
                 foreach (var changes in branch.StockChanges.Values) work += changes.Count;
                 foreach (var arrivals in branch.Arrivals.Values) work += arrivals.Count;
-                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch)) return false;
+                if (includeDiscoveries)
+                {
+                    work += branch.CompletedResearch!.Count + (long)branch.ResearchStatuses!.Count + branch.ActiveResearch!.Count;
+                    foreach (var active in branch.ActiveResearch.Values) work += active.Count;
+                }
+                if (work > 1_000_000 || !SameResearchStockConsequences(common, branch) ||
+                    includeDiscoveries && !SameResearchDiscoveryConsequences(common, branch)) return false;
             }
         }
         if (common is null) return false;
-        // Every terminal branch agrees. No chosen research identity is exported;
-        // execution still consumes RNG and commits the actual chosen reward.
+        // Every terminal branch agrees. Execution still consumes RNG and records
+        // the actual reward and diary order; exact callers receive only common final state.
         forecast = common with { Work = work };
         return true;
     }
@@ -57,6 +63,18 @@ public sealed partial class CampaignState
             pending.Enqueue(path);
         }
         created += count;
+        return true;
+    }
+
+    private static bool SameResearchDiscoveryConsequences(DailyResearchStockForecast first, DailyResearchStockForecast second)
+    {
+        if (!first.CompletedResearch!.SetEquals(second.CompletedResearch!) ||
+            first.ResearchStatuses!.Count != second.ResearchStatuses!.Count ||
+            first.ActiveResearch!.Count != second.ActiveResearch!.Count) return false;
+        foreach (var status in first.ResearchStatuses)
+            if (!second.ResearchStatuses.TryGetValue(status.Key, out var value) || value != status.Value) return false;
+        foreach (var owner in first.ActiveResearch)
+            if (!second.ActiveResearch.TryGetValue(owner.Key, out var active) || !owner.Value.SetEquals(active)) return false;
         return true;
     }
 
