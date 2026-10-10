@@ -66,6 +66,90 @@ public sealed partial class StrategicWorldHuntingTests
         AssertTimeBlocked(campaign, "UFO retargeting requires production fuel-stock forecasts.");
     }
 
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    public void UnconsumedScopedMaterialsPermitNativeRandomVariants(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var content = Load(cache, ScopedMaterialRules(mode));
+        var rows = TestFixtures.Rows(oracle.RootElement, "productionScopedMaterialRows").Where(row => row[0].GetInt32() == mode).ToArray();
+        HashSet<int> choices = [];
+        for (ulong seed = 1; seed <= 12; seed++)
+        {
+            var initial = ScopedMaterialSnapshot(content, mode) with { RandomState = seed };
+            var campaign = CampaignState.Restore(initial, content, new SplitMix64RandomSource(seed));
+            var result = campaign.Execute(new AdvanceCampaignTime(1));
+            Assert.Empty(result.Events.OfType<CampaignActionBlocked>());
+            var after = campaign.Capture();
+            var choice = after.Bases[0].Items.GetValueOrDefault("INERT_B") == 2 ? 2 : 1;
+            choices.Add(choice);
+            var first = Assert.Single(result.Events.OfType<CampaignProductionProgress>(), progress => progress.RuleId == "VARIANT_PRODUCT");
+            var other = result.Events.OfType<CampaignProductionProgress>().SingleOrDefault(progress => progress.RuleId == "OTHER_MATERIAL");
+            var craft = Assert.Single(after.Bases[0].Crafts, craft => craft.RuleId == "VARIANT_HUNT").Logistics!;
+            var actual = JsonSerializer.SerializeToUtf8Bytes(new object[]
+            {
+                mode, choice, first.Produced, NativeProductionStop(first.StopReason), other?.Produced ?? 0, mode == 0 ? -1 : NativeProductionStop(other?.StopReason),
+                after.Bases[0].Items.GetValueOrDefault("SUPPLY"), after.Bases[0].Items.GetValueOrDefault("INERT_A"), after.Bases[0].Items.GetValueOrDefault("INERT_B"),
+                mode == 1 ? Assert.Single(after.Bases[0].Productions, project => project.RuleId == "OTHER_MATERIAL").Assigned : 1,
+                craft.Status, craft.Fuel, after.World.Ufos[0].Hunting ? after.World.Ufos[0].Destination!.Id : 0,
+            });
+            Assert.Equal(CanonicalJson.Normalize(JsonSerializer.SerializeToUtf8Bytes(Assert.Single(rows, row => row[1].GetInt32() == choice))), CanonicalJson.Normalize(actual));
+            Assert.Equal(mode != 0, after.Bases[0].Productions.Any(project => project.RuleId == "VARIANT_PRODUCT"));
+            Assert.Equal(mode == 1, after.Bases[0].Productions.Any(project => project.RuleId == "OTHER_MATERIAL"));
+            for (var rewrite = 0; rewrite < 3; rewrite++)
+            {
+                campaign = Reload(content, campaign, seed, "scoped-random-material.sav");
+                Assert.Equivalent(after, campaign.Capture(), strict: true);
+            }
+        }
+        Assert.Equal(2, choices.Count);
+    }
+
+    [Theory]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    [InlineData(false, 4)]
+    [InlineData(true, 4)]
+    public void ContinuingScopedMaterialsRetainFallbackAwareGuard(bool cache, int mode)
+    {
+        using var oracle = TestFixtures.ReadVerifiedExpected("strategic-hunting");
+        var rows = TestFixtures.Rows(oracle.RootElement, "productionScopedMaterialRows").Where(row => row[0].GetInt32() == mode).ToArray();
+        Assert.Equal(2, rows.Select(row => row[5].GetInt32()).Distinct().Count());
+        var content = Load(cache, ScopedMaterialRules(mode));
+        var campaign = Reload(content, CampaignState.Restore(ScopedMaterialSnapshot(content, mode), content, new SplitMix64RandomSource(81)), 81, "scoped-material-guard.sav");
+        AssertTimeBlocked(campaign, "UFO retargeting requires production fuel-stock forecasts.");
+    }
+
+    private static int NativeProductionStop(string? reason) => reason switch
+    { "STR_PRODUCTION_COMPLETE" => 1, "STR_NOT_ENOUGH_MATERIALS" => 3, null => 0, _ => throw new InvalidOperationException(reason) };
+
+    private static string ScopedMaterialRules(int mode)
+    {
+        var overlay = ScopedVariantRules();
+        if (mode == 0) return overlay.Replace("requiredItems: {SUPPLY: 2}", "requiredItems: {INERT_A: 1}", StringComparison.Ordinal);
+        return overlay.Replace("manufacture: [", "manufacture: [{name: OTHER_MATERIAL, time: 2, requiredItems: {INERT_A: 1}, producedItems: {SUPPLY: 0}}, ", StringComparison.Ordinal);
+    }
+
+    private static CampaignSnapshot ScopedMaterialSnapshot(RuntimeContent content, int mode)
+    {
+        var initial = VariantProductionSnapshot(content, false);
+        var owner = initial.Bases[0];
+        if (mode == 0) return initial with { Bases = [owner with { Productions = [owner.Productions[0] with { Amount = 1, Infinite = false }] }] };
+        return initial with
+        {
+            Bases = [owner with
+            {
+                Engineers = mode == 4 ? 1 : 0,
+                Productions = [.. owner.Productions, new("OTHER_MATERIAL", mode is 1 or 4 ? 0 : 1, 1, mode == 2 ? 1 : 3, false, false, mode == 4, new Dictionary<string, int>())],
+            }],
+        };
+    }
+
     private static string ScopedVariantRules() => VariantProductionRules(0, 0).Replace("crafts: [",
         "crafts: [{type: OTHER_FUEL, speedMax: 2000, damageMax: 100, fuelMax: 100, refuelRate: 40, refuelItem: INERT_A}, ", StringComparison.Ordinal);
 
