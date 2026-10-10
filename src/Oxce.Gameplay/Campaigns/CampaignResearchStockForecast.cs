@@ -25,8 +25,11 @@ public sealed partial class CampaignState
         new ReadOnlyDictionary<int, IReadOnlyDictionary<string, int>>(new Dictionary<int, IReadOnlyDictionary<string, int>>()),
         new ReadOnlyDictionary<int, IReadOnlyList<KeyValuePair<string, int>>>(new Dictionary<int, IReadOnlyList<KeyValuePair<string, int>>>()));
 
-    bool ICampaignResearchPreflight.TryForecastDailyStocks(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries)
+    private bool TryForecastDailyStockBranch(ref long work, out DailyResearchStockForecast forecast, bool includeDiscoveries,
+        int[] choices, out int pendingChoices)
     {
+        pendingChoices = 0;
+        var choiceIndex = 0;
         forecast = EmptyResearchStockForecast;
         if (!includeDiscoveries && DailyItemsUnchanged(ref work)) return true;
         var rules = _content.RuntimeRules;
@@ -105,8 +108,18 @@ public sealed partial class CampaignState
                 var candidates = discovery.RewardCandidates(rule);
                 work += candidates.Count;
                 if (work > 1_000_000) return false;
-                if (candidates.Count > 1 && !rule.SequentialGetOneFree && candidates.Any(id => id != candidates[0])) return false;
-                if (candidates.Count != 0 && rules.Research.TryGet(candidates[0], out var bonus))
+                var selected = 0;
+                if (candidates.Count > 1 && !rule.SequentialGetOneFree && candidates.Any(id => id != candidates[0]))
+                {
+                    if (choiceIndex >= choices.Length)
+                    {
+                        pendingChoices = candidates.Count;
+                        return false;
+                    }
+                    selected = choices[choiceIndex++];
+                    if ((uint)selected >= (uint)candidates.Count) return false;
+                }
+                if (candidates.Count != 0 && rules.Research.TryGet(candidates[selected], out var bonus))
                 {
                     var reward = rules.Research[bonus];
                     RecordDiary(reward.Id);

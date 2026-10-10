@@ -1799,3 +1799,27 @@ failures/skips, including native checksums, private corpus and population/alloca
 gates with unchanged bounds. Full formatting, regenerated code-map and diff checks
 pass. The pinned reference is clean; obsolete probe objects were removed. Optional
 arrival/transfer and wider composition guards still keep 4c open; 4d is untouched.
+
+## Stock-equivalent free research choices (2026-10-10)
+
+Daily stock consumers can now compose with distinct random free rewards when
+every bounded outcome has identical consequences: per-base stock deltas,
+ordered arrivals, transfer identity, ordered custom-counter changes, score and
+diary-entry count. The existing pure daily discovery engine projects each choice
+path; no script or RNG is executed, rewound or provisionally committed. At most
+4,096 path nodes and one million charged work units are supported, with prefix
+storage charged before allocation. Exact discovery callers still refuse uncertain
+research identities; the stock-only result exports no completed/status/project
+identity. Execution chooses and persists its actual reward normally.
+
+Pinned SavedGame::selectGetOneFree/addFinishedResearch, the daily primary-topic
+caller and item/counter effects add eight researchEquivalentRewardRows. They
+cover both selected identities, duplicate labels and zero/minimum versus positive
+quantities. Eight fresh/cache cases cover 32 explicit restored seeds, common
+projection purity, same-day item-fuel refuelling/auto-patrol/hunting, exact native
+output, three save rewrites and continuation. Two further cases preserve atomic
+refusal of unequal quantities, counter traces and score, exact-identity requests,
+exhausted work and oversized branching. Previous native rows remain unchanged.
+This is cycle 28 slice one; broader ordered execution and batch acceptance follow.
+
+Validation: the ten reward/limit cases and all 470 existing hunting cases pass. Full formatting verification, regenerated code-map and diff checks pass. Exact discovery callers retain their separate uncertainty boundary.
