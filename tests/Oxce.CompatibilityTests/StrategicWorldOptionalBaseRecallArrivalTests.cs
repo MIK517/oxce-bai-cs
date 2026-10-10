@@ -65,13 +65,15 @@ public sealed class StrategicWorldOptionalBaseRecallArrivalTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void UncertainRecallAndAlreadyLowFuelRemainAtomic(bool cache)
+    public void UncertainRecallRemainsAtomicAndAlreadyLowFuelArrivalIsOwned(bool cache)
     {
         var content = StrategicWorldOptionalBaseFuelParityTests.Content(cache);
         AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17, 0, 21, false), content, new SplitMix64RandomSource(17)),
             "Alien base self-destruction requires craft speed alternatives for uncertain research.");
-        AssertTimeBlocked(CampaignState.Restore(Snapshot(content, 17, 5, 0, true), content, new SplitMix64RandomSource(17)),
-            "Alien base self-destruction requires craft arrival alternatives for uncertain research.");
+        var campaign = CampaignState.Restore(Snapshot(content, 17, 5, 0, true), content, new SplitMix64RandomSource(17));
+        AdvanceUnblocked(campaign, 1);
+        var after = campaign.Capture();
+        Assert.Equal(after.CompletedResearch.Contains("BONUS"), after.Bases[0].Crafts[0].Logistics!.Status != "STR_OUT");
     }
 
     internal static CampaignSnapshot Snapshot(RuntimeContent content, ulong seed, int takeoff, int fuel, bool low) =>

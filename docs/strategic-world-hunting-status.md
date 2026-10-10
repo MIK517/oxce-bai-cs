@@ -726,3 +726,26 @@ not create a landing hazard. Per-target discovery results reuse a cache; shared
 scan and weapon work is bounded before evaluation. This is cycle 27 slice two.
 
 Validation: all six arrival/discovery tests and all 26 existing pursuit tests pass. Full solution formatting, regenerated code-map and diff checks pass; prior hunting capture rows are unchanged.
+
+## Optional source craft arrival and ordered escorts (2026-10-10)
+
+Optional alien-base self-destruction no longer blocks an otherwise owned craft
+arrival near its home base. After equal low-fuel eligibility and escort fuel
+consumer proofs, each actual research outcome runs the existing craft movement,
+checkup and same-tick hunter cancellation. Later saved-order craft escorts see
+the leader's resulting status. The surviving source still reserves any branch 5
+landing before research or tick mutation. Signed-speed and unequal low-fuel
+eligibility boundaries remain unchanged.
+
+Sixteen optionalCraftArrivalRows capture native ordered fuel, Craft::think,
+alien-base and craft-escort arrival branches, and stopHuntingXcomCraft, with
+controlled equal arrival coordinates, takeoff, item/ordinary fuel and leader/
+escort order. Mission-complete escorts are excluded from hunting so both captures
+and runtime execute the same leader target. Fresh/cache execution covers 32 seeds
+per combination, both research outcomes, deterministic controls, three rewrites
+and continuation. Former near-home refusal fixtures now assert the actual owned
+arrival outcome, retaining malformed takeoff and fuel ambiguity checks. A new
+fresh/cache landing regression proves that surviving eligible targets still stop
+atomically. This is cycle 27 slice three.
+
+Validation: all 218 optional-base composition tests pass, including four new arrival/landing cases. Full formatting, regenerated code-map and diff checks pass. Batch audit/root validation follows this slice.
