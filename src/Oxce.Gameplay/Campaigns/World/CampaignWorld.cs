@@ -133,8 +133,10 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
             Crafts = CampaignSnapshot.ReadOnly(campaign.BaseStates.SelectMany(owner => owner.Crafts.Select(craft =>
             {
                 var state = craft.Logistics;
-                var airborneReason = state is not { Status: "STR_OUT" } ? "The craft is not airborne." :
-                    IsReturningHome(state) ? ReturningReason : null;
+                var airborneReason = state is not { Status: "STR_OUT" } ? WorldCommandReasons.NotAirborne :
+                    IsReturningHome(state) ? ReturningReason :
+                    !CraftLogistics.TryEffectiveSpeedMaximum(campaign.Content.RuntimeRules.Crafts[craft.Rule].Value,
+                        state.Weapons, campaign.Content.RuntimeRules, out _) ? SpeedRangeReason : null;
                 var dispatchReason = DispatchReason(owner, craft);
                 var summary = new CampaignWorldCraft(owner.Id, campaign.Content.RuntimeRules.Crafts.GetExternalId(craft.Rule),
                     craft.Id, state?.Name ?? string.Empty, state?.Status ?? string.Empty,
@@ -156,22 +158,26 @@ internal sealed partial class CampaignWorld(CampaignState campaign) : ICampaignC
         if (craft.Logistics is not { } state) return summary;
         var rules = campaign.Content.RuntimeRules;
         var rule = rules.Crafts[craft.Rule].Value;
-        var stats = CraftLogistics.EffectiveStats(rule, state.Weapons, rules);
+        // Saturated rather than thrown: one craft with out-of-range bonuses must not fail the query;
+        // its commands report the range refusal instead.
+        CraftLogistics.TryEffectiveFuelMaximum(rule, state.Weapons, rules, out var fuelMaximum);
+        CraftLogistics.TryEffectiveGeoscapeShields(rule, state.Weapons, rules, out var shieldMaximum, out _);
         CraftLogistics.TryEffectiveSpeedMaximum(rule, state.Weapons, rules, out var speedMaximum);
         var type = rules.Crafts.GetExternalId(craft.Rule);
         return summary with
         {
-            FuelMaximum = stats.FuelMaximum,
+            FuelMaximum = Math.Max(fuelMaximum, 0),
             Damage = state.Damage,
             DamageMaximum = (int)Math.Clamp(CraftLogistics.EffectiveDamageMaximum(state, rule, rules), 0, int.MaxValue),
             Shield = state.Shield,
-            ShieldMaximum = stats.ShieldMaximum,
+            ShieldMaximum = shieldMaximum,
             Speed = state.Speed,
-            SpeedMaximum = speedMaximum,
+            SpeedMaximum = Math.Max(speedMaximum, 0),
             Weapons = CampaignSnapshot.ReadOnly(state.Weapons.Select(weapon => weapon is null ? null
                 : new CampaignWorldCraftWeapon(weapon.RuleId, weapon.Ammo,
                     rules.CraftWeapons.TryGet(weapon.RuleId, out var handle) ? rules.CraftWeapons[handle].Value.AmmoMaximum : 0))),
-            Soldiers = owner.Soldiers.Count(soldier => soldier.Personal is { } personal &&
+            // Craft::getNumTotalSoldiers reports none for a craft that cannot carry units.
+            Soldiers = rule.EffectiveMaximumUnits == 0 ? 0 : owner.Soldiers.Count(soldier => soldier.Personal is { } personal &&
                 personal.CraftType == type && personal.CraftId == craft.Id),
             Vehicles = state.Vehicles.Count,
             LowFuel = state.LowFuel,

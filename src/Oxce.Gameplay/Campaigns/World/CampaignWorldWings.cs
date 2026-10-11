@@ -25,7 +25,7 @@ internal sealed partial class CampaignWorld
             throw new ArgumentException("A wing needs either a target or a waypoint.", nameof(command));
         if (command.Waypoint is { IsNormalized: false }) throw new ArgumentOutOfRangeException(nameof(command));
         if (command.Crafts.Count is 0 or > MaximumWing || command.Crafts.Distinct().Count() != command.Crafts.Count)
-            return Blocked("A wing has one to four distinct craft.");
+            return Blocked(WorldCommandReasons.WingSize);
         var members = command.Crafts.Select(key =>
         {
             ArgumentNullException.ThrowIfNull(key);
@@ -47,12 +47,15 @@ internal sealed partial class CampaignWorld
             if (DestinationReason(target, out var resolved) is { } reason) return Blocked(reason);
             leaderIsTarget = IsCraft(target, leader.Key);
             for (var slot = 1; slot < members.Length; slot++)
+                // Port restriction: the reference would let such a craft target itself.
                 if (!command.FollowLeader && IsCraft(target, members[slot].Key))
-                    return Blocked("A craft cannot escort itself.");
-            if (target.Kind == WorldTargetKind.Base && members.Any(member => member.Owner.Id != target.Id))
-                return Blocked("A craft can return only to its own base; use a transfer to change bases.");
+                    return Blocked(WorldCommandReasons.TargetSelf);
+            // Only craft that fly to the base itself must belong to it; followers fly to the leader.
+            if (target.Kind == WorldTargetKind.Base && members.Where((_, slot) => slot == 0 || !command.FollowLeader)
+                    .Any(member => member.Owner.Id != target.Id))
+                return Blocked(WorldCommandReasons.ForeignBase);
             if (TargetDeployment(resolved) is { StartingCondition.Length: > 0 })
-                return Blocked("Target starting conditions require deployment validation (Phase 6 branch 5).");
+                return Blocked(WorldCommandReasons.StartingConditionBoundary);
             destination = resolved;
         }
         foreach (var member in members)

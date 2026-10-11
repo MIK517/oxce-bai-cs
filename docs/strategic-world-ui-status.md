@@ -149,8 +149,15 @@ possible while it is airborne, since grounded craft are not globe targets) goes 
 wing follows it. Refusals (`CampaignActionBlocked`) now carry a stable `Code` and, where the
 reference has one, a `TextKey` (for example `STR_ARMOR_NOT_ALLOWED_ONBOARD`,
 `STR_TOO_MANY_ITEMS_ONBOARD`, `STR_NOT_ENOUGH_PILOTS`), classified by `WorldCommandReasons`; the
-single-craft commands use the same table. The world query now describes craft for the craft
-screen (fuel, damage, shield, speed, weapons with ammunition, crew, low fuel, mission complete,
-auto-patrol, the refusal reasons for dispatch and patrol recall) and targets for the target info
-screen (hunter-killer, hyper-detection, radar range, hunting, destination).
+single-craft commands use the same table, whose texts are shared constants with the commands so
+a rewording cannot silently unclassify a refusal. Classification covers world craft commands and
+UFO contact actions; other campaign refusals (feature restrictions, ended campaigns, time
+refusals, logistics) stay `unclassified` until their screens need codes. `STR_NOT_ENOUGH_PILOTS`
+takes the craft's pilot count as its argument, which the UI reads from the craft rule. Port
+restriction: with follow-leader off, a follower cannot be the wing's target (the reference would
+let it chase itself). Only craft that fly to a base target must belong to it; followers fly to
+the leader. The world query now describes craft for the craft screen (fuel, damage, shield, speed,
+weapons with ammunition, crew, low fuel, mission complete, auto-patrol, the refusal reasons for
+dispatch and for patrol or recall, saturated rather than thrown for out-of-range bonuses), and
+each target carries the classified reason its action is unavailable.
 Tests: `StrategicWorldWingTests`.
