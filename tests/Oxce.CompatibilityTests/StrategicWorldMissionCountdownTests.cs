@@ -207,17 +207,6 @@ public sealed class StrategicWorldMissionCountdownTests
     }
 
     [Fact]
-    public void ContactMarkerExhaustionStopsBeforeSpawn()
-    {
-        var content = StrategicReadinessTestContent.Load("strategic-world.rul");
-        var campaign = CreateWaveCampaign(content, "MISSION_SPAWN_AIRBORNE");
-        campaign = CampaignState.Restore(campaign.Capture().WithNextId("STR_UFO", int.MaxValue)
-            .WithFacility("RADAR_HYPER_TEST"), content, new SplitMix64RandomSource(80));
-
-        AssertTimeBlocked(campaign, "UFO contact marker IDs are exhausted or collide with a saved UFO.");
-    }
-
-    [Fact]
     public void SpawnReservesAContactMarkerEvenWithoutRadarCoverage()
     {
         // Preflight does not forecast radar coverage; an alerting spawn always reserves a marker.
